@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="MemorySmith.Core/MemorySmith.Core.csproj" />
+  <Project Path="MemorySmith.Storage/MemorySmith.Storage.csproj" />
+  <Project Path="MemorySmith.Worker/MemorySmith.Worker.csproj" />
+  <Project Path="MemorySmith.Tests/MemorySmith.Tests.csproj" />
+</Solution>
