@@ -15,5 +15,15 @@
   ],
   "Conflicts": [],
   "UsageCount": 3,
-  "LastUpdated": "2026-05-12T00:00:00Z"
+  "LastUpdated": "2026-05-12T00:00:00Z",
+  "SourceLinks": [
+    {
+      "Label": "Program.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Program.cs"
+    },
+    {
+      "Label": "MemorySmith.App.csproj",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/MemorySmith.App.csproj"
+    }
+  ]
 }

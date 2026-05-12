@@ -29,5 +29,19 @@
   ],
   "Conflicts": [],
   "UsageCount": 1,
-  "LastUpdated": "2026-05-12T00:00:00Z"
+  "LastUpdated": "2026-05-12T00:00:00Z",
+  "SourceLinks": [
+    {
+      "Label": "McpController.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Controllers/McpController.cs",
+      "StartLine": 1,
+      "EndLine": 50
+    },
+    {
+      "Label": "MemoryApplicationService.cs (BuildContextPackAsync)",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/MemoryApplicationService.cs",
+      "StartLine": 193,
+      "EndLine": 260
+    }
+  ]
 }

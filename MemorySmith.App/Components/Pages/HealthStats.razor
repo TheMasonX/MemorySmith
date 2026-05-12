@@ -6,76 +6,130 @@
 
 <PageTitle>Health</PageTitle>
 
-<MudText Typo="Typo.h4" GutterBottom="true">Health</MudText>
-
-<MudPaper Class="pa-4 mb-4" Elevation="1">
-    <MudStack Row="true" AlignItems="AlignItems.Center">
-        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" />
-        <MudText Typo="Typo.h6">Readiness: @_readiness</MudText>
-        <MudSpacer />
-        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" OnClick="RefreshAsync">Refresh</MudButton>
-    </MudStack>
-</MudPaper>
+<div class="health-header">
+    <MudText Typo="Typo.h4">Health &amp; Activity</MudText>
+    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" OnClick="RefreshAsync">Refresh</MudButton>
+</div>
 
 @if (_stats is not null)
 {
-    <MudGrid Class="mb-4">
-        <MudItem xs="12" sm="6" md="3"><MudPaper Class="pa-4"><MudText>Total</MudText><MudText Typo="Typo.h4">@_stats.TotalCount</MudText></MudPaper></MudItem>
-        <MudItem xs="12" sm="6" md="3"><MudPaper Class="pa-4"><MudText>Core</MudText><MudText Typo="Typo.h4">@_stats.Core</MudText></MudPaper></MudItem>
-        <MudItem xs="12" sm="6" md="3"><MudPaper Class="pa-4"><MudText>Working</MudText><MudText Typo="Typo.h4">@_stats.Working</MudText></MudPaper></MudItem>
-        <MudItem xs="12" sm="6" md="3"><MudPaper Class="pa-4"><MudText>Usage</MudText><MudText Typo="Typo.h4">@_stats.TotalUsage</MudText></MudPaper></MudItem>
-    </MudGrid>
+    <div class="health-stat-row">
+        <div class="health-stat-card">
+            <span class="health-stat-label">Total</span>
+            <span class="health-stat-value">@_stats.TotalCount</span>
+        </div>
+        <div class="health-stat-card is-core">
+            <span class="health-stat-label">Core</span>
+            <span class="health-stat-value">@_stats.Core</span>
+        </div>
+        <div class="health-stat-card is-working">
+            <span class="health-stat-label">Working</span>
+            <span class="health-stat-value">@_stats.Working</span>
+        </div>
+        <div class="health-stat-card">
+            <span class="health-stat-label">Unconsolidated</span>
+            <span class="health-stat-value">@_stats.Unconsolidated</span>
+        </div>
+        <div class="health-stat-card is-deprecated">
+            <span class="health-stat-label">Deprecated</span>
+            <span class="health-stat-value">@_stats.Deprecated</span>
+        </div>
+        <div class="health-stat-card">
+            <span class="health-stat-label">Avg Confidence</span>
+            <span class="health-stat-value">@(_stats.AverageConfidence.ToString("P0"))</span>
+        </div>
+        <div class="health-stat-card">
+            <span class="health-stat-label">Total Usage</span>
+            <span class="health-stat-value">@_stats.TotalUsage</span>
+        </div>
+        <div class="health-stat-card @(_readiness == "Ready" ? "is-core" : "is-deprecated")">
+            <span class="health-stat-label">Readiness</span>
+            <span class="health-stat-value" style="font-size:1rem">@_readiness</span>
+        </div>
+    </div>
 }
 
-<MudGrid>
-    <MudItem xs="12" md="7">
-        <MudPaper Class="pa-4" Elevation="1">
-            <MudText Typo="Typo.h6" GutterBottom="true">Maintenance Telemetry</MudText>
-            <MudTable Items="@_telemetry" Dense="true">
-                <HeaderContent>
-                    <MudTh>Service</MudTh>
-                    <MudTh>Interval</MudTh>
-                    <MudTh>Last Run</MudTh>
-                    <MudTh>Last Success</MudTh>
-                    <MudTh>Last Failure</MudTh>
-                    <MudTh>Duration</MudTh>
-                </HeaderContent>
-                <RowTemplate>
-                    <MudTd>@context.ServiceName</MudTd>
-                    <MudTd>@context.Interval</MudTd>
-                    <MudTd>@FormatTime(context.LastRunUtc)</MudTd>
-                    <MudTd>@FormatTime(context.LastSuccessUtc)</MudTd>
-                    <MudTd>@FormatTime(context.LastFailureUtc)</MudTd>
-                    <MudTd>@(context.LastDurationMs?.ToString("N0") ?? "-") ms</MudTd>
-                </RowTemplate>
-            </MudTable>
-        </MudPaper>
-    </MudItem>
-    <MudItem xs="12" md="5">
-        <MudPaper Class="pa-4" Elevation="1">
-            <MudText Typo="Typo.h6" GutterBottom="true">Recent Memory Events</MudText>
-            @if (_recentEvents.Count == 0)
-            {
-                <MudText Color="Color.Secondary">No events observed in this UI session.</MudText>
-            }
-            else
-            {
-                <MudList T="MemoryUpdateEvent" Dense="true">
-                    @foreach (var update in _recentEvents)
-                    {
-                        <MudListItem Text="@($"{update.Action}: {update.Id}")" SecondaryText="@update.Timestamp.ToLocalTime().ToString("g")" />
-                    }
-                </MudList>
-            }
-        </MudPaper>
-    </MudItem>
-</MudGrid>
+@if (_activityBuckets.Count > 0)
+{
+    <div class="health-charts-row">
+        <div class="health-chart-card">
+            <div class="health-chart-title">Queries / Day (last @_chartDays days)</div>
+            <MudChart T="double" ChartType="ChartType.Line"
+                      ChartSeries="@_querySeries"
+                      ChartLabels="@_chartLabels"
+                      ChartOptions="@_lineChartOptions"
+                      Width="100%" Height="200px" />
+        </div>
+        <div class="health-chart-card">
+            <div class="health-chart-title">Memory Changes / Day (last @_chartDays days)</div>
+            <MudChart T="double" ChartType="ChartType.Bar"
+                      ChartSeries="@_changeSeries"
+                      ChartLabels="@_chartLabels"
+                      ChartOptions="@_barChartOptions"
+                      Width="100%" Height="200px" />
+        </div>
+    </div>
+}
+
+<div class="health-lower-grid">
+    <div class="health-lower-card">
+        <div class="health-section-title">Maintenance Telemetry</div>
+        <MudTable Items="@_telemetry" Dense="true" Class="health-table">
+            <HeaderContent>
+                <MudTh>Service</MudTh>
+                <MudTh>Interval</MudTh>
+                <MudTh>Last Run</MudTh>
+                <MudTh>Last Success</MudTh>
+                <MudTh>Duration</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>@context.ServiceName</MudTd>
+                <MudTd>@context.Interval</MudTd>
+                <MudTd>@FormatTime(context.LastRunUtc)</MudTd>
+                <MudTd>@FormatTime(context.LastSuccessUtc)</MudTd>
+                <MudTd>@(context.LastDurationMs?.ToString("N0") ?? "-") ms</MudTd>
+            </RowTemplate>
+        </MudTable>
+    </div>
+    <div class="health-lower-card">
+        <div class="health-section-title">Recent Events (this session)</div>
+        @if (_recentEvents.Count == 0)
+        {
+            <span class="wiki-muted">No events yet — create, edit, or search a memory.</span>
+        }
+        else
+        {
+            <MudList T="MemoryUpdateEvent" Dense="true">
+                @foreach (var update in _recentEvents)
+                {
+                    <MudListItem Text="@($"{update.Action}: {update.Id}")" SecondaryText="@update.Timestamp.ToLocalTime().ToString("g")" />
+                }
+            </MudList>
+        }
+    </div>
+</div>
 
 @code {
     private StatsSnapshot? _stats;
     private IReadOnlyList<BackgroundServiceTelemetry> _telemetry = [];
+    private IReadOnlyList<ActivityBucket> _activityBuckets = [];
     private readonly List<MemoryUpdateEvent> _recentEvents = [];
     private string _readiness = "Checking";
+    private const int _chartDays = 30;
+
+    private List<ChartSeries<double>> _querySeries = [];
+    private List<ChartSeries<double>> _changeSeries = [];
+    private string[] _chartLabels = [];
+
+    private readonly ChartOptions _lineChartOptions = new()
+    {
+        ChartPalette = ["#4fc1ff"]
+    };
+
+    private readonly ChartOptions _barChartOptions = new()
+    {
+        ChartPalette = ["#89d185"]
+    };
 
     protected override async Task OnInitializedAsync()
     {
@@ -90,6 +144,10 @@
         {
             _stats = await Memories.GetStatsAsync(CancellationToken.None);
             _telemetry = await Memories.GetTelemetryAsync(CancellationToken.None);
+            _activityBuckets = await Memories.GetActivityBucketsAsync(_chartDays, CancellationToken.None);
+            _chartLabels = _activityBuckets.Select(b => b.Date.ToString("M/d")).ToArray();
+            _querySeries = [new ChartSeries<double> { Name = "Queries", Data = _activityBuckets.Select(b => (double)b.Queries).ToArray() }];
+            _changeSeries = [new ChartSeries<double> { Name = "Changes", Data = _activityBuckets.Select(b => (double)b.Changes).ToArray() }];
             _readiness = "Ready";
         }
         catch

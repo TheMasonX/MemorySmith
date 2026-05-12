@@ -18,5 +18,15 @@
   ],
   "Conflicts": [],
   "UsageCount": 4,
-  "LastUpdated": "2026-05-12T00:00:00Z"
+  "LastUpdated": "2026-05-12T00:00:00Z",
+  "SourceLinks": [
+    {
+      "Label": "Data/Memories/",
+      "Uri": "%MemorySmithRepo%Data/Memories/"
+    },
+    {
+      "Label": "appsettings.json",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/appsettings.json"
+    }
+  ]
 }

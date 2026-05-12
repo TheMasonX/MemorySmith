@@ -1,0 +1,28 @@
+{
+  "Id": "project-wiki-source-links-feature",
+  "Title": "Source Links Feature",
+  "Status": 2,
+  "Confidence": 1.0,
+  "Tags": [
+    "project-wiki",
+    "source-links",
+    "mcp",
+    "architecture"
+  ],
+  "Content": "MemorySmith supports SourceLinks on each MemoryRecord — file references with optional line ranges that ground memories in actual code. Each SourceLink has a Label, Uri, and optional StartLine/EndLine (1-based, inclusive). URIs can contain %VarName% tokens that expand via VarResolver using vars.json. The Variables page (/variables) provides CRUD for var bindings. The memorysmith_source_bundle MCP tool fetches records by id or hybrid search and returns file content slices for each source link. The memorysmith_find_by_source tool scans all records for source links whose URIs match a substring pattern and returns matching records with resolved URIs. Both tools support json and jsonl output formats. In MemoryViewer.razor, source links are edited one per line: 'Label | URI [| StartLine[-EndLine]]'. The VarResolver.ReadSourceAsync method reads file slices using StartLine/EndLine with a configurable max-byte limit and appends a truncation notice when needed. Default window when only StartLine is given is 50 lines.",
+  "References": [
+    "project-wiki-active-architecture",
+    "project-wiki-mcp-search-tools-current",
+    "project-wiki-semantic-ui-current"
+  ],
+  "Conflicts": [],
+  "SourceLinks": [
+    { "Label": "SourceLink.cs", "Uri": "%MemorySmithRepo%MemorySmith.Core/Models/SourceLink.cs" },
+    { "Label": "VarResolver.cs", "Uri": "%MemorySmithRepo%MemorySmith.App/Services/VarResolver.cs" },
+    { "Label": "FileVarStore.cs", "Uri": "%MemorySmithRepo%MemorySmith.Storage/FileVarStore.cs" },
+    { "Label": "McpController.cs (source_bundle/find_by_source)", "Uri": "%MemorySmithRepo%MemorySmith.App/Controllers/McpController.cs" },
+    { "Label": "Variables.razor", "Uri": "%MemorySmithRepo%MemorySmith.App/Components/Pages/Variables.razor" }
+  ],
+  "UsageCount": 0,
+  "LastUpdated": "2026-05-12T00:00:00Z"
+}

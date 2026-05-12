@@ -16,5 +16,15 @@
   ],
   "Conflicts": [],
   "UsageCount": 3,
-  "LastUpdated": "2026-05-12T00:00:00Z"
+  "LastUpdated": "2026-05-12T00:00:00Z",
+  "SourceLinks": [
+    {
+      "Label": "FileMemoryStore.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.Storage/FileMemoryStore.cs"
+    },
+    {
+      "Label": "IMemoryStore.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.Storage/IMemoryStore.cs"
+    }
+  ]
 }

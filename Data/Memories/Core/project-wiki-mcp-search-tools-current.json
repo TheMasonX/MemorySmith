@@ -30,8 +30,10 @@
   ],
   "Conflicts": [],
   "SourceLinks": [
-    { "Label": "McpController.cs", "Uri": "%MemorySmithRepo%MemorySmith.App/Controllers/McpController.cs" },
-    { "Label": "McpAndSemanticSearchTests.cs", "Uri": "%MemorySmithRepo%MemorySmith.Tests/McpAndSemanticSearchTests.cs" }
+    {
+      "Label": "McpController.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Controllers/McpController.cs"
+    }
   ],
   "UsageCount": 1,
   "LastUpdated": "2026-05-12T00:00:00Z"

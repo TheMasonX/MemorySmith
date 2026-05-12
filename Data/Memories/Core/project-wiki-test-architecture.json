@@ -1,0 +1,27 @@
+{
+  "Id": "project-wiki-test-architecture",
+  "Title": "Test Architecture and Benchmark Suite",
+  "Status": 2,
+  "Confidence": 1.0,
+  "Tags": [
+    "project-wiki",
+    "testing",
+    "benchmarks",
+    "architecture"
+  ],
+  "Content": "MemorySmith.Tests uses NUnit 4 with Microsoft.AspNetCore.Mvc.Testing for integration tests. All tests targeting file-backed services use isolated temp directories (Path.GetTempPath() + guid) created in SetUp and deleted in TearDown. ProjectWikiFixture.CopyToTemp copies Data/Memories into a temp location and returns the path; the fixture automatically finds the repo root via .slnx presence. TestServiceFactory.CreateMemoryApplicationService builds a MemoryApplicationService directly with an empty MemoryIndex (no pre-loading needed since SearchAsync uses store.LoadAll). RecordingEventStore and RecordingMemoryChangePublisher are in-memory stubs defined in MemoryApplicationServiceTests.cs. SearchBenchmarkTests (Category=Benchmark) exercises all three search modes with SearchProbe records defining query/expected-id/maxMs thresholds. Keyword probes use MustContainId (not TopId) because keyword search is a verbatim substring Contains — not ranked. Semantic and hybrid probes can use TopId for ordering assertions. ServiceFactory in SearchBenchmarkTests uses BackgroundServiceTelemetryTracker (concrete class, no interface). The MCP integration tests use WebApplicationFactory<Program> with in-memory config overriding DataPath/EventLogPath/Maintenance:Enabled=false. app.css append-only: use Add-Content PowerShell, never replace_string_in_file.",
+  "References": [
+    "project-wiki-validation-command",
+    "project-wiki-hybrid-search-rrf",
+    "project-wiki-semantic-search-gap"
+  ],
+  "Conflicts": [],
+  "SourceLinks": [
+    { "Label": "SearchBenchmarkTests.cs", "Uri": "%MemorySmithRepo%MemorySmith.Tests/SearchBenchmarkTests.cs" },
+    { "Label": "McpAndSemanticSearchTests.cs", "Uri": "%MemorySmithRepo%MemorySmith.Tests/McpAndSemanticSearchTests.cs" },
+    { "Label": "ProjectWikiTestbaseTests.cs", "Uri": "%MemorySmithRepo%MemorySmith.Tests/ProjectWikiTestbaseTests.cs" },
+    { "Label": "MemoryApplicationServiceTests.cs", "Uri": "%MemorySmithRepo%MemorySmith.Tests/MemoryApplicationServiceTests.cs" }
+  ],
+  "UsageCount": 0,
+  "LastUpdated": "2026-05-12T00:00:00Z"
+}

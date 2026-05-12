@@ -1000,3 +1000,97 @@ body {
     align-items: center;
     gap: 8px;
 }
+
+/* Health / Activity dashboard */
+.health-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+}
+
+.health-stat-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.health-stat-card {
+    background: var(--vscode-panel);
+    border: 1px solid var(--vscode-border);
+    border-radius: 4px;
+    padding: 8px 14px;
+    min-width: 90px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.health-stat-card.is-core { border-color: var(--vscode-green); }
+.health-stat-card.is-working { border-color: var(--vscode-accent); }
+.health-stat-card.is-deprecated { border-color: var(--vscode-red); }
+
+.health-stat-label {
+    font-size: 0.72rem;
+    color: var(--vscode-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+}
+
+.health-stat-value {
+    font-size: 1.6rem;
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--vscode-text);
+}
+
+.health-charts-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.health-chart-card {
+    background: var(--vscode-panel);
+    border: 1px solid var(--vscode-border);
+    border-radius: 4px;
+    padding: 10px 12px;
+}
+
+.health-chart-title {
+    font-size: 0.82rem;
+    color: var(--vscode-text-muted);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.health-lower-grid {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 10px;
+}
+
+.health-lower-card {
+    background: var(--vscode-panel);
+    border: 1px solid var(--vscode-border);
+    border-radius: 4px;
+    padding: 10px 12px;
+}
+
+.health-section-title {
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--vscode-text-muted);
+    margin-bottom: 8px;
+}
+
+@media (max-width: 900px) {
+    .health-charts-row,
+    .health-lower-grid { grid-template-columns: 1fr; }
+}

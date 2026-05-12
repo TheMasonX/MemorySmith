@@ -23,5 +23,15 @@
   ],
   "Conflicts": [],
   "UsageCount": 2,
-  "LastUpdated": "2026-05-12T00:00:00Z"
+  "LastUpdated": "2026-05-12T00:00:00Z",
+  "SourceLinks": [
+    {
+      "Label": "MemoryApplicationService.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/MemoryApplicationService.cs"
+    },
+    {
+      "Label": "MemoryQueries.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/MemoryQueries.cs"
+    }
+  ]
 }

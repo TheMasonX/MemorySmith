@@ -24,5 +24,15 @@
   ],
   "Conflicts": [],
   "UsageCount": 1,
-  "LastUpdated": "2026-05-12T00:00:00Z"
+  "LastUpdated": "2026-05-12T00:00:00Z",
+  "SourceLinks": [
+    {
+      "Label": "MemoryViewer.razor",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Components/Pages/MemoryViewer.razor"
+    },
+    {
+      "Label": "NavMenu.razor",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Components/Layout/NavMenu.razor"
+    }
+  ]
 }

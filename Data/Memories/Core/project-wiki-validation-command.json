@@ -16,5 +16,15 @@
   ],
   "Conflicts": [],
   "UsageCount": 3,
-  "LastUpdated": "2026-05-12T00:00:00Z"
+  "LastUpdated": "2026-05-12T00:00:00Z",
+  "SourceLinks": [
+    {
+      "Label": "MemorySmith.slnx",
+      "Uri": "%MemorySmithRepo%MemorySmith.slnx"
+    },
+    {
+      "Label": "MemorySmith.Tests.csproj",
+      "Uri": "%MemorySmithRepo%MemorySmith.Tests/MemorySmith.Tests.csproj"
+    }
+  ]
 }

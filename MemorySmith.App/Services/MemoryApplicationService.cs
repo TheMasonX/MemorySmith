@@ -92,6 +92,8 @@ public class MemoryApplicationService
     {
         cancellationToken.ThrowIfCancellationRequested();
 
+        RecordQueryEvent("keyword", query.Query);
+
         var limit = Clamp(query.Limit, 1, _options.Limits.MaxSearchLimit, 20);
         var tagFilters = NormalizeFilterList(query.Tags);
         var keyword = query.Query?.Trim();
@@ -119,6 +121,8 @@ public class MemoryApplicationService
     {
         cancellationToken.ThrowIfCancellationRequested();
 
+        RecordQueryEvent("semantic", query.Query);
+
         var limit = Clamp(query.Limit, 1, _options.Limits.MaxSearchLimit, 20);
         var tagFilters = NormalizeFilterList(query.Tags);
         var queryTokens = ExpandSearchTokens(TokenizeSearchText(query.Query ?? string.Empty));
@@ -134,6 +138,8 @@ public class MemoryApplicationService
     public Task<IReadOnlyList<MemorySearchResult>> HybridSearchAsync(HybridMemorySearchQuery query, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+
+        RecordQueryEvent("hybrid", query.Query);
 
         var limit = Clamp(query.Limit, 1, _options.Limits.MaxSearchLimit, 20);
         var tagFilters = NormalizeFilterList(query.Tags);
@@ -187,6 +193,8 @@ public class MemoryApplicationService
     public async Task<MemoryContextPack> BuildContextPackAsync(MemoryContextPackQuery query, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+
+        RecordQueryEvent("context_pack", query.Query);
 
         var limit = Clamp(query.Limit, 1, _options.Limits.MaxSearchLimit, 5);
         var referenceDepth = Clamp(query.ReferenceDepth, 0, 2, 1);
@@ -447,6 +455,39 @@ public class MemoryApplicationService
     {
         cancellationToken.ThrowIfCancellationRequested();
         return Task.FromResult(StatsSnapshotFactory.Build(_store.LoadAll()));
+    }
+
+    /// <summary>
+    /// Returns daily event buckets for the last <paramref name="days"/> days (UTC).
+    /// Each bucket counts search queries and memory create/update/delete events.
+    /// </summary>
+    public Task<IReadOnlyList<ActivityBucket>> GetActivityBucketsAsync(int days, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var since = DateTime.UtcNow.AddDays(-days + 1).Date; // start of that day
+
+        var buckets = Enumerable.Range(0, days)
+            .Select(i => today.AddDays(-(days - 1 - i)))
+            .ToDictionary(d => d, _ => (Queries: 0, Changes: 0));
+
+        foreach (var ev in _eventStore.GetEvents(since: since))
+        {
+            var date = DateOnly.FromDateTime(ev.Timestamp.ToUniversalTime());
+            if (!buckets.ContainsKey(date)) continue;
+            var (q, c) = buckets[date];
+            if (ev.Action.StartsWith("Query:", StringComparison.OrdinalIgnoreCase))
+                buckets[date] = (q + 1, c);
+            else if (ev.Action is "Created" or "Updated" or "Deleted")
+                buckets[date] = (q, c + 1);
+        }
+
+        var result = buckets
+            .OrderBy(kv => kv.Key)
+            .Select(kv => new ActivityBucket(kv.Key, kv.Value.Queries, kv.Value.Changes))
+            .ToList();
+
+        return Task.FromResult<IReadOnlyList<ActivityBucket>>(result);
     }
 
     public Task<IReadOnlyList<BackgroundServiceTelemetry>> GetTelemetryAsync(CancellationToken cancellationToken)
@@ -924,4 +965,17 @@ public class MemoryApplicationService
 
     private static string TruncateContent(string content, int maxLength) =>
         content.Length <= maxLength ? content : content[..maxLength].TrimEnd() + "...";
+
+    private void RecordQueryEvent(string kind, string? text)
+    {
+        _eventStore.AppendEvent(new MemoryEvent
+        {
+            Action = $"Query:{kind}",
+            Details = text ?? string.Empty,
+            Timestamp = DateTime.UtcNow
+        });
+    }
 }
+
+/// <summary>Daily event summary bucket used for activity charts.</summary>
+public record ActivityBucket(DateOnly Date, int Queries, int Changes);

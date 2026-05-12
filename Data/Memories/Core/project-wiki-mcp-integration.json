@@ -17,5 +17,17 @@
   ],
   "Conflicts": [],
   "UsageCount": 2,
-  "LastUpdated": "2026-05-12T00:00:00Z"
+  "LastUpdated": "2026-05-12T00:00:00Z",
+  "SourceLinks": [
+    {
+      "Label": "McpController.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Controllers/McpController.cs"
+    },
+    {
+      "Label": "Program.cs (MCP registration)",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Program.cs",
+      "StartLine": 1,
+      "EndLine": 80
+    }
+  ]
 }
