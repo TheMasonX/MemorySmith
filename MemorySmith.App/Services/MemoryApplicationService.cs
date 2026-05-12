@@ -184,10 +184,191 @@ public class MemoryApplicationService
         return Task.FromResult<IReadOnlyList<MemorySearchResult>>(results);
     }
 
+    public async Task<MemoryContextPack> BuildContextPackAsync(MemoryContextPackQuery query, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var limit = Clamp(query.Limit, 1, _options.Limits.MaxSearchLimit, 5);
+        var referenceDepth = Clamp(query.ReferenceDepth, 0, 2, 1);
+        var maxContentChars = Clamp(query.MaxContentChars, 200, 6000, 1200);
+        var maxRecords = Clamp(query.MaxRecords, 1, 100, 20);
+        var warnings = new List<string>();
+        var allRecords = _store.LoadAll().ToList();
+        var recordsById = allRecords.ToDictionary(record => record.Id, StringComparer.OrdinalIgnoreCase);
+        var explicitRootIds = NormalizeIdList(query.Ids, warnings);
+        var roots = string.IsNullOrWhiteSpace(query.Query) && explicitRootIds.Count > 0
+            ? []
+            : await HybridSearchAsync(new HybridMemorySearchQuery(query.Query, query.Status, query.Tags, limit), cancellationToken);
+
+        var records = new List<MemoryContextPackRecord>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var frontier = new List<MemoryRecord>();
+        var hitMaxRecords = false;
+
+        foreach (var id in explicitRootIds)
+        {
+            if (!recordsById.TryGetValue(id, out var record))
+            {
+                warnings.Add($"Explicit root id '{id}' was not found.");
+                continue;
+            }
+
+            if (!TryAddToPack(record, "root", null, "Explicit root id.", frontier))
+            {
+                if (hitMaxRecords)
+                {
+                    break;
+                }
+            }
+        }
+
+        foreach (var result in roots)
+        {
+            if (!recordsById.TryGetValue(result.Id, out var record))
+            {
+                continue;
+            }
+
+            if (!TryAddToPack(record, "root", result.Score, result.MatchReason, frontier) && hitMaxRecords)
+            {
+                break;
+            }
+        }
+
+        for (var depth = 0; depth < referenceDepth && frontier.Count > 0; depth++)
+        {
+            var nextFrontier = new List<MemoryRecord>();
+            foreach (var parent in frontier)
+            {
+                foreach (var link in EnumerateLinks(parent, allRecords, query.IncludeBacklinks))
+                {
+                    if (records.Count >= maxRecords)
+                    {
+                        AddMaxRecordsWarning();
+                        break;
+                    }
+
+                    if (!recordsById.TryGetValue(link.Id, out var linked))
+                    {
+                        warnings.Add($"{link.WarningKind} '{link.Id}' from '{parent.Id}' was not found.");
+                        continue;
+                    }
+
+                    if (!TryAddToPack(linked, FormatLinkedRelationship(link.Relationship, parent.Id), null, null, nextFrontier))
+                    {
+                        if (hitMaxRecords)
+                        {
+                            break;
+                        }
+                    }
+                }
+
+                if (hitMaxRecords)
+                {
+                    break;
+                }
+            }
+
+            frontier = nextFrontier;
+        }
+
+        return new MemoryContextPack(query.Query, DateTime.UtcNow, records, warnings.Distinct(StringComparer.OrdinalIgnoreCase).ToList());
+
+        bool TryAddToPack(MemoryRecord record, string relationship, double? score, string? matchReason, List<MemoryRecord> targetFrontier)
+        {
+            if (seen.Contains(record.Id))
+            {
+                return false;
+            }
+
+            if (records.Count >= maxRecords)
+            {
+                AddMaxRecordsWarning();
+                return false;
+            }
+
+            seen.Add(record.Id);
+            records.Add(ToContextPackRecord(record, relationship, score, matchReason, maxContentChars));
+            targetFrontier.Add(record);
+            return true;
+        }
+
+        void AddMaxRecordsWarning()
+        {
+            if (hitMaxRecords)
+            {
+                return;
+            }
+
+            warnings.Add($"Context pack hit maxRecords {maxRecords}; additional records were omitted.");
+            hitMaxRecords = true;
+        }
+
+        static IEnumerable<(string Id, string Relationship, string WarningKind)> EnumerateLinks(
+            MemoryRecord record,
+            IReadOnlyList<MemoryRecord> allRecords,
+            bool includeBacklinks)
+        {
+            foreach (var id in record.References)
+            {
+                yield return (id, "reference", "Reference");
+            }
+
+            foreach (var id in record.Conflicts)
+            {
+                yield return (id, "conflict", "Conflict");
+            }
+
+            if (!includeBacklinks)
+            {
+                yield break;
+            }
+
+            foreach (var backlink in allRecords.Where(candidate => !string.Equals(candidate.Id, record.Id, StringComparison.OrdinalIgnoreCase)))
+            {
+                if (backlink.References.Any(id => string.Equals(id, record.Id, StringComparison.OrdinalIgnoreCase)))
+                {
+                    yield return (backlink.Id, "references", "Backlink");
+                }
+
+                if (backlink.Conflicts.Any(id => string.Equals(id, record.Id, StringComparison.OrdinalIgnoreCase)))
+                {
+                    yield return (backlink.Id, "conflicts with", "Backlink");
+                }
+            }
+        }
+
+        static string FormatLinkedRelationship(string relationship, string parentId) => relationship switch
+        {
+            "references" => $"references {parentId}",
+            "conflicts with" => $"conflicts with {parentId}",
+            _ => $"{relationship} of {parentId}"
+        };
+    }
+
     public Task<MemoryRecord?> GetAsync(string id, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         return Task.FromResult(IsValidId(id) ? _store.Load(id) : null);
+    }
+
+    /// <summary>
+    /// Returns all records that have at least one source link whose raw or resolved URI contains
+    /// <paramref name="pattern"/> (case-insensitive). Pass <paramref name="resolveUri"/> to also
+    /// match after variable expansion (e.g. <c>_vars.Resolve</c>).
+    /// </summary>
+    public Task<IReadOnlyList<MemoryRecord>> FindBySourceAsync(
+        string pattern,
+        Func<string, string>? resolveUri,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var result = _store.LoadAll()
+            .Where(r => r.SourceLinks.Any(sl =>
+                sl.Uri.Contains(pattern, StringComparison.OrdinalIgnoreCase) ||
+                (resolveUri != null && resolveUri(sl.Uri).Contains(pattern, StringComparison.OrdinalIgnoreCase))))
+            .ToList();
+        return Task.FromResult<IReadOnlyList<MemoryRecord>>(result);
     }
 
     public async Task<MemoryRecord> CreateAsync(MemoryRecord record, CancellationToken cancellationToken)
@@ -301,6 +482,10 @@ public class MemoryApplicationService
         record.Tags = NormalizeValues(record.Tags);
         record.References = NormalizeValues(record.References);
         record.Conflicts = NormalizeValues(record.Conflicts);
+        record.SourceLinks = record.SourceLinks
+            .Where(sl => !string.IsNullOrWhiteSpace(sl.Uri))
+            .Select(sl => new SourceLink { Label = sl.Label.Trim(), Uri = sl.Uri.Trim() })
+            .ToList();
     }
 
     private void ValidateRecord(MemoryRecord record)
@@ -385,10 +570,49 @@ public class MemoryApplicationService
         LastUpdated = record.LastUpdated
     };
 
+    private static MemoryContextPackRecord ToContextPackRecord(
+        MemoryRecord record,
+        string relationship,
+        double? score,
+        string? matchReason,
+        int maxContentChars) => new(
+            record.Id,
+            record.Title,
+            record.Status,
+            record.Confidence,
+            record.Tags,
+            record.References,
+            record.Conflicts,
+            record.SourceLinks,
+            record.UsageCount,
+            record.LastUpdated,
+            relationship,
+            score,
+            matchReason,
+            TruncateContent(record.Content, maxContentChars));
+
     private static IReadOnlyList<string> NormalizeFilterList(string? values) =>
         string.IsNullOrWhiteSpace(values)
             ? []
             : NormalizeValues(values.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+
+    private static IReadOnlyList<string> NormalizeIdList(string? values, ICollection<string> warnings) =>
+        string.IsNullOrWhiteSpace(values)
+            ? []
+            : values
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Where(value =>
+                {
+                    if (IsValidId(value))
+                    {
+                        return true;
+                    }
+
+                    warnings.Add($"Explicit root id '{value}' is invalid.");
+                    return false;
+                })
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
 
     private static List<string> NormalizeValues(IEnumerable<string> values) =>
         values
@@ -697,4 +921,7 @@ public class MemoryApplicationService
         var suffix = start + length < content.Length ? "..." : string.Empty;
         return prefix + content.Substring(start, length).Trim() + suffix;
     }
+
+    private static string TruncateContent(string content, int maxLength) =>
+        content.Length <= maxLength ? content : content[..maxLength].TrimEnd() + "...";
 }

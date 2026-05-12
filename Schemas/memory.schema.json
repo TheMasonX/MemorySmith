@@ -4,50 +4,72 @@
   "title": "MemoryRecord",
   "description": "A single memory record in the MemorySmith system",
   "type": "object",
-  "required": ["id", "content", "status"],
+  "required": ["Id", "Content", "Status"],
   "properties": {
-    "id": {
+    "Id": {
       "type": "string",
-      "description": "Unique identifier (GUID)"
+      "description": "Stable safe identifier used as the file name"
     },
-    "title": {
+    "Title": {
       "type": "string",
       "description": "Short human-readable title"
     },
-    "content": {
+    "Content": {
       "type": "string",
       "description": "Memory content (100-300 tokens)"
     },
-    "status": {
-      "type": "string",
-      "enum": ["Unconsolidated", "Working", "Core", "Deprecated"],
-      "description": "Lifecycle state"
+    "Status": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "enum": [0, 1, 2, 3]
+        },
+        {
+          "type": "string",
+          "enum": ["Unconsolidated", "Working", "Core", "Deprecated"]
+        }
+      ],
+      "description": "Lifecycle state. Current file-backed records use numeric .NET enum values: 0 Unconsolidated, 1 Working, 2 Core, 3 Deprecated."
     },
-    "confidence": {
+    "Confidence": {
       "type": "number",
       "minimum": 0,
       "maximum": 1,
       "description": "Confidence score [0,1]"
     },
-    "tags": {
+    "Tags": {
       "type": "array",
       "items": { "type": "string" }
     },
-    "references": {
+    "References": {
       "type": "array",
       "items": { "type": "string" },
       "description": "IDs of other memories this one references"
     },
-    "conflicts": {
+    "Conflicts": {
       "type": "array",
       "items": { "type": "string" },
       "description": "IDs of memories that conflict with this one"
     },
-    "usageCount": {
+    "SourceLinks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "Label": { "type": "string", "description": "Display label for the source link" },
+          "Uri": { "type": "string", "description": "URI or file path; %VarName% tokens are expanded at display time using Data/vars.json" },
+          "StartLine": { "type": "integer", "minimum": 1, "description": "Optional 1-based start line for file references" },
+          "EndLine": { "type": "integer", "minimum": 1, "description": "Optional 1-based end line (inclusive) for file references" }
+        },
+        "required": ["Uri"]
+      },
+      "description": "Source file or URL references. Supports %VarName% path variable expansion."
+    },
+    "UsageCount": {
       "type": "integer",
       "minimum": 0
     },
-    "lastUpdated": {
+    "LastUpdated": {
       "type": "string",
       "format": "date-time"
     }

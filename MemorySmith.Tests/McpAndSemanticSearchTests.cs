@@ -109,7 +109,246 @@ public class McpAndSemanticSearchTests
         Assert.That(toolNames, Does.Contain("memorysmith_search"));
         Assert.That(toolNames, Does.Contain("memorysmith_semantic_search"));
         Assert.That(toolNames, Does.Contain("memorysmith_hybrid_search"));
+        Assert.That(toolNames, Does.Contain("memorysmith_context_pack"));
         Assert.That(toolNames, Does.Contain("memorysmith_get"));
+
+        var contextPackTool = document.RootElement
+            .GetProperty("result")
+            .GetProperty("tools")
+            .EnumerateArray()
+            .Single(tool => tool.GetProperty("name").GetString() == "memorysmith_context_pack");
+        var contextPackProperties = contextPackTool.GetProperty("inputSchema").GetProperty("properties");
+        Assert.Multiple(() =>
+        {
+            Assert.That(contextPackProperties.TryGetProperty("maxRecords", out _), Is.True);
+            Assert.That(contextPackProperties.TryGetProperty("format", out _), Is.True);
+        });
+    }
+
+    [Test]
+    public async Task McpContextPackTool_ReturnsHybridResultsWithLinkedContext()
+    {
+        var dataPath = ProjectWikiFixture.CopyToTemp(_tempRoot);
+        await using var factory = CreateFactory(dataPath);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/mcp", new
+        {
+            JsonRpc = "2.0",
+            Id = "context-pack",
+            Method = "tools/call",
+            Params = new
+            {
+                Name = "memorysmith_context_pack",
+                Arguments = new
+                {
+                    Query = "useful MCP context pack larger knowledge base",
+                    Tags = "project-wiki",
+                    Limit = 2,
+                    ReferenceDepth = 1,
+                    MaxContentChars = 900
+                }
+            }
+        }, JsonSerializerOptions.Web);
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+
+        var text = await ExtractFirstToolTextAsync(response);
+        Assert.Multiple(() =>
+        {
+            Assert.That(text, Does.Contain("Context Pack"));
+            Assert.That(text, Does.Contain("project-wiki"));
+            Assert.That(text, Does.Contain("Relationship"));
+            Assert.That(text, Does.Contain("RRF"));
+        });
+    }
+
+    [Test]
+    public async Task McpContextPackTool_AcceptsExplicitIds()
+    {
+        var dataPath = ProjectWikiFixture.CopyToTemp(_tempRoot);
+        await using var factory = CreateFactory(dataPath);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/mcp", new
+        {
+            JsonRpc = "2.0",
+            Id = "context-pack-by-id",
+            Method = "tools/call",
+            Params = new
+            {
+                Name = "memorysmith_context_pack",
+                Arguments = new
+                {
+                    Ids = "project-wiki-mcp-context-pack",
+                    ReferenceDepth = 1,
+                    MaxContentChars = 600
+                }
+            }
+        }, JsonSerializerOptions.Web);
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+
+        var text = await ExtractFirstToolTextAsync(response);
+        Assert.Multiple(() =>
+        {
+            Assert.That(text, Does.Contain("project-wiki-mcp-context-pack"));
+            Assert.That(text, Does.Contain("Explicit root id"));
+            Assert.That(text, Does.Contain("reference of project-wiki-mcp-context-pack"));
+        });
+    }
+
+    [Test]
+    public async Task McpContextPackTool_ReportsMissingExplicitIds()
+    {
+        var dataPath = ProjectWikiFixture.CopyToTemp(_tempRoot);
+        await using var factory = CreateFactory(dataPath);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/mcp", new
+        {
+            JsonRpc = "2.0",
+            Id = "context-pack-missing-id",
+            Method = "tools/call",
+            Params = new
+            {
+                Name = "memorysmith_context_pack",
+                Arguments = new
+                {
+                    Ids = "project-wiki-mcp-context-pack,missing-project-memory",
+                    ReferenceDepth = 0
+                }
+            }
+        }, JsonSerializerOptions.Web);
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+
+        var text = await ExtractFirstToolTextAsync(response);
+        Assert.Multiple(() =>
+        {
+            Assert.That(text, Does.Contain("Warnings"));
+            Assert.That(text, Does.Contain("missing-project-memory"));
+        });
+    }
+
+    [Test]
+    public async Task McpContextPackTool_HonorsMaxRecordsBudget()
+    {
+        var dataPath = ProjectWikiFixture.CopyToTemp(_tempRoot);
+        await using var factory = CreateFactory(dataPath);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/mcp", new
+        {
+            JsonRpc = "2.0",
+            Id = "context-pack-budget",
+            Method = "tools/call",
+            Params = new
+            {
+                Name = "memorysmith_context_pack",
+                Arguments = new
+                {
+                    Ids = "project-wiki-mcp-context-pack",
+                    ReferenceDepth = 1,
+                    MaxRecords = 2,
+                    MaxContentChars = 400
+                }
+            }
+        }, JsonSerializerOptions.Web);
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+
+        var text = await ExtractFirstToolTextAsync(response);
+        var recordCount = text.Split("## ").Length - 1;
+        Assert.Multiple(() =>
+        {
+            Assert.That(recordCount, Is.EqualTo(2));
+            Assert.That(text, Does.Contain("maxRecords 2"));
+        });
+    }
+
+    [Test]
+    public async Task McpContextPackTool_ReturnsJsonWhenRequested()
+    {
+        var dataPath = ProjectWikiFixture.CopyToTemp(_tempRoot);
+        await using var factory = CreateFactory(dataPath);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/mcp", new
+        {
+            JsonRpc = "2.0",
+            Id = "context-pack-json",
+            Method = "tools/call",
+            Params = new
+            {
+                Name = "memorysmith_context_pack",
+                Arguments = new
+                {
+                    Ids = "project-wiki-mcp-context-pack,missing-project-memory",
+                    ReferenceDepth = 0,
+                    MaxRecords = 3,
+                    Format = "json"
+                }
+            }
+        }, JsonSerializerOptions.Web);
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+
+        var text = await ExtractFirstToolTextAsync(response);
+        using var document = JsonDocument.Parse(text);
+        Assert.Multiple(() =>
+        {
+            Assert.That(document.RootElement.GetProperty("query").ValueKind, Is.EqualTo(JsonValueKind.Null));
+            Assert.That(document.RootElement.GetProperty("records").EnumerateArray().Single().GetProperty("id").GetString(), Is.EqualTo("project-wiki-mcp-context-pack"));
+            Assert.That(document.RootElement.GetProperty("warnings").EnumerateArray().Single().GetString(), Does.Contain("missing-project-memory"));
+        });
+    }
+
+    [Test]
+    public async Task McpContextPackTool_ReturnsPurposeBuiltFixtureGraphAsJson()
+    {
+        var dataPath = ProjectWikiFixture.CopyToTemp(_tempRoot);
+        await using var factory = CreateFactory(dataPath);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/mcp", new
+        {
+            JsonRpc = "2.0",
+            Id = "context-pack-fixture-json",
+            Method = "tools/call",
+            Params = new
+            {
+                Name = "memorysmith_context_pack",
+                Arguments = new
+                {
+                    Ids = "project-wiki-test-fixture-context-root",
+                    ReferenceDepth = 1,
+                    IncludeBacklinks = true,
+                    MaxRecords = 10,
+                    MaxContentChars = 500,
+                    Format = "json"
+                }
+            }
+        }, JsonSerializerOptions.Web);
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+
+        var text = await ExtractFirstToolTextAsync(response);
+        using var document = JsonDocument.Parse(text);
+        var records = document.RootElement.GetProperty("records").EnumerateArray().ToList();
+        var relationships = records.ToDictionary(
+            record => record.GetProperty("id").GetString()!,
+            record => record.GetProperty("relationship").GetString(),
+            StringComparer.OrdinalIgnoreCase);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(relationships.Keys, Does.Contain("project-wiki-test-fixture-context-root"));
+            Assert.That(relationships["project-wiki-test-fixture-reference-child"], Is.EqualTo("reference of project-wiki-test-fixture-context-root"));
+            Assert.That(relationships["project-wiki-test-fixture-conflict-note"], Is.EqualTo("conflict of project-wiki-test-fixture-context-root"));
+            Assert.That(relationships["project-wiki-test-fixture-backlink-source"], Is.EqualTo("references project-wiki-test-fixture-context-root"));
+            Assert.That(document.RootElement.GetProperty("warnings").EnumerateArray(), Is.Empty);
+        });
     }
 
     [Test]

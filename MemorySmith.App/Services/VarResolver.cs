@@ -1,0 +1,88 @@
+using System.Text.RegularExpressions;
+using MemorySmith.Core.Models;
+using MemorySmith.Storage;
+
+namespace MemorySmith.App.Services;
+
+/// <summary>
+/// Result of reading a source link's content. For URL sources the Content is null;
+/// callers should present the ResolvedUri as a clickable link instead.
+/// </summary>
+public record SourceContent(
+    string ResolvedUri,
+    string? Content,
+    string ContentType,    // "file" or "url"
+    int? StartLine,
+    int? EndLine,
+    bool Exists);
+
+/// <summary>
+/// Resolves <c>%VariableName%</c> tokens in source link URIs using the wiki variable store.
+/// Variables are defined per-wiki in <c>Data/vars.json</c> and are editable via the /variables page.
+/// </summary>
+public class VarResolver
+{
+    private static readonly Regex TokenPattern = new(@"%(\w+)%", RegexOptions.Compiled);
+
+    private readonly IVarStore _varStore;
+
+    public VarResolver(IVarStore varStore)
+    {
+        _varStore = varStore;
+    }
+
+    /// <summary>
+    /// Expands all <c>%VariableName%</c> tokens in <paramref name="raw"/> using the current variable store.
+    /// Tokens with no matching variable are left unchanged.
+    /// </summary>
+    public string Resolve(string raw)
+    {
+        if (string.IsNullOrEmpty(raw) || !raw.Contains('%'))
+            return raw;
+
+        var vars = _varStore.Load();
+        return TokenPattern.Replace(raw, match =>
+            vars.TryGetValue(match.Groups[1].Value, out var val) ? val : match.Value);
+    }
+
+    /// <summary>
+    /// Resolves and reads the content of a source link.
+    /// For HTTP/HTTPS URLs returns a <see cref="SourceContent"/> with null Content (URL is unfetchable server-side).
+    /// For local file paths reads the file, optionally restricting to the line range specified on <paramref name="link"/>.
+    /// </summary>
+    /// <param name="link">Source link to read.</param>
+    /// <param name="maxBytes">Maximum content bytes to return (truncates with a message if exceeded). Default 16 384.</param>
+    public async Task<SourceContent> ReadSourceAsync(SourceLink link, int maxBytes = 16384)
+    {
+        var resolved = Resolve(link.Uri);
+        if (string.IsNullOrWhiteSpace(resolved))
+            return new SourceContent(resolved, null, "file", link.StartLine, link.EndLine, Exists: false);
+
+        if (resolved.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+            resolved.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            return new SourceContent(resolved, null, "url", null, null, Exists: true);
+
+        if (!File.Exists(resolved))
+            return new SourceContent(resolved, null, "file", link.StartLine, link.EndLine, Exists: false);
+
+        var lines = await File.ReadAllLinesAsync(resolved);
+
+        int startIdx = link.StartLine.HasValue ? Math.Max(0, link.StartLine.Value - 1) : 0;
+        int endIdx = link.EndLine.HasValue
+            ? Math.Min(lines.Length - 1, link.EndLine.Value - 1)
+            : (link.StartLine.HasValue ? Math.Min(lines.Length - 1, startIdx + 49) : lines.Length - 1);
+
+        var content = string.Join('\n', lines[startIdx..(endIdx + 1)]);
+
+        if (content.Length > maxBytes)
+            content = content[..maxBytes] + $"\n[... truncated — {content.Length - maxBytes} more chars]";
+
+        return new SourceContent(resolved, content, "file", link.StartLine, link.EndLine, Exists: true);
+    }
+
+    /// <summary>Returns all currently defined variables.</summary>
+    public IReadOnlyDictionary<string, string> GetVars() => _varStore.Load();
+
+    /// <summary>Persists the given variable dictionary.</summary>
+    public void SaveVars(IReadOnlyDictionary<string, string> vars) => _varStore.Save(vars);
+}

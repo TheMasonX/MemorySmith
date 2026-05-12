@@ -1,0 +1,26 @@
+{
+  "Id": "project-wiki-test-fixture-context-root",
+  "Title": "Context Pack Test Fixture Root",
+  "Content": "Purpose-built root memory for deterministic MemorySmith integration tests. The unique quartzwave marker should make keyword, semantic, and hybrid retrieval easy to target. This root references one child fixture, conflicts with one contrary fixture, and is referenced by a backlink fixture so memorysmith_context_pack can verify explicit ids, reference expansion, conflict expansion, includeBacklinks, maxRecords, and format=json behavior against stable project-wiki data.",
+  "Status": 2,
+  "Confidence": 0.93,
+  "Tags": [
+    "project-wiki",
+    "test-fixture",
+    "context-pack",
+    "graph-fixture",
+    "quartzwave",
+    "search",
+    "mcp",
+    "structured-output",
+    "deterministic-test"
+  ],
+  "References": [
+    "project-wiki-test-fixture-reference-child"
+  ],
+  "Conflicts": [
+    "project-wiki-test-fixture-conflict-note"
+  ],
+  "UsageCount": 0,
+  "LastUpdated": "2026-05-12T00:00:00Z"
+}

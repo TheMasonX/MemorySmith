@@ -10,6 +10,7 @@ public class MemoryRecord
     public List<string> Tags { get; set; } = new();
     public List<string> References { get; set; } = new();
     public List<string> Conflicts { get; set; } = new();
+    public List<SourceLink> SourceLinks { get; set; } = new();
     public int UsageCount { get; set; }
     public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
 }

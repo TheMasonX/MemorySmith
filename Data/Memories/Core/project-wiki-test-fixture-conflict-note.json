@@ -1,0 +1,21 @@
+{
+  "Id": "project-wiki-test-fixture-conflict-note",
+  "Title": "Conflict Test Fixture Note",
+  "Content": "Conflict-side memory for the context-pack fixture graph. This record is intentionally listed as a conflict of project-wiki-test-fixture-context-root so tests can verify conflict traversal and relationship formatting separately from reference traversal and backlink expansion.",
+  "Status": 2,
+  "Confidence": 0.88,
+  "Tags": [
+    "project-wiki",
+    "test-fixture",
+    "conflict-fixture",
+    "context-pack",
+    "graph-fixture",
+    "deterministic-test"
+  ],
+  "References": [],
+  "Conflicts": [
+    "project-wiki-test-fixture-context-root"
+  ],
+  "UsageCount": 0,
+  "LastUpdated": "2026-05-12T00:00:00Z"
+}

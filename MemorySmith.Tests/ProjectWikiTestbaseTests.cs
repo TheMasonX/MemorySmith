@@ -71,6 +71,45 @@ public class ProjectWikiTestbaseTests
     }
 
     [Test]
+    public async Task ProjectWikiFixture_IncludesDeterministicSearchAndGraphFixtures()
+    {
+        var dataPath = ProjectWikiFixture.CopyToTemp(_tempRoot);
+        var store = new FileMemoryStore(dataPath, new StorageDiagnostics());
+        var service = TestServiceFactory.CreateMemoryApplicationService(
+            store,
+            new RecordingEventStore(),
+            new RecordingMemoryChangePublisher());
+
+        var fixtureRecords = store.LoadAll()
+            .Where(record => record.Tags.Contains("test-fixture"))
+            .ToList();
+        var searchResults = await service.HybridSearchAsync(
+            new HybridMemorySearchQuery(Query: "quartzwave nimbusvector context fixture", Tags: "test-fixture", Limit: 10),
+            CancellationToken.None);
+        var pack = await service.BuildContextPackAsync(
+            new MemoryContextPackQuery(
+                Ids: "project-wiki-test-fixture-context-root",
+                ReferenceDepth: 1,
+                IncludeBacklinks: true,
+                MaxRecords: 10,
+                MaxContentChars: 500),
+            CancellationToken.None);
+        var relationships = pack.Records.ToDictionary(record => record.Id, record => record.Relationship, StringComparer.OrdinalIgnoreCase);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(fixtureRecords.Select(record => record.Id), Does.Contain("project-wiki-test-fixture-overview"));
+            Assert.That(fixtureRecords.Select(record => record.Id), Does.Contain("project-wiki-test-fixture-context-root"));
+            Assert.That(searchResults.Select(record => record.Id), Does.Contain("project-wiki-test-fixture-context-root"));
+            Assert.That(searchResults.Select(record => record.Id), Does.Contain("project-wiki-test-fixture-reference-child"));
+            Assert.That(relationships["project-wiki-test-fixture-reference-child"], Is.EqualTo("reference of project-wiki-test-fixture-context-root"));
+            Assert.That(relationships["project-wiki-test-fixture-conflict-note"], Is.EqualTo("conflict of project-wiki-test-fixture-context-root"));
+            Assert.That(relationships["project-wiki-test-fixture-backlink-source"], Is.EqualTo("references project-wiki-test-fixture-context-root"));
+            Assert.That(pack.Warnings, Is.Empty);
+        });
+    }
+
+    [Test]
     public async Task AppApi_UsesCopiedProjectWikiFixtureWithoutMutatingSourceWiki()
     {
         var sourceBefore = ProjectWikiFixture.ReadSourceSnapshot();

@@ -1,0 +1,27 @@
+{
+  "Id": "project-wiki-test-fixture-overview",
+  "Title": "Project Wiki Test Fixture Overview",
+  "Content": "The project wiki includes purpose-built test fixture memories with the test-fixture tag so integration tests can exercise search, context packs, references, conflicts, backlinks, maxRecords, and format=json without depending only on incidental product documentation. The fixture graph uses stable ids and unique query markers such as quartzwave and nimbusvector. Tests should copy Data/Memories to a temp directory before mutating records, then use these fixture ids for deterministic graph assertions.",
+  "Status": 2,
+  "Confidence": 0.94,
+  "Tags": [
+    "project-wiki",
+    "test-fixture",
+    "fixture-overview",
+    "deterministic-test",
+    "context-pack",
+    "search",
+    "mcp",
+    "structured-output"
+  ],
+  "References": [
+    "project-wiki-test-fixture-context-root",
+    "project-wiki-test-fixture-reference-child",
+    "project-wiki-test-fixture-backlink-source",
+    "project-wiki-test-fixture-conflict-note",
+    "project-wiki-data-folder-policy"
+  ],
+  "Conflicts": [],
+  "UsageCount": 0,
+  "LastUpdated": "2026-05-12T00:00:00Z"
+}

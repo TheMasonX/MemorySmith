@@ -15,6 +15,10 @@
     "project-wiki-data-folder-policy"
   ],
   "Conflicts": [],
+  "SourceLinks": [
+    { "Label": "Program.cs", "Uri": "%MemorySmithRepo%MemorySmith.App/Program.cs", "StartLine": 1, "EndLine": 50 },
+    { "Label": "App project", "Uri": "%MemorySmithRepo%MemorySmith.App/MemorySmith.App.csproj" }
+  ],
   "UsageCount": 4,
   "LastUpdated": "2026-05-12T00:00:00Z"
 }

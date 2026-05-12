@@ -33,16 +33,17 @@ The repository `Data/Memories` folder is the live MemorySmith wiki for this proj
 
 Tests that need realistic project data copy `Data/Memories` into a temp directory first, then exercise the copied fixture through the same file store and API paths. This keeps the source wiki stable while making it the application's testbase.
 
-The wiki currently includes records for architecture, storage rules, validation commands, MCP integration, semantic-search gaps, and generalization friction. Use the app search tools to keep future research grounded in these records.
+The wiki currently includes records for architecture, storage rules, validation commands, MCP integration, hybrid search, MCP context packs, semantic-search gaps, generalization friction, and purpose-built `test-fixture` records. Use the app search tools to keep future research grounded in these records.
 
 ## Search And MCP
 
-MemorySmith exposes two search paths, and the `/memories` UI can switch between keyword and semantic modes:
+MemorySmith exposes three search paths, and the `/memories` UI can switch between keyword, semantic, and hybrid modes:
 
 - `POST /api/memories/search` for deterministic keyword search over title, content, and tags.
 - `POST /api/memories/search/semantic` for a local semantic baseline that ranks token, tag, title, reference, and alias overlap with match explanations.
+- `POST /api/memories/search/hybrid` for Lucene.NET lexical analysis plus local semantic ranking fused with RRF.
 
-The semantic path is intentionally not an embedding/vector index yet. The project wiki records track that as a future generalization gap.
+The semantic side is intentionally not an embedding/vector index yet. The project wiki records track that as a future generalization gap.
 
 VS Code MCP integration is configured in `.vscode/mcp.json` and points at:
 
@@ -50,7 +51,7 @@ VS Code MCP integration is configured in `.vscode/mcp.json` and points at:
 http://localhost:5089/mcp
 ```
 
-The MCP endpoint exposes `memorysmith_search`, `memorysmith_semantic_search`, and `memorysmith_get` tools over the same project wiki data.
+The MCP endpoint exposes `memorysmith_search`, `memorysmith_semantic_search`, `memorysmith_hybrid_search`, `memorysmith_context_pack`, and `memorysmith_get` tools over the same project wiki data. For larger KB work, prefer `memorysmith_context_pack` when an agent needs hybrid results plus linked references/conflicts in one response. It accepts `query` for discovery, `ids` for comma-separated explicit roots, `tags`, `status`, `limit`, `referenceDepth`, `includeBacklinks`, `maxRecords`, `maxContentChars`, and `format`. Use `format=json` for structured agent parsing; the default is Markdown. The tool reports warnings for missing roots, missing links, or omitted records after hitting the record budget.
 
 ## Validate
 

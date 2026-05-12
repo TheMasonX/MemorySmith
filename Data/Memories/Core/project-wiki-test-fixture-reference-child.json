@@ -1,0 +1,20 @@
+{
+  "Id": "project-wiki-test-fixture-reference-child",
+  "Title": "Reference Child Test Fixture",
+  "Content": "Child memory for the context-pack fixture graph. The nimbusvector marker gives tests a second unique retrieval anchor. When project-wiki-test-fixture-context-root is packed with referenceDepth at least one, this record should appear with relationship reference of project-wiki-test-fixture-context-root and no warnings.",
+  "Status": 2,
+  "Confidence": 0.9,
+  "Tags": [
+    "project-wiki",
+    "test-fixture",
+    "reference-child",
+    "context-pack",
+    "nimbusvector",
+    "graph-fixture",
+    "deterministic-test"
+  ],
+  "References": [],
+  "Conflicts": [],
+  "UsageCount": 0,
+  "LastUpdated": "2026-05-12T00:00:00Z"
+}

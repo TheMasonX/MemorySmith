@@ -15,11 +15,15 @@ public class McpController : ControllerBase
         WriteIndented = true
     };
 
-    private readonly MemoryApplicationService _memories;
+    private static readonly JsonSerializerOptions CompactJsonOptions = new(JsonSerializerDefaults.Web);
 
-    public McpController(MemoryApplicationService memories)
+    private readonly MemoryApplicationService _memories;
+    private readonly VarResolver _vars;
+
+    public McpController(MemoryApplicationService memories, VarResolver vars)
     {
         _memories = memories;
+        _vars = vars;
     }
 
     [HttpGet]
@@ -30,7 +34,7 @@ public class McpController : ControllerBase
             Name = "MemorySmithWiki",
             Endpoint = "/mcp",
             Transport = "HTTP JSON-RPC",
-            Tools = new[] { "memorysmith_search", "memorysmith_semantic_search", "memorysmith_hybrid_search", "memorysmith_get" }
+            Tools = new[] { "memorysmith_search", "memorysmith_semantic_search", "memorysmith_hybrid_search", "memorysmith_context_pack", "memorysmith_get", "memorysmith_source_bundle", "memorysmith_find_by_source" }
         });
     }
 
@@ -97,9 +101,120 @@ public class McpController : ControllerBase
             "memorysmith_search" => ToolText(FormatKeywordResults(await _memories.SearchAsync(ReadKeywordQuery(argumentsElement), cancellationToken))),
             "memorysmith_semantic_search" => ToolText(FormatSemanticResults(await _memories.SemanticSearchAsync(ReadSemanticQuery(argumentsElement), cancellationToken))),
             "memorysmith_hybrid_search" => ToolText(FormatHybridResults(await _memories.HybridSearchAsync(ReadHybridQuery(argumentsElement), cancellationToken))),
+            "memorysmith_context_pack" => ToolText(FormatContextPack(
+                await _memories.BuildContextPackAsync(ReadContextPackQuery(argumentsElement), cancellationToken),
+                GetString(argumentsElement, "format"))),
             "memorysmith_get" => ToolText(await FormatRecordAsync(argumentsElement, cancellationToken)),
+            "memorysmith_source_bundle" => ToolText(await FormatSourceBundleAsync(argumentsElement, cancellationToken)),
+            "memorysmith_find_by_source" => ToolText(await FormatFindBySourceAsync(argumentsElement, cancellationToken)),
             _ => ToolText($"Unknown MemorySmith tool '{toolName}'.", isError: true)
         };
+    }
+
+    private async Task<string> FormatSourceBundleAsync(JsonElement args, CancellationToken ct)
+    {
+        var ids = GetString(args, "ids");
+        var maxFileBytes = GetInt(args, "maxFileBytes", 16384);
+        var format = GetString(args, "format") ?? "json";
+
+        var records = new List<MemoryRecord>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        if (!string.IsNullOrWhiteSpace(ids))
+        {
+            foreach (var id in ids.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+            {
+                if (!seen.Add(id)) continue;
+                var r = await _memories.GetAsync(id, ct);
+                if (r is not null) records.Add(r);
+            }
+        }
+
+        var query = GetString(args, "query");
+        if (!string.IsNullOrWhiteSpace(query))
+        {
+            var limit = GetInt(args, "limit", 10);
+            var searchResults = await _memories.HybridSearchAsync(
+                new HybridMemorySearchQuery(query, GetStatus(args), GetString(args, "tags"), limit), ct);
+            foreach (var result in searchResults)
+            {
+                if (!seen.Add(result.Id)) continue;
+                var r = await _memories.GetAsync(result.Id, ct);
+                if (r is not null) records.Add(r);
+            }
+        }
+
+        if (records.Count == 0)
+            return "No records found. Provide ids or a query.";
+
+        var entries = new List<object>();
+        foreach (var record in records)
+        {
+            foreach (var sl in record.SourceLinks)
+            {
+                var content = await _vars.ReadSourceAsync(sl, maxFileBytes);
+                entries.Add(new
+                {
+                    MemoryId = record.Id,
+                    MemoryTitle = record.Title,
+                    Label = string.IsNullOrWhiteSpace(sl.Label) ? content.ResolvedUri : sl.Label,
+                    RawUri = sl.Uri,
+                    ResolvedUri = content.ResolvedUri,
+                    ContentType = content.ContentType,
+                    StartLine = content.StartLine,
+                    EndLine = content.EndLine,
+                    Exists = content.Exists,
+                    Content = content.Content
+                });
+            }
+        }
+
+        if (entries.Count == 0)
+            return $"Found {records.Count} record(s) but none have source links.";
+
+        if (string.Equals(format, "jsonl", StringComparison.OrdinalIgnoreCase))
+            return string.Join('\n', entries.Select(e => JsonSerializer.Serialize(e, CompactJsonOptions)));
+
+        return JsonSerializer.Serialize(new
+        {
+            MemoryCount = records.Count,
+            SourceCount = entries.Count,
+            Entries = entries
+        }, ToolJsonOptions);
+    }
+
+    private async Task<string> FormatFindBySourceAsync(JsonElement args, CancellationToken ct)
+    {
+        var pattern = GetString(args, "pattern");
+        if (string.IsNullOrWhiteSpace(pattern))
+            return "The memorysmith_find_by_source tool requires a pattern argument.";
+
+        var matches = await _memories.FindBySourceAsync(pattern, _vars.Resolve, ct);
+
+        if (matches.Count == 0)
+            return $"No memory records found with source links matching '{pattern}'.";
+
+        var result = matches.Select(r => new
+        {
+            r.Id,
+            r.Title,
+            r.Status,
+            MatchingLinks = r.SourceLinks
+                .Where(sl =>
+                    sl.Uri.Contains(pattern, StringComparison.OrdinalIgnoreCase) ||
+                    _vars.Resolve(sl.Uri).Contains(pattern, StringComparison.OrdinalIgnoreCase))
+                .Select(sl => new
+                {
+                    sl.Label,
+                    sl.Uri,
+                    ResolvedUri = _vars.Resolve(sl.Uri),
+                    sl.StartLine,
+                    sl.EndLine
+                })
+                .ToList()
+        });
+
+        return JsonSerializer.Serialize(result, ToolJsonOptions);
     }
 
     private async Task<string> FormatRecordAsync(JsonElement argumentsElement, CancellationToken cancellationToken)
@@ -134,6 +249,17 @@ public class McpController : ControllerBase
         Tags: GetString(argumentsElement, "tags"),
         Limit: GetInt(argumentsElement, "limit", 20));
 
+    private static MemoryContextPackQuery ReadContextPackQuery(JsonElement argumentsElement) => new(
+        Query: GetString(argumentsElement, "query"),
+        Status: GetStatus(argumentsElement),
+        Tags: GetString(argumentsElement, "tags"),
+        Limit: GetInt(argumentsElement, "limit", 5),
+        ReferenceDepth: GetInt(argumentsElement, "referenceDepth", 1),
+        MaxContentChars: GetInt(argumentsElement, "maxContentChars", 1200),
+        MaxRecords: GetInt(argumentsElement, "maxRecords", 20),
+        Ids: GetString(argumentsElement, "ids"),
+        IncludeBacklinks: GetBool(argumentsElement, "includeBacklinks", false));
+
     private static string FormatKeywordResults(IReadOnlyList<MemoryRecord> records)
     {
         if (records.Count == 0)
@@ -167,6 +293,76 @@ public class McpController : ControllerBase
             $"- {result.Id}: {result.Title}{Environment.NewLine}  RRF Score: {result.Score:0.######}{Environment.NewLine}  Match: {result.MatchReason}{Environment.NewLine}  Tags: {string.Join(", ", result.Tags)}{Environment.NewLine}  {result.Snippet}"));
     }
 
+    private string FormatContextPack(MemoryContextPack pack, string? format)
+    {
+        if (string.Equals(format, "json", StringComparison.OrdinalIgnoreCase))
+        {
+            // Serialize with resolved source link URIs so agents get actionable paths.
+            var projected = new
+            {
+                pack.Query,
+                pack.GeneratedAt,
+                pack.Warnings,
+                Records = pack.Records.Select(r => new
+                {
+                    r.Id, r.Title, r.Status, r.Confidence, r.Tags,
+                    r.References, r.Conflicts,
+                    SourceLinks = r.SourceLinks.Select(sl => new
+                    {
+                        sl.Label,
+                        Uri = _vars.Resolve(sl.Uri),
+                        sl.StartLine,
+                        sl.EndLine
+                    }),
+                    r.UsageCount, r.LastUpdated, r.Relationship, r.Score, r.MatchReason, r.Content
+                })
+            };
+            return JsonSerializer.Serialize(projected, ToolJsonOptions);
+        }
+
+        var warnings = pack.Warnings.Count == 0
+            ? string.Empty
+            : $"{Environment.NewLine}Warnings:{Environment.NewLine}" + string.Join(Environment.NewLine, pack.Warnings.Select(warning => $"- {warning}")) + Environment.NewLine;
+
+        if (pack.Records.Count == 0)
+        {
+            return $"# Context Pack{Environment.NewLine}Query: {pack.Query ?? string.Empty}{Environment.NewLine}Generated: {pack.GeneratedAt:O}{warnings}{Environment.NewLine}No context pack records.";
+        }
+
+        var sections = pack.Records.Select(record =>
+        {
+            var scoreLine = record.Score.HasValue ? $"Score: {record.Score:0.######}" : "Score: linked context";
+            var matchLine = string.IsNullOrWhiteSpace(record.MatchReason) ? string.Empty : $"Match: {record.MatchReason}{Environment.NewLine}";
+            var sourceLinks = record.SourceLinks.Count == 0
+                ? string.Empty
+                : $"Source Links: {string.Join(", ", record.SourceLinks.Select(sl => FormatSourceLink(sl)))}{Environment.NewLine}";
+            return $"## {record.Id}: {record.Title}{Environment.NewLine}" +
+                   $"Relationship: {record.Relationship}{Environment.NewLine}" +
+                   $"Status: {record.Status}; Confidence: {record.Confidence:P0}; Uses: {record.UsageCount}{Environment.NewLine}" +
+                   $"Tags: {string.Join(", ", record.Tags)}{Environment.NewLine}" +
+                   $"References: {FormatLinks(record.References)}{Environment.NewLine}" +
+                   $"Conflicts: {FormatLinks(record.Conflicts)}{Environment.NewLine}" +
+                   sourceLinks +
+                   $"{scoreLine}{Environment.NewLine}" +
+                   matchLine +
+                   record.Content;
+        });
+
+        return $"# Context Pack{Environment.NewLine}Query: {pack.Query ?? string.Empty}{Environment.NewLine}Generated: {pack.GeneratedAt:O}{warnings}{Environment.NewLine}" +
+            string.Join(Environment.NewLine + Environment.NewLine, sections);
+    }
+
+    private string FormatSourceLink(SourceLink sl)
+    {
+        var resolved = _vars.Resolve(sl.Uri);
+        var label = string.IsNullOrWhiteSpace(sl.Label) ? resolved : sl.Label;
+        var lineHint = sl.StartLine.HasValue
+            ? (sl.EndLine.HasValue ? $":{sl.StartLine}-{sl.EndLine}" : $":{sl.StartLine}")
+            : string.Empty;
+        var display = resolved == sl.Uri ? $"{label}{lineHint}" : $"{label}{lineHint} ({resolved}{lineHint})";
+        return display;
+    }
+
     private static JsonObject BuildInitializeResult() => new()
     {
         ["protocolVersion"] = "2025-06-18",
@@ -198,6 +394,10 @@ public class McpController : ControllerBase
                 "Search MemorySmith wiki records by fusing Lucene-style lexical rank and local semantic rank with reciprocal rank fusion.",
                 BuildSearchSchema()),
             BuildTool(
+                "memorysmith_context_pack",
+                "Build an agent-ready context pack from hybrid search results plus linked references, conflicts, and optional backlinks.",
+                BuildContextPackSchema()),
+            BuildTool(
                 "memorysmith_get",
                 "Fetch a single MemorySmith wiki record by id.",
                 new JsonObject
@@ -212,7 +412,15 @@ public class McpController : ControllerBase
                         }
                     },
                     ["required"] = new JsonArray { "id" }
-                })
+                }),
+            BuildTool(
+                "memorysmith_source_bundle",
+                "Read the source file content for all source links attached to the specified memory records. Useful for fetching the exact code or document sections that KB entries reference. Returns URL references as-is (unfetchable server-side). Use format=jsonl for streaming-friendly large bundles.",
+                BuildSourceBundleSchema()),
+            BuildTool(
+                "memorysmith_find_by_source",
+                "Back-map a source path or URL fragment to every KB entry that references it. Matches against both raw and resolved (variable-expanded) URIs.",
+                BuildFindBySourceSchema())
         }
     };
 
@@ -247,6 +455,94 @@ public class McpController : ControllerBase
             {
                 ["type"] = "integer",
                 ["description"] = "Maximum number of results."
+            }
+        }
+    };
+
+    private static JsonObject BuildSourceBundleSchema() => new()
+    {
+        ["type"] = "object",
+        ["properties"] = new JsonObject
+        {
+            ["ids"] = new JsonObject { ["type"] = "string", ["description"] = "Comma-separated memory record ids to fetch sources for." },
+            ["query"] = new JsonObject { ["type"] = "string", ["description"] = "Optional search query; matching records' sources are included." },
+            ["tags"] = new JsonObject { ["type"] = "string", ["description"] = "Optional comma-separated tag filter for the query." },
+            ["limit"] = new JsonObject { ["type"] = "integer", ["description"] = "Max hybrid-search results when query is provided. Default 10." },
+            ["maxFileBytes"] = new JsonObject { ["type"] = "integer", ["description"] = "Max bytes per file content entry. Default 16384." },
+            ["format"] = new JsonObject
+            {
+                ["type"] = "string",
+                ["description"] = "Output format. json (default) or jsonl for one JSON object per line.",
+                ["enum"] = new JsonArray { "json", "jsonl" }
+            }
+        }
+    };
+
+    private static JsonObject BuildFindBySourceSchema() => new()
+    {
+        ["type"] = "object",
+        ["properties"] = new JsonObject
+        {
+            ["pattern"] = new JsonObject { ["type"] = "string", ["description"] = "Substring to match against source link URIs (raw and variable-expanded). Case-insensitive." }
+        },
+        ["required"] = new JsonArray { "pattern" }
+    };
+
+    private static JsonObject BuildContextPackSchema() => new()
+    {
+        ["type"] = "object",
+        ["properties"] = new JsonObject
+        {
+            ["query"] = new JsonObject
+            {
+                ["type"] = "string",
+                ["description"] = "Search text used to seed the context pack with hybrid search."
+            },
+            ["ids"] = new JsonObject
+            {
+                ["type"] = "string",
+                ["description"] = "Optional comma-separated root memory ids to include before search results."
+            },
+            ["tags"] = new JsonObject
+            {
+                ["type"] = "string",
+                ["description"] = "Optional comma-separated tag filter."
+            },
+            ["status"] = new JsonObject
+            {
+                ["type"] = "string",
+                ["description"] = "Optional memory status name."
+            },
+            ["limit"] = new JsonObject
+            {
+                ["type"] = "integer",
+                ["description"] = "Maximum number of hybrid root results."
+            },
+            ["referenceDepth"] = new JsonObject
+            {
+                ["type"] = "integer",
+                ["description"] = "How many levels of references/conflicts to include. Clamped to 0-2."
+            },
+            ["maxContentChars"] = new JsonObject
+            {
+                ["type"] = "integer",
+                ["description"] = "Maximum content characters per record. Clamped to 200-6000."
+            },
+            ["maxRecords"] = new JsonObject
+            {
+                ["type"] = "integer",
+                ["description"] = "Maximum total records in the context pack. Clamped to 1-100."
+            },
+            ["includeBacklinks"] = new JsonObject
+            {
+                ["type"] = "boolean",
+                ["description"] = "Include records that reference or conflict with packed records."
+            },
+            ["format"] = new JsonObject
+            {
+                ["type"] = "string",
+                ["description"] = "Output format. Use json for structured agent parsing; defaults to markdown.",
+                ["enum"] = new JsonArray { "markdown", "json" }
             }
         }
     };
@@ -341,6 +637,22 @@ public class McpController : ControllerBase
             : defaultValue;
     }
 
+    private static bool GetBool(JsonElement element, string name, bool defaultValue)
+    {
+        if (!TryGetProperty(element, name, out var value))
+        {
+            return defaultValue;
+        }
+
+        return value.ValueKind switch
+        {
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.String when bool.TryParse(value.GetString(), out var parsed) => parsed,
+            _ => defaultValue
+        };
+    }
+
     private static MemoryStatus? GetStatus(JsonElement element)
     {
         var value = GetString(element, "status");
@@ -349,4 +661,7 @@ public class McpController : ControllerBase
 
     private static string Truncate(string value, int maxLength) =>
         value.Length <= maxLength ? value : value[..maxLength].TrimEnd() + "...";
+
+    private static string FormatLinks(IReadOnlyList<string> links) =>
+        links.Count == 0 ? "none" : string.Join(", ", links);
 }

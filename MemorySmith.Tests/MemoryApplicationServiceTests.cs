@@ -210,6 +210,171 @@ public class MemoryApplicationServiceTests
     }
 
     [Test]
+    public async Task BuildContextPackAsync_IncludesHybridRootsAndLinkedRecords()
+    {
+        _store.Save(new MemoryRecord
+        {
+            Id = "root-memory",
+            Title = "Hybrid MCP Context Pack",
+            Content = "The MCP context pack starts from hybrid search and follows linked project memories.",
+            Status = MemoryStatus.Core,
+            Tags = ["project-wiki", "mcp", "search"],
+            References = ["linked-memory"],
+            LastUpdated = new DateTime(2026, 05, 12, 0, 0, 0, DateTimeKind.Utc)
+        });
+        _store.Save(new MemoryRecord
+        {
+            Id = "linked-memory",
+            Title = "Linked Tool Detail",
+            Content = "Referenced context that should be packaged with the root result.",
+            Status = MemoryStatus.Core,
+            Tags = ["project-wiki", "mcp"],
+            LastUpdated = new DateTime(2026, 05, 11, 0, 0, 0, DateTimeKind.Utc)
+        });
+
+        var pack = await _service.BuildContextPackAsync(
+            new MemoryContextPackQuery(Query: "hybrid mcp context pack", Tags: "project-wiki", Limit: 1, ReferenceDepth: 1),
+            CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(pack.Query, Is.EqualTo("hybrid mcp context pack"));
+            Assert.That(pack.Records.Select(record => record.Id), Is.EqualTo(new[] { "root-memory", "linked-memory" }));
+            Assert.That(pack.Records[0].Relationship, Is.EqualTo("root"));
+            Assert.That(pack.Records[0].MatchReason, Does.Contain("RRF"));
+            Assert.That(pack.Records[1].Relationship, Is.EqualTo("reference of root-memory"));
+            Assert.That(pack.Records[1].Content, Does.Contain("Referenced context"));
+        });
+    }
+
+    [Test]
+    public async Task BuildContextPackAsync_WithIds_UsesExplicitRootsBeforeSearch()
+    {
+        _store.Save(new MemoryRecord
+        {
+            Id = "explicit-root",
+            Title = "Explicit Root",
+            Content = "Known record selected by id should be included even when the query does not match.",
+            Status = MemoryStatus.Core,
+            Tags = ["project-wiki"],
+            References = ["explicit-link"]
+        });
+        _store.Save(new MemoryRecord
+        {
+            Id = "explicit-link",
+            Title = "Explicit Link",
+            Content = "Linked record expanded from explicit root.",
+            Status = MemoryStatus.Core,
+            Tags = ["project-wiki"]
+        });
+
+        var pack = await _service.BuildContextPackAsync(
+            new MemoryContextPackQuery(Query: "unrelated terms", Tags: "project-wiki", Limit: 1, ReferenceDepth: 1, Ids: "explicit-root"),
+            CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(pack.Records.Select(record => record.Id), Is.EqualTo(new[] { "explicit-root", "explicit-link" }));
+            Assert.That(pack.Records[0].Relationship, Is.EqualTo("root"));
+            Assert.That(pack.Records[0].MatchReason, Is.EqualTo("Explicit root id."));
+            Assert.That(pack.Records[1].Relationship, Is.EqualTo("reference of explicit-root"));
+        });
+    }
+
+    [Test]
+    public async Task BuildContextPackAsync_WarnsForMissingRootsAndLinks()
+    {
+        _store.Save(new MemoryRecord
+        {
+            Id = "root-with-missing-link",
+            Title = "Missing Link Root",
+            Content = "Root references a missing memory id.",
+            Status = MemoryStatus.Core,
+            Tags = ["project-wiki"],
+            References = ["missing-reference"]
+        });
+
+        var pack = await _service.BuildContextPackAsync(
+            new MemoryContextPackQuery(Ids: "root-with-missing-link,missing-root", ReferenceDepth: 1),
+            CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(pack.Records.Select(record => record.Id), Is.EqualTo(new[] { "root-with-missing-link" }));
+            Assert.That(pack.Warnings, Does.Contain("Explicit root id 'missing-root' was not found."));
+            Assert.That(pack.Warnings, Does.Contain("Reference 'missing-reference' from 'root-with-missing-link' was not found."));
+        });
+    }
+
+    [Test]
+    public async Task BuildContextPackAsync_IncludesBacklinksWhenRequested()
+    {
+        _store.Save(new MemoryRecord
+        {
+            Id = "root-with-backlink",
+            Title = "Root With Backlink",
+            Content = "Root selected by explicit id.",
+            Status = MemoryStatus.Core,
+            Tags = ["project-wiki"]
+        });
+        _store.Save(new MemoryRecord
+        {
+            Id = "incoming-reference",
+            Title = "Incoming Reference",
+            Content = "This record references the root and should be included as a backlink.",
+            Status = MemoryStatus.Core,
+            Tags = ["project-wiki"],
+            References = ["root-with-backlink"]
+        });
+
+        var pack = await _service.BuildContextPackAsync(
+            new MemoryContextPackQuery(Ids: "root-with-backlink", ReferenceDepth: 1, IncludeBacklinks: true),
+            CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(pack.Records.Select(record => record.Id), Is.EqualTo(new[] { "root-with-backlink", "incoming-reference" }));
+            Assert.That(pack.Records[1].Relationship, Is.EqualTo("references root-with-backlink"));
+        });
+    }
+
+    [Test]
+    public async Task BuildContextPackAsync_StopsAtMaxRecordsAndWarnsWhenExpansionIsOmitted()
+    {
+        _store.Save(new MemoryRecord
+        {
+            Id = "budget-root",
+            Title = "Budget Root",
+            Content = "Root with more linked records than the pack budget allows.",
+            Status = MemoryStatus.Core,
+            Tags = ["project-wiki"],
+            References = ["budget-link-1", "budget-link-2", "budget-link-3"]
+        });
+
+        for (var i = 1; i <= 3; i++)
+        {
+            _store.Save(new MemoryRecord
+            {
+                Id = $"budget-link-{i}",
+                Title = $"Budget Link {i}",
+                Content = "Linked record that may be omitted by the context-pack budget.",
+                Status = MemoryStatus.Core,
+                Tags = ["project-wiki"]
+            });
+        }
+
+        var pack = await _service.BuildContextPackAsync(
+            new MemoryContextPackQuery(Ids: "budget-root", ReferenceDepth: 1, MaxRecords: 2),
+            CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(pack.Records.Select(record => record.Id), Is.EqualTo(new[] { "budget-root", "budget-link-1" }));
+            Assert.That(pack.Warnings, Does.Contain("Context pack hit maxRecords 2; additional records were omitted."));
+        });
+    }
+
+    [Test]
     public async Task IncrementUsageAsync_UpdatesRecordAuditsAndPublishesStats()
     {
         _store.Save(new MemoryRecord { Id = "usage", Title = "Usage", Content = "Track me", UsageCount = 2 });

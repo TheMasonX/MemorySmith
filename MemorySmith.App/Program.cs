@@ -39,6 +39,13 @@ try
         var dataPath = configuration["MemorySmith:DataPath"] ?? Path.Combine("..", "Data", "Memories");
         return new FileMemoryStore(dataPath, sp.GetRequiredService<StorageDiagnostics>());
     });
+    builder.Services.AddSingleton<IVarStore>(sp =>
+    {
+        var configuration = sp.GetRequiredService<IConfiguration>();
+        var varsPath = configuration["MemorySmith:VarsPath"] ?? Path.Combine("..", "Data", "vars.json");
+        return new FileVarStore(varsPath);
+    });
+    builder.Services.AddSingleton<VarResolver>();
     builder.Services.AddSingleton<IEventStore>(sp =>
     {
         var configuration = sp.GetRequiredService<IConfiguration>();

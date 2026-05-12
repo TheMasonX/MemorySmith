@@ -1,13 +1,14 @@
 {
   "Id": "project-wiki-hybrid-search-rrf",
   "Title": "Hybrid Search With RRF",
-  "Content": "MemorySmith.App now has a hybrid search path for project-wiki records. The hybrid path uses Lucene.NET StandardAnalyzer tokenization for lexical ranking, reuses the local semantic scoring baseline as the semantic/vector-side signal, and fuses both ranked lists with reciprocal rank fusion (RRF). This is exposed through POST /api/memories/search/hybrid, the memorysmith_hybrid_search MCP tool, and the /memories Hybrid mode. The current semantic side is still local token/tag/title/reference/alias scoring rather than embeddings; a future vector index can replace that signal without changing the hybrid API shape.",
+  "Content": "MemorySmith.App now has a hybrid search path for project-wiki records. The hybrid path uses Lucene.NET StandardAnalyzer tokenization for lexical ranking, reuses the local semantic scoring baseline as the semantic/vector-side signal, and fuses both ranked lists with reciprocal rank fusion (RRF). This is exposed through POST /api/memories/search/hybrid, the memorysmith_hybrid_search MCP tool, the memorysmith_context_pack MCP tool, and the /memories Hybrid mode. The current semantic side is still local token/tag/title/reference/alias scoring rather than embeddings; a future vector index can replace that signal without changing the hybrid API shape.",
   "Status": 2,
   "Confidence": 0.9,
   "Tags": [
     "project-wiki",
     "search",
     "hybrid-search",
+    "context-pack",
     "lucene",
     "rrf",
     "semantic-search",
@@ -19,9 +20,14 @@
     "project-wiki-search-roadmap",
     "project-wiki-semantic-search-gap",
     "project-wiki-mcp-search-tools-current",
+    "project-wiki-mcp-context-pack",
     "project-wiki-semantic-ui-current"
   ],
   "Conflicts": [],
+  "SourceLinks": [
+    { "Label": "MemoryApplicationService.cs", "Uri": "%MemorySmithRepo%MemorySmith.App/Services/MemoryApplicationService.cs" },
+    { "Label": "HybridSearchTests.cs", "Uri": "%MemorySmithRepo%MemorySmith.Tests/McpAndSemanticSearchTests.cs" }
+  ],
   "UsageCount": 1,
   "LastUpdated": "2026-05-12T00:00:00Z"
 }

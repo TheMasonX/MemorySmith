@@ -4,6 +4,7 @@ public class MemorySmithOptions
 {
     public string DataPath { get; set; } = Path.Combine("..", "Data", "Memories");
     public string EventLogPath { get; set; } = Path.Combine("..", "Data", "Events", "audit.log");
+    public string VarsPath { get; set; } = Path.Combine("..", "Data", "vars.json");
     public string? ApiKey { get; set; }
     public bool AllowRemoteApi { get; set; }
     public MaintenanceOptions Maintenance { get; set; } = new();

@@ -1,0 +1,21 @@
+{
+  "Id": "project-wiki-test-fixture-backlink-source",
+  "Title": "Backlink Source Test Fixture",
+  "Content": "Backlink source for the context-pack fixture graph. This record intentionally references project-wiki-test-fixture-context-root without being referenced by the root. Context packs that set includeBacklinks=true should include this memory with relationship references project-wiki-test-fixture-context-root, while packs without backlinks should omit it.",
+  "Status": 2,
+  "Confidence": 0.89,
+  "Tags": [
+    "project-wiki",
+    "test-fixture",
+    "backlink",
+    "context-pack",
+    "graph-fixture",
+    "deterministic-test"
+  ],
+  "References": [
+    "project-wiki-test-fixture-context-root"
+  ],
+  "Conflicts": [],
+  "UsageCount": 0,
+  "LastUpdated": "2026-05-12T00:00:00Z"
+}

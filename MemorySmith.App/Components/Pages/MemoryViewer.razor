@@ -3,6 +3,7 @@
 @inject MemoryApplicationService Memories
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
+@inject VarResolver VarResolver
 
 <PageTitle>Memories</PageTitle>
 
@@ -140,6 +141,13 @@
                     <MudTextField @bind-Value="_editTags" Label="Tags" Placeholder="tag1, tag2" Variant="Variant.Outlined" Margin="Margin.Dense" />
                     <MudTextField @bind-Value="_editReferences" Label="References" Placeholder="id1, id2" Variant="Variant.Outlined" Margin="Margin.Dense" />
                     <MudTextField @bind-Value="_editConflicts" Label="Conflicts" Placeholder="id1, id2" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    <MudTextField @bind-Value="_editSourceLinks"
+                                  Label="Source Links"
+                                  Placeholder="Label | %MemorySmithRepo%path/to/file | 42-100&#10;Label | https://github.com/owner/repo"
+                                  Lines="3"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  HelperText="One per line: Label | URI [| StartLine[-EndLine]]  — %VarName% tokens expand from /variables" />
                 </div>
 
                 <MudTextField @bind-Value="_editRecord.Content"
@@ -200,6 +208,10 @@
                         <div class="wiki-section-title">Conflicts</div>
                         @RenderMemoryLinks(_selectedRecord.Conflicts)
                     </section>
+                    <section>
+                        <div class="wiki-section-title">Source Links</div>
+                        @RenderSourceLinks(_selectedRecord.SourceLinks)
+                    </section>
                 </div>
             }
         </main>
@@ -214,6 +226,7 @@
     private string _editTags = string.Empty;
     private string _editReferences = string.Empty;
     private string _editConflicts = string.Empty;
+    private string _editSourceLinks = string.Empty;
     private string _searchQuery = string.Empty;
     private string _tagsFilter = string.Empty;
     private SearchMode _searchMode = SearchMode.Keyword;
@@ -402,6 +415,7 @@
             _editRecord.Tags = SplitValues(_editTags);
             _editRecord.References = SplitValues(_editReferences);
             _editRecord.Conflicts = SplitValues(_editConflicts);
+            _editRecord.SourceLinks = ParseSourceLinks(_editSourceLinks);
 
             MemoryRecord? saved;
             if (_editingExisting)
@@ -493,14 +507,71 @@
             Tags = record.Tags.ToList(),
             References = record.References.ToList(),
             Conflicts = record.Conflicts.ToList(),
+            SourceLinks = record.SourceLinks.ToList(),
             UsageCount = record.UsageCount,
             LastUpdated = record.LastUpdated
         };
         _editTags = string.Join(", ", record.Tags);
         _editReferences = string.Join(", ", record.References);
         _editConflicts = string.Join(", ", record.Conflicts);
+        _editSourceLinks = string.Join("\n", record.SourceLinks.Select(sl =>
+        {
+            var parts = new List<string>();
+            if (!string.IsNullOrWhiteSpace(sl.Label)) parts.Add(sl.Label);
+            parts.Add(sl.Uri);
+            if (sl.StartLine.HasValue)
+                parts.Add(sl.EndLine.HasValue ? $"{sl.StartLine}-{sl.EndLine}" : $"{sl.StartLine}");
+            return string.Join(" | ", parts);
+        }));
         _editingExisting = editingExisting;
     }
+
+    private RenderFragment RenderSourceLinks(IReadOnlyList<SourceLink> links) => builder =>
+    {
+        if (links.Count == 0)
+        {
+            builder.OpenElement(0, "span");
+            builder.AddAttribute(1, "class", "wiki-muted");
+            builder.AddContent(2, "None");
+            builder.CloseElement();
+            return;
+        }
+
+        var sequence = 3;
+        foreach (var sl in links)
+        {
+            var resolved = VarResolver.Resolve(sl.Uri);
+            var label = string.IsNullOrWhiteSpace(sl.Label) ? resolved : sl.Label;
+            var lineHint = sl.StartLine.HasValue
+                ? (sl.EndLine.HasValue ? $":{sl.StartLine}-{sl.EndLine}" : $":{sl.StartLine}")
+                : string.Empty;
+            var tooltip = lineHint.Length > 0 ? $"{resolved}{lineHint}" : resolved;
+            var isWeb = resolved.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+                     || resolved.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
+
+            if (isWeb)
+            {
+                builder.OpenElement(sequence++, "a");
+                builder.AddAttribute(sequence++, "href", resolved);
+                builder.AddAttribute(sequence++, "target", "_blank");
+                builder.AddAttribute(sequence++, "rel", "noopener noreferrer");
+                builder.AddAttribute(sequence++, "class", "wiki-source-link");
+                builder.AddAttribute(sequence++, "title", tooltip);
+                builder.AddContent(sequence++, lineHint.Length > 0 ? $"{label}{lineHint}" : label);
+                builder.CloseElement();
+            }
+            else
+            {
+                builder.OpenElement(sequence++, "button");
+                builder.AddAttribute(sequence++, "type", "button");
+                builder.AddAttribute(sequence++, "class", "wiki-link-chip");
+                builder.AddAttribute(sequence++, "title", tooltip);
+                builder.AddAttribute(sequence++, "onclick", EventCallback.Factory.Create(this, () => CopyTextAsync(tooltip)));
+                builder.AddContent(sequence++, lineHint.Length > 0 ? $"{label}{lineHint}" : label);
+                builder.CloseElement();
+            }
+        }
+    };
 
     private RenderFragment RenderMemoryLinks(IReadOnlyList<string> ids) => builder =>
     {
@@ -553,8 +624,55 @@
     private static List<string> SplitValues(string value) =>
         value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
 
-    private static string BuildAgentContext(MemoryRecord record) =>
-        $"# {record.Title}\nID: {record.Id}\nStatus: {record.Status}\nConfidence: {record.Confidence:P0}\nTags: {string.Join(", ", record.Tags)}\nReferences: {string.Join(", ", record.References)}\nConflicts: {string.Join(", ", record.Conflicts)}\n\n{record.Content}";
+    private static List<SourceLink> ParseSourceLinks(string text) =>
+        text.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(line => !string.IsNullOrWhiteSpace(line))
+            .Select(line =>
+            {
+                var parts = line.Split('|', StringSplitOptions.TrimEntries);
+                var sl = parts.Length switch
+                {
+                    >= 2 => new SourceLink { Label = parts[0], Uri = parts[1] },
+                    _ => new SourceLink { Uri = parts[0] }
+                };
+                // Optional third segment: "42" or "42-100"
+                if (parts.Length >= 3 && !string.IsNullOrWhiteSpace(parts[2]))
+                {
+                    var range = parts[2].Split('-', 2, StringSplitOptions.TrimEntries);
+                    if (int.TryParse(range[0], out var start))
+                    {
+                        sl.StartLine = start;
+                        if (range.Length == 2 && int.TryParse(range[1], out var end))
+                            sl.EndLine = end;
+                    }
+                }
+                return sl;
+            })
+            .Where(sl => !string.IsNullOrWhiteSpace(sl.Uri))
+            .ToList();
+
+    private async Task CopyTextAsync(string text)
+    {
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", text);
+        Snackbar.Add("Copied", Severity.Success);
+    }
+
+    private string BuildAgentContext(MemoryRecord record)
+    {
+        var sourceLinks = record.SourceLinks.Count == 0
+            ? string.Empty
+            : "\nSource Links: " + string.Join(", ", record.SourceLinks.Select(sl =>
+            {
+                var label = string.IsNullOrWhiteSpace(sl.Label) ? sl.Uri : sl.Label;
+                var resolved = VarResolver.Resolve(sl.Uri);
+                var lineHint = sl.StartLine.HasValue
+                    ? (sl.EndLine.HasValue ? $":{sl.StartLine}-{sl.EndLine}" : $":{sl.StartLine}")
+                    : string.Empty;
+                var display = resolved == sl.Uri ? $"{label}{lineHint}" : $"{label}{lineHint} ({resolved}{lineHint})";
+                return display;
+            }));
+        return $"# {record.Title}\nID: {record.Id}\nStatus: {record.Status}\nConfidence: {record.Confidence:P0}\nTags: {string.Join(", ", record.Tags)}\nReferences: {string.Join(", ", record.References)}\nConflicts: {string.Join(", ", record.Conflicts)}{sourceLinks}\n\n{record.Content}";
+    }
 
     private enum SearchMode
     {

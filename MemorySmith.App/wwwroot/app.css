@@ -965,3 +965,38 @@ body {
         overflow: visible;
     }
 }
+/* Source links */
+.wiki-source-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 3px;
+    background: var(--vscode-accent-soft);
+    border: 1px solid var(--vscode-accent);
+    color: #4fc1ff;
+    font-size: 0.78rem;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.wiki-source-link:hover {
+    background: var(--vscode-accent-hover);
+    text-decoration: none;
+}
+
+/* Variables page */
+.vars-table {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-width: 900px;
+}
+
+.vars-row {
+    display: grid;
+    grid-template-columns: 220px 1fr 40px;
+    align-items: center;
+    gap: 8px;
+}
