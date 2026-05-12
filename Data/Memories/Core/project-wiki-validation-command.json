@@ -1,0 +1,20 @@
+{
+  "Id": "project-wiki-validation-command",
+  "Title": "Validation Command",
+  "Content": "Use dotnet test MemorySmith.slnx -v minimal as the active validation command. It builds MemorySmith.Core, MemorySmith.Storage, MemorySmith.App, and MemorySmith.Tests, then runs the NUnit suite. Keep tests focused on meaningful behavior and avoid reintroducing MemorySmith.Worker references into the active test graph.",
+  "Status": 2,
+  "Confidence": 0.95,
+  "Tags": [
+    "project-wiki",
+    "testing",
+    "nunit",
+    "validation"
+  ],
+  "References": [
+    "project-wiki-active-architecture",
+    "project-wiki-data-folder-policy"
+  ],
+  "Conflicts": [],
+  "UsageCount": 3,
+  "LastUpdated": "2026-05-12T00:00:00Z"
+}

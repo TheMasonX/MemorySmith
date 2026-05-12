@@ -1,0 +1,19 @@
+{
+  "Id": "project-wiki-scope-boundaries",
+  "Title": "Current Refactor Scope Boundaries",
+  "Content": "Keep file storage and keyword search for this refactor. Do not add PostgreSQL, vector embeddings, queues, semantic search, gRPC, Redis, or a separate Worker and Dashboard deployment unless a later plan explicitly scopes that work. Preserve REST route contracts while simplifying internals around the single app service path.",
+  "Status": 2,
+  "Confidence": 0.92,
+  "Tags": [
+    "project-wiki",
+    "scope",
+    "storage",
+    "search"
+  ],
+  "References": [
+    "project-wiki-active-architecture"
+  ],
+  "Conflicts": [],
+  "UsageCount": 3,
+  "LastUpdated": "2026-05-12T00:00:00Z"
+}

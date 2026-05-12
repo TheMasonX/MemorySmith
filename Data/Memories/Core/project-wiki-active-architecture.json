@@ -1,0 +1,20 @@
+{
+  "Id": "project-wiki-active-architecture",
+  "Title": "Active Architecture Boundary",
+  "Content": "MemorySmith uses MemorySmith.App as the single deployable host. The app hosts the Blazor UI, REST API, file storage registration, background maintenance, and health endpoints in one process. MemorySmith.Worker and MemorySmith.Dashboard remain on disk as migration history only unless they are explicitly brought back into scope.",
+  "Status": 2,
+  "Confidence": 0.95,
+  "Tags": [
+    "project-wiki",
+    "architecture",
+    "single-host",
+    "memorysmith-app"
+  ],
+  "References": [
+    "project-wiki-validation-command",
+    "project-wiki-data-folder-policy"
+  ],
+  "Conflicts": [],
+  "UsageCount": 4,
+  "LastUpdated": "2026-05-12T00:00:00Z"
+}

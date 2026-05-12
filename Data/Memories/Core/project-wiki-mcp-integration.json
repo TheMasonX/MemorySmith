@@ -1,0 +1,21 @@
+{
+  "Id": "project-wiki-mcp-integration",
+  "Title": "MCP Integration Friction",
+  "Content": "VS Code MCP configuration pointed at MemorySmith before the app exposed an MCP endpoint, which caused /mcp probes to return 404 or 405. MemorySmith should expose a small HTTP MCP-compatible JSON-RPC endpoint with tools for keyword search, semantic search, and record lookup. The workspace .vscode/mcp.json should point directly at http://localhost:5089/mcp.",
+  "Status": 2,
+  "Confidence": 0.96,
+  "Tags": [
+    "project-wiki",
+    "mcp",
+    "tooling",
+    "friction",
+    "integration"
+  ],
+  "References": [
+    "project-wiki-search-roadmap",
+    "project-wiki-validation-command"
+  ],
+  "Conflicts": [],
+  "UsageCount": 2,
+  "LastUpdated": "2026-05-12T00:00:00Z"
+}

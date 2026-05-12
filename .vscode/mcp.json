@@ -1,0 +1,9 @@
+{
+	"servers": {
+		"MemorySmithWiki": {
+			"url": "http://localhost:5089/mcp",
+			"type": "http"
+		}
+	},
+	"inputs": []
+}

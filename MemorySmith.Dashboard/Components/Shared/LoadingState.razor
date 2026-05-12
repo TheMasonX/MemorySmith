@@ -1,0 +1,10 @@
+<MudPaper Class="pa-4" Elevation="0">
+    <MudStack AlignItems="AlignItems.Center" Spacing="2">
+        <MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Large" />
+        <MudText Typo="Typo.body2" Color="Color.Secondary">@Message</MudText>
+    </MudStack>
+</MudPaper>
+
+@code {
+    [Parameter] public string Message { get; set; } = "Loading...";
+}

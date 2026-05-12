@@ -1,0 +1,59 @@
+@page "/"
+@rendermode InteractiveServer
+@inject MemoryApplicationService Memories
+
+<PageTitle>MemorySmith</PageTitle>
+
+<MudText Typo="Typo.h4" GutterBottom="true">MemorySmith</MudText>
+
+@if (_stats is null)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else
+{
+    <MudGrid>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4" Elevation="1">
+                <MudText Typo="Typo.subtitle2">Total Memories</MudText>
+                <MudText Typo="Typo.h4">@_stats.TotalCount</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4" Elevation="1">
+                <MudText Typo="Typo.subtitle2">Core</MudText>
+                <MudText Typo="Typo.h4">@_stats.Core</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4" Elevation="1">
+                <MudText Typo="Typo.subtitle2">Working</MudText>
+                <MudText Typo="Typo.h4">@_stats.Working</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4" Elevation="1">
+                <MudText Typo="Typo.subtitle2">Average Confidence</MudText>
+                <MudText Typo="Typo.h4">@_stats.AverageConfidence.ToString("P0")</MudText>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+
+    <MudStack Row="true" Spacing="2" Class="mt-4">
+        <MudButton Href="/memories" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Memory">
+            Open Memories
+        </MudButton>
+        <MudButton Href="/health" Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.MonitorHeart">
+            Open Health
+        </MudButton>
+    </MudStack>
+}
+
+@code {
+    private StatsSnapshot? _stats;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _stats = await Memories.GetStatsAsync(CancellationToken.None);
+    }
+}

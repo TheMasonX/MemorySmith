@@ -1,0 +1,21 @@
+{
+  "Id": "project-wiki-search-roadmap",
+  "Title": "Search Tools Roadmap",
+  "Content": "Search is central to MemorySmith's usefulness. Keep keyword search as the reliable baseline, then add ranked search results, match explanations, reusable search DTOs, and an explicit semantic search path. The near-term semantic baseline can use local token scoring and project tags, but the durable version should use embeddings or another vector-capable index with clear fallback behavior.",
+  "Status": 2,
+  "Confidence": 0.92,
+  "Tags": [
+    "project-wiki",
+    "search",
+    "semantic-search",
+    "roadmap",
+    "tooling"
+  ],
+  "References": [
+    "project-wiki-data-folder-policy",
+    "project-wiki-mcp-integration"
+  ],
+  "Conflicts": [],
+  "UsageCount": 2,
+  "LastUpdated": "2026-05-12T00:00:00Z"
+}

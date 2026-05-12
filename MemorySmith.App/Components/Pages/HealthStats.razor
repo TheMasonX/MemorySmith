@@ -1,0 +1,125 @@
+@page "/health"
+@rendermode InteractiveServer
+@inject MemoryApplicationService Memories
+@inject IMemoryChangePublisher Publisher
+@implements IDisposable
+
+<PageTitle>Health</PageTitle>
+
+<MudText Typo="Typo.h4" GutterBottom="true">Health</MudText>
+
+<MudPaper Class="pa-4 mb-4" Elevation="1">
+    <MudStack Row="true" AlignItems="AlignItems.Center">
+        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" />
+        <MudText Typo="Typo.h6">Readiness: @_readiness</MudText>
+        <MudSpacer />
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" OnClick="RefreshAsync">Refresh</MudButton>
+    </MudStack>
+</MudPaper>
+
+@if (_stats is not null)
+{
+    <MudGrid Class="mb-4">
+        <MudItem xs="12" sm="6" md="3"><MudPaper Class="pa-4"><MudText>Total</MudText><MudText Typo="Typo.h4">@_stats.TotalCount</MudText></MudPaper></MudItem>
+        <MudItem xs="12" sm="6" md="3"><MudPaper Class="pa-4"><MudText>Core</MudText><MudText Typo="Typo.h4">@_stats.Core</MudText></MudPaper></MudItem>
+        <MudItem xs="12" sm="6" md="3"><MudPaper Class="pa-4"><MudText>Working</MudText><MudText Typo="Typo.h4">@_stats.Working</MudText></MudPaper></MudItem>
+        <MudItem xs="12" sm="6" md="3"><MudPaper Class="pa-4"><MudText>Usage</MudText><MudText Typo="Typo.h4">@_stats.TotalUsage</MudText></MudPaper></MudItem>
+    </MudGrid>
+}
+
+<MudGrid>
+    <MudItem xs="12" md="7">
+        <MudPaper Class="pa-4" Elevation="1">
+            <MudText Typo="Typo.h6" GutterBottom="true">Maintenance Telemetry</MudText>
+            <MudTable Items="@_telemetry" Dense="true">
+                <HeaderContent>
+                    <MudTh>Service</MudTh>
+                    <MudTh>Interval</MudTh>
+                    <MudTh>Last Run</MudTh>
+                    <MudTh>Last Success</MudTh>
+                    <MudTh>Last Failure</MudTh>
+                    <MudTh>Duration</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>@context.ServiceName</MudTd>
+                    <MudTd>@context.Interval</MudTd>
+                    <MudTd>@FormatTime(context.LastRunUtc)</MudTd>
+                    <MudTd>@FormatTime(context.LastSuccessUtc)</MudTd>
+                    <MudTd>@FormatTime(context.LastFailureUtc)</MudTd>
+                    <MudTd>@(context.LastDurationMs?.ToString("N0") ?? "-") ms</MudTd>
+                </RowTemplate>
+            </MudTable>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" md="5">
+        <MudPaper Class="pa-4" Elevation="1">
+            <MudText Typo="Typo.h6" GutterBottom="true">Recent Memory Events</MudText>
+            @if (_recentEvents.Count == 0)
+            {
+                <MudText Color="Color.Secondary">No events observed in this UI session.</MudText>
+            }
+            else
+            {
+                <MudList T="MemoryUpdateEvent" Dense="true">
+                    @foreach (var update in _recentEvents)
+                    {
+                        <MudListItem Text="@($"{update.Action}: {update.Id}")" SecondaryText="@update.Timestamp.ToLocalTime().ToString("g")" />
+                    }
+                </MudList>
+            }
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@code {
+    private StatsSnapshot? _stats;
+    private IReadOnlyList<BackgroundServiceTelemetry> _telemetry = [];
+    private readonly List<MemoryUpdateEvent> _recentEvents = [];
+    private string _readiness = "Checking";
+
+    protected override async Task OnInitializedAsync()
+    {
+        Publisher.MemoryChanged += OnMemoryChangedAsync;
+        Publisher.StatsChanged += OnStatsChangedAsync;
+        await RefreshAsync();
+    }
+
+    private async Task RefreshAsync()
+    {
+        try
+        {
+            _stats = await Memories.GetStatsAsync(CancellationToken.None);
+            _telemetry = await Memories.GetTelemetryAsync(CancellationToken.None);
+            _readiness = "Ready";
+        }
+        catch
+        {
+            _readiness = "Not ready";
+        }
+    }
+
+    private Task OnMemoryChangedAsync(MemoryUpdateEvent update)
+    {
+        _recentEvents.Insert(0, update);
+        if (_recentEvents.Count > 20)
+        {
+            _recentEvents.RemoveAt(_recentEvents.Count - 1);
+        }
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private Task OnStatsChangedAsync(StatsSnapshot stats)
+    {
+        _stats = stats;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private static string FormatTime(DateTime? timestamp) =>
+        timestamp.HasValue ? timestamp.Value.ToLocalTime().ToString("g") : "-";
+
+    public void Dispose()
+    {
+        Publisher.MemoryChanged -= OnMemoryChangedAsync;
+        Publisher.StatsChanged -= OnStatsChangedAsync;
+    }
+}

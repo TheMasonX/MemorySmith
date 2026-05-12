@@ -1,0 +1,546 @@
+@page "/memories"
+@rendermode InteractiveServer
+@inject MemoryApplicationService Memories
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+
+<PageTitle>Memories</PageTitle>
+
+<div class="wiki-workbench">
+    <section class="wiki-commandbar" aria-label="Memory search">
+        <div class="wiki-title-block">
+            <MudText Typo="Typo.h5">Memories</MudText>
+            <span class="wiki-count">@_totalCount records</span>
+        </div>
+
+        <div class="wiki-search-strip">
+            <MudTextField @bind-Value="_searchQuery"
+                          Label="@SearchLabel"
+                          Placeholder="@SearchPlaceholder"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          OnKeyUp="OnSearchKeyUp"
+                          Class="wiki-search-box" />
+
+            <MudSelect T="MemoryStatus?" @bind-Value="_statusFilter" Label="Status" Clearable="true" Variant="Variant.Outlined" Margin="Margin.Dense" Class="wiki-filter">
+                @foreach (MemoryStatus status in Enum.GetValues(typeof(MemoryStatus)))
+                {
+                    <MudSelectItem T="MemoryStatus?" Value="@((MemoryStatus?)status)">@status</MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudTextField @bind-Value="_tagsFilter" Label="Tags" Placeholder="project-wiki, search" Variant="Variant.Outlined" Margin="Margin.Dense" Class="wiki-filter" />
+
+            <MudButtonGroup Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" Class="wiki-mode-toggle">
+                <MudButton Variant="@(_searchMode == SearchMode.Keyword ? Variant.Filled : Variant.Outlined)" OnClick="@(() => SetSearchMode(SearchMode.Keyword))">Keyword</MudButton>
+                <MudButton Variant="@(_searchMode == SearchMode.Semantic ? Variant.Filled : Variant.Outlined)" OnClick="@(() => SetSearchMode(SearchMode.Semantic))">Semantic</MudButton>
+            </MudButtonGroup>
+
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Search" OnClick="SearchAsync">Search</MudButton>
+            <MudIconButton Icon="@Icons.Material.Filled.Clear" Size="Size.Small" OnClick="ClearAsync" aria-label="Clear" />
+            <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" Color="Color.Success" OnClick="NewRecord" aria-label="New" />
+        </div>
+    </section>
+
+    <section class="wiki-body">
+        <aside class="wiki-results-pane" aria-label="Memory results">
+            <div class="wiki-pane-header">
+                <MudText Typo="Typo.subtitle2">Results</MudText>
+                @if (_isSearchMode)
+                {
+                    <span class="wiki-mode-label">@(_isSemanticSearchMode ? "Semantic" : "Keyword")</span>
+                }
+            </div>
+
+            @if (_isLoading)
+            {
+                <MudProgressLinear Indeterminate="true" />
+            }
+            else if (_memories.Count == 0)
+            {
+                <div class="wiki-empty-state">No memories found.</div>
+            }
+            else
+            {
+                <div class="wiki-results-list">
+                    @foreach (var memory in _memories)
+                    {
+                        var semantic = _semanticMatches.TryGetValue(memory.Id, out var match) ? match : null;
+                        <article class="@ResultRowClass(memory)" @onclick="@(() => SelectAsync(memory.Id))">
+                            <div class="wiki-result-main">
+                                <div class="wiki-result-title">@(string.IsNullOrWhiteSpace(memory.Title) ? "(untitled)" : memory.Title)</div>
+                                <div class="wiki-result-meta">
+                                    <span class="wiki-status @StatusClass(memory.Status)">@memory.Status</span>
+                                    <span>@memory.UsageCount uses</span>
+                                    <span>@memory.LastUpdated.ToLocalTime().ToString("M/d HH:mm")</span>
+                                </div>
+                                @if (semantic is not null)
+                                {
+                                    <div class="wiki-result-snippet">@semantic.Snippet</div>
+                                }
+                                <div class="wiki-tag-line">
+                                    @foreach (var tag in memory.Tags.Take(5))
+                                    {
+                                        <span class="wiki-tag">@tag</span>
+                                    }
+                                    @if (memory.Tags.Count > 5)
+                                    {
+                                        <span class="wiki-tag-muted">+@(memory.Tags.Count - 5)</span>
+                                    }
+                                </div>
+                            </div>
+                            @if (semantic is not null)
+                            {
+                                <div class="wiki-score-box">
+                                    <strong>@semantic.Score.ToString("0.###")</strong>
+                                    <span>@semantic.MatchReason</span>
+                                </div>
+                            }
+                        </article>
+                    }
+                </div>
+
+                @if (!_isSearchMode && TotalPages > 1)
+                {
+                    <div class="wiki-pagination">
+                        <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" Disabled="@(_page <= 1)" Size="Size.Small" OnClick="@(() => GoToPageAsync(_page - 1))" />
+                        <span>Page @_page of @TotalPages</span>
+                        <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" Disabled="@(_page >= TotalPages)" Size="Size.Small" OnClick="@(() => GoToPageAsync(_page + 1))" />
+                    </div>
+                }
+            }
+        </aside>
+
+        <main class="wiki-detail-pane" aria-label="Selected memory">
+            @if (_isEditing)
+            {
+                <div class="wiki-pane-header">
+                    <MudText Typo="Typo.subtitle2">@(_editingExisting ? "Edit Memory" : "New Memory")</MudText>
+                    <MudSpacer />
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Save" OnClick="SaveAsync">Save</MudButton>
+                    <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="CancelEdit">Cancel</MudButton>
+                </div>
+
+                <div class="wiki-editor-grid">
+                    <MudTextField @bind-Value="_editRecord.Id" Label="ID" Disabled="@_editingExisting" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    <MudTextField @bind-Value="_editRecord.Title" Label="Title" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    <MudSelect T="MemoryStatus" @bind-Value="_editRecord.Status" Label="Status" Variant="Variant.Outlined" Margin="Margin.Dense">
+                        @foreach (MemoryStatus status in Enum.GetValues(typeof(MemoryStatus)))
+                        {
+                            <MudSelectItem Value="@status">@status</MudSelectItem>
+                        }
+                    </MudSelect>
+                    <div class="wiki-confidence-edit">
+                        <MudSlider @bind-Value="_editRecord.Confidence" Min="0" Max="1" Step="0.05" Color="Color.Info" />
+                        <span>@_editRecord.Confidence.ToString("P0")</span>
+                    </div>
+                    <MudTextField @bind-Value="_editTags" Label="Tags" Placeholder="tag1, tag2" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    <MudTextField @bind-Value="_editReferences" Label="References" Placeholder="id1, id2" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    <MudTextField @bind-Value="_editConflicts" Label="Conflicts" Placeholder="id1, id2" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                </div>
+
+                <MudTextField @bind-Value="_editRecord.Content"
+                              Label="Content"
+                              Lines="18"
+                              Required="true"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Class="wiki-editor-textarea" />
+            }
+            else if (_selectedRecord is null)
+            {
+                <div class="wiki-empty-state">Select a memory to inspect.</div>
+            }
+            else
+            {
+                <div class="wiki-pane-header wiki-detail-header">
+                    <div>
+                        <MudText Typo="Typo.h6">@(string.IsNullOrWhiteSpace(_selectedRecord.Title) ? "(untitled)" : _selectedRecord.Title)</MudText>
+                        <div class="wiki-result-meta">
+                            <span class="wiki-status @StatusClass(_selectedRecord.Status)">@_selectedRecord.Status</span>
+                            <span>@_selectedRecord.UsageCount uses</span>
+                            <span>@_selectedRecord.LastUpdated.ToLocalTime().ToString("g")</span>
+                            <span>@_selectedRecord.Confidence.ToString("P0") confidence</span>
+                        </div>
+                    </div>
+                    <MudSpacer />
+                    <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Size="Size.Small" OnClick="CopySelectedContentAsync" aria-label="Copy content" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Assignment" Size="Size.Small" OnClick="CopyAgentContextAsync" aria-label="Copy agent context" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="EditSelected" aria-label="Edit" />
+                    <MudIconButton Icon="@Icons.Material.Filled.AddCircle" Size="Size.Small" OnClick="@(() => IncrementUsageAsync(_selectedRecord.Id))" aria-label="Increment usage" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteAsync(_selectedRecord.Id))" aria-label="Delete" />
+                </div>
+
+                @if (_selectedSemanticMatch is not null)
+                {
+                    <div class="wiki-match-panel">
+                        <strong>Score @_selectedSemanticMatch.Score.ToString("0.###")</strong>
+                        <span>@_selectedSemanticMatch.MatchReason</span>
+                    </div>
+                }
+
+                <div class="wiki-tag-line wiki-detail-tags">
+                    @foreach (var tag in _selectedRecord.Tags)
+                    {
+                        <button type="button" class="wiki-tag wiki-tag-button" @onclick="@(() => SearchTagAsync(tag))">@tag</button>
+                    }
+                </div>
+
+                <div class="wiki-content-scroll">@_selectedRecord.Content</div>
+
+                <div class="wiki-link-grid">
+                    <section>
+                        <div class="wiki-section-title">References</div>
+                        @RenderMemoryLinks(_selectedRecord.References)
+                    </section>
+                    <section>
+                        <div class="wiki-section-title">Conflicts</div>
+                        @RenderMemoryLinks(_selectedRecord.Conflicts)
+                    </section>
+                </div>
+            }
+        </main>
+    </section>
+</div>
+
+@code {
+    private List<MemoryMetadata> _memories = [];
+    private MemoryRecord? _selectedRecord;
+    private MemorySearchResult? _selectedSemanticMatch;
+    private MemoryRecord _editRecord = new();
+    private string _editTags = string.Empty;
+    private string _editReferences = string.Empty;
+    private string _editConflicts = string.Empty;
+    private string _searchQuery = string.Empty;
+    private string _tagsFilter = string.Empty;
+    private SearchMode _searchMode = SearchMode.Keyword;
+    private Dictionary<string, MemorySearchResult> _semanticMatches = new(StringComparer.OrdinalIgnoreCase);
+    private MemoryStatus? _statusFilter;
+    private int _page = 1;
+    private int _pageSize = 20;
+    private int _totalCount;
+    private bool _isLoading;
+    private bool _isSearchMode;
+    private bool _editingExisting;
+    private bool _isSemanticSearchMode;
+    private bool _isEditing;
+
+    private int TotalPages => Math.Max(1, (int)Math.Ceiling((double)_totalCount / _pageSize));
+    private string SearchLabel => _searchMode == SearchMode.Semantic ? "Semantic search" : "Keyword search";
+    private string SearchPlaceholder => _searchMode == SearchMode.Semantic ? "Concept, workflow, or related idea" : "Title, content, or tag";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync(selectFirst: true);
+    }
+
+    private async Task LoadAsync(bool selectFirst = false)
+    {
+        _isLoading = true;
+        var selectedId = _selectedRecord?.Id;
+        var result = await Memories.GetMemoriesAsync(new MemoryListQuery(_page, _pageSize, _statusFilter, _tagsFilter), CancellationToken.None);
+        _memories = result.Data;
+        _totalCount = result.TotalCount;
+        _page = result.Page;
+        _pageSize = result.PageSize;
+        _isSearchMode = false;
+        _isSemanticSearchMode = false;
+        _semanticMatches.Clear();
+        _isLoading = false;
+
+        await RestoreOrSelectAsync(selectedId, selectFirst);
+    }
+
+    private async Task SearchAsync()
+    {
+        _isLoading = true;
+        _isSemanticSearchMode = _searchMode == SearchMode.Semantic;
+
+        if (_isSemanticSearchMode)
+        {
+            var semanticResults = await Memories.SemanticSearchAsync(new SemanticMemorySearchQuery(_searchQuery, _statusFilter, _tagsFilter, 100), CancellationToken.None);
+            _semanticMatches = semanticResults.ToDictionary(result => result.Id, StringComparer.OrdinalIgnoreCase);
+            _memories = semanticResults.Select(ToMetadata).ToList();
+        }
+        else
+        {
+            var results = await Memories.SearchAsync(new MemorySearchQuery(_searchQuery, _statusFilter, _tagsFilter, 100), CancellationToken.None);
+            _semanticMatches.Clear();
+            _memories = results.Select(r => new MemoryMetadata
+            {
+                Id = r.Id,
+                Title = r.Title,
+                Status = r.Status,
+                Confidence = r.Confidence,
+                Tags = r.Tags,
+                UsageCount = r.UsageCount,
+                LastUpdated = r.LastUpdated
+            }).ToList();
+        }
+
+        _totalCount = _memories.Count;
+        _isSearchMode = true;
+        _isLoading = false;
+        await RestoreOrSelectAsync(_selectedRecord?.Id, selectFirst: true);
+    }
+
+    private async Task ClearAsync()
+    {
+        _searchQuery = string.Empty;
+        _tagsFilter = string.Empty;
+        _statusFilter = null;
+        _semanticMatches.Clear();
+        _isSemanticSearchMode = false;
+        _page = 1;
+        await LoadAsync(selectFirst: true);
+    }
+
+    private async Task OnSearchKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await SearchAsync();
+        }
+    }
+
+    private void SetSearchMode(SearchMode searchMode) => _searchMode = searchMode;
+
+    private async Task GoToPageAsync(int page)
+    {
+        _page = page;
+        await LoadAsync(selectFirst: true);
+    }
+
+    private async Task RestoreOrSelectAsync(string? selectedId, bool selectFirst)
+    {
+        if (!string.IsNullOrWhiteSpace(selectedId) && _memories.Any(memory => memory.Id == selectedId))
+        {
+            await SelectAsync(selectedId);
+            return;
+        }
+
+        if (selectFirst && _memories.Count > 0)
+        {
+            await SelectAsync(_memories[0].Id);
+            return;
+        }
+
+        if (_memories.Count == 0)
+        {
+            _selectedRecord = null;
+            _selectedSemanticMatch = null;
+        }
+    }
+
+    private async Task SelectAsync(string id)
+    {
+        var record = await Memories.GetAsync(id, CancellationToken.None);
+        if (record is null)
+        {
+            Snackbar.Add("Memory not found", Severity.Warning);
+            return;
+        }
+
+        _selectedRecord = record;
+        _selectedSemanticMatch = _semanticMatches.TryGetValue(record.Id, out var match) ? match : null;
+        _isEditing = false;
+        PopulateEditor(record, editingExisting: true);
+    }
+
+    private void EditSelected()
+    {
+        if (_selectedRecord is null)
+        {
+            return;
+        }
+
+        PopulateEditor(_selectedRecord, editingExisting: true);
+        _isEditing = true;
+    }
+
+    private void NewRecord()
+    {
+        _selectedRecord = null;
+        _selectedSemanticMatch = null;
+        PopulateEditor(new MemoryRecord(), editingExisting: false);
+        _isEditing = true;
+    }
+
+    private void CancelEdit()
+    {
+        _isEditing = false;
+        if (_selectedRecord is not null)
+        {
+            PopulateEditor(_selectedRecord, editingExisting: true);
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        try
+        {
+            _editRecord.Tags = SplitValues(_editTags);
+            _editRecord.References = SplitValues(_editReferences);
+            _editRecord.Conflicts = SplitValues(_editConflicts);
+
+            MemoryRecord? saved;
+            if (_editingExisting)
+            {
+                saved = await Memories.UpdateAsync(_editRecord.Id, _editRecord, CancellationToken.None);
+                Snackbar.Add(saved is null ? "Update failed" : "Memory updated", saved is null ? Severity.Error : Severity.Success);
+            }
+            else
+            {
+                saved = await Memories.CreateAsync(_editRecord, CancellationToken.None);
+                Snackbar.Add("Memory created", Severity.Success);
+            }
+
+            if (saved is not null)
+            {
+                _selectedRecord = saved;
+                _isEditing = false;
+            }
+
+            await LoadAsync(selectFirst: saved is null);
+        }
+        catch (MemoryValidationException ex)
+        {
+            Snackbar.Add(string.Join(" ", ex.Errors.SelectMany(e => e.Value)), Severity.Error);
+        }
+    }
+
+    private async Task IncrementUsageAsync(string id)
+    {
+        await Memories.IncrementUsageAsync(id, CancellationToken.None);
+        await LoadAsync(selectFirst: true);
+    }
+
+    private async Task DeleteAsync(string id)
+    {
+        await Memories.DeleteAsync(id, CancellationToken.None);
+        if (_selectedRecord?.Id == id)
+        {
+            _selectedRecord = null;
+            _selectedSemanticMatch = null;
+        }
+
+        await LoadAsync(selectFirst: true);
+    }
+
+    private async Task SearchTagAsync(string tag)
+    {
+        _tagsFilter = tag;
+        _page = 1;
+        await SearchAsync();
+    }
+
+    private async Task CopySelectedContentAsync()
+    {
+        if (_selectedRecord is null)
+        {
+            return;
+        }
+
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", _selectedRecord.Content);
+        Snackbar.Add("Content copied", Severity.Success);
+    }
+
+    private async Task CopyAgentContextAsync()
+    {
+        if (_selectedRecord is null)
+        {
+            return;
+        }
+
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", BuildAgentContext(_selectedRecord));
+        Snackbar.Add("Agent context copied", Severity.Success);
+    }
+
+    private async Task OpenLinkedMemoryAsync(string id)
+    {
+        await SelectAsync(id);
+    }
+
+    private void PopulateEditor(MemoryRecord record, bool editingExisting)
+    {
+        _editRecord = new MemoryRecord
+        {
+            Id = record.Id,
+            Title = record.Title,
+            Content = record.Content,
+            Status = record.Status,
+            Confidence = record.Confidence,
+            Tags = record.Tags.ToList(),
+            References = record.References.ToList(),
+            Conflicts = record.Conflicts.ToList(),
+            UsageCount = record.UsageCount,
+            LastUpdated = record.LastUpdated
+        };
+        _editTags = string.Join(", ", record.Tags);
+        _editReferences = string.Join(", ", record.References);
+        _editConflicts = string.Join(", ", record.Conflicts);
+        _editingExisting = editingExisting;
+    }
+
+    private RenderFragment RenderMemoryLinks(IReadOnlyList<string> ids) => builder =>
+    {
+        if (ids.Count == 0)
+        {
+            builder.OpenElement(0, "span");
+            builder.AddAttribute(1, "class", "wiki-muted");
+            builder.AddContent(2, "None");
+            builder.CloseElement();
+            return;
+        }
+
+        var sequence = 3;
+        foreach (var id in ids)
+        {
+            builder.OpenElement(sequence++, "button");
+            builder.AddAttribute(sequence++, "type", "button");
+            builder.AddAttribute(sequence++, "class", "wiki-link-chip");
+            builder.AddAttribute(sequence++, "onclick", EventCallback.Factory.Create(this, () => OpenLinkedMemoryAsync(id)));
+            builder.AddContent(sequence++, id);
+            builder.CloseElement();
+        }
+    };
+
+    private string ResultRowClass(MemoryMetadata memory) =>
+        string.Equals(_selectedRecord?.Id, memory.Id, StringComparison.OrdinalIgnoreCase)
+            ? "wiki-result-row is-selected"
+            : "wiki-result-row";
+
+    private static MemoryMetadata ToMetadata(MemorySearchResult result) => new()
+    {
+        Id = result.Id,
+        Title = result.Title,
+        Status = result.Status,
+        Confidence = result.Confidence,
+        Tags = result.Tags.ToList(),
+        UsageCount = result.UsageCount,
+        LastUpdated = result.LastUpdated
+    };
+
+    private static string StatusClass(MemoryStatus status) => status switch
+    {
+        MemoryStatus.Core => "is-core",
+        MemoryStatus.Working => "is-working",
+        MemoryStatus.Unconsolidated => "is-unconsolidated",
+        MemoryStatus.Deprecated => "is-deprecated",
+        _ => string.Empty
+    };
+
+    private static List<string> SplitValues(string value) =>
+        value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+
+    private static string BuildAgentContext(MemoryRecord record) =>
+        $"# {record.Title}\nID: {record.Id}\nStatus: {record.Status}\nConfidence: {record.Confidence:P0}\nTags: {string.Join(", ", record.Tags)}\nReferences: {string.Join(", ", record.References)}\nConflicts: {string.Join(", ", record.Conflicts)}\n\n{record.Content}";
+
+    private enum SearchMode
+    {
+        Keyword,
+        Semantic
+    }
+}

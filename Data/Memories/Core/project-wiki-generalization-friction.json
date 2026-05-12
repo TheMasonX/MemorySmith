@@ -1,0 +1,23 @@
+{
+  "Id": "project-wiki-generalization-friction",
+  "Title": "General Tool Friction Notes",
+  "Content": "Friction found while making MemorySmith use its own wiki: local runs need a Development launch profile for static web assets, MudBlazor providers must live in the interactive render tree, source wiki data must be copied before tests mutate it, and the on-disk JSON shape should be made friendlier over time. More general use will need better import/export, semantic indexing, MCP tools, and schema/version migration support.",
+  "Status": 2,
+  "Confidence": 0.91,
+  "Tags": [
+    "project-wiki",
+    "friction",
+    "generalization",
+    "developer-experience",
+    "missing-feature"
+  ],
+  "References": [
+    "project-wiki-data-folder-policy",
+    "project-wiki-storage-rules",
+    "project-wiki-mcp-integration",
+    "project-wiki-semantic-search-gap"
+  ],
+  "Conflicts": [],
+  "UsageCount": 2,
+  "LastUpdated": "2026-05-12T00:00:00Z"
+}

@@ -1,0 +1,406 @@
+@page "/memories"
+@rendermode InteractiveServer
+@inject MemoryApiClient Api
+@inject DashboardState State
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+@implements IDisposable
+
+<PageTitle>Memory Viewer</PageTitle>
+
+<MudText Typo="Typo.h4" GutterBottom="true">Memory Viewer</MudText>
+
+<!-- Search & Filters -->
+<MudPaper Class="pa-4 mb-4" Elevation="1">
+    <MudGrid>
+        <MudItem xs="12" sm="6">
+            <MudTextField @bind-Value="_searchQuery"
+                          Label="Search memories"
+                          Placeholder="Search by title, content, or tags..."
+                          Adornment="Adornment.End"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          OnKeyUp="@OnSearchKeyUp"
+                          Immediate="false" />
+        </MudItem>
+        <MudItem xs="12" sm="3">
+            <MudSelect T="MemoryStatus?" @bind-Value="_statusFilter" Label="Status" Clearable="true">
+                @foreach (MemoryStatus s in Enum.GetValues(typeof(MemoryStatus)))
+                {
+                    <MudSelectItem T="MemoryStatus?" Value="@((MemoryStatus?)s)">@s</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" sm="3">
+            <MudTextField @bind-Value="_tagsFilter"
+                          Label="Tags"
+                          Placeholder="tag1, tag2"
+                          Immediate="true" />
+        </MudItem>
+        <MudItem xs="12" sm="3" Class="d-flex gap-2">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       OnClick="@SearchAsync" StartIcon="@Icons.Material.Filled.Search">
+                Search
+            </MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary"
+                       OnClick="@ClearSearch" StartIcon="@Icons.Material.Filled.Clear">
+                Clear
+            </MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Success"
+                       OnClick="@OpenCreateDialog" StartIcon="@Icons.Material.Filled.Add">
+                New
+            </MudButton>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+<!-- Results -->
+@if (_isLoading)
+{
+    <LoadingState Message="Loading memories..." />
+}
+else if (!string.IsNullOrWhiteSpace(_errorMessage))
+{
+    <ErrorState Title="Unable to load memories"
+                Message="@_errorMessage"
+                ActionText="Retry"
+                OnAction="LoadCurrentModeAsync" />
+}
+else if (_memories.Count == 0)
+{
+    <EmptyState Title="No memories found"
+                Message="Try changing search, tags, or status filters." />
+}
+else
+{
+    <MudTable Items="@_memories" Hover="true" Striped="true" Bordered="false"
+              OnRowClick="@OnRowClick" T="MemoryMetadata"
+              RowClassFunc="@GetRowClass"
+              Loading="_isLoading" LoadingProgressColor="Color.Primary">
+        <HeaderContent>
+            <MudTh>Title</MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh>Tags</MudTh>
+            <MudTh>Confidence</MudTh>
+            <MudTh>Usage</MudTh>
+            <MudTh>Last Updated</MudTh>
+            <MudTh>Actions</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Title">
+                <MudText Typo="Typo.body2" Style="font-weight:500">
+                    @(string.IsNullOrWhiteSpace(context.Title) ? "(untitled)" : context.Title)
+                </MudText>
+            </MudTd>
+            <MudTd DataLabel="Status">
+                <MudChip T="string" Color="@StatusColor(context.Status)" Size="Size.Small">
+                    @context.Status
+                </MudChip>
+            </MudTd>
+            <MudTd DataLabel="Tags">
+                @foreach (var tag in context.Tags.Take(3))
+                {
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Class="mr-1">@tag</MudChip>
+                }
+                @if (context.Tags.Count > 3)
+                {
+                    <MudText Typo="Typo.caption">+@(context.Tags.Count - 3) more</MudText>
+                }
+            </MudTd>
+            <MudTd DataLabel="Confidence">
+                <MudProgressLinear Value="@(context.Confidence * 100)" Color="Color.Info" Rounded="true" />
+                <MudText Typo="Typo.caption">@context.Confidence.ToString("P0")</MudText>
+            </MudTd>
+            <MudTd DataLabel="Usage">@context.UsageCount</MudTd>
+            <MudTd DataLabel="Last Updated">@context.LastUpdated.ToLocalTime().ToString("g")</MudTd>
+            <MudTd>
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary"
+                               OnClick="@(() => OpenEditDialog(context.Id))" />
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                               OnClick="@(() => DeleteMemoryAsync(context.Id))" />
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+
+    <MudPaper Class="pa-2 mt-2 d-flex justify-center align-center gap-4" Elevation="0">
+        <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft"
+                       Disabled="@(_currentPage <= 1)"
+                       OnClick="@(() => GoToPage(_currentPage - 1))" />
+        <MudText>Page @_currentPage of @TotalPages (@_totalCount total)</MudText>
+        <MudIconButton Icon="@Icons.Material.Filled.ChevronRight"
+                       Disabled="@(_currentPage >= TotalPages)"
+                       OnClick="@(() => GoToPage(_currentPage + 1))" />
+        <MudSelect T="int" Value="@_pageSize" ValueChanged="@OnPageSizeChanged" Label="Per page" Style="width:80px">
+            <MudSelectItem Value="10">10</MudSelectItem>
+            <MudSelectItem Value="20">20</MudSelectItem>
+            <MudSelectItem Value="50">50</MudSelectItem>
+        </MudSelect>
+    </MudPaper>
+}
+
+@code {
+    private List<MemoryMetadata> _memories = new();
+    private string _searchQuery = "";
+    private string _tagsFilter = "";
+    private string? _errorMessage;
+    private MemoryStatus? _statusFilter;
+    private int _currentPage = 1;
+    private int _pageSize = 20;
+    private int _totalCount = 0;
+    private bool _isLoading = false;
+    private bool _isSearchMode = false;
+
+    private int TotalPages => _pageSize > 0 ? (int)Math.Ceiling((double)_totalCount / _pageSize) : 1;
+
+    protected override async Task OnInitializedAsync()
+    {
+        State.StateChanged += OnSharedStateChanged;
+        await LoadMemoriesAsync();
+    }
+
+    private string GetRowClass(MemoryMetadata item, int _) =>
+        State.SelectedMemory?.Id == item.Id ? "selected-memory-row" : string.Empty;
+
+    private void OnSharedStateChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        State.StateChanged -= OnSharedStateChanged;
+    }
+
+    private async Task LoadMemoriesAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+        _isSearchMode = false;
+        try
+        {
+            var result = await Api.GetMemoriesAsync(_currentPage, _pageSize, _statusFilter, _tagsFilter);
+            if (result is not null)
+            {
+                _memories = result.Data;
+                _totalCount = result.TotalCount;
+            }
+            else
+            {
+                _memories = [];
+                _totalCount = 0;
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+            Snackbar.Add($"Failed to load memories: {ex.Message}", Severity.Error);
+        }
+        finally { _isLoading = false; }
+    }
+
+    private async Task SearchAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_searchQuery))
+        {
+            await LoadMemoriesAsync();
+            return;
+        }
+
+        _isLoading = true;
+        _errorMessage = null;
+        _isSearchMode = true;
+        try
+        {
+            var results = await Api.SearchMemoriesAsync(_searchQuery, _statusFilter, 100);
+            if (results is not null)
+            {
+                var tagFilters = _tagsFilter
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+                var filteredResults = tagFilters.Length == 0
+                    ? results
+                    : results.Where(r => tagFilters.Any(filter =>
+                        r.Tags.Any(tag => tag.Contains(filter, StringComparison.OrdinalIgnoreCase)))).ToList();
+
+                _memories = filteredResults.Select(r => new MemoryMetadata
+                {
+                    Id = r.Id,
+                    Title = r.Title,
+                    Status = r.Status,
+                    Confidence = r.Confidence,
+                    Tags = r.Tags,
+                    UsageCount = r.UsageCount,
+                    LastUpdated = r.LastUpdated
+                }).ToList();
+                _totalCount = _memories.Count;
+                _currentPage = 1;
+            }
+            else
+            {
+                _memories = [];
+                _totalCount = 0;
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+            Snackbar.Add($"Search failed: {ex.Message}", Severity.Error);
+        }
+        finally { _isLoading = false; }
+    }
+
+    private async Task LoadCurrentModeAsync()
+    {
+        if (_isSearchMode)
+        {
+            await SearchAsync();
+            return;
+        }
+
+        await LoadMemoriesAsync();
+    }
+
+    private async Task ClearSearch()
+    {
+        _searchQuery = "";
+        _tagsFilter = "";
+        _statusFilter = null;
+        _currentPage = 1;
+        await LoadMemoriesAsync();
+    }
+
+    private async Task OnSearchKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await SearchAsync();
+    }
+
+    private async Task GoToPage(int page)
+    {
+        _currentPage = page;
+        if (_isSearchMode) return;
+        await LoadMemoriesAsync();
+    }
+
+    private async Task OnPageSizeChanged(int newSize)
+    {
+        _pageSize = newSize;
+        await GoToPage(1);
+    }
+
+    private async Task OnRowClick(TableRowClickEventArgs<MemoryMetadata> args)
+    {
+        State.SetSelectedMemory(args.Item);
+        await OpenEditDialog(args.Item!.Id);
+    }
+
+    private async Task OpenEditDialog(string id)
+    {
+        var record = await Api.GetMemoryAsync(id);
+        if (record is null)
+        {
+            Snackbar.Add("Memory not found", Severity.Warning);
+            return;
+        }
+
+        var selected = _memories.FirstOrDefault(x => x.Id == id);
+        if (selected is not null)
+        {
+            State.SetSelectedMemory(selected);
+        }
+
+        var parameters = new DialogParameters<MemoryDetailDialog>
+        {
+            { x => x.Record, record },
+            { x => x.IsNew, false }
+        };
+        var dialog = await DialogService.ShowAsync<MemoryDetailDialog>("Edit Memory", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            var updated = (MemoryRecord)result.Data!;
+            var saved = await Api.UpdateMemoryAsync(id, updated);
+            if (saved is not null)
+            {
+                Snackbar.Add("Memory updated", Severity.Success);
+                await LoadMemoriesAsync();
+                var refreshed = _memories.FirstOrDefault(x => x.Id == id);
+                State.SetSelectedMemory(refreshed);
+            }
+            else
+            {
+                Snackbar.Add("Update failed", Severity.Error);
+            }
+        }
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        var record = new MemoryRecord();
+        var parameters = new DialogParameters<MemoryDetailDialog>
+        {
+            { x => x.Record, record },
+            { x => x.IsNew, true }
+        };
+        var dialog = await DialogService.ShowAsync<MemoryDetailDialog>("New Memory", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            var newRecord = (MemoryRecord)result.Data!;
+            var saved = await Api.CreateMemoryAsync(newRecord);
+            if (saved is not null)
+            {
+                Snackbar.Add("Memory created", Severity.Success);
+                await LoadMemoriesAsync();
+                var created = _memories.FirstOrDefault(x => x.Id == saved.Id);
+                State.SetSelectedMemory(created);
+            }
+            else
+            {
+                Snackbar.Add("Create failed", Severity.Error);
+            }
+        }
+    }
+
+    private async Task DeleteMemoryAsync(string id)
+    {
+        var dialog = await DialogService.ShowAsync<MudMessageBox>(
+            "Confirm Delete",
+            new DialogParameters<MudMessageBox>
+            {
+                { x => x.Message, "Are you sure you want to delete this memory?" },
+                { x => x.YesText, "Delete" },
+                { x => x.CancelText, "Cancel" }
+            });
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            var ok = await Api.DeleteMemoryAsync(id);
+            if (ok)
+            {
+                Snackbar.Add("Memory deleted", Severity.Success);
+                await LoadMemoriesAsync();
+                if (State.SelectedMemory?.Id == id)
+                {
+                    State.SetSelectedMemory(null);
+                }
+            }
+            else
+            {
+                Snackbar.Add("Delete failed", Severity.Error);
+            }
+        }
+    }
+
+    private Color StatusColor(MemoryStatus status) => status switch
+    {
+        MemoryStatus.Core => Color.Success,
+        MemoryStatus.Working => Color.Primary,
+        MemoryStatus.Unconsolidated => Color.Warning,
+        MemoryStatus.Deprecated => Color.Default,
+        _ => Color.Default
+    };
+}

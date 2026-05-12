@@ -1,0 +1,11 @@
+[
+  {
+    "Name": "MemorySmith App",
+    "Projects": [
+      {
+        "Path": "MemorySmith.App\\MemorySmith.App.csproj",
+        "Action": "Start"
+      }
+    ]
+  }
+]

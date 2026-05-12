@@ -1,0 +1,20 @@
+{
+  "Id": "project-wiki-storage-rules",
+  "Title": "File Storage Rules",
+  "Content": "FileMemoryStore stores MemoryRecord JSON in status folders under Data/Memories. It sanitizes record IDs, writes files through a temp-file-and-move pattern, returns stable LoadAll snapshots, and records corrupt-file diagnostics. Repository wiki files should stay valid and load through the same store as runtime data.",
+  "Status": 2,
+  "Confidence": 0.93,
+  "Tags": [
+    "project-wiki",
+    "storage",
+    "schema",
+    "diagnostics"
+  ],
+  "References": [
+    "project-wiki-data-folder-policy",
+    "project-wiki-validation-command"
+  ],
+  "Conflicts": [],
+  "UsageCount": 3,
+  "LastUpdated": "2026-05-12T00:00:00Z"
+}

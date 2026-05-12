@@ -1,0 +1,467 @@
+@page "/health"
+@rendermode InteractiveServer
+@inject MemoryApiClient Api
+@inject DashboardState State
+@inject IConfiguration Config
+@inject ISnackbar Snackbar
+@implements IAsyncDisposable
+
+<PageTitle>Health &amp; Stats</PageTitle>
+
+<MudText Typo="Typo.h4" GutterBottom="true">Health &amp; Stats</MudText>
+
+@if (_isLoading)
+{
+    <LoadingState Message="Loading health and stats..." />
+}
+else if (!string.IsNullOrWhiteSpace(_errorMessage))
+{
+    <ErrorState Title="Unable to load health dashboard"
+                Message="@_errorMessage"
+                ActionText="Retry"
+                OnAction="RefreshAsync" />
+}
+else
+{
+    <!-- Health Status -->
+    <MudPaper Class="pa-3 mb-4" Elevation="1">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@(_healthStatus == "Healthy" ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Error)"
+                     Color="@(_healthStatus == "Healthy" ? Color.Success : Color.Error)" />
+            <MudText Typo="Typo.h6">System Status: @_healthStatus</MudText>
+            <MudSpacer />
+            <MudChip T="string" Variant="Variant.Outlined" Size="Size.Small" Color="Color.Default">
+                Polling: @(_effectivePollingInterval.TotalSeconds.ToString("N0"))s
+            </MudChip>
+            <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="@RefreshAsync" />
+        </MudStack>
+    </MudPaper>
+
+    <!-- Stats Cards -->
+    @if (_stats is null)
+    {
+        <EmptyState Title="No stats available"
+                    Message="No stats snapshot has been received yet." />
+    }
+    else
+    {
+        <MudGrid Class="mb-4">
+            <MudItem xs="12" sm="6" md="3">
+                <MudCard Elevation="2">
+                    <MudCardContent Class="text-center">
+                        <MudIcon Icon="@Icons.Material.Filled.Storage" Color="Color.Primary" Size="Size.Large" />
+                        <MudText Typo="Typo.h3">@_stats.TotalCount</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Total Memories</MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudCard Elevation="2">
+                <MudCardContent Class="text-center">
+                    <MudIcon Icon="@Icons.Material.Filled.Star" Color="Color.Success" Size="Size.Large" />
+                    <MudText Typo="Typo.h3">@_stats.Core</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Core</MudText>
+                </MudCardContent>
+                </MudCard>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudCard Elevation="2">
+                <MudCardContent Class="text-center">
+                    <MudIcon Icon="@Icons.Material.Filled.Work" Color="Color.Warning" Size="Size.Large" />
+                    <MudText Typo="Typo.h3">@_stats.Working</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Working</MudText>
+                </MudCardContent>
+                </MudCard>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudCard Elevation="2">
+                <MudCardContent Class="text-center">
+                    <MudIcon Icon="@Icons.Material.Filled.Inbox" Color="Color.Info" Size="Size.Large" />
+                    <MudText Typo="Typo.h3">@_stats.Unconsolidated</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Unconsolidated</MudText>
+                </MudCardContent>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+
+        <MudGrid Class="mb-4">
+            <MudItem xs="12" sm="4">
+                <MudPaper Class="pa-4" Elevation="1">
+                    <MudText Typo="Typo.subtitle1">Deprecated</MudText>
+                    <MudText Typo="Typo.h5">@_stats.Deprecated</MudText>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudPaper Class="pa-4" Elevation="1">
+                    <MudText Typo="Typo.subtitle1">Avg. Confidence</MudText>
+                    <MudText Typo="Typo.h5">@_stats.AverageConfidence.ToString("P1")</MudText>
+                    <MudProgressLinear Value="@(_stats.AverageConfidence * 100)"
+                                       Color="Color.Info" Rounded="true" Class="mt-2" />
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudPaper Class="pa-4" Elevation="1">
+                    <MudText Typo="Typo.subtitle1">Total Usage Count</MudText>
+                    <MudText Typo="Typo.h5">@_stats.TotalUsage</MudText>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+
+        @if (_stats.TotalCount > 0)
+        {
+            <MudPaper Class="pa-4 mb-4" Elevation="1">
+                <MudText Typo="Typo.h6" GutterBottom="true">Lifecycle Distribution</MudText>
+                <MudStack Spacing="2">
+                    <div>
+                        <MudText Typo="Typo.body2">Core (@_stats.Core)</MudText>
+                        <MudProgressLinear Value="@(100.0 * _stats.Core / _stats.TotalCount)" Color="Color.Success" Rounded="true" />
+                    </div>
+                    <div>
+                        <MudText Typo="Typo.body2">Working (@_stats.Working)</MudText>
+                        <MudProgressLinear Value="@(100.0 * _stats.Working / _stats.TotalCount)" Color="Color.Primary" Rounded="true" />
+                    </div>
+                    <div>
+                        <MudText Typo="Typo.body2">Unconsolidated (@_stats.Unconsolidated)</MudText>
+                        <MudProgressLinear Value="@(100.0 * _stats.Unconsolidated / _stats.TotalCount)" Color="Color.Warning" Rounded="true" />
+                    </div>
+                    <div>
+                        <MudText Typo="Typo.body2">Deprecated (@_stats.Deprecated)</MudText>
+                        <MudProgressLinear Value="@(100.0 * _stats.Deprecated / _stats.TotalCount)" Color="Color.Default" Rounded="true" />
+                    </div>
+                </MudStack>
+            </MudPaper>
+        }
+    }
+
+    <MudPaper Class="pa-4" Elevation="1">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+            <MudText Typo="Typo.h6">Live Updates</MudText>
+            <MudSpacer />
+            <MudChip T="string" Color="@(_isConnected ? Color.Success : Color.Error)" Size="Size.Small">
+                @(_isConnected ? "Connected" : "Disconnected")
+            </MudChip>
+        </MudStack>
+
+        @if (_recentEvents.Count == 0)
+        {
+            <EmptyState Title="No live updates yet"
+                        Message="Waiting for memory update events from the worker." />
+        }
+        else
+        {
+            <MudTable Items="@_recentEvents" Dense="true" Hover="true">
+                <HeaderContent>
+                    <MudTh>Time</MudTh>
+                    <MudTh>Memory ID</MudTh>
+                    <MudTh>Action</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>@context.Timestamp.ToLocalTime().ToString("HH:mm:ss")</MudTd>
+                    <MudTd><MudText Typo="Typo.caption">@context.Id[..Math.Min(8, context.Id.Length)]...</MudText></MudTd>
+                    <MudTd>
+                        <MudChip T="string" Color="@ActionColor(context.Action)" Size="Size.Small">
+                            @context.Action
+                        </MudChip>
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </MudPaper>
+
+    <MudPaper Class="pa-4 mb-4" Elevation="1">
+        <MudText Typo="Typo.h6" GutterBottom="true">Background Services</MudText>
+        <MudTable Items="@_serviceStatuses" Dense="true" Hover="true" Bordered="false">
+            <HeaderContent>
+                <MudTh>Service</MudTh>
+                <MudTh>Interval</MudTh>
+                <MudTh>Last Run</MudTh>
+                <MudTh>Last Success</MudTh>
+                <MudTh>Last Failure</MudTh>
+                <MudTh>Duration</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Service">@context.ServiceName</MudTd>
+                <MudTd DataLabel="Interval">@context.IntervalLabel</MudTd>
+                <MudTd DataLabel="Last Run">@context.LastRunLabel</MudTd>
+                <MudTd DataLabel="Last Success">@context.LastSuccessLabel</MudTd>
+                <MudTd DataLabel="Last Failure">@context.LastFailureLabel</MudTd>
+                <MudTd DataLabel="Duration">@context.DurationLabel</MudTd>
+            </RowTemplate>
+        </MudTable>
+    </MudPaper>
+
+    <MudPaper Class="pa-4 mb-4" Elevation="1">
+        <MudText Typo="Typo.h6" GutterBottom="true">Diagnostics</MudText>
+        <MudGrid>
+            <MudItem xs="12" sm="6" md="3">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Connection Mode</MudText>
+                <MudText Typo="Typo.body2">@ConnectionModeLabel</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Polling Interval</MudText>
+                <MudText Typo="Typo.body2">@(_effectivePollingInterval.TotalSeconds.ToString("N0"))s</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Last Refreshed</MudText>
+                <MudText Typo="Typo.body2">@LastRefreshedLabel</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Worker API</MudText>
+                <MudText Typo="Typo.body2">@WorkerApiBaseUrl</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Worker Hub</MudText>
+                <MudText Typo="Typo.body2">@HubUrl</MudText>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+}
+
+@code {
+    private static readonly TimeSpan DefaultPollingInterval = TimeSpan.FromSeconds(10);
+
+    private static readonly IReadOnlyList<ServiceDefinition> ServiceDefinitions =
+    [
+        new("TriageService", "5 min"),
+        new("ConsolidationService", "24h"),
+        new("IndexingService", "1h")
+    ];
+
+    private StatsSnapshot? _stats;
+    private string _healthStatus = "Unknown";
+    private string? _errorMessage;
+    private bool _isLoading;
+    private List<MemoryUpdateEvent> _recentEvents = new();
+    private List<ServiceStatusRow> _serviceStatuses = ServiceDefinitions
+        .Select(def => ServiceStatusRow.FromUnknown(def.ServiceName, def.IntervalLabel))
+        .ToList();
+    private bool _isConnected;
+    private HubConnection? _hubConnection;
+    private CancellationTokenSource? _pollingCts;
+    private Task? _pollingTask;
+    private TimeSpan _effectivePollingInterval = DefaultPollingInterval;
+    private DateTime? _lastRefreshedUtc;
+
+    protected override async Task OnInitializedAsync()
+    {
+        State.StateChanged += OnSharedStateChanged;
+
+        if (State.CurrentStats is not null)
+        {
+            _stats = State.CurrentStats;
+        }
+
+        if (State.CurrentServiceTelemetry.Count > 0)
+        {
+            ApplyServiceTelemetry(State.CurrentServiceTelemetry);
+        }
+
+        _isLoading = true;
+        await RefreshAsync();
+        StartPolling();
+        await ConnectToHubAsync();
+        _isLoading = false;
+    }
+
+    private void OnSharedStateChanged()
+    {
+        _ = InvokeAsync(() =>
+        {
+            _stats = State.CurrentStats;
+            ApplyServiceTelemetry(State.CurrentServiceTelemetry);
+            StateHasChanged();
+        });
+    }
+
+    private async Task RefreshAsync()
+    {
+        _errorMessage = null;
+        try
+        {
+            _healthStatus = await Api.GetHealthAsync();
+
+            var stats = await Api.GetStatsAsync();
+            _stats = stats;
+            State.SetStats(stats);
+
+            var serviceTelemetry = await Api.GetServiceTelemetryAsync() ?? [];
+            ApplyServiceTelemetry(serviceTelemetry);
+            State.SetServiceTelemetry(serviceTelemetry);
+            _lastRefreshedUtc = DateTime.UtcNow;
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+            Snackbar.Add($"Failed to refresh health stats: {ex.Message}", Severity.Error);
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void ApplyServiceTelemetry(IReadOnlyList<BackgroundServiceTelemetry> serviceTelemetry)
+    {
+        var serviceMap = serviceTelemetry.ToDictionary(s => s.ServiceName, StringComparer.OrdinalIgnoreCase);
+
+        _serviceStatuses = ServiceDefinitions
+            .Select(def =>
+            {
+                if (serviceMap.TryGetValue(def.ServiceName, out var telemetry))
+                {
+                    return ServiceStatusRow.FromTelemetry(def.ServiceName, def.IntervalLabel, telemetry);
+                }
+
+                return ServiceStatusRow.FromUnknown(def.ServiceName, def.IntervalLabel);
+            })
+            .ToList();
+    }
+
+    private void StartPolling()
+    {
+        var pollSeconds = Config.GetValue<int?>("StatsPollingSeconds");
+        var interval = pollSeconds.HasValue && pollSeconds.Value > 0
+            ? TimeSpan.FromSeconds(pollSeconds.Value)
+            : DefaultPollingInterval;
+
+        _effectivePollingInterval = interval;
+        _pollingCts = new CancellationTokenSource();
+        _pollingTask = RunPollingLoopAsync(interval, _pollingCts.Token);
+    }
+
+    private async Task RunPollingLoopAsync(TimeSpan interval, CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            try
+            {
+                await Task.Delay(interval, cancellationToken);
+                await RefreshAsync();
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
+            catch
+            {
+                // Polling failure is non-fatal; loop continues for resiliency.
+            }
+        }
+    }
+
+    private string WorkerApiBaseUrl => Config["WorkerApiBaseUrl"] ?? "http://localhost:5196";
+    private string HubUrl => Config["WorkerHubUrl"] ?? "http://localhost:5196/hubs/dashboard";
+    private string ConnectionModeLabel => _isConnected ? "SignalR + Polling" : "Polling only";
+    private string LastRefreshedLabel => _lastRefreshedUtc.HasValue
+        ? _lastRefreshedUtc.Value.ToLocalTime().ToString("g")
+        : "Unknown";
+
+    private async Task ConnectToHubAsync()
+    {
+        var hubUrl = HubUrl;
+        try
+        {
+            _hubConnection = new HubConnectionBuilder()
+                .WithUrl(hubUrl)
+                .WithAutomaticReconnect()
+                .Build();
+
+            _hubConnection.On<MemoryUpdateEvent>("ReceiveMemoryUpdate", async update =>
+            {
+                _recentEvents.Insert(0, update);
+                if (_recentEvents.Count > 50)
+                {
+                    _recentEvents = _recentEvents.Take(50).ToList();
+                }
+
+                await RefreshAsync();
+            });
+
+            _hubConnection.On<StatsSnapshot>("ReceiveStats", async stats =>
+            {
+                _stats = stats;
+                _lastRefreshedUtc = DateTime.UtcNow;
+                State.SetStats(stats);
+                await InvokeAsync(StateHasChanged);
+            });
+
+            _hubConnection.Reconnected += _ => { _isConnected = true; return InvokeAsync(StateHasChanged); };
+            _hubConnection.Reconnecting += _ => { _isConnected = false; return InvokeAsync(StateHasChanged); };
+            _hubConnection.Closed += _ => { _isConnected = false; return InvokeAsync(StateHasChanged); };
+
+            await _hubConnection.StartAsync();
+            _isConnected = true;
+        }
+        catch
+        {
+            _isConnected = false;
+            // Hub connection failure is non-fatal — dashboard still shows stats via polling.
+        }
+    }
+
+    private Color ActionColor(string action) => action switch
+    {
+        "Created" => Color.Success,
+        "Updated" => Color.Primary,
+        "Deleted" => Color.Error,
+        _ => Color.Default
+    };
+
+    private sealed record ServiceDefinition(string ServiceName, string IntervalLabel);
+
+    private sealed record ServiceStatusRow(
+        string ServiceName,
+        string IntervalLabel,
+        string LastRunLabel,
+        string LastSuccessLabel,
+        string LastFailureLabel,
+        string DurationLabel)
+    {
+        public static ServiceStatusRow FromUnknown(string serviceName, string intervalLabel) =>
+            new(serviceName, intervalLabel, "Unknown", "Unknown", "Unknown", "Unknown");
+
+        public static ServiceStatusRow FromTelemetry(
+            string serviceName,
+            string intervalLabel,
+            BackgroundServiceTelemetry telemetry) =>
+            new(
+                serviceName,
+                intervalLabel,
+                FormatTimestamp(telemetry.LastRunUtc),
+                FormatTimestamp(telemetry.LastSuccessUtc),
+                FormatTimestamp(telemetry.LastFailureUtc),
+                FormatDuration(telemetry.LastDurationMs));
+
+        private static string FormatTimestamp(DateTime? timestamp) =>
+            timestamp.HasValue ? timestamp.Value.ToLocalTime().ToString("g") : "Unknown";
+
+        private static string FormatDuration(double? durationMs) =>
+            durationMs.HasValue ? $"{durationMs.Value:N0} ms" : "Unknown";
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        State.StateChanged -= OnSharedStateChanged;
+
+        if (_pollingCts is not null)
+        {
+            await _pollingCts.CancelAsync();
+            _pollingCts.Dispose();
+        }
+
+        if (_pollingTask is not null)
+        {
+            try
+            {
+                await _pollingTask;
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected when the component is disposed.
+            }
+        }
+
+        if (_hubConnection is not null)
+        {
+            await _hubConnection.DisposeAsync();
+        }
+    }
+}

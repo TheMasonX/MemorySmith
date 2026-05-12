@@ -1,0 +1,12 @@
+<MudPaper Class="pa-6" Elevation="0">
+    <MudStack AlignItems="AlignItems.Center" Spacing="2">
+        <MudIcon Icon="@Icons.Material.Filled.Inbox" Color="Color.Default" Size="Size.Large" />
+        <MudText Typo="Typo.h6">@Title</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">@Message</MudText>
+    </MudStack>
+</MudPaper>
+
+@code {
+    [Parameter] public string Title { get; set; } = "Nothing to show";
+    [Parameter] public string Message { get; set; } = "No data is currently available.";
+}

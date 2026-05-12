@@ -296,3 +296,55 @@ GitHub Actions workflow:
 - Should consolidation be more ML‑driven?  
 - Should embeddings be recomputed on every write or batched?  
 - Should we support multi‑writer concurrency in Postgres mode? 
+
+---
+
+## **Appendix: P0 Implementation Status (2025-04-24)**
+
+### **Overview**
+P0 stabilization phase completed. Core services now functional with security hardening and audit logging.
+
+### **Completion Summary**
+
+| Component | Requirement | Status | Evidence |
+|-----------|-------------|--------|----------|
+| **ConsolidationService** | Dedup/promote/deprecate pipeline | ✅ Complete | 8 new NUnit tests, all passing |
+| **Deduplication Logic** | Merge identical memories by title | ✅ Complete | Merges usage count, tags, references |
+| **Promotion Criteria** | Working→Core (age≥30d, refs≥2, conf≥0.7) | ✅ Complete | Validated via scoring integration |
+| **Deprecation Logic** | Score<0.2 → Deprecated | ✅ Complete | Tested with 0.1 and 0.03 scores |
+| **FileMemoryStore Security** | ID sanitization + path traversal protection | ✅ Complete | Regex `[/\\:?*]` → `_` applied in Load/Save/Delete |
+| **Atomic Writes** | Temp-file-then-move pattern | ✅ Complete | No partial corruption on failure |
+| **Event Persistence** | IEventStore abstraction | ✅ Complete | Append-only log with filtering |
+| **FileEventStore** | Thread-safe event log implementation | ✅ Complete | One JSON event per line |
+| **TriageService Integration** | Persist state transition events | ✅ Complete | Wired to MemoryStateMachine.Evaluate() |
+| **DI Registration** | IEventStore in Program.cs | ✅ Complete | Configurable event log path |
+| **Tests** | Unit + integration coverage | ✅ Complete | 30/30 passed (22 existing + 8 new) |
+| **Build Validation** | Zero errors, zero warnings | ✅ Complete | Clean build, net10.0 target |
+
+### **Code Changes**
+
+#### **Files Created**
+- `MemorySmith.Tests/ConsolidationServiceTests.cs` (235 lines, 8 tests)
+- `MemorySmith.Storage/IEventStore.cs` (15 lines, interface)
+- `MemorySmith.Storage/FileEventStore.cs` (85 lines, append-only implementation)
+
+#### **Files Modified**
+- `MemorySmith.Worker/Services/ConsolidationService.cs` (+110 lines, stub → functional)
+- `MemorySmith.Storage/FileMemoryStore.cs` (+23 lines, security hardening)
+- `MemorySmith.Worker/Services/TriageService.cs` (+5 lines, event persistence)
+- `MemorySmith.Worker/Program.cs` (+5 lines, DI registration)
+- `MemorySmith.Tests/MemorySmith.Tests.csproj` (added project reference + NuGet)
+
+### **Test Results**
+```
+Framework: NUnit 4.3.2
+Total: 30 tests
+├─ Consolidation tests: 8 new, all passing ✅
+├─ Memory model tests: 7 existing, all passing ✅
+├─ File store tests: 7 existing, all passing ✅
+├─ Index tests: 4 existing, all passing ✅
+└─ State machine tests: 4 existing, all passing ✅
+
+Duration: ~351 ms
+Errors: 0
+Warnings: 0

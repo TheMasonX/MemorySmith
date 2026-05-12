@@ -1,0 +1,146 @@
+@page "/"
+@rendermode InteractiveServer
+@inject MemoryApiClient Api
+@inject DashboardState State
+@inject ISnackbar Snackbar
+@implements IDisposable
+
+<PageTitle>MemorySmith Dashboard</PageTitle>
+
+<MudText Typo="Typo.h4" GutterBottom="true">Welcome to MemorySmith</MudText>
+<MudText Typo="Typo.body1" Class="mb-4">
+    MemorySmith is a modular .NET memory engine for structured knowledge management.
+    Use the navigation to explore memories or monitor system health.
+</MudText>
+
+@if (_isLoading)
+{
+    <LoadingState Message="Loading dashboard summary..." />
+}
+else if (!string.IsNullOrWhiteSpace(_errorMessage))
+{
+    <ErrorState Title="Unable to load dashboard summary"
+                Message="@_errorMessage"
+                ActionText="Retry"
+                OnAction="LoadSummaryAsync" />
+}
+else if (_stats is not null)
+{
+    <MudGrid Class="mb-4">
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4" Elevation="1">
+                <MudText Typo="Typo.subtitle2">Total Memories</MudText>
+                <MudText Typo="Typo.h5">@_stats.TotalCount</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4" Elevation="1">
+                <MudText Typo="Typo.subtitle2">Average Confidence</MudText>
+                <MudText Typo="Typo.h5">@_stats.AverageConfidence.ToString("P1")</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4" Elevation="1">
+                <MudText Typo="Typo.subtitle2">Total Usage</MudText>
+                <MudText Typo="Typo.h5">@_stats.TotalUsage</MudText>
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            <MudPaper Class="pa-4" Elevation="1">
+                <MudText Typo="Typo.subtitle2">Selected Memory</MudText>
+                <MudText Typo="Typo.h6">@(_selectedMemoryTitle ?? "None")</MudText>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+
+<MudGrid>
+    <MudItem xs="12" sm="6">
+        <MudCard>
+            <MudCardContent>
+                <MudText Typo="Typo.h6">
+                    <MudIcon Icon="@Icons.Material.Filled.Memory" Class="mr-2" />Memory Viewer
+                </MudText>
+                <MudText Typo="Typo.body2">
+                    Browse, search, filter, and edit memory records. View full details and manage the memory lifecycle.
+                </MudText>
+            </MudCardContent>
+            <MudCardActions>
+                <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/memories">Open Viewer</MudButton>
+            </MudCardActions>
+        </MudCard>
+    </MudItem>
+    <MudItem xs="12" sm="6">
+        <MudCard>
+            <MudCardContent>
+                <MudText Typo="Typo.h6">
+                    <MudIcon Icon="@Icons.Material.Filled.MonitorHeart" Class="mr-2" />Health &amp; Stats
+                </MudText>
+                <MudText Typo="Typo.body2">
+                    Monitor system health, view memory statistics by lifecycle status, and watch live updates.
+                </MudText>
+            </MudCardContent>
+            <MudCardActions>
+                <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/health">Open Dashboard</MudButton>
+            </MudCardActions>
+        </MudCard>
+    </MudItem>
+</MudGrid>
+
+@code {
+    private StatsSnapshot? _stats;
+    private string? _selectedMemoryTitle;
+    private string? _errorMessage;
+    private bool _isLoading;
+
+    protected override async Task OnInitializedAsync()
+    {
+        State.StateChanged += OnStateChanged;
+        _selectedMemoryTitle = State.SelectedMemory?.Title;
+
+        if (State.CurrentStats is not null)
+        {
+            _stats = State.CurrentStats;
+        }
+
+        await LoadSummaryAsync();
+    }
+
+    private async Task LoadSummaryAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+        try
+        {
+            var stats = await Api.GetStatsAsync();
+            _stats = stats;
+            State.SetStats(stats);
+            _selectedMemoryTitle = State.SelectedMemory?.Title;
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+            Snackbar.Add($"Failed to load summary: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void OnStateChanged()
+    {
+        _ = InvokeAsync(() =>
+        {
+            _stats = State.CurrentStats;
+            _selectedMemoryTitle = State.SelectedMemory?.Title;
+            StateHasChanged();
+        });
+    }
+
+    public void Dispose()
+    {
+        State.StateChanged -= OnStateChanged;
+    }
+}

@@ -1,0 +1,20 @@
+{
+  "Id": "project-wiki-data-folder-policy",
+  "Title": "Data Folder Project Wiki Policy",
+  "Content": "The repository Data/Memories folder is the project memory wiki for MemorySmith itself. Application defaults should continue pointing MemorySmith:DataPath to ../Data/Memories. Tests that need real project memory data should copy this folder into a temp directory and exercise the copy, so the source wiki remains stable while still acting as the application testbase.",
+  "Status": 2,
+  "Confidence": 0.98,
+  "Tags": [
+    "project-wiki",
+    "data-folder",
+    "fixture",
+    "testbase"
+  ],
+  "References": [
+    "project-wiki-active-architecture",
+    "project-wiki-validation-command"
+  ],
+  "Conflicts": [],
+  "UsageCount": 4,
+  "LastUpdated": "2026-05-12T00:00:00Z"
+}

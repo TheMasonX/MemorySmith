@@ -1,0 +1,21 @@
+{
+  "Id": "project-wiki-windows-service-operations",
+  "Title": "Windows Service Operations Current State",
+  "Content": "MemorySmith.App supports operational command-line flags for installing and uninstalling itself as a Windows Service. Use --install-service or --uninstall-service before normal host startup. Install options include --service-name, --service-display-name, --service-description, and --service-start-type. Arguments after -- are preserved as runtime arguments for the service process, such as --urls http://localhost:5089. The app also calls UseWindowsService so the same executable can run under the Windows Service Control Manager. These flags are deployment operations, not memory record fields.",
+  "Status": 2,
+  "Confidence": 0.9,
+  "Tags": [
+    "project-wiki",
+    "windows-service",
+    "operations",
+    "deployment",
+    "current-state"
+  ],
+  "References": [
+    "project-wiki-active-architecture",
+    "project-wiki-validation-command"
+  ],
+  "Conflicts": [],
+  "UsageCount": 0,
+  "LastUpdated": "2026-05-12T00:00:00Z"
+}

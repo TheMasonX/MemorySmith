@@ -1,0 +1,21 @@
+{
+  "Id": "project-wiki-semantic-search-gap",
+  "Title": "Semantic Search Gap",
+  "Content": "Current MemorySmith search is keyword and tag filtering over file-backed records. That is useful and testable, but it does not understand conceptual similarity. A more general tool needs semantic search with embeddings, query/result scoring, match reasons, fixture tests with real project memories, and a migration path that does not force PostgreSQL before the product needs it.",
+  "Status": 2,
+  "Confidence": 0.94,
+  "Tags": [
+    "project-wiki",
+    "semantic-search",
+    "missing-feature",
+    "generalization",
+    "search"
+  ],
+  "References": [
+    "project-wiki-search-roadmap",
+    "project-wiki-scope-boundaries"
+  ],
+  "Conflicts": [],
+  "UsageCount": 2,
+  "LastUpdated": "2026-05-12T00:00:00Z"
+}

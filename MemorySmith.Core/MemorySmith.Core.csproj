@@ -7,9 +7,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Include="Docs\Plans\DashboardPlanV2.md" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Folder Include="Docs\Memories\" />
-    <Folder Include="Docs\ProgressReports\" />
-    <Folder Include="Docs\Reviews\" />
     <Folder Include="Docs\Unconsolidated\" />
   </ItemGroup>
 
