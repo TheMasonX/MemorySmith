@@ -30,7 +30,7 @@ public class McpController : ControllerBase
             Name = "MemorySmithWiki",
             Endpoint = "/mcp",
             Transport = "HTTP JSON-RPC",
-            Tools = new[] { "memorysmith_search", "memorysmith_semantic_search", "memorysmith_get" }
+            Tools = new[] { "memorysmith_search", "memorysmith_semantic_search", "memorysmith_hybrid_search", "memorysmith_get" }
         });
     }
 
@@ -96,6 +96,7 @@ public class McpController : ControllerBase
         {
             "memorysmith_search" => ToolText(FormatKeywordResults(await _memories.SearchAsync(ReadKeywordQuery(argumentsElement), cancellationToken))),
             "memorysmith_semantic_search" => ToolText(FormatSemanticResults(await _memories.SemanticSearchAsync(ReadSemanticQuery(argumentsElement), cancellationToken))),
+            "memorysmith_hybrid_search" => ToolText(FormatHybridResults(await _memories.HybridSearchAsync(ReadHybridQuery(argumentsElement), cancellationToken))),
             "memorysmith_get" => ToolText(await FormatRecordAsync(argumentsElement, cancellationToken)),
             _ => ToolText($"Unknown MemorySmith tool '{toolName}'.", isError: true)
         };
@@ -127,6 +128,12 @@ public class McpController : ControllerBase
         Tags: GetString(argumentsElement, "tags"),
         Limit: GetInt(argumentsElement, "limit", 20));
 
+    private static HybridMemorySearchQuery ReadHybridQuery(JsonElement argumentsElement) => new(
+        Query: GetString(argumentsElement, "query"),
+        Status: GetStatus(argumentsElement),
+        Tags: GetString(argumentsElement, "tags"),
+        Limit: GetInt(argumentsElement, "limit", 20));
+
     private static string FormatKeywordResults(IReadOnlyList<MemoryRecord> records)
     {
         if (records.Count == 0)
@@ -147,6 +154,17 @@ public class McpController : ControllerBase
 
         return string.Join(Environment.NewLine + Environment.NewLine, results.Select(result =>
             $"- {result.Id}: {result.Title}{Environment.NewLine}  Score: {result.Score:0.###}{Environment.NewLine}  Match: {result.MatchReason}{Environment.NewLine}  Tags: {string.Join(", ", result.Tags)}{Environment.NewLine}  {result.Snippet}"));
+    }
+
+    private static string FormatHybridResults(IReadOnlyList<MemorySearchResult> results)
+    {
+        if (results.Count == 0)
+        {
+            return "No hybrid search results.";
+        }
+
+        return string.Join(Environment.NewLine + Environment.NewLine, results.Select(result =>
+            $"- {result.Id}: {result.Title}{Environment.NewLine}  RRF Score: {result.Score:0.######}{Environment.NewLine}  Match: {result.MatchReason}{Environment.NewLine}  Tags: {string.Join(", ", result.Tags)}{Environment.NewLine}  {result.Snippet}"));
     }
 
     private static JsonObject BuildInitializeResult() => new()
@@ -174,6 +192,10 @@ public class McpController : ControllerBase
             BuildTool(
                 "memorysmith_semantic_search",
                 "Search MemorySmith wiki records with local semantic token scoring and match explanations.",
+                BuildSearchSchema()),
+            BuildTool(
+                "memorysmith_hybrid_search",
+                "Search MemorySmith wiki records by fusing Lucene-style lexical rank and local semantic rank with reciprocal rank fusion.",
                 BuildSearchSchema()),
             BuildTool(
                 "memorysmith_get",

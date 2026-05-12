@@ -36,6 +36,7 @@
             <MudButtonGroup Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" Class="wiki-mode-toggle">
                 <MudButton Variant="@(_searchMode == SearchMode.Keyword ? Variant.Filled : Variant.Outlined)" OnClick="@(() => SetSearchMode(SearchMode.Keyword))">Keyword</MudButton>
                 <MudButton Variant="@(_searchMode == SearchMode.Semantic ? Variant.Filled : Variant.Outlined)" OnClick="@(() => SetSearchMode(SearchMode.Semantic))">Semantic</MudButton>
+                <MudButton Variant="@(_searchMode == SearchMode.Hybrid ? Variant.Filled : Variant.Outlined)" OnClick="@(() => SetSearchMode(SearchMode.Hybrid))">Hybrid</MudButton>
             </MudButtonGroup>
 
             <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Search" OnClick="SearchAsync">Search</MudButton>
@@ -50,7 +51,7 @@
                 <MudText Typo="Typo.subtitle2">Results</MudText>
                 @if (_isSearchMode)
                 {
-                    <span class="wiki-mode-label">@(_isSemanticSearchMode ? "Semantic" : "Keyword")</span>
+                    <span class="wiki-mode-label">@SearchModeLabel</span>
                 }
             </div>
 
@@ -228,8 +229,19 @@
     private bool _isEditing;
 
     private int TotalPages => Math.Max(1, (int)Math.Ceiling((double)_totalCount / _pageSize));
-    private string SearchLabel => _searchMode == SearchMode.Semantic ? "Semantic search" : "Keyword search";
-    private string SearchPlaceholder => _searchMode == SearchMode.Semantic ? "Concept, workflow, or related idea" : "Title, content, or tag";
+    private string SearchModeLabel => _searchMode.ToString();
+    private string SearchLabel => _searchMode switch
+    {
+        SearchMode.Semantic => "Semantic search",
+        SearchMode.Hybrid => "Hybrid search",
+        _ => "Keyword search"
+    };
+    private string SearchPlaceholder => _searchMode switch
+    {
+        SearchMode.Semantic => "Concept, workflow, or related idea",
+        SearchMode.Hybrid => "Lexical terms plus related concepts",
+        _ => "Title, content, or tag"
+    };
 
     protected override async Task OnInitializedAsync()
     {
@@ -256,13 +268,19 @@
     private async Task SearchAsync()
     {
         _isLoading = true;
-        _isSemanticSearchMode = _searchMode == SearchMode.Semantic;
+        _isSemanticSearchMode = _searchMode is SearchMode.Semantic or SearchMode.Hybrid;
 
-        if (_isSemanticSearchMode)
+        if (_searchMode == SearchMode.Semantic)
         {
             var semanticResults = await Memories.SemanticSearchAsync(new SemanticMemorySearchQuery(_searchQuery, _statusFilter, _tagsFilter, 100), CancellationToken.None);
             _semanticMatches = semanticResults.ToDictionary(result => result.Id, StringComparer.OrdinalIgnoreCase);
             _memories = semanticResults.Select(ToMetadata).ToList();
+        }
+        else if (_searchMode == SearchMode.Hybrid)
+        {
+            var hybridResults = await Memories.HybridSearchAsync(new HybridMemorySearchQuery(_searchQuery, _statusFilter, _tagsFilter, 100), CancellationToken.None);
+            _semanticMatches = hybridResults.ToDictionary(result => result.Id, StringComparer.OrdinalIgnoreCase);
+            _memories = hybridResults.Select(ToMetadata).ToList();
         }
         else
         {
@@ -541,6 +559,7 @@
     private enum SearchMode
     {
         Keyword,
-        Semantic
+        Semantic,
+        Hybrid
     }
 }

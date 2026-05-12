@@ -1,7 +1,7 @@
 {
   "Id": "project-wiki-mcp-search-tools-current",
   "Title": "MCP Search Tools Current State",
-  "Content": "MemorySmith.App now exposes POST /api/memories/search/semantic for local semantic baseline ranking and /mcp for HTTP JSON-RPC tool access. The MCP tools are memorysmith_search, memorysmith_semantic_search, and memorysmith_get. .vscode/mcp.json points directly at http://localhost:5089/mcp. The implementation is covered by McpAndSemanticSearchTests, which use copied Data/Memories fixtures so the source project wiki remains stable.",
+  "Content": "MemorySmith.App now exposes POST /api/memories/search/semantic for local semantic baseline ranking, POST /api/memories/search/hybrid for Lucene.NET plus semantic RRF ranking, and /mcp for HTTP JSON-RPC tool access. The MCP tools are memorysmith_search, memorysmith_semantic_search, memorysmith_hybrid_search, and memorysmith_get. .vscode/mcp.json points directly at http://localhost:5089/mcp. The implementation is covered by McpAndSemanticSearchTests, which use copied Data/Memories fixtures so the source project wiki remains stable.",
   "Status": 2,
   "Confidence": 0.93,
   "Tags": [
@@ -9,12 +9,15 @@
     "mcp",
     "search",
     "semantic-search",
+    "hybrid-search",
+    "rrf",
     "current-state",
     "tooling"
   ],
   "References": [
     "project-wiki-mcp-integration",
     "project-wiki-search-roadmap",
+    "project-wiki-hybrid-search-rrf",
     "project-wiki-semantic-search-gap",
     "project-wiki-data-folder-policy"
   ],

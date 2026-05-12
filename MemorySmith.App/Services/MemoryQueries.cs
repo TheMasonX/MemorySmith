@@ -8,6 +8,8 @@ public sealed record MemorySearchQuery(string? Query = null, MemoryStatus? Statu
 
 public sealed record SemanticMemorySearchQuery(string? Query = null, MemoryStatus? Status = null, string? Tags = null, int Limit = 20);
 
+public sealed record HybridMemorySearchQuery(string? Query = null, MemoryStatus? Status = null, string? Tags = null, int Limit = 20);
+
 public sealed record MemorySearchResult(
 	string Id,
 	string Title,

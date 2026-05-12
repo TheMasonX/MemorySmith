@@ -79,6 +79,12 @@ public class MemoriesController : ControllerBase
         return Ok(await _memories.SemanticSearchAsync(request, cancellationToken));
     }
 
+    [HttpPost("search/hybrid")]
+    public async Task<ActionResult<IReadOnlyList<MemorySearchResult>>> HybridSearch([FromBody] HybridMemorySearchQuery request, CancellationToken cancellationToken)
+    {
+        return Ok(await _memories.HybridSearchAsync(request, cancellationToken));
+    }
+
     [HttpPost("{id}/usage")]
     public async Task<IActionResult> IncrementUsage(string id, CancellationToken cancellationToken)
     {

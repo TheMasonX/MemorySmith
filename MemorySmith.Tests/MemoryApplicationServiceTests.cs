@@ -170,6 +170,46 @@ public class MemoryApplicationServiceTests
     }
 
     [Test]
+    public async Task HybridSearchAsync_FusesLexicalAndSemanticRanksWithRrf()
+    {
+        _store.Save(new MemoryRecord
+        {
+            Id = "hybrid-result",
+            Title = "Hybrid Search RRF",
+            Content = "Lucene style lexical analysis combines with semantic vector retrieval through reciprocal rank fusion.",
+            Status = MemoryStatus.Core,
+            Confidence = 0.92,
+            Tags = ["project-wiki", "search"],
+            UsageCount = 4,
+            LastUpdated = new DateTime(2026, 05, 12, 0, 0, 0, DateTimeKind.Utc)
+        });
+        _store.Save(new MemoryRecord
+        {
+            Id = "semantic-only",
+            Title = "Embedding Search Roadmap",
+            Content = "Conceptual similarity and vector scoring are future search improvements.",
+            Status = MemoryStatus.Core,
+            Tags = ["project-wiki", "search"],
+            LastUpdated = new DateTime(2026, 05, 13, 0, 0, 0, DateTimeKind.Utc)
+        });
+
+        var results = await _service.HybridSearchAsync(
+            new HybridMemorySearchQuery(Query: "lucene vector fusion", Tags: "project-wiki", Limit: 5),
+            CancellationToken.None);
+
+        var result = results.First();
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Id, Is.EqualTo("hybrid-result"));
+            Assert.That(result.Score, Is.GreaterThan(0));
+            Assert.That(result.MatchReason, Does.Contain("RRF"));
+            Assert.That(result.MatchReason, Does.Contain("lexical rank"));
+            Assert.That(result.MatchReason, Does.Contain("semantic rank"));
+            Assert.That(result.Snippet, Does.Contain("semantic vector retrieval"));
+        });
+    }
+
+    [Test]
     public async Task IncrementUsageAsync_UpdatesRecordAuditsAndPublishesStats()
     {
         _store.Save(new MemoryRecord { Id = "usage", Title = "Usage", Content = "Track me", UsageCount = 2 });

@@ -55,6 +55,34 @@ public class McpAndSemanticSearchTests
     }
 
     [Test]
+    public async Task HybridSearchApi_ReturnsRrfRankedProjectWikiMatches()
+    {
+        var dataPath = ProjectWikiFixture.CopyToTemp(_tempRoot);
+        await using var factory = CreateFactory(dataPath);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/api/memories/search/hybrid", new
+        {
+            Query = "lucene vector rrf hybrid search",
+            Tags = "project-wiki",
+            Limit = 5
+        });
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+
+        using var document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+        var results = document.RootElement.EnumerateArray().ToList();
+
+        Assert.That(results, Is.Not.Empty);
+        Assert.Multiple(() =>
+        {
+            Assert.That(results[0].GetProperty("id").GetString(), Is.EqualTo("project-wiki-hybrid-search-rrf"));
+            Assert.That(results[0].GetProperty("score").GetDouble(), Is.GreaterThan(0));
+            Assert.That(results[0].GetProperty("matchReason").GetString(), Does.Contain("RRF"));
+        });
+    }
+
+    [Test]
     public async Task McpToolsList_ExposesWikiSearchTools()
     {
         var dataPath = ProjectWikiFixture.CopyToTemp(_tempRoot);
@@ -80,7 +108,39 @@ public class McpAndSemanticSearchTests
 
         Assert.That(toolNames, Does.Contain("memorysmith_search"));
         Assert.That(toolNames, Does.Contain("memorysmith_semantic_search"));
+        Assert.That(toolNames, Does.Contain("memorysmith_hybrid_search"));
         Assert.That(toolNames, Does.Contain("memorysmith_get"));
+    }
+
+    [Test]
+    public async Task McpHybridSearchTool_ReturnsProjectWikiRecord()
+    {
+        var dataPath = ProjectWikiFixture.CopyToTemp(_tempRoot);
+        await using var factory = CreateFactory(dataPath);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/mcp", new
+        {
+            JsonRpc = "2.0",
+            Id = "hybrid-search",
+            Method = "tools/call",
+            Params = new
+            {
+                Name = "memorysmith_hybrid_search",
+                Arguments = new
+                {
+                    Query = "lucene vector rrf hybrid search",
+                    Tags = "project-wiki",
+                    Limit = 5
+                }
+            }
+        }, JsonSerializerOptions.Web);
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+
+        var text = await ExtractFirstToolTextAsync(response);
+        Assert.That(text, Does.Contain("project-wiki-hybrid-search-rrf"));
+        Assert.That(text, Does.Contain("RRF"));
     }
 
     [Test]

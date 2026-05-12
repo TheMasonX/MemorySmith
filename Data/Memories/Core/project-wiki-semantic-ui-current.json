@@ -1,13 +1,14 @@
 {
   "Id": "project-wiki-semantic-ui-current",
   "Title": "Memory Workbench UI Current State",
-  "Content": "The /memories page is now a compact VS Code-inspired dark workbench for scanning and editing the project wiki. It keeps a dense command bar, scrollable results pane, persistent detail pane, Keyword/Semantic mode switch, semantic snippets, scores, match reasons, tag/reference chips, and copy-to-clipboard actions for raw content or agent context. The layout intentionally uses a fixed app shell with internal pane scrolling so agents can see search controls, results, and selected memory content without long document scrolling. Semantic mode still uses the local token, tag, title, reference, and alias scoring baseline already exposed through the API and MCP tools; it does not add embeddings, vector storage, or a new search subsystem.",
+  "Content": "The /memories page is now a compact VS Code-inspired dark workbench for scanning and editing the project wiki. It keeps a dense command bar, scrollable results pane, persistent detail pane, Keyword/Semantic/Hybrid mode switch, semantic and hybrid snippets, scores, match reasons, tag/reference chips, and copy-to-clipboard actions for raw content or agent context. The layout intentionally uses a fixed app shell with internal pane scrolling so agents can see search controls, results, and selected memory content without long document scrolling. Semantic mode still uses the local token, tag, title, reference, and alias scoring baseline; Hybrid mode fuses Lucene.NET lexical ranking with that semantic signal using RRF. The current hybrid path does not add embeddings or vector storage yet.",
   "Status": 2,
   "Confidence": 0.91,
   "Tags": [
     "project-wiki",
     "search",
     "semantic-search",
+    "hybrid-search",
     "ui",
     "workbench",
     "dark-mode",
@@ -18,6 +19,7 @@
   "References": [
     "project-wiki-mcp-search-tools-current",
     "project-wiki-search-roadmap",
+    "project-wiki-hybrid-search-rrf",
     "project-wiki-semantic-search-gap"
   ],
   "Conflicts": [],

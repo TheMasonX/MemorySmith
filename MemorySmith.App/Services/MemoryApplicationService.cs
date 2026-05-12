@@ -1,4 +1,7 @@
 using System.Text.RegularExpressions;
+using Lucene.Net.Analysis.Standard;
+using Lucene.Net.Analysis.TokenAttributes;
+using Lucene.Net.Util;
 using MemorySmith.Core.Indexing;
 using MemorySmith.Core.Models;
 using MemorySmith.Storage;
@@ -8,6 +11,9 @@ namespace MemorySmith.App.Services;
 
 public class MemoryApplicationService
 {
+    private const int ReciprocalRankFusionK = 60;
+    private const LuceneVersion LuceneMatchVersion = LuceneVersion.LUCENE_48;
+
     private static readonly Regex SafeIdPattern = new("^[A-Za-z0-9_-]+$", RegexOptions.Compiled);
     private static readonly Regex SearchTokenPattern = new("[A-Za-z0-9]+", RegexOptions.Compiled);
     private static readonly HashSet<string> SearchStopWords = new(StringComparer.OrdinalIgnoreCase)
@@ -116,11 +122,58 @@ public class MemoryApplicationService
         var limit = Clamp(query.Limit, 1, _options.Limits.MaxSearchLimit, 20);
         var tagFilters = NormalizeFilterList(query.Tags);
         var queryTokens = ExpandSearchTokens(TokenizeSearchText(query.Query ?? string.Empty));
-        var records = ApplyListFilters(_store.LoadAll(), query.Status, tagFilters);
+        var records = ApplyListFilters(_store.LoadAll(), query.Status, tagFilters).ToList();
 
-        var results = records
-            .Select(record => ScoreSemanticMatch(record, query.Query, queryTokens))
-            .Where(result => result.Score > 0 || queryTokens.Count == 0)
+        var results = RankSemanticResults(records, query.Query, queryTokens)
+            .Take(limit)
+            .ToList();
+
+        return Task.FromResult<IReadOnlyList<MemorySearchResult>>(results);
+    }
+
+    public Task<IReadOnlyList<MemorySearchResult>> HybridSearchAsync(HybridMemorySearchQuery query, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var limit = Clamp(query.Limit, 1, _options.Limits.MaxSearchLimit, 20);
+        var tagFilters = NormalizeFilterList(query.Tags);
+        var records = ApplyListFilters(_store.LoadAll(), query.Status, tagFilters).ToList();
+        var semanticTokens = ExpandSearchTokens(TokenizeSearchText(query.Query ?? string.Empty));
+        var lexicalTokens = AnalyzeLexicalText(query.Query ?? string.Empty);
+
+        var lexicalResults = RankLexicalResults(records, query.Query, lexicalTokens);
+        var semanticResults = RankSemanticResults(records, query.Query, semanticTokens);
+        var lexicalRanks = ToRankMap(lexicalResults);
+        var semanticRanks = ToRankMap(semanticResults);
+        var lexicalById = lexicalResults.ToDictionary(result => result.Id, StringComparer.OrdinalIgnoreCase);
+        var semanticById = semanticResults.ToDictionary(result => result.Id, StringComparer.OrdinalIgnoreCase);
+        var recordsById = records.ToDictionary(record => record.Id, StringComparer.OrdinalIgnoreCase);
+        var candidateIds = lexicalRanks.Keys
+            .Union(semanticRanks.Keys, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var results = candidateIds
+            .Select(id =>
+            {
+                var record = recordsById[id];
+                lexicalRanks.TryGetValue(id, out var lexicalRank);
+                semanticRanks.TryGetValue(id, out var semanticRank);
+                lexicalById.TryGetValue(id, out var lexicalResult);
+                semanticById.TryGetValue(id, out var semanticResult);
+
+                var score = ReciprocalRankScore(lexicalRank) + ReciprocalRankScore(semanticRank);
+                return new MemorySearchResult(
+                    record.Id,
+                    record.Title,
+                    record.Status,
+                    record.Confidence,
+                    Math.Round(score, 6),
+                    record.Tags,
+                    record.UsageCount,
+                    semanticResult?.Snippet ?? lexicalResult?.Snippet ?? BuildSnippet(record.Content, semanticTokens),
+                    BuildHybridMatchReason(lexicalRank, lexicalResult, semanticRank, semanticResult),
+                    record.LastUpdated);
+            })
             .OrderByDescending(result => result.Score)
             .ThenByDescending(result => result.LastUpdated)
             .ThenBy(result => result.Title, StringComparer.OrdinalIgnoreCase)
@@ -344,6 +397,46 @@ public class MemoryApplicationService
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
+    private static IReadOnlyList<MemorySearchResult> RankSemanticResults(
+        IReadOnlyList<MemoryRecord> records,
+        string? query,
+        HashSet<string> queryTokens) =>
+        records
+            .Select(record => ScoreSemanticMatch(record, query, queryTokens))
+            .Where(result => result.Score > 0 || queryTokens.Count == 0)
+            .OrderByDescending(result => result.Score)
+            .ThenByDescending(result => result.LastUpdated)
+            .ThenBy(result => result.Title, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(result => result.Id, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+    private static IReadOnlyList<MemorySearchResult> RankLexicalResults(
+        IReadOnlyList<MemoryRecord> records,
+        string? query,
+        HashSet<string> queryTokens) =>
+        records
+            .Select(record => ScoreLexicalMatch(record, query, queryTokens))
+            .Where(result => result.Score > 0 || queryTokens.Count == 0)
+            .OrderByDescending(result => result.Score)
+            .ThenByDescending(result => result.LastUpdated)
+            .ThenBy(result => result.Title, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(result => result.Id, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+    private static Dictionary<string, int> ToRankMap(IReadOnlyList<MemorySearchResult> results)
+    {
+        var ranks = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        for (var index = 0; index < results.Count; index++)
+        {
+            ranks.TryAdd(results[index].Id, index + 1);
+        }
+
+        return ranks;
+    }
+
+    private static double ReciprocalRankScore(int rank) =>
+        rank <= 0 ? 0 : 1.0 / (ReciprocalRankFusionK + rank);
+
     private static MemorySearchResult ScoreSemanticMatch(MemoryRecord record, string? query, HashSet<string> queryTokens)
     {
         var titleTokens = TokenizeSearchText(record.Title);
@@ -418,6 +511,108 @@ public class MemoryApplicationService
         }
     }
 
+    private static MemorySearchResult ScoreLexicalMatch(MemoryRecord record, string? query, HashSet<string> queryTokens)
+    {
+        var score = 0.0;
+        var reasons = new List<string>();
+
+        if (queryTokens.Count == 0)
+        {
+            return new MemorySearchResult(
+                record.Id,
+                record.Title,
+                record.Status,
+                record.Confidence,
+                0,
+                record.Tags,
+                record.UsageCount,
+                BuildSnippet(record.Content, queryTokens),
+                "No query supplied; returned by recency.",
+                record.LastUpdated);
+        }
+
+        var titleMatches = AnalyzeLexicalText(record.Title).Intersect(queryTokens, StringComparer.OrdinalIgnoreCase).ToList();
+        var tagMatches = record.Tags.SelectMany(tag => AnalyzeLexicalText(tag)).ToHashSet(StringComparer.OrdinalIgnoreCase).Intersect(queryTokens, StringComparer.OrdinalIgnoreCase).ToList();
+        var referenceMatches = record.References.SelectMany(reference => AnalyzeLexicalText(reference)).ToHashSet(StringComparer.OrdinalIgnoreCase).Intersect(queryTokens, StringComparer.OrdinalIgnoreCase).ToList();
+        var contentTokens = AnalyzeLexicalTokens(record.Content);
+        var contentMatches = contentTokens.Where(queryTokens.Contains).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        var contentHitCount = contentTokens.Count(queryTokens.Contains);
+
+        AddScore(titleMatches, 5, "lexical title");
+        AddScore(tagMatches, 4, "lexical tags");
+        AddScore(referenceMatches, 2, "lexical references");
+        if (contentMatches.Count > 0)
+        {
+            score += Math.Min(contentHitCount, 12) * 0.75;
+            reasons.Add($"lexical content: {string.Join(", ", contentMatches.Order(StringComparer.OrdinalIgnoreCase))}");
+        }
+
+        var phrase = query?.Trim();
+        if (!string.IsNullOrWhiteSpace(phrase))
+        {
+            if (record.Title.Contains(phrase, StringComparison.OrdinalIgnoreCase))
+            {
+                score += 8;
+                reasons.Add("exact lexical title phrase");
+            }
+
+            if (record.Content.Contains(phrase, StringComparison.OrdinalIgnoreCase))
+            {
+                score += 4;
+                reasons.Add("exact lexical content phrase");
+            }
+        }
+
+        return new MemorySearchResult(
+            record.Id,
+            record.Title,
+            record.Status,
+            record.Confidence,
+            Math.Round(score, 3),
+            record.Tags,
+            record.UsageCount,
+            BuildSnippet(record.Content, queryTokens),
+            reasons.Count == 0 ? "No lexical token overlap." : string.Join("; ", reasons),
+            record.LastUpdated);
+
+        void AddScore(IReadOnlyCollection<string> matches, double weight, string source)
+        {
+            if (matches.Count == 0)
+            {
+                return;
+            }
+
+            score += matches.Count * weight;
+            reasons.Add($"{source}: {string.Join(", ", matches.Order(StringComparer.OrdinalIgnoreCase))}");
+        }
+    }
+
+    private static string BuildHybridMatchReason(
+        int lexicalRank,
+        MemorySearchResult? lexicalResult,
+        int semanticRank,
+        MemorySearchResult? semanticResult)
+    {
+        var parts = new List<string>
+        {
+            $"Hybrid RRF fused lexical rank {FormatRank(lexicalRank)} and semantic rank {FormatRank(semanticRank)}."
+        };
+
+        if (lexicalResult is not null)
+        {
+            parts.Add($"Lexical score {lexicalResult.Score:0.###}: {lexicalResult.MatchReason}");
+        }
+
+        if (semanticResult is not null)
+        {
+            parts.Add($"Semantic score {semanticResult.Score:0.###}: {semanticResult.MatchReason}");
+        }
+
+        return string.Join(" ", parts);
+    }
+
+    private static string FormatRank(int rank) => rank <= 0 ? "none" : rank.ToString();
+
     private static HashSet<string> ExpandSearchTokens(IEnumerable<string> tokens)
     {
         var expanded = new HashSet<string>(tokens, StringComparer.OrdinalIgnoreCase);
@@ -442,6 +637,31 @@ public class MemoryApplicationService
             .Select(match => NormalizeSearchToken(match.Value))
             .Where(token => token.Length > 1 && !SearchStopWords.Contains(token))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+    private static HashSet<string> AnalyzeLexicalText(string text) =>
+        AnalyzeLexicalTokens(text).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+    private static List<string> AnalyzeLexicalTokens(string text)
+    {
+        using var analyzer = new StandardAnalyzer(LuceneMatchVersion);
+        using var reader = new StringReader(text);
+        using var tokenStream = analyzer.GetTokenStream("memory", reader);
+        var termAttribute = tokenStream.AddAttribute<ICharTermAttribute>();
+        var tokens = new List<string>();
+
+        tokenStream.Reset();
+        while (tokenStream.IncrementToken())
+        {
+            var token = termAttribute.ToString();
+            if (!string.IsNullOrWhiteSpace(token))
+            {
+                tokens.Add(token);
+            }
+        }
+
+        tokenStream.End();
+        return tokens;
+    }
 
     private static string NormalizeSearchToken(string value)
     {

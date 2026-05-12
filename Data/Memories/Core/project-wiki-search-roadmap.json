@@ -1,19 +1,22 @@
 {
   "Id": "project-wiki-search-roadmap",
   "Title": "Search Tools Roadmap",
-  "Content": "Search is central to MemorySmith's usefulness. Keep keyword search as the reliable baseline, then add ranked search results, match explanations, reusable search DTOs, and an explicit semantic search path. The near-term semantic baseline can use local token scoring and project tags, but the durable version should use embeddings or another vector-capable index with clear fallback behavior.",
+  "Content": "Search is central to MemorySmith's usefulness. Keyword search remains the reliable baseline; semantic search adds local concept scoring and explanations; hybrid search now combines Lucene.NET lexical analysis with the semantic signal using reciprocal rank fusion (RRF). The near-term semantic baseline can use local token scoring and project tags, but the durable version should use embeddings or another vector-capable index with clear fallback behavior while preserving the hybrid API shape.",
   "Status": 2,
   "Confidence": 0.92,
   "Tags": [
     "project-wiki",
     "search",
     "semantic-search",
+    "hybrid-search",
+    "rrf",
     "roadmap",
     "tooling"
   ],
   "References": [
     "project-wiki-data-folder-policy",
-    "project-wiki-mcp-integration"
+    "project-wiki-mcp-integration",
+    "project-wiki-hybrid-search-rrf"
   ],
   "Conflicts": [],
   "UsageCount": 2,
