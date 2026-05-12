@@ -1,12 +1,12 @@
 @inherits LayoutComponentBase
 
-<MudThemeProvider Theme="_theme" />
+<MudThemeProvider Theme="_theme" IsDarkMode="_isDarkMode" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
 
 <MudLayout>
-    <MudAppBar Elevation="1" Color="Color.Primary">
+    <MudAppBar Elevation="0" Color="Color.Default" Class="app-titlebar">
         <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start"
                        OnClick="@(() => _drawerOpen = !_drawerOpen)" />
         <MudText Typo="Typo.h6" Class="ml-3">MemorySmith</MudText>
@@ -14,7 +14,7 @@
         <MudText Typo="Typo.body2" Class="mr-3">Single App</MudText>
     </MudAppBar>
 
-    <MudDrawer @bind-Open="_drawerOpen" Elevation="2" Variant="DrawerVariant.Responsive">
+    <MudDrawer @bind-Open="_drawerOpen" Elevation="0" Variant="DrawerVariant.Responsive" Class="app-drawer">
         <MudDrawerHeader>
             <MudText Typo="Typo.h6">Navigation</MudText>
         </MudDrawerHeader>
@@ -30,20 +30,29 @@
 
 @code {
     private bool _drawerOpen = true;
+    private bool _isDarkMode = true;
 
     private readonly MudTheme _theme = new()
     {
-        PaletteLight = new PaletteLight
+        PaletteDark = new PaletteDark
         {
-            Primary = "#2563eb",
-            Secondary = "#0f766e",
-            Info = "#2563eb",
-            Success = "#16a34a",
-            Background = "#f5f5f5",
-            Surface = "#ffffff",
-            AppbarBackground = "#2563eb",
+            Primary = "#007acc",
+            Secondary = "#4ec9b0",
+            Info = "#3794ff",
+            Success = "#89d185",
+            Warning = "#cca700",
+            Error = "#f14c4c",
+            Background = "#1e1e1e",
+            Surface = "#252526",
+            DrawerBackground = "#252526",
+            DrawerText = "#cccccc",
+            AppbarBackground = "#2d2d30",
             AppbarText = "#ffffff",
-            DrawerBackground = "#ffffff"
+            TextPrimary = "#d4d4d4",
+            TextSecondary = "#9d9d9d",
+            Divider = "#3c3c3c",
+            LinesDefault = "#3c3c3c",
+            TableLines = "#3c3c3c"
         },
         LayoutProperties = new LayoutProperties
         {

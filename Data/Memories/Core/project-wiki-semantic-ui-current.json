@@ -1,7 +1,7 @@
 {
   "Id": "project-wiki-semantic-ui-current",
   "Title": "Memory Workbench UI Current State",
-  "Content": "The /memories page is now a compact workbench for scanning and editing the project wiki. It keeps a dense command bar, scrollable results pane, persistent detail pane, Keyword/Semantic mode switch, semantic snippets, scores, match reasons, tag/reference chips, and copy-to-clipboard actions for raw content or agent context. The layout intentionally uses internal panes so agents can see search controls, results, and selected memory content without long document scrolling. Semantic mode still uses the local token, tag, title, reference, and alias scoring baseline already exposed through the API and MCP tools; it does not add embeddings, vector storage, or a new search subsystem.",
+  "Content": "The /memories page is now a compact VS Code-inspired dark workbench for scanning and editing the project wiki. It keeps a dense command bar, scrollable results pane, persistent detail pane, Keyword/Semantic mode switch, semantic snippets, scores, match reasons, tag/reference chips, and copy-to-clipboard actions for raw content or agent context. The layout intentionally uses a fixed app shell with internal pane scrolling so agents can see search controls, results, and selected memory content without long document scrolling. Semantic mode still uses the local token, tag, title, reference, and alias scoring baseline already exposed through the API and MCP tools; it does not add embeddings, vector storage, or a new search subsystem.",
   "Status": 2,
   "Confidence": 0.91,
   "Tags": [
@@ -10,6 +10,8 @@
     "semantic-search",
     "ui",
     "workbench",
+    "dark-mode",
+    "vscode-style",
     "current-state",
     "dogfooding"
   ],
