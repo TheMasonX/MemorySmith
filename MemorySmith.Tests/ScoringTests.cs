@@ -40,4 +40,17 @@ public class ScoringTests
         var old = new MemoryRecord { LastUpdated = DateTime.UtcNow.AddDays(-365) };
         Assert.That(MemoryScorer.Score(recent), Is.GreaterThan(MemoryScorer.Score(old)));
     }
+
+    [Test]
+    public void Score_SingleOldUsageDoesNotPreventDeprecation()
+    {
+        var record = new MemoryRecord
+        {
+            UsageCount = 1,
+            Confidence = 0,
+            LastUpdated = DateTime.UtcNow.AddYears(-2)
+        };
+
+        Assert.That(MemoryScorer.Score(record), Is.LessThan(0.2));
+    }
 }

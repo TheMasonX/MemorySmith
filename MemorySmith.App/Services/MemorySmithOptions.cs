@@ -9,6 +9,7 @@ public class MemorySmithOptions
     public bool AllowRemoteApi { get; set; }
     public MaintenanceOptions Maintenance { get; set; } = new();
     public LimitOptions Limits { get; set; } = new();
+    public SourceLinkOptions SourceLinks { get; set; } = new();
 }
 
 public class MaintenanceOptions
@@ -27,4 +28,11 @@ public class LimitOptions
     public int MaxContentLength { get; set; } = 20000;
     public int MaxTags { get; set; } = 50;
     public int MaxReferences { get; set; } = 200;
+}
+
+public class SourceLinkOptions
+{
+    public int MaxReadBytes { get; set; } = 65536;
+    public List<string> AllowedFileRootVariables { get; set; } = ["MemorySmithRepo"];
+    public List<string> AllowedFileRoots { get; set; } = [];
 }

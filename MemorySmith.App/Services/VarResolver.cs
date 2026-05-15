@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using MemorySmith.Core.Models;
 using MemorySmith.Storage;
+using Microsoft.Extensions.Options;
 
 namespace MemorySmith.App.Services;
 
@@ -25,10 +26,12 @@ public class VarResolver
     private static readonly Regex TokenPattern = new(@"%(\w+)%", RegexOptions.Compiled);
 
     private readonly IVarStore _varStore;
+    private readonly MemorySmithOptions _options;
 
-    public VarResolver(IVarStore varStore)
+    public VarResolver(IVarStore varStore, IOptions<MemorySmithOptions> options)
     {
         _varStore = varStore;
+        _options = options.Value;
     }
 
     /// <summary>
@@ -54,6 +57,7 @@ public class VarResolver
     /// <param name="maxBytes">Maximum content bytes to return (truncates with a message if exceeded). Default 16 384.</param>
     public async Task<SourceContent> ReadSourceAsync(SourceLink link, int maxBytes = 16384)
     {
+        maxBytes = ClampReadBytes(maxBytes);
         var resolved = Resolve(link.Uri);
         if (string.IsNullOrWhiteSpace(resolved))
             return new SourceContent(resolved, null, "file", link.StartLine, link.EndLine, Exists: false);
@@ -62,10 +66,16 @@ public class VarResolver
             resolved.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
             return new SourceContent(resolved, null, "url", null, null, Exists: true);
 
-        if (!File.Exists(resolved))
+        if (!TryNormalizePath(resolved, out var fullPath))
+            return new SourceContent(resolved, "Source link path is invalid.", "file", link.StartLine, link.EndLine, Exists: false);
+
+        if (!IsAllowedSourcePath(fullPath))
+            return new SourceContent(resolved, "Source link path is outside the configured allowed source roots.", "file", link.StartLine, link.EndLine, Exists: false);
+
+        if (!File.Exists(fullPath))
             return new SourceContent(resolved, null, "file", link.StartLine, link.EndLine, Exists: false);
 
-        var lines = await File.ReadAllLinesAsync(resolved);
+        var lines = await File.ReadAllLinesAsync(fullPath);
 
         int startIdx = link.StartLine.HasValue ? Math.Max(0, link.StartLine.Value - 1) : 0;
         int endIdx = link.EndLine.HasValue
@@ -77,7 +87,7 @@ public class VarResolver
         if (content.Length > maxBytes)
             content = content[..maxBytes] + $"\n[... truncated — {content.Length - maxBytes} more chars]";
 
-        return new SourceContent(resolved, content, "file", link.StartLine, link.EndLine, Exists: true);
+        return new SourceContent(fullPath, content, "file", link.StartLine, link.EndLine, Exists: true);
     }
 
     /// <summary>Returns all currently defined variables.</summary>
@@ -85,4 +95,67 @@ public class VarResolver
 
     /// <summary>Persists the given variable dictionary.</summary>
     public void SaveVars(IReadOnlyDictionary<string, string> vars) => _varStore.Save(vars);
+
+    private int ClampReadBytes(int requestedBytes)
+    {
+        var configuredMax = Math.Max(1, _options.SourceLinks.MaxReadBytes);
+        if (requestedBytes <= 0)
+        {
+            return Math.Min(16384, configuredMax);
+        }
+
+        return Math.Min(requestedBytes, configuredMax);
+    }
+
+    private bool IsAllowedSourcePath(string fullPath)
+    {
+        var roots = GetAllowedSourceRoots();
+        return roots.Any(root => IsUnderRoot(fullPath, root));
+    }
+
+    private IReadOnlyList<string> GetAllowedSourceRoots()
+    {
+        var vars = _varStore.Load();
+        var roots = new List<string>();
+
+        foreach (var variableName in _options.SourceLinks.AllowedFileRootVariables)
+        {
+            if (vars.TryGetValue(variableName, out var value) && TryNormalizePath(value, out var root))
+            {
+                roots.Add(root);
+            }
+        }
+
+        foreach (var configuredRoot in _options.SourceLinks.AllowedFileRoots)
+        {
+            var resolvedRoot = Resolve(configuredRoot);
+            if (TryNormalizePath(resolvedRoot, out var root))
+            {
+                roots.Add(root);
+            }
+        }
+
+        return roots.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
+    private static bool TryNormalizePath(string path, out string fullPath)
+    {
+        try
+        {
+            fullPath = Path.GetFullPath(path);
+            return true;
+        }
+        catch
+        {
+            fullPath = string.Empty;
+            return false;
+        }
+    }
+
+    private static bool IsUnderRoot(string fullPath, string root)
+    {
+        var normalizedRoot = root.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        var normalizedPath = fullPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        return normalizedPath.StartsWith(normalizedRoot, StringComparison.OrdinalIgnoreCase);
+    }
 }

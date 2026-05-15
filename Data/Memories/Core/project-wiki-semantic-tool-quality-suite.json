@@ -1,0 +1,44 @@
+{
+  "Id": "project-wiki-semantic-tool-quality-suite",
+  "Content": "SemanticToolQualityTests validates project-wiki semantic and hybrid relevance probes, aggregate MRR, deterministic search ordering, MCP tool schema exposure, useful tool output, source_bundle resolution, find_by_source mappings, and JSON-RPC batch notification behavior. The rank thresholds document the current local token-scoring baseline rather than claiming vector embedding semantics.",
+  "Title": "Semantic and MCP tool quality tests",
+  "Status": 2,
+  "Confidence": 0.92,
+  "Tags": [
+    "project-wiki",
+    "tests",
+    "semantic-search",
+    "mcp",
+    "quality"
+  ],
+  "References": [],
+  "Conflicts": [],
+  "SourceLinks": [
+    {
+      "Label": "Semantic and hybrid probes",
+      "Uri": "%MemorySmithRepo%MemorySmith.Tests/SemanticToolQualityTests.cs",
+      "StartLine": 20,
+      "EndLine": 49
+    },
+    {
+      "Label": "Semantic relevance and MRR checks",
+      "Uri": "%MemorySmithRepo%MemorySmith.Tests/SemanticToolQualityTests.cs",
+      "StartLine": 57,
+      "EndLine": 88
+    },
+    {
+      "Label": "MCP usefulness checks",
+      "Uri": "%MemorySmithRepo%MemorySmith.Tests/SemanticToolQualityTests.cs",
+      "StartLine": 123,
+      "EndLine": 195
+    },
+    {
+      "Label": "Search quality probe type",
+      "Uri": "%MemorySmithRepo%MemorySmith.Tests/SemanticToolQualityTests.cs",
+      "StartLine": 280,
+      "EndLine": 280
+    }
+  ],
+  "UsageCount": 0,
+  "LastUpdated": "2026-05-15T05:54:03.0572782Z"
+}

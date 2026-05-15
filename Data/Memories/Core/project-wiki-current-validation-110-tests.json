@@ -1,0 +1,43 @@
+{
+  "Id": "project-wiki-current-validation-110-tests",
+  "Content": "After the request-guard/source-link hardening pass and the semantic quality additions, dotnet test MemorySmith.slnx -v minimal discovers and passes 110 NUnit tests. Benchmark validation also includes a smoke run covering all four workloads and a BenchmarkDotNet dry run for KeywordSearch to confirm harness generation.",
+  "Title": "Current validation baseline",
+  "Status": 2,
+  "Confidence": 0.91,
+  "Tags": [
+    "project-wiki",
+    "validation",
+    "tests",
+    "benchmarks"
+  ],
+  "References": [],
+  "Conflicts": [],
+  "SourceLinks": [
+    {
+      "Label": "Solution includes benchmarks",
+      "Uri": "%MemorySmithRepo%MemorySmith.slnx",
+      "StartLine": 1,
+      "EndLine": 10
+    },
+    {
+      "Label": "Semantic quality tests",
+      "Uri": "%MemorySmithRepo%MemorySmith.Tests/SemanticToolQualityTests.cs",
+      "StartLine": 1,
+      "EndLine": 280
+    },
+    {
+      "Label": "Benchmark smoke workloads",
+      "Uri": "%MemorySmithRepo%MemorySmith.Benchmarks/SearchBenchmarks.cs",
+      "StartLine": 55,
+      "EndLine": 66
+    },
+    {
+      "Label": "README validation commands",
+      "Uri": "%MemorySmithRepo%README.md",
+      "StartLine": 179,
+      "EndLine": 188
+    }
+  ],
+  "UsageCount": 0,
+  "LastUpdated": "2026-05-15T05:54:09.388675Z"
+}

@@ -1,0 +1,53 @@
+{
+  "Id": "project-wiki-source-link-security-boundaries",
+  "Content": "Source bundle reads keep the flexible %Variable% source-link workflow, but local file content is only returned when the resolved path is under configured source roots. The default trusted root variable is MemorySmithRepo, and explicit roots can be configured under MemorySmith:SourceLinks:AllowedFileRoots. maxFileBytes is clamped by MemorySmith:SourceLinks:MaxReadBytes, default 65536. FileVarStore records corrupt vars.json reads in StorageDiagnostics and cleans temporary files after failed saves.",
+  "Title": "Source Link Read Boundaries",
+  "Status": 2,
+  "Confidence": 0.95,
+  "Tags": [
+    "project-wiki",
+    "source-links",
+    "security",
+    "mcp",
+    "configuration"
+  ],
+  "References": [
+    "project-wiki-source-links-feature",
+    "project-wiki-data-folder-policy"
+  ],
+  "Conflicts": [],
+  "SourceLinks": [
+    {
+      "Label": "VarResolver source-root enforcement",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/VarResolver.cs",
+      "StartLine": null,
+      "EndLine": null
+    },
+    {
+      "Label": "Source link options",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/MemorySmithOptions.cs",
+      "StartLine": 31,
+      "EndLine": 38
+    },
+    {
+      "Label": "Source bundle clamp",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Controllers/McpController.cs",
+      "StartLine": 117,
+      "EndLine": 160
+    },
+    {
+      "Label": "FileVarStore diagnostics",
+      "Uri": "%MemorySmithRepo%MemorySmith.Storage/FileVarStore.cs",
+      "StartLine": null,
+      "EndLine": null
+    },
+    {
+      "Label": "Source-link security tests",
+      "Uri": "%MemorySmithRepo%MemorySmith.Tests/SecurityAndSourceLinkTests.cs",
+      "StartLine": null,
+      "EndLine": null
+    }
+  ],
+  "UsageCount": 0,
+  "LastUpdated": "2026-05-15T05:43:30.6038788Z"
+}

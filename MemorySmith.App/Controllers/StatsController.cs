@@ -26,4 +26,10 @@ public class StatsController : ControllerBase
     {
         return Ok(await _memories.GetTelemetryAsync(cancellationToken));
     }
+
+    [HttpGet("activity")]
+    public async Task<ActionResult<IReadOnlyList<ActivityBucket>>> GetActivity([FromQuery] int days = 30, CancellationToken cancellationToken = default)
+    {
+        return Ok(await _memories.GetActivityBucketsAsync(days, cancellationToken));
+    }
 }

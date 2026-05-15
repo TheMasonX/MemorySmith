@@ -1,0 +1,41 @@
+{
+  "Id": "project-wiki-request-guard-hardening",
+  "Content": "MemorySmith now has a request guard middleware at startup. When MemorySmith:AllowRemoteApi is false, non-loopback callers are rejected before reaching controllers. When MemorySmith:ApiKey is configured, /api and /mcp requests must include X-Api-Key with a matching value; null ApiKey remains frictionless for local development. This makes the documented configuration real while keeping the default local workflow open.",
+  "Title": "Request Guard and Optional API Key Enforcement",
+  "Status": 2,
+  "Confidence": 0.95,
+  "Tags": [
+    "project-wiki",
+    "security",
+    "api",
+    "mcp",
+    "configuration"
+  ],
+  "References": [
+    "project-wiki-active-architecture",
+    "project-wiki-mcp-search-tools-current"
+  ],
+  "Conflicts": [],
+  "SourceLinks": [
+    {
+      "Label": "Request guard middleware",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/MemorySmithRequestGuardMiddleware.cs",
+      "StartLine": null,
+      "EndLine": null
+    },
+    {
+      "Label": "Program registration",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Program.cs",
+      "StartLine": 43,
+      "EndLine": 75
+    },
+    {
+      "Label": "Security regression tests",
+      "Uri": "%MemorySmithRepo%MemorySmith.Tests/SecurityAndSourceLinkTests.cs",
+      "StartLine": null,
+      "EndLine": null
+    }
+  ],
+  "UsageCount": 0,
+  "LastUpdated": "2026-05-15T05:43:30.5516447Z"
+}

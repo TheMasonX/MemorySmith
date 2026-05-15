@@ -1,0 +1,53 @@
+{
+  "Id": "project-wiki-maintenance-observability-refinements",
+  "Content": "Maintenance startup now runs triage and index rebuild after the grace period, but delays consolidation until its configured interval instead of consolidating on every startup. Stats activity buckets are exposed through /api/stats/activity with day bounds clamped to 1-365. MemoryChangePublisher invokes all event subscribers and awaits their tasks, so multiple Blazor circuits receive memory and stats updates reliably.",
+  "Title": "Maintenance and Observability Refinements",
+  "Status": 2,
+  "Confidence": 0.92,
+  "Tags": [
+    "project-wiki",
+    "maintenance",
+    "stats",
+    "ui",
+    "reliability"
+  ],
+  "References": [
+    "project-wiki-event-store",
+    "project-wiki-ui-architecture"
+  ],
+  "Conflicts": [],
+  "SourceLinks": [
+    {
+      "Label": "Maintenance scheduler",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/MemoryMaintenanceService.cs",
+      "StartLine": 30,
+      "EndLine": 60
+    },
+    {
+      "Label": "Activity buckets",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/MemoryApplicationService.cs",
+      "StartLine": 464,
+      "EndLine": 493
+    },
+    {
+      "Label": "Stats API",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Controllers/StatsController.cs",
+      "StartLine": null,
+      "EndLine": null
+    },
+    {
+      "Label": "Publisher fan-out",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/IMemoryChangePublisher.cs",
+      "StartLine": null,
+      "EndLine": null
+    },
+    {
+      "Label": "Publisher and stats tests",
+      "Uri": "%MemorySmithRepo%MemorySmith.Tests/PublisherAndStatsTests.cs",
+      "StartLine": null,
+      "EndLine": null
+    }
+  ],
+  "UsageCount": 0,
+  "LastUpdated": "2026-05-15T05:43:30.6252076Z"
+}

@@ -1,0 +1,44 @@
+{
+  "Id": "project-wiki-benchmarkdotnet-suite",
+  "Content": "MemorySmith.Benchmarks is an active solution project for BenchmarkDotNet coverage of keyword, semantic, hybrid, and context-pack workloads. Use dotnet run -c Release --project MemorySmith.Benchmarks -- --smoke for fast construction/runtime validation and dotnet run -c Release --project MemorySmith.Benchmarks -- --filter *SearchBenchmarks* for the benchmark suite.",
+  "Title": "BenchmarkDotNet search benchmark suite",
+  "Status": 2,
+  "Confidence": 0.93,
+  "Tags": [
+    "project-wiki",
+    "benchmarks",
+    "benchmarkdotnet",
+    "validation",
+    "search"
+  ],
+  "References": [],
+  "Conflicts": [],
+  "SourceLinks": [
+    {
+      "Label": "Benchmark project package",
+      "Uri": "%MemorySmithRepo%MemorySmith.Benchmarks/MemorySmith.Benchmarks.csproj",
+      "StartLine": 1,
+      "EndLine": 13
+    },
+    {
+      "Label": "Benchmark workloads and smoke path",
+      "Uri": "%MemorySmithRepo%MemorySmith.Benchmarks/SearchBenchmarks.cs",
+      "StartLine": 1,
+      "EndLine": 70
+    },
+    {
+      "Label": "Benchmark entry point",
+      "Uri": "%MemorySmithRepo%MemorySmith.Benchmarks/Program.cs",
+      "StartLine": 1,
+      "EndLine": 10
+    },
+    {
+      "Label": "README benchmark commands",
+      "Uri": "%MemorySmithRepo%README.md",
+      "StartLine": 187,
+      "EndLine": 188
+    }
+  ],
+  "UsageCount": 0,
+  "LastUpdated": "2026-05-15T05:53:55.5741348Z"
+}

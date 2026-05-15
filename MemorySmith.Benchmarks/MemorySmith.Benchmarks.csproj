@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BenchmarkDotNet" Version="0.14.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MemorySmith.App\MemorySmith.App.csproj" />
+    <ProjectReference Include="..\MemorySmith.Core\MemorySmith.Core.csproj" />
+    <ProjectReference Include="..\MemorySmith.Storage\MemorySmith.Storage.csproj" />
+  </ItemGroup>
+
+</Project>

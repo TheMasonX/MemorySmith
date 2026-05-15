@@ -43,7 +43,7 @@ try
     {
         var configuration = sp.GetRequiredService<IConfiguration>();
         var varsPath = configuration["MemorySmith:VarsPath"] ?? Path.Combine("..", "Data", "vars.json");
-        return new FileVarStore(varsPath);
+        return new FileVarStore(varsPath, sp.GetRequiredService<StorageDiagnostics>());
     });
     builder.Services.AddSingleton<VarResolver>();
     builder.Services.AddSingleton<IEventStore>(sp =>
@@ -69,6 +69,8 @@ try
     builder.Services.AddSwaggerGen();
 
     var app = builder.Build();
+
+    app.UseMiddleware<MemorySmithRequestGuardMiddleware>();
 
     if (app.Environment.IsDevelopment())
     {

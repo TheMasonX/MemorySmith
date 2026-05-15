@@ -3,4 +3,5 @@
   <Project Path="MemorySmith.Storage/MemorySmith.Storage.csproj" />
   <Project Path="MemorySmith.App/MemorySmith.App.csproj" />
   <Project Path="MemorySmith.Tests/MemorySmith.Tests.csproj" />
+  <Project Path="MemorySmith.Benchmarks/MemorySmith.Benchmarks.csproj" />
 </Solution>

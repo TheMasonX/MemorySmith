@@ -3,6 +3,7 @@ using System.Text.Json.Nodes;
 using MemorySmith.App.Services;
 using MemorySmith.Core.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace MemorySmith.App.Controllers;
 
@@ -19,11 +20,13 @@ public class McpController : ControllerBase
 
     private readonly MemoryApplicationService _memories;
     private readonly VarResolver _vars;
+    private readonly MemorySmithOptions _options;
 
-    public McpController(MemoryApplicationService memories, VarResolver vars)
+    public McpController(MemoryApplicationService memories, VarResolver vars, IOptions<MemorySmithOptions> options)
     {
         _memories = memories;
         _vars = vars;
+        _options = options.Value;
     }
 
     [HttpGet]
@@ -69,7 +72,7 @@ public class McpController : ControllerBase
 
         var method = methodElement.GetString();
         var hasId = TryGetProperty(message, "id", out var idElement);
-        if (!hasId && method?.StartsWith("notifications/", StringComparison.OrdinalIgnoreCase) == true)
+        if (!hasId)
         {
             return null;
         }
@@ -114,7 +117,7 @@ public class McpController : ControllerBase
     private async Task<string> FormatSourceBundleAsync(JsonElement args, CancellationToken ct)
     {
         var ids = GetString(args, "ids");
-        var maxFileBytes = GetInt(args, "maxFileBytes", 16384);
+        var maxFileBytes = Clamp(GetInt(args, "maxFileBytes", 16384), 1, Math.Max(1, _options.SourceLinks.MaxReadBytes), 16384);
         var format = GetString(args, "format") ?? "json";
 
         var records = new List<MemoryRecord>();
@@ -468,7 +471,7 @@ public class McpController : ControllerBase
             ["query"] = new JsonObject { ["type"] = "string", ["description"] = "Optional search query; matching records' sources are included." },
             ["tags"] = new JsonObject { ["type"] = "string", ["description"] = "Optional comma-separated tag filter for the query." },
             ["limit"] = new JsonObject { ["type"] = "integer", ["description"] = "Max hybrid-search results when query is provided. Default 10." },
-            ["maxFileBytes"] = new JsonObject { ["type"] = "integer", ["description"] = "Max bytes per file content entry. Default 16384." },
+            ["maxFileBytes"] = new JsonObject { ["type"] = "integer", ["description"] = "Max bytes per file content entry. Default 16384; clamped by MemorySmith:SourceLinks:MaxReadBytes." },
             ["format"] = new JsonObject
             {
                 ["type"] = "string",
@@ -635,6 +638,16 @@ public class McpController : ControllerBase
         return value.ValueKind == JsonValueKind.String && int.TryParse(value.GetString(), out var parsed)
             ? parsed
             : defaultValue;
+    }
+
+    private static int Clamp(int value, int min, int max, int defaultValue)
+    {
+        if (value < min)
+        {
+            return Math.Min(defaultValue, max);
+        }
+
+        return Math.Min(value, max);
     }
 
     private static bool GetBool(JsonElement element, string name, bool defaultValue)

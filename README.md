@@ -140,6 +140,11 @@ All settings live under `MemorySmith` in `appsettings.json`:
       "IndexingMinutes": 60,
       "ConsolidationHours": 24,
       "StartupGraceSeconds": 30
+    },
+    "SourceLinks": {
+      "MaxReadBytes": 65536,
+      "AllowedFileRootVariables": [ "MemorySmithRepo" ],
+      "AllowedFileRoots": []
     }
   }
 }
@@ -151,6 +156,9 @@ Override via `appsettings.Development.json` or environment variables (`MemorySmi
 - **`AllowRemoteApi`** — set `true` to allow non-localhost callers. Off by default.
 - **`DataPath`** — root of the memory store. Subdirectories (`Unconsolidated/`, `Working/`, `Core/`, `Deprecated/`) are created automatically.
 - **`VarsPath`** — path to the flat JSON dict used for `%VarName%` source link expansion.
+- **`SourceLinks:MaxReadBytes`** — maximum local file content returned per source-link entry by MCP source bundle reads.
+- **`SourceLinks:AllowedFileRootVariables`** — variable names whose resolved values are trusted roots for local source-link file reads. Defaults to `MemorySmithRepo`.
+- **`SourceLinks:AllowedFileRoots`** — optional explicit local roots, useful when source links need access outside the repo wiki root.
 
 ## Windows Service
 
@@ -171,6 +179,13 @@ Optional install flags: `--service-description`, `--service-start-type` (`auto`,
 ```powershell
 dotnet build MemorySmith.slnx -v minimal
 dotnet test MemorySmith.slnx -v minimal
+```
+
+Run BenchmarkDotNet search benchmarks:
+
+```powershell
+dotnet run -c Release --project MemorySmith.Benchmarks -- --smoke
+dotnet run -c Release --project MemorySmith.Benchmarks -- --filter *SearchBenchmarks*
 ```
 
 The solution builds `MemorySmith.App` as the single deployable host. `MemorySmith.Tests` includes unit tests, integration tests (via `WebApplicationFactory`), and a `[Category("Benchmark")]` suite of 23 search quality probes with latency thresholds. Older `Worker` and `Dashboard` projects are retained as migration history and are not in the active solution.

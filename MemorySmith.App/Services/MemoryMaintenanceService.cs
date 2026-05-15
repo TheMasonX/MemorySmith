@@ -34,9 +34,9 @@ public class MemoryMaintenanceService : BackgroundService
         var indexInterval = TimeSpan.FromMinutes(Math.Max(1, _options.Maintenance.IndexingMinutes));
         var consolidationInterval = TimeSpan.FromHours(Math.Max(1, _options.Maintenance.ConsolidationHours));
 
-        var nextTriage = DateTimeOffset.MinValue;
-        var nextIndex = DateTimeOffset.MinValue;
-        var nextConsolidation = DateTimeOffset.MinValue;
+        var nextTriage = DateTimeOffset.UtcNow;
+        var nextIndex = DateTimeOffset.UtcNow;
+        var nextConsolidation = DateTimeOffset.UtcNow.Add(consolidationInterval);
 
         while (!stoppingToken.IsCancellationRequested)
         {

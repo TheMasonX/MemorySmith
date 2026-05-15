@@ -1,4 +1,6 @@
-# Dashboard Real-Time Configuration
+# Dashboard Real-Time Configuration (Historical)
+
+> This page documents the retired two-project Worker/Dashboard deployment that remains on disk as migration history. The active solution uses `MemorySmith.App` as the single host for UI, REST APIs, MCP, and maintenance. For current setup and validation commands, use the repository `README.md`.
 
 This document describes the runtime knobs for dashboard/worker real-time behavior.
 

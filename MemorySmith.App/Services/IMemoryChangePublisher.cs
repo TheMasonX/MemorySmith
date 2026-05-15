@@ -17,17 +17,38 @@ public class MemoryChangePublisher : IMemoryChangePublisher
 
     public async Task PublishMemoryChangedAsync(MemoryUpdateEvent update)
     {
-        if (MemoryChanged is not null)
-        {
-            await MemoryChanged(update);
-        }
+        await PublishAsync(MemoryChanged, update);
     }
 
     public async Task PublishStatsChangedAsync(StatsSnapshot stats)
     {
-        if (StatsChanged is not null)
+        await PublishAsync(StatsChanged, stats);
+    }
+
+    private static async Task PublishAsync<T>(Func<T, Task>? handlers, T value)
+    {
+        if (handlers is null)
         {
-            await StatsChanged(stats);
+            return;
+        }
+
+        var tasks = handlers.GetInvocationList()
+            .Cast<Func<T, Task>>()
+            .Select(handler => InvokeHandler(handler, value))
+            .ToArray();
+
+        await Task.WhenAll(tasks);
+    }
+
+    private static Task InvokeHandler<T>(Func<T, Task> handler, T value)
+    {
+        try
+        {
+            return handler(value);
+        }
+        catch (Exception ex)
+        {
+            return Task.FromException(ex);
         }
     }
 }

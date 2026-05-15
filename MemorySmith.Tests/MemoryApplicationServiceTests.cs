@@ -107,6 +107,54 @@ public class MemoryApplicationServiceTests
     }
 
     [Test]
+    public async Task CreateAsync_PreservesSourceLinkLineRanges()
+    {
+        var record = new MemoryRecord
+        {
+            Id = "source-link-range",
+            Title = "Source Link Range",
+            Content = "Range metadata should survive normalization.",
+            SourceLinks =
+            [
+                new SourceLink
+                {
+                    Label = " file ",
+                    Uri = " %MemorySmithRepo%file.cs ",
+                    StartLine = 10,
+                    EndLine = 20
+                }
+            ]
+        };
+
+        var created = await _service.CreateAsync(record, CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(created.SourceLinks.Single().Label, Is.EqualTo("file"));
+            Assert.That(created.SourceLinks.Single().Uri, Is.EqualTo("%MemorySmithRepo%file.cs"));
+            Assert.That(created.SourceLinks.Single().StartLine, Is.EqualTo(10));
+            Assert.That(created.SourceLinks.Single().EndLine, Is.EqualTo(20));
+        });
+    }
+
+    [Test]
+    public void CreateAsync_WithInvalidSourceLinkRange_ThrowsValidation()
+    {
+        var record = new MemoryRecord
+        {
+            Id = "bad-source-link-range",
+            Title = "Bad Range",
+            Content = "Invalid range metadata should be rejected.",
+            SourceLinks = [new SourceLink { Uri = "%MemorySmithRepo%file.cs", StartLine = 20, EndLine = 10 }]
+        };
+
+        var exception = Assert.ThrowsAsync<MemoryValidationException>(async () =>
+            await _service.CreateAsync(record, CancellationToken.None));
+
+        Assert.That(exception!.Errors.Keys, Does.Contain(nameof(MemoryRecord.SourceLinks)));
+    }
+
+    [Test]
     public async Task SearchAsync_AppliesQueryStatusTagsAndLimitClamp()
     {
         for (var i = 0; i < 105; i++)

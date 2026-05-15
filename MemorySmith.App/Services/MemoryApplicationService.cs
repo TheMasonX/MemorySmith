@@ -464,6 +464,7 @@ public class MemoryApplicationService
     public Task<IReadOnlyList<ActivityBucket>> GetActivityBucketsAsync(int days, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        days = Clamp(days, 1, 365, 30);
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
         var since = DateTime.UtcNow.AddDays(-days + 1).Date; // start of that day
 
@@ -525,7 +526,13 @@ public class MemoryApplicationService
         record.Conflicts = NormalizeValues(record.Conflicts);
         record.SourceLinks = record.SourceLinks
             .Where(sl => !string.IsNullOrWhiteSpace(sl.Uri))
-            .Select(sl => new SourceLink { Label = sl.Label.Trim(), Uri = sl.Uri.Trim() })
+            .Select(sl => new SourceLink
+            {
+                Label = sl.Label.Trim(),
+                Uri = sl.Uri.Trim(),
+                StartLine = sl.StartLine,
+                EndLine = sl.EndLine
+            })
             .ToList();
     }
 
@@ -562,10 +569,41 @@ public class MemoryApplicationService
             errors[nameof(MemoryRecord.References)] = [$"At most {_options.Limits.MaxReferences} references are allowed."];
         }
 
+        var sourceLinkErrors = ValidateSourceLinks(record.SourceLinks);
+        if (sourceLinkErrors.Count > 0)
+        {
+            errors[nameof(MemoryRecord.SourceLinks)] = sourceLinkErrors.ToArray();
+        }
+
         if (errors.Count > 0)
         {
             throw new MemoryValidationException(errors);
         }
+    }
+
+    private static List<string> ValidateSourceLinks(IReadOnlyList<SourceLink> sourceLinks)
+    {
+        var errors = new List<string>();
+        for (var index = 0; index < sourceLinks.Count; index++)
+        {
+            var link = sourceLinks[index];
+            if (link.StartLine is <= 0)
+            {
+                errors.Add($"SourceLinks[{index}].StartLine must be greater than 0 when provided.");
+            }
+
+            if (link.EndLine is <= 0)
+            {
+                errors.Add($"SourceLinks[{index}].EndLine must be greater than 0 when provided.");
+            }
+
+            if (link.StartLine.HasValue && link.EndLine.HasValue && link.EndLine.Value < link.StartLine.Value)
+            {
+                errors.Add($"SourceLinks[{index}].EndLine must be greater than or equal to StartLine.");
+            }
+        }
+
+        return errors;
     }
 
     private static bool IsValidId(string id) =>
@@ -575,10 +613,10 @@ public class MemoryApplicationService
     {
         if (value < min)
         {
-            return defaultValue;
+            return Math.Clamp(defaultValue, min, max);
         }
 
-        return Math.Min(value, max);
+        return Math.Clamp(value, min, max);
     }
 
     private static IEnumerable<MemoryRecord> ApplyListFilters(
@@ -976,6 +1014,3 @@ public class MemoryApplicationService
         });
     }
 }
-
-/// <summary>Daily event summary bucket used for activity charts.</summary>
-public record ActivityBucket(DateOnly Date, int Queries, int Changes);
