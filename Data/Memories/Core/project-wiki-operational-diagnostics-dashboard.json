@@ -1,0 +1,55 @@
+{
+  "Id": "project-wiki-operational-diagnostics-dashboard",
+  "Content": "The single-host /health dashboard exposes operator-facing runtime configuration and storage health from OperationalDiagnosticsService. GET /api/diagnostics returns redacted configuration, configured URLs, Windows Service name, source-link roots, data/event/vars path status, endpoint links, and StorageDiagnostics corrupt-file information. HealthStats.razor renders those diagnostics beside stats, readiness, activity charts, maintenance telemetry, and recent in-session events so a service operator can verify the running app without inspecting local files.",
+  "Title": "Operational Diagnostics Dashboard",
+  "Status": 2,
+  "Confidence": 0.95,
+  "Tags": [
+    "project-wiki",
+    "dashboard",
+    "diagnostics",
+    "operations",
+    "api",
+    "current-state"
+  ],
+  "References": [
+    "project-wiki-active-architecture",
+    "project-wiki-windows-service-operations",
+    "project-wiki-validation-command"
+  ],
+  "Conflicts": [],
+  "SourceLinks": [
+    {
+      "Label": "OperationalDiagnosticsService.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/OperationalDiagnosticsService.cs",
+      "StartLine": null,
+      "EndLine": null
+    },
+    {
+      "Label": "DiagnosticsController.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Controllers/DiagnosticsController.cs",
+      "StartLine": null,
+      "EndLine": null
+    },
+    {
+      "Label": "HealthStats.razor",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Components/Pages/HealthStats.razor",
+      "StartLine": null,
+      "EndLine": null
+    },
+    {
+      "Label": "AppApiContractTests.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.Tests/AppApiContractTests.cs",
+      "StartLine": null,
+      "EndLine": null
+    },
+    {
+      "Label": "README.md",
+      "Uri": "%MemorySmithRepo%README.md",
+      "StartLine": null,
+      "EndLine": null
+    }
+  ],
+  "UsageCount": 0,
+  "LastUpdated": "2026-05-16T22:04:58.0157337Z"
+}

@@ -1,6 +1,6 @@
 # MemorySmith
 
-MemorySmith is a single-host ASP.NET Core app for local structured memory management. It hosts a Blazor workbench UI, REST API, MCP endpoint, file-backed storage, and background maintenance in one process. The repository ships with a live project wiki inside `Data/Memories` — the app uses its own memory store as a testbed.
+MemorySmith is a single-host ASP.NET Core app for local structured memory management. It hosts a Blazor workbench UI, REST API, MCP endpoint, file-backed storage, and background maintenance in one process. The `/memories` page is the primary dashboard/workbench UI; the older standalone Dashboard project is migration history. The repository ships with a live project wiki inside `Data/Memories`, and the app uses its own memory store as a testbed.
 
 ## Quick Start
 
@@ -16,7 +16,7 @@ Opens on `http://localhost:5089` by default. Pages:
 | `/health` | Stat cards, activity charts (queries/day, changes/day), maintenance telemetry |
 | `/variables` | Manage `%VarName%` path variables used in source link URIs |
 | `/api/memories` | REST CRUD for automation |
-| `/api/stats`, `/api/health/*` | Stats and readiness |
+| `/api/stats`, `/api/health/*`, `/api/diagnostics` | Stats, readiness, and redacted operational diagnostics |
 | `/mcp` | MCP JSON-RPC endpoint for AI agent tool use |
 
 ## The Project Wiki
@@ -166,13 +166,37 @@ Publish the app, then from an elevated PowerShell session:
 
 ```powershell
 # Install
-.\MemorySmith.App.exe --install-service --service-name MemorySmith --service-display-name "MemorySmith" -- --urls http://localhost:5089
+.\MemorySmith.App.exe install --service-name MemorySmith --service-display-name "MemorySmith" --memory-directory C:\MemorySmith\Memories --port 5089
 
 # Uninstall
-.\MemorySmith.App.exe --uninstall-service --service-name MemorySmith
+.\MemorySmith.App.exe uninstall --service-name MemorySmith
+
+# Help
+.\MemorySmith.App.exe --help
 ```
 
-Optional install flags: `--service-description`, `--service-start-type` (`auto`, `demand`, `disabled`). Arguments after `--` are passed as runtime args to the service process.
+Install flags:
+
+| Flag | Purpose |
+|---|---|
+| `install`, `--install-service` | Create the Windows Service |
+| `uninstall`, `--uninstall-service` | Stop and delete the Windows Service |
+| `--service-name` | Service name. Default: `MemorySmith` |
+| `--service-display-name` | Display name in Services UI |
+| `--service-description` | Windows Service description |
+| `--service-start-type` | `auto`, `demand`, or `disabled` |
+| `--memory-directory` | Target `MemorySmith:DataPath`; adjacent `Events/audit.log` and `vars.json` are derived from its parent folder |
+| `--port` | Local HTTP port. Default install port: `5089` |
+
+Arguments after `--` are still passed as runtime args to the service process for advanced ASP.NET Core settings. Use either `--port` or a custom runtime `--urls`, not both.
+
+For this repository's live project wiki, the target memory directory is `C:\Users\norrt\source\repos\MemorySmith\Data\Memories`. A local service install on port 5089 would be:
+
+```powershell
+.\MemorySmith.App.exe install --memory-directory C:\Users\norrt\source\repos\MemorySmith\Data\Memories --port 5089
+```
+
+After installation, start the service from `services.msc` or PowerShell, then open `http://localhost:5089/health` for runtime configuration, storage diagnostics, activity, and maintenance telemetry.
 
 ## Validate
 

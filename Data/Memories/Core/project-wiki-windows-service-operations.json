@@ -1,27 +1,49 @@
 {
   "Id": "project-wiki-windows-service-operations",
+  "Content": "MemorySmith.App is the active Windows Service host. Its CLI supports install/uninstall aliases, --install-service/--uninstall-service compatibility flags, --help, --service-name, --service-display-name, --service-description, --service-start-type auto|demand|disabled, --memory-directory/--data-path, and --port. Install derives MemorySmith:DataPath from --memory-directory, derives adjacent MemorySmith:EventLogPath and MemorySmith:VarsPath, defaults to http://localhost:5089, and preserves advanced ASP.NET Core runtime arguments after --. For local service use, publish MemorySmith.App and run MemorySmith.App.exe install --memory-directory \u003CData\\Memories\u003E --port 5089 from an elevated PowerShell session.",
   "Title": "Windows Service Operations Current State",
-  "Content": "MemorySmith.App supports operational command-line flags for installing and uninstalling itself as a Windows Service. Use --install-service or --uninstall-service before normal host startup. Install options include --service-name, --service-display-name, --service-description, and --service-start-type. Arguments after -- are preserved as runtime arguments for the service process, such as --urls http://localhost:5089. The app also calls UseWindowsService so the same executable can run under the Windows Service Control Manager. These flags are deployment operations, not memory record fields.",
   "Status": 2,
-  "Confidence": 0.9,
+  "Confidence": 0.95,
   "Tags": [
     "project-wiki",
     "windows-service",
     "operations",
     "deployment",
+    "service-cli",
     "current-state"
   ],
   "References": [
     "project-wiki-active-architecture",
-    "project-wiki-validation-command"
+    "project-wiki-validation-command",
+    "project-wiki-operational-diagnostics-dashboard"
   ],
   "Conflicts": [],
-  "UsageCount": 0,
-  "LastUpdated": "2026-05-12T00:00:00Z",
   "SourceLinks": [
     {
+      "Label": "WindowsServiceCommands.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/WindowsServiceCommands.cs",
+      "StartLine": null,
+      "EndLine": null
+    },
+    {
       "Label": "Program.cs",
-      "Uri": "%MemorySmithRepo%MemorySmith.App/Program.cs"
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Program.cs",
+      "StartLine": null,
+      "EndLine": null
+    },
+    {
+      "Label": "WindowsServiceCommandsTests.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.Tests/WindowsServiceCommandsTests.cs",
+      "StartLine": null,
+      "EndLine": null
+    },
+    {
+      "Label": "README.md",
+      "Uri": "%MemorySmithRepo%README.md",
+      "StartLine": null,
+      "EndLine": null
     }
-  ]
+  ],
+  "UsageCount": 0,
+  "LastUpdated": "2026-05-16T22:04:57.8971123Z"
 }

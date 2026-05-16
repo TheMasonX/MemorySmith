@@ -14,7 +14,7 @@ if (WindowsServiceCommands.TryHandle(args, out var serviceCommandExitCode))
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
-    .WriteTo.File("logs/memorysmith-.log", rollingInterval: RollingInterval.Day)
+    .WriteTo.File(Path.Combine(AppContext.BaseDirectory, "logs", "memorysmith-.log"), rollingInterval: RollingInterval.Day)
     .CreateLogger();
 
 try
@@ -57,6 +57,7 @@ try
     builder.Services.AddSingleton<IMemoryChangePublisher, MemoryChangePublisher>();
     builder.Services.AddSingleton<MemoryApplicationService>();
     builder.Services.AddSingleton<MemoryMaintenanceTasks>();
+    builder.Services.AddSingleton<OperationalDiagnosticsService>();
 
     var maintenanceEnabled = builder.Configuration.GetValue("MemorySmith:Maintenance:Enabled", true);
     if (maintenanceEnabled)

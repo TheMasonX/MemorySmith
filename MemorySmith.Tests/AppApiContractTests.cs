@@ -111,4 +111,22 @@ public class AppApiContractTests
             Assert.That(ready.IsSuccessStatusCode, Is.True);
         });
     }
+
+    [Test]
+    public async Task Diagnostics_ReturnsRedactedConfigurationAndPathStatus()
+    {
+        var response = await _client.GetAsync("/api/diagnostics");
+        response.EnsureSuccessStatusCode();
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(body, Does.Contain("configuration"));
+            Assert.That(body, Does.Contain("dataPath"));
+            Assert.That(body, Does.Contain("apiKeyConfigured"));
+            Assert.That(body, Does.Contain("paths"));
+            Assert.That(body, Does.Contain("storageDiagnostics"));
+            Assert.That(body, Does.Not.Contain("apiKey\""));
+        });
+    }
 }

@@ -2,6 +2,7 @@
 @rendermode InteractiveServer
 @inject MemoryApplicationService Memories
 @inject IMemoryChangePublisher Publisher
+@inject OperationalDiagnosticsService Diagnostics
 @implements IDisposable
 
 <PageTitle>Health</PageTitle>
@@ -71,6 +72,73 @@
     </div>
 }
 
+@if (_diagnostics is not null)
+{
+    <div class="health-lower-grid health-operations-grid">
+        <div class="health-lower-card">
+            <div class="health-section-title">Runtime Configuration</div>
+            <div class="health-config-grid">
+                <span>Data Path</span><strong>@_diagnostics.Configuration.DataPath</strong>
+                <span>Event Log</span><strong>@_diagnostics.Configuration.EventLogPath</strong>
+                <span>Variables</span><strong>@_diagnostics.Configuration.VarsPath</strong>
+                <span>URLs</span><strong>@FormatUrls(_diagnostics.Configuration.ConfiguredUrls)</strong>
+                <span>Service</span><strong>@_diagnostics.Configuration.WindowsServiceName</strong>
+                <span>API Key</span><strong>@(_diagnostics.Configuration.ApiKeyConfigured ? "Configured" : "Not configured")</strong>
+                <span>Remote API</span><strong>@(_diagnostics.Configuration.AllowRemoteApi ? "Allowed" : "Local only")</strong>
+                <span>Maintenance</span><strong>@(_diagnostics.Configuration.Maintenance.Enabled ? "Enabled" : "Disabled")</strong>
+                <span>Source Roots</span><strong>@FormatSourceRoots(_diagnostics.Configuration.SourceLinks)</strong>
+            </div>
+        </div>
+
+        <div class="health-lower-card">
+            <div class="health-section-title">Storage Paths</div>
+            <MudTable Items="@_diagnostics.Paths" Dense="true" Class="health-table">
+                <HeaderContent>
+                    <MudTh>Name</MudTh>
+                    <MudTh>Status</MudTh>
+                    <MudTh>Details</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>@context.Name</MudTd>
+                    <MudTd>@(context.Exists ? "Exists" : "Missing")</MudTd>
+                    <MudTd>@FormatPathDetails(context)</MudTd>
+                </RowTemplate>
+            </MudTable>
+        </div>
+
+        <div class="health-lower-card">
+            <div class="health-section-title">Endpoints</div>
+            <div class="health-endpoint-list">
+                @foreach (var endpoint in _diagnostics.Endpoints)
+                {
+                    <a href="@endpoint.Path">@endpoint.Path</a>
+                }
+            </div>
+        </div>
+
+        <div class="health-lower-card">
+            <div class="health-section-title">Storage Diagnostics</div>
+            @if (_diagnostics.StorageDiagnostics.CorruptFiles.Count == 0)
+            {
+                <span class="wiki-muted">No corrupt files observed.</span>
+            }
+            else
+            {
+                <MudTable Items="@_diagnostics.StorageDiagnostics.CorruptFiles" Dense="true" Class="health-table">
+                    <HeaderContent>
+                        <MudTh>Path</MudTh>
+                        <MudTh>Observed</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>@context.Path</MudTd>
+                        <MudTd>@context.ObservedAtUtc.ToLocalTime().ToString("g")</MudTd>
+                    </RowTemplate>
+                </MudTable>
+            }
+        </div>
+    </div>
+}
+
 <div class="health-lower-grid">
     <div class="health-lower-card">
         <div class="health-section-title">Maintenance Telemetry</div>
@@ -113,6 +181,7 @@
     private StatsSnapshot? _stats;
     private IReadOnlyList<BackgroundServiceTelemetry> _telemetry = [];
     private IReadOnlyList<ActivityBucket> _activityBuckets = [];
+    private OperationalDiagnosticsSnapshot? _diagnostics;
     private readonly List<MemoryUpdateEvent> _recentEvents = [];
     private string _readiness = "Checking";
     private const int _chartDays = 30;
@@ -145,6 +214,7 @@
             _stats = await Memories.GetStatsAsync(CancellationToken.None);
             _telemetry = await Memories.GetTelemetryAsync(CancellationToken.None);
             _activityBuckets = await Memories.GetActivityBucketsAsync(_chartDays, CancellationToken.None);
+            _diagnostics = Diagnostics.GetSnapshot();
             _chartLabels = _activityBuckets.Select(b => b.Date.ToString("M/d")).ToArray();
             _querySeries = [new ChartSeries<double> { Name = "Queries", Data = _activityBuckets.Select(b => (double)b.Queries).ToArray() }];
             _changeSeries = [new ChartSeries<double> { Name = "Changes", Data = _activityBuckets.Select(b => (double)b.Changes).ToArray() }];
@@ -174,6 +244,44 @@
 
     private static string FormatTime(DateTime? timestamp) =>
         timestamp.HasValue ? timestamp.Value.ToLocalTime().ToString("g") : "-";
+
+    private static string FormatUrls(IReadOnlyList<string> urls) =>
+        urls.Count == 0 ? $"http://localhost:{WindowsServiceCommands.DefaultPort}" : string.Join(", ", urls);
+
+    private static string FormatSourceRoots(SourceLinkOptions sourceLinks)
+    {
+        var roots = sourceLinks.AllowedFileRootVariables.Select(name => $"%{name}%")
+            .Concat(sourceLinks.AllowedFileRoots)
+            .Distinct(StringComparer.OrdinalIgnoreCase);
+        return string.Join(", ", roots.DefaultIfEmpty("None"));
+    }
+
+    private static string FormatPathDetails(StoragePathStatus path) => path switch
+    {
+        { Error: not null } => path.Error,
+        { FileCount: not null } => $"{path.FileCount:N0} files, {FormatBytes(path.AvailableFreeBytes)} free",
+        { SizeBytes: not null } => $"{FormatBytes(path.SizeBytes)}, {FormatBytes(path.AvailableFreeBytes)} free",
+        _ => $"{FormatBytes(path.AvailableFreeBytes)} free"
+    };
+
+    private static string FormatBytes(long? value)
+    {
+        if (!value.HasValue)
+        {
+            return "-";
+        }
+
+        string[] units = ["B", "KB", "MB", "GB", "TB"];
+        var size = (double)value.Value;
+        var unit = 0;
+        while (size >= 1024 && unit < units.Length - 1)
+        {
+            size /= 1024;
+            unit++;
+        }
+
+        return $"{size:0.#} {units[unit]}";
+    }
 
     public void Dispose()
     {
