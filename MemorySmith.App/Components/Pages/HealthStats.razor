@@ -79,6 +79,7 @@
             <div class="health-section-title">Runtime Configuration</div>
             <div class="health-config-grid">
                 <span>Data Path</span><strong>@_diagnostics.Configuration.DataPath</strong>
+                <span>Pages Path</span><strong>@_diagnostics.Configuration.PagesPath</strong>
                 <span>Event Log</span><strong>@_diagnostics.Configuration.EventLogPath</strong>
                 <span>Variables</span><strong>@_diagnostics.Configuration.VarsPath</strong>
                 <span>URLs</span><strong>@FormatUrls(_diagnostics.Configuration.ConfiguredUrls)</strong>
@@ -87,6 +88,8 @@
                 <span>Remote API</span><strong>@(_diagnostics.Configuration.AllowRemoteApi ? "Allowed" : "Local only")</strong>
                 <span>Maintenance</span><strong>@(_diagnostics.Configuration.Maintenance.Enabled ? "Enabled" : "Disabled")</strong>
                 <span>Source Roots</span><strong>@FormatSourceRoots(_diagnostics.Configuration.SourceLinks)</strong>
+                <span>Open Sources</span><strong>@(_diagnostics.Configuration.SourceLinks.AllowOpenWithDefaultApp ? "Enabled" : "Disabled")</strong>
+                <span>Chat</span><strong>@FormatChatProvider(_diagnostics.Configuration.Chat)</strong>
             </div>
         </div>
 
@@ -255,6 +258,9 @@
             .Distinct(StringComparer.OrdinalIgnoreCase);
         return string.Join(", ", roots.DefaultIfEmpty("None"));
     }
+
+    private static string FormatChatProvider(ChatOptions chat) =>
+        $"{chat.Provider} / {chat.OllamaModel}";
 
     private static string FormatPathDetails(StoragePathStatus path) => path switch
     {

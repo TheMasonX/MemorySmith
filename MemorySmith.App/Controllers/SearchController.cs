@@ -1,0 +1,65 @@
+using MemorySmith.App.Services;
+using Microsoft.AspNetCore.Mvc;
+
+namespace MemorySmith.App.Controllers;
+
+[ApiController]
+[Route("api/search")]
+public class SearchController : ControllerBase
+{
+    private readonly MemoryApplicationService _memories;
+    private readonly IPageService _pages;
+
+    public SearchController(MemoryApplicationService memories, IPageService pages)
+    {
+        _memories = memories;
+        _pages = pages;
+    }
+
+    [HttpGet]
+    public async Task<ActionResult<IReadOnlyList<UnifiedSearchResult>>> Search([FromQuery] string? query, [FromQuery] int limit = 20, CancellationToken cancellationToken = default)
+    {
+        limit = Math.Clamp(limit, 1, 100);
+        var memoryLimit = Math.Max(1, limit / 2);
+        var pageLimit = Math.Max(1, limit - memoryLimit);
+        var memoryResults = await _memories.HybridSearchAsync(new HybridMemorySearchQuery(query, Limit: memoryLimit), cancellationToken);
+        var pageResults = await _pages.SearchAsync(new PageSearchQuery(query, pageLimit), cancellationToken);
+
+        var results = memoryResults.Select(memory => new UnifiedSearchResult(
+                "memory",
+                memory.Id,
+                memory.Title,
+                memory.Snippet,
+                "/memories",
+                memory.Score,
+                memory.LastUpdated))
+            .Concat(pageResults.Select(page => new UnifiedSearchResult(
+                "page",
+                page.Slug,
+                page.Title,
+                page.Snippet,
+                ToPageUrl(page.Slug),
+                null,
+                page.LastUpdatedUtc)))
+            .OrderByDescending(result => result.Score ?? 0)
+            .ThenByDescending(result => result.LastUpdatedUtc)
+            .ThenBy(result => result.Title, StringComparer.OrdinalIgnoreCase)
+            .Take(limit)
+            .ToList();
+
+        return Ok(results);
+    }
+
+    private static string ToPageUrl(string slug) =>
+        "/pages/" + string.Join('/', slug.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(Uri.EscapeDataString));
+}
+
+public sealed record UnifiedSearchResult(
+    string Kind,
+    string Id,
+    string Title,
+    string Snippet,
+    string Url,
+    double? Score,
+    DateTime LastUpdatedUtc);

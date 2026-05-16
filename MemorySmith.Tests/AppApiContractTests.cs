@@ -1,5 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
+using MemorySmith.App.Controllers;
+using MemorySmith.App.Services;
 using MemorySmith.Core.Models;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
@@ -25,6 +27,7 @@ public class AppApiContractTests
                     config.AddInMemoryCollection(new Dictionary<string, string?>
                     {
                         ["MemorySmith:DataPath"] = Path.Combine(_tempDir, "Memories"),
+                        ["MemorySmith:PagesPath"] = Path.Combine(_tempDir, "Pages"),
                         ["MemorySmith:EventLogPath"] = Path.Combine(_tempDir, "Events", "audit.log"),
                         ["MemorySmith:Maintenance:Enabled"] = "false"
                     });
@@ -123,10 +126,71 @@ public class AppApiContractTests
         {
             Assert.That(body, Does.Contain("configuration"));
             Assert.That(body, Does.Contain("dataPath"));
+            Assert.That(body, Does.Contain("pagesPath"));
             Assert.That(body, Does.Contain("apiKeyConfigured"));
             Assert.That(body, Does.Contain("paths"));
             Assert.That(body, Does.Contain("storageDiagnostics"));
             Assert.That(body, Does.Not.Contain("apiKey\""));
         });
+    }
+
+    [Test]
+    public async Task PagesApi_SavesSearchesRendersAndDeletesMarkdownPages()
+    {
+        var createResponse = await _client.PostAsJsonAsync("/api/pages", new PageSaveRequest(
+            "contract-page",
+            "Contract Page",
+            "Body with ![image](assets/example.png)"));
+        createResponse.EnsureSuccessStatusCode();
+
+        var created = await createResponse.Content.ReadFromJsonAsync<PageDocument>();
+        var search = await _client.GetFromJsonAsync<PageSummary[]>("/api/pages?query=contract");
+        var html = await _client.GetStringAsync("/api/pages/contract-page/html");
+        var deleteResponse = await _client.DeleteAsync("/api/pages/contract-page");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(created, Is.Not.Null);
+            Assert.That(created!.Slug, Is.EqualTo("contract-page"));
+            Assert.That(search!.Select(page => page.Slug), Does.Contain("contract-page"));
+            Assert.That(html, Does.Contain(">Contract Page</h1>"));
+            Assert.That(html, Does.Contain("/page-assets/example.png"));
+            Assert.That(deleteResponse.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
+        });
+    }
+
+    [Test]
+    public async Task CombinedSearch_ReturnsMemoryAndPageResults()
+    {
+        await _client.PostAsJsonAsync("/api/memories", new MemoryRecord
+        {
+            Id = "combined-memory",
+            Title = "Combined Search Memory",
+            Content = "shared discovery phrase",
+            Tags = ["combined"]
+        });
+        await _client.PostAsJsonAsync("/api/pages", new PageSaveRequest(
+            "combined-page",
+            "Combined Search Page",
+            "shared discovery phrase"));
+
+        var results = await _client.GetFromJsonAsync<UnifiedSearchResult[]>("/api/search?query=shared%20discovery&limit=10");
+        Assert.That(results, Is.Not.Null);
+        var nonNullResults = results!;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(nonNullResults.Select(result => result.Kind), Does.Contain("memory"));
+            Assert.That(nonNullResults.Select(result => result.Kind), Does.Contain("page"));
+            Assert.That(nonNullResults.Single(result => result.Id == "combined-page").Url, Is.EqualTo("/pages/combined-page"));
+        });
+    }
+
+    [Test]
+    public async Task ChatApi_WithEmptyMessage_ReturnsBadRequest()
+    {
+        var response = await _client.PostAsJsonAsync("/api/chat", new { message = "", mode = "Chat" });
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
     }
 }

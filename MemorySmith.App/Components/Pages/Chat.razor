@@ -1,0 +1,118 @@
+@page "/chat"
+@rendermode InteractiveServer
+@inject IChatAgent ChatAgent
+@inject ISnackbar Snackbar
+
+<PageTitle>Chat</PageTitle>
+
+<div class="chat-workbench">
+    <section class="chat-shell" aria-label="MemorySmith chat">
+        <div class="chat-toolbar">
+            <div>
+                <MudText Typo="Typo.h5">Chat</MudText>
+                <span class="wiki-count">@_mode mode</span>
+            </div>
+            <MudButtonGroup Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small">
+                <MudButton Variant="@(_mode == MemoryChatMode.Chat ? Variant.Filled : Variant.Outlined)" OnClick="@(() => _mode = MemoryChatMode.Chat)">Chat</MudButton>
+                <MudButton Variant="@(_mode == MemoryChatMode.Agent ? Variant.Filled : Variant.Outlined)" OnClick="@(() => _mode = MemoryChatMode.Agent)">Agent</MudButton>
+            </MudButtonGroup>
+        </div>
+
+        <div class="chat-transcript">
+            @if (_turns.Count == 0)
+            {
+                <div class="wiki-empty-state">No messages yet.</div>
+            }
+            else
+            {
+                @foreach (var turn in _turns)
+                {
+                    <article class="chat-message @turn.Role">
+                        <div class="chat-message-role">@turn.Role</div>
+                        <div class="chat-message-body">@turn.Content</div>
+                        @if (turn.Context.Count > 0 || turn.WrittenMemories.Count > 0 || turn.WrittenPages.Count > 0)
+                        {
+                            <div class="chat-context-list">
+                                @foreach (var item in turn.Context)
+                                {
+                                    <span class="wiki-tag">@item.Kind:@item.Id</span>
+                                }
+                                @foreach (var id in turn.WrittenMemories)
+                                {
+                                    <span class="wiki-status is-working">memory:@id</span>
+                                }
+                                @foreach (var slug in turn.WrittenPages)
+                                {
+                                    <span class="wiki-status is-core">page:@slug</span>
+                                }
+                            </div>
+                        }
+                    </article>
+                }
+            }
+        </div>
+
+        <div class="chat-composer">
+            <MudTextField @bind-Value="_draft"
+                          Label="Message"
+                          Lines="4"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          OnKeyUp="OnComposerKeyUp" />
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Send" Disabled="@_isSending" OnClick="SendAsync">Send</MudButton>
+        </div>
+    </section>
+</div>
+
+@code {
+    private readonly List<ChatTurn> _turns = [];
+    private readonly List<ChatMessage> _history = [];
+    private MemoryChatMode _mode = MemoryChatMode.Chat;
+    private string _draft = string.Empty;
+    private bool _isSending;
+
+    private async Task OnComposerKeyUp(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter" && args.CtrlKey)
+        {
+            await SendAsync();
+        }
+    }
+
+    private async Task SendAsync()
+    {
+        var message = _draft.Trim();
+        if (string.IsNullOrWhiteSpace(message) || _isSending)
+        {
+            return;
+        }
+
+        _draft = string.Empty;
+        _turns.Add(new ChatTurn("user", message, [], [], []));
+        _history.Add(new ChatMessage("user", message));
+        _isSending = true;
+
+        try
+        {
+            var response = await ChatAgent.SendAsync(new MemoryChatRequest(message, _mode, _history), CancellationToken.None);
+            _turns.Add(new ChatTurn("assistant", response.Reply, response.Context, response.WrittenMemories, response.WrittenPages));
+            _history.Add(new ChatMessage("assistant", response.Reply));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+            _turns.Add(new ChatTurn("assistant", ex.Message, [], [], []));
+        }
+        finally
+        {
+            _isSending = false;
+        }
+    }
+
+    private sealed record ChatTurn(
+        string Role,
+        string Content,
+        IReadOnlyList<ChatContextItem> Context,
+        IReadOnlyList<string> WrittenMemories,
+        IReadOnlyList<string> WrittenPages);
+}

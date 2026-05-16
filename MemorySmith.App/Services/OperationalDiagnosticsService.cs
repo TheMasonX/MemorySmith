@@ -15,6 +15,7 @@ public sealed record OperationalDiagnosticsSnapshot(
 
 public sealed record EffectiveMemorySmithConfiguration(
     string DataPath,
+    string PagesPath,
     string EventLogPath,
     string VarsPath,
     bool ApiKeyConfigured,
@@ -23,7 +24,8 @@ public sealed record EffectiveMemorySmithConfiguration(
     IReadOnlyList<string> ConfiguredUrls,
     MaintenanceOptions Maintenance,
     LimitOptions Limits,
-    SourceLinkOptions SourceLinks);
+    SourceLinkOptions SourceLinks,
+    ChatOptions Chat);
 
 public sealed record StoragePathStatus(
     string Name,
@@ -60,8 +62,16 @@ public class OperationalDiagnosticsService
     {
         var settings = _options.Value;
         var dataPath = GetFullPath(settings.DataPath);
+        var pagesPath = GetFullPath(settings.PagesPath);
         var eventLogPath = GetFullPath(settings.EventLogPath);
         var varsPath = GetFullPath(settings.VarsPath);
+        var sourceLinks = new SourceLinkOptions
+        {
+            MaxReadBytes = settings.SourceLinks.MaxReadBytes,
+            AllowOpenWithDefaultApp = settings.SourceLinks.AllowOpenWithDefaultApp,
+            AllowedFileRootVariables = settings.SourceLinks.AllowedFileRootVariables.Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+            AllowedFileRoots = settings.SourceLinks.AllowedFileRoots.Distinct(StringComparer.OrdinalIgnoreCase).ToList()
+        };
 
         return new OperationalDiagnosticsSnapshot(
             DateTime.UtcNow,
@@ -70,6 +80,7 @@ public class OperationalDiagnosticsService
             AppContext.BaseDirectory,
             new EffectiveMemorySmithConfiguration(
                 dataPath,
+                pagesPath,
                 eventLogPath,
                 varsPath,
                 !string.IsNullOrWhiteSpace(settings.ApiKey),
@@ -78,9 +89,11 @@ public class OperationalDiagnosticsService
                 GetConfiguredUrls(),
                 settings.Maintenance,
                 settings.Limits,
-                settings.SourceLinks),
+                sourceLinks,
+                settings.Chat),
             [
-                GetDirectoryStatus("Memory data", dataPath),
+                GetDirectoryStatus("Memory data", dataPath, "*.json"),
+                GetDirectoryStatus("Pages", pagesPath, "*.md"),
                 GetFileStatus("Event log", eventLogPath),
                 GetFileStatus("Variables", varsPath)
             ],
@@ -99,15 +112,20 @@ public class OperationalDiagnosticsService
     private static IReadOnlyList<EndpointInfo> GetEndpoints() =>
     [
         new("Blazor workbench", "/memories", "Memory browsing, search, and editing"),
+        new("Pages", "/pages", "Markdown-backed persistent pages"),
+        new("Chat", "/chat", "Memory-enhanced chat and agent mode"),
         new("Health", "/health", "Stats, maintenance telemetry, and operational diagnostics"),
         new("Variables", "/variables", "Source-link path variable management"),
         new("REST memories", "/api/memories", "Memory CRUD and search API"),
+        new("REST pages", "/api/pages", "Markdown page CRUD and search API"),
+        new("Combined search", "/api/search", "Combined memory and page search API"),
+        new("Chat API", "/api/chat", "Provider-backed chat and agent API"),
         new("Stats", "/api/stats", "Counts, activity, and maintenance telemetry"),
         new("Diagnostics", "/api/diagnostics", "Redacted runtime configuration and storage diagnostics"),
         new("MCP", "/mcp", "HTTP JSON-RPC MCP tools")
     ];
 
-    private static StoragePathStatus GetDirectoryStatus(string name, string path)
+    private static StoragePathStatus GetDirectoryStatus(string name, string path, string searchPattern)
     {
         try
         {
@@ -117,7 +135,7 @@ public class OperationalDiagnosticsService
                 path,
                 "Directory",
                 exists,
-                exists ? Directory.EnumerateFiles(path, "*.json", SearchOption.AllDirectories).LongCount() : null,
+                exists ? Directory.EnumerateFiles(path, searchPattern, SearchOption.AllDirectories).LongCount() : null,
                 null,
                 GetAvailableFreeBytes(path),
                 null);

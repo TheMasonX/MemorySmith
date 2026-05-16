@@ -1,0 +1,300 @@
+using System.Text.RegularExpressions;
+using Markdig;
+
+namespace MemorySmith.App.Services;
+
+public sealed record PageSummary(
+    string Slug,
+    string Title,
+    string Snippet,
+    DateTime LastUpdatedUtc);
+
+public sealed record PageDocument(
+    string Slug,
+    string Title,
+    string Markdown,
+    string Html,
+    DateTime LastUpdatedUtc,
+    string RelativePath);
+
+public sealed record PageSaveRequest(string? Slug, string? Title, string Markdown);
+
+public sealed record PageSearchQuery(string? Query = null, int Limit = 50);
+
+public interface IPageService
+{
+    Task<IReadOnlyList<PageSummary>> ListAsync(CancellationToken cancellationToken);
+    Task<IReadOnlyList<PageSummary>> SearchAsync(PageSearchQuery query, CancellationToken cancellationToken);
+    Task<PageDocument?> GetAsync(string slug, CancellationToken cancellationToken);
+    Task<PageDocument> SaveAsync(PageSaveRequest request, CancellationToken cancellationToken);
+    Task<bool> DeleteAsync(string slug, CancellationToken cancellationToken);
+    string RenderHtml(string markdown);
+}
+
+public sealed class FilePageService : IPageService
+{
+    private static readonly Regex TokenPattern = new("[A-Za-z0-9]+", RegexOptions.Compiled);
+    private static readonly Regex InvalidSlugCharacters = new("[^a-z0-9/_-]+", RegexOptions.Compiled);
+    private static readonly Regex DuplicateSeparators = new("[-_]{2,}", RegexOptions.Compiled);
+    private static readonly Regex MarkdownAssetPattern = new(@"(\]\()((?:\./|/)?assets/[^)\s]+)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex HtmlAssetPattern = new(@"((?:src|href)=['""'])((?:\./|/)?assets/[^'""']+)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly MarkdownPipeline MarkdownPipeline = new MarkdownPipelineBuilder()
+        .UseAdvancedExtensions()
+        .Build();
+
+    private readonly string _rootPath;
+    private readonly string _assetPath;
+    private readonly object _lock = new();
+
+    public FilePageService(string rootPath)
+    {
+        _rootPath = Path.GetFullPath(rootPath);
+        _assetPath = Path.Combine(_rootPath, "assets");
+        Directory.CreateDirectory(_rootPath);
+        Directory.CreateDirectory(_assetPath);
+    }
+
+    public Task<IReadOnlyList<PageSummary>> ListAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (_lock)
+        {
+            return Task.FromResult<IReadOnlyList<PageSummary>>(EnumeratePageFiles()
+                .Select(ReadSummary)
+                .OrderByDescending(page => page.LastUpdatedUtc)
+                .ThenBy(page => page.Title, StringComparer.OrdinalIgnoreCase)
+                .ToList());
+        }
+    }
+
+    public Task<IReadOnlyList<PageSummary>> SearchAsync(PageSearchQuery query, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var limit = Math.Clamp(query.Limit, 1, 200);
+        var searchText = query.Query?.Trim() ?? string.Empty;
+        var tokens = TokenPattern.Matches(searchText).Select(match => match.Value).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        lock (_lock)
+        {
+            var pages = EnumeratePageFiles()
+                .Select(file => (File: file, Markdown: File.ReadAllText(file)))
+                .Select(item =>
+                {
+                    var slug = ToSlug(item.File);
+                    var title = ExtractTitle(item.Markdown, slug);
+                    var score = Score(title, item.Markdown, searchText, tokens);
+                    return (Summary: ToSummary(slug, title, item.Markdown, item.File), Score: score);
+                })
+                .Where(item => tokens.Count == 0 || item.Score > 0)
+                .OrderByDescending(item => item.Score)
+                .ThenByDescending(item => item.Summary.LastUpdatedUtc)
+                .ThenBy(item => item.Summary.Title, StringComparer.OrdinalIgnoreCase)
+                .Take(limit)
+                .Select(item => item.Summary)
+                .ToList();
+
+            return Task.FromResult<IReadOnlyList<PageSummary>>(pages);
+        }
+    }
+
+    public Task<PageDocument?> GetAsync(string slug, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (_lock)
+        {
+            var normalizedSlug = NormalizeSlug(slug);
+            var path = GetPagePath(normalizedSlug);
+            return Task.FromResult(File.Exists(path) ? ReadDocument(path) : null);
+        }
+    }
+
+    public Task<PageDocument> SaveAsync(PageSaveRequest request, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (_lock)
+        {
+            var slug = NormalizeSlug(string.IsNullOrWhiteSpace(request.Slug) ? request.Title : request.Slug);
+            var path = GetPagePath(slug);
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            File.WriteAllText(path, EnsureMarkdownHasTitle(request.Markdown, request.Title));
+            return Task.FromResult(ReadDocument(path)!);
+        }
+    }
+
+    public Task<bool> DeleteAsync(string slug, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (_lock)
+        {
+            var path = GetPagePath(NormalizeSlug(slug));
+            if (!File.Exists(path))
+            {
+                return Task.FromResult(false);
+            }
+
+            File.Delete(path);
+            return Task.FromResult(true);
+        }
+    }
+
+    public string RenderHtml(string markdown) =>
+        Markdown.ToHtml(NormalizeAssetReferences(markdown), MarkdownPipeline);
+
+    private IEnumerable<string> EnumeratePageFiles() =>
+        Directory.EnumerateFiles(_rootPath, "*.md", SearchOption.AllDirectories)
+            .Where(path => !IsUnderPath(path, _assetPath));
+
+    private PageDocument? ReadDocument(string path)
+    {
+        if (!File.Exists(path))
+        {
+            return null;
+        }
+
+        var markdown = File.ReadAllText(path);
+        var slug = ToSlug(path);
+        var title = ExtractTitle(markdown, slug);
+        return new PageDocument(
+            slug,
+            title,
+            markdown,
+            RenderHtml(markdown),
+            File.GetLastWriteTimeUtc(path),
+            Path.GetRelativePath(_rootPath, path));
+    }
+
+    private PageSummary ReadSummary(string path)
+    {
+        var markdown = File.ReadAllText(path);
+        var slug = ToSlug(path);
+        return ToSummary(slug, ExtractTitle(markdown, slug), markdown, path);
+    }
+
+    private static PageSummary ToSummary(string slug, string title, string markdown, string path) =>
+        new(slug, title, BuildSnippet(markdown), File.GetLastWriteTimeUtc(path));
+
+    private static string ExtractTitle(string markdown, string slug)
+    {
+        var titleLine = markdown.Split('\n', StringSplitOptions.TrimEntries)
+            .FirstOrDefault(line => line.StartsWith("# ", StringComparison.Ordinal));
+        return string.IsNullOrWhiteSpace(titleLine)
+            ? ToTitle(slug)
+            : titleLine[2..].Trim();
+    }
+
+    private static string BuildSnippet(string markdown)
+    {
+        var text = Regex.Replace(markdown, @"[#>*_`\[\]()]", string.Empty);
+        text = Regex.Replace(text, "\\s+", " ").Trim();
+        return text.Length <= 220 ? text : text[..220] + "...";
+    }
+
+    private static int Score(string title, string markdown, string query, HashSet<string> tokens)
+    {
+        if (tokens.Count == 0)
+        {
+            return 1;
+        }
+
+        var score = 0;
+        if (title.Contains(query, StringComparison.OrdinalIgnoreCase))
+        {
+            score += 10;
+        }
+
+        if (markdown.Contains(query, StringComparison.OrdinalIgnoreCase))
+        {
+            score += 5;
+        }
+
+        foreach (var token in tokens)
+        {
+            if (title.Contains(token, StringComparison.OrdinalIgnoreCase))
+            {
+                score += 4;
+            }
+
+            if (markdown.Contains(token, StringComparison.OrdinalIgnoreCase))
+            {
+                score += 1;
+            }
+        }
+
+        return score;
+    }
+
+    private string GetPagePath(string slug)
+    {
+        var relative = slug.Replace('/', Path.DirectorySeparatorChar) + ".md";
+        var fullPath = Path.GetFullPath(Path.Combine(_rootPath, relative));
+        var root = _rootPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        if (!fullPath.StartsWith(root, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException("Page slug resolves outside the configured pages directory.");
+        }
+
+        return fullPath;
+    }
+
+    private string ToSlug(string path)
+    {
+        var relative = Path.GetRelativePath(_rootPath, path);
+        var withoutExtension = Path.ChangeExtension(relative, null) ?? relative;
+        return NormalizeSlug(withoutExtension.Replace(Path.DirectorySeparatorChar, '/'));
+    }
+
+    public static string NormalizeSlug(string? value)
+    {
+        var slug = (value ?? string.Empty).Trim().Replace('\\', '/').Replace(' ', '-').ToLowerInvariant();
+        if (slug.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
+        {
+            slug = slug[..^3];
+        }
+
+        slug = InvalidSlugCharacters.Replace(slug, "-");
+        slug = DuplicateSeparators.Replace(slug, "-");
+        slug = string.Join('/', slug.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+        return string.IsNullOrWhiteSpace(slug) ? $"page-{DateTime.UtcNow:yyyyMMddHHmmss}" : slug;
+    }
+
+    private static string ToTitle(string slug) =>
+        string.Join(' ', slug.Split(['/', '-', '_'], StringSplitOptions.RemoveEmptyEntries)
+            .Select(part => char.ToUpperInvariant(part[0]) + part[1..]));
+
+    private static string EnsureMarkdownHasTitle(string markdown, string? title)
+    {
+        var content = (markdown ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(title) || content.Split('\n', StringSplitOptions.TrimEntries).Any(line => line.StartsWith("# ", StringComparison.Ordinal)))
+        {
+            return content;
+        }
+
+        return $"# {title.Trim()}\n\n{content}".Trim();
+    }
+
+    private static string NormalizeAssetReferences(string markdown)
+    {
+        var normalized = MarkdownAssetPattern.Replace(markdown, match => match.Groups[1].Value + ToAssetRequestPath(match.Groups[2].Value));
+        return HtmlAssetPattern.Replace(normalized, match => match.Groups[1].Value + ToAssetRequestPath(match.Groups[2].Value));
+    }
+
+    private static string ToAssetRequestPath(string path)
+    {
+        var normalized = path.Replace('\\', '/').TrimStart('/');
+        if (normalized.StartsWith("./", StringComparison.Ordinal))
+        {
+            normalized = normalized[2..];
+        }
+
+        return normalized.StartsWith("assets/", StringComparison.OrdinalIgnoreCase)
+            ? "/page-assets/" + normalized[7..]
+            : path;
+    }
+
+    private static bool IsUnderPath(string path, string root)
+    {
+        var normalizedRoot = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        var normalizedPath = Path.GetFullPath(path);
+        return normalizedPath.StartsWith(normalizedRoot, StringComparison.OrdinalIgnoreCase);
+    }
+}

@@ -566,7 +566,7 @@
                 builder.AddAttribute(sequence++, "type", "button");
                 builder.AddAttribute(sequence++, "class", "wiki-link-chip");
                 builder.AddAttribute(sequence++, "title", tooltip);
-                builder.AddAttribute(sequence++, "onclick", EventCallback.Factory.Create(this, () => CopyTextAsync(tooltip)));
+                builder.AddAttribute(sequence++, "onclick", EventCallback.Factory.Create<MouseEventArgs>(this, args => OpenOrCopySourceLinkAsync(sl, tooltip, args)));
                 builder.AddContent(sequence++, lineHint.Length > 0 ? $"{label}{lineHint}" : label);
                 builder.CloseElement();
             }
@@ -655,6 +655,18 @@
     {
         await JS.InvokeVoidAsync("navigator.clipboard.writeText", text);
         Snackbar.Add("Copied", Severity.Success);
+    }
+
+    private async Task OpenOrCopySourceLinkAsync(SourceLink link, string tooltip, MouseEventArgs args)
+    {
+        if (args.CtrlKey || args.MetaKey)
+        {
+            var result = await VarResolver.OpenWithDefaultAppAsync(link);
+            Snackbar.Add(result.Message, result.Opened ? Severity.Success : Severity.Warning);
+            return;
+        }
+
+        await CopyTextAsync(tooltip);
     }
 
     private string BuildAgentContext(MemoryRecord record)

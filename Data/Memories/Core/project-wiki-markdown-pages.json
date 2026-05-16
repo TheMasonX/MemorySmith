@@ -1,0 +1,50 @@
+{
+  "Id": "project-wiki-markdown-pages",
+  "Content": "MemorySmith now supports persistent markdown-backed pages stored in Data/Pages as a sibling to Data/Memories and Data/Graph. FilePageService provides list, search, get, save, delete, and Markdig HTML rendering. Page assets under Data/Pages/assets are served from /page-assets so markdown images and browser-supported audio/video can be embedded. The /pages UI is separate from memory search and /api/pages exposes page CRUD, search, and rendered HTML.",
+  "Title": "Markdown Pages Current State",
+  "Status": 2,
+  "Confidence": 0.95,
+  "Tags": [
+    "project-wiki",
+    "pages",
+    "markdown",
+    "data-folder",
+    "ui",
+    "api",
+    "current-state"
+  ],
+  "References": [
+    "project-wiki-active-architecture",
+    "project-wiki-ui-architecture",
+    "project-wiki-operational-diagnostics-dashboard"
+  ],
+  "Conflicts": [],
+  "SourceLinks": [
+    {
+      "Label": "PageService.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/PageService.cs",
+      "StartLine": null,
+      "EndLine": null
+    },
+    {
+      "Label": "PagesController.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Controllers/PagesController.cs",
+      "StartLine": null,
+      "EndLine": null
+    },
+    {
+      "Label": "Pages.razor",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Components/Pages/Pages.razor",
+      "StartLine": null,
+      "EndLine": null
+    },
+    {
+      "Label": "Data page seed",
+      "Uri": "%MemorySmithRepo%Data/Pages/memorysmith.md",
+      "StartLine": null,
+      "EndLine": null
+    }
+  ],
+  "UsageCount": 0,
+  "LastUpdated": "2026-05-16T22:47:08.2824777Z"
+}

@@ -1,0 +1,254 @@
+@page "/pages"
+@page "/pages/{*Slug}"
+@rendermode InteractiveServer
+@inject IPageService PageService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Pages</PageTitle>
+
+<div class="wiki-workbench pages-workbench">
+    <section class="wiki-commandbar" aria-label="Page search">
+        <div class="wiki-title-block">
+            <MudText Typo="Typo.h5">Pages</MudText>
+            <span class="wiki-count">@_pages.Count pages</span>
+        </div>
+
+        <div class="wiki-search-strip">
+            <MudTextField @bind-Value="_searchQuery"
+                          Label="Search pages"
+                          Placeholder="Title or markdown"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          OnKeyUp="OnSearchKeyUp"
+                          Class="wiki-search-box" />
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Search" OnClick="SearchAsync">Search</MudButton>
+            <MudIconButton Icon="@Icons.Material.Filled.Clear" Size="Size.Small" OnClick="ClearAsync" aria-label="Clear" />
+            <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" Color="Color.Success" OnClick="NewPage" aria-label="New" />
+        </div>
+    </section>
+
+    <section class="wiki-body pages-body">
+        <aside class="wiki-results-pane" aria-label="Pages">
+            <div class="wiki-pane-header">
+                <MudText Typo="Typo.subtitle2">Pages</MudText>
+            </div>
+
+            @if (_isLoading)
+            {
+                <MudProgressLinear Indeterminate="true" />
+            }
+            else if (_pages.Count == 0)
+            {
+                <div class="wiki-empty-state">No pages found.</div>
+            }
+            else
+            {
+                <div class="wiki-results-list">
+                    @foreach (var summary in _pages)
+                    {
+                        <article class="@PageRowClass(summary)" @onclick="@(() => SelectAsync(summary.Slug, navigate: true))">
+                            <div class="wiki-result-main">
+                                <div class="wiki-result-title">@summary.Title</div>
+                                <div class="wiki-result-meta">
+                                    <span class="wiki-status">Markdown</span>
+                                    <span>@summary.LastUpdatedUtc.ToLocalTime().ToString("M/d HH:mm")</span>
+                                </div>
+                                <div class="wiki-result-snippet">@summary.Snippet</div>
+                            </div>
+                        </article>
+                    }
+                </div>
+            }
+        </aside>
+
+        <main class="wiki-detail-pane" aria-label="Selected page">
+            @if (_isEditing)
+            {
+                <div class="wiki-pane-header">
+                    <MudText Typo="Typo.subtitle2">@(_editingExisting ? "Edit Page" : "New Page")</MudText>
+                    <MudSpacer />
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Save" OnClick="SaveAsync">Save</MudButton>
+                    <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="CancelEdit">Cancel</MudButton>
+                </div>
+                <div class="wiki-editor-grid page-editor-grid">
+                    <MudTextField @bind-Value="_editSlug" Label="Slug" Disabled="@_editingExisting" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    <MudTextField @bind-Value="_editTitle" Label="Title" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                </div>
+                <MudTextField @bind-Value="_editMarkdown"
+                              Label="Markdown"
+                              Lines="20"
+                              Required="true"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Class="wiki-editor-textarea page-editor-textarea" />
+            }
+            else if (_selectedPage is null)
+            {
+                <div class="wiki-empty-state">Select a page to inspect.</div>
+            }
+            else
+            {
+                <div class="wiki-pane-header wiki-detail-header">
+                    <div>
+                        <MudText Typo="Typo.h6">@_selectedPage.Title</MudText>
+                        <div class="wiki-result-meta">
+                            <span class="wiki-status">Markdown</span>
+                            <span>@_selectedPage.RelativePath</span>
+                            <span>@_selectedPage.LastUpdatedUtc.ToLocalTime().ToString("g")</span>
+                        </div>
+                    </div>
+                    <MudSpacer />
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="EditSelected" aria-label="Edit" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="DeleteSelectedAsync" aria-label="Delete" />
+                </div>
+                <div class="page-rendered">@((MarkupString)_selectedPage.Html)</div>
+            }
+        </main>
+    </section>
+</div>
+
+@code {
+    [Parameter] public string? Slug { get; set; }
+
+    private List<PageSummary> _pages = [];
+    private PageDocument? _selectedPage;
+    private string _searchQuery = string.Empty;
+    private string _editSlug = string.Empty;
+    private string _editTitle = string.Empty;
+    private string _editMarkdown = string.Empty;
+    private bool _isLoading;
+    private bool _isEditing;
+    private bool _editingExisting;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadAsync(Slug);
+    }
+
+    private async Task LoadAsync(string? selectedSlug = null)
+    {
+        _isLoading = true;
+        var pages = string.IsNullOrWhiteSpace(_searchQuery)
+            ? await PageService.ListAsync(CancellationToken.None)
+            : await PageService.SearchAsync(new PageSearchQuery(_searchQuery), CancellationToken.None);
+        _pages = pages.ToList();
+        _isLoading = false;
+
+        if (!string.IsNullOrWhiteSpace(selectedSlug))
+        {
+            await SelectAsync(selectedSlug, navigate: false);
+        }
+        else if (_selectedPage is null && _pages.Count > 0)
+        {
+            await SelectAsync(_pages[0].Slug, navigate: false);
+        }
+    }
+
+    private async Task SearchAsync()
+    {
+        _selectedPage = null;
+        await LoadAsync();
+    }
+
+    private async Task ClearAsync()
+    {
+        _searchQuery = string.Empty;
+        await LoadAsync();
+    }
+
+    private async Task OnSearchKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await SearchAsync();
+        }
+    }
+
+    private async Task SelectAsync(string slug, bool navigate)
+    {
+        var page = await PageService.GetAsync(slug, CancellationToken.None);
+        if (page is null)
+        {
+            Snackbar.Add("Page not found", Severity.Warning);
+            return;
+        }
+
+        _selectedPage = page;
+        _isEditing = false;
+        PopulateEditor(page, editingExisting: true);
+        if (navigate)
+        {
+            Navigation.NavigateTo($"/pages/{Uri.EscapeDataString(page.Slug)}");
+        }
+    }
+
+    private void NewPage()
+    {
+        _selectedPage = null;
+        _editSlug = string.Empty;
+        _editTitle = string.Empty;
+        _editMarkdown = string.Empty;
+        _editingExisting = false;
+        _isEditing = true;
+    }
+
+    private void EditSelected()
+    {
+        if (_selectedPage is null)
+        {
+            return;
+        }
+
+        PopulateEditor(_selectedPage, editingExisting: true);
+        _isEditing = true;
+    }
+
+    private void CancelEdit()
+    {
+        _isEditing = false;
+        if (_selectedPage is not null)
+        {
+            PopulateEditor(_selectedPage, editingExisting: true);
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        var page = await PageService.SaveAsync(new PageSaveRequest(_editSlug, _editTitle, _editMarkdown), CancellationToken.None);
+        Snackbar.Add("Page saved", Severity.Success);
+        _selectedPage = page;
+        _isEditing = false;
+        await LoadAsync(page.Slug);
+        Navigation.NavigateTo($"/pages/{Uri.EscapeDataString(page.Slug)}");
+    }
+
+    private async Task DeleteSelectedAsync()
+    {
+        if (_selectedPage is null)
+        {
+            return;
+        }
+
+        var deleted = await PageService.DeleteAsync(_selectedPage.Slug, CancellationToken.None);
+        Snackbar.Add(deleted ? "Page deleted" : "Delete failed", deleted ? Severity.Success : Severity.Error);
+        _selectedPage = null;
+        await LoadAsync();
+        Navigation.NavigateTo("/pages");
+    }
+
+    private void PopulateEditor(PageDocument page, bool editingExisting)
+    {
+        _editSlug = page.Slug;
+        _editTitle = page.Title;
+        _editMarkdown = page.Markdown;
+        _editingExisting = editingExisting;
+    }
+
+    private string PageRowClass(PageSummary page) =>
+        string.Equals(_selectedPage?.Slug, page.Slug, StringComparison.OrdinalIgnoreCase)
+            ? "wiki-result-row is-selected"
+            : "wiki-result-row";
+}

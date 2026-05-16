@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using System.Diagnostics;
 using MemorySmith.Core.Models;
 using MemorySmith.Storage;
 using Microsoft.Extensions.Options;
@@ -16,6 +17,8 @@ public record SourceContent(
     int? StartLine,
     int? EndLine,
     bool Exists);
+
+public sealed record SourceOpenResult(bool Opened, string ResolvedUri, string Message);
 
 /// <summary>
 /// Resolves <c>%VariableName%</c> tokens in source link URIs using the wiki variable store.
@@ -88,6 +91,74 @@ public class VarResolver
             content = content[..maxBytes] + $"\n[... truncated — {content.Length - maxBytes} more chars]";
 
         return new SourceContent(fullPath, content, "file", link.StartLine, link.EndLine, Exists: true);
+    }
+
+    public Task<SourceOpenResult> OpenWithDefaultAppAsync(SourceLink link)
+    {
+        if (!_options.SourceLinks.AllowOpenWithDefaultApp)
+        {
+            return Task.FromResult(new SourceOpenResult(false, Resolve(link.Uri), "Opening source links with the default app is disabled."));
+        }
+
+        if (!TryResolveLocalFile(link, out var fullPath, out var message))
+        {
+            return Task.FromResult(new SourceOpenResult(false, Resolve(link.Uri), message ?? "Source link could not be opened."));
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = fullPath,
+                UseShellExecute = true
+            });
+
+            return Task.FromResult(new SourceOpenResult(true, fullPath, "Opened source link."));
+        }
+        catch (Exception ex)
+        {
+            return Task.FromResult(new SourceOpenResult(false, fullPath, ex.Message));
+        }
+    }
+
+    public bool TryResolveLocalFile(SourceLink link, out string fullPath, out string? message)
+    {
+        var resolved = Resolve(link.Uri);
+        fullPath = resolved;
+        message = null;
+
+        if (string.IsNullOrWhiteSpace(resolved))
+        {
+            message = "Source link path is empty.";
+            return false;
+        }
+
+        if (resolved.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+            resolved.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            message = "Web source links should be opened in the browser.";
+            return false;
+        }
+
+        if (!TryNormalizePath(resolved, out fullPath))
+        {
+            message = "Source link path is invalid.";
+            return false;
+        }
+
+        if (!IsAllowedSourcePath(fullPath))
+        {
+            message = "Source link path is outside the configured allowed source roots.";
+            return false;
+        }
+
+        if (!File.Exists(fullPath) && !Directory.Exists(fullPath))
+        {
+            message = "Source link path does not exist.";
+            return false;
+        }
+
+        return true;
     }
 
     /// <summary>Returns all currently defined variables.</summary>

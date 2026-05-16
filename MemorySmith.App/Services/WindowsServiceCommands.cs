@@ -169,6 +169,7 @@ public static class WindowsServiceCommands
         {
             var paths = GetServiceStoragePaths(command.MemoryDirectory);
             AddConfigurationArgument(runtimeArguments, "--MemorySmith:DataPath", paths.MemoryDirectory);
+            AddConfigurationArgument(runtimeArguments, "--MemorySmith:PagesPath", paths.PagesDirectory);
             AddConfigurationArgument(runtimeArguments, "--MemorySmith:EventLogPath", paths.EventLogPath);
             AddConfigurationArgument(runtimeArguments, "--MemorySmith:VarsPath", paths.VarsPath);
         }
@@ -226,7 +227,7 @@ Examples:
 
 Notes:
     Run install and uninstall from an elevated PowerShell session.
-    --memory-directory also derives adjacent paths for MemorySmith:EventLogPath and MemorySmith:VarsPath.
+    --memory-directory also derives adjacent paths for MemorySmith:PagesPath, MemorySmith:EventLogPath, and MemorySmith:VarsPath.
     The installed service listens on http://localhost:<port> unless you pass a custom --urls runtime argument after --.
 """;
         }
@@ -324,6 +325,7 @@ Notes:
 
         var paths = GetServiceStoragePaths(command.MemoryDirectory);
         Directory.CreateDirectory(paths.MemoryDirectory);
+        Directory.CreateDirectory(paths.PagesDirectory);
         Directory.CreateDirectory(Path.GetDirectoryName(paths.EventLogPath)!);
         Directory.CreateDirectory(Path.GetDirectoryName(paths.VarsPath)!);
     }
@@ -335,6 +337,7 @@ Notes:
         var parent = Directory.GetParent(trimmed)?.FullName ?? trimmed;
         return new ServiceStoragePaths(
             normalizedMemoryDirectory,
+            Path.Combine(parent, "Pages"),
             Path.Combine(parent, "Events", "audit.log"),
             Path.Combine(parent, "vars.json"));
     }
@@ -406,5 +409,5 @@ Notes:
     private static string Quote(string value) =>
         "\"" + value.Replace("\"", "\\\"", StringComparison.Ordinal) + "\"";
 
-    private sealed record ServiceStoragePaths(string MemoryDirectory, string EventLogPath, string VarsPath);
+    private sealed record ServiceStoragePaths(string MemoryDirectory, string PagesDirectory, string EventLogPath, string VarsPath);
 }

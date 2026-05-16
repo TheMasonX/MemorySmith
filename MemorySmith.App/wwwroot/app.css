@@ -66,6 +66,22 @@ body {
     background: var(--vscode-panel) !important;
     border-right: 1px solid var(--vscode-border);
     color: var(--vscode-text);
+    width: 164px !important;
+    min-width: 164px !important;
+}
+
+.app-drawer .mud-drawer-header {
+    min-height: 48px;
+    padding: 12px 16px;
+}
+
+.app-drawer .mud-nav-link {
+    min-height: 40px;
+    padding: 8px 16px;
+}
+
+.app-drawer .mud-nav-link-icon {
+    margin-right: 12px;
 }
 
 .wiki-workbench {
@@ -154,7 +170,7 @@ body {
 }
 
 .wiki-detail-pane {
-    overflow: auto;
+    overflow: hidden;
 }
 
 .wiki-pane-header {
@@ -235,9 +251,11 @@ body {
     min-height: 22px;
     border-radius: 3px;
     border: 1px solid var(--vscode-border);
-    padding: 1px 7px;
+    padding: 2px 7px;
     font-size: 0.74rem;
-    line-height: 1.2;
+    line-height: 1;
+    letter-spacing: 0;
+    justify-content: center;
     background: var(--vscode-panel-soft);
     color: var(--vscode-text);
 }
@@ -342,8 +360,9 @@ body {
     border: 1px solid var(--vscode-border);
     background: var(--vscode-bg);
     color: var(--vscode-text);
-    min-height: 220px;
-    max-height: 48vh;
+    flex: 1 1 auto;
+    min-height: 120px;
+    max-height: none;
     overflow: auto;
     white-space: pre-wrap;
     line-height: 1.45;
@@ -356,6 +375,9 @@ body {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
     padding: 0 12px 12px;
+    flex: 0 0 auto;
+    max-height: 32%;
+    overflow: auto;
 }
 
 .wiki-section-title {
@@ -409,6 +431,138 @@ body {
 .wiki-source-link:hover {
     background: var(--vscode-accent-hover);
     text-decoration: none;
+}
+
+.pages-workbench,
+.chat-workbench {
+    height: 100%;
+    min-height: 0;
+}
+
+.page-rendered {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    margin: 10px 12px 12px;
+    padding: 16px;
+    border: 1px solid var(--vscode-border);
+    background: var(--vscode-bg);
+    color: var(--vscode-text);
+    line-height: 1.5;
+}
+
+.page-rendered h1,
+.page-rendered h2,
+.page-rendered h3 {
+    margin: 0 0 10px;
+    line-height: 1.25;
+}
+
+.page-rendered p,
+.page-rendered ul,
+.page-rendered ol,
+.page-rendered pre,
+.page-rendered blockquote,
+.page-rendered table,
+.page-rendered img,
+.page-rendered video,
+.page-rendered audio {
+    margin-bottom: 12px;
+}
+
+.page-rendered img,
+.page-rendered video {
+    max-width: 100%;
+    height: auto;
+}
+
+.page-rendered code,
+.page-rendered pre {
+    font-family: Consolas, "Cascadia Mono", "Segoe UI", monospace;
+}
+
+.page-rendered pre {
+    padding: 10px;
+    overflow: auto;
+    background: var(--vscode-panel-soft);
+    border: 1px solid var(--vscode-border);
+}
+
+.chat-workbench {
+    display: flex;
+    flex-direction: column;
+}
+
+.chat-shell {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    height: 100%;
+    background: var(--vscode-panel);
+    border: 1px solid var(--vscode-border);
+}
+
+.chat-toolbar,
+.chat-composer {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--vscode-panel-strong);
+    border-bottom: 1px solid var(--vscode-border);
+}
+
+.chat-toolbar {
+    justify-content: space-between;
+}
+
+.chat-transcript {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    padding: 12px;
+}
+
+.chat-message {
+    border: 1px solid var(--vscode-border);
+    background: var(--vscode-panel-soft);
+    border-radius: 4px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+}
+
+.chat-message.user {
+    border-color: rgba(0, 122, 204, 0.55);
+}
+
+.chat-message-role {
+    color: var(--vscode-text-muted);
+    font-size: 0.76rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+}
+
+.chat-message-body {
+    white-space: pre-wrap;
+    line-height: 1.45;
+}
+
+.chat-context-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 8px;
+}
+
+.chat-composer {
+    align-items: flex-end;
+    border-top: 1px solid var(--vscode-border);
+    border-bottom: 0;
+}
+
+.chat-composer .mud-input-control {
+    flex: 1 1 auto;
 }
 
 .vars-table {
@@ -577,8 +731,13 @@ body {
 
     .health-charts-row,
     .health-lower-grid,
-    .health-operations-grid {
+    .health-operations-grid,
+    .chat-composer {
         grid-template-columns: 1fr;
+    }
+
+    .chat-composer {
+        display: grid;
     }
 }
 
@@ -638,6 +797,6 @@ body {
     .wiki-content-scroll {
         min-height: 120px;
         max-height: none;
-        overflow: visible;
+        overflow: auto;
     }
 }

@@ -1,0 +1,50 @@
+{
+  "Id": "project-wiki-chat-agent-provider",
+  "Content": "MemorySmith chat is provider-based. IChatProvider isolates model API calls and IChatAgent isolates memory/page context gathering and agent-write behavior. OllamaChatProvider is the current local provider using /api/chat on the configured Ollama endpoint and model. MemoryChatAgent builds context from hybrid memory search plus markdown page search. Chat mode answers questions; Agent mode can parse structured provider output and write MemoryRecord entries and Data/Pages markdown pages when Chat:AgentWritesEnabled is true. The design leaves room for OpenAI, Copilot, Anthropic, or other providers without changing the UI.",
+  "Title": "Chat Agent Provider Architecture",
+  "Status": 2,
+  "Confidence": 0.9,
+  "Tags": [
+    "project-wiki",
+    "chat",
+    "agent",
+    "ollama",
+    "provider",
+    "architecture",
+    "current-state"
+  ],
+  "References": [
+    "project-wiki-markdown-pages",
+    "project-wiki-hybrid-search-rrf",
+    "project-wiki-active-architecture"
+  ],
+  "Conflicts": [],
+  "SourceLinks": [
+    {
+      "Label": "ChatServices.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/ChatServices.cs",
+      "StartLine": null,
+      "EndLine": null
+    },
+    {
+      "Label": "ChatController.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Controllers/ChatController.cs",
+      "StartLine": null,
+      "EndLine": null
+    },
+    {
+      "Label": "Chat.razor",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Components/Pages/Chat.razor",
+      "StartLine": null,
+      "EndLine": null
+    },
+    {
+      "Label": "PagesAndChatTests.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.Tests/PagesAndChatTests.cs",
+      "StartLine": null,
+      "EndLine": null
+    }
+  ],
+  "UsageCount": 0,
+  "LastUpdated": "2026-05-16T22:47:08.3419572Z"
+}

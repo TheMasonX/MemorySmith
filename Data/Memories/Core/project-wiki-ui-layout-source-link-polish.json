@@ -1,0 +1,55 @@
+{
+  "Id": "project-wiki-ui-layout-source-link-polish",
+  "Content": "The active Blazor shell uses a narrower 164px navigation drawer with Pages and Chat nav items. Memory and page workbench panes now use contained scrolling to avoid hidden detail content. Tag/status/link chips share the same small radius and inline-flex vertical centering. Local file source-link chips copy on click and Ctrl\u002BClick asks VarResolver to open the resolved local file with the OS default app after source-root validation and SourceLinks:AllowOpenWithDefaultApp checks.",
+  "Title": "UI Layout and Source Link Polish",
+  "Status": 2,
+  "Confidence": 0.9,
+  "Tags": [
+    "project-wiki",
+    "ui",
+    "layout",
+    "source-links",
+    "navigation",
+    "current-state"
+  ],
+  "References": [
+    "project-wiki-ui-architecture",
+    "project-wiki-source-links-feature",
+    "project-wiki-markdown-pages"
+  ],
+  "Conflicts": [],
+  "SourceLinks": [
+    {
+      "Label": "app.css",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/wwwroot/app.css",
+      "StartLine": null,
+      "EndLine": null
+    },
+    {
+      "Label": "MainLayout.razor",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Components/Layout/MainLayout.razor",
+      "StartLine": null,
+      "EndLine": null
+    },
+    {
+      "Label": "NavMenu.razor",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Components/Layout/NavMenu.razor",
+      "StartLine": null,
+      "EndLine": null
+    },
+    {
+      "Label": "MemoryViewer.razor",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Components/Pages/MemoryViewer.razor",
+      "StartLine": null,
+      "EndLine": null
+    },
+    {
+      "Label": "VarResolver.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/VarResolver.cs",
+      "StartLine": null,
+      "EndLine": null
+    }
+  ],
+  "UsageCount": 0,
+  "LastUpdated": "2026-05-16T22:47:08.3621638Z"
+}

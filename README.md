@@ -1,6 +1,6 @@
 # MemorySmith
 
-MemorySmith is a single-host ASP.NET Core app for local structured memory management. It hosts a Blazor workbench UI, REST API, MCP endpoint, file-backed storage, and background maintenance in one process. The `/memories` page is the primary dashboard/workbench UI; the older standalone Dashboard project is migration history. The repository ships with a live project wiki inside `Data/Memories`, and the app uses its own memory store as a testbed.
+MemorySmith is a single-host ASP.NET Core app for local structured memory management. It hosts a Blazor workbench UI, markdown pages, REST API, MCP endpoint, file-backed storage, local chat/agent workflows, and background maintenance in one process. The `/memories` page is the primary structured memory workbench; the older standalone Dashboard project is migration history. The repository ships with a live project wiki inside `Data/Memories`, and the app uses its own memory store as a testbed.
 
 ## Quick Start
 
@@ -13,10 +13,14 @@ Opens on `http://localhost:5089` by default. Pages:
 | Route | Purpose |
 |---|---|
 | `/memories` | Browse, search, create, edit, delete memory records |
+| `/pages` | Create, search, edit, and render markdown-backed pages from `Data/Pages` |
+| `/chat` | Memory-enhanced chat and agent mode using the configured chat provider |
 | `/health` | Stat cards, activity charts (queries/day, changes/day), maintenance telemetry |
 | `/variables` | Manage `%VarName%` path variables used in source link URIs |
 | `/api/memories` | REST CRUD for automation |
+| `/api/pages`, `/api/search`, `/api/chat` | Page CRUD/search/rendering, combined memory/page search, and chat/agent API |
 | `/api/stats`, `/api/health/*`, `/api/diagnostics` | Stats, readiness, and redacted operational diagnostics |
+| `/page-assets/*` | Static files from `Data/Pages/assets` for images, video, and audio embedded in pages |
 | `/mcp` | MCP JSON-RPC endpoint for AI agent tool use |
 
 ## The Project Wiki
@@ -83,6 +87,20 @@ Each `SourceLink` in the array has:
 
 Add or edit source links in the `/memories` workbench using the format `Label | URI [| StartLine[-EndLine]]`, one per line.
 
+Local file source-link chips copy the resolved path on click. Ctrl+Click opens the resolved file with the operating system default app when `SourceLinks:AllowOpenWithDefaultApp` is enabled and the path is under an allowed source root.
+
+## Markdown Pages
+
+`Data/Pages/` stores user and agent-editable markdown files. The `/pages` UI and `/api/pages` API keep page search and page navigation separate from structured memory search. `/api/search` returns a combined memory/page result set when broader discovery is useful. Page assets live under `Data/Pages/assets` and are served at `/page-assets`; markdown links such as `![diagram](assets/diagram.png)` are rewritten to that static route when rendered.
+
+Pages are rendered with Markdig advanced extensions. Raw HTML media tags are supported for local page content, so audio and video can be embedded with `/page-assets/...` sources when browser codecs allow it.
+
+## Chat and Agent Mode
+
+`/chat` uses the `IChatProvider` and `IChatAgent` abstractions. The registered provider is currently `OllamaChatProvider`, which calls a local Ollama HTTP service. `MemoryChatAgent` builds context from hybrid memory search plus page search before sending the request.
+
+Chat mode answers questions. Agent mode asks the provider for structured actions and can write memories and pages when `Chat:AgentWritesEnabled` is true. The provider interface is intentionally narrow so OpenAI, Copilot, Anthropic, or other APIs can be added without changing the UI or agent workflow.
+
 ## Search
 
 Three search modes are available in the UI (`/memories` search bar) and the REST API:
@@ -130,6 +148,7 @@ All settings live under `MemorySmith` in `appsettings.json`:
 {
   "MemorySmith": {
     "DataPath": "../Data/Memories",
+    "PagesPath": "../Data/Pages",
     "EventLogPath": "../Data/Events/audit.log",
     "VarsPath": "../Data/vars.json",
     "ApiKey": null,
@@ -143,8 +162,18 @@ All settings live under `MemorySmith` in `appsettings.json`:
     },
     "SourceLinks": {
       "MaxReadBytes": 65536,
+      "AllowOpenWithDefaultApp": true,
       "AllowedFileRootVariables": [ "MemorySmithRepo" ],
       "AllowedFileRoots": []
+    },
+    "Chat": {
+      "Provider": "Ollama",
+      "OllamaEndpoint": "http://localhost:11434",
+      "OllamaModel": "qwen2.5-coder:7b",
+      "RequestTimeoutSeconds": 120,
+      "MaxContextRecords": 5,
+      "MaxContextPages": 5,
+      "AgentWritesEnabled": true
     }
   }
 }
@@ -155,10 +184,13 @@ Override via `appsettings.Development.json` or environment variables (`MemorySmi
 - **`ApiKey`** — if set, all API and MCP requests must include `X-Api-Key: <value>`. Leave `null` for local use.
 - **`AllowRemoteApi`** — set `true` to allow non-localhost callers. Off by default.
 - **`DataPath`** — root of the memory store. Subdirectories (`Unconsolidated/`, `Working/`, `Core/`, `Deprecated/`) are created automatically.
+- **`PagesPath`** — root of the markdown page store. `assets/` under this directory is served at `/page-assets`.
 - **`VarsPath`** — path to the flat JSON dict used for `%VarName%` source link expansion.
 - **`SourceLinks:MaxReadBytes`** — maximum local file content returned per source-link entry by MCP source bundle reads.
+- **`SourceLinks:AllowOpenWithDefaultApp`** — allows Ctrl+Click source-link opening after variable resolution and allowed-root checks.
 - **`SourceLinks:AllowedFileRootVariables`** — variable names whose resolved values are trusted roots for local source-link file reads. Defaults to `MemorySmithRepo`.
 - **`SourceLinks:AllowedFileRoots`** — optional explicit local roots, useful when source links need access outside the repo wiki root.
+- **`Chat:*`** — provider, Ollama endpoint/model, timeout, context limits, and whether agent-mode writes are enabled. Set `OllamaModel` to a model returned by `ollama list`.
 
 ## Windows Service
 
@@ -185,7 +217,7 @@ Install flags:
 | `--service-display-name` | Display name in Services UI |
 | `--service-description` | Windows Service description |
 | `--service-start-type` | `auto`, `demand`, or `disabled` |
-| `--memory-directory` | Target `MemorySmith:DataPath`; adjacent `Events/audit.log` and `vars.json` are derived from its parent folder |
+| `--memory-directory` | Target `MemorySmith:DataPath`; adjacent `Pages`, `Events/audit.log`, and `vars.json` are derived from its parent folder |
 | `--port` | Local HTTP port. Default install port: `5089` |
 
 Arguments after `--` are still passed as runtime args to the service process for advanced ASP.NET Core settings. Use either `--port` or a custom runtime `--urls`, not both.

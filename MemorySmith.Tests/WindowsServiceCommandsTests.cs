@@ -86,6 +86,7 @@ public class WindowsServiceCommandsTests
             {
                 "--urls", "http://localhost:5090",
                 "--MemorySmith:DataPath", normalizedMemoryDirectory,
+                "--MemorySmith:PagesPath", Path.Combine(dataRoot, "Pages"),
                 "--MemorySmith:EventLogPath", Path.Combine(dataRoot, "Events", "audit.log"),
                 "--MemorySmith:VarsPath", Path.Combine(dataRoot, "vars.json")
             }));

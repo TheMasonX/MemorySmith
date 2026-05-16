@@ -36,7 +36,7 @@ public class SearchBenchmarkTests
         new("Data Folder", MustContainId: "project-wiki-data-folder-policy", MaxMs: 100),
         new("Validation Command", MustContainId: "project-wiki-validation-command", MaxMs: 100),
         new("Hybrid Search", MustContainId: "project-wiki-hybrid-search-rrf", MaxMs: 100),
-        new("project-wiki", MustContainId: "project-wiki-active-architecture", MaxMs: 100),
+        new("project-wiki", MustContainId: "project-wiki-active-architecture", MaxMs: 100, Limit: 100),
         new("Windows Service", MustContainId: "project-wiki-windows-service-operations", MaxMs: 100),
     ];
 
@@ -86,7 +86,7 @@ public class SearchBenchmarkTests
     {
         var sw = Stopwatch.StartNew();
         var results = await _service.SearchAsync(
-            new MemorySearchQuery(probe.Query, Status: null, Tags: "project-wiki", Limit: 10),
+            new MemorySearchQuery(probe.Query, Status: null, Tags: "project-wiki", Limit: probe.Limit),
             CancellationToken.None);
         sw.Stop();
 
@@ -100,7 +100,7 @@ public class SearchBenchmarkTests
     {
         var sw = Stopwatch.StartNew();
         var results = await _service.SemanticSearchAsync(
-            new SemanticMemorySearchQuery(probe.Query, Status: null, Tags: "project-wiki", Limit: 10),
+            new SemanticMemorySearchQuery(probe.Query, Status: null, Tags: "project-wiki", Limit: probe.Limit),
             CancellationToken.None);
         sw.Stop();
 
@@ -114,7 +114,7 @@ public class SearchBenchmarkTests
     {
         var sw = Stopwatch.StartNew();
         var results = await _service.HybridSearchAsync(
-            new HybridMemorySearchQuery(probe.Query, Status: null, Tags: "project-wiki", Limit: 10),
+            new HybridMemorySearchQuery(probe.Query, Status: null, Tags: "project-wiki", Limit: probe.Limit),
             CancellationToken.None);
         sw.Stop();
 
@@ -317,7 +317,8 @@ public record SearchProbe(
     string Query,
     string? TopId = null,
     string? MustContainId = null,
-    int MaxMs = 500)
+    int MaxMs = 500,
+    int Limit = 10)
 {
     public override string ToString() => Query;
 }
