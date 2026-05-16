@@ -1,49 +1,113 @@
 @page "/chat"
 @rendermode InteractiveServer
+@implements IDisposable
+@using Microsoft.Extensions.Options
 @inject IChatAgent ChatAgent
+@inject IChatProvider ChatProvider
+@inject IOptionsMonitor<MemorySmithOptions> Options
 @inject ISnackbar Snackbar
+@inject IJSRuntime JS
 
 <PageTitle>Chat</PageTitle>
 
 <div class="chat-workbench">
-    <section class="chat-shell" aria-label="MemorySmith chat">
-        <div class="chat-toolbar">
-            <div>
-                <MudText Typo="Typo.h5">Chat</MudText>
-                <span class="wiki-count">@_mode mode</span>
-            </div>
-            <MudButtonGroup Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small">
-                <MudButton Variant="@(_mode == MemoryChatMode.Chat ? Variant.Filled : Variant.Outlined)" OnClick="@(() => _mode = MemoryChatMode.Chat)">Chat</MudButton>
-                <MudButton Variant="@(_mode == MemoryChatMode.Agent ? Variant.Filled : Variant.Outlined)" OnClick="@(() => _mode = MemoryChatMode.Agent)">Agent</MudButton>
-            </MudButtonGroup>
+    <aside class="@HistorySidebarClass" aria-label="Chat history">
+        <div class="chat-history-header">
+            <MudText Typo="Typo.subtitle2">History</MudText>
+            <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" Color="Color.Success" OnClick="StartNewChatAsync" aria-label="New chat" />
         </div>
 
-        <div class="chat-transcript">
-            @if (_turns.Count == 0)
+        @if (_historyOpen)
+        {
+            <div class="chat-history-list">
+                @foreach (var session in _sessions)
+                {
+                    <button type="button" class="@SessionButtonClass(session)" @onclick="@(() => SelectSessionAsync(session.Id))">
+                        <span>@session.Title</span>
+                        <small>@session.UpdatedUtc.ToLocalTime().ToString("M/d HH:mm")</small>
+                    </button>
+                }
+            </div>
+        }
+    </aside>
+
+    <section class="chat-shell" aria-label="MemorySmith chat">
+        <div class="chat-toolbar">
+            <MudIconButton Icon="@(_historyOpen ? Icons.Material.Filled.ChevronLeft : Icons.Material.Filled.Menu)" Size="Size.Small" OnClick="ToggleHistory" aria-label="Toggle history" />
+
+            <MudButtonGroup Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" Class="chat-mode-toggle">
+                <MudButton Variant="@(_mode == MemoryChatMode.Chat ? Variant.Filled : Variant.Outlined)" OnClick="@(() => SetMode(MemoryChatMode.Chat))">Chat</MudButton>
+                <MudButton Variant="@(_mode == MemoryChatMode.Agent ? Variant.Filled : Variant.Outlined)" OnClick="@(() => SetMode(MemoryChatMode.Agent))">Agent</MudButton>
+            </MudButtonGroup>
+
+            <div class="chat-model-controls">
+                <span class="wiki-status">@_providerName</span>
+                <MudSelect T="string" Value="_selectedModel" ValueChanged="OnModelChanged" Label="Model" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="chat-model-select">
+                    @if (_models.Count == 0 && !string.IsNullOrWhiteSpace(_selectedModel))
+                    {
+                        <MudSelectItem T="string" Value="@_selectedModel">@_selectedModel</MudSelectItem>
+                    }
+                    @foreach (var model in _models)
+                    {
+                        <MudSelectItem T="string" Value="@model.Name">@model.Name</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Small" Color="Color.Primary" Disabled="@_isLoadingModels" OnClick="RefreshModelsAsync" aria-label="Refresh models" />
+            </div>
+        </div>
+
+        <div class="chat-status-strip">
+            <span>@_agentStatus</span>
+            @if (!string.IsNullOrWhiteSpace(_modelError))
+            {
+                <span class="chat-status-error">@_modelError</span>
+            }
+            @if (_attachments.Count > 0)
+            {
+                <span>@_attachments.Count attachment(s) queued</span>
+            }
+        </div>
+
+        <div class="chat-transcript" @ref="_transcriptPane">
+            @if (ActiveSession.Turns.Count == 0)
             {
                 <div class="wiki-empty-state">No messages yet.</div>
             }
             else
             {
-                @foreach (var turn in _turns)
+                @foreach (var turn in ActiveSession.Turns)
                 {
                     <article class="chat-message @turn.Role">
-                        <div class="chat-message-role">@turn.Role</div>
+                        <div class="chat-message-topline">
+                            <span class="chat-message-role">@turn.Role</span>
+                            <span>@turn.CreatedUtc.ToLocalTime().ToString("HH:mm")</span>
+                        </div>
                         <div class="chat-message-body">@turn.Content</div>
+
+                        @if (turn.Attachments.Count > 0)
+                        {
+                            <div class="chat-context-list">
+                                @foreach (var attachment in turn.Attachments)
+                                {
+                                    <span class="wiki-tag" title="@attachment.ContentType">file:@attachment.Name</span>
+                                }
+                            </div>
+                        }
+
                         @if (turn.Context.Count > 0 || turn.WrittenMemories.Count > 0 || turn.WrittenPages.Count > 0)
                         {
                             <div class="chat-context-list">
                                 @foreach (var item in turn.Context)
                                 {
-                                    <span class="wiki-tag">@item.Kind:@item.Id</span>
+                                    <a class="wiki-tag chat-resource" href="@ContextHref(item)" target="_blank" rel="noopener noreferrer" title="@item.Snippet">@item.Kind:@item.Title</a>
                                 }
                                 @foreach (var id in turn.WrittenMemories)
                                 {
-                                    <span class="wiki-status is-working">memory:@id</span>
+                                    <a class="wiki-status is-working chat-resource" href="@MemoryHref(id)" target="_blank" rel="noopener noreferrer">memory:@id</a>
                                 }
                                 @foreach (var slug in turn.WrittenPages)
                                 {
-                                    <span class="wiki-status is-core">page:@slug</span>
+                                    <a class="wiki-status is-core chat-resource" href="@PageHref(slug)" target="_blank" rel="noopener noreferrer">page:@slug</a>
                                 }
                             </div>
                         }
@@ -52,31 +116,205 @@
             }
         </div>
 
+        <div class="chat-attachment-row">
+            <InputFile id="chat-file-input" OnChange="OnFilesSelectedAsync" multiple class="chat-file-input" />
+            @foreach (var attachment in _attachments)
+            {
+                <button type="button" class="wiki-tag chat-attachment-chip" title="Remove attachment" @onclick="@(() => RemoveAttachment(attachment.Name))">@attachment.Name</button>
+            }
+        </div>
+
         <div class="chat-composer">
-            <MudTextField @bind-Value="_draft"
-                          Label="Message"
-                          Lines="4"
-                          Variant="Variant.Outlined"
-                          Margin="Margin.Dense"
-                          OnKeyUp="OnComposerKeyUp" />
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Send" Disabled="@_isSending" OnClick="SendAsync">Send</MudButton>
+            <textarea @ref="_composerInput"
+                      class="chat-composer-input"
+                      aria-label="Message"
+                      placeholder="Message"
+                      value="@_draft"
+                      @oninput="OnDraftInput"></textarea>
+            <div class="chat-composer-actions">
+                <MudCheckBox T="bool" Value="_sendOnEnter" ValueChanged="SetSendOnEnterAsync" Label="Send on Enter" Size="Size.Small" />
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Send" Disabled="@_isSending" OnClick="SendAsync">Send</MudButton>
+            </div>
         </div>
     </section>
 </div>
 
 @code {
-    private readonly List<ChatTurn> _turns = [];
-    private readonly List<ChatMessage> _history = [];
+    private const string ChatStorageKey = "memorysmith.chat.sessions.v1";
+    private readonly List<ChatSessionState> _sessions = [];
+    private readonly List<ChatModelSummary> _models = [];
+    private readonly List<ChatAttachment> _attachments = [];
+    private DotNetObjectReference<Chat>? _dotNetRef;
+    private ElementReference _composerInput;
+    private ElementReference _transcriptPane;
     private MemoryChatMode _mode = MemoryChatMode.Chat;
+    private string _activeSessionId = string.Empty;
     private string _draft = string.Empty;
+    private string _providerName = "Ollama";
+    private string _selectedModel = string.Empty;
+    private string _agentStatus = "Ready";
+    private string? _modelError;
+    private bool _historyOpen = true;
+    private bool _sendOnEnter = true;
     private bool _isSending;
+    private bool _isLoadingModels;
+    private bool _hasLoadedSessions;
+    private bool _composerRegistered;
+    private bool _scrollPending;
 
-    private async Task OnComposerKeyUp(KeyboardEventArgs args)
+    private ChatSessionState ActiveSession =>
+        _sessions.FirstOrDefault(session => session.Id == _activeSessionId) ?? _sessions.First();
+
+    private string HistorySidebarClass => _historyOpen ? "chat-history-pane" : "chat-history-pane is-collapsed";
+
+    protected override void OnInitialized()
     {
-        if (args.Key == "Enter" && args.CtrlKey)
+        var chatOptions = Options.CurrentValue.Chat;
+        _providerName = chatOptions.Provider;
+        _selectedModel = chatOptions.OllamaModel;
+        StartNewChat();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
         {
-            await SendAsync();
+            _dotNetRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("memorySmith.chat.registerComposer", _composerInput, _dotNetRef, _sendOnEnter);
+            _composerRegistered = true;
+            await LoadSessionsAsync();
+            await RefreshModelsAsync(silent: true);
+            StateHasChanged();
         }
+
+        if (_scrollPending)
+        {
+            _scrollPending = false;
+            await JS.InvokeVoidAsync("memorySmith.chat.scrollToBottom", _transcriptPane);
+        }
+    }
+
+    private async Task LoadSessionsAsync()
+    {
+        var saved = await JS.InvokeAsync<List<ChatSessionState>?>("memorySmith.storage.getJson", ChatStorageKey);
+        _sessions.Clear();
+        if (saved is not null)
+        {
+            _sessions.AddRange(saved.Where(session => !string.IsNullOrWhiteSpace(session.Id)));
+        }
+
+        StartNewChat();
+        _hasLoadedSessions = true;
+        await SaveSessionsAsync();
+    }
+
+    private void ToggleHistory()
+    {
+        _historyOpen = !_historyOpen;
+    }
+
+    private async Task StartNewChatAsync()
+    {
+        StartNewChat();
+        await SaveSessionsAsync();
+    }
+
+    private void StartNewChat()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var session = new ChatSessionState
+        {
+            Id = Guid.NewGuid().ToString("N"),
+            Title = "New chat",
+            CreatedUtc = now,
+            UpdatedUtc = now
+        };
+        _sessions.Insert(0, session);
+        _activeSessionId = session.Id;
+        _draft = string.Empty;
+        _attachments.Clear();
+        _agentStatus = "Ready";
+        _scrollPending = true;
+    }
+
+    private async Task SelectSessionAsync(string id)
+    {
+        if (_sessions.Any(session => session.Id == id))
+        {
+            _activeSessionId = id;
+            _draft = string.Empty;
+            _attachments.Clear();
+            _scrollPending = true;
+            await SaveSessionsAsync();
+        }
+    }
+
+    private void SetMode(MemoryChatMode mode)
+    {
+        _mode = mode;
+        _agentStatus = mode == MemoryChatMode.Agent ? "Agent ready" : "Chat ready";
+    }
+
+    private Task OnModelChanged(string model)
+    {
+        _selectedModel = model;
+        _agentStatus = $"Using {_providerName} / {_selectedModel}";
+        return Task.CompletedTask;
+    }
+
+    private async Task RefreshModelsAsync()
+    {
+        await RefreshModelsAsync(silent: false);
+    }
+
+    private async Task RefreshModelsAsync(bool silent)
+    {
+        _isLoadingModels = true;
+        _modelError = null;
+        try
+        {
+            var models = await ChatProvider.ListModelsAsync(CancellationToken.None);
+            _models.Clear();
+            _models.AddRange(models);
+            if (_models.Count > 0 && !_models.Any(model => string.Equals(model.Name, _selectedModel, StringComparison.OrdinalIgnoreCase)))
+            {
+                _selectedModel = _models[0].Name;
+            }
+
+            _agentStatus = $"{_models.Count} model(s) available";
+        }
+        catch (Exception ex)
+        {
+            _modelError = ex.Message;
+            if (!silent)
+            {
+                Snackbar.Add(ex.Message, Severity.Warning);
+            }
+        }
+        finally
+        {
+            _isLoadingModels = false;
+        }
+    }
+
+    private void OnDraftInput(ChangeEventArgs args)
+    {
+        _draft = args.Value?.ToString() ?? string.Empty;
+    }
+
+    private async Task SetSendOnEnterAsync(bool enabled)
+    {
+        _sendOnEnter = enabled;
+        if (_composerRegistered)
+        {
+            await JS.InvokeVoidAsync("memorySmith.chat.setSendOnEnter", _composerInput, enabled);
+        }
+    }
+
+    [JSInvokable]
+    public Task SendFromKeyboard()
+    {
+        return SendAsync();
     }
 
     private async Task SendAsync()
@@ -87,32 +325,145 @@
             return;
         }
 
+        var session = ActiveSession;
+        var attachments = _attachments.ToList();
         _draft = string.Empty;
-        _turns.Add(new ChatTurn("user", message, [], [], []));
-        _history.Add(new ChatMessage("user", message));
+        _attachments.Clear();
+        session.Turns.Add(new ChatTurnState("user", message, DateTimeOffset.UtcNow, [], [], [], attachments));
+        session.History.Add(new ChatMessage("user", message));
+        session.Title = BuildSessionTitle(session, message);
+        session.UpdatedUtc = DateTimeOffset.UtcNow;
         _isSending = true;
+        _agentStatus = _mode == MemoryChatMode.Agent ? "Agent thinking" : "Sending";
+        _scrollPending = true;
 
         try
         {
-            var response = await ChatAgent.SendAsync(new MemoryChatRequest(message, _mode, _history), CancellationToken.None);
-            _turns.Add(new ChatTurn("assistant", response.Reply, response.Context, response.WrittenMemories, response.WrittenPages));
-            _history.Add(new ChatMessage("assistant", response.Reply));
+            var response = await ChatAgent.SendAsync(new MemoryChatRequest(message, _mode, session.History, _selectedModel, attachments), CancellationToken.None);
+            session.Turns.Add(new ChatTurnState("assistant", response.Reply, DateTimeOffset.UtcNow, response.Context.ToList(), response.WrittenMemories.ToList(), response.WrittenPages.ToList(), []));
+            session.History.Add(new ChatMessage("assistant", response.Reply));
+            session.UpdatedUtc = DateTimeOffset.UtcNow;
+            _agentStatus = $"{response.ProviderName} / {response.Model}: {response.Context.Count} resource(s), {response.WrittenMemories.Count + response.WrittenPages.Count} write(s)";
         }
         catch (Exception ex)
         {
             Snackbar.Add(ex.Message, Severity.Error);
-            _turns.Add(new ChatTurn("assistant", ex.Message, [], [], []));
+            session.Turns.Add(new ChatTurnState("assistant", ex.Message, DateTimeOffset.UtcNow, [], [], [], []));
+            _agentStatus = "Request failed";
         }
         finally
         {
             _isSending = false;
+            _scrollPending = true;
+            await SaveSessionsAsync();
         }
     }
 
-    private sealed record ChatTurn(
+    private async Task OnFilesSelectedAsync(InputFileChangeEventArgs args)
+    {
+        var maxCharacters = Math.Clamp(Options.CurrentValue.Chat.MaxAttachmentCharacters, 1000, 2_000_000);
+        foreach (var file in args.GetMultipleFiles(8))
+        {
+            var text = await ReadAttachmentTextAsync(file, maxCharacters);
+            _attachments.RemoveAll(attachment => string.Equals(attachment.Name, file.Name, StringComparison.OrdinalIgnoreCase));
+            _attachments.Add(new ChatAttachment(file.Name, file.ContentType, text, file.Size));
+        }
+
+        _agentStatus = $"{_attachments.Count} attachment(s) queued";
+    }
+
+    private static async Task<string> ReadAttachmentTextAsync(IBrowserFile file, int maxCharacters)
+    {
+        if (!IsTextAttachment(file))
+        {
+            return $"Binary attachment supplied: {file.Name} ({file.ContentType}, {file.Size} bytes).";
+        }
+
+        var maxBytes = Math.Min(file.Size, maxCharacters);
+        await using var stream = file.OpenReadStream(maxAllowedSize: Math.Max(maxBytes, 1));
+        using var reader = new StreamReader(stream);
+        var buffer = new char[maxCharacters];
+        var read = await reader.ReadBlockAsync(buffer, 0, buffer.Length);
+        return new string(buffer, 0, read);
+    }
+
+    private static bool IsTextAttachment(IBrowserFile file)
+    {
+        var extension = Path.GetExtension(file.Name);
+        return file.ContentType.StartsWith("text/", StringComparison.OrdinalIgnoreCase) ||
+            extension is ".md" or ".txt" or ".json" or ".xml" or ".csv" or ".cs" or ".razor" or ".css" or ".js" or ".ts" or ".ps1";
+    }
+
+    private void RemoveAttachment(string name)
+    {
+        _attachments.RemoveAll(attachment => string.Equals(attachment.Name, name, StringComparison.OrdinalIgnoreCase));
+        _agentStatus = _attachments.Count == 0 ? "Ready" : $"{_attachments.Count} attachment(s) queued";
+    }
+
+    private async Task SaveSessionsAsync()
+    {
+        if (!_hasLoadedSessions)
+        {
+            return;
+        }
+
+        var retained = _sessions
+            .Where(session => session.Id == _activeSessionId || session.Turns.Count > 0)
+            .OrderByDescending(session => session.UpdatedUtc)
+            .Take(30)
+            .ToList();
+        _sessions.Clear();
+        _sessions.AddRange(retained);
+        await JS.InvokeVoidAsync("memorySmith.storage.setJson", ChatStorageKey, _sessions);
+    }
+
+    private string SessionButtonClass(ChatSessionState session) =>
+        string.Equals(session.Id, _activeSessionId, StringComparison.Ordinal)
+            ? "chat-history-item is-selected"
+            : "chat-history-item";
+
+    private static string BuildSessionTitle(ChatSessionState session, string message)
+    {
+        if (!string.Equals(session.Title, "New chat", StringComparison.Ordinal))
+        {
+            return session.Title;
+        }
+
+        return message.Length <= 44 ? message : message[..44] + "...";
+    }
+
+    private static string ContextHref(ChatContextItem item) =>
+        string.Equals(item.Kind, "page", StringComparison.OrdinalIgnoreCase)
+            ? PageHref(item.Id)
+            : MemoryHref(item.Id);
+
+    private static string PageHref(string slug) =>
+        "/pages/" + string.Join('/', slug.Split('/', StringSplitOptions.RemoveEmptyEntries).Select(Uri.EscapeDataString));
+
+    private static string MemoryHref(string id) =>
+        "/api/memories/" + Uri.EscapeDataString(id);
+
+    public void Dispose()
+    {
+        _dotNetRef?.Dispose();
+    }
+
+    private sealed class ChatSessionState
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Title { get; set; } = "New chat";
+        public DateTimeOffset CreatedUtc { get; set; }
+        public DateTimeOffset UpdatedUtc { get; set; }
+        public List<ChatTurnState> Turns { get; set; } = [];
+        public List<ChatMessage> History { get; set; } = [];
+    }
+
+    private sealed record ChatTurnState(
         string Role,
         string Content,
-        IReadOnlyList<ChatContextItem> Context,
-        IReadOnlyList<string> WrittenMemories,
-        IReadOnlyList<string> WrittenPages);
+        DateTimeOffset CreatedUtc,
+        List<ChatContextItem> Context,
+        List<string> WrittenMemories,
+        List<string> WrittenPages,
+        List<ChatAttachment> Attachments);
 }

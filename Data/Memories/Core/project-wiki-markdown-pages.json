@@ -1,6 +1,6 @@
 {
   "Id": "project-wiki-markdown-pages",
-  "Content": "MemorySmith now supports persistent markdown-backed pages stored in Data/Pages as a sibling to Data/Memories and Data/Graph. FilePageService provides list, search, get, save, delete, and Markdig HTML rendering. Page assets under Data/Pages/assets are served from /page-assets so markdown images and browser-supported audio/video can be embedded. The /pages UI is separate from memory search and /api/pages exposes page CRUD, search, and rendered HTML.",
+  "Content": "MemorySmith supports persistent markdown-backed pages stored in Data/Pages as a sibling to Data/Memories and Data/Graph. User-created markdown files under Data/Pages are valid project wiki content and should be committed unless explicitly temporary/private. FilePageService provides list, search, get, save, delete, and Markdig HTML rendering. Page assets under Data/Pages/assets are served from /page-assets so markdown images and browser-supported audio/video can be embedded. The /pages UI is separate from memory search and /api/pages exposes page CRUD, search, and rendered HTML. The editor now has a toolbar for common markdown inserts, toggleable live preview, manual preview refresh, unsaved-change prompts, and a fill-height split editor/preview layout.",
   "Title": "Markdown Pages Current State",
   "Status": 2,
   "Confidence": 0.95,
@@ -43,8 +43,14 @@
       "Uri": "%MemorySmithRepo%Data/Pages/memorysmith.md",
       "StartLine": null,
       "EndLine": null
+    },
+    {
+      "Label": "Tasks page",
+      "Uri": "%MemorySmithRepo%Data/Pages/tasks.md",
+      "StartLine": null,
+      "EndLine": null
     }
   ],
   "UsageCount": 0,
-  "LastUpdated": "2026-05-16T22:47:08.2824777Z"
+  "LastUpdated": "2026-05-16T23:35:00.0000000Z"
 }

@@ -177,14 +177,34 @@ body {
     display: flex;
     align-items: center;
     gap: 8px;
-    min-height: 46px;
-    padding: 8px 10px;
+    min-height: 50px;
+    padding: 10px 12px;
     background: var(--vscode-panel-strong);
     border-bottom: 1px solid var(--vscode-border);
 }
 
 .wiki-detail-header {
-    align-items: flex-start;
+    align-items: center;
+    min-height: 68px;
+    padding: 12px;
+}
+
+.wiki-detail-title-block {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+    padding: 2px 0;
+}
+
+.wiki-detail-title-block .mud-typography-h6 {
+    line-height: 1.25;
+}
+
+.wiki-detail-header .wiki-result-meta {
+    margin-top: 0;
+    row-gap: 6px;
+    line-height: 1.2;
 }
 
 .wiki-results-list {
@@ -488,71 +508,280 @@ body {
     border: 1px solid var(--vscode-border);
 }
 
-.chat-workbench {
-    display: flex;
-    flex-direction: column;
+.page-editor-header {
+    flex-wrap: wrap;
+    row-gap: 6px;
 }
 
-.chat-shell {
+.page-editor-shell {
     display: flex;
     flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.page-editor-fields {
+    flex: 0 0 auto;
+}
+
+.page-editor-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 12px 8px;
+    border-bottom: 1px solid var(--vscode-border-soft);
+}
+
+.page-editor-panels {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 8px;
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: 0 12px 12px;
+}
+
+.page-editor-pane,
+.page-preview-pane {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.page-pane-label {
+    color: var(--vscode-text-muted);
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0;
+    padding: 6px 0;
+    text-transform: uppercase;
+}
+
+.page-editor-raw {
+    width: 100%;
+    flex: 1 1 auto;
+    min-height: 0;
+    resize: none;
+    overflow: auto;
+    border: 1px solid var(--vscode-border);
+    border-radius: 3px;
+    background: var(--vscode-bg);
+    color: var(--vscode-text);
+    padding: 12px;
+    font-family: Consolas, "Cascadia Mono", "Segoe UI", monospace;
+    font-size: 0.9rem;
+    line-height: 1.45;
+    outline: none;
+}
+
+.page-editor-raw:focus {
+    border-color: var(--vscode-accent);
+    box-shadow: inset 0 0 0 1px var(--vscode-accent);
+}
+
+.page-editor-preview {
+    height: 100%;
+    margin: 0;
+}
+
+.chat-workbench {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: 8px;
+}
+
+.chat-workbench:has(.chat-history-pane.is-collapsed) {
+    grid-template-columns: 44px minmax(0, 1fr);
+}
+
+.chat-history-pane,
+.chat-shell {
     min-height: 0;
     height: 100%;
     background: var(--vscode-panel);
     border: 1px solid var(--vscode-border);
 }
 
+.chat-history-pane {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.chat-history-pane.is-collapsed .chat-history-header .mud-typography-root,
+.chat-history-pane.is-collapsed .chat-history-list {
+    display: none;
+}
+
+.chat-history-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 42px;
+    padding: 6px 8px;
+    background: var(--vscode-panel-strong);
+    border-bottom: 1px solid var(--vscode-border);
+}
+
+.chat-history-list {
+    overflow: auto;
+    min-height: 0;
+}
+
+.chat-history-item {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--vscode-border-soft);
+    background: transparent;
+    color: var(--vscode-text);
+    text-align: left;
+    cursor: pointer;
+}
+
+.chat-history-item:hover,
+.chat-history-item.is-selected {
+    background: var(--vscode-accent-hover);
+}
+
+.chat-history-item span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.chat-history-item small {
+    color: var(--vscode-text-muted);
+    font-size: 0.72rem;
+}
+
+.chat-shell {
+    display: flex;
+    flex-direction: column;
+}
+
 .chat-toolbar,
 .chat-composer {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
+    gap: 8px;
+    padding: 6px 8px;
     background: var(--vscode-panel-strong);
     border-bottom: 1px solid var(--vscode-border);
 }
 
 .chat-toolbar {
     justify-content: space-between;
+    min-height: 52px;
+}
+
+.chat-mode-toggle {
+    flex: 0 0 auto;
+}
+
+.chat-model-controls {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.chat-model-select {
+    width: min(340px, 42vw);
+    min-width: 190px;
+}
+
+.chat-status-strip {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-height: 30px;
+    padding: 4px 10px;
+    border-bottom: 1px solid var(--vscode-border-soft);
+    color: var(--vscode-text-muted);
+    font-size: 0.76rem;
+}
+
+.chat-status-error {
+    color: var(--vscode-yellow);
 }
 
 .chat-transcript {
     flex: 1 1 auto;
     min-height: 0;
     overflow: auto;
-    padding: 12px;
+    padding: 8px 10px;
 }
 
 .chat-message {
     border: 1px solid var(--vscode-border);
     background: var(--vscode-panel-soft);
-    border-radius: 4px;
-    padding: 10px 12px;
-    margin-bottom: 10px;
+    border-radius: 3px;
+    padding: 8px 10px;
+    margin-bottom: 8px;
 }
 
 .chat-message.user {
     border-color: rgba(0, 122, 204, 0.55);
 }
 
-.chat-message-role {
+.chat-message-topline {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     color: var(--vscode-text-muted);
     font-size: 0.76rem;
+    margin-bottom: 4px;
+}
+
+.chat-message-role {
     font-weight: 600;
-    margin-bottom: 6px;
     text-transform: uppercase;
 }
 
 .chat-message-body {
     white-space: pre-wrap;
-    line-height: 1.45;
+    line-height: 1.38;
+    font-size: 0.9rem;
 }
 
 .chat-context-list {
     display: flex;
     flex-wrap: wrap;
     gap: 4px;
-    margin-top: 8px;
+    margin-top: 6px;
+}
+
+.chat-resource {
+    text-decoration: none;
+}
+
+.chat-resource:hover {
+    border-color: var(--vscode-accent);
+    color: #9cdcfe;
+}
+
+.chat-attachment-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 6px 8px;
+    border-top: 1px solid var(--vscode-border-soft);
+}
+
+.chat-file-input {
+    color: var(--vscode-text-muted);
+    font-size: 0.78rem;
+}
+
+.chat-attachment-chip {
+    cursor: pointer;
 }
 
 .chat-composer {
@@ -561,8 +790,33 @@ body {
     border-bottom: 0;
 }
 
-.chat-composer .mud-input-control {
+.chat-composer-input {
     flex: 1 1 auto;
+    min-height: 68px;
+    max-height: 22vh;
+    resize: vertical;
+    overflow: auto;
+    border: 1px solid var(--vscode-border);
+    border-radius: 3px;
+    background: var(--vscode-bg);
+    color: var(--vscode-text);
+    padding: 8px 10px;
+    font-family: "Segoe UI", Roboto, Arial, sans-serif;
+    font-size: 0.9rem;
+    line-height: 1.35;
+    outline: none;
+}
+
+.chat-composer-input:focus {
+    border-color: var(--vscode-accent);
+    box-shadow: inset 0 0 0 1px var(--vscode-accent);
+}
+
+.chat-composer-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
 }
 
 .vars-table {
@@ -729,6 +983,24 @@ body {
         flex: 1 1 auto;
     }
 
+    .page-editor-panels {
+        grid-template-columns: 1fr;
+        grid-template-rows: minmax(0, 1fr) minmax(0, 0.78fr);
+    }
+
+    .chat-workbench {
+        grid-template-columns: 180px minmax(0, 1fr);
+    }
+
+    .chat-workbench:has(.chat-history-pane.is-collapsed) {
+        grid-template-columns: 44px minmax(0, 1fr);
+    }
+
+    .chat-model-select {
+        width: min(280px, 36vw);
+        min-width: 160px;
+    }
+
     .health-charts-row,
     .health-lower-grid,
     .health-operations-grid,
@@ -798,5 +1070,27 @@ body {
         min-height: 120px;
         max-height: none;
         overflow: auto;
+    }
+
+    .wiki-detail-header,
+    .page-editor-header,
+    .chat-toolbar,
+    .chat-composer,
+    .chat-composer-actions,
+    .chat-model-controls {
+        align-items: stretch;
+    }
+
+    .page-editor-panels,
+    .chat-workbench {
+        grid-template-columns: 1fr;
+    }
+
+    .chat-history-pane {
+        display: none;
+    }
+
+    .chat-model-select {
+        width: 100%;
     }
 }

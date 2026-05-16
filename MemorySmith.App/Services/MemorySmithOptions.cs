@@ -45,8 +45,11 @@ public class ChatOptions
     public string Provider { get; set; } = "Ollama";
     public string OllamaEndpoint { get; set; } = "http://localhost:11434";
     public string OllamaModel { get; set; } = "llama3.1";
+    public string SystemPromptPath { get; set; } = Path.Combine("Prompts", "wiki-chat-agent.md");
     public int RequestTimeoutSeconds { get; set; } = 120;
     public int MaxContextRecords { get; set; } = 5;
     public int MaxContextPages { get; set; } = 5;
+    public int MaxHistoryMessages { get; set; } = 16;
+    public int MaxAttachmentCharacters { get; set; } = 120000;
     public bool AgentWritesEnabled { get; set; } = true;
 }

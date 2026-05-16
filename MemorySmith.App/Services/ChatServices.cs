@@ -15,14 +15,27 @@ public enum MemoryChatMode
 
 public sealed record ChatMessage(string Role, string Content);
 
-public sealed record ChatProviderRequest(IReadOnlyList<ChatMessage> Messages, MemoryChatMode Mode);
+public sealed record ChatAttachment(string Name, string ContentType, string Text, long Size);
+
+public sealed record ChatProviderRequest(IReadOnlyList<ChatMessage> Messages, MemoryChatMode Mode, string? Model = null);
 
 public sealed record ChatProviderResponse(string Content, string ProviderName, string Model);
+
+public sealed record ChatModelSummary(string Name, DateTimeOffset? ModifiedAt = null, long? Size = null);
+
+public sealed record ChatRuntimeConfiguration(
+    string Provider,
+    string Endpoint,
+    string Model,
+    IReadOnlyList<ChatModelSummary> Models,
+    string? ModelsError = null);
 
 public sealed record MemoryChatRequest(
     string Message,
     MemoryChatMode Mode = MemoryChatMode.Chat,
-    IReadOnlyList<ChatMessage>? History = null);
+    IReadOnlyList<ChatMessage>? History = null,
+    string? Model = null,
+    IReadOnlyList<ChatAttachment>? Attachments = null);
 
 public sealed record ChatContextItem(string Kind, string Id, string Title, string Snippet);
 
@@ -38,6 +51,7 @@ public interface IChatProvider
 {
     string Name { get; }
     Task<ChatProviderResponse> CompleteAsync(ChatProviderRequest request, CancellationToken cancellationToken);
+    Task<IReadOnlyList<ChatModelSummary>> ListModelsAsync(CancellationToken cancellationToken);
 }
 
 public interface IChatAgent
@@ -69,10 +83,11 @@ public sealed class OllamaChatProvider : IChatProvider
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(TimeSpan.FromSeconds(Math.Clamp(chatOptions.RequestTimeoutSeconds, 5, 600)));
 
+        var model = string.IsNullOrWhiteSpace(request.Model) ? chatOptions.OllamaModel : request.Model.Trim();
         var endpoint = new Uri(new Uri(chatOptions.OllamaEndpoint.TrimEnd('/') + "/"), "api/chat");
         var payload = new
         {
-            model = chatOptions.OllamaModel,
+            model,
             stream = false,
             messages = request.Messages.Select(message => new { role = message.Role, content = message.Content }).ToArray()
         };
@@ -86,7 +101,55 @@ public sealed class OllamaChatProvider : IChatProvider
 
         using var document = JsonDocument.Parse(body);
         var content = ReadOllamaContent(document.RootElement);
-        return new ChatProviderResponse(content, Name, chatOptions.OllamaModel);
+        return new ChatProviderResponse(content, Name, model);
+    }
+
+    public async Task<IReadOnlyList<ChatModelSummary>> ListModelsAsync(CancellationToken cancellationToken)
+    {
+        var chatOptions = _options.CurrentValue.Chat;
+        var endpoint = new Uri(new Uri(chatOptions.OllamaEndpoint.TrimEnd('/') + "/"), "api/tags");
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(TimeSpan.FromSeconds(Math.Clamp(chatOptions.RequestTimeoutSeconds, 5, 600)));
+
+        using var response = await _httpClient.GetAsync(endpoint, timeout.Token);
+        var body = await response.Content.ReadAsStringAsync(timeout.Token);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException($"Ollama returned {(int)response.StatusCode}: {body}");
+        }
+
+        using var document = JsonDocument.Parse(body);
+        if (!document.RootElement.TryGetProperty("models", out var models) || models.ValueKind != JsonValueKind.Array)
+        {
+            return [];
+        }
+
+        return models.EnumerateArray()
+            .Select(ReadOllamaModel)
+            .Where(model => !string.IsNullOrWhiteSpace(model.Name))
+            .OrderBy(model => model.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static ChatModelSummary ReadOllamaModel(JsonElement model)
+    {
+        var name = model.TryGetProperty("name", out var nameElement) && nameElement.ValueKind == JsonValueKind.String
+            ? nameElement.GetString() ?? string.Empty
+            : string.Empty;
+        DateTimeOffset? modifiedAt = null;
+        if (model.TryGetProperty("modified_at", out var modifiedElement) && modifiedElement.ValueKind == JsonValueKind.String &&
+            DateTimeOffset.TryParse(modifiedElement.GetString(), out var parsedModified))
+        {
+            modifiedAt = parsedModified;
+        }
+
+        long? size = null;
+        if (model.TryGetProperty("size", out var sizeElement) && sizeElement.ValueKind == JsonValueKind.Number && sizeElement.TryGetInt64(out var parsedSize))
+        {
+            size = parsedSize;
+        }
+
+        return new ChatModelSummary(name, modifiedAt, size);
     }
 
     private static string ReadOllamaContent(JsonElement root)
@@ -137,7 +200,7 @@ public sealed class MemoryChatAgent : IChatAgent
 
         var context = await BuildContextAsync(request.Message, cancellationToken);
         var messages = BuildMessages(request, context);
-        var providerResponse = await _provider.CompleteAsync(new ChatProviderRequest(messages, request.Mode), cancellationToken);
+        var providerResponse = await _provider.CompleteAsync(new ChatProviderRequest(messages, request.Mode, request.Model), cancellationToken);
 
         if (request.Mode == MemoryChatMode.Agent)
         {
@@ -174,30 +237,76 @@ public sealed class MemoryChatAgent : IChatAgent
         return context;
     }
 
-    private static IReadOnlyList<ChatMessage> BuildMessages(MemoryChatRequest request, IReadOnlyList<ChatContextItem> context)
+    private IReadOnlyList<ChatMessage> BuildMessages(MemoryChatRequest request, IReadOnlyList<ChatContextItem> context)
     {
+        var options = _options.Value.Chat;
         var messages = new List<ChatMessage>
         {
-            new("system", request.Mode == MemoryChatMode.Agent ? BuildAgentSystemPrompt() : BuildChatSystemPrompt()),
+            new("system", BuildSystemPrompt(request.Mode)),
             new("system", FormatContext(context))
         };
+
+        var attachments = FormatAttachments(request.Attachments, options.MaxAttachmentCharacters);
+        if (!string.IsNullOrWhiteSpace(attachments))
+        {
+            messages.Add(new ChatMessage("system", attachments));
+        }
 
         if (request.History is not null)
         {
             messages.AddRange(request.History
                 .Where(message => IsSupportedRole(message.Role) && !string.IsNullOrWhiteSpace(message.Content))
-                .TakeLast(16));
+                .TakeLast(Math.Clamp(options.MaxHistoryMessages, 0, 64)));
         }
 
         messages.Add(new ChatMessage("user", request.Message));
         return messages;
     }
 
-    private static string BuildChatSystemPrompt() =>
-        "You are MemorySmith Chat. Answer the user's question using the supplied memories and pages when useful. Be direct when the local knowledge base does not contain enough evidence.";
+    private string BuildSystemPrompt(MemoryChatMode mode)
+    {
+        var configuredPrompt = ReadConfiguredSystemPrompt();
+        if (!string.IsNullOrWhiteSpace(configuredPrompt))
+        {
+            return configuredPrompt + $"\n\nCurrent mode: {mode}.";
+        }
 
-    private static string BuildAgentSystemPrompt() =>
-        "You are MemorySmith Agent. Answer the user and, only when useful, propose memoryWrites and pageWrites. Return strict JSON with keys reply, memoryWrites, and pageWrites. memoryWrites items may include id, title, content, tags, status, confidence. pageWrites items may include slug, title, markdown. Do not include markdown fences around the JSON.";
+        return mode == MemoryChatMode.Agent
+            ? "You are MemorySmith Agent. Answer the user and, only when useful, propose memoryWrites and pageWrites. Return strict JSON with keys reply, memoryWrites, and pageWrites. memoryWrites items may include id, title, content, tags, status, confidence. pageWrites items may include slug, title, markdown. Do not include markdown fences around the JSON."
+            : "You are MemorySmith Chat. Answer the user's question using the supplied memories and pages when useful. Be direct when the local knowledge base does not contain enough evidence.";
+    }
+
+    private string? ReadConfiguredSystemPrompt()
+    {
+        var path = _options.Value.Chat.SystemPromptPath;
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return null;
+        }
+
+        foreach (var candidate in ResolvePromptPathCandidates(path))
+        {
+            if (File.Exists(candidate))
+            {
+                var prompt = File.ReadAllText(candidate).Trim();
+                return string.IsNullOrWhiteSpace(prompt) ? null : prompt;
+            }
+        }
+
+        return null;
+    }
+
+    private static IEnumerable<string> ResolvePromptPathCandidates(string path)
+    {
+        if (Path.IsPathRooted(path))
+        {
+            yield return path;
+            yield break;
+        }
+
+        yield return Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, path));
+        yield return Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), path));
+    }
 
     private static string FormatContext(IReadOnlyList<ChatContextItem> context)
     {
@@ -208,6 +317,38 @@ public sealed class MemoryChatAgent : IChatAgent
 
         return "Local MemorySmith context:\n" + string.Join("\n\n", context.Select(item =>
             $"[{item.Kind}] {item.Id} - {item.Title}\n{item.Snippet}"));
+    }
+
+    private static string FormatAttachments(IReadOnlyList<ChatAttachment>? attachments, int maxCharacters)
+    {
+        if (attachments is null || attachments.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var remaining = Math.Clamp(maxCharacters, 0, 2_000_000);
+        var formatted = new List<string>();
+        foreach (var attachment in attachments.Take(12))
+        {
+            var text = attachment.Text ?? string.Empty;
+            if (remaining == 0)
+            {
+                text = string.Empty;
+            }
+            else if (text.Length > remaining)
+            {
+                text = text[..remaining] + "...";
+                remaining = 0;
+            }
+            else
+            {
+                remaining -= text.Length;
+            }
+
+            formatted.Add($"Attachment: {attachment.Name} ({attachment.ContentType}, {attachment.Size} bytes)\n{text}".Trim());
+        }
+
+        return "User-provided attachments:\n\n" + string.Join("\n\n", formatted);
     }
 
     private async Task<AgentActionResult> TryApplyAgentActionsAsync(string providerContent, CancellationToken cancellationToken)

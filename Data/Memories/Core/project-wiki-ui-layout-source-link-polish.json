@@ -1,6 +1,6 @@
 {
   "Id": "project-wiki-ui-layout-source-link-polish",
-  "Content": "The active Blazor shell uses a narrower 164px navigation drawer with Pages and Chat nav items. Memory and page workbench panes now use contained scrolling to avoid hidden detail content. Tag/status/link chips share the same small radius and inline-flex vertical centering. Local file source-link chips copy on click and Ctrl\u002BClick asks VarResolver to open the resolved local file with the OS default app after source-root validation and SourceLinks:AllowOpenWithDefaultApp checks.",
+  "Content": "The active Blazor shell uses a narrower 164px navigation drawer with Pages and Chat nav items. Memory and page workbench panes use contained scrolling to avoid hidden detail content. Page detail headers now reserve enough vertical padding for status chips, file names, and timestamps. Tag/status/link chips share the same small radius and inline-flex vertical centering. The /chat surface uses a compact transcript, collapsible history rail, model controls, and a tighter composer to maximize output space. Local file source-link chips copy on click and Ctrl\u002BClick asks VarResolver to open the resolved local file with the OS default app after source-root validation and SourceLinks:AllowOpenWithDefaultApp checks.",
   "Title": "UI Layout and Source Link Polish",
   "Status": 2,
   "Confidence": 0.9,
@@ -51,5 +51,5 @@
     }
   ],
   "UsageCount": 0,
-  "LastUpdated": "2026-05-16T22:47:08.3621638Z"
+  "LastUpdated": "2026-05-16T23:35:00.0000000Z"
 }

@@ -120,6 +120,7 @@ public class OperationalDiagnosticsService
         new("REST pages", "/api/pages", "Markdown page CRUD and search API"),
         new("Combined search", "/api/search", "Combined memory and page search API"),
         new("Chat API", "/api/chat", "Provider-backed chat and agent API"),
+        new("Chat config", "/api/chat/config", "Current chat provider, default model, and provider model discovery"),
         new("Stats", "/api/stats", "Counts, activity, and maintenance telemetry"),
         new("Diagnostics", "/api/diagnostics", "Redacted runtime configuration and storage diagnostics"),
         new("MCP", "/mcp", "HTTP JSON-RPC MCP tools")

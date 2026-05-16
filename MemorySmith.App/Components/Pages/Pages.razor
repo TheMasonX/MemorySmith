@@ -4,8 +4,10 @@
 @inject IPageService PageService
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
+@inject IJSRuntime JS
 
 <PageTitle>Pages</PageTitle>
+<NavigationLock ConfirmExternalNavigation="@HasUnsavedChanges" OnBeforeInternalNavigation="ConfirmInternalNavigation" />
 
 <div class="wiki-workbench pages-workbench">
     <section class="wiki-commandbar" aria-label="Page search">
@@ -26,7 +28,7 @@
                           Class="wiki-search-box" />
             <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Search" OnClick="SearchAsync">Search</MudButton>
             <MudIconButton Icon="@Icons.Material.Filled.Clear" Size="Size.Small" OnClick="ClearAsync" aria-label="Clear" />
-            <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" Color="Color.Success" OnClick="NewPage" aria-label="New" />
+            <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" Color="Color.Success" OnClick="NewPageAsync" aria-label="New" />
         </div>
     </section>
 
@@ -67,23 +69,60 @@
         <main class="wiki-detail-pane" aria-label="Selected page">
             @if (_isEditing)
             {
-                <div class="wiki-pane-header">
-                    <MudText Typo="Typo.subtitle2">@(_editingExisting ? "Edit Page" : "New Page")</MudText>
+                <div class="wiki-pane-header page-editor-header">
+                    <div>
+                        <MudText Typo="Typo.subtitle2">@(_editingExisting ? "Edit Page" : "New Page")</MudText>
+                        @if (HasUnsavedChanges)
+                        {
+                            <span class="wiki-count">Unsaved changes</span>
+                        }
+                    </div>
                     <MudSpacer />
+                    <MudCheckBox T="bool" Value="_livePreview" ValueChanged="SetLivePreviewAsync" Label="Live preview" Size="Size.Small" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Small" Color="Color.Primary" OnClick="RefreshPreview" aria-label="Refresh preview" />
                     <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Save" OnClick="SaveAsync">Save</MudButton>
-                    <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="CancelEdit">Cancel</MudButton>
+                    <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="CancelEditAsync">Cancel</MudButton>
                 </div>
-                <div class="wiki-editor-grid page-editor-grid">
-                    <MudTextField @bind-Value="_editSlug" Label="Slug" Disabled="@_editingExisting" Variant="Variant.Outlined" Margin="Margin.Dense" />
-                    <MudTextField @bind-Value="_editTitle" Label="Title" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                <div class="page-editor-shell">
+                    <div class="wiki-editor-grid page-editor-fields">
+                        <MudTextField @bind-Value="_editSlug" Label="Slug" Disabled="@_editingExisting" Immediate="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        <MudTextField @bind-Value="_editTitle" Label="Title" Immediate="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    </div>
+
+                    <div class="page-editor-toolbar" role="toolbar" aria-label="Markdown tools">
+                        <MudTooltip Text="Bold">
+                            <MudIconButton Icon="@Icons.Material.Filled.FormatBold" Size="Size.Small" OnClick="@(() => InsertMarkdownAsync("**", "**", "bold text"))" aria-label="Bold" />
+                        </MudTooltip>
+                        <MudTooltip Text="Italic">
+                            <MudIconButton Icon="@Icons.Material.Filled.FormatItalic" Size="Size.Small" OnClick="@(() => InsertMarkdownAsync("*", "*", "italic text"))" aria-label="Italic" />
+                        </MudTooltip>
+                        <MudTooltip Text="Link">
+                            <MudIconButton Icon="@Icons.Material.Filled.Link" Size="Size.Small" OnClick="@(() => InsertMarkdownAsync("[", "](https://)", "link text"))" aria-label="Link" />
+                        </MudTooltip>
+                        <MudTooltip Text="Checkbox">
+                            <MudIconButton Icon="@Icons.Material.Filled.CheckBoxOutlineBlank" Size="Size.Small" OnClick="@(() => InsertMarkdownAsync("- [ ] ", "", "Task"))" aria-label="Checkbox" />
+                        </MudTooltip>
+                        <MudTooltip Text="Table">
+                            <MudIconButton Icon="@Icons.Material.Filled.TableChart" Size="Size.Small" OnClick="@(() => InsertMarkdownAsync("\n| Column | Value |\n| --- | --- |\n| Item | Detail |\n", "", ""))" aria-label="Table" />
+                        </MudTooltip>
+                    </div>
+
+                    <div class="page-editor-panels">
+                        <div class="page-editor-pane">
+                            <div class="page-pane-label">Markdown</div>
+                            <textarea @ref="_markdownEditor"
+                                      class="page-editor-raw"
+                                      aria-label="Markdown editor"
+                                      maxlength="524288"
+                                      value="@_editMarkdown"
+                                      @oninput="OnMarkdownInput"></textarea>
+                        </div>
+                        <div class="page-preview-pane">
+                            <div class="page-pane-label">Preview</div>
+                            <div class="page-rendered page-editor-preview">@((MarkupString)_previewHtml)</div>
+                        </div>
+                    </div>
                 </div>
-                <MudTextField @bind-Value="_editMarkdown"
-                              Label="Markdown"
-                              Lines="20"
-                              Required="true"
-                              Variant="Variant.Outlined"
-                              Margin="Margin.Dense"
-                              Class="wiki-editor-textarea page-editor-textarea" />
             }
             else if (_selectedPage is null)
             {
@@ -92,7 +131,7 @@
             else
             {
                 <div class="wiki-pane-header wiki-detail-header">
-                    <div>
+                    <div class="wiki-detail-title-block">
                         <MudText Typo="Typo.h6">@_selectedPage.Title</MudText>
                         <div class="wiki-result-meta">
                             <span class="wiki-status">Markdown</span>
@@ -115,13 +154,24 @@
 
     private List<PageSummary> _pages = [];
     private PageDocument? _selectedPage;
+    private ElementReference _markdownEditor;
     private string _searchQuery = string.Empty;
     private string _editSlug = string.Empty;
     private string _editTitle = string.Empty;
     private string _editMarkdown = string.Empty;
+    private string _previewHtml = string.Empty;
+    private string _originalSlug = string.Empty;
+    private string _originalTitle = string.Empty;
+    private string _originalMarkdown = string.Empty;
     private bool _isLoading;
     private bool _isEditing;
     private bool _editingExisting;
+    private bool _livePreview = true;
+
+    private bool HasUnsavedChanges => _isEditing &&
+        (!string.Equals(_editSlug, _originalSlug, StringComparison.Ordinal) ||
+         !string.Equals(_editTitle, _originalTitle, StringComparison.Ordinal) ||
+         !string.Equals(_editMarkdown, _originalMarkdown, StringComparison.Ordinal));
 
     protected override async Task OnParametersSetAsync()
     {
@@ -149,6 +199,11 @@
 
     private async Task SearchAsync()
     {
+        if (!await ConfirmDiscardChangesAsync())
+        {
+            return;
+        }
+
         _selectedPage = null;
         await LoadAsync();
     }
@@ -169,6 +224,11 @@
 
     private async Task SelectAsync(string slug, bool navigate)
     {
+        if (_isEditing && !string.Equals(_selectedPage?.Slug, slug, StringComparison.OrdinalIgnoreCase) && !await ConfirmDiscardChangesAsync())
+        {
+            return;
+        }
+
         var page = await PageService.GetAsync(slug, CancellationToken.None);
         if (page is null)
         {
@@ -181,16 +241,25 @@
         PopulateEditor(page, editingExisting: true);
         if (navigate)
         {
-            Navigation.NavigateTo($"/pages/{Uri.EscapeDataString(page.Slug)}");
+            Navigation.NavigateTo($"/pages/{EncodePageSlug(page.Slug)}");
         }
     }
 
-    private void NewPage()
+    private async Task NewPageAsync()
     {
+        if (!await ConfirmDiscardChangesAsync())
+        {
+            return;
+        }
+
         _selectedPage = null;
         _editSlug = string.Empty;
         _editTitle = string.Empty;
         _editMarkdown = string.Empty;
+        _originalSlug = string.Empty;
+        _originalTitle = string.Empty;
+        _originalMarkdown = string.Empty;
+        _previewHtml = string.Empty;
         _editingExisting = false;
         _isEditing = true;
     }
@@ -206,8 +275,13 @@
         _isEditing = true;
     }
 
-    private void CancelEdit()
+    private async Task CancelEditAsync()
     {
+        if (!await ConfirmDiscardChangesAsync())
+        {
+            return;
+        }
+
         _isEditing = false;
         if (_selectedPage is not null)
         {
@@ -222,7 +296,7 @@
         _selectedPage = page;
         _isEditing = false;
         await LoadAsync(page.Slug);
-        Navigation.NavigateTo($"/pages/{Uri.EscapeDataString(page.Slug)}");
+        Navigation.NavigateTo($"/pages/{EncodePageSlug(page.Slug)}");
     }
 
     private async Task DeleteSelectedAsync()
@@ -244,11 +318,70 @@
         _editSlug = page.Slug;
         _editTitle = page.Title;
         _editMarkdown = page.Markdown;
+        _originalSlug = page.Slug;
+        _originalTitle = page.Title;
+        _originalMarkdown = page.Markdown;
         _editingExisting = editingExisting;
+        RefreshPreview();
+    }
+
+    private void OnMarkdownInput(ChangeEventArgs args)
+    {
+        _editMarkdown = args.Value?.ToString() ?? string.Empty;
+        if (_livePreview)
+        {
+            RefreshPreview();
+        }
+    }
+
+    private Task SetLivePreviewAsync(bool enabled)
+    {
+        _livePreview = enabled;
+        if (enabled)
+        {
+            RefreshPreview();
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private void RefreshPreview()
+    {
+        _previewHtml = PageService.RenderHtml(_editMarkdown ?? string.Empty);
+    }
+
+    private async Task InsertMarkdownAsync(string prefix, string suffix, string placeholder)
+    {
+        _editMarkdown = await JS.InvokeAsync<string>("memorySmith.markdown.insert", _markdownEditor, prefix, suffix, placeholder);
+        if (_livePreview)
+        {
+            RefreshPreview();
+        }
+    }
+
+    private async Task ConfirmInternalNavigation(LocationChangingContext context)
+    {
+        if (HasUnsavedChanges && !await ConfirmDiscardChangesAsync())
+        {
+            context.PreventNavigation();
+        }
+    }
+
+    private async Task<bool> ConfirmDiscardChangesAsync()
+    {
+        if (!HasUnsavedChanges)
+        {
+            return true;
+        }
+
+        return await JS.InvokeAsync<bool>("confirm", "Discard unsaved page changes?");
     }
 
     private string PageRowClass(PageSummary page) =>
         string.Equals(_selectedPage?.Slug, page.Slug, StringComparison.OrdinalIgnoreCase)
             ? "wiki-result-row is-selected"
             : "wiki-result-row";
+
+    private static string EncodePageSlug(string slug) =>
+        string.Join('/', slug.Split('/', StringSplitOptions.RemoveEmptyEntries).Select(Uri.EscapeDataString));
 }

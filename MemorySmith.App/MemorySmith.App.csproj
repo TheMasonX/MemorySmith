@@ -23,4 +23,8 @@
     <ProjectReference Include="..\MemorySmith.Storage\MemorySmith.Storage.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="..\MemorySmith.Core\Docs\Prompts\wiki-chat-agent.md" Link="Prompts\wiki-chat-agent.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

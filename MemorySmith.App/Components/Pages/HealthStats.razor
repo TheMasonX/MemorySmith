@@ -260,7 +260,7 @@
     }
 
     private static string FormatChatProvider(ChatOptions chat) =>
-        $"{chat.Provider} / {chat.OllamaModel}";
+        $"{chat.Provider} / {chat.OllamaModel} / {chat.SystemPromptPath}";
 
     private static string FormatPathDetails(StoragePathStatus path) => path switch
     {

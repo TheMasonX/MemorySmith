@@ -1,5 +1,6 @@
 using MemorySmith.App.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace MemorySmith.App.Controllers;
 
@@ -8,10 +9,29 @@ namespace MemorySmith.App.Controllers;
 public class ChatController : ControllerBase
 {
     private readonly IChatAgent _chat;
+    private readonly IChatProvider _provider;
+    private readonly IOptionsMonitor<MemorySmithOptions> _options;
 
-    public ChatController(IChatAgent chat)
+    public ChatController(IChatAgent chat, IChatProvider provider, IOptionsMonitor<MemorySmithOptions> options)
     {
         _chat = chat;
+        _provider = provider;
+        _options = options;
+    }
+
+    [HttpGet("config")]
+    public async Task<ActionResult<ChatRuntimeConfiguration>> GetConfiguration(CancellationToken cancellationToken)
+    {
+        var chatOptions = _options.CurrentValue.Chat;
+        try
+        {
+            var models = await _provider.ListModelsAsync(cancellationToken);
+            return Ok(new ChatRuntimeConfiguration(chatOptions.Provider, chatOptions.OllamaEndpoint, chatOptions.OllamaModel, models));
+        }
+        catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or TaskCanceledException)
+        {
+            return Ok(new ChatRuntimeConfiguration(chatOptions.Provider, chatOptions.OllamaEndpoint, chatOptions.OllamaModel, [], ex.Message));
+        }
     }
 
     [HttpPost]

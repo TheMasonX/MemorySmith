@@ -1,6 +1,6 @@
 {
   "Id": "project-wiki-chat-agent-provider",
-  "Content": "MemorySmith chat is provider-based. IChatProvider isolates model API calls and IChatAgent isolates memory/page context gathering and agent-write behavior. OllamaChatProvider is the current local provider using /api/chat on the configured Ollama endpoint and model. MemoryChatAgent builds context from hybrid memory search plus markdown page search. Chat mode answers questions; Agent mode can parse structured provider output and write MemoryRecord entries and Data/Pages markdown pages when Chat:AgentWritesEnabled is true. The design leaves room for OpenAI, Copilot, Anthropic, or other providers without changing the UI.",
+  "Content": "MemorySmith chat is provider-based. IChatProvider isolates model API calls/model discovery and IChatAgent isolates memory/page context gathering and agent-write behavior. OllamaChatProvider is the current local provider using /api/chat and /api/tags on the configured Ollama endpoint. MemoryChatAgent builds context from hybrid memory search plus markdown page search, loads the shared system prompt from Prompts/wiki-chat-agent.md, and can include text attachment context. Chat mode answers questions; Agent mode can parse structured provider output and write MemoryRecord entries and Data/Pages markdown pages when Chat:AgentWritesEnabled is true. The /chat UI supports provider model selection, Send on Enter, local chat history, attachments, status display, and clickable memory/page resource chips. The design leaves room for OpenAI, Copilot, Anthropic, or other providers without changing the UI or agent workflow.",
   "Title": "Chat Agent Provider Architecture",
   "Status": 2,
   "Confidence": 0.9,
@@ -39,6 +39,12 @@
       "EndLine": null
     },
     {
+      "Label": "wiki-chat-agent.md",
+      "Uri": "%MemorySmithRepo%MemorySmith.Core/Docs/Prompts/wiki-chat-agent.md",
+      "StartLine": null,
+      "EndLine": null
+    },
+    {
       "Label": "PagesAndChatTests.cs",
       "Uri": "%MemorySmithRepo%MemorySmith.Tests/PagesAndChatTests.cs",
       "StartLine": null,
@@ -46,5 +52,5 @@
     }
   ],
   "UsageCount": 0,
-  "LastUpdated": "2026-05-16T22:47:08.3419572Z"
+  "LastUpdated": "2026-05-16T23:35:00.0000000Z"
 }

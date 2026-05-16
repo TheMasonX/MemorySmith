@@ -81,6 +81,42 @@ public class PagesAndChatTests
         });
     }
 
+    [Test]
+    public async Task MemoryChatAgent_UsesModelOverridePromptFileAndAttachments()
+    {
+        var memoryStore = new InMemoryMemoryStore();
+        var eventStore = new RecordingEventStore();
+        var publisher = new RecordingMemoryChangePublisher();
+        var memories = TestServiceFactory.CreateMemoryApplicationService(memoryStore, eventStore, publisher);
+        var pages = new FilePageService(_tempDir);
+        var promptPath = Path.Combine(_tempDir, "prompt.md");
+        await File.WriteAllTextAsync(promptPath, "Use the project wiki prompt.");
+        var provider = new FakeChatProvider("Done.");
+        var options = Options.Create(new MemorySmithOptions
+        {
+            Chat = new ChatOptions
+            {
+                SystemPromptPath = promptPath,
+                MaxAttachmentCharacters = 1000
+            }
+        });
+        var agent = new MemoryChatAgent(provider, memories, pages, options);
+
+        var response = await agent.SendAsync(new MemoryChatRequest(
+            "Summarize this",
+            MemoryChatMode.Chat,
+            Model: "custom-model",
+            Attachments: [new ChatAttachment("notes.md", "text/markdown", "Attached note body", 18)]), CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(response.Model, Is.EqualTo("custom-model"));
+            Assert.That(provider.LastRequest!.Model, Is.EqualTo("custom-model"));
+            Assert.That(provider.LastRequest.Messages.Any(message => message.Content.Contains("Use the project wiki prompt.", StringComparison.Ordinal)), Is.True);
+            Assert.That(provider.LastRequest.Messages.Any(message => message.Content.Contains("Attached note body", StringComparison.Ordinal)), Is.True);
+        });
+    }
+
     private sealed class FakeChatProvider : IChatProvider
     {
         private readonly string _content;
@@ -96,7 +132,10 @@ public class PagesAndChatTests
         public Task<ChatProviderResponse> CompleteAsync(ChatProviderRequest request, CancellationToken cancellationToken)
         {
             LastRequest = request;
-            return Task.FromResult(new ChatProviderResponse(_content, Name, "fake-model"));
+            return Task.FromResult(new ChatProviderResponse(_content, Name, request.Model ?? "fake-model"));
         }
+
+        public Task<IReadOnlyList<ChatModelSummary>> ListModelsAsync(CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyList<ChatModelSummary>>([new ChatModelSummary("fake-model")]);
     }
 }
