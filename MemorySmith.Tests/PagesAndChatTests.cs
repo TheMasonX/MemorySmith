@@ -112,7 +112,10 @@ public class PagesAndChatTests
           ]
         }
         """);
-        var agent = new MemoryChatAgent([provider], memories, pages, Options.Create(new MemorySmithOptions()));
+        var agent = new MemoryChatAgent([provider], memories, pages, Options.Create(new MemorySmithOptions
+        {
+            Chat = new ChatOptions { AgentWritesEnabled = true }
+        }));
 
         var response = await agent.SendAsync(new MemoryChatRequest("Capture this", MemoryChatMode.Agent), CancellationToken.None);
         var writtenMemory = memoryStore.Load("agent-note");
@@ -130,6 +133,40 @@ public class PagesAndChatTests
             Assert.That(provider.LastRequest!.Messages.Any(message => message.Content.Contains("Local MemorySmith context", StringComparison.Ordinal)), Is.True);
         });
     }
+
+        [Test]
+        public async Task MemoryChatAgent_AgentWritesAreDisabledByDefault()
+        {
+                var memoryStore = new InMemoryMemoryStore();
+                var eventStore = new RecordingEventStore();
+                var publisher = new RecordingMemoryChangePublisher();
+                var memories = TestServiceFactory.CreateMemoryApplicationService(memoryStore, eventStore, publisher);
+                var pages = new FilePageService(_tempDir);
+                var provider = new FakeChatProvider("""
+                {
+                    "reply": "Recorded.",
+                    "memoryWrites": [
+                        { "id": "agent-note", "title": "Agent Note", "content": "Remember this from chat." }
+                    ],
+                    "pageWrites": [
+                        { "slug": "agent-page", "title": "Agent Page", "markdown": "Agent page body." }
+                    ]
+                }
+                """);
+                var agent = new MemoryChatAgent([provider], memories, pages, Options.Create(new MemorySmithOptions()));
+
+                var response = await agent.SendAsync(new MemoryChatRequest("Capture this", MemoryChatMode.Agent), CancellationToken.None);
+                var writtenPage = await pages.GetAsync("agent-page", CancellationToken.None);
+
+                Assert.Multiple(() =>
+                {
+                        Assert.That(response.Reply, Is.EqualTo("Recorded."));
+                        Assert.That(response.WrittenMemories, Is.Empty);
+                        Assert.That(response.WrittenPages, Is.Empty);
+                        Assert.That(memoryStore.Load("agent-note"), Is.Null);
+                    Assert.That(writtenPage, Is.Null);
+                });
+        }
 
     [Test]
     public async Task MemoryChatAgent_UsesModelOverridePromptFileAndAttachments()

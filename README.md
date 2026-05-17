@@ -93,7 +93,7 @@ Each record is a JSON file in `Data/Memories/{Status}/`. Fields:
 | `References` | string[] | IDs of related records (used for context pack traversal). |
 | `Conflicts` | string[] | IDs of conflicting records. |
 | `SourceLinks` | array | File references — see below. |
-| `UsageCount` | int | Incremented by `memorysmith_get` and usage API calls. |
+| `UsageCount` | int | Incremented by explicit usage API/UI calls. Read-only MCP tools do not mutate it. |
 | `LastUpdated` | datetime | ISO 8601 UTC. |
 
 ### Source Links
@@ -117,7 +117,7 @@ Local file source-link chips copy the resolved path on click. Ctrl+Click opens t
 
 `Data/Pages/` stores user and agent-editable markdown files. The `/pages` UI and `/api/pages` API keep page search and page navigation separate from structured memory search. `/api/search` returns a combined memory/page result set when broader discovery is useful. Page assets live under `Data/Pages/assets` and are served at `/page-assets`; markdown links such as `![diagram](assets/diagram.png)` are rewritten to that static route when rendered.
 
-The page editor has a markdown toolbar for common inserts, an image upload/embed tool that writes to `Data/Pages/assets`, a toggleable live preview, a manual preview refresh button, and an unsaved-change prompt for internal and external navigation. Pages are rendered with Markdig advanced extensions. Raw HTML is disabled by default for rendered pages; trusted local deployments can enable `MemorySmith:Pages:AllowRawHtml` when raw HTML media tags are intentionally needed.
+The page editor has a markdown toolbar for common inserts, an image upload/embed tool that writes to `Data/Pages/assets`, a toggleable live preview, a manual preview refresh button, and an unsaved-change prompt for internal and external navigation. Pages are rendered with Markdig advanced extensions. Raw HTML is disabled by default for rendered pages; trusted local deployments can enable `MemorySmith:Pages:AllowRawHtml` when raw HTML media tags are intentionally needed. The static docs-site generator also sanitizes rendered page HTML and emits a restrictive Content Security Policy before publishing wiki pages.
 
 ## Chat and Agent Mode
 
@@ -125,7 +125,7 @@ The page editor has a markdown toolbar for common inserts, an image upload/embed
 
 The chat UI queries the selected provider for available models, supports provider/model selection, persists the last used provider/model and active chat, streams live response chunks with an elapsed timer, shows the provider/model used on assistant turns, shows per-response durations, displays bottom-right context usage with context-window percentage when known and provider quota/rate text when reported, deletes chats from history with confirmation, supports a Stop button beside Send for active generation cancellation, supports text and image file attachments, supports pasted clipboard images, Enter-to-send with Shift+Enter newlines, autoscroll, clickable memory/page resource chips, pending-response feedback, compact browser-local chat history, and collapsible thinking blocks when the provider returns reasoning content. Text attachments are bounded and supplied as context. Image attachments are saved to trusted temp files for persistence and supplied as native image payloads when the selected provider supports them; Ctrl+V handles copied image files, Clipboard API image blobs, copied HTML image references, and data:image URLs. Draft text and queued attachments are retained per chat session when switching chats, and navigation warns before leaving with unsent content.
 
-Chat mode answers questions. Agent mode asks the provider for structured actions and can write memories and pages when `Chat:AgentWritesEnabled` is true. Tool-call execution is read-only and bounded by `Chat:MaxToolIterations`, `Chat:MaxToolCallsPerTurn`, and `Chat:MaxToolResultCharacters`; write actions still require Agent mode structured output and `Chat:AgentWritesEnabled`. The shared system prompt is stored in `MemorySmith.Core/Docs/Prompts/wiki-chat-agent.md` and copied into the app output for service/publish runs.
+Chat mode answers questions. Agent mode asks the provider for structured actions and can write memories and pages only when `Chat:AgentWritesEnabled` is explicitly set to true; the default is false. Tool-call execution is read-only and bounded by `Chat:MaxToolIterations`, `Chat:MaxToolCallsPerTurn`, and `Chat:MaxToolResultCharacters`; write actions still require Agent mode structured output and the opt-in write setting. The shared system prompt is stored in `MemorySmith.Core/Docs/Prompts/wiki-chat-agent.md` and copied into the app output for service/publish runs.
 
 The provider interface is intentionally narrow so OpenAI, Anthropic, or other APIs can be added without changing the UI or agent workflow.
 
@@ -153,7 +153,7 @@ The MCP endpoint is at `http://localhost:5089/mcp`. VS Code config lives in `.vs
 | `memorysmith_semantic_search` | `query`, `tags`, `status`, `limit` | Scored results with match reasons |
 | `memorysmith_hybrid_search` | `query`, `tags`, `status`, `limit` | RRF-ranked results |
 | `memorysmith_context_pack` | `query` or `ids`, `tags`, `referenceDepth`, `includeBacklinks`, `maxRecords`, `maxContentChars`, `format` | Search results + linked references/conflicts in one response |
-| `memorysmith_get` | `id` | Single record by ID; increments usage count |
+| `memorysmith_get` | `id` | Single read-only record by ID |
 | `memorysmith_source_bundle` | `ids` or `query`/`tags`/`limit`, `maxFileBytes`, `format` | Records + resolved file content slices for every source link |
 | `memorysmith_find_by_source` | `pattern` | Records whose source link URIs match the substring |
 
@@ -235,7 +235,7 @@ All settings live under `MemorySmith` in `appsettings.json`:
       "MaxToolIterations": 2,
       "MaxToolCallsPerTurn": 3,
       "MaxToolResultCharacters": 12000,
-      "AgentWritesEnabled": true
+      "AgentWritesEnabled": false
     }
   }
 }
@@ -254,7 +254,7 @@ Override via `appsettings.Development.json` or environment variables (`MemorySmi
 - **`SourceLinks:AllowOpenWithDefaultApp`** — allows Ctrl+Click source-link opening after variable resolution and allowed-root checks.
 - **`SourceLinks:AllowedFileRootVariables`** — variable names whose resolved values are trusted roots for local source-link file reads. Defaults to `MemorySmithRepo`.
 - **`SourceLinks:AllowedFileRoots`** — optional explicit local roots, useful when source links need access outside the repo wiki root.
-- **`Chat:*`** — provider, Ollama endpoint/model, GitHub Copilot model/token environment settings, prompt path, timeout, context/history/attachment limits, read-only intercepted wiki tool-call limits, and whether agent-mode writes are enabled. `MaxContextItemCharacters` bounds each memory/page item sent to the chat provider, `MaxAttachmentCharacters` bounds text attachments, and `MaxAttachmentBytes` bounds uploaded/pasted files. `ToolCallsEnabled` allows models to request app-executed MemorySmith search/context/get calls inside the same user turn, while `MaxToolIterations`, `MaxToolCallsPerTurn`, and `MaxToolResultCharacters` bound cost and result size. `OllamaContextWindowTokens` is optional metadata for the UI usage meter when a local model's context window is known. Set `OllamaModel` to a model returned by `ollama list`; set `GitHubModel` to a Copilot model available to the authenticated GitHub account. The configured GitHub fallback order prefers free/low-cost GPT models first, then Claude Haiku, then Sonnet. The UI can query providers directly for available models and stores the last selected provider/model in browser storage.
+- **`Chat:*`** — provider, Ollama endpoint/model, GitHub Copilot model/token environment settings, prompt path, timeout, context/history/attachment limits, read-only intercepted wiki tool-call limits, and whether agent-mode writes are enabled. `AgentWritesEnabled` is false by default; enabling it permits Agent mode structured provider output to write memories and pages directly. `MaxContextItemCharacters` bounds each memory/page item sent to the chat provider, `MaxAttachmentCharacters` bounds text attachments, and `MaxAttachmentBytes` bounds uploaded/pasted files. `ToolCallsEnabled` allows models to request app-executed MemorySmith search/context/get calls inside the same user turn, while `MaxToolIterations`, `MaxToolCallsPerTurn`, and `MaxToolResultCharacters` bound cost and result size. `OllamaContextWindowTokens` is optional metadata for the UI usage meter when a local model's context window is known. Set `OllamaModel` to a model returned by `ollama list`; set `GitHubModel` to a Copilot model available to the authenticated GitHub account. The configured GitHub fallback order prefers free/low-cost GPT models first, then Claude Haiku, then Sonnet. The UI can query providers directly for available models and stores the last selected provider/model in browser storage.
 
 ## Windows Service
 

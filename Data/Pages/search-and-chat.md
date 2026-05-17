@@ -52,7 +52,7 @@ The chat provider abstraction currently supports local Ollama and GitHub Copilot
 
 ## Agent Mode
 
-Agent mode asks the provider for structured actions. It can write memories and pages only when agent writes are enabled. Read-only tool calls are bounded by configured limits for iterations, tool calls per turn, and returned characters.
+Agent mode asks the provider for structured actions. It can write memories and pages only when agent writes are explicitly enabled; the default is disabled. Read-only tool calls are bounded by configured limits for iterations, tool calls per turn, and returned characters.
 
 Use Agent mode when the desired outcome is a wiki update or a multi-step change. Use Chat mode when the desired outcome is explanation, research, or a concise answer.
 

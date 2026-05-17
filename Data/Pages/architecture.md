@@ -50,7 +50,7 @@ Background maintenance handles triage, consolidation, indexing, and telemetry. I
 - `ApiKey` can require an `X-Api-Key` header for API and MCP callers.
 - Source bundle reads are bounded by size and allowed roots.
 - Raw HTML in rendered pages is disabled by default.
-- Chat tool-call execution is read-only; durable writes require Agent mode and `Chat:AgentWritesEnabled`.
+- Chat tool-call execution is read-only; durable writes require Agent mode and explicit `Chat:AgentWritesEnabled` opt-in, which is disabled by default.
 
 ## Design Preference
 
