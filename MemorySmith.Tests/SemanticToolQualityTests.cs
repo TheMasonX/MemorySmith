@@ -221,11 +221,13 @@ public class SemanticToolQualityTests
         {
             var varsPath = Path.Combine(_tempRoot, "vars.json");
             var repoRoot = FindRepositoryRoot();
-            File.WriteAllText(varsPath, $$"""
-            {
-              "MemorySmithRepo": "{{repoRoot}}{{Path.DirectorySeparatorChar}}"
-            }
-            """);
+            var repoRootWithSeparator = Path.TrimEndingDirectorySeparator(repoRoot) + Path.DirectorySeparatorChar;
+            File.WriteAllText(
+                varsPath,
+                JsonSerializer.Serialize(new Dictionary<string, string>
+                {
+                    ["MemorySmithRepo"] = repoRootWithSeparator
+                }));
 
             builder.UseEnvironment("Development");
             builder.ConfigureAppConfiguration((_, config) =>
