@@ -1,0 +1,36 @@
+{
+  "Id": "project-wiki-chat-local-storage-persistence",
+  "Content": "The /chat UI persists browser-local chat state through memorySmith.storage helpers in memorysmith.js. Chat sessions are stored in localStorage under memorysmith.chat.sessions.v1 and preferences under memorysmith.chat.preferences.v1. A session stores id/title timestamps, draft text, pending attachments, rendered turns, and provider history messages. Preferences store provider, model, mode, and active session id. SaveSessionsAsync retains up to 30 sessions, keeps the active or non-empty records, warns once if browser storage rejects the payload, and is called after draft edits, attachment changes, session selection, streaming progress, and final responses. LoadSessionsAsync restores the preferred active session or the most recently updated session.",
+  "Title": "Chat Local Storage Persistence",
+  "Status": 2,
+  "Confidence": 0.95,
+  "Tags": [
+    "project-wiki",
+    "chat",
+    "localstorage",
+    "persistence",
+    "ui",
+    "current-state"
+  ],
+  "References": [
+    "project-wiki-chat-agent-provider",
+    "project-wiki-chat-image-attachments"
+  ],
+  "Conflicts": [],
+  "SourceLinks": [
+    {
+      "Label": "Chat.razor",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Components/Pages/Chat.razor",
+      "StartLine": null,
+      "EndLine": null
+    },
+    {
+      "Label": "memorysmith.js storage helpers",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/wwwroot/memorysmith.js",
+      "StartLine": null,
+      "EndLine": null
+    }
+  ],
+  "UsageCount": 0,
+  "LastUpdated": "2026-05-17T02:35:00.0000000Z"
+}

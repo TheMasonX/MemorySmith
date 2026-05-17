@@ -40,8 +40,8 @@
             <MudIconButton Icon="@(_historyOpen ? Icons.Material.Filled.ChevronLeft : Icons.Material.Filled.Menu)" Size="Size.Small" OnClick="ToggleHistory" aria-label="Toggle history" />
 
             <MudButtonGroup Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" Class="chat-mode-toggle">
-                <MudButton Variant="@(_mode == MemoryChatMode.Chat ? Variant.Filled : Variant.Outlined)" OnClick="@(() => SetMode(MemoryChatMode.Chat))">Chat</MudButton>
-                <MudButton Variant="@(_mode == MemoryChatMode.Agent ? Variant.Filled : Variant.Outlined)" OnClick="@(() => SetMode(MemoryChatMode.Agent))">Agent</MudButton>
+                <MudButton Variant="@ModeButtonVariant(MemoryChatMode.Chat)" Color="@ModeButtonColor(MemoryChatMode.Chat)" Class="@ModeButtonClass(MemoryChatMode.Chat)" OnClick="@(() => SetModeAsync(MemoryChatMode.Chat))">Chat</MudButton>
+                <MudButton Variant="@ModeButtonVariant(MemoryChatMode.Agent)" Color="@ModeButtonColor(MemoryChatMode.Agent)" Class="@ModeButtonClass(MemoryChatMode.Agent)" OnClick="@(() => SetModeAsync(MemoryChatMode.Agent))">Agent</MudButton>
             </MudButtonGroup>
 
             <div class="chat-model-controls">
@@ -100,14 +100,14 @@
                             <span class="chat-message-role">@turn.Role</span>
                             <span>@turn.CreatedUtc.ToLocalTime().ToString("HH:mm")@if (turn.DurationMilliseconds is not null) { <span> · @FormatDuration(TimeSpan.FromMilliseconds(turn.DurationMilliseconds.Value))</span> }</span>
                         </div>
-                        <div class="chat-message-body">@turn.Content</div>
                         @if (!string.IsNullOrWhiteSpace(turn.Thinking))
                         {
-                            <details class="chat-thinking">
-                                <summary>Thinking</summary>
+                            <details class="@ThinkingClass(turn)" open="@turn.ThinkingActive">
+                                <summary>Thinking<span class="chat-thinking-activity" aria-hidden="true"></span></summary>
                                 <pre>@turn.Thinking</pre>
                             </details>
                         }
+                        <div class="chat-message-body">@turn.Content</div>
 
                         @if (turn.Attachments.Count > 0)
                         {
@@ -145,13 +145,14 @@
             <InputFile id="chat-file-input" OnChange="OnFilesSelectedAsync" multiple class="chat-file-input" />
             @foreach (var attachment in _attachments)
             {
-                <button type="button" class="wiki-tag chat-attachment-chip" title="Remove attachment" @onclick="@(() => RemoveAttachment(attachment.Name))">
+                <span class="wiki-tag chat-attachment-chip" title="@AttachmentTitle(attachment)">
                     @if (attachment.IsImage && !string.IsNullOrWhiteSpace(attachment.Base64Data))
                     {
                         <img class="chat-attachment-thumb" src="@AttachmentDataUrl(attachment)" alt="" />
                     }
-                    @attachment.Name
-                </button>
+                    <span class="chat-attachment-name">@attachment.Name</span>
+                    <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" Color="Color.Default" Class="chat-attachment-remove" OnClick="@(() => RemoveAttachment(attachment.Name))" aria-label="Remove attachment" title="Remove attachment" />
+                </span>
             }
         </div>
 
@@ -261,6 +262,11 @@
             _selectedModel = preferences.Model;
         }
 
+        if (!string.IsNullOrWhiteSpace(preferences.Mode) && Enum.TryParse<MemoryChatMode>(preferences.Mode, ignoreCase: true, out var mode))
+        {
+            _mode = mode;
+        }
+
         _preferredActiveSessionId = preferences.ActiveSessionId;
     }
 
@@ -366,10 +372,11 @@
         await SavePreferencesAsync();
     }
 
-    private void SetMode(MemoryChatMode mode)
+    private async Task SetModeAsync(MemoryChatMode mode)
     {
         _mode = mode;
         _agentStatus = mode == MemoryChatMode.Agent ? "Agent ready" : "Chat ready";
+        await SavePreferencesAsync();
     }
 
     private async Task OnProviderChanged(string provider)
@@ -485,12 +492,14 @@
         _scrollPending = true;
         StartResponseTimer();
         await SaveSessionsAsync();
+        var lastStreamPersistUtc = DateTimeOffset.UtcNow;
 
         try
         {
             MemoryChatResponse? finalResponse = null;
             await foreach (var update in ChatAgent.StreamAsync(new MemoryChatRequest(message, _mode, historyForRequest, _selectedModel, attachments, _selectedProvider), CancellationToken.None))
             {
+                var turnChanged = false;
                 if (!string.IsNullOrEmpty(update.Status))
                 {
                     _agentStatus = update.Status;
@@ -504,26 +513,39 @@
 
                     pendingTurn.Role = "assistant";
                     pendingTurn.Content += update.ContentDelta;
+                    pendingTurn.ThinkingActive = false;
                     _streamedCharacters = pendingTurn.Content.Length;
                     _agentStatus = $"Streaming {_selectedProvider} / {_selectedModel}";
+                    turnChanged = true;
                 }
                 if (!string.IsNullOrEmpty(update.ThinkingDelta))
                 {
                     pendingTurn.Thinking = (pendingTurn.Thinking ?? string.Empty) + update.ThinkingDelta;
+                    pendingTurn.ThinkingActive = true;
+                    _agentStatus = $"Thinking {_selectedProvider} / {_selectedModel}";
+                    turnChanged = true;
                 }
                 if (update.Response is not null)
                 {
                     finalResponse = update.Response;
+                    pendingTurn.ThinkingActive = false;
                 }
 
                 _scrollPending = true;
                 await InvokeAsync(StateHasChanged);
+                if (turnChanged && DateTimeOffset.UtcNow - lastStreamPersistUtc >= TimeSpan.FromSeconds(2))
+                {
+                    session.UpdatedUtc = DateTimeOffset.UtcNow;
+                    await SaveSessionsAsync();
+                    lastStreamPersistUtc = DateTimeOffset.UtcNow;
+                }
             }
 
             var response = finalResponse ?? throw new InvalidOperationException("The provider stream completed without a final response.");
             pendingTurn.Role = "assistant";
             pendingTurn.Content = response.Reply;
             pendingTurn.Thinking = response.Thinking;
+            pendingTurn.ThinkingActive = false;
             pendingTurn.Context = response.Context.ToList();
             pendingTurn.WrittenMemories = response.WrittenMemories.ToList();
             pendingTurn.WrittenPages = response.WrittenPages.ToList();
@@ -549,6 +571,7 @@
             StopResponseTimer();
             _isSending = false;
             _scrollPending = true;
+            await InvokeAsync(StateHasChanged);
             await SaveSessionsAsync();
             await SavePreferencesAsync();
         }
@@ -701,6 +724,7 @@
         {
             Provider = _selectedProvider,
             Model = _selectedModel,
+            Mode = _mode.ToString(),
             ActiveSessionId = _activeSessionId
         });
     }
@@ -742,6 +766,16 @@
         string.Equals(session.Id, _activeSessionId, StringComparison.Ordinal)
             ? "chat-history-item is-selected"
             : "chat-history-item";
+
+    private Variant ModeButtonVariant(MemoryChatMode mode) => _mode == mode ? Variant.Filled : Variant.Outlined;
+
+    private Color ModeButtonColor(MemoryChatMode mode) => _mode == mode ? Color.Primary : Color.Default;
+
+    private string ModeButtonClass(MemoryChatMode mode) =>
+        _mode == mode ? "chat-mode-button is-selected" : "chat-mode-button";
+
+    private static string ThinkingClass(ChatTurnState turn) =>
+        turn.ThinkingActive ? "chat-thinking is-active" : "chat-thinking";
 
     private static string BuildSessionTitle(ChatSessionState session, string message)
     {
@@ -886,6 +920,7 @@
     {
         public string Provider { get; set; } = string.Empty;
         public string Model { get; set; } = string.Empty;
+        public string Mode { get; set; } = string.Empty;
         public string? ActiveSessionId { get; set; }
     }
 
@@ -936,5 +971,6 @@
         public List<string> WrittenPages { get; set; } = [];
         public List<ChatAttachment> Attachments { get; set; } = [];
         public long? DurationMilliseconds { get; set; }
+        public bool ThinkingActive { get; set; }
     }
 }

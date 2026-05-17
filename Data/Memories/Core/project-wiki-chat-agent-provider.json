@@ -1,6 +1,6 @@
 {
   "Id": "project-wiki-chat-agent-provider",
-  "Content": "MemorySmith chat is provider-based. IChatProvider isolates model API calls/model discovery/streaming and IChatAgent isolates memory/page context gathering and agent-write behavior. OllamaChatProvider uses /api/chat with stream=true for live chunks and /api/tags for model discovery on the configured Ollama endpoint. GitHubCopilotChatProvider uses GitHub.Copilot.SDK with GitHub CLI auth or token env vars and exposes configured preferred mini models when SDK discovery is unavailable. MemoryChatAgent builds context from hybrid memory search plus markdown page search, loads the shared system prompt from Prompts/wiki-chat-agent.md, and can include bounded text attachment context. Image attachments are saved to trusted temp files and passed as native image payloads to providers that support images. Chat mode answers questions; Agent mode can parse structured provider output and write MemoryRecord entries and Data/Pages markdown pages when Chat:AgentWritesEnabled is true. The /chat UI supports provider/model selection, persisted last provider/model and active chat, streamed response text with elapsed timers and per-response durations, Send on Enter, pasted image attachments, retained per-chat drafts/queued attachments, delete-chat confirmation, collapsible thinking content, local chat history, and clickable memory/page resource chips. The design leaves room for OpenAI, Anthropic, or other providers without changing the UI or agent workflow.",
+  "Content": "MemorySmith chat is provider-based. IChatProvider isolates model API calls/model discovery/streaming and IChatAgent isolates memory/page context gathering and agent-write behavior. OllamaChatProvider uses /api/chat with stream=true for live chunks and /api/tags for model discovery on the configured Ollama endpoint. GitHubCopilotChatProvider uses GitHub.Copilot.SDK with GitHub CLI auth or token env vars and exposes configured preferred mini models when SDK discovery is unavailable. MemoryChatAgent builds context from hybrid memory search plus markdown page search, loads the shared system prompt from Prompts/wiki-chat-agent.md, and can include bounded text attachment context. Image attachments are saved to trusted temp files and passed as native image payloads to providers that support images. Chat mode answers questions; Agent mode can parse structured provider output and write MemoryRecord entries and Data/Pages markdown pages when Chat:AgentWritesEnabled is true. The /chat UI supports provider/model selection, persisted provider/model/mode and active chat, streamed response text with elapsed timers and per-response durations, Send on Enter, file and clipboard image attachments with explicit X remove buttons, retained per-chat drafts/queued attachments, delete-chat confirmation, thinking content anchored above the visible answer with active animation, local chat history, and clickable memory/page resource chips. The design leaves room for OpenAI, Anthropic, or other providers without changing the UI or agent workflow.",
   "Title": "Chat Agent Provider Architecture",
   "Status": 2,
   "Confidence": 0.9,
@@ -18,7 +18,10 @@
   "References": [
     "project-wiki-markdown-pages",
     "project-wiki-hybrid-search-rrf",
-    "project-wiki-active-architecture"
+    "project-wiki-active-architecture",
+    "project-wiki-chat-local-storage-persistence",
+    "project-wiki-chat-streaming-thinking",
+    "project-wiki-chat-image-attachments"
   ],
   "Conflicts": [],
   "SourceLinks": [
@@ -41,6 +44,12 @@
       "EndLine": null
     },
     {
+      "Label": "memorysmith.js",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/wwwroot/memorysmith.js",
+      "StartLine": null,
+      "EndLine": null
+    },
+    {
       "Label": "wiki-chat-agent.md",
       "Uri": "%MemorySmithRepo%MemorySmith.Core/Docs/Prompts/wiki-chat-agent.md",
       "StartLine": null,
@@ -54,5 +63,5 @@
     }
   ],
   "UsageCount": 0,
-  "LastUpdated": "2026-05-17T01:05:00.0000000Z"
+  "LastUpdated": "2026-05-17T02:35:00.0000000Z"
 }

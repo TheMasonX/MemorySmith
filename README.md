@@ -17,6 +17,7 @@ Opens on `http://localhost:5089` by default. Pages:
 | `/chat` | Memory-enhanced chat and agent mode with provider/model selection, streaming responses, attachments, and local chat history |
 | `/health` | Scrollable stat cards, activity charts (queries/day, changes/day), maintenance telemetry |
 | `/variables` | Manage `%VarName%` path variables used in source link URIs |
+| `/about` | MemorySmith and third-party license information |
 | `/api/memories` | REST CRUD for automation |
 | `/api/pages`, `/api/search`, `/api/chat` | Page CRUD/search/rendering, combined memory/page search, and chat/agent/config API |
 | `/api/stats`, `/api/health/*`, `/api/diagnostics` | Stats, readiness, and redacted operational diagnostics |
@@ -53,9 +54,24 @@ User-created markdown files under `Data/Pages/` are valid project wiki content a
 | `project-wiki-windows-service-operations` | Windows Service install/uninstall flags |
 | `project-wiki-markdown-pages` | Markdown page storage, rendering, and page assets |
 | `project-wiki-chat-agent-provider` | Chat provider/agent abstractions, Ollama streaming, and GitHub Copilot provider workflow |
+| `project-wiki-chat-image-attachments` | Image attachment pipeline, trusted temp storage, and vision payload routing |
+| `project-wiki-chat-local-storage-persistence` | Browser-local chat history, draft retention, and provider/model selection persistence |
+| `project-wiki-chat-streaming-thinking` | Streaming response chunks, thinking-block extraction, and elapsed timers |
 | `project-wiki-ui-layout-source-link-polish` | UI layout, source-link open behavior, and navigation polish |
 | `project-wiki-scope-boundaries` | What is and isn't in scope for the current implementation |
 | `project-wiki-generalization-friction` | Known gaps for broader adoption |
+| `project-wiki-benchmarkdotnet-suite` | BenchmarkDotNet project: smoke validation and full benchmark commands |
+| `project-wiki-semantic-tool-quality-suite` | Search relevance probes, aggregate MRR, and MCP tool output quality assertions |
+| `project-wiki-current-validation-127-tests` | Validated test baseline: 127 NUnit tests across the solution |
+| `project-wiki-maintenance-observability-refinements` | Startup triage/index scheduling and stats activity bucket API |
+| `project-wiki-operational-diagnostics-dashboard` | `/health` dashboard and `/api/diagnostics` operational snapshot |
+| `project-wiki-request-guard-hardening` | Request guard middleware, `AllowRemoteApi` and `ApiKey` enforcement |
+| `project-wiki-source-link-security-boundaries` | Source bundle read boundaries and allowed root variable rules |
+| `project-wiki-test-fixture-overview` | Overview of the five integration-test fixture records |
+| `project-wiki-test-fixture-context-root` | Context pack root fixture (context pack traversal tests) |
+| `project-wiki-test-fixture-reference-child` | Reference child fixture |
+| `project-wiki-test-fixture-backlink-source` | Backlink source fixture |
+| `project-wiki-test-fixture-conflict-note` | Conflict fixture |
 
 Retrieve any record via the MCP tool `memorysmith_get` with its ID, or search the `/memories` page.
 

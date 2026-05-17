@@ -58,6 +58,10 @@ dlldata.c
 # Benchmark Results
 BenchmarkDotNet.Artifacts/
 
+# Local embedding/model artifacts
+Data/Models/
+*.onnx
+
 # .NET Core
 project.lock.json
 project.fragment.lock.json

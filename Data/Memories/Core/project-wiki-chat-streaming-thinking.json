@@ -1,0 +1,44 @@
+{
+  "Id": "project-wiki-chat-streaming-thinking",
+  "Content": "Chat streaming flows from IChatProvider.StreamAsync through MemoryChatAgent.StreamAsync into Chat.razor. Providers emit ChatProviderChunk content and thinking deltas; MemoryChatAgent accumulates them, builds final MemoryChatResponse context/write metadata, and emits a final MemoryChatStreamUpdate. Chat.razor mutates the pending assistant turn in place, tracks streamed character count and elapsed time, saves in-flight turns periodically, and clears the progress state before final persistence so the flashing loading bar does not linger. Thinking deltas set ChatTurnState.ThinkingActive, render as a details block above the visible response, open while active, and use app.css animation classes for a live activity dot and caret. Ollama thinking can come from a message.thinking field or from split <think> tags; GitHub reasoning maps from SDK reasoning events.",
+  "Title": "Chat Streaming and Thinking Blocks",
+  "Status": 2,
+  "Confidence": 0.94,
+  "Tags": [
+    "project-wiki",
+    "chat",
+    "streaming",
+    "thinking",
+    "ollama",
+    "github",
+    "ui",
+    "current-state"
+  ],
+  "References": [
+    "project-wiki-chat-agent-provider",
+    "project-wiki-ui-layout-source-link-polish"
+  ],
+  "Conflicts": [],
+  "SourceLinks": [
+    {
+      "Label": "ChatServices.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/ChatServices.cs",
+      "StartLine": null,
+      "EndLine": null
+    },
+    {
+      "Label": "Chat.razor",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Components/Pages/Chat.razor",
+      "StartLine": null,
+      "EndLine": null
+    },
+    {
+      "Label": "app.css thinking styles",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/wwwroot/app.css",
+      "StartLine": null,
+      "EndLine": null
+    }
+  ],
+  "UsageCount": 0,
+  "LastUpdated": "2026-05-17T02:35:00.0000000Z"
+}

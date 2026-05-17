@@ -47,7 +47,7 @@
                 }
             };
             textarea.memorySmithComposerPasteHandler = function (event) {
-                window.memorySmith.chat.attachClipboardImage(event, dotNetRef);
+                void window.memorySmith.chat.attachClipboardImage(event, dotNetRef);
             };
             textarea.memorySmithComposerDocumentPasteHandler = function (event) {
                 const shell = textarea.closest(".chat-shell");
@@ -56,7 +56,7 @@
                     return;
                 }
 
-                window.memorySmith.chat.attachClipboardImage(event, dotNetRef);
+                void window.memorySmith.chat.attachClipboardImage(event, dotNetRef);
             };
             textarea.addEventListener("keydown", textarea.memorySmithComposerKeyHandler);
             textarea.addEventListener("paste", textarea.memorySmithComposerPasteHandler);
@@ -82,35 +82,127 @@
             }
         },
 
-        attachClipboardImage: function (event, dotNetRef) {
-                if (event.defaultPrevented) {
-                    return false;
+        attachClipboardImage: async function (event, dotNetRef) {
+            if (!dotNetRef || event.defaultPrevented || event.memorySmithClipboardHandled) {
+                return false;
+            }
+
+            event.memorySmithClipboardHandled = true;
+            const clipboardData = event.clipboardData || window.clipboardData;
+            let files = window.memorySmith.chat.getClipboardImageFiles(clipboardData);
+            if (files.length === 0) {
+                files = await window.memorySmith.chat.readNavigatorClipboardImages();
+            }
+
+            if (files.length === 0) {
+                return false;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+            await window.memorySmith.chat.attachImageFiles(files, dotNetRef);
+            return true;
+        },
+
+        getClipboardImageFiles: function (clipboardData) {
+            const files = [];
+            const seen = new Set();
+            const addFile = function (file, hintedType) {
+                if (!file || !window.memorySmith.chat.isImageFile(file, hintedType)) {
+                    return;
                 }
 
-                const items = event.clipboardData && event.clipboardData.items ? Array.from(event.clipboardData.items) : [];
-                const imageItem = items.find(item => item.kind === "file" && item.type && item.type.startsWith("image/"));
-                if (!imageItem) {
-                    return false;
+                const key = `${file.name || ""}|${file.type || hintedType || ""}|${file.size || 0}|${file.lastModified || 0}`;
+                if (!seen.has(key)) {
+                    seen.add(key);
+                    files.push(file);
+                }
+            };
+
+            if (clipboardData && clipboardData.files) {
+                Array.from(clipboardData.files).forEach(file => addFile(file, file.type));
+            }
+
+            if (clipboardData && clipboardData.items) {
+                Array.from(clipboardData.items).forEach(item => {
+                    if (item.kind !== "file" || typeof item.getAsFile !== "function") {
+                        return;
+                    }
+
+                    addFile(item.getAsFile(), item.type);
+                });
+            }
+
+            return files;
+        },
+
+        readNavigatorClipboardImages: async function () {
+            if (!navigator.clipboard || typeof navigator.clipboard.read !== "function") {
+                return [];
+            }
+
+            try {
+                const items = await navigator.clipboard.read();
+                const files = [];
+                let index = 0;
+                for (const item of items) {
+                    const type = (item.types || []).find(candidate => candidate && candidate.toLowerCase().startsWith("image/"));
+                    if (!type) {
+                        continue;
+                    }
+
+                    const blob = await item.getType(type);
+                    const extension = window.memorySmith.chat.extensionForContentType(type);
+                    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+                    files.push(new File([blob], `clipboard-${stamp}-${++index}.${extension}`, { type }));
                 }
 
-                const file = imageItem.getAsFile();
-                if (!file) {
-                    return false;
-                }
+                return files;
+            } catch {
+                return [];
+            }
+        },
 
-                event.preventDefault();
-                event.stopPropagation();
+        attachImageFiles: async function (files, dotNetRef) {
+            let index = 0;
+            for (const file of files) {
+                const result = await window.memorySmith.chat.readFileAsBase64(file);
+                const contentType = file.type || "image/png";
+                const extension = window.memorySmith.chat.extensionForContentType(contentType);
+                const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+                const name = file.name || `clipboard-${stamp}-${++index}.${extension}`;
+                await dotNetRef.invokeMethodAsync("AttachClipboardImage", name, contentType, result, file.size || 0);
+            }
+        },
+
+        readFileAsBase64: function (file) {
+            return new Promise(function (resolve, reject) {
                 const reader = new FileReader();
+                reader.onerror = function () {
+                    reject(reader.error || new Error("Clipboard image could not be read."));
+                };
                 reader.onload = function () {
                     const result = String(reader.result || "");
                     const comma = result.indexOf(",");
-                    const base64 = comma >= 0 ? result.substring(comma + 1) : result;
-                    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-                    const extension = (file.type.split("/")[1] || "png").replace(/[^a-z0-9]/gi, "").toLowerCase() || "png";
-                    dotNetRef.invokeMethodAsync("AttachClipboardImage", file.name || `clipboard-${stamp}.${extension}`, file.type || "image/png", base64, file.size);
+                    resolve(comma >= 0 ? result.substring(comma + 1) : result);
                 };
                 reader.readAsDataURL(file);
+            });
+        },
+
+        isImageFile: function (file, hintedType) {
+            const type = String(file.type || hintedType || "").toLowerCase();
+            if (type.startsWith("image/")) {
                 return true;
+            }
+
+            return /\.(png|jpe?g|gif|webp|bmp|heic|heif)$/i.test(file.name || "");
+        },
+
+        extensionForContentType: function (contentType) {
+            const subtype = String(contentType || "image/png").split("/")[1] || "png";
+            const clean = subtype.split("+")[0].replace(/[^a-z0-9]/gi, "").toLowerCase();
+            return clean || "png";
         },
 
         setSendOnEnter: function (textarea, enabled) {

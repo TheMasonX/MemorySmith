@@ -9,20 +9,24 @@
     "blazor",
     "architecture"
   ],
-  "Content": "MemorySmith uses Blazor Server with Interactive Server render mode on all pages. The host is MemorySmith.App with MudBlazor 9.4 for components. Pages: /memories (MemoryViewer.razor) is the main workbench — a VS Code-inspired compact dark editor for browsing and editing MemoryRecords with inline source link editing and agent-context copy. /health (HealthStats.razor) shows stat cards (Total/Core/Working/Unconsolidated/Deprecated/AvgConfidence/TotalUsage/Readiness), two MudChart<double> activity charts (queries/day, changes/day powered by GetActivityBucketsAsync), a maintenance telemetry table, and a recent events list. /variables (Variables.razor) is a simple CRUD table for vars.json bindings used in source link %VarName% expansion. All pages use MVVM-lite: minimal code-behind, services injected. MudBlazor 9.4 breaking changes: MudChart is now generic (MudChart T='double', ChartSeries<double>), axis labels use ChartLabels not XAxisLabels. CSS is in wwwroot/app.css (append-only strategy due to duplicate blocks; do not use replace_string_in_file on this file).",
+  "Content": "MemorySmith uses Blazor Server with Interactive Server render mode on all pages. The host is MemorySmith.App with MudBlazor 9.4 for components. Pages: /memories (MemoryViewer.razor) is the main workbench, a VS Code-inspired compact dark editor for browsing and editing MemoryRecords with inline source link editing and agent-context copy. /pages (Pages.razor) manages markdown project-wiki pages, rendered previews, and page assets. /chat (Chat.razor) has a collapsible history sidebar, provider/model dropdowns, Chat/Agent toggle buttons, streamed response status, local draft/history persistence, attachment chips, context chips, and agent write chips. /health (HealthStats.razor) shows stat cards, two MudChart<double> activity charts, maintenance telemetry, diagnostics, and recent events. /variables (Variables.razor) is a simple CRUD table for vars.json bindings used in source link %VarName% expansion. All pages use MVVM-lite: minimal code-behind, services injected. MudBlazor 9.4 breaking changes: MudChart is now generic (MudChart T='double', ChartSeries<double>), axis labels use ChartLabels not XAxisLabels. CSS is in wwwroot/app.css.",
   "References": [
     "project-wiki-active-architecture",
     "project-wiki-source-links-feature",
-    "project-wiki-semantic-ui-current"
+    "project-wiki-semantic-ui-current",
+    "project-wiki-markdown-pages",
+    "project-wiki-chat-agent-provider"
   ],
   "Conflicts": [],
   "SourceLinks": [
     { "Label": "MemoryViewer.razor", "Uri": "%MemorySmithRepo%MemorySmith.App/Components/Pages/MemoryViewer.razor" },
+    { "Label": "Pages.razor", "Uri": "%MemorySmithRepo%MemorySmith.App/Components/Pages/Pages.razor" },
+    { "Label": "Chat.razor", "Uri": "%MemorySmithRepo%MemorySmith.App/Components/Pages/Chat.razor" },
     { "Label": "HealthStats.razor", "Uri": "%MemorySmithRepo%MemorySmith.App/Components/Pages/HealthStats.razor" },
     { "Label": "Variables.razor", "Uri": "%MemorySmithRepo%MemorySmith.App/Components/Pages/Variables.razor" },
     { "Label": "NavMenu.razor", "Uri": "%MemorySmithRepo%MemorySmith.App/Components/Layout/NavMenu.razor" },
     { "Label": "app.css", "Uri": "%MemorySmithRepo%MemorySmith.App/wwwroot/app.css" }
   ],
   "UsageCount": 0,
-  "LastUpdated": "2026-05-12T00:00:00Z"
+  "LastUpdated": "2026-05-17T02:35:00.0000000Z"
 }

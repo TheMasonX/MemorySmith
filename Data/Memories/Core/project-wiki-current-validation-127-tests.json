@@ -1,0 +1,48 @@
+{
+  "Id": "project-wiki-current-validation-127-tests",
+  "Content": "Current validation after the chat/provider/pages refresh is dotnet test MemorySmith.slnx -v minimal with 127 passing NUnit tests. The solution build covers MemorySmith.Core, MemorySmith.Storage, MemorySmith.App, MemorySmith.Benchmarks, and MemorySmith.Tests; the preview .NET SDK NETSDK1057 notice is expected locally. Focused chat/page coverage lives in PagesAndChatTests, including page assets, provider attachments, Ollama streaming, and trusted temp-file image payloads. Benchmark validation remains available through the BenchmarkDotNet search benchmark project, but the normal regression gate is the full NUnit suite.",
+  "Title": "Current validation baseline",
+  "Status": 2,
+  "Confidence": 0.94,
+  "Tags": [
+    "project-wiki",
+    "validation",
+    "tests",
+    "benchmarks",
+    "current-state"
+  ],
+  "References": [
+    "project-wiki-validation-command",
+    "project-wiki-chat-agent-provider",
+    "project-wiki-markdown-pages"
+  ],
+  "Conflicts": [],
+  "SourceLinks": [
+    {
+      "Label": "MemorySmith.slnx",
+      "Uri": "%MemorySmithRepo%MemorySmith.slnx",
+      "StartLine": null,
+      "EndLine": null
+    },
+    {
+      "Label": "PagesAndChatTests.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.Tests/PagesAndChatTests.cs",
+      "StartLine": null,
+      "EndLine": null
+    },
+    {
+      "Label": "Semantic quality tests",
+      "Uri": "%MemorySmithRepo%MemorySmith.Tests/SemanticToolQualityTests.cs",
+      "StartLine": null,
+      "EndLine": null
+    },
+    {
+      "Label": "Benchmark smoke workloads",
+      "Uri": "%MemorySmithRepo%MemorySmith.Benchmarks/SearchBenchmarks.cs",
+      "StartLine": null,
+      "EndLine": null
+    }
+  ],
+  "UsageCount": 0,
+  "LastUpdated": "2026-05-17T02:35:00.0000000Z"
+}

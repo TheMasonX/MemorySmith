@@ -1,6 +1,6 @@
 {
   "Id": "project-wiki-ui-layout-source-link-polish",
-  "Content": "The active Blazor shell uses a narrower 164px navigation drawer with Pages and Chat nav items. Memory, page, and health workbench panes use contained scrolling to avoid hidden detail content inside the fixed app shell. Page detail headers reserve enough vertical padding for status chips, file names, and timestamps. Tag/status/link chips share the same small radius and inline-flex vertical centering. The /chat surface uses a compact transcript, fully collapsible history pane, provider/model controls, retained drafts/attachments, streamed response feedback with elapsed timers, delete-chat controls, and a tighter composer to maximize output space. Local file source-link chips copy on click and Ctrl\u002BClick asks VarResolver to open the resolved local file with the OS default app after source-root validation and SourceLinks:AllowOpenWithDefaultApp checks.",
+  "Content": "The active Blazor shell uses a narrower 164px navigation drawer with Pages and Chat nav items. Memory, page, and health workbench panes use contained scrolling to avoid hidden detail content inside the fixed app shell. Page detail headers reserve enough vertical padding for status chips, file names, and timestamps. Tag/status/link chips share the same small radius and inline-flex vertical centering. The /chat surface uses a compact transcript, fully collapsible history pane, highlighted Chat/Agent toggle buttons, provider/model controls, explicit X buttons on queued attachment chips, retained drafts/attachments, streamed response feedback with elapsed timers, delete-chat controls, and a tighter composer to maximize output space. Thinking details render above the visible assistant response and animate while new thinking text is streaming. Local file source-link chips copy on click and Ctrl\u002BClick asks VarResolver to open the resolved local file with the OS default app after source-root validation and SourceLinks:AllowOpenWithDefaultApp checks.",
   "Title": "UI Layout and Source Link Polish",
   "Status": 2,
   "Confidence": 0.9,
@@ -15,7 +15,9 @@
   "References": [
     "project-wiki-ui-architecture",
     "project-wiki-source-links-feature",
-    "project-wiki-markdown-pages"
+    "project-wiki-markdown-pages",
+    "project-wiki-chat-streaming-thinking",
+    "project-wiki-chat-image-attachments"
   ],
   "Conflicts": [],
   "SourceLinks": [
@@ -44,6 +46,12 @@
       "EndLine": null
     },
     {
+      "Label": "Chat.razor",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Components/Pages/Chat.razor",
+      "StartLine": null,
+      "EndLine": null
+    },
+    {
       "Label": "VarResolver.cs",
       "Uri": "%MemorySmithRepo%MemorySmith.App/Services/VarResolver.cs",
       "StartLine": null,
@@ -51,5 +59,5 @@
     }
   ],
   "UsageCount": 0,
-  "LastUpdated": "2026-05-17T01:05:00.0000000Z"
+  "LastUpdated": "2026-05-17T02:35:00.0000000Z"
 }
