@@ -33,6 +33,10 @@ Log.Logger = new LoggerConfiguration()
 try
 {
     var builder = WebApplication.CreateBuilder(args);
+    // Load optional local secrets file from the service working directory (survives publishes, gitignored in artifacts/)
+    var secretsFile = Path.Combine(AppContext.BaseDirectory, "appsettings.Secrets.json");
+    if (File.Exists(secretsFile))
+        builder.Configuration.AddJsonFile(secretsFile, optional: true, reloadOnChange: false);
     builder.Host.UseSerilog();
     builder.Host.UseWindowsService(options =>
     {
