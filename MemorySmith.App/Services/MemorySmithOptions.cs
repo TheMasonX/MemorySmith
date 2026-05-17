@@ -60,6 +60,8 @@ public class AuthProviderOptions
 public class ExternalProviderOption
 {
     public bool Enabled { get; set; }
+    public string? ClientId { get; set; }
+    public string? ClientSecret { get; set; }
 }
 
 public class AuditOptions
