@@ -1,6 +1,6 @@
 # MemorySmith
 
-MemorySmith is a single-host ASP.NET Core app for local structured memory management. It hosts a Blazor workbench UI, markdown pages, REST API, MCP endpoint, file-backed storage, local chat/agent workflows, and background maintenance in one process. The `/memories` page is the primary structured memory workbench; the older standalone Dashboard project is migration history. The repository ships with a live project wiki inside `Data/Memories`, and the app uses its own memory store as a testbed.
+MemorySmith is a single-host ASP.NET Core app for local structured memory management. It hosts a Blazor workbench UI, markdown pages, REST API, MCP endpoint, file-backed storage, local chat/agent workflows, and background maintenance in one process. The `/memories` page is the primary structured memory workbench. The repository ships with a live project wiki inside `Data/Memories`, and the app uses its own memory store as a testbed.
 
 ## Quick Start
 
@@ -320,4 +320,4 @@ dotnet run -c Release --project MemorySmith.Benchmarks -- --smoke
 dotnet run -c Release --project MemorySmith.Benchmarks -- --filter *SearchBenchmarks*
 ```
 
-The solution builds `MemorySmith.App` as the single deployable host. `MemorySmith.Tests` includes unit tests, integration tests (via `WebApplicationFactory`), and a `[Category("Benchmark")]` suite of 32 search quality probes with latency thresholds. GitHub Actions collects Cobertura coverage in CI and publishes a Doxygen HTML wiki through the Pages workflow. Older `Worker` and `Dashboard` projects are retained as migration history and are not in the active solution.
+The solution builds `MemorySmith.App` as the single deployable host. `MemorySmith.Tests` includes unit tests, integration tests (via `WebApplicationFactory`), and a `[Category("Benchmark")]` suite of 32 search quality probes with latency thresholds. GitHub Actions collects Cobertura coverage in CI and publishes a Doxygen HTML wiki through the Pages workflow.

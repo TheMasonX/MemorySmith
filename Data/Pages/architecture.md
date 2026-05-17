@@ -14,7 +14,7 @@ That shape keeps the system understandable: there is one app process, one file-b
 | `MemorySmith.Tests` | NUnit tests for domain behavior, storage hardening, API contracts, search quality, and app services. |
 | `MemorySmith.Benchmarks` | BenchmarkDotNet and smoke checks for search/context workflows. |
 
-`MemorySmith.Worker` and `MemorySmith.Dashboard` are migration history. Treat `MemorySmith.App` as the source of truth unless a task explicitly asks about those older projects.
+Legacy `MemorySmith.Worker` and `MemorySmith.Dashboard` code was removed after the single-host migration. Treat `MemorySmith.App` as the source of truth.
 
 ## Runtime Flow
 
