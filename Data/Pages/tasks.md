@@ -9,6 +9,8 @@ This page tracks user-facing work in plain language. Completed items stay here a
 - [ ] Keep reducing large UI/service files where extraction makes behavior easier to review.
 - [ ] Add a short release checklist for Windows Service deployment and local model asset verification.
 - [ ] Improve static Pages publishing with richer navigation once the first GitHub Pages workflow is proven in CI.
+- [ ] Agent driven page generation - combined feature with chat that leverages chat interface and adds a preview pane
+- [ ] Grid panels like the markdown/preview plane and the pages/edit columns should be resizable to a degree, like a classic gridsplitter
 
 ## Pages
 - [x] Page preview mode - live update or at least periodic refresh (toggleable) and a manual refresh button
