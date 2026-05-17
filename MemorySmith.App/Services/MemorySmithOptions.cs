@@ -91,7 +91,7 @@ public class ChatOptions
     public int MaxToolIterations { get; set; } = 2;
     public int MaxToolCallsPerTurn { get; set; } = 3;
     public int MaxToolResultCharacters { get; set; } = 12000;
-    public bool AgentWritesEnabled { get; set; } = true;
+    public bool AgentWritesEnabled { get; set; }
 }
 
 public class ChatModelOption

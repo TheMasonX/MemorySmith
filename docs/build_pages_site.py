@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import datetime as dt
+import html
+from html.parser import HTMLParser
 import json
 import re
 import shutil
+from urllib.parse import urlparse
 from pathlib import Path
 
 import markdown
@@ -15,6 +18,132 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 PAGES_DIR = REPO_ROOT / "Data" / "Pages"
 MEMORY_CORE_DIR = REPO_ROOT / "Data" / "Memories" / "Core"
 OUTPUT_DIR = REPO_ROOT / "docs" / "output" / "wiki"
+
+ALLOWED_TAGS = {
+  "a",
+  "blockquote",
+  "br",
+  "code",
+  "dd",
+  "del",
+  "dl",
+  "dt",
+  "em",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+  "hr",
+  "img",
+  "li",
+  "ol",
+  "p",
+  "pre",
+  "strong",
+  "table",
+  "tbody",
+  "td",
+  "th",
+  "thead",
+  "tr",
+  "ul",
+}
+ALLOWED_ATTRIBUTES = {
+  "a": {"href", "title"},
+  "code": {"class"},
+  "h1": {"id"},
+  "h2": {"id"},
+  "h3": {"id"},
+  "h4": {"id"},
+  "h5": {"id"},
+  "h6": {"id"},
+  "img": {"alt", "src", "title"},
+  "td": {"align", "colspan", "rowspan"},
+  "th": {"align", "colspan", "rowspan"},
+}
+URL_ATTRIBUTES = {"href", "src"}
+SAFE_URL_SCHEMES = {"", "http", "https", "mailto"}
+SAFE_DATA_IMAGE_PREFIXES = (
+  "data:image/gif;base64,",
+  "data:image/jpeg;base64,",
+  "data:image/png;base64,",
+  "data:image/webp;base64,",
+)
+
+
+class SafeHtmlSanitizer(HTMLParser):
+  def __init__(self) -> None:
+    super().__init__(convert_charrefs=True)
+    self._parts: list[str] = []
+
+  def get_html(self) -> str:
+    return "".join(self._parts)
+
+  def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+    self._append_tag(tag, attrs, self_closing=False)
+
+  def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+    self._append_tag(tag, attrs, self_closing=True)
+
+  def handle_endtag(self, tag: str) -> None:
+    tag = tag.lower()
+    if tag in ALLOWED_TAGS:
+      self._parts.append(f"</{tag}>")
+
+  def handle_data(self, data: str) -> None:
+    self._parts.append(html.escape(data, quote=False))
+
+  def handle_entityref(self, name: str) -> None:
+    self._parts.append(f"&{name};")
+
+  def handle_charref(self, name: str) -> None:
+    self._parts.append(f"&#{name};")
+
+  def _append_tag(self, tag: str, attrs: list[tuple[str, str | None]], self_closing: bool) -> None:
+    tag = tag.lower()
+    if tag not in ALLOWED_TAGS:
+      return
+
+    rendered_attrs = []
+    for name, value in attrs:
+      safe = sanitize_attribute(tag, name, value)
+      if safe is not None:
+        rendered_attrs.append(safe)
+
+    attr_text = f" {' '.join(rendered_attrs)}" if rendered_attrs else ""
+    suffix = " /" if self_closing else ""
+    self._parts.append(f"<{tag}{attr_text}{suffix}>")
+
+
+def sanitize_attribute(tag: str, name: str, value: str | None) -> str | None:
+  name = name.lower()
+  allowed = ALLOWED_ATTRIBUTES.get(tag, set())
+  if name not in allowed or value is None:
+    return None
+
+  value = value.strip()
+  if name in URL_ATTRIBUTES and not is_safe_url(value):
+    return None
+
+  return f'{name}="{html.escape(value, quote=True)}"'
+
+
+def is_safe_url(value: str) -> bool:
+  lowered = value.lower()
+  if lowered.startswith(SAFE_DATA_IMAGE_PREFIXES):
+    return True
+
+  scheme = urlparse(value).scheme.lower()
+  return scheme in SAFE_URL_SCHEMES and not lowered.startswith(("javascript:", "vbscript:"))
+
+
+def sanitize_html(html_body: str) -> str:
+  sanitizer = SafeHtmlSanitizer()
+  sanitizer.feed(html_body)
+  sanitizer.close()
+  return sanitizer.get_html()
 
 
 def to_html_filename(stem: str) -> str:
@@ -28,18 +157,20 @@ def rewrite_markdown_links(markdown_text: str) -> str:
 
 
 def render_html(title: str, markdown_text: str) -> str:
-    html_body = markdown.markdown(
+    html_body = sanitize_html(markdown.markdown(
         rewrite_markdown_links(markdown_text),
         extensions=["extra", "tables", "fenced_code", "toc", "sane_lists"],
         output_format="html5",
-    )
+    ))
     generated_at = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    safe_title = html.escape(title, quote=True)
     return f"""<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>{title}</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'none'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; img-src 'self' data:; style-src 'self' 'unsafe-inline'" />
+  <title>{safe_title}</title>
   <style>
     :root {{
       color-scheme: light dark;
