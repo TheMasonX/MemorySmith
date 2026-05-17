@@ -1,6 +1,6 @@
 {
   "Id": "project-wiki-agent-instructions-source-of-truth",
-  "Content": "Agent-facing repository instructions are now aligned with the active MemorySmith layout. The root .github/copilot-instructions.md and MemorySmith.Core/copilot-instructions.md point to README.md, Data/Memories/Core, Data/Pages, MemorySmith.Core/Docs/Plans/MemorySmith_FinalRefactorDesign_20260507.md, and the focused SemantingSearch.md plan for semantic retrieval work. They explicitly identify MemorySmith.App as the active single-host app, mark Worker/Dashboard as migration history, preserve NUnit preference, and remind agents to copy Data/Memories before tests mutate wiki fixtures.",
+  "Content": "Agent-facing repository instructions are now aligned with the active MemorySmith layout. The root .github/copilot-instructions.md and MemorySmith.Core/copilot-instructions.md point to README.md, Data/Memories/Core, Data/Pages, MemorySmith.Core/Docs/Plans/MemorySmith_FinalRefactorDesign_20260507.md, and the focused SemantingSearch.md plan for semantic retrieval work. They explicitly identify MemorySmith.App as the active single-host app, note that Worker/Dashboard were removed after migration, preserve NUnit preference, and remind agents to copy Data/Memories before tests mutate wiki fixtures.",
   "Title": "Agent Instructions Source of Truth",
   "Status": 2,
   "Confidence": 0.95,
@@ -37,5 +37,5 @@
     }
   ],
   "UsageCount": 0,
-  "LastUpdated": "2026-05-17T03:25:00.0000000Z"
+  "LastUpdated": "2026-05-17T18:02:31.0000000Z"
 }

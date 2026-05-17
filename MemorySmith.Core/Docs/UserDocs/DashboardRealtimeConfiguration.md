@@ -1,6 +1,6 @@
 # Single-Host Dashboard and Service Configuration
 
-MemorySmith now runs as `MemorySmith.App`, a single host for the Blazor dashboard, REST API, MCP endpoint, file storage, and background maintenance. The older Worker and Dashboard projects remain on disk as migration history only.
+MemorySmith now runs as `MemorySmith.App`, a single host for the Blazor dashboard, REST API, MCP endpoint, file storage, and background maintenance. The older Worker and Dashboard projects were removed after migration and are now historical references only.
 
 ## Dashboard Surface
 
