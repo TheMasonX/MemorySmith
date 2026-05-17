@@ -186,8 +186,8 @@ All settings live under `MemorySmith` in `appsettings.json`:
     },
     "SemanticSearch": {
       "EmbeddingsEnabled": true,
-      "ModelPath": "../Data/Models/embedding-model.onnx",
-      "VocabularyPath": "../Data/Models/vocab.txt",
+      "ModelPath": "Models/embedding-model.onnx",
+      "VocabularyPath": "Models/vocab.txt",
       "MaxInputTokens": 512,
       "MaxIndexedTextCharacters": 6000,
       "QueryPrefix": "query: ",
@@ -246,7 +246,7 @@ Override via `appsettings.Development.json` or environment variables (`MemorySmi
 - **`ApiKey`** — if set, all API and MCP requests must include `X-Api-Key: <value>`. Leave `null` for local use.
 - **`AllowRemoteApi`** — set `true` to allow non-localhost callers. Off by default.
 - **`Pages:AllowRawHtml`** — enables trusted raw HTML rendering in markdown pages. Off by default; leave disabled for agent-written or unreviewed pages.
-- **`SemanticSearch:*`** — controls optional ONNX embedding ranking. The default model path is `../Data/Models/embedding-model.onnx`; ONNX/model artifacts are ignored by Git, and a matching WordPiece `vocab.txt` is required before embeddings activate.
+- **`SemanticSearch:*`** — controls optional ONNX embedding ranking. Relative model and vocabulary paths resolve from the configured data deployment root: the folder that contains `Memories`, `Events`, `Graph`, `Models`, and `Pages`. The default model path is `Models/embedding-model.onnx`; ONNX/model artifacts are ignored by Git, and a matching WordPiece `vocab.txt` is required before embeddings activate. Legacy `../Data/Models/...` values are also interpreted relative to that data root.
 - **`DataPath`** — root of the memory store. Subdirectories (`Unconsolidated/`, `Working/`, `Core/`, `Deprecated/`) are created automatically.
 - **`PagesPath`** — root of the markdown page store. `assets/` under this directory is served at `/page-assets`.
 - **`VarsPath`** — path to the flat JSON dict used for `%VarName%` source link expansion.

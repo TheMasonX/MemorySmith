@@ -138,6 +138,7 @@ public sealed class SemanticEmbeddingSearchService
 
 public sealed class OnnxTextEmbeddingProvider : ITextEmbeddingProvider, IDisposable
 {
+    private readonly MemorySmithOptions _settings;
     private readonly SemanticSearchOptions _options;
     private readonly object _lock = new();
     private InferenceSession? _session;
@@ -150,7 +151,8 @@ public sealed class OnnxTextEmbeddingProvider : ITextEmbeddingProvider, IDisposa
 
     public OnnxTextEmbeddingProvider(IOptions<MemorySmithOptions> options)
     {
-        _options = options.Value.SemanticSearch;
+        _settings = options.Value;
+        _options = _settings.SemanticSearch;
     }
 
     public EmbeddingProviderStatus GetStatus()
@@ -241,8 +243,46 @@ public sealed class OnnxTextEmbeddingProvider : ITextEmbeddingProvider, IDisposa
         }
     }
 
-    private static string ResolvePath(string path) =>
-        Path.GetFullPath(Environment.ExpandEnvironmentVariables(path));
+    private string ResolvePath(string path)
+    {
+        var expanded = Environment.ExpandEnvironmentVariables(path);
+        if (Path.IsPathFullyQualified(expanded))
+        {
+            return Path.GetFullPath(expanded);
+        }
+
+        var dataRoot = ResolveDataDeploymentRoot(_settings.DataPath);
+        return Path.GetFullPath(Path.Combine(dataRoot, NormalizeDataRelativePath(expanded)));
+    }
+
+    private static string ResolveDataDeploymentRoot(string dataPath)
+    {
+        var expanded = Environment.ExpandEnvironmentVariables(dataPath);
+        var fullPath = Path.GetFullPath(expanded).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        return string.Equals(Path.GetFileName(fullPath), "Memories", StringComparison.OrdinalIgnoreCase)
+            ? Directory.GetParent(fullPath)?.FullName ?? fullPath
+            : fullPath;
+    }
+
+    private static string NormalizeDataRelativePath(string path)
+    {
+        var normalized = path.Trim().Replace('\\', '/');
+        foreach (var prefix in new[] { "../Data/", "./Data/", "Data/" })
+        {
+            if (normalized.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                normalized = normalized[prefix.Length..];
+                break;
+            }
+        }
+
+        while (normalized.StartsWith("./", StringComparison.Ordinal))
+        {
+            normalized = normalized[2..];
+        }
+
+        return normalized.Replace('/', Path.DirectorySeparatorChar);
+    }
 
     private static List<NamedOnnxValue> CreateInputs(InferenceSession session, TokenizedText tokenized)
     {
