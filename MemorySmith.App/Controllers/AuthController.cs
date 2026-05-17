@@ -59,6 +59,20 @@ public class AuthController : ControllerBase
         await _auth.SignOutAsync();
         return LocalRedirect(MemorySmithLocalAuthService.SanitizeReturnUrl(returnUrl));
     }
+
+    [HttpGet("challenge")]
+    [AllowAnonymous]
+    public IActionResult ExternalChallenge([FromQuery] string scheme, [FromQuery] string? returnUrl = null)
+    {
+        if (string.IsNullOrWhiteSpace(scheme))
+            return BadRequest("scheme is required");
+        var safeReturn = MemorySmithLocalAuthService.SanitizeReturnUrl(returnUrl);
+        var properties = new Microsoft.AspNetCore.Authentication.AuthenticationProperties
+        {
+            RedirectUri = safeReturn
+        };
+        return Challenge(properties, scheme);
+    }
 }
 
 public sealed class LoginFormRequest
