@@ -1,5 +1,14 @@
 # Future Tasks
-User defined future tasks
+
+This page tracks user-facing work in plain language. Completed items stay here as a lightweight product history; open items should describe the outcome a person would notice, not only the internal implementation detail.
+
+## Current Priorities
+
+- [ ] Add browser-level smoke coverage for the main app routes: `/memories`, `/pages`, `/chat`, and `/health`.
+- [ ] Add schema or fixture validation for the live `Data/Memories` wiki so bad records are caught before runtime.
+- [ ] Keep reducing large UI/service files where extraction makes behavior easier to review.
+- [ ] Add a short release checklist for Windows Service deployment and local model asset verification.
+- [ ] Improve static Pages publishing with richer navigation once the first GitHub Pages workflow is proven in CI.
 
 ## Pages
 - [x] Page preview mode - live update or at least periodic refresh (toggleable) and a manual refresh button
@@ -8,6 +17,7 @@ User defined future tasks
 - [x] Unsaved changes notice if leaving a page in edit mode
 - [x] Editor has unused space at the bottom - should fill down
 - [x] Image embed toolbar option to upload page images into `Data/Pages/assets` and insert markdown image links
+- [x] Add human-readable wiki pages for architecture, operations, and search/chat behavior
 
 ## Chat
 - [x] Chat model configuration (provider + model name) - would be nice if you can query the provider for which models are available
@@ -33,3 +43,10 @@ User defined future tasks
 
 ## Health
 - [x] Make the health page scrollable inside the fixed app shell
+- [x] Show semantic search provider status clearly enough to catch missing local ONNX assets
+
+## Notes For Future Edits
+
+- Prefer pages for readable explanations and runbooks.
+- Prefer structured memories for searchable facts with tags, confidence, references, and source links.
+- Keep `Data/Memories` stable; tests copy it to temp storage before mutation.
