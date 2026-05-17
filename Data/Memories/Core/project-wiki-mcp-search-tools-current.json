@@ -1,7 +1,7 @@
 {
   "Id": "project-wiki-mcp-search-tools-current",
   "Title": "MCP Search Tools Current State",
-  "Content": "MemorySmith.App now exposes POST /api/memories/search/semantic for local semantic baseline ranking, POST /api/memories/search/hybrid for Lucene.NET plus semantic RRF ranking, and /mcp for HTTP JSON-RPC tool access. The MCP tools are memorysmith_search, memorysmith_semantic_search, memorysmith_hybrid_search, memorysmith_context_pack, and memorysmith_get. For larger KB workflows, prefer memorysmith_context_pack when an agent needs search results plus linked reference/conflict context in one response; it accepts query, ids, tags, status, limit, referenceDepth, maxContentChars, maxRecords, includeBacklinks, and format. Use format=json for structured parsing and the default markdown format for human-readable output. The tool reports warnings for missing roots, missing links, or omitted records after hitting maxRecords. .vscode/mcp.json points directly at http://localhost:5089/mcp. The implementation is covered by McpAndSemanticSearchTests, which use copied Data/Memories fixtures so the source project wiki remains stable.",
+  "Content": "MemorySmith.App exposes POST /api/memories/search/semantic for semantic ranking, POST /api/memories/search/hybrid for Lucene.NET plus semantic RRF ranking, and /mcp for HTTP JSON-RPC tool access. Semantic ranking uses optional ONNX embeddings when configured and available, with local token/tag/title/reference/alias scoring as fallback. The MCP tools are memorysmith_search, memorysmith_semantic_search, memorysmith_hybrid_search, memorysmith_context_pack, memorysmith_get, memorysmith_source_bundle, and memorysmith_find_by_source. For larger KB workflows, prefer memorysmith_context_pack when an agent needs search results plus linked reference/conflict context in one response; it accepts query, ids, tags, status, limit, referenceDepth, maxContentChars, maxRecords, includeBacklinks, and format. Use format=json for structured parsing and the default markdown format for human-readable output. The tool reports warnings for missing roots, missing links, or omitted records after hitting maxRecords. .vscode/mcp.json points directly at http://localhost:5089/mcp. The implementation is covered by McpAndSemanticSearchTests and MemoryApplicationServiceTests, which use copied Data/Memories fixtures so the source project wiki remains stable.",
   "Status": 2,
   "Confidence": 0.93,
   "Tags": [
@@ -22,6 +22,7 @@
   "References": [
     "project-wiki-mcp-integration",
     "project-wiki-search-roadmap",
+    "project-wiki-onnx-semantic-embeddings",
     "project-wiki-hybrid-search-rrf",
     "project-wiki-mcp-context-pack",
     "project-wiki-test-fixture-overview",
@@ -36,5 +37,5 @@
     }
   ],
   "UsageCount": 1,
-  "LastUpdated": "2026-05-12T00:00:00Z"
+  "LastUpdated": "2026-05-17T03:55:00.0000000Z"
 }

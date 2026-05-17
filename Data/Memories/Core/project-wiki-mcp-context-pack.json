@@ -1,7 +1,7 @@
 {
   "Id": "project-wiki-mcp-context-pack",
   "Title": "MCP Context Pack Tool",
-  "Content": "MemorySmith.App now exposes memorysmith_context_pack for larger knowledge-base workflows. The tool can start from hybrid search query roots, explicit comma-separated root ids, or both, then packages each root result with linked references and conflicts up to a bounded reference depth. It can also include backlinks: records that reference or conflict with packed records. Each packed record includes relationship, status, confidence, tags, references, conflicts, score or linked-context marker, match reason, and truncated content. The pack reports warnings for missing or invalid explicit ids, missing linked records, and maxRecords budget truncation. Use maxRecords to keep large-KB output bounded. Use format=json when an agent needs structured parsing instead of Markdown. Use ids when an agent already has promising memory ids and query when discovering new roots; this reduces manual search/get chaining when an agent needs enough project-wiki context to plan or review a change.",
+  "Content": "MemorySmith.App now exposes memorysmith_context_pack for larger knowledge-base workflows. The tool can start from hybrid search query roots, explicit comma-separated root ids, or both, then packages each root result with linked references and conflicts up to a bounded reference depth. It can also include backlinks: records that reference or conflict with packed records. Each packed record includes relationship, status, confidence, tags, references, conflicts, score or linked-context marker, match reason, and truncated content. The pack reports warnings for missing or invalid explicit ids, missing linked records, and maxRecords budget truncation. Use maxRecords to keep large-KB output bounded. Use format=json when an agent needs structured parsing instead of Markdown; the default output remains Markdown. Search probes for mcp context pack format json markdown should resolve to this focused context-pack record. Use ids when an agent already has promising memory ids and query when discovering new roots; this reduces manual search/get chaining when an agent needs enough project-wiki context to plan or review a change.",
   "Status": 2,
   "Confidence": 0.91,
   "Tags": [
@@ -14,6 +14,8 @@
     "max-records",
     "bounded-output",
     "structured-output",
+    "format-json",
+    "markdown",
     "search",
     "hybrid-search",
     "larger-kb",
@@ -29,7 +31,7 @@
   ],
   "Conflicts": [],
   "UsageCount": 1,
-  "LastUpdated": "2026-05-12T00:00:00Z",
+  "LastUpdated": "2026-05-17T04:05:00.0000000Z",
   "SourceLinks": [
     {
       "Label": "McpController.cs",

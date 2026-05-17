@@ -390,11 +390,11 @@ public class McpController : ControllerBase
                 BuildSearchSchema()),
             BuildTool(
                 "memorysmith_semantic_search",
-                "Search MemorySmith wiki records with local semantic token scoring and match explanations.",
+                "Search MemorySmith wiki records with ONNX embeddings when configured, falling back to local semantic token scoring with match explanations.",
                 BuildSearchSchema()),
             BuildTool(
                 "memorysmith_hybrid_search",
-                "Search MemorySmith wiki records by fusing Lucene-style lexical rank and local semantic rank with reciprocal rank fusion.",
+                "Search MemorySmith wiki records by fusing Lucene-style lexical rank and the active semantic ranker with reciprocal rank fusion.",
                 BuildSearchSchema()),
             BuildTool(
                 "memorysmith_context_pack",

@@ -104,6 +104,7 @@
                 <span>Maintenance</span><strong>@(_diagnostics.Configuration.Maintenance.Enabled ? "Enabled" : "Disabled")</strong>
                 <span>Source Roots</span><strong>@FormatSourceRoots(_diagnostics.Configuration.SourceLinks)</strong>
                 <span>Open Sources</span><strong>@(_diagnostics.Configuration.SourceLinks.AllowOpenWithDefaultApp ? "Enabled" : "Disabled")</strong>
+                <span>Semantic Search</span><strong>@FormatSemanticSearch(_diagnostics.Configuration.SemanticSearch, _diagnostics.SemanticEmbeddings)</strong>
                 <span>Chat</span><strong>@FormatChatProvider(_diagnostics.Configuration.Chat)</strong>
             </div>
         </div>
@@ -277,6 +278,11 @@
 
     private static string FormatChatProvider(ChatOptions chat) =>
         $"{chat.Provider} / Ollama:{chat.OllamaModel} / GitHub:{chat.GitHubModel} / {chat.SystemPromptPath}";
+
+    private static string FormatSemanticSearch(SemanticSearchOptions semanticSearch, EmbeddingProviderStatus status) =>
+        semanticSearch.EmbeddingsEnabled
+            ? $"{(status.Available ? "Embeddings available" : "Token fallback")} / {status.Reason}"
+            : "Token scoring only";
 
     private static string FormatPathDetails(StoragePathStatus path) => path switch
     {

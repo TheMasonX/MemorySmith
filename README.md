@@ -46,8 +46,9 @@ User-created markdown files under `Data/Pages/` are valid project wiki content a
 | `project-wiki-mcp-integration` | MCP endpoint setup, VS Code `mcp.json` config |
 | `project-wiki-mcp-search-tools-current` | All seven MCP tool signatures and usage notes |
 | `project-wiki-mcp-context-pack` | `memorysmith_context_pack` deep-dive |
+| `project-wiki-onnx-semantic-embeddings` | Optional ONNX Runtime embedding ranker and exact cosine semantic fallback path |
 | `project-wiki-hybrid-search-rrf` | Lucene.NET + semantic RRF fusion |
-| `project-wiki-semantic-search-gap` | Local scoring approach and future embedding gap |
+| `project-wiki-semantic-search-gap` | Remaining semantic-search limitations and future vector-index gap |
 | `project-wiki-search-roadmap` | Planned search improvements |
 | `project-wiki-validation-command` | How to build and test |
 | `project-wiki-test-architecture` | NUnit fixture strategy, benchmark suite |
@@ -63,7 +64,7 @@ User-created markdown files under `Data/Pages/` are valid project wiki content a
 | `project-wiki-generalization-friction` | Known gaps for broader adoption |
 | `project-wiki-benchmarkdotnet-suite` | BenchmarkDotNet project: smoke validation and full benchmark commands |
 | `project-wiki-semantic-tool-quality-suite` | Search relevance probes, aggregate MRR, and MCP tool output quality assertions |
-| `project-wiki-current-validation-131-tests` | Validated test baseline: 131 NUnit tests across the solution |
+| `project-wiki-current-validation-132-tests` | Validated test baseline: 132 NUnit tests across the solution |
 | `project-wiki-maintenance-observability-refinements` | Startup triage/index scheduling and stats activity bucket API |
 | `project-wiki-operational-diagnostics-dashboard` | `/health` dashboard and `/api/diagnostics` operational snapshot |
 | `project-wiki-request-guard-hardening` | Request guard middleware, `AllowRemoteApi` and `ApiKey` enforcement |
@@ -134,12 +135,12 @@ Three search modes are available in the UI (`/memories` search bar) and the REST
 | Mode | Endpoint | Behavior |
 |---|---|---|
 | Keyword | `POST /api/memories/search` | Verbatim `Contains` over title, content, tags. Deterministic ordering by `LastUpdated`. |
-| Semantic | `POST /api/memories/search/semantic` | Local token/tag/title/reference/alias overlap scoring with match explanations. |
-| Hybrid | `POST /api/memories/search/hybrid` | Lucene.NET lexical analysis + semantic scoring, fused with Reciprocal Rank Fusion (RRF). Best for discovery. |
+| Semantic | `POST /api/memories/search/semantic` | ONNX embedding cosine ranking when `SemanticSearch` model and vocabulary files are available; otherwise local token/tag/title/reference/alias scoring with match explanations. |
+| Hybrid | `POST /api/memories/search/hybrid` | Lucene.NET lexical analysis + the active semantic ranker, fused with Reciprocal Rank Fusion (RRF). Best for discovery. |
 
 All three accept `query`, `tags` (comma-separated, filter by any match), `status`, and `limit`.
 
-> The semantic side is intentionally a local token scorer, not an embedding/vector index. See `project-wiki-semantic-search-gap` for the known gap and roadmap.
+The embedding path uses ONNX Runtime, a local WordPiece vocabulary, E5-style `query:`/`passage:` prefixes, and an exact in-memory cosine scan over the filtered memory set. It intentionally falls back to the existing token scorer when model assets are missing or unusable, so fresh clones still work without redistributing model binaries.
 
 ## MCP Tools
 
@@ -182,6 +183,15 @@ All settings live under `MemorySmith` in `appsettings.json`:
     "Pages": {
       "AllowRawHtml": false
     },
+    "SemanticSearch": {
+      "EmbeddingsEnabled": true,
+      "ModelPath": "../Data/Models/embedding-model.onnx",
+      "VocabularyPath": "../Data/Models/vocab.txt",
+      "MaxInputTokens": 512,
+      "MaxIndexedTextCharacters": 6000,
+      "QueryPrefix": "query: ",
+      "DocumentPrefix": "passage: "
+    },
     "Maintenance": {
       "Enabled": true,
       "TriageMinutes": 5,
@@ -219,6 +229,7 @@ Override via `appsettings.Development.json` or environment variables (`MemorySmi
 - **`ApiKey`** — if set, all API and MCP requests must include `X-Api-Key: <value>`. Leave `null` for local use.
 - **`AllowRemoteApi`** — set `true` to allow non-localhost callers. Off by default.
 - **`Pages:AllowRawHtml`** — enables trusted raw HTML rendering in markdown pages. Off by default; leave disabled for agent-written or unreviewed pages.
+- **`SemanticSearch:*`** — controls optional ONNX embedding ranking. The default model path is `../Data/Models/embedding-model.onnx`; ONNX/model artifacts are ignored by Git, and a matching WordPiece `vocab.txt` is required before embeddings activate.
 - **`DataPath`** — root of the memory store. Subdirectories (`Unconsolidated/`, `Working/`, `Core/`, `Deprecated/`) are created automatically.
 - **`PagesPath`** — root of the markdown page store. `assets/` under this directory is served at `/page-assets`.
 - **`VarsPath`** — path to the flat JSON dict used for `%VarName%` source link expansion.

@@ -218,6 +218,43 @@ public class MemoryApplicationServiceTests
     }
 
     [Test]
+    public async Task SemanticSearchAsync_UsesEmbeddingRankerWhenAvailable()
+    {
+        var embeddingSearch = new SemanticEmbeddingSearchService(
+            new FakeTextEmbeddingProvider(),
+            Options.Create(new MemorySmithOptions()));
+        var service = TestServiceFactory.CreateMemoryApplicationService(_store, _events, _publisher, embeddingSearch);
+        _store.Save(new MemoryRecord
+        {
+            Id = "embedding-match",
+            Title = "Embedding Match",
+            Content = "recall vector target",
+            Status = MemoryStatus.Core,
+            Tags = ["search"],
+            LastUpdated = new DateTime(2026, 05, 17, 0, 0, 0, DateTimeKind.Utc)
+        });
+        _store.Save(new MemoryRecord
+        {
+            Id = "embedding-miss",
+            Title = "Embedding Miss",
+            Content = "unrelated content",
+            Status = MemoryStatus.Core,
+            Tags = ["search"],
+            LastUpdated = new DateTime(2026, 05, 18, 0, 0, 0, DateTimeKind.Utc)
+        });
+
+        var results = await service.SemanticSearchAsync(
+            new SemanticMemorySearchQuery(Query: "durable recall", Tags: "search", Limit: 5),
+            CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(results.Select(result => result.Id), Is.EqualTo(new[] { "embedding-match" }));
+            Assert.That(results.Single().MatchReason, Does.Contain("Embedding cosine similarity"));
+        });
+    }
+
+    [Test]
     public async Task HybridSearchAsync_FusesLexicalAndSemanticRanksWithRrf()
     {
         _store.Save(new MemoryRecord
@@ -446,7 +483,8 @@ internal static class TestServiceFactory
     public static MemoryApplicationService CreateMemoryApplicationService(
         IMemoryStore store,
         IEventStore eventStore,
-        IMemoryChangePublisher publisher)
+        IMemoryChangePublisher publisher,
+        SemanticEmbeddingSearchService? semanticEmbeddings = null)
     {
         return new MemoryApplicationService(
             store,
@@ -454,7 +492,22 @@ internal static class TestServiceFactory
             new MemorySmith.Core.Indexing.MemoryIndex(),
             new BackgroundServiceTelemetryTracker(),
             publisher,
-            Options.Create(new MemorySmithOptions()));
+            Options.Create(new MemorySmithOptions()),
+            semanticEmbeddings);
+    }
+}
+
+internal sealed class FakeTextEmbeddingProvider : ITextEmbeddingProvider
+{
+    public EmbeddingProviderStatus GetStatus() => new(true, "Fake embedding provider is available.", null, null, 2);
+
+    public bool TryEmbed(string text, EmbeddingInputKind kind, out float[] embedding, out string? reason)
+    {
+        reason = null;
+        embedding = kind == EmbeddingInputKind.Query || text.Contains("recall vector target", StringComparison.OrdinalIgnoreCase)
+            ? [1, 0]
+            : [0, 1];
+        return true;
     }
 }
 

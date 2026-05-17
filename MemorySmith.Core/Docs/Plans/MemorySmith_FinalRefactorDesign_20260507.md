@@ -5,7 +5,9 @@ Status: Final source of truth for the simplification refactor
 Owner: MemorySmith project  
 Confidence: 0.91 overall
 
-2026-05-12 update: user direction added a small MCP/search tooling slice. The active implementation now includes a local semantic-search baseline and an HTTP JSON-RPC MCP endpoint over the project wiki. This does not change the decision to defer embeddings, vector stores, provider abstractions, or PostgreSQL until there is stronger evidence.
+2026-05-12 update: user direction added a small MCP/search tooling slice. The active implementation now includes a local semantic-search baseline and an HTTP JSON-RPC MCP endpoint over the project wiki.
+
+2026-05-17 update: user direction added the focused `SemantingSearch.md` plan. The active implementation now includes an optional local ONNX Runtime embedding ranker with token-scoring fallback. Durable vector indexes, PostgreSQL, queues, OpenTelemetry, Redis, and gRPC remain out of this simplification refactor unless a later plan explicitly accepts that complexity.
 
 ## 1. Purpose
 
@@ -32,7 +34,7 @@ MemorySmith should become a single deployable ASP.NET Core web application with:
 - A small application service layer used by both UI and controllers.
 - One maintenance scheduler for triage, consolidation, and index rebuilds.
 - No custom Dashboard-to-Worker HTTP client, custom Dashboard SignalR hub, CORS policy, worker URL config, or stats broadcast service.
-- No PostgreSQL, vector index, queue, OpenTelemetry, Redis, gRPC, or embedding provider in this refactor.
+- No PostgreSQL, durable vector index, queue, OpenTelemetry, Redis, or gRPC in this refactor. The optional ONNX embedding ranker is a local search enhancement and falls back to token scoring when model assets are unavailable.
 
 Final solution shape:
 
@@ -192,7 +194,7 @@ Preserve current routes:
 | `PUT /api/memories/{id}` | Yes | Validate body and route ID. |
 | `DELETE /api/memories/{id}` | Yes | Keep 204 on success. |
 | `POST /api/memories/search` | Yes | Keep keyword semantics, clamp `limit` to 1-100. |
-| `POST /api/memories/search/semantic` | Yes | Local semantic baseline only: token/tag/title/reference/alias scoring with match explanations. No embeddings or vector index. |
+| `POST /api/memories/search/semantic` | Yes | Optional ONNX embedding cosine ranking when configured; otherwise token/tag/title/reference/alias scoring with match explanations. |
 | `POST /api/memories/{id}/usage` | Yes | Keep current success response unless tests prove clients expect 204. |
 | `GET /api/stats` | Yes | Serve cached or freshly built stats through app service. |
 | `GET /api/stats/services` | Yes | Serve maintenance telemetry. |

@@ -12,6 +12,7 @@ public sealed record OperationalDiagnosticsSnapshot(
     IReadOnlyList<StoragePathStatus> Paths,
     IReadOnlyList<EndpointInfo> Endpoints,
     IReadOnlyList<OperationalWarning> Warnings,
+    EmbeddingProviderStatus SemanticEmbeddings,
     StorageDiagnosticsSnapshot StorageDiagnostics);
 
 public sealed record EffectiveMemorySmithConfiguration(
@@ -26,6 +27,7 @@ public sealed record EffectiveMemorySmithConfiguration(
     MaintenanceOptions Maintenance,
     LimitOptions Limits,
     SourceLinkOptions SourceLinks,
+    SemanticSearchOptions SemanticSearch,
     ChatOptions Chat);
 
 public sealed record StoragePathStatus(
@@ -46,17 +48,20 @@ public class OperationalDiagnosticsService
 {
     private readonly IOptions<MemorySmithOptions> _options;
     private readonly StorageDiagnostics _storageDiagnostics;
+    private readonly ITextEmbeddingProvider _embeddingProvider;
     private readonly IWebHostEnvironment _environment;
     private readonly IConfiguration _configuration;
 
     public OperationalDiagnosticsService(
         IOptions<MemorySmithOptions> options,
         StorageDiagnostics storageDiagnostics,
+        ITextEmbeddingProvider embeddingProvider,
         IWebHostEnvironment environment,
         IConfiguration configuration)
     {
         _options = options;
         _storageDiagnostics = storageDiagnostics;
+        _embeddingProvider = embeddingProvider;
         _environment = environment;
         _configuration = configuration;
     }
@@ -93,6 +98,7 @@ public class OperationalDiagnosticsService
                 settings.Maintenance,
                 settings.Limits,
                 sourceLinks,
+                settings.SemanticSearch,
                 settings.Chat),
             [
                 GetDirectoryStatus("Memory data", dataPath, "*.json"),
@@ -102,6 +108,7 @@ public class OperationalDiagnosticsService
             ],
             GetEndpoints(),
             GetWarnings(settings),
+                _embeddingProvider.GetStatus(),
             _storageDiagnostics.GetSnapshot());
     }
 

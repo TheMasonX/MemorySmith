@@ -1,7 +1,7 @@
 {
   "Id": "project-wiki-hybrid-search-rrf",
   "Title": "Hybrid Search With RRF",
-  "Content": "MemorySmith.App now has a hybrid search path for project-wiki records. The hybrid path uses Lucene.NET StandardAnalyzer tokenization for lexical ranking, reuses the local semantic scoring baseline as the semantic/vector-side signal, and fuses both ranked lists with reciprocal rank fusion (RRF). This is exposed through POST /api/memories/search/hybrid, the memorysmith_hybrid_search MCP tool, the memorysmith_context_pack MCP tool, and the /memories Hybrid mode. The current semantic side is still local token/tag/title/reference/alias scoring rather than embeddings; a future vector index can replace that signal without changing the hybrid API shape.",
+  "Content": "MemorySmith.App has a hybrid search path for project-wiki records. The hybrid path uses Lucene.NET StandardAnalyzer tokenization for lexical ranking, takes the active semantic ranker from MemoryApplicationService, and fuses both ranked lists with reciprocal rank fusion (RRF). The semantic ranker is optional ONNX embedding cosine search when SemanticSearch model and WordPiece vocabulary assets are available, otherwise the local token/tag/title/reference/alias scorer. This is exposed through POST /api/memories/search/hybrid, the memorysmith_hybrid_search MCP tool, the memorysmith_context_pack MCP tool, and the /memories Hybrid mode. The API shape stays stable for a future FAISS/HNSW or durable vector index.",
   "Status": 2,
   "Confidence": 0.9,
   "Tags": [
@@ -19,6 +19,7 @@
   "References": [
     "project-wiki-search-roadmap",
     "project-wiki-semantic-search-gap",
+    "project-wiki-onnx-semantic-embeddings",
     "project-wiki-mcp-search-tools-current",
     "project-wiki-mcp-context-pack",
     "project-wiki-semantic-ui-current"
@@ -26,8 +27,9 @@
   "Conflicts": [],
   "SourceLinks": [
     { "Label": "MemoryApplicationService.cs", "Uri": "%MemorySmithRepo%MemorySmith.App/Services/MemoryApplicationService.cs" },
+    { "Label": "SemanticEmbeddingSearchService.cs", "Uri": "%MemorySmithRepo%MemorySmith.App/Services/SemanticEmbeddingSearchService.cs" },
     { "Label": "HybridSearchTests.cs", "Uri": "%MemorySmithRepo%MemorySmith.Tests/McpAndSemanticSearchTests.cs" }
   ],
   "UsageCount": 1,
-  "LastUpdated": "2026-05-12T00:00:00Z"
+  "LastUpdated": "2026-05-17T03:55:00.0000000Z"
 }

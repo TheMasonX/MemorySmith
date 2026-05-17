@@ -9,6 +9,7 @@ public class MemorySmithOptions
     public string? ApiKey { get; set; }
     public bool AllowRemoteApi { get; set; }
     public PageOptions Pages { get; set; } = new();
+    public SemanticSearchOptions SemanticSearch { get; set; } = new();
     public MaintenanceOptions Maintenance { get; set; } = new();
     public LimitOptions Limits { get; set; } = new();
     public SourceLinkOptions SourceLinks { get; set; } = new();
@@ -18,6 +19,17 @@ public class MemorySmithOptions
 public class PageOptions
 {
     public bool AllowRawHtml { get; set; }
+}
+
+public class SemanticSearchOptions
+{
+    public bool EmbeddingsEnabled { get; set; } = true;
+    public string ModelPath { get; set; } = Path.Combine("..", "Data", "Models", "embedding-model.onnx");
+    public string VocabularyPath { get; set; } = Path.Combine("..", "Data", "Models", "vocab.txt");
+    public int MaxInputTokens { get; set; } = 512;
+    public int MaxIndexedTextCharacters { get; set; } = 6000;
+    public string QueryPrefix { get; set; } = "query: ";
+    public string DocumentPrefix { get; set; } = "passage: ";
 }
 
 public class MaintenanceOptions

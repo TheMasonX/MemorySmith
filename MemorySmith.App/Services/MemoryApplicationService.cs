@@ -42,6 +42,7 @@ public class MemoryApplicationService
     private readonly BackgroundServiceTelemetryTracker _telemetryTracker;
     private readonly IMemoryChangePublisher _publisher;
     private readonly MemorySmithOptions _options;
+    private readonly SemanticEmbeddingSearchService? _semanticEmbeddings;
 
     public MemoryApplicationService(
         IMemoryStore store,
@@ -49,7 +50,8 @@ public class MemoryApplicationService
         MemoryIndex index,
         BackgroundServiceTelemetryTracker telemetryTracker,
         IMemoryChangePublisher publisher,
-        IOptions<MemorySmithOptions> options)
+        IOptions<MemorySmithOptions> options,
+        SemanticEmbeddingSearchService? semanticEmbeddings = null)
     {
         _store = store;
         _eventStore = eventStore;
@@ -57,6 +59,7 @@ public class MemoryApplicationService
         _telemetryTracker = telemetryTracker;
         _publisher = publisher;
         _options = options.Value;
+        _semanticEmbeddings = semanticEmbeddings;
     }
 
     public Task<PagedResult<MemoryMetadata>> GetMemoriesAsync(MemoryListQuery query, CancellationToken cancellationToken)
@@ -700,7 +703,15 @@ public class MemoryApplicationService
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-    private static IReadOnlyList<MemorySearchResult> RankSemanticResults(
+    private IReadOnlyList<MemorySearchResult> RankSemanticResults(
+        IReadOnlyList<MemoryRecord> records,
+        string? query,
+        HashSet<string> queryTokens) =>
+        _semanticEmbeddings?.TryRank(records, query, queryTokens, out var embeddingResults) == true
+            ? embeddingResults
+            : RankTokenSemanticResults(records, query, queryTokens);
+
+    private static IReadOnlyList<MemorySearchResult> RankTokenSemanticResults(
         IReadOnlyList<MemoryRecord> records,
         string? query,
         HashSet<string> queryTokens) =>

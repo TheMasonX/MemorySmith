@@ -63,6 +63,8 @@ try
         return new FileEventStore(eventLogPath);
     });
     builder.Services.AddSingleton<MemoryIndex>();
+    builder.Services.AddSingleton<ITextEmbeddingProvider, OnnxTextEmbeddingProvider>();
+    builder.Services.AddSingleton<SemanticEmbeddingSearchService>();
     builder.Services.AddSingleton<BackgroundServiceTelemetryTracker>();
     builder.Services.AddSingleton<IMemoryChangePublisher, MemoryChangePublisher>();
     builder.Services.AddSingleton<MemoryApplicationService>();

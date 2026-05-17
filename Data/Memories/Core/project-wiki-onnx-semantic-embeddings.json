@@ -1,0 +1,50 @@
+{
+  "Id": "project-wiki-onnx-semantic-embeddings",
+  "Title": "ONNX Semantic Embeddings",
+  "Content": "MemorySmith.App has an optional local ONNX embedding path for memory semantic search. SemanticSearchOptions default to ../Data/Models/embedding-model.onnx and ../Data/Models/vocab.txt; ONNX/model artifacts are ignored by Git. OnnxTextEmbeddingProvider loads the model lazily through Microsoft.ML.OnnxRuntime, tokenizes text with a local WordPiece vocabulary, applies E5-style query:/passage: prefixes, mean-pools token outputs when needed, normalizes vectors, and reports availability through /api/diagnostics and /health. SemanticEmbeddingSearchService performs exact in-memory cosine ranking across the filtered memory set. MemoryApplicationService falls back to the existing token/tag/title/reference/alias scorer when embeddings are disabled, missing assets, or model inference fails. Hybrid search continues to fuse Lucene lexical rank with the active semantic rank via RRF.",
+  "Status": 2,
+  "Confidence": 0.9,
+  "Tags": [
+    "project-wiki",
+    "semantic-search",
+    "embeddings",
+    "onnx",
+    "search",
+    "current-state"
+  ],
+  "References": [
+    "project-wiki-search-roadmap",
+    "project-wiki-hybrid-search-rrf",
+    "project-wiki-semantic-search-gap",
+    "project-wiki-operational-diagnostics-dashboard"
+  ],
+  "Conflicts": [],
+  "SourceLinks": [
+    {
+      "Label": "SemanticEmbeddingSearchService.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/SemanticEmbeddingSearchService.cs",
+      "StartLine": null,
+      "EndLine": null
+    },
+    {
+      "Label": "MemoryApplicationService.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/MemoryApplicationService.cs",
+      "StartLine": null,
+      "EndLine": null
+    },
+    {
+      "Label": "Semantic plan",
+      "Uri": "%MemorySmithRepo%MemorySmith.Core/Docs/Plans/SemantingSearch.md",
+      "StartLine": null,
+      "EndLine": null
+    },
+    {
+      "Label": "Embedding tests",
+      "Uri": "%MemorySmithRepo%MemorySmith.Tests/MemoryApplicationServiceTests.cs",
+      "StartLine": null,
+      "EndLine": null
+    }
+  ],
+  "UsageCount": 0,
+  "LastUpdated": "2026-05-17T03:55:00.0000000Z"
+}

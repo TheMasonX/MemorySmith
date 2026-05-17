@@ -1,7 +1,7 @@
 {
   "Id": "project-wiki-semantic-search-gap",
   "Title": "Semantic Search Gap",
-  "Content": "Current MemorySmith semantic search is local token, tag, title, reference, and alias scoring over file-backed records. Hybrid search now improves retrieval by fusing Lucene.NET lexical rank with that semantic signal through RRF, but it still does not use embeddings or a vector index. A more general tool needs durable vector search, query/result scoring, match reasons, fixture tests with real project memories, and a migration path that does not force PostgreSQL before the product needs it.",
+  "Content": "MemorySmith now has an optional ONNX embedding path for memory semantic search, but the remaining gap is a durable vector index. When SemanticSearch model and WordPiece vocabulary assets are available, SemanticEmbeddingSearchService ranks filtered memories by exact in-memory cosine similarity; when assets are missing or unusable, MemoryApplicationService falls back to local token, tag, title, reference, and alias scoring. Hybrid search fuses Lucene.NET lexical rank with whichever semantic ranker is active through RRF. A more general large-KB tool still needs cached/durable vector indexing, page embeddings, model asset validation, and a migration path that does not force PostgreSQL before the product needs it.",
   "Status": 2,
   "Confidence": 0.94,
   "Tags": [
@@ -16,17 +16,22 @@
   "References": [
     "project-wiki-search-roadmap",
     "project-wiki-hybrid-search-rrf",
+    "project-wiki-onnx-semantic-embeddings",
     "project-wiki-scope-boundaries"
   ],
   "Conflicts": [],
   "UsageCount": 2,
-  "LastUpdated": "2026-05-12T00:00:00Z",
+  "LastUpdated": "2026-05-17T03:55:00.0000000Z",
   "SourceLinks": [
     {
       "Label": "MemoryApplicationService.cs (SemanticSearchAsync)",
       "Uri": "%MemorySmithRepo%MemorySmith.App/Services/MemoryApplicationService.cs",
       "StartLine": 120,
       "EndLine": 145
+    },
+    {
+      "Label": "SemanticEmbeddingSearchService.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/SemanticEmbeddingSearchService.cs"
     },
     {
       "Label": "ScoringTests.cs",

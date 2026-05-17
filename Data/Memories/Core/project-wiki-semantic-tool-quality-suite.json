@@ -1,6 +1,6 @@
 {
   "Id": "project-wiki-semantic-tool-quality-suite",
-  "Content": "SemanticToolQualityTests validates project-wiki semantic and hybrid relevance probes, aggregate MRR, deterministic search ordering, MCP tool schema exposure, useful tool output, source_bundle resolution, find_by_source mappings, and JSON-RPC batch notification behavior. The rank thresholds document the current local token-scoring baseline rather than claiming vector embedding semantics.",
+  "Content": "SemanticToolQualityTests validates project-wiki semantic and hybrid relevance probes, aggregate MRR, deterministic search ordering, MCP tool schema exposure, useful tool output, source_bundle resolution, find_by_source mappings, and JSON-RPC batch notification behavior. MemoryApplicationServiceTests adds CI-safe fake-provider coverage for the embedding ranker so tests do not require a local ONNX model. The quality thresholds still run against the token fallback unless model assets are explicitly configured in the test environment.",
   "Title": "Semantic and MCP tool quality tests",
   "Status": 2,
   "Confidence": 0.92,
@@ -11,7 +11,10 @@
     "mcp",
     "quality"
   ],
-  "References": [],
+  "References": [
+    "project-wiki-onnx-semantic-embeddings",
+    "project-wiki-search-roadmap"
+  ],
   "Conflicts": [],
   "SourceLinks": [
     {
@@ -40,5 +43,5 @@
     }
   ],
   "UsageCount": 0,
-  "LastUpdated": "2026-05-15T05:54:03.0572782Z"
+  "LastUpdated": "2026-05-17T03:55:00.0000000Z"
 }
