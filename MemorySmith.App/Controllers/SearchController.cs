@@ -1,10 +1,12 @@
 using MemorySmith.App.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace MemorySmith.App.Controllers;
 
 [ApiController]
 [Route("api/search")]
+[Authorize(Policy = MemorySmithPolicies.CanViewMemorySmith)]
 public class SearchController : ControllerBase
 {
     private readonly MemoryApplicationService _memories;

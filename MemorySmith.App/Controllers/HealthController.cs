@@ -1,5 +1,6 @@
 using MemorySmith.App.Services;
 using MemorySmith.Storage;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace MemorySmith.App.Controllers;
@@ -18,12 +19,14 @@ public class HealthController : ControllerBase
     }
 
     [HttpGet("live")]
+    [AllowAnonymous]
     public IActionResult Live()
     {
         return Ok(new { status = "Healthy" });
     }
 
     [HttpGet("ready")]
+    [Authorize(Policy = MemorySmithPolicies.CanViewMemorySmith)]
     public async Task<IActionResult> Ready(CancellationToken cancellationToken)
     {
         try

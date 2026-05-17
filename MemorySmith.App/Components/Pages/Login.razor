@@ -1,0 +1,60 @@
+@page "/login"
+@rendermode InteractiveServer
+@inject MemorySmithLocalAuthService Auth
+@inject NavigationManager Navigation
+
+<PageTitle>Sign In</PageTitle>
+
+<div class="wiki-workbench admin-workbench">
+    <section class="wiki-commandbar" aria-label="Sign in">
+        <div class="wiki-title-block">
+            <MudText Typo="Typo.h5">Sign In</MudText>
+            <span class="wiki-count">Local password</span>
+        </div>
+    </section>
+
+    <section class="admin-panel-grid">
+        <div class="health-lower-card admin-form-panel">
+            @if (_needsSetup)
+            {
+                <MudAlert Severity="Severity.Info" Dense="true">No administrator exists yet.</MudAlert>
+                <MudButton Href="/admin/setup" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.AdminPanelSettings">Set up admin</MudButton>
+            }
+            else
+            {
+                @if (ShowError)
+                {
+                    <MudAlert Severity="Severity.Error" Dense="true">Invalid username or password.</MudAlert>
+                }
+                <form method="post" action="@LoginAction" class="admin-form-stack">
+                    <label class="admin-input-label" for="login-user">User or email</label>
+                    <input id="login-user" name="UserNameOrEmail" class="admin-input" autocomplete="username" />
+                    <label class="admin-input-label" for="login-password">Password</label>
+                    <input id="login-password" name="Password" type="password" class="admin-input" autocomplete="current-password" />
+                    <label class="admin-checkbox"><input type="checkbox" name="RememberMe" value="true" /> Remember me</label>
+                    <input type="hidden" name="ReturnUrl" value="@SanitizedReturnUrl" />
+                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Login">Sign in</MudButton>
+                </form>
+            }
+        </div>
+    </section>
+</div>
+
+@code {
+    [SupplyParameterFromQuery(Name = "returnUrl")] public string? ReturnUrl { get; set; }
+    [SupplyParameterFromQuery(Name = "error")] public string? Error { get; set; }
+
+    private bool _needsSetup;
+    private bool ShowError => Error == "1";
+    private string SanitizedReturnUrl => MemorySmithLocalAuthService.SanitizeReturnUrl(ReturnUrl);
+    private string LoginAction => $"/api/auth/login?returnUrl={Uri.EscapeDataString(SanitizedReturnUrl)}";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _needsSetup = await Auth.NeedsSetupAsync(CancellationToken.None);
+        if (_needsSetup && !Navigation.Uri.Contains("/admin/setup", StringComparison.OrdinalIgnoreCase))
+        {
+            Navigation.NavigateTo($"/admin/setup?returnUrl={Uri.EscapeDataString(SanitizedReturnUrl)}");
+        }
+    }
+}

@@ -1,5 +1,7 @@
 namespace MemorySmith.App.Services;
 
+using MemorySmith.Storage;
+
 public class MemorySmithOptions
 {
     public string DataPath { get; set; } = Path.Combine("..", "Data", "Memories");
@@ -8,12 +10,73 @@ public class MemorySmithOptions
     public string VarsPath { get; set; } = Path.Combine("..", "Data", "vars.json");
     public string? ApiKey { get; set; }
     public bool AllowRemoteApi { get; set; }
+    public DatabaseOptions Database { get; set; } = new();
+    public AuthOptions Auth { get; set; } = new();
+    public AuditOptions Audit { get; set; } = new();
+    public HistoryOptions History { get; set; } = new();
     public PageOptions Pages { get; set; } = new();
     public SemanticSearchOptions SemanticSearch { get; set; } = new();
     public MaintenanceOptions Maintenance { get; set; } = new();
     public LimitOptions Limits { get; set; } = new();
     public SourceLinkOptions SourceLinks { get; set; } = new();
     public ChatOptions Chat { get; set; } = new();
+}
+
+public class AuthOptions
+{
+    public bool Enabled { get; set; } = true;
+    public string AnonymousAccess { get; set; } = "Viewer";
+    public string AuthenticatedDefaultRole { get; set; } = "Viewer";
+    public bool AutoEditorForAuthenticatedUsers { get; set; }
+    public bool LocalPasswordEnabled { get; set; } = true;
+    public bool RequireHttpsForRemoteAuth { get; set; } = true;
+    public bool OpenLocalEditorCompatibility { get; set; } = true;
+    public AuthSetupOptions Setup { get; set; } = new();
+    public AuthRateLimitOptions RateLimits { get; set; } = new();
+    public AuthProviderOptions Providers { get; set; } = new();
+}
+
+public class AuthSetupOptions
+{
+    public bool AllowLoopbackBootstrap { get; set; } = true;
+    public string? BootstrapTokenHash { get; set; }
+}
+
+public class AuthRateLimitOptions
+{
+    public int LoginPermitLimit { get; set; } = 5;
+    public int LoginWindowMinutes { get; set; } = 15;
+    public int LockoutMinutes { get; set; } = 15;
+    public int MaxProgressiveLockoutMinutes { get; set; } = 60;
+}
+
+public class AuthProviderOptions
+{
+    public ExternalProviderOption GitHub { get; set; } = new();
+    public ExternalProviderOption Google { get; set; } = new();
+    public ExternalProviderOption Microsoft { get; set; } = new();
+}
+
+public class ExternalProviderOption
+{
+    public bool Enabled { get; set; }
+}
+
+public class AuditOptions
+{
+    public bool JsonlEnabled { get; set; } = true;
+    public string JsonlPath { get; set; } = Path.Combine("..", "Data", "Events", "audit-{yyyy}-W{week}.jsonl");
+    public string JsonlRotation { get; set; } = "Weekly";
+    public bool CompressRotatedLogs { get; set; } = true;
+    public bool HashChainEnabled { get; set; } = true;
+}
+
+public class HistoryOptions
+{
+    public string RootPath { get; set; } = Path.Combine("..", "Data", ".history");
+    public string PageMode { get; set; } = "Snapshot";
+    public string MemoryMode { get; set; } = "JsonPatchWithCheckpoints";
+    public int MemoryCheckpointEveryVersions { get; set; } = 20;
 }
 
 public class PageOptions

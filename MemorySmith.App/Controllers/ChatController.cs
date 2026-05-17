@@ -1,4 +1,5 @@
 using MemorySmith.App.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 
@@ -6,6 +7,7 @@ namespace MemorySmith.App.Controllers;
 
 [ApiController]
 [Route("api/chat")]
+[Authorize(Policy = MemorySmithPolicies.CanUseChat)]
 public class ChatController : ControllerBase
 {
     private readonly IChatAgent _chat;

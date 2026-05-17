@@ -1,11 +1,13 @@
 using MemorySmith.App.Services;
 using MemorySmith.Core.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace MemorySmith.App.Controllers;
 
 [ApiController]
 [Route("api/source-links")]
+[Authorize(Policy = MemorySmithPolicies.CanReadSourceBundle)]
 public class SourceLinksController : ControllerBase
 {
     private readonly VarResolver _vars;

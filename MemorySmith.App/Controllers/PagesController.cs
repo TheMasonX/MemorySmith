@@ -1,10 +1,12 @@
 using MemorySmith.App.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace MemorySmith.App.Controllers;
 
 [ApiController]
 [Route("api/pages")]
+[Authorize(Policy = MemorySmithPolicies.CanViewMemorySmith)]
 public class PagesController : ControllerBase
 {
     private readonly IPageService _pages;
@@ -37,6 +39,7 @@ public class PagesController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = MemorySmithPolicies.CanEditMemorySmith)]
     public async Task<ActionResult<PageDocument>> Save([FromBody] PageSaveRequest request, CancellationToken cancellationToken)
     {
         var page = await _pages.SaveAsync(request, cancellationToken);
@@ -44,12 +47,14 @@ public class PagesController : ControllerBase
     }
 
     [HttpPut("{**slug}")]
+    [Authorize(Policy = MemorySmithPolicies.CanEditMemorySmith)]
     public async Task<ActionResult<PageDocument>> Update(string slug, [FromBody] PageSaveRequest request, CancellationToken cancellationToken)
     {
         return Ok(await _pages.SaveAsync(request with { Slug = slug }, cancellationToken));
     }
 
     [HttpDelete("{**slug}")]
+    [Authorize(Policy = MemorySmithPolicies.CanEditMemorySmith)]
     public async Task<IActionResult> Delete(string slug, CancellationToken cancellationToken)
     {
         return await _pages.DeleteAsync(slug, cancellationToken) ? NoContent() : NotFound();

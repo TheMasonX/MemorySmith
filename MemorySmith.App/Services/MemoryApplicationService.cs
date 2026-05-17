@@ -43,6 +43,8 @@ public partial class MemoryApplicationService
     private readonly IMemoryChangePublisher _publisher;
     private readonly MemorySmithOptions _options;
     private readonly SemanticEmbeddingSearchService? _semanticEmbeddings;
+    private readonly AuditLogService? _audit;
+    private readonly VersionHistoryService? _history;
 
     public MemoryApplicationService(
         IMemoryStore store,
@@ -51,7 +53,9 @@ public partial class MemoryApplicationService
         BackgroundServiceTelemetryTracker telemetryTracker,
         IMemoryChangePublisher publisher,
         IOptions<MemorySmithOptions> options,
-        SemanticEmbeddingSearchService? semanticEmbeddings = null)
+        SemanticEmbeddingSearchService? semanticEmbeddings = null,
+        AuditLogService? audit = null,
+        VersionHistoryService? history = null)
     {
         _store = store;
         _eventStore = eventStore;
@@ -60,6 +64,8 @@ public partial class MemoryApplicationService
         _publisher = publisher;
         _options = options.Value;
         _semanticEmbeddings = semanticEmbeddings;
+        _audit = audit;
+        _history = history;
     }
 
     public Task<PagedResult<MemoryMetadata>> GetMemoriesAsync(MemoryListQuery query, CancellationToken cancellationToken)
@@ -385,6 +391,20 @@ public partial class MemoryApplicationService
 
         _store.Save(record);
         _index.Add(record);
+        var version = _history is null ? null : await _history.RecordMemoryAsync("Created", null, record, null, cancellationToken);
+        if (_audit is not null)
+        {
+            await _audit.RecordAsync(
+                "memory.created",
+                "Memory",
+                record.Id,
+                MemorySmithAuditOutcomes.Success,
+                afterHash: AuditLogService.ComputeJsonHash(record),
+                diffRef: version?.HistoryPath,
+                details: new { record.Title, record.Status },
+                cancellationToken: cancellationToken);
+        }
+
         await AuditAndPublishAsync(record.Id, "Created", "Memory created", cancellationToken);
         return record;
     }
@@ -392,7 +412,8 @@ public partial class MemoryApplicationService
     public async Task<MemoryRecord?> UpdateAsync(string id, MemoryRecord record, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        if (!IsValidId(id) || _store.Load(id) is null)
+        var before = IsValidId(id) ? _store.Load(id) : null;
+        if (before is null)
         {
             return null;
         }
@@ -405,6 +426,21 @@ public partial class MemoryApplicationService
         _store.Save(record);
         _index.Remove(record.Id);
         _index.Add(record);
+        var version = _history is null ? null : await _history.RecordMemoryAsync("Updated", before, record, null, cancellationToken);
+        if (_audit is not null)
+        {
+            await _audit.RecordAsync(
+                "memory.updated",
+                "Memory",
+                record.Id,
+                MemorySmithAuditOutcomes.Success,
+                beforeHash: AuditLogService.ComputeJsonHash(before),
+                afterHash: AuditLogService.ComputeJsonHash(record),
+                diffRef: version?.HistoryPath,
+                details: new { record.Title, record.Status },
+                cancellationToken: cancellationToken);
+        }
+
         await AuditAndPublishAsync(record.Id, "Updated", "Memory updated", cancellationToken);
         return record;
     }
@@ -412,13 +448,28 @@ public partial class MemoryApplicationService
     public async Task<bool> DeleteAsync(string id, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        if (!IsValidId(id) || _store.Load(id) is null)
+        var before = IsValidId(id) ? _store.Load(id) : null;
+        if (before is null)
         {
             return false;
         }
 
         _store.Delete(id);
         _index.Remove(id);
+        var version = _history is null ? null : await _history.RecordMemoryAsync("Deleted", before, null, null, cancellationToken);
+        if (_audit is not null)
+        {
+            await _audit.RecordAsync(
+                "memory.deleted",
+                "Memory",
+                id,
+                MemorySmithAuditOutcomes.Success,
+                beforeHash: AuditLogService.ComputeJsonHash(before),
+                diffRef: version?.HistoryPath,
+                details: new { before.Title, before.Status },
+                cancellationToken: cancellationToken);
+        }
+
         await AuditAndPublishAsync(id, "Deleted", "Memory deleted", cancellationToken);
         return true;
     }
@@ -437,11 +488,39 @@ public partial class MemoryApplicationService
             return null;
         }
 
+        var before = new MemoryRecord
+        {
+            Id = record.Id,
+            Title = record.Title,
+            Content = record.Content,
+            Status = record.Status,
+            Confidence = record.Confidence,
+            Tags = record.Tags.ToList(),
+            References = record.References.ToList(),
+            Conflicts = record.Conflicts.ToList(),
+            SourceLinks = record.SourceLinks.ToList(),
+            UsageCount = record.UsageCount,
+            LastUpdated = record.LastUpdated
+        };
+
         record.UsageCount++;
         record.LastUpdated = DateTime.UtcNow;
         _store.Save(record);
         _index.Remove(record.Id);
         _index.Add(record);
+        if (_audit is not null)
+        {
+            await _audit.RecordAsync(
+                "memory.usage.incremented",
+                "Memory",
+                record.Id,
+                MemorySmithAuditOutcomes.Success,
+                beforeHash: AuditLogService.ComputeJsonHash(before),
+                afterHash: AuditLogService.ComputeJsonHash(record),
+                details: new { record.UsageCount },
+                cancellationToken: cancellationToken);
+        }
+
         await AuditAndPublishAsync(record.Id, "UsageIncremented", "Usage count incremented", cancellationToken);
         return record;
     }

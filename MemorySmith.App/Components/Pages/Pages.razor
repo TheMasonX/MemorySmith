@@ -28,7 +28,11 @@
                           Class="wiki-search-box" />
             <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Search" OnClick="SearchAsync">Search</MudButton>
             <MudIconButton Icon="@Icons.Material.Filled.Clear" Size="Size.Small" OnClick="ClearAsync" aria-label="Clear" />
-            <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" Color="Color.Success" OnClick="NewPageAsync" aria-label="New" />
+            <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
+                <Authorized>
+                    <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" Color="Color.Success" OnClick="NewPageAsync" aria-label="New" />
+                </Authorized>
+            </AuthorizeView>
         </div>
     </section>
 
@@ -80,7 +84,11 @@
                     <MudSpacer />
                     <MudCheckBox T="bool" Value="_livePreview" ValueChanged="SetLivePreviewAsync" Label="Live preview" Size="Size.Small" />
                     <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Small" Color="Color.Primary" OnClick="RefreshPreview" aria-label="Refresh preview" />
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Save" OnClick="SaveAsync">Save</MudButton>
+                    <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
+                        <Authorized>
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Save" OnClick="SaveAsync">Save</MudButton>
+                        </Authorized>
+                    </AuthorizeView>
                     <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="CancelEditAsync">Cancel</MudButton>
                 </div>
                 <div class="page-editor-shell">
@@ -106,10 +114,14 @@
                             <MudIconButton Icon="@Icons.Material.Filled.TableChart" Size="Size.Small" OnClick="@(() => InsertMarkdownAsync("\n| Column | Value |\n| --- | --- |\n| Item | Detail |\n", "", ""))" aria-label="Table" />
                         </MudTooltip>
                         <MudTooltip Text="Upload image">
-                            <label class="page-toolbar-file-button" aria-label="Upload image">
-                                <MudIcon Icon="@Icons.Material.Filled.Image" Size="Size.Small" />
-                                <InputFile OnChange="OnImageSelectedAsync" accept="image/*" class="page-toolbar-file-input" />
-                            </label>
+                            <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
+                                <Authorized>
+                                    <label class="page-toolbar-file-button" aria-label="Upload image">
+                                        <MudIcon Icon="@Icons.Material.Filled.Image" Size="Size.Small" />
+                                        <InputFile OnChange="OnImageSelectedAsync" accept="image/*" class="page-toolbar-file-input" />
+                                    </label>
+                                </Authorized>
+                            </AuthorizeView>
                         </MudTooltip>
                     </div>
 
@@ -146,8 +158,12 @@
                         </div>
                     </div>
                     <MudSpacer />
-                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="EditSelected" aria-label="Edit" />
-                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="DeleteSelectedAsync" aria-label="Delete" />
+                    <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
+                        <Authorized>
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="EditSelected" aria-label="Edit" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="DeleteSelectedAsync" aria-label="Delete" />
+                        </Authorized>
+                    </AuthorizeView>
                 </div>
                 <div class="page-rendered">@((MarkupString)_selectedPage.Html)</div>
             }

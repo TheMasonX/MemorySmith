@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using MemorySmith.App.Services;
 using MemorySmith.Core.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 
@@ -9,6 +10,7 @@ namespace MemorySmith.App.Controllers;
 
 [ApiController]
 [Route("mcp")]
+[Authorize(Policy = MemorySmithPolicies.CanViewMemorySmith)]
 public class McpController : ControllerBase
 {
     private static readonly JsonSerializerOptions ToolJsonOptions = new(JsonSerializerDefaults.Web)
@@ -31,12 +33,14 @@ public class McpController : ControllerBase
     private readonly MemoryApplicationService _memories;
     private readonly VarResolver _vars;
     private readonly MemorySmithOptions _options;
+    private readonly IAuthorizationService _authorization;
 
-    public McpController(MemoryApplicationService memories, VarResolver vars, IOptions<MemorySmithOptions> options)
+    public McpController(MemoryApplicationService memories, VarResolver vars, IOptions<MemorySmithOptions> options, IAuthorizationService authorization)
     {
         _memories = memories;
         _vars = vars;
         _options = options.Value;
+        _authorization = authorization;
     }
 
     [HttpGet]
@@ -118,11 +122,16 @@ public class McpController : ControllerBase
                 await _memories.BuildContextPackAsync(ReadContextPackQuery(argumentsElement), cancellationToken),
                 GetString(argumentsElement, "format"))),
             "memorysmith_get" => ToolText(await FormatRecordAsync(argumentsElement, cancellationToken)),
-            "memorysmith_source_bundle" => ToolText(await FormatSourceBundleAsync(argumentsElement, cancellationToken)),
+            "memorysmith_source_bundle" => await CanReadSourceBundleAsync()
+                ? ToolText(await FormatSourceBundleAsync(argumentsElement, cancellationToken))
+                : ToolText("The caller is not authorized to read source bundles.", isError: true),
             "memorysmith_find_by_source" => ToolText(await FormatFindBySourceAsync(argumentsElement, cancellationToken)),
             _ => ToolText($"Unknown MemorySmith tool '{toolName}'.", isError: true)
         };
     }
+
+    private async Task<bool> CanReadSourceBundleAsync() =>
+        (await _authorization.AuthorizeAsync(User, null, MemorySmithPolicies.CanReadSourceBundle)).Succeeded;
 
     private async Task<string> FormatSourceBundleAsync(JsonElement args, CancellationToken ct)
     {

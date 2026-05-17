@@ -1,0 +1,58 @@
+@page "/admin/setup"
+@rendermode InteractiveServer
+@inject MemorySmithLocalAuthService Auth
+@inject NavigationManager Navigation
+
+<PageTitle>Admin Setup</PageTitle>
+
+<div class="wiki-workbench admin-workbench">
+    <section class="wiki-commandbar" aria-label="Admin setup">
+        <div class="wiki-title-block">
+            <MudText Typo="Typo.h5">Admin Setup</MudText>
+            <span class="wiki-count">First administrator</span>
+        </div>
+    </section>
+
+    <section class="admin-panel-grid">
+        <div class="health-lower-card admin-form-panel">
+            @if (!_needsSetup)
+            {
+                <MudAlert Severity="Severity.Success" Dense="true">Setup is already complete.</MudAlert>
+                <MudButton Href="/admin" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.AdminPanelSettings">Open admin</MudButton>
+            }
+            else
+            {
+                @if (ShowError)
+                {
+                    <MudAlert Severity="Severity.Error" Dense="true">Setup failed. Check the values and try again from localhost.</MudAlert>
+                }
+                <form method="post" action="@SetupAction" class="admin-form-stack">
+                    <label class="admin-input-label" for="setup-display-name">Display name</label>
+                    <input id="setup-display-name" name="DisplayName" class="admin-input" autocomplete="name" />
+                    <label class="admin-input-label" for="setup-email">Email</label>
+                    <input id="setup-email" name="Email" type="email" class="admin-input" autocomplete="email" />
+                    <label class="admin-input-label" for="setup-password">Password</label>
+                    <input id="setup-password" name="Password" type="password" class="admin-input" autocomplete="new-password" />
+                    <span class="wiki-count">At least 15 characters</span>
+                    <input type="hidden" name="ReturnUrl" value="@SanitizedReturnUrl" />
+                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.AdminPanelSettings">Create admin</MudButton>
+                </form>
+            }
+        </div>
+    </section>
+</div>
+
+@code {
+    [SupplyParameterFromQuery(Name = "returnUrl")] public string? ReturnUrl { get; set; }
+    [SupplyParameterFromQuery(Name = "error")] public string? Error { get; set; }
+
+    private bool _needsSetup;
+    private bool ShowError => Error == "1";
+    private string SanitizedReturnUrl => MemorySmithLocalAuthService.SanitizeReturnUrl(ReturnUrl ?? "/admin");
+    private string SetupAction => $"/api/admin/setup?returnUrl={Uri.EscapeDataString(SanitizedReturnUrl)}";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _needsSetup = await Auth.NeedsSetupAsync(CancellationToken.None);
+    }
+}

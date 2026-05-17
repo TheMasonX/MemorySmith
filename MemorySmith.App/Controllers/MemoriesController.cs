@@ -1,11 +1,13 @@
 using MemorySmith.App.Services;
 using MemorySmith.Core.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace MemorySmith.App.Controllers;
 
 [ApiController]
 [Route("api/memories")]
+[Authorize(Policy = MemorySmithPolicies.CanViewMemorySmith)]
 public class MemoriesController : ControllerBase
 {
     private readonly MemoryApplicationService _memories;
@@ -34,6 +36,7 @@ public class MemoriesController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = MemorySmithPolicies.CanEditMemorySmith)]
     public async Task<ActionResult<MemoryRecord>> Create([FromBody] MemoryRecord record, CancellationToken cancellationToken)
     {
         try
@@ -48,6 +51,7 @@ public class MemoriesController : ControllerBase
     }
 
     [HttpPut("{id}")]
+    [Authorize(Policy = MemorySmithPolicies.CanEditMemorySmith)]
     public async Task<ActionResult<MemoryRecord>> Update(string id, [FromBody] MemoryRecord record, CancellationToken cancellationToken)
     {
         try
@@ -62,6 +66,7 @@ public class MemoriesController : ControllerBase
     }
 
     [HttpDelete("{id}")]
+    [Authorize(Policy = MemorySmithPolicies.CanEditMemorySmith)]
     public async Task<IActionResult> Delete(string id, CancellationToken cancellationToken)
     {
         return await _memories.DeleteAsync(id, cancellationToken) ? NoContent() : NotFound();
@@ -86,6 +91,7 @@ public class MemoriesController : ControllerBase
     }
 
     [HttpPost("{id}/usage")]
+    [Authorize(Policy = MemorySmithPolicies.CanEditMemorySmith)]
     public async Task<IActionResult> IncrementUsage(string id, CancellationToken cancellationToken)
     {
         var record = await _memories.IncrementUsageAsync(id, cancellationToken);

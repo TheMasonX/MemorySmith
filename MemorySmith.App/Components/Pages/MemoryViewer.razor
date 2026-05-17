@@ -42,7 +42,11 @@
 
             <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Search" OnClick="SearchAsync">Search</MudButton>
             <MudIconButton Icon="@Icons.Material.Filled.Clear" Size="Size.Small" OnClick="ClearAsync" aria-label="Clear" />
-            <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" Color="Color.Success" OnClick="NewRecord" aria-label="New" />
+            <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
+                <Authorized>
+                    <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" Color="Color.Success" OnClick="NewRecord" aria-label="New" />
+                </Authorized>
+            </AuthorizeView>
         </div>
     </section>
 
@@ -121,7 +125,11 @@
                 <div class="wiki-pane-header">
                     <MudText Typo="Typo.subtitle2">@(_editingExisting ? "Edit Memory" : "New Memory")</MudText>
                     <MudSpacer />
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Save" OnClick="SaveAsync">Save</MudButton>
+                    <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
+                        <Authorized>
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Save" OnClick="SaveAsync">Save</MudButton>
+                        </Authorized>
+                    </AuthorizeView>
                     <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="CancelEdit">Cancel</MudButton>
                 </div>
 
@@ -177,9 +185,13 @@
                     <MudSpacer />
                     <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Size="Size.Small" OnClick="CopySelectedContentAsync" aria-label="Copy content" />
                     <MudIconButton Icon="@Icons.Material.Filled.Assignment" Size="Size.Small" OnClick="CopyAgentContextAsync" aria-label="Copy agent context" />
-                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="EditSelected" aria-label="Edit" />
-                    <MudIconButton Icon="@Icons.Material.Filled.AddCircle" Size="Size.Small" OnClick="@(() => IncrementUsageAsync(_selectedRecord.Id))" aria-label="Increment usage" />
-                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteAsync(_selectedRecord.Id))" aria-label="Delete" />
+                    <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
+                        <Authorized>
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="EditSelected" aria-label="Edit" />
+                            <MudIconButton Icon="@Icons.Material.Filled.AddCircle" Size="Size.Small" OnClick="@(() => IncrementUsageAsync(_selectedRecord.Id))" aria-label="Increment usage" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteAsync(_selectedRecord.Id))" aria-label="Delete" />
+                        </Authorized>
+                    </AuthorizeView>
                 </div>
 
                 @if (_selectedSemanticMatch is not null)
