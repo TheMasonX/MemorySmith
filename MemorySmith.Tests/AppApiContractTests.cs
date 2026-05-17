@@ -5,6 +5,7 @@ using MemorySmith.App.Services;
 using MemorySmith.Core.Models;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Data.Sqlite;
 
 namespace MemorySmith.Tests;
 
@@ -29,6 +30,10 @@ public class AppApiContractTests
                         ["MemorySmith:DataPath"] = Path.Combine(_tempDir, "Memories"),
                         ["MemorySmith:PagesPath"] = Path.Combine(_tempDir, "Pages"),
                         ["MemorySmith:EventLogPath"] = Path.Combine(_tempDir, "Events", "audit.log"),
+                        ["MemorySmith:DataProtectionKeysPath"] = Path.Combine(_tempDir, "Keys"),
+                        ["MemorySmith:Database:ConnectionString"] = $"Data Source={Path.Combine(_tempDir, "memorysmith.db")};Pooling=False",
+                        ["MemorySmith:Audit:JsonlPath"] = Path.Combine(_tempDir, "Events", "audit-{yyyy}-W{week}.jsonl"),
+                        ["MemorySmith:History:RootPath"] = Path.Combine(_tempDir, ".history"),
                         ["MemorySmith:Maintenance:Enabled"] = "false"
                     });
                 });
@@ -41,6 +46,7 @@ public class AppApiContractTests
     {
         _client.Dispose();
         _factory.Dispose();
+        SqliteConnection.ClearAllPools();
         if (Directory.Exists(_tempDir))
         {
             Directory.Delete(_tempDir, recursive: true);
@@ -98,8 +104,63 @@ public class AppApiContractTests
             Assert.That(createResponse.StatusCode, Is.EqualTo(HttpStatusCode.Created));
             Assert.That(loaded!.Tags, Is.EqualTo(new[] { "api" }));
             Assert.That(deleteResponse.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
-            Assert.That(Directory.EnumerateFiles(_tempDir, "*.json", SearchOption.AllDirectories), Is.Empty);
+            Assert.That(Directory.EnumerateFiles(Path.Combine(_tempDir, "Memories"), "*.json", SearchOption.AllDirectories), Is.Empty);
+            Assert.That(Directory.EnumerateFiles(Path.Combine(_tempDir, ".history"), "*.snapshot.json", SearchOption.AllDirectories).Count(), Is.GreaterThanOrEqualTo(2));
         });
+    }
+
+    [Test]
+    public async Task SharedApiKey_CanWriteAfterFirstAdminExists()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"memorysmith-api-key-{Guid.NewGuid():N}");
+        const string apiKey = "contract-secret";
+        var factory = new WebApplicationFactory<Program>()
+            .WithWebHostBuilder(builder =>
+            {
+                builder.ConfigureAppConfiguration((_, config) =>
+                {
+                    config.AddInMemoryCollection(new Dictionary<string, string?>
+                    {
+                        ["MemorySmith:DataPath"] = Path.Combine(tempDir, "Memories"),
+                        ["MemorySmith:PagesPath"] = Path.Combine(tempDir, "Pages"),
+                        ["MemorySmith:EventLogPath"] = Path.Combine(tempDir, "Events", "audit.log"),
+                        ["MemorySmith:DataProtectionKeysPath"] = Path.Combine(tempDir, "Keys"),
+                        ["MemorySmith:Database:ConnectionString"] = $"Data Source={Path.Combine(tempDir, "memorysmith.db")};Pooling=False",
+                        ["MemorySmith:Audit:JsonlPath"] = Path.Combine(tempDir, "Events", "audit-{yyyy}-W{week}.jsonl"),
+                        ["MemorySmith:History:RootPath"] = Path.Combine(tempDir, ".history"),
+                        ["MemorySmith:Maintenance:Enabled"] = "false",
+                        ["MemorySmith:ApiKey"] = apiKey
+                    });
+                });
+            });
+
+        try
+        {
+            using var setupClient = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+            setupClient.DefaultRequestHeaders.Add(MemorySmithRequestGuardMiddleware.ApiKeyHeaderName, apiKey);
+            var setupResponse = await setupClient.PostAsJsonAsync("/api/admin/setup", new SetupAdminRequest("Admin User", "admin@example.test", "ThisIsAValidPassword123!"));
+            setupResponse.EnsureSuccessStatusCode();
+
+            using var apiClient = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+            apiClient.DefaultRequestHeaders.Add(MemorySmithRequestGuardMiddleware.ApiKeyHeaderName, apiKey);
+            var createResponse = await apiClient.PostAsJsonAsync("/api/memories", new MemoryRecord
+            {
+                Id = "api-key-write",
+                Title = "API key write",
+                Content = "Compatibility write path"
+            });
+
+            Assert.That(createResponse.StatusCode, Is.EqualTo(HttpStatusCode.Created));
+        }
+        finally
+        {
+            factory.Dispose();
+            SqliteConnection.ClearAllPools();
+            if (Directory.Exists(tempDir))
+            {
+                Directory.Delete(tempDir, recursive: true);
+            }
+        }
     }
 
     [Test]

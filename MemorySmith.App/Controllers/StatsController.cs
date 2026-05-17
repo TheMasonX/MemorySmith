@@ -1,11 +1,13 @@
 using MemorySmith.App.Services;
 using MemorySmith.Core.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace MemorySmith.App.Controllers;
 
 [ApiController]
 [Route("api/stats")]
+[Authorize(Policy = MemorySmithPolicies.CanViewMemorySmith)]
 public class StatsController : ControllerBase
 {
     private readonly MemoryApplicationService _memories;

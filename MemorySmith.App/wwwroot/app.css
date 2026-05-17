@@ -1202,6 +1202,77 @@ body {
     font-size: 0.8rem;
 }
 
+.admin-workbench {
+    overflow: auto;
+}
+
+.admin-panel-grid {
+    display: grid;
+    grid-template-columns: minmax(320px, 520px) minmax(0, 1fr);
+    gap: 10px;
+    min-height: 0;
+}
+
+.admin-form-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.admin-form-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.admin-input-label {
+    color: var(--vscode-text-muted);
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.admin-input {
+    min-height: 36px;
+    border: 1px solid var(--vscode-border);
+    border-radius: 3px;
+    background: var(--vscode-bg);
+    color: var(--vscode-text);
+    padding: 7px 9px;
+    outline: none;
+}
+
+.admin-input:focus {
+    border-color: var(--vscode-accent);
+    box-shadow: inset 0 0 0 1px var(--vscode-accent);
+}
+
+.admin-checkbox {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: var(--vscode-text);
+    font-size: 0.84rem;
+}
+
+.admin-tabs {
+    background: var(--vscode-panel);
+    border: 1px solid var(--vscode-border);
+    min-height: 0;
+}
+
+.nav-auth-form {
+    margin: 0;
+}
+
+.nav-auth-button {
+    width: 100%;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
 @media (max-width: 1100px) {
     .wiki-commandbar {
         grid-template-columns: 1fr;
@@ -1258,6 +1329,7 @@ body {
     .health-charts-row,
     .health-lower-grid,
     .health-operations-grid,
+    .admin-panel-grid,
     .chat-composer {
         grid-template-columns: 1fr;
     }

@@ -17,7 +17,29 @@
     <MudNavLink Href="/health" Icon="@Icons.Material.Filled.MonitorHeart">
         Health
     </MudNavLink>
+    <AuthorizeView Policy="@MemorySmithPolicies.CanAdminMemorySmith">
+        <Authorized>
+            <MudNavLink Href="/admin" Icon="@Icons.Material.Filled.AdminPanelSettings">
+                Admin
+            </MudNavLink>
+        </Authorized>
+    </AuthorizeView>
     <MudNavLink Href="/about" Icon="@Icons.Material.Filled.Info">
         About
     </MudNavLink>
+    <AuthorizeView>
+        <Authorized>
+            <form method="post" action="/api/auth/logout?returnUrl=/" class="nav-auth-form">
+                <button type="submit" class="mud-nav-link mud-ripple nav-auth-button">
+                    <span class="mud-nav-link-icon mud-nav-link-icon-default"><MudIcon Icon="@Icons.Material.Filled.Logout" Size="Size.Small" /></span>
+                    <span class="mud-nav-link-text">Sign out</span>
+                </button>
+            </form>
+        </Authorized>
+        <NotAuthorized>
+            <MudNavLink Href="/login" Icon="@Icons.Material.Filled.Login">
+                Sign in
+            </MudNavLink>
+        </NotAuthorized>
+    </AuthorizeView>
 </MudNavMenu>

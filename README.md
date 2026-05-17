@@ -1,6 +1,6 @@
 # MemorySmith
 
-MemorySmith is a single-host ASP.NET Core app for local structured memory management. It hosts a Blazor workbench UI, markdown pages, REST API, MCP endpoint, file-backed storage, local chat/agent workflows, and background maintenance in one process. The `/memories` page is the primary structured memory workbench. The repository ships with a live project wiki inside `Data/Memories`, and the app uses its own memory store as a testbed.
+MemorySmith is a single-host ASP.NET Core app for local structured memory management. It hosts a Blazor workbench UI, markdown pages, REST API, MCP endpoint, file-backed content storage, SQLite-backed security/audit metadata, local chat/agent workflows, and background maintenance in one process. The `/memories` page is the primary structured memory workbench. The repository ships with a live project wiki inside `Data/Memories`, and the app uses its own memory store as a testbed.
 
 ## Quick Start
 
@@ -15,11 +15,13 @@ Opens on `http://localhost:5089` by default. Pages:
 | `/memories` | Browse, search, create, edit, delete memory records |
 | `/pages` | Create, search, edit, preview, and render markdown-backed pages from `Data/Pages` |
 | `/chat` | Memory-enhanced chat and agent mode with provider/model selection, streaming responses, context usage, attachments, and local chat history |
+| `/login`, `/admin/setup`, `/admin` | Local sign-in, first-admin bootstrap, and RBAC/audit/history administration |
 | `/health` | Scrollable stat cards, activity charts (queries/day, changes/day), maintenance telemetry |
 | `/variables` | Manage `%VarName%` path variables used in source link URIs |
 | `/about` | MemorySmith and third-party license information |
 | `/api/memories` | REST CRUD for automation |
 | `/api/pages`, `/api/search`, `/api/chat` | Page CRUD/search/rendering, combined memory/page search, and chat/agent/config API |
+| `/api/auth/*`, `/api/admin/*` | Current-user, login/logout, setup, user, provider, audit, and history metadata APIs |
 | `/api/stats`, `/api/health/*`, `/api/diagnostics` | Stats, readiness, and redacted operational diagnostics |
 | `/page-assets/*` | Static files from `Data/Pages/assets` for images, video, and audio embedded in pages |
 | `/mcp` | MCP JSON-RPC endpoint for AI agent tool use |
@@ -64,7 +66,7 @@ User-created markdown files under `Data/Pages/` are valid project wiki content a
 | `project-wiki-generalization-friction` | Known gaps for broader adoption |
 | `project-wiki-benchmarkdotnet-suite` | BenchmarkDotNet project: smoke validation and full benchmark commands |
 | `project-wiki-semantic-tool-quality-suite` | Search relevance probes, aggregate MRR, and MCP tool output quality assertions |
-| `project-wiki-current-validation-146-tests` | Validated test baseline: 146 NUnit tests across the solution |
+| `project-wiki-current-validation-146-tests` | Historical validation baseline: 146 NUnit tests across the solution |
 | `project-wiki-github-actions-artifacts` | CI Cobertura coverage artifacts and Doxygen GitHub Pages export |
 | `project-wiki-maintenance-observability-refinements` | Startup triage/index scheduling and stats activity bucket API |
 | `project-wiki-operational-diagnostics-dashboard` | `/health` dashboard and `/api/diagnostics` operational snapshot |
@@ -77,6 +79,14 @@ User-created markdown files under `Data/Pages/` are valid project wiki content a
 | `project-wiki-test-fixture-conflict-note` | Conflict fixture |
 
 Retrieve any record via the MCP tool `memorysmith_get` with its ID, or search the `/memories` page.
+
+## Authentication, Audit, And History
+
+MemorySmith keeps memory/page content file-backed and stores security metadata in SQLite at `Data/memorysmith.db` by default. Cookie authentication and RBAC policies protect the UI, REST APIs, and MCP tools. Built-in roles are `Viewer`, `Editor`, and `Admin`; the default local policy allows anonymous Viewer access, while mutation, diagnostics, admin, audit, and restore workflows require stronger roles.
+
+On a fresh local install, `Auth:OpenLocalEditorCompatibility` grants loopback requests full access until the first Admin user exists. Create that first account at `/admin/setup`, then sign in at `/login`. Local password auth is implemented; external provider rows for GitHub, Google, and Microsoft are seeded for administration and later OAuth wiring.
+
+Audit metadata is written to SQLite and mirrored to weekly JSONL files under `Data/Events`. Memory and page writes also create version-history artifacts under `Data/.history`; these artifacts are metadata/history records, not replacements for `Data/Memories` or `Data/Pages` as the source of truth.
 
 ## Memory Records
 
@@ -181,6 +191,31 @@ All settings live under `MemorySmith` in `appsettings.json`:
     "VarsPath": "../Data/vars.json",
     "ApiKey": null,
     "AllowRemoteApi": false,
+    "DataProtectionKeysPath": "../Data/Keys",
+    "Database": {
+      "Provider": "SQLite",
+      "ConnectionString": "Data Source=../Data/memorysmith.db",
+      "ApplyMigrationsOnStartup": true,
+      "UseWal": true,
+      "BusyTimeoutSeconds": 30
+    },
+    "Auth": {
+      "Enabled": true,
+      "AnonymousAccess": "Viewer",
+      "AuthenticatedDefaultRole": "Viewer",
+      "AutoEditorForAuthenticatedUsers": false,
+      "LocalPasswordEnabled": true,
+      "OpenLocalEditorCompatibility": true
+    },
+    "Audit": {
+      "JsonlEnabled": true,
+      "JsonlPath": "../Data/Events/audit-{yyyy}-W{week}.jsonl"
+    },
+    "History": {
+      "RootPath": "../Data/.history",
+      "PageMode": "Snapshot",
+      "MemoryMode": "JsonPatchWithCheckpoints"
+    },
     "Pages": {
       "AllowRawHtml": false
     },
@@ -245,6 +280,11 @@ Override via `appsettings.Development.json` or environment variables (`MemorySmi
 
 - **`ApiKey`** — if set, all API and MCP requests must include `X-Api-Key: <value>`. Leave `null` for local use.
 - **`AllowRemoteApi`** — set `true` to allow non-localhost callers. Off by default.
+- **`DataProtectionKeysPath`** — stores ASP.NET Core cookie/data-protection keys outside build output so local sign-in cookies survive app restarts.
+- **`Database:*`** — controls the SQLite metadata database used for users, roles, provider links, login history, audit metadata, version metadata, token metadata, admin settings, and semantic-index metadata. Content files remain in `Data/Memories` and `Data/Pages`.
+- **`Auth:*`** — controls cookie/RBAC behavior. `AnonymousAccess=Viewer` keeps local browsing open by default; `OpenLocalEditorCompatibility=true` preserves full loopback access until the first Admin is bootstrapped.
+- **`Audit:*`** — controls the weekly JSONL audit mirror. SQLite remains the queryable metadata store.
+- **`History:*`** — controls version-history artifact storage for memory and page mutations.
 - **`Pages:AllowRawHtml`** — enables trusted raw HTML rendering in markdown pages. Off by default; leave disabled for agent-written or unreviewed pages.
 - **`SemanticSearch:*`** — controls optional ONNX embedding ranking. Relative model and vocabulary paths resolve from the configured data deployment root: the folder that contains `Memories`, `Events`, `Graph`, `Models`, and `Pages`. The default model path is `Models/embedding-model.onnx`; ONNX/model artifacts are ignored by Git, and a matching WordPiece `vocab.txt` is required before embeddings activate. Legacy `../Data/Models/...` values are also interpreted relative to that data root.
 - **`DataPath`** — root of the memory store. Subdirectories (`Unconsolidated/`, `Working/`, `Core/`, `Deprecated/`) are created automatically.
@@ -320,4 +360,4 @@ dotnet run -c Release --project MemorySmith.Benchmarks -- --smoke
 dotnet run -c Release --project MemorySmith.Benchmarks -- --filter *SearchBenchmarks*
 ```
 
-The solution builds `MemorySmith.App` as the single deployable host. `MemorySmith.Tests` includes unit tests, integration tests (via `WebApplicationFactory`), and a `[Category("Benchmark")]` suite of 32 search quality probes with latency thresholds. GitHub Actions collects Cobertura coverage in CI and publishes a Doxygen HTML wiki through the Pages workflow.
+The solution builds `MemorySmith.App` as the single deployable host. `MemorySmith.Tests` includes 154 NUnit tests: unit tests, integration tests (via `WebApplicationFactory`), SQLite metadata coverage, auth/audit/history coverage, and a `[Category("Benchmark")]` suite of 32 search quality probes with latency thresholds. GitHub Actions collects Cobertura coverage in CI and publishes a Doxygen HTML wiki through the Pages workflow.

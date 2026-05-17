@@ -1,0 +1,117 @@
+@page "/admin"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = MemorySmithPolicies.CanAdminMemorySmith)]
+@inject IMemorySmithDatabase Database
+
+<PageTitle>Admin</PageTitle>
+
+<div class="wiki-workbench admin-workbench">
+    <section class="wiki-commandbar" aria-label="Admin">
+        <div class="wiki-title-block">
+            <MudText Typo="Typo.h5">Admin</MudText>
+            <span class="wiki-count">Auth, audit, history</span>
+        </div>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync">Refresh</MudButton>
+    </section>
+
+    <MudTabs Rounded="false" Elevation="0" Class="admin-tabs">
+        <MudTabPanel Text="Users" Icon="@Icons.Material.Filled.People">
+            <MudTable Items="@_users" Dense="true" Class="health-table">
+                <HeaderContent>
+                    <MudTh>User</MudTh>
+                    <MudTh>Email</MudTh>
+                    <MudTh>Status</MudTh>
+                    <MudTh>Created</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>@context.DisplayName</MudTd>
+                    <MudTd>@(context.Email ?? "-")</MudTd>
+                    <MudTd>@(context.IsDisabled ? "Disabled" : "Active")</MudTd>
+                    <MudTd>@context.CreatedAtUtc.ToLocalTime().ToString("g")</MudTd>
+                </RowTemplate>
+            </MudTable>
+        </MudTabPanel>
+        <MudTabPanel Text="Providers" Icon="@Icons.Material.Filled.Link">
+            <MudTable Items="@_providers" Dense="true" Class="health-table">
+                <HeaderContent>
+                    <MudTh>Provider</MudTh>
+                    <MudTh>Status</MudTh>
+                    <MudTh>Updated</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>@context.DisplayName</MudTd>
+                    <MudTd>@(context.IsEnabled ? "Enabled" : "Disabled")</MudTd>
+                    <MudTd>@context.UpdatedAtUtc.ToLocalTime().ToString("g")</MudTd>
+                </RowTemplate>
+            </MudTable>
+        </MudTabPanel>
+        <MudTabPanel Text="Audit" Icon="@Icons.Material.Filled.FactCheck">
+            <MudTable Items="@_audit" Dense="true" Class="health-table">
+                <HeaderContent>
+                    <MudTh>Time</MudTh>
+                    <MudTh>Actor</MudTh>
+                    <MudTh>Action</MudTh>
+                    <MudTh>Target</MudTh>
+                    <MudTh>Outcome</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>@context.OccurredAtUtc.ToLocalTime().ToString("g")</MudTd>
+                    <MudTd>@context.ActorDisplay</MudTd>
+                    <MudTd>@context.Action</MudTd>
+                    <MudTd>@context.TargetKind:@context.TargetId</MudTd>
+                    <MudTd>@context.Outcome</MudTd>
+                </RowTemplate>
+            </MudTable>
+        </MudTabPanel>
+        <MudTabPanel Text="History" Icon="@Icons.Material.Filled.History">
+            <MudTable Items="@_recentVersions" Dense="true" Class="health-table">
+                <HeaderContent>
+                    <MudTh>Target</MudTh>
+                    <MudTh>Version</MudTh>
+                    <MudTh>Format</MudTh>
+                    <MudTh>Artifact</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>@context.TargetKind:@context.TargetId</MudTd>
+                    <MudTd>@context.VersionNumber</MudTd>
+                    <MudTd>@context.Format</MudTd>
+                    <MudTd>@context.HistoryPath</MudTd>
+                </RowTemplate>
+            </MudTable>
+        </MudTabPanel>
+    </MudTabs>
+</div>
+
+@code {
+    private IReadOnlyList<UserAccount> _users = [];
+    private IReadOnlyList<AuthProviderRecord> _providers = [];
+    private IReadOnlyList<AuditLogEntry> _audit = [];
+    private IReadOnlyList<VersionHistoryEntry> _recentVersions = [];
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _users = (await Database.Users.ListAsync(new UserQuery(PageSize: 100), CancellationToken.None)).Data;
+        _providers = await Database.ProviderLinks.ListProvidersAsync(CancellationToken.None);
+        _audit = (await Database.AuditLogs.QueryAsync(new AuditLogQuery(PageSize: 100), CancellationToken.None)).Data;
+        _recentVersions = await LoadRecentVersionsAsync();
+    }
+
+    private async Task<IReadOnlyList<VersionHistoryEntry>> LoadRecentVersionsAsync()
+    {
+        var audits = await Database.AuditLogs.QueryAsync(new AuditLogQuery(PageSize: 50), CancellationToken.None);
+        var versions = new List<VersionHistoryEntry>();
+        foreach (var audit in audits.Data.Where(a => a.TargetKind is "Memory" or "Page" && !string.IsNullOrWhiteSpace(a.TargetId)).Take(20))
+        {
+            versions.AddRange(await Database.VersionHistory.GetHistoryAsync(audit.TargetKind, audit.TargetId!, CancellationToken.None));
+        }
+
+        return versions
+            .GroupBy(version => version.VersionId)
+            .Select(group => group.First())
+            .OrderByDescending(version => version.CreatedAtUtc)
+            .Take(50)
+            .ToList();
+    }
+}
