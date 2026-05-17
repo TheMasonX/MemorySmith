@@ -7,8 +7,8 @@ MemorySmith now runs as `MemorySmith.App`, a single host for the Blazor dashboar
 | Route | Purpose |
 |---|---|
 | `/memories` | Primary memory dashboard/workbench for browsing, search, editing, source links, and agent context copying. |
-| `/pages` | Markdown-backed page editor, search, live/manual preview, toolbar inserts, and HTML rendering for `Data/Pages`. |
-| `/chat` | Memory-enhanced chat and agent mode with provider model selection, attachments, local history, and clickable resources. |
+| `/pages` | Markdown-backed page editor, search, live/manual preview, toolbar inserts, image upload/embed, and HTML rendering for `Data/Pages`. |
+| `/chat` | Memory-enhanced chat and agent mode with provider model selection, text/image attachments, pasted images, retained drafts, local history, and clickable resources. |
 | `/api/search` | Combined memory and page search for broader local discovery. |
 | `/health` | Operator dashboard with counts, readiness, activity charts, maintenance telemetry, runtime configuration, storage paths, endpoints, and storage diagnostics. |
 | `/variables` | `%VarName%` source-link path variable management. |
@@ -50,7 +50,7 @@ All runtime settings are under the `MemorySmith` configuration section:
 | `AllowRemoteApi` | Allows non-loopback API/MCP callers when set to `true`. |
 | `Maintenance:*` | Background maintenance intervals and startup grace. |
 | `SourceLinks:*` | Source bundle max bytes and trusted local source roots. |
-| `Chat:*` | Chat provider, Ollama endpoint/model, prompt path, context/history/attachment limits, and agent write setting. |
+| `Chat:*` | Chat provider, Ollama endpoint/model, prompt path, context/history/attachment byte/text limits, and agent write setting. |
 
 The effective redacted configuration is visible at `/health` and `GET /api/diagnostics`.
 

@@ -21,12 +21,15 @@ public sealed record PageSaveRequest(string? Slug, string? Title, string Markdow
 
 public sealed record PageSearchQuery(string? Query = null, int Limit = 50);
 
+public sealed record PageAsset(string FileName, string MarkdownPath, string RequestPath, long Size);
+
 public interface IPageService
 {
     Task<IReadOnlyList<PageSummary>> ListAsync(CancellationToken cancellationToken);
     Task<IReadOnlyList<PageSummary>> SearchAsync(PageSearchQuery query, CancellationToken cancellationToken);
     Task<PageDocument?> GetAsync(string slug, CancellationToken cancellationToken);
     Task<PageDocument> SaveAsync(PageSaveRequest request, CancellationToken cancellationToken);
+    Task<PageAsset> SaveAssetAsync(string fileName, Stream content, CancellationToken cancellationToken);
     Task<bool> DeleteAsync(string slug, CancellationToken cancellationToken);
     string RenderHtml(string markdown);
 }
@@ -119,6 +122,17 @@ public sealed class FilePageService : IPageService
             File.WriteAllText(path, EnsureMarkdownHasTitle(request.Markdown, request.Title));
             return Task.FromResult(ReadDocument(path)!);
         }
+    }
+
+    public async Task<PageAsset> SaveAssetAsync(string fileName, Stream content, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        Directory.CreateDirectory(_assetPath);
+        var safeFileName = GetUniqueAssetFileName(fileName);
+        var path = Path.Combine(_assetPath, safeFileName);
+        await using var output = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+        await content.CopyToAsync(output, cancellationToken);
+        return new PageAsset(safeFileName, $"assets/{safeFileName}", $"/page-assets/{safeFileName}", output.Length);
     }
 
     public Task<bool> DeleteAsync(string slug, CancellationToken cancellationToken)
@@ -289,6 +303,41 @@ public sealed class FilePageService : IPageService
         return normalized.StartsWith("assets/", StringComparison.OrdinalIgnoreCase)
             ? "/page-assets/" + normalized[7..]
             : path;
+    }
+
+    private string GetUniqueAssetFileName(string fileName)
+    {
+        var safeName = NormalizeAssetFileName(fileName);
+        var name = Path.GetFileNameWithoutExtension(safeName);
+        var extension = Path.GetExtension(safeName);
+        var candidate = safeName;
+        var suffix = 1;
+        while (File.Exists(Path.Combine(_assetPath, candidate)))
+        {
+            candidate = $"{name}-{suffix++}{extension}";
+        }
+
+        return candidate;
+    }
+
+    private static string NormalizeAssetFileName(string fileName)
+    {
+        var name = Path.GetFileName(fileName).Trim();
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            name = $"asset-{DateTime.UtcNow:yyyyMMddHHmmss}.bin";
+        }
+
+        var extension = Path.GetExtension(name).ToLowerInvariant();
+        var baseName = Path.GetFileNameWithoutExtension(name).ToLowerInvariant();
+        baseName = Regex.Replace(baseName, "[^a-z0-9_-]+", "-").Trim('-');
+        if (string.IsNullOrWhiteSpace(baseName))
+        {
+            baseName = $"asset-{DateTime.UtcNow:yyyyMMddHHmmss}";
+        }
+
+        extension = Regex.Replace(extension, "[^.a-z0-9]+", string.Empty);
+        return string.IsNullOrWhiteSpace(extension) ? baseName : baseName + extension;
     }
 
     private static bool IsUnderPath(string path, string root)

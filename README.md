@@ -14,8 +14,8 @@ Opens on `http://localhost:5089` by default. Pages:
 |---|---|
 | `/memories` | Browse, search, create, edit, delete memory records |
 | `/pages` | Create, search, edit, preview, and render markdown-backed pages from `Data/Pages` |
-| `/chat` | Memory-enhanced chat and agent mode with model selection, attachments, and local chat history |
-| `/health` | Stat cards, activity charts (queries/day, changes/day), maintenance telemetry |
+| `/chat` | Memory-enhanced chat and agent mode with provider/model selection, streaming responses, attachments, and local chat history |
+| `/health` | Scrollable stat cards, activity charts (queries/day, changes/day), maintenance telemetry |
 | `/variables` | Manage `%VarName%` path variables used in source link URIs |
 | `/api/memories` | REST CRUD for automation |
 | `/api/pages`, `/api/search`, `/api/chat` | Page CRUD/search/rendering, combined memory/page search, and chat/agent/config API |
@@ -52,7 +52,7 @@ User-created markdown files under `Data/Pages/` are valid project wiki content a
 | `project-wiki-test-architecture` | NUnit fixture strategy, benchmark suite |
 | `project-wiki-windows-service-operations` | Windows Service install/uninstall flags |
 | `project-wiki-markdown-pages` | Markdown page storage, rendering, and page assets |
-| `project-wiki-chat-agent-provider` | Chat provider/agent abstractions and Ollama-backed workflow |
+| `project-wiki-chat-agent-provider` | Chat provider/agent abstractions, Ollama streaming, and GitHub Copilot provider workflow |
 | `project-wiki-ui-layout-source-link-polish` | UI layout, source-link open behavior, and navigation polish |
 | `project-wiki-scope-boundaries` | What is and isn't in scope for the current implementation |
 | `project-wiki-generalization-friction` | Known gaps for broader adoption |
@@ -98,15 +98,17 @@ Local file source-link chips copy the resolved path on click. Ctrl+Click opens t
 
 `Data/Pages/` stores user and agent-editable markdown files. The `/pages` UI and `/api/pages` API keep page search and page navigation separate from structured memory search. `/api/search` returns a combined memory/page result set when broader discovery is useful. Page assets live under `Data/Pages/assets` and are served at `/page-assets`; markdown links such as `![diagram](assets/diagram.png)` are rewritten to that static route when rendered.
 
-The page editor has a markdown toolbar for common inserts, a toggleable live preview, a manual preview refresh button, and an unsaved-change prompt for internal and external navigation. Pages are rendered with Markdig advanced extensions. Raw HTML media tags are supported for local page content, so audio and video can be embedded with `/page-assets/...` sources when browser codecs allow it.
+The page editor has a markdown toolbar for common inserts, an image upload/embed tool that writes to `Data/Pages/assets`, a toggleable live preview, a manual preview refresh button, and an unsaved-change prompt for internal and external navigation. Pages are rendered with Markdig advanced extensions. Raw HTML media tags are supported for local page content, so audio and video can be embedded with `/page-assets/...` sources when browser codecs allow it.
 
 ## Chat and Agent Mode
 
-`/chat` uses the `IChatProvider` and `IChatAgent` abstractions. The registered provider is currently `OllamaChatProvider`, which calls a local Ollama HTTP service. `MemoryChatAgent` builds context from hybrid memory search plus page search before sending the request.
+`/chat` uses the `IChatProvider` and `IChatAgent` abstractions. The registered providers are `OllamaChatProvider`, which calls a local Ollama HTTP service, and `GitHubCopilotChatProvider`, which uses the GitHub Copilot SDK with GitHub CLI authentication or a configured token environment variable. `MemoryChatAgent` builds context from hybrid memory search plus page search before sending the request.
 
-The chat UI queries the provider for available models, supports per-chat model selection, optional file attachments, Enter-to-send with Shift+Enter newlines, autoscroll, clickable memory/page resource chips, and browser-local chat history behind a collapsible sidebar. Chat mode answers questions. Agent mode asks the provider for structured actions and can write memories and pages when `Chat:AgentWritesEnabled` is true. The shared system prompt is stored in `MemorySmith.Core/Docs/Prompts/wiki-chat-agent.md` and copied into the app output for service/publish runs.
+The chat UI queries the selected provider for available models, supports provider/model selection, persists the last used provider/model and active chat, streams live response chunks with an elapsed timer, shows per-response durations, deletes chats from history with confirmation, supports text and image file attachments, supports pasted clipboard images, Enter-to-send with Shift+Enter newlines, autoscroll, clickable memory/page resource chips, pending-response feedback, collapsible thinking blocks when the provider returns reasoning content, and browser-local chat history behind a fully collapsible sidebar. Text attachments are bounded and supplied as context. Image attachments are saved to trusted temp files for persistence and supplied as native image payloads when the selected provider supports them. Draft text and queued attachments are retained per chat session when switching chats, and navigation warns before leaving with unsent content.
 
-The provider interface is intentionally narrow so OpenAI, Copilot, Anthropic, or other APIs can be added without changing the UI or agent workflow.
+Chat mode answers questions. Agent mode asks the provider for structured actions and can write memories and pages when `Chat:AgentWritesEnabled` is true. The shared system prompt is stored in `MemorySmith.Core/Docs/Prompts/wiki-chat-agent.md` and copied into the app output for service/publish runs.
+
+The provider interface is intentionally narrow so OpenAI, Anthropic, or other APIs can be added without changing the UI or agent workflow.
 
 ## Search
 
@@ -176,13 +178,16 @@ All settings live under `MemorySmith` in `appsettings.json`:
     "Chat": {
       "Provider": "Ollama",
       "OllamaEndpoint": "http://localhost:11434",
-      "OllamaModel": "qwen2.5-coder:7b",
+      "OllamaModel": "gemma4:e4b",
+      "GitHubModel": "gpt-4o-mini",
+      "GitHubTokenEnvironmentVariable": "GITHUB_TOKEN",
       "SystemPromptPath": "Prompts/wiki-chat-agent.md",
-      "RequestTimeoutSeconds": 120,
+      "RequestTimeoutSeconds": 600,
       "MaxContextRecords": 5,
       "MaxContextPages": 5,
       "MaxHistoryMessages": 16,
       "MaxAttachmentCharacters": 120000,
+      "MaxAttachmentBytes": 8388608,
       "AgentWritesEnabled": true
     }
   }
@@ -200,7 +205,7 @@ Override via `appsettings.Development.json` or environment variables (`MemorySmi
 - **`SourceLinks:AllowOpenWithDefaultApp`** — allows Ctrl+Click source-link opening after variable resolution and allowed-root checks.
 - **`SourceLinks:AllowedFileRootVariables`** — variable names whose resolved values are trusted roots for local source-link file reads. Defaults to `MemorySmithRepo`.
 - **`SourceLinks:AllowedFileRoots`** — optional explicit local roots, useful when source links need access outside the repo wiki root.
-- **`Chat:*`** — provider, Ollama endpoint/model, prompt path, timeout, context/history/attachment limits, and whether agent-mode writes are enabled. Set `OllamaModel` to a model returned by `ollama list`; the UI can also query `/api/chat/config` or the provider directly for currently installed Ollama models.
+- **`Chat:*`** — provider, Ollama endpoint/model, GitHub Copilot model/token environment settings, prompt path, timeout, context/history/attachment limits, and whether agent-mode writes are enabled. `MaxAttachmentCharacters` bounds text context and `MaxAttachmentBytes` bounds uploaded/pasted files. Set `OllamaModel` to a model returned by `ollama list`; set `GitHubModel` to a Copilot model available to the authenticated GitHub account. The UI can query providers directly for available models and stores the last selected provider/model in browser storage.
 
 ## Windows Service
 

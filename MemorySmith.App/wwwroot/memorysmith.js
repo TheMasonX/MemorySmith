@@ -26,18 +26,91 @@
                 return;
             }
 
-            if (textarea.memorySmithComposerHandler) {
-                textarea.removeEventListener("keydown", textarea.memorySmithComposerHandler);
+            if (textarea.memorySmithComposerKeyHandler) {
+                textarea.removeEventListener("keydown", textarea.memorySmithComposerKeyHandler);
+            }
+            if (textarea.memorySmithComposerPasteHandler) {
+                textarea.removeEventListener("paste", textarea.memorySmithComposerPasteHandler);
+            }
+            if (textarea.memorySmithComposerDocumentPasteHandler) {
+                document.removeEventListener("paste", textarea.memorySmithComposerDocumentPasteHandler);
             }
 
             textarea.dataset.sendOnEnter = sendOnEnter ? "true" : "false";
-            textarea.memorySmithComposerHandler = function (event) {
+            textarea.memorySmithComposerKeyHandler = function (event) {
                 if (event.key === "Enter" && !event.shiftKey && textarea.dataset.sendOnEnter === "true") {
+                    const message = textarea.value;
                     event.preventDefault();
-                    dotNetRef.invokeMethodAsync("SendFromKeyboard");
+                    textarea.value = "";
+                    textarea.dispatchEvent(new Event("input", { bubbles: true }));
+                    dotNetRef.invokeMethodAsync("SendFromKeyboard", message);
                 }
             };
-            textarea.addEventListener("keydown", textarea.memorySmithComposerHandler);
+            textarea.memorySmithComposerPasteHandler = function (event) {
+                window.memorySmith.chat.attachClipboardImage(event, dotNetRef);
+            };
+            textarea.memorySmithComposerDocumentPasteHandler = function (event) {
+                const shell = textarea.closest(".chat-shell");
+                const target = event.target;
+                if (shell && target instanceof Node && !shell.contains(target) && target !== document.body) {
+                    return;
+                }
+
+                window.memorySmith.chat.attachClipboardImage(event, dotNetRef);
+            };
+            textarea.addEventListener("keydown", textarea.memorySmithComposerKeyHandler);
+            textarea.addEventListener("paste", textarea.memorySmithComposerPasteHandler);
+            document.addEventListener("paste", textarea.memorySmithComposerDocumentPasteHandler);
+        },
+
+        unregisterComposer: function (textarea) {
+            if (!textarea) {
+                return;
+            }
+
+            if (textarea.memorySmithComposerKeyHandler) {
+                textarea.removeEventListener("keydown", textarea.memorySmithComposerKeyHandler);
+                textarea.memorySmithComposerKeyHandler = null;
+            }
+            if (textarea.memorySmithComposerPasteHandler) {
+                textarea.removeEventListener("paste", textarea.memorySmithComposerPasteHandler);
+                textarea.memorySmithComposerPasteHandler = null;
+            }
+            if (textarea.memorySmithComposerDocumentPasteHandler) {
+                document.removeEventListener("paste", textarea.memorySmithComposerDocumentPasteHandler);
+                textarea.memorySmithComposerDocumentPasteHandler = null;
+            }
+        },
+
+        attachClipboardImage: function (event, dotNetRef) {
+                if (event.defaultPrevented) {
+                    return false;
+                }
+
+                const items = event.clipboardData && event.clipboardData.items ? Array.from(event.clipboardData.items) : [];
+                const imageItem = items.find(item => item.kind === "file" && item.type && item.type.startsWith("image/"));
+                if (!imageItem) {
+                    return false;
+                }
+
+                const file = imageItem.getAsFile();
+                if (!file) {
+                    return false;
+                }
+
+                event.preventDefault();
+                event.stopPropagation();
+                const reader = new FileReader();
+                reader.onload = function () {
+                    const result = String(reader.result || "");
+                    const comma = result.indexOf(",");
+                    const base64 = comma >= 0 ? result.substring(comma + 1) : result;
+                    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+                    const extension = (file.type.split("/")[1] || "png").replace(/[^a-z0-9]/gi, "").toLowerCase() || "png";
+                    dotNetRef.invokeMethodAsync("AttachClipboardImage", file.name || `clipboard-${stamp}.${extension}`, file.type || "image/png", base64, file.size);
+                };
+                reader.readAsDataURL(file);
+                return true;
         },
 
         setSendOnEnter: function (textarea, enabled) {
@@ -64,7 +137,12 @@
         },
 
         setJson: function (key, value) {
-            localStorage.setItem(key, JSON.stringify(value));
+            try {
+                localStorage.setItem(key, JSON.stringify(value));
+                return true;
+            } catch {
+                return false;
+            }
         }
     };
 })();

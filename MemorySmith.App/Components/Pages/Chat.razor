@@ -1,16 +1,17 @@
 @page "/chat"
 @rendermode InteractiveServer
-@implements IDisposable
+@implements IAsyncDisposable
 @using Microsoft.Extensions.Options
 @inject IChatAgent ChatAgent
-@inject IChatProvider ChatProvider
+@inject IEnumerable<IChatProvider> ChatProviders
 @inject IOptionsMonitor<MemorySmithOptions> Options
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
 
 <PageTitle>Chat</PageTitle>
+<NavigationLock ConfirmExternalNavigation="@HasPendingDraft" OnBeforeInternalNavigation="ConfirmInternalNavigation" />
 
-<div class="chat-workbench">
+<div class="@ChatWorkbenchClass">
     <aside class="@HistorySidebarClass" aria-label="Chat history">
         <div class="chat-history-header">
             <MudText Typo="Typo.subtitle2">History</MudText>
@@ -22,10 +23,13 @@
             <div class="chat-history-list">
                 @foreach (var session in _sessions)
                 {
-                    <button type="button" class="@SessionButtonClass(session)" @onclick="@(() => SelectSessionAsync(session.Id))">
-                        <span>@session.Title</span>
-                        <small>@session.UpdatedUtc.ToLocalTime().ToString("M/d HH:mm")</small>
-                    </button>
+                    <div class="@SessionButtonClass(session)">
+                        <button type="button" class="chat-history-select" @onclick="@(() => SelectSessionAsync(session.Id))">
+                            <span>@session.Title</span>
+                            <small>@session.UpdatedUtc.ToLocalTime().ToString("M/d HH:mm")</small>
+                        </button>
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" Disabled="@_isSending" OnClick="@(() => DeleteSessionAsync(session.Id))" aria-label="Delete chat" />
+                    </div>
                 }
             </div>
         }
@@ -41,7 +45,12 @@
             </MudButtonGroup>
 
             <div class="chat-model-controls">
-                <span class="wiki-status">@_providerName</span>
+                <MudSelect T="string" Value="_selectedProvider" ValueChanged="OnProviderChanged" Label="Provider" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="chat-provider-select">
+                    @foreach (var provider in _availableProviders)
+                    {
+                        <MudSelectItem T="string" Value="@provider">@provider</MudSelectItem>
+                    }
+                </MudSelect>
                 <MudSelect T="string" Value="_selectedModel" ValueChanged="OnModelChanged" Label="Model" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="chat-model-select">
                     @if (_models.Count == 0 && !string.IsNullOrWhiteSpace(_selectedModel))
                     {
@@ -49,7 +58,7 @@
                     }
                     @foreach (var model in _models)
                     {
-                        <MudSelectItem T="string" Value="@model.Name">@model.Name</MudSelectItem>
+                        <MudSelectItem T="string" Value="@model.Name">@FormatModelLabel(model)</MudSelectItem>
                     }
                 </MudSelect>
                 <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Small" Color="Color.Primary" Disabled="@_isLoadingModels" OnClick="RefreshModelsAsync" aria-label="Refresh models" />
@@ -66,7 +75,16 @@
             {
                 <span>@_attachments.Count attachment(s) queued</span>
             }
+            @if (_isSending)
+            {
+                <span>@FormatDuration(_responseElapsed) elapsed</span>
+                <span>@_streamedCharacters chars</span>
+            }
         </div>
+        @if (_isSending)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        }
 
         <div class="chat-transcript" @ref="_transcriptPane">
             @if (ActiveSession.Turns.Count == 0)
@@ -80,16 +98,23 @@
                     <article class="chat-message @turn.Role">
                         <div class="chat-message-topline">
                             <span class="chat-message-role">@turn.Role</span>
-                            <span>@turn.CreatedUtc.ToLocalTime().ToString("HH:mm")</span>
+                            <span>@turn.CreatedUtc.ToLocalTime().ToString("HH:mm")@if (turn.DurationMilliseconds is not null) { <span> · @FormatDuration(TimeSpan.FromMilliseconds(turn.DurationMilliseconds.Value))</span> }</span>
                         </div>
                         <div class="chat-message-body">@turn.Content</div>
+                        @if (!string.IsNullOrWhiteSpace(turn.Thinking))
+                        {
+                            <details class="chat-thinking">
+                                <summary>Thinking</summary>
+                                <pre>@turn.Thinking</pre>
+                            </details>
+                        }
 
                         @if (turn.Attachments.Count > 0)
                         {
                             <div class="chat-context-list">
                                 @foreach (var attachment in turn.Attachments)
                                 {
-                                    <span class="wiki-tag" title="@attachment.ContentType">file:@attachment.Name</span>
+                                    <span class="wiki-tag" title="@AttachmentTitle(attachment)">file:@attachment.Name</span>
                                 }
                             </div>
                         }
@@ -120,7 +145,13 @@
             <InputFile id="chat-file-input" OnChange="OnFilesSelectedAsync" multiple class="chat-file-input" />
             @foreach (var attachment in _attachments)
             {
-                <button type="button" class="wiki-tag chat-attachment-chip" title="Remove attachment" @onclick="@(() => RemoveAttachment(attachment.Name))">@attachment.Name</button>
+                <button type="button" class="wiki-tag chat-attachment-chip" title="Remove attachment" @onclick="@(() => RemoveAttachment(attachment.Name))">
+                    @if (attachment.IsImage && !string.IsNullOrWhiteSpace(attachment.Base64Data))
+                    {
+                        <img class="chat-attachment-thumb" src="@AttachmentDataUrl(attachment)" alt="" />
+                    }
+                    @attachment.Name
+                </button>
             }
         </div>
 
@@ -141,8 +172,10 @@
 
 @code {
     private const string ChatStorageKey = "memorysmith.chat.sessions.v1";
+    private const string ChatPreferencesStorageKey = "memorysmith.chat.preferences.v1";
     private readonly List<ChatSessionState> _sessions = [];
     private readonly List<ChatModelSummary> _models = [];
+    private readonly List<string> _availableProviders = [];
     private readonly List<ChatAttachment> _attachments = [];
     private DotNetObjectReference<Chat>? _dotNetRef;
     private ElementReference _composerInput;
@@ -150,9 +183,10 @@
     private MemoryChatMode _mode = MemoryChatMode.Chat;
     private string _activeSessionId = string.Empty;
     private string _draft = string.Empty;
-    private string _providerName = "Ollama";
+    private string _selectedProvider = "Ollama";
     private string _selectedModel = string.Empty;
     private string _agentStatus = "Ready";
+    private string? _preferredActiveSessionId;
     private string? _modelError;
     private bool _historyOpen = true;
     private bool _sendOnEnter = true;
@@ -161,17 +195,31 @@
     private bool _hasLoadedSessions;
     private bool _composerRegistered;
     private bool _scrollPending;
+    private bool _storageWarningShown;
+    private CancellationTokenSource? _responseTimerCts;
+    private DateTimeOffset? _responseStartedUtc;
+    private TimeSpan _responseElapsed = TimeSpan.Zero;
+    private int _streamedCharacters;
 
     private ChatSessionState ActiveSession =>
         _sessions.FirstOrDefault(session => session.Id == _activeSessionId) ?? _sessions.First();
 
     private string HistorySidebarClass => _historyOpen ? "chat-history-pane" : "chat-history-pane is-collapsed";
+    private string ChatWorkbenchClass => _historyOpen ? "chat-workbench" : "chat-workbench is-history-collapsed";
+    private bool HasPendingDraft => !string.IsNullOrWhiteSpace(_draft) || _attachments.Count > 0;
 
     protected override void OnInitialized()
     {
         var chatOptions = Options.CurrentValue.Chat;
-        _providerName = chatOptions.Provider;
-        _selectedModel = chatOptions.OllamaModel;
+        _availableProviders.Clear();
+        _availableProviders.AddRange(ChatProviders.Select(provider => provider.Name).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(provider => provider));
+        if (_availableProviders.Count == 0)
+        {
+            _availableProviders.Add(chatOptions.Provider);
+        }
+
+        _selectedProvider = _availableProviders.FirstOrDefault(provider => ProviderMatches(provider, chatOptions.Provider)) ?? _availableProviders[0];
+        _selectedModel = DefaultModelForProvider(_selectedProvider);
         StartNewChat();
     }
 
@@ -182,6 +230,7 @@
             _dotNetRef = DotNetObjectReference.Create(this);
             await JS.InvokeVoidAsync("memorySmith.chat.registerComposer", _composerInput, _dotNetRef, _sendOnEnter);
             _composerRegistered = true;
+            await LoadPreferencesAsync();
             await LoadSessionsAsync();
             await RefreshModelsAsync(silent: true);
             StateHasChanged();
@@ -194,6 +243,27 @@
         }
     }
 
+    private async Task LoadPreferencesAsync()
+    {
+        var preferences = await JS.InvokeAsync<ChatPreferencesState?>("memorySmith.storage.getJson", ChatPreferencesStorageKey);
+        if (preferences is null)
+        {
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(preferences.Provider) && _availableProviders.Any(provider => ProviderMatches(provider, preferences.Provider)))
+        {
+            _selectedProvider = _availableProviders.First(provider => ProviderMatches(provider, preferences.Provider));
+        }
+
+        if (!string.IsNullOrWhiteSpace(preferences.Model))
+        {
+            _selectedModel = preferences.Model;
+        }
+
+        _preferredActiveSessionId = preferences.ActiveSessionId;
+    }
+
     private async Task LoadSessionsAsync()
     {
         var saved = await JS.InvokeAsync<List<ChatSessionState>?>("memorySmith.storage.getJson", ChatStorageKey);
@@ -203,9 +273,23 @@
             _sessions.AddRange(saved.Where(session => !string.IsNullOrWhiteSpace(session.Id)));
         }
 
-        StartNewChat();
+        if (_sessions.Count == 0)
+        {
+            StartNewChat();
+        }
+        else
+        {
+            var active = _sessions.FirstOrDefault(session => string.Equals(session.Id, _preferredActiveSessionId, StringComparison.Ordinal))
+                ?? _sessions.OrderByDescending(session => session.UpdatedUtc).First();
+            _activeSessionId = active.Id;
+            RestoreSessionDraft(active);
+            _agentStatus = "Ready";
+            _scrollPending = true;
+        }
+
         _hasLoadedSessions = true;
         await SaveSessionsAsync();
+        await SavePreferencesAsync();
     }
 
     private void ToggleHistory()
@@ -215,8 +299,10 @@
 
     private async Task StartNewChatAsync()
     {
+        PersistActiveDraft();
         StartNewChat();
         await SaveSessionsAsync();
+        await SavePreferencesAsync();
     }
 
     private void StartNewChat()
@@ -231,22 +317,53 @@
         };
         _sessions.Insert(0, session);
         _activeSessionId = session.Id;
-        _draft = string.Empty;
-        _attachments.Clear();
+        RestoreSessionDraft(session);
         _agentStatus = "Ready";
         _scrollPending = true;
     }
 
     private async Task SelectSessionAsync(string id)
     {
-        if (_sessions.Any(session => session.Id == id))
+        if (_sessions.FirstOrDefault(session => session.Id == id) is { } session)
         {
+            PersistActiveDraft();
             _activeSessionId = id;
-            _draft = string.Empty;
-            _attachments.Clear();
+            RestoreSessionDraft(session);
             _scrollPending = true;
             await SaveSessionsAsync();
+            await SavePreferencesAsync();
         }
+    }
+
+    private async Task DeleteSessionAsync(string id)
+    {
+        if (_sessions.FirstOrDefault(session => session.Id == id) is not { } session)
+        {
+            return;
+        }
+
+        var title = string.IsNullOrWhiteSpace(session.Title) ? "this chat" : session.Title;
+        if (!await JS.InvokeAsync<bool>("confirm", $"Delete chat '{title}'? This cannot be undone."))
+        {
+            return;
+        }
+
+        var wasActive = string.Equals(_activeSessionId, id, StringComparison.Ordinal);
+        _sessions.Remove(session);
+        if (_sessions.Count == 0)
+        {
+            StartNewChat();
+        }
+        else if (wasActive)
+        {
+            var next = _sessions.OrderByDescending(item => item.UpdatedUtc).First();
+            _activeSessionId = next.Id;
+            RestoreSessionDraft(next);
+        }
+
+        _agentStatus = "Chat deleted";
+        await SaveSessionsAsync();
+        await SavePreferencesAsync();
     }
 
     private void SetMode(MemoryChatMode mode)
@@ -255,11 +372,20 @@
         _agentStatus = mode == MemoryChatMode.Agent ? "Agent ready" : "Chat ready";
     }
 
-    private Task OnModelChanged(string model)
+    private async Task OnProviderChanged(string provider)
+    {
+        _selectedProvider = provider;
+        _selectedModel = DefaultModelForProvider(provider);
+        _agentStatus = $"Using {_selectedProvider} / {_selectedModel}";
+        await SavePreferencesAsync();
+        await RefreshModelsAsync(silent: true);
+    }
+
+    private async Task OnModelChanged(string model)
     {
         _selectedModel = model;
-        _agentStatus = $"Using {_providerName} / {_selectedModel}";
-        return Task.CompletedTask;
+        _agentStatus = $"Using {_selectedProvider} / {_selectedModel}";
+        await SavePreferencesAsync();
     }
 
     private async Task RefreshModelsAsync()
@@ -273,15 +399,20 @@
         _modelError = null;
         try
         {
-            var models = await ChatProvider.ListModelsAsync(CancellationToken.None);
+            var provider = ResolveProvider(_selectedProvider);
+            var models = await provider.ListModelsAsync(CancellationToken.None);
             _models.Clear();
             _models.AddRange(models);
             if (_models.Count > 0 && !_models.Any(model => string.Equals(model.Name, _selectedModel, StringComparison.OrdinalIgnoreCase)))
             {
-                _selectedModel = _models[0].Name;
+                var defaultModel = DefaultModelForProvider(_selectedProvider);
+                _selectedModel = _models.FirstOrDefault(model => string.Equals(model.Name, defaultModel, StringComparison.OrdinalIgnoreCase))?.Name
+                    ?? _models.FirstOrDefault(model => model.IsPreferred)?.Name
+                    ?? _models[0].Name;
             }
 
             _agentStatus = $"{_models.Count} model(s) available";
+            await SavePreferencesAsync();
         }
         catch (Exception ex)
         {
@@ -297,9 +428,11 @@
         }
     }
 
-    private void OnDraftInput(ChangeEventArgs args)
+    private async Task OnDraftInput(ChangeEventArgs args)
     {
         _draft = args.Value?.ToString() ?? string.Empty;
+        PersistActiveDraft();
+        await SaveSessionsAsync();
     }
 
     private async Task SetSendOnEnterAsync(bool enabled)
@@ -312,14 +445,19 @@
     }
 
     [JSInvokable]
-    public Task SendFromKeyboard()
+    public Task SendFromKeyboard(string message)
     {
-        return SendAsync();
+        return SendAsync(message);
     }
 
     private async Task SendAsync()
     {
-        var message = _draft.Trim();
+        await SendAsync(_draft);
+    }
+
+    private async Task SendAsync(string? explicitMessage)
+    {
+        var message = (explicitMessage ?? _draft).Trim();
         if (string.IsNullOrWhiteSpace(message) || _isSending)
         {
             return;
@@ -327,65 +465,190 @@
 
         var session = ActiveSession;
         var attachments = _attachments.ToList();
+        var displayAttachments = attachments.Select(ToDisplayAttachment).ToList();
+        var historyForRequest = session.History.ToList();
         _draft = string.Empty;
         _attachments.Clear();
-        session.Turns.Add(new ChatTurnState("user", message, DateTimeOffset.UtcNow, [], [], [], attachments));
+        session.Draft = string.Empty;
+        session.PendingAttachments.Clear();
+        session.Turns.Add(new ChatTurnState("user", message, DateTimeOffset.UtcNow, null, [], [], [], displayAttachments));
         session.History.Add(new ChatMessage("user", message));
         session.Title = BuildSessionTitle(session, message);
         session.UpdatedUtc = DateTimeOffset.UtcNow;
         _isSending = true;
-        _agentStatus = _mode == MemoryChatMode.Agent ? "Agent thinking" : "Sending";
+        _responseStartedUtc = DateTimeOffset.UtcNow;
+        _responseElapsed = TimeSpan.Zero;
+        _streamedCharacters = 0;
+        _agentStatus = _mode == MemoryChatMode.Agent ? "Agent thinking" : "Waiting for first token";
+        var pendingTurn = new ChatTurnState("assistant pending", "Waiting for first token...", DateTimeOffset.UtcNow, null, [], [], [], []);
+        session.Turns.Add(pendingTurn);
         _scrollPending = true;
+        StartResponseTimer();
+        await SaveSessionsAsync();
 
         try
         {
-            var response = await ChatAgent.SendAsync(new MemoryChatRequest(message, _mode, session.History, _selectedModel, attachments), CancellationToken.None);
-            session.Turns.Add(new ChatTurnState("assistant", response.Reply, DateTimeOffset.UtcNow, response.Context.ToList(), response.WrittenMemories.ToList(), response.WrittenPages.ToList(), []));
+            MemoryChatResponse? finalResponse = null;
+            await foreach (var update in ChatAgent.StreamAsync(new MemoryChatRequest(message, _mode, historyForRequest, _selectedModel, attachments, _selectedProvider), CancellationToken.None))
+            {
+                if (!string.IsNullOrEmpty(update.Status))
+                {
+                    _agentStatus = update.Status;
+                }
+                if (!string.IsNullOrEmpty(update.ContentDelta))
+                {
+                    if (!string.Equals(pendingTurn.Role, "assistant", StringComparison.Ordinal))
+                    {
+                        pendingTurn.Content = string.Empty;
+                    }
+
+                    pendingTurn.Role = "assistant";
+                    pendingTurn.Content += update.ContentDelta;
+                    _streamedCharacters = pendingTurn.Content.Length;
+                    _agentStatus = $"Streaming {_selectedProvider} / {_selectedModel}";
+                }
+                if (!string.IsNullOrEmpty(update.ThinkingDelta))
+                {
+                    pendingTurn.Thinking = (pendingTurn.Thinking ?? string.Empty) + update.ThinkingDelta;
+                }
+                if (update.Response is not null)
+                {
+                    finalResponse = update.Response;
+                }
+
+                _scrollPending = true;
+                await InvokeAsync(StateHasChanged);
+            }
+
+            var response = finalResponse ?? throw new InvalidOperationException("The provider stream completed without a final response.");
+            pendingTurn.Role = "assistant";
+            pendingTurn.Content = response.Reply;
+            pendingTurn.Thinking = response.Thinking;
+            pendingTurn.Context = response.Context.ToList();
+            pendingTurn.WrittenMemories = response.WrittenMemories.ToList();
+            pendingTurn.WrittenPages = response.WrittenPages.ToList();
+            pendingTurn.DurationMilliseconds = (long)Math.Max(0, (DateTimeOffset.UtcNow - (_responseStartedUtc ?? DateTimeOffset.UtcNow)).TotalMilliseconds);
             session.History.Add(new ChatMessage("assistant", response.Reply));
             session.UpdatedUtc = DateTimeOffset.UtcNow;
             _agentStatus = $"{response.ProviderName} / {response.Model}: {response.Context.Count} resource(s), {response.WrittenMemories.Count + response.WrittenPages.Count} write(s)";
+            _selectedProvider = response.ProviderName;
+            _selectedModel = response.Model;
         }
         catch (Exception ex)
         {
+            session.Turns.Remove(pendingTurn);
             Snackbar.Add(ex.Message, Severity.Error);
-            session.Turns.Add(new ChatTurnState("assistant", ex.Message, DateTimeOffset.UtcNow, [], [], [], []));
+            session.Turns.Add(new ChatTurnState("assistant", ex.Message, DateTimeOffset.UtcNow, null, [], [], [], [])
+            {
+                DurationMilliseconds = (long)Math.Max(0, (DateTimeOffset.UtcNow - (_responseStartedUtc ?? DateTimeOffset.UtcNow)).TotalMilliseconds)
+            });
             _agentStatus = "Request failed";
         }
         finally
         {
+            StopResponseTimer();
             _isSending = false;
             _scrollPending = true;
             await SaveSessionsAsync();
+            await SavePreferencesAsync();
         }
     }
 
     private async Task OnFilesSelectedAsync(InputFileChangeEventArgs args)
     {
         var maxCharacters = Math.Clamp(Options.CurrentValue.Chat.MaxAttachmentCharacters, 1000, 2_000_000);
+        var maxBytes = Math.Clamp(Options.CurrentValue.Chat.MaxAttachmentBytes, 1024, 64L * 1024 * 1024);
         foreach (var file in args.GetMultipleFiles(8))
         {
-            var text = await ReadAttachmentTextAsync(file, maxCharacters);
-            _attachments.RemoveAll(attachment => string.Equals(attachment.Name, file.Name, StringComparison.OrdinalIgnoreCase));
-            _attachments.Add(new ChatAttachment(file.Name, file.ContentType, text, file.Size));
+            try
+            {
+                var attachment = await ReadAttachmentAsync(file, maxCharacters, maxBytes);
+                _attachments.RemoveAll(item => string.Equals(item.Name, file.Name, StringComparison.OrdinalIgnoreCase));
+                _attachments.Add(attachment);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add(ex.Message, Severity.Warning);
+            }
         }
 
-        _agentStatus = $"{_attachments.Count} attachment(s) queued";
+        PersistActiveDraft();
+        await SaveSessionsAsync();
+        await SavePreferencesAsync();
+        _agentStatus = "Ready";
     }
 
-    private static async Task<string> ReadAttachmentTextAsync(IBrowserFile file, int maxCharacters)
+    private static async Task<ChatAttachment> ReadAttachmentAsync(IBrowserFile file, int maxCharacters, long maxBytes)
     {
-        if (!IsTextAttachment(file))
+        if (IsImageAttachment(file))
         {
-            return $"Binary attachment supplied: {file.Name} ({file.ContentType}, {file.Size} bytes).";
+            if (file.Size > maxBytes)
+            {
+                throw new InvalidOperationException($"{file.Name} is {FormatBytes(file.Size)}, above the configured {FormatBytes(maxBytes)} attachment limit.");
+            }
+
+            await using var imageStream = file.OpenReadStream(maxAllowedSize: maxBytes);
+            using var imageMemory = new MemoryStream();
+            await imageStream.CopyToAsync(imageMemory);
+            var imageBytes = imageMemory.ToArray();
+            var tempPath = await ChatAttachmentFiles.SaveTempAsync(file.Name, imageBytes);
+            return new ChatAttachment(
+                file.Name,
+                string.IsNullOrWhiteSpace(file.ContentType) ? "image" : file.ContentType,
+                "Image attachment supplied as an image payload to the provider.",
+                file.Size,
+                Convert.ToBase64String(imageBytes),
+                IsImage: true,
+                LocalPath: tempPath);
         }
 
-        var maxBytes = Math.Min(file.Size, maxCharacters);
-        await using var stream = file.OpenReadStream(maxAllowedSize: Math.Max(maxBytes, 1));
+        if (!IsTextAttachment(file))
+        {
+            return new ChatAttachment(file.Name, file.ContentType, $"Binary attachment supplied: {file.Name} ({file.ContentType}, {file.Size} bytes).", file.Size);
+        }
+
+        var readBytes = Math.Min(file.Size, maxBytes);
+        await using var stream = file.OpenReadStream(maxAllowedSize: Math.Max(readBytes, 1));
         using var reader = new StreamReader(stream);
         var buffer = new char[maxCharacters];
         var read = await reader.ReadBlockAsync(buffer, 0, buffer.Length);
-        return new string(buffer, 0, read);
+        return new ChatAttachment(file.Name, file.ContentType, new string(buffer, 0, read), file.Size, IsTruncated: file.Size > readBytes || read == maxCharacters);
     }
+
+    [JSInvokable]
+    public async Task AttachClipboardImage(string name, string contentType, string base64Data, long size)
+    {
+        var maxBytes = Math.Clamp(Options.CurrentValue.Chat.MaxAttachmentBytes, 1024, 64L * 1024 * 1024);
+        if (size > maxBytes)
+        {
+            Snackbar.Add($"Clipboard image is {FormatBytes(size)}, above the configured {FormatBytes(maxBytes)} attachment limit.", Severity.Warning);
+            return;
+        }
+
+        byte[] imageBytes;
+        try
+        {
+            imageBytes = Convert.FromBase64String(base64Data);
+        }
+        catch (FormatException)
+        {
+            Snackbar.Add("Clipboard image data could not be read.", Severity.Warning);
+            return;
+        }
+
+        var tempPath = await ChatAttachmentFiles.SaveTempAsync(name, imageBytes);
+        var attachment = new ChatAttachment(name, contentType, "Image attachment supplied as an image payload to the provider.", size == 0 ? imageBytes.Length : size, base64Data, IsImage: true, LocalPath: tempPath);
+        _attachments.RemoveAll(item => string.Equals(item.Name, name, StringComparison.OrdinalIgnoreCase));
+        _attachments.Add(attachment);
+        PersistActiveDraft();
+        await SaveSessionsAsync();
+        await SavePreferencesAsync();
+        _agentStatus = "Ready";
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private static bool IsImageAttachment(IBrowserFile file) =>
+        file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsTextAttachment(IBrowserFile file)
     {
@@ -394,10 +657,13 @@
             extension is ".md" or ".txt" or ".json" or ".xml" or ".csv" or ".cs" or ".razor" or ".css" or ".js" or ".ts" or ".ps1";
     }
 
-    private void RemoveAttachment(string name)
+    private async Task RemoveAttachment(string name)
     {
         _attachments.RemoveAll(attachment => string.Equals(attachment.Name, name, StringComparison.OrdinalIgnoreCase));
-        _agentStatus = _attachments.Count == 0 ? "Ready" : $"{_attachments.Count} attachment(s) queued";
+        PersistActiveDraft();
+        await SaveSessionsAsync();
+        await SavePreferencesAsync();
+        _agentStatus = "Ready";
     }
 
     private async Task SaveSessionsAsync()
@@ -407,14 +673,69 @@
             return;
         }
 
+        PersistActiveDraft();
+
         var retained = _sessions
-            .Where(session => session.Id == _activeSessionId || session.Turns.Count > 0)
+            .Where(session => session.Id == _activeSessionId || session.Turns.Count > 0 || !string.IsNullOrWhiteSpace(session.Draft) || session.PendingAttachments.Count > 0)
             .OrderByDescending(session => session.UpdatedUtc)
             .Take(30)
             .ToList();
         _sessions.Clear();
         _sessions.AddRange(retained);
-        await JS.InvokeVoidAsync("memorySmith.storage.setJson", ChatStorageKey, _sessions);
+        var stored = await JS.InvokeAsync<bool>("memorySmith.storage.setJson", ChatStorageKey, _sessions);
+        if (!stored && !_storageWarningShown)
+        {
+            _storageWarningShown = true;
+            Snackbar.Add("Chat history was too large to persist in browser storage. Current in-page draft is still retained.", Severity.Warning);
+        }
+    }
+
+    private async Task SavePreferencesAsync()
+    {
+        if (!_hasLoadedSessions)
+        {
+            return;
+        }
+
+        await JS.InvokeVoidAsync("memorySmith.storage.setJson", ChatPreferencesStorageKey, new ChatPreferencesState
+        {
+            Provider = _selectedProvider,
+            Model = _selectedModel,
+            ActiveSessionId = _activeSessionId
+        });
+    }
+
+    private void PersistActiveDraft()
+    {
+        if (_sessions.FirstOrDefault(session => session.Id == _activeSessionId) is not { } session)
+        {
+            return;
+        }
+
+        session.Draft = _draft;
+        session.PendingAttachments = _attachments.Select(ToStoredAttachment).ToList();
+        if (HasPendingDraft)
+        {
+            session.UpdatedUtc = DateTimeOffset.UtcNow;
+        }
+    }
+
+    private void RestoreSessionDraft(ChatSessionState session)
+    {
+        _draft = session.Draft ?? string.Empty;
+        _attachments.Clear();
+        _attachments.AddRange(session.PendingAttachments ?? []);
+    }
+
+    private async Task ConfirmInternalNavigation(LocationChangingContext context)
+    {
+        PersistActiveDraft();
+        await SaveSessionsAsync();
+        await SavePreferencesAsync();
+        if (HasPendingDraft && !await JS.InvokeAsync<bool>("confirm", "Leave chat with an unsent draft or queued attachment?"))
+        {
+            context.PreventNavigation();
+        }
     }
 
     private string SessionButtonClass(ChatSessionState session) =>
@@ -443,9 +764,129 @@
     private static string MemoryHref(string id) =>
         "/api/memories/" + Uri.EscapeDataString(id);
 
-    public void Dispose()
+    private IChatProvider ResolveProvider(string providerName)
     {
+        var provider = ChatProviders.FirstOrDefault(candidate => ProviderMatches(candidate.Name, providerName));
+        return provider ?? ChatProviders.First();
+    }
+
+    private string DefaultModelForProvider(string providerName)
+    {
+        var chatOptions = Options.CurrentValue.Chat;
+        return ProviderMatches(providerName, "GitHub") ? chatOptions.GitHubModel : chatOptions.OllamaModel;
+    }
+
+    private static bool ProviderMatches(string left, string right) =>
+        string.Equals(left, right, StringComparison.OrdinalIgnoreCase) ||
+        (string.Equals(left, "GitHub", StringComparison.OrdinalIgnoreCase) && string.Equals(right, "Copilot", StringComparison.OrdinalIgnoreCase));
+
+    private static string FormatModelLabel(ChatModelSummary model)
+    {
+        var preferred = model.IsPreferred ? " *" : string.Empty;
+        var multiplier = model.ChatMultiplier is null ? string.Empty : $" x{model.ChatMultiplier:0.##}";
+        return $"{model.Name}{preferred}{multiplier}";
+    }
+
+    private static ChatAttachment ToDisplayAttachment(ChatAttachment attachment) =>
+        attachment with
+        {
+            Text = attachment.IsImage ? string.Empty : string.Empty,
+            Base64Data = null,
+            LocalPath = null
+        };
+
+    private static ChatAttachment ToStoredAttachment(ChatAttachment attachment) =>
+        attachment.IsImage && !string.IsNullOrWhiteSpace(attachment.LocalPath)
+            ? attachment with { Base64Data = null }
+            : attachment;
+
+    private static string AttachmentTitle(ChatAttachment attachment)
+    {
+        var truncated = attachment.IsTruncated ? ", truncated" : string.Empty;
+        var kind = attachment.IsImage ? "image" : attachment.ContentType;
+        return $"{kind}, {FormatBytes(attachment.Size)}{truncated}";
+    }
+
+    private static string AttachmentDataUrl(ChatAttachment attachment) =>
+        $"{(attachment.ContentType.StartsWith("data:", StringComparison.OrdinalIgnoreCase) ? attachment.ContentType : $"data:{attachment.ContentType};base64")},{attachment.Base64Data}";
+
+    private static string FormatBytes(long value)
+    {
+        string[] units = ["B", "KB", "MB", "GB"];
+        var size = (double)value;
+        var unit = 0;
+        while (size >= 1024 && unit < units.Length - 1)
+        {
+            size /= 1024;
+            unit++;
+        }
+
+        return $"{size:0.#} {units[unit]}";
+    }
+
+    private static string FormatDuration(TimeSpan duration) =>
+        duration.TotalMinutes >= 1 ? $"{duration.TotalMinutes:0.0}m" : $"{duration.TotalSeconds:0.0}s";
+
+    private void StartResponseTimer()
+    {
+        StopResponseTimer();
+        _responseTimerCts = new CancellationTokenSource();
+        _ = RunResponseTimerAsync(_responseTimerCts.Token);
+    }
+
+    private void StopResponseTimer()
+    {
+        _responseTimerCts?.Cancel();
+        _responseTimerCts?.Dispose();
+        _responseTimerCts = null;
+        if (_responseStartedUtc is not null)
+        {
+            _responseElapsed = DateTimeOffset.UtcNow - _responseStartedUtc.Value;
+        }
+    }
+
+    private async Task RunResponseTimerAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+            while (await timer.WaitForNextTickAsync(cancellationToken))
+            {
+                if (_responseStartedUtc is not null)
+                {
+                    _responseElapsed = DateTimeOffset.UtcNow - _responseStartedUtc.Value;
+                }
+
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        StopResponseTimer();
+        if (_composerRegistered)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("memorySmith.chat.unregisterComposer", _composerInput);
+            }
+            catch (JSDisconnectedException)
+            {
+            }
+        }
+
         _dotNetRef?.Dispose();
+    }
+
+    private sealed class ChatPreferencesState
+    {
+        public string Provider { get; set; } = string.Empty;
+        public string Model { get; set; } = string.Empty;
+        public string? ActiveSessionId { get; set; }
     }
 
     private sealed class ChatSessionState
@@ -454,16 +895,46 @@
         public string Title { get; set; } = "New chat";
         public DateTimeOffset CreatedUtc { get; set; }
         public DateTimeOffset UpdatedUtc { get; set; }
+        public string Draft { get; set; } = string.Empty;
+        public List<ChatAttachment> PendingAttachments { get; set; } = [];
         public List<ChatTurnState> Turns { get; set; } = [];
         public List<ChatMessage> History { get; set; } = [];
     }
 
-    private sealed record ChatTurnState(
-        string Role,
-        string Content,
-        DateTimeOffset CreatedUtc,
-        List<ChatContextItem> Context,
-        List<string> WrittenMemories,
-        List<string> WrittenPages,
-        List<ChatAttachment> Attachments);
+    private sealed class ChatTurnState
+    {
+        public ChatTurnState()
+        {
+        }
+
+        public ChatTurnState(
+            string role,
+            string content,
+            DateTimeOffset createdUtc,
+            string? thinking,
+            List<ChatContextItem> context,
+            List<string> writtenMemories,
+            List<string> writtenPages,
+            List<ChatAttachment> attachments)
+        {
+            Role = role;
+            Content = content;
+            CreatedUtc = createdUtc;
+            Thinking = thinking;
+            Context = context;
+            WrittenMemories = writtenMemories;
+            WrittenPages = writtenPages;
+            Attachments = attachments;
+        }
+
+        public string Role { get; set; } = string.Empty;
+        public string Content { get; set; } = string.Empty;
+        public DateTimeOffset CreatedUtc { get; set; }
+        public string? Thinking { get; set; }
+        public List<ChatContextItem> Context { get; set; } = [];
+        public List<string> WrittenMemories { get; set; } = [];
+        public List<string> WrittenPages { get; set; } = [];
+        public List<ChatAttachment> Attachments { get; set; } = [];
+        public long? DurationMilliseconds { get; set; }
+    }
 }

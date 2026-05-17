@@ -532,6 +532,30 @@ body {
     border-bottom: 1px solid var(--vscode-border-soft);
 }
 
+.page-toolbar-file-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    color: var(--vscode-text-muted);
+    cursor: pointer;
+    position: relative;
+}
+
+.page-toolbar-file-button:hover {
+    color: #9cdcfe;
+    background: rgba(0, 122, 204, 0.12);
+}
+
+.page-toolbar-file-input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
 .page-editor-panels {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -591,7 +615,13 @@ body {
 }
 
 .chat-workbench:has(.chat-history-pane.is-collapsed) {
-    grid-template-columns: 44px minmax(0, 1fr);
+    grid-template-columns: 0 minmax(0, 1fr);
+    gap: 0;
+}
+
+.chat-workbench.is-history-collapsed {
+    grid-template-columns: 0 minmax(0, 1fr);
+    gap: 0;
 }
 
 .chat-history-pane,
@@ -613,6 +643,16 @@ body {
     display: none;
 }
 
+.chat-history-pane.is-collapsed {
+    width: 0;
+    min-width: 0;
+    border: 0;
+}
+
+.chat-history-pane.is-collapsed .chat-history-header {
+    display: none;
+}
+
 .chat-history-header {
     display: flex;
     align-items: center;
@@ -630,13 +670,24 @@ body {
 
 .chat-history-item {
     width: 100%;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    padding: 8px 10px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 34px;
+    align-items: center;
+    gap: 4px;
     border-bottom: 1px solid var(--vscode-border-soft);
     background: transparent;
     color: var(--vscode-text);
+}
+
+.chat-history-select {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    padding: 8px 10px;
+    border: 0;
+    background: transparent;
+    color: inherit;
     text-align: left;
     cursor: pointer;
 }
@@ -646,13 +697,13 @@ body {
     background: var(--vscode-accent-hover);
 }
 
-.chat-history-item span {
+.chat-history-select span {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.chat-history-item small {
+.chat-history-select small {
     color: var(--vscode-text-muted);
     font-size: 0.72rem;
 }
@@ -688,6 +739,11 @@ body {
     gap: 6px;
     flex: 1 1 auto;
     min-width: 0;
+}
+
+.chat-provider-select {
+    width: 150px;
+    min-width: 120px;
 }
 
 .chat-model-select {
@@ -730,6 +786,12 @@ body {
     border-color: rgba(0, 122, 204, 0.55);
 }
 
+.chat-message.assistant.pending,
+.chat-message.pending {
+    border-color: rgba(204, 167, 0, 0.55);
+    color: var(--vscode-text-muted);
+}
+
 .chat-message-topline {
     display: flex;
     align-items: center;
@@ -748,6 +810,29 @@ body {
     white-space: pre-wrap;
     line-height: 1.38;
     font-size: 0.9rem;
+}
+
+.chat-thinking {
+    margin-top: 6px;
+    border: 1px solid var(--vscode-border-soft);
+    background: rgba(0, 0, 0, 0.12);
+}
+
+.chat-thinking summary {
+    cursor: pointer;
+    color: var(--vscode-text-muted);
+    font-size: 0.76rem;
+    padding: 4px 6px;
+}
+
+.chat-thinking pre {
+    margin: 0;
+    padding: 8px;
+    overflow: auto;
+    white-space: pre-wrap;
+    font-family: Consolas, "Cascadia Mono", "Segoe UI", monospace;
+    font-size: 0.78rem;
+    line-height: 1.35;
 }
 
 .chat-context-list {
@@ -781,7 +866,15 @@ body {
 }
 
 .chat-attachment-chip {
+    gap: 5px;
     cursor: pointer;
+}
+
+.chat-attachment-thumb {
+    width: 22px;
+    height: 22px;
+    object-fit: cover;
+    border-radius: 2px;
 }
 
 .chat-composer {
@@ -831,6 +924,13 @@ body {
     grid-template-columns: 220px 1fr 40px;
     align-items: center;
     gap: 8px;
+}
+
+.health-workbench {
+    height: 100%;
+    min-height: 0;
+    overflow: auto;
+    padding-right: 4px;
 }
 
 .health-header {
@@ -993,12 +1093,17 @@ body {
     }
 
     .chat-workbench:has(.chat-history-pane.is-collapsed) {
-        grid-template-columns: 44px minmax(0, 1fr);
+        grid-template-columns: 0 minmax(0, 1fr);
     }
 
     .chat-model-select {
         width: min(280px, 36vw);
         min-width: 160px;
+    }
+
+    .chat-provider-select {
+        width: 130px;
+        min-width: 110px;
     }
 
     .health-charts-row,
@@ -1090,6 +1195,7 @@ body {
         display: none;
     }
 
+    .chat-provider-select,
     .chat-model-select {
         width: 100%;
     }

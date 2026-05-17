@@ -1,6 +1,6 @@
 {
   "Id": "project-wiki-chat-agent-provider",
-  "Content": "MemorySmith chat is provider-based. IChatProvider isolates model API calls/model discovery and IChatAgent isolates memory/page context gathering and agent-write behavior. OllamaChatProvider is the current local provider using /api/chat and /api/tags on the configured Ollama endpoint. MemoryChatAgent builds context from hybrid memory search plus markdown page search, loads the shared system prompt from Prompts/wiki-chat-agent.md, and can include text attachment context. Chat mode answers questions; Agent mode can parse structured provider output and write MemoryRecord entries and Data/Pages markdown pages when Chat:AgentWritesEnabled is true. The /chat UI supports provider model selection, Send on Enter, local chat history, attachments, status display, and clickable memory/page resource chips. The design leaves room for OpenAI, Copilot, Anthropic, or other providers without changing the UI or agent workflow.",
+  "Content": "MemorySmith chat is provider-based. IChatProvider isolates model API calls/model discovery/streaming and IChatAgent isolates memory/page context gathering and agent-write behavior. OllamaChatProvider uses /api/chat with stream=true for live chunks and /api/tags for model discovery on the configured Ollama endpoint. GitHubCopilotChatProvider uses GitHub.Copilot.SDK with GitHub CLI auth or token env vars and exposes configured preferred mini models when SDK discovery is unavailable. MemoryChatAgent builds context from hybrid memory search plus markdown page search, loads the shared system prompt from Prompts/wiki-chat-agent.md, and can include bounded text attachment context. Image attachments are saved to trusted temp files and passed as native image payloads to providers that support images. Chat mode answers questions; Agent mode can parse structured provider output and write MemoryRecord entries and Data/Pages markdown pages when Chat:AgentWritesEnabled is true. The /chat UI supports provider/model selection, persisted last provider/model and active chat, streamed response text with elapsed timers and per-response durations, Send on Enter, pasted image attachments, retained per-chat drafts/queued attachments, delete-chat confirmation, collapsible thinking content, local chat history, and clickable memory/page resource chips. The design leaves room for OpenAI, Anthropic, or other providers without changing the UI or agent workflow.",
   "Title": "Chat Agent Provider Architecture",
   "Status": 2,
   "Confidence": 0.9,
@@ -9,7 +9,9 @@
     "chat",
     "agent",
     "ollama",
+    "github",
     "provider",
+    "streaming",
     "architecture",
     "current-state"
   ],
@@ -52,5 +54,5 @@
     }
   ],
   "UsageCount": 0,
-  "LastUpdated": "2026-05-16T23:35:00.0000000Z"
+  "LastUpdated": "2026-05-17T01:05:00.0000000Z"
 }

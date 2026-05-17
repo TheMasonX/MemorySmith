@@ -9,28 +9,32 @@ namespace MemorySmith.App.Controllers;
 public class ChatController : ControllerBase
 {
     private readonly IChatAgent _chat;
-    private readonly IChatProvider _provider;
+    private readonly IReadOnlyList<IChatProvider> _providers;
     private readonly IOptionsMonitor<MemorySmithOptions> _options;
 
-    public ChatController(IChatAgent chat, IChatProvider provider, IOptionsMonitor<MemorySmithOptions> options)
+    public ChatController(IChatAgent chat, IEnumerable<IChatProvider> providers, IOptionsMonitor<MemorySmithOptions> options)
     {
         _chat = chat;
-        _provider = provider;
+        _providers = providers.ToList();
         _options = options;
     }
 
     [HttpGet("config")]
-    public async Task<ActionResult<ChatRuntimeConfiguration>> GetConfiguration(CancellationToken cancellationToken)
+    public async Task<ActionResult<ChatRuntimeConfiguration>> GetConfiguration([FromQuery] string? provider, CancellationToken cancellationToken)
     {
         var chatOptions = _options.CurrentValue.Chat;
+        var selectedProvider = ResolveProvider(provider ?? chatOptions.Provider);
+        var model = DefaultModelForProvider(selectedProvider.Name, chatOptions);
+        var endpoint = EndpointForProvider(selectedProvider.Name, chatOptions);
+        var providerNames = _providers.Select(item => item.Name).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(item => item).ToList();
         try
         {
-            var models = await _provider.ListModelsAsync(cancellationToken);
-            return Ok(new ChatRuntimeConfiguration(chatOptions.Provider, chatOptions.OllamaEndpoint, chatOptions.OllamaModel, models));
+            var models = await selectedProvider.ListModelsAsync(cancellationToken);
+            return Ok(new ChatRuntimeConfiguration(selectedProvider.Name, endpoint, model, models, providerNames));
         }
         catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or TaskCanceledException)
         {
-            return Ok(new ChatRuntimeConfiguration(chatOptions.Provider, chatOptions.OllamaEndpoint, chatOptions.OllamaModel, [], ex.Message));
+            return Ok(new ChatRuntimeConfiguration(selectedProvider.Name, endpoint, model, [], providerNames, ex.Message));
         }
     }
 
@@ -50,4 +54,18 @@ public class ChatController : ControllerBase
             return StatusCode(StatusCodes.Status503ServiceUnavailable, new { error = ex.Message });
         }
     }
+
+    private IChatProvider ResolveProvider(string providerName)
+    {
+        var selected = _providers.FirstOrDefault(candidate =>
+            string.Equals(candidate.Name, providerName, StringComparison.OrdinalIgnoreCase) ||
+            (string.Equals(candidate.Name, "GitHub", StringComparison.OrdinalIgnoreCase) && string.Equals(providerName, "Copilot", StringComparison.OrdinalIgnoreCase)));
+        return selected ?? _providers.First();
+    }
+
+    private static string DefaultModelForProvider(string providerName, ChatOptions options) =>
+        string.Equals(providerName, "GitHub", StringComparison.OrdinalIgnoreCase) ? options.GitHubModel : options.OllamaModel;
+
+    private static string EndpointForProvider(string providerName, ChatOptions options) =>
+        string.Equals(providerName, "GitHub", StringComparison.OrdinalIgnoreCase) ? "GitHub Copilot SDK" : options.OllamaEndpoint;
 }

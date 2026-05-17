@@ -7,6 +7,7 @@
 
 <PageTitle>Health</PageTitle>
 
+<div class="health-workbench">
 <div class="health-header">
     <MudText Typo="Typo.h4">Health &amp; Activity</MudText>
     <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" OnClick="RefreshAsync">Refresh</MudButton>
@@ -179,6 +180,7 @@
         }
     </div>
 </div>
+</div>
 
 @code {
     private StatsSnapshot? _stats;
@@ -260,7 +262,7 @@
     }
 
     private static string FormatChatProvider(ChatOptions chat) =>
-        $"{chat.Provider} / {chat.OllamaModel} / {chat.SystemPromptPath}";
+        $"{chat.Provider} / Ollama:{chat.OllamaModel} / GitHub:{chat.GitHubModel} / {chat.SystemPromptPath}";
 
     private static string FormatPathDetails(StoragePathStatus path) => path switch
     {

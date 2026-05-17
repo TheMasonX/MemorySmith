@@ -44,12 +44,33 @@ public class ChatOptions
 {
     public string Provider { get; set; } = "Ollama";
     public string OllamaEndpoint { get; set; } = "http://localhost:11434";
-    public string OllamaModel { get; set; } = "llama3.1";
+    public string OllamaModel { get; set; } = "gemma4:e4b";
+    public string GitHubModel { get; set; } = "gpt-4o-mini";
+    public string? GitHubCliPath { get; set; }
+    public string? GitHubCliUrl { get; set; }
+    public string GitHubTokenEnvironmentVariable { get; set; } = "GITHUB_TOKEN";
+    public List<ChatModelOption> GitHubModels { get; set; } =
+    [
+        new() { Name = "gpt-4o-mini", IsPreferred = true, Description = "Fast GPT-4o mini option" },
+        new() { Name = "gpt-5.1-mini", IsPreferred = true, Description = "GPT-5.1 mini option when available" },
+        new() { Name = "gpt-4o", Description = "GPT-4o option when available" },
+        new() { Name = "gpt-5", Description = "GPT-5 option when available" },
+        new() { Name = "claude-sonnet-4.5", Description = "Claude Sonnet option when available" }
+    ];
     public string SystemPromptPath { get; set; } = Path.Combine("Prompts", "wiki-chat-agent.md");
-    public int RequestTimeoutSeconds { get; set; } = 120;
+    public int RequestTimeoutSeconds { get; set; } = 600;
     public int MaxContextRecords { get; set; } = 5;
     public int MaxContextPages { get; set; } = 5;
     public int MaxHistoryMessages { get; set; } = 16;
     public int MaxAttachmentCharacters { get; set; } = 120000;
+    public long MaxAttachmentBytes { get; set; } = 8 * 1024 * 1024;
     public bool AgentWritesEnabled { get; set; } = true;
+}
+
+public class ChatModelOption
+{
+    public string Name { get; set; } = string.Empty;
+    public double? ChatMultiplier { get; set; }
+    public bool IsPreferred { get; set; }
+    public string? Description { get; set; }
 }

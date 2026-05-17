@@ -105,6 +105,12 @@
                         <MudTooltip Text="Table">
                             <MudIconButton Icon="@Icons.Material.Filled.TableChart" Size="Size.Small" OnClick="@(() => InsertMarkdownAsync("\n| Column | Value |\n| --- | --- |\n| Item | Detail |\n", "", ""))" aria-label="Table" />
                         </MudTooltip>
+                        <MudTooltip Text="Upload image">
+                            <label class="page-toolbar-file-button" aria-label="Upload image">
+                                <MudIcon Icon="@Icons.Material.Filled.Image" Size="Size.Small" />
+                                <InputFile OnChange="OnImageSelectedAsync" accept="image/*" class="page-toolbar-file-input" />
+                            </label>
+                        </MudTooltip>
                     </div>
 
                     <div class="page-editor-panels">
@@ -357,6 +363,22 @@
         {
             RefreshPreview();
         }
+    }
+
+    private async Task OnImageSelectedAsync(InputFileChangeEventArgs args)
+    {
+        var file = args.File;
+        if (!file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+        {
+            Snackbar.Add("Choose an image file.", Severity.Warning);
+            return;
+        }
+
+        await using var stream = file.OpenReadStream(maxAllowedSize: 20 * 1024 * 1024);
+        var asset = await PageService.SaveAssetAsync(file.Name, stream, CancellationToken.None);
+        var alt = Path.GetFileNameWithoutExtension(asset.FileName).Replace('-', ' ');
+        await InsertMarkdownAsync($"![{alt}](", ")", asset.MarkdownPath);
+        Snackbar.Add($"Image uploaded: {asset.FileName}", Severity.Success);
     }
 
     private async Task ConfirmInternalNavigation(LocationChangingContext context)

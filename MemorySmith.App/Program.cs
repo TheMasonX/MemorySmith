@@ -67,7 +67,9 @@ try
     builder.Services.AddSingleton<MemoryMaintenanceTasks>();
     builder.Services.AddSingleton<OperationalDiagnosticsService>();
     builder.Services.AddHttpClient<OllamaChatProvider>();
-    builder.Services.AddScoped<IChatProvider, OllamaChatProvider>();
+    builder.Services.AddScoped<GitHubCopilotChatProvider>();
+    builder.Services.AddScoped<IChatProvider>(sp => sp.GetRequiredService<OllamaChatProvider>());
+    builder.Services.AddScoped<IChatProvider>(sp => sp.GetRequiredService<GitHubCopilotChatProvider>());
     builder.Services.AddScoped<IChatAgent, MemoryChatAgent>();
 
     var maintenanceEnabled = builder.Configuration.GetValue("MemorySmith:Maintenance:Enabled", true);
