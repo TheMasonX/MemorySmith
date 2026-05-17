@@ -1,7 +1,7 @@
 {
   "Id": "project-wiki-mcp-search-tools-current",
   "Title": "MCP Search Tools Current State",
-  "Content": "MemorySmith.App exposes POST /api/memories/search/semantic for semantic ranking, POST /api/memories/search/hybrid for Lucene.NET plus semantic RRF ranking, and /mcp for HTTP JSON-RPC tool access. Semantic ranking uses optional ONNX embeddings when configured and available, with local token/tag/title/reference/alias scoring as fallback. The MCP tools are memorysmith_search, memorysmith_semantic_search, memorysmith_hybrid_search, memorysmith_context_pack, memorysmith_get, memorysmith_source_bundle, and memorysmith_find_by_source. For larger KB workflows, prefer memorysmith_context_pack when an agent needs search results plus linked reference/conflict context in one response; it accepts query, ids, tags, status, limit, referenceDepth, maxContentChars, maxRecords, includeBacklinks, and format. Use format=json for structured parsing and the default markdown format for human-readable output. The tool reports warnings for missing roots, missing links, or omitted records after hitting maxRecords. .vscode/mcp.json points directly at http://localhost:5089/mcp. The implementation is covered by McpAndSemanticSearchTests and MemoryApplicationServiceTests, which use copied Data/Memories fixtures so the source project wiki remains stable.",
+  "Content": "MemorySmith.App exposes POST /api/memories/search for Lucene.NET lexical ranking, POST /api/memories/search/semantic for semantic ranking, POST /api/memories/search/hybrid for Lucene.NET plus semantic RRF ranking, and /mcp for HTTP JSON-RPC tool access. Semantic ranking uses optional ONNX embeddings when configured and available, with local token/tag/title/reference/alias scoring as fallback. The HTTP MCP tools are memorysmith_search, memorysmith_semantic_search, memorysmith_hybrid_search, memorysmith_context_pack, memorysmith_get, memorysmith_source_bundle, and memorysmith_find_by_source. memorysmith_search keeps its compatible tool name but now returns lexical results instead of the old simple substring results. For larger KB workflows, prefer memorysmith_context_pack when an agent needs search results plus linked reference/conflict context in one response; it accepts query, ids, tags, status, limit, referenceDepth, maxContentChars, maxRecords, includeBacklinks, and format. Use format=json for structured parsing and the default markdown format for human-readable output. The tool reports warnings for missing roots, missing links, or omitted records after hitting maxRecords. .vscode/mcp.json points directly at http://localhost:5089/mcp. The /chat agent now has an app-intercepted MCP-compatible read-only loop for the core wiki retrieval tools: memorysmith_search, memorysmith_semantic_search, memorysmith_hybrid_search, memorysmith_context_pack, and memorysmith_get. It accepts model output shaped as toolCalls JSON or JSON-RPC tools/call, executes the tools locally through MemoryApplicationService, and feeds the results back into the same chat turn. Source bundle and find_by_source remain HTTP MCP tools for external agents, not chat-side model-requested tools. The implementation is covered by McpAndSemanticSearchTests, MemoryApplicationServiceTests, and PagesAndChatTests, which use copied Data/Memories fixtures so the source project wiki remains stable.",
   "Status": 2,
   "Confidence": 0.93,
   "Tags": [
@@ -27,7 +27,8 @@
     "project-wiki-mcp-context-pack",
     "project-wiki-test-fixture-overview",
     "project-wiki-semantic-search-gap",
-    "project-wiki-data-folder-policy"
+    "project-wiki-data-folder-policy",
+    "project-wiki-chat-agent-provider"
   ],
   "Conflicts": [],
   "SourceLinks": [
@@ -37,5 +38,5 @@
     }
   ],
   "UsageCount": 1,
-  "LastUpdated": "2026-05-17T03:55:00.0000000Z"
+  "LastUpdated": "2026-05-17T17:00:00.0000000Z"
 }

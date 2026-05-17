@@ -1,6 +1,6 @@
 {
   "Id": "project-wiki-chat-local-storage-persistence",
-  "Content": "The /chat UI persists browser-local chat state through memorySmith.storage helpers in memorysmith.js. Chat sessions are stored in localStorage under memorysmith.chat.sessions.v1 and preferences under memorysmith.chat.preferences.v1. A session stores id/title timestamps, draft text, pending attachments, rendered turns, and provider history messages. Preferences store provider, model, mode, and active session id. SaveSessionsAsync retains up to 30 sessions, keeps the active or non-empty records, warns once if browser storage rejects the payload, and is called after draft edits, attachment changes, session selection, streaming progress, and final responses. LoadSessionsAsync restores the preferred active session or the most recently updated session.",
+  "Content": "The /chat UI persists browser-local chat state through memorySmith.storage helpers in memorysmith.js. Chat sessions are stored in localStorage under memorysmith.chat.sessions.v1 and preferences under memorysmith.chat.preferences.v1. A session stores id/title timestamps, draft text, pending attachments, rendered turns, and provider history messages. Each assistant turn can store ProviderName and Model so the transcript can show exactly which model answered, such as Ollama / Athena or GitHub / gpt-4.1. Assistant turns can also store ChatUsageSummary so the bottom-right composer meter can show the latest context usage, output token count, context-window percentage when known, and provider rate/quota text when a non-local provider reports it. Preferences store provider, model, mode, and active session id. SaveSessionsAsync retains up to 30 sessions, keeps the active or non-empty records, warns once if browser storage rejects the payload, and is called after draft edits, attachment changes, session selection, streaming progress, stopped generation, and final responses. LoadSessionsAsync restores the preferred active session or the most recently updated session. The history sidebar uses compact one-line ellipsis titles to avoid horizontal overflow for long chat names.",
   "Title": "Chat Local Storage Persistence",
   "Status": 2,
   "Confidence": 0.95,
@@ -32,5 +32,5 @@
     }
   ],
   "UsageCount": 0,
-  "LastUpdated": "2026-05-17T02:35:00.0000000Z"
+  "LastUpdated": "2026-05-17T15:00:00Z"
 }

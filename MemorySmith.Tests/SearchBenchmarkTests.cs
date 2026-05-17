@@ -30,9 +30,9 @@ public class SearchBenchmarkTests
 
     // ── Testbench probe definitions ───────────────────────────────────────────
 
-    private static readonly SearchProbe[] KeywordProbes =
+    private static readonly SearchProbe[] LexicalProbes =
     [
-        // Keyword search is a verbatim substring Contains — use MustContainId for ranking flexibility.
+        // Lexical search uses Lucene tokenization and scoring; use MustContainId for ranking flexibility.
         new("Data Folder", MustContainId: "project-wiki-data-folder-policy", MaxMs: 100),
         new("Validation Command", MustContainId: "project-wiki-validation-command", MaxMs: 100),
         new("Hybrid Search", MustContainId: "project-wiki-hybrid-search-rrf", MaxMs: 100),
@@ -47,6 +47,10 @@ public class SearchBenchmarkTests
         new("context pack agent readiness knowledge base", MustContainId: "project-wiki-mcp-context-pack", MaxMs: 200),
         new("search architecture roadmap improvements", MustContainId: "project-wiki-search-roadmap", MaxMs: 200),
         new("blazor server UI single host deployment", MustContainId: "project-wiki-active-architecture", MaxMs: 200),
+        new("chat model used stop generating streaming", MustContainId: "project-wiki-chat-streaming-thinking", MaxMs: 200),
+        new("github free gpt claude haiku sonnet model preference", MustContainId: "project-wiki-chat-agent-provider", MaxMs: 200),
+        new("chat context window usage rate limits mcp tools role", MustContainId: "project-wiki-chat-agent-provider", MaxMs: 200),
+        new("chat intercepts mcp tool calls hybrid search same prompt", MustContainId: "project-wiki-chat-agent-provider", MaxMs: 200),
     ];
 
     private static readonly SearchProbe[] HybridProbes =
@@ -58,6 +62,11 @@ public class SearchBenchmarkTests
         new("storage data folder json lifecycle", MustContainId: "project-wiki-data-folder-policy", MaxMs: 300),
         new("single host blazor app architecture deployment", MustContainId: "project-wiki-active-architecture", MaxMs: 300),
         new("scope boundary generalization friction", MustContainId: "project-wiki-scope-boundaries", MaxMs: 300),
+        new("chat compact history titles model metadata local storage", MustContainId: "project-wiki-chat-local-storage-persistence", MaxMs: 300),
+        new("chat stop button cancellation partial response model used", MustContainId: "project-wiki-chat-streaming-thinking", MaxMs: 300),
+        new("github copilot auth model unavailable haiku before sonnet", MustContainId: "project-wiki-chat-agent-provider", MaxMs: 300),
+        new("application intercepted wiki tool calls context pack get search", MustContainId: "project-wiki-chat-agent-provider", MaxMs: 300),
+        new("ctrl v copied image paste html data url clipboard", MustContainId: "project-wiki-chat-image-attachments", MaxMs: 300),
     ];
 
     // ── Setup / Teardown ──────────────────────────────────────────────────────
@@ -79,10 +88,10 @@ public class SearchBenchmarkTests
             Directory.Delete(_tempRoot, recursive: true);
     }
 
-    // ── Keyword search probes ─────────────────────────────────────────────────
+    // ── Lexical search probes ────────────────────────────────────────────────
 
-    [TestCaseSource(nameof(KeywordProbes))]
-    public async Task Keyword_Probe(SearchProbe probe)
+    [TestCaseSource(nameof(LexicalProbes))]
+    public async Task Lexical_Probe(SearchProbe probe)
     {
         var sw = Stopwatch.StartNew();
         var results = await _service.SearchAsync(

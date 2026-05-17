@@ -63,25 +63,34 @@ public class ChatOptions
     public string Provider { get; set; } = "Ollama";
     public string OllamaEndpoint { get; set; } = "http://localhost:11434";
     public string OllamaModel { get; set; } = "gemma4:e4b";
-    public string GitHubModel { get; set; } = "gpt-4o-mini";
+    public int? OllamaContextWindowTokens { get; set; }
+    public string GitHubModel { get; set; } = "gpt-4.1";
     public string? GitHubCliPath { get; set; }
     public string? GitHubCliUrl { get; set; }
     public string GitHubTokenEnvironmentVariable { get; set; } = "GITHUB_TOKEN";
     public List<ChatModelOption> GitHubModels { get; set; } =
     [
-        new() { Name = "gpt-4o-mini", IsPreferred = true, Description = "Fast GPT-4o mini option" },
-        new() { Name = "gpt-5.1-mini", IsPreferred = true, Description = "GPT-5.1 mini option when available" },
+        new() { Name = "gpt-4.1", ChatMultiplier = 0, IsPreferred = true, Description = "Free/standard Copilot GPT option when available" },
+        new() { Name = "gpt-4.1-mini", ChatMultiplier = 0, IsPreferred = true, Description = "Free/low-cost GPT mini option when available" },
+        new() { Name = "gpt-4o-mini", ChatMultiplier = 0, IsPreferred = true, Description = "Free/low-cost GPT-4o mini option when available" },
+        new() { Name = "claude-3.5-haiku", IsPreferred = true, Description = "Lower-cost Claude Haiku option before Sonnet" },
+        new() { Name = "gpt-5.1-mini", Description = "GPT-5.1 mini option when available" },
         new() { Name = "gpt-4o", Description = "GPT-4o option when available" },
         new() { Name = "gpt-5", Description = "GPT-5 option when available" },
-        new() { Name = "claude-sonnet-4.5", Description = "Claude Sonnet option when available" }
+        new() { Name = "claude-sonnet-4.5", Description = "Claude Sonnet option when available after cheaper candidates" }
     ];
     public string SystemPromptPath { get; set; } = Path.Combine("Prompts", "wiki-chat-agent.md");
     public int RequestTimeoutSeconds { get; set; } = 600;
     public int MaxContextRecords { get; set; } = 5;
     public int MaxContextPages { get; set; } = 5;
+    public int MaxContextItemCharacters { get; set; } = 4000;
     public int MaxHistoryMessages { get; set; } = 16;
     public int MaxAttachmentCharacters { get; set; } = 120000;
     public long MaxAttachmentBytes { get; set; } = 8 * 1024 * 1024;
+    public bool ToolCallsEnabled { get; set; } = true;
+    public int MaxToolIterations { get; set; } = 2;
+    public int MaxToolCallsPerTurn { get; set; } = 3;
+    public int MaxToolResultCharacters { get; set; } = 12000;
     public bool AgentWritesEnabled { get; set; } = true;
 }
 
@@ -91,4 +100,6 @@ public class ChatModelOption
     public double? ChatMultiplier { get; set; }
     public bool IsPreferred { get; set; }
     public string? Description { get; set; }
+    public int? ContextWindowTokens { get; set; }
+    public string? RateLimit { get; set; }
 }

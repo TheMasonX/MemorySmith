@@ -35,7 +35,7 @@
             <MudTextField @bind-Value="_tagsFilter" Label="Tags" Placeholder="project-wiki, search" Variant="Variant.Outlined" Margin="Margin.Dense" Class="wiki-filter" />
 
             <MudButtonGroup Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" Class="wiki-mode-toggle">
-                <MudButton Variant="@(_searchMode == SearchMode.Keyword ? Variant.Filled : Variant.Outlined)" OnClick="@(() => SetSearchMode(SearchMode.Keyword))">Keyword</MudButton>
+                <MudButton Variant="@(_searchMode == SearchMode.Lexical ? Variant.Filled : Variant.Outlined)" OnClick="@(() => SetSearchMode(SearchMode.Lexical))">Lexical</MudButton>
                 <MudButton Variant="@(_searchMode == SearchMode.Semantic ? Variant.Filled : Variant.Outlined)" OnClick="@(() => SetSearchMode(SearchMode.Semantic))">Semantic</MudButton>
                 <MudButton Variant="@(_searchMode == SearchMode.Hybrid ? Variant.Filled : Variant.Outlined)" OnClick="@(() => SetSearchMode(SearchMode.Hybrid))">Hybrid</MudButton>
             </MudButtonGroup>
@@ -229,7 +229,7 @@
     private string _editSourceLinks = string.Empty;
     private string _searchQuery = string.Empty;
     private string _tagsFilter = string.Empty;
-    private SearchMode _searchMode = SearchMode.Keyword;
+    private SearchMode _searchMode = SearchMode.Lexical;
     private Dictionary<string, MemorySearchResult> _semanticMatches = new(StringComparer.OrdinalIgnoreCase);
     private MemoryStatus? _statusFilter;
     private int _page = 1;
@@ -247,13 +247,13 @@
     {
         SearchMode.Semantic => "Semantic search",
         SearchMode.Hybrid => "Hybrid search",
-        _ => "Keyword search"
+        _ => "Lexical search"
     };
     private string SearchPlaceholder => _searchMode switch
     {
         SearchMode.Semantic => "Concept, workflow, or related idea",
         SearchMode.Hybrid => "Lexical terms plus related concepts",
-        _ => "Title, content, or tag"
+        _ => "Lucene terms, title, content, or tag"
     };
 
     protected override async Task OnInitializedAsync()
@@ -688,7 +688,7 @@
 
     private enum SearchMode
     {
-        Keyword,
+        Lexical,
         Semantic,
         Hybrid
     }

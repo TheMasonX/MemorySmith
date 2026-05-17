@@ -9,13 +9,13 @@ using Microsoft.Extensions.Options;
 
 namespace MemorySmith.App.Services;
 
-public class MemoryApplicationService
+public partial class MemoryApplicationService
 {
     private const int ReciprocalRankFusionK = 60;
     private const LuceneVersion LuceneMatchVersion = LuceneVersion.LUCENE_48;
 
-    private static readonly Regex SafeIdPattern = new("^[A-Za-z0-9_-]+$", RegexOptions.Compiled);
-    private static readonly Regex SearchTokenPattern = new("[A-Za-z0-9]+", RegexOptions.Compiled);
+    private static readonly Regex SafeIdPattern = SafeIdRegex();
+    private static readonly Regex SearchTokenPattern = SearchTokenRegex();
     private static readonly HashSet<string> SearchStopWords = new(StringComparer.OrdinalIgnoreCase)
     {
         "a", "an", "and", "are", "as", "at", "be", "by", "for", "from", "has", "in", "is", "it", "of", "on", "or", "that", "the", "this", "to", "with"
@@ -95,26 +95,18 @@ public class MemoryApplicationService
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        RecordQueryEvent("keyword", query.Query);
+        RecordQueryEvent("lexical", query.Query);
 
         var limit = Clamp(query.Limit, 1, _options.Limits.MaxSearchLimit, 20);
         var tagFilters = NormalizeFilterList(query.Tags);
-        var keyword = query.Query?.Trim();
+        var lexicalTokens = AnalyzeLexicalText(query.Query ?? string.Empty);
 
-        var records = ApplyListFilters(_store.LoadAll(), query.Status, tagFilters);
-        if (!string.IsNullOrWhiteSpace(keyword))
-        {
-            records = records.Where(r =>
-                r.Title.Contains(keyword, StringComparison.OrdinalIgnoreCase) ||
-                r.Content.Contains(keyword, StringComparison.OrdinalIgnoreCase) ||
-                r.Tags.Any(tag => tag.Contains(keyword, StringComparison.OrdinalIgnoreCase)));
-        }
+        var records = ApplyListFilters(_store.LoadAll(), query.Status, tagFilters).ToList();
+        var recordsById = records.ToDictionary(record => record.Id, StringComparer.OrdinalIgnoreCase);
 
-        var results = records
-            .OrderByDescending(r => r.LastUpdated)
-            .ThenBy(r => r.Title, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(r => r.Id, StringComparer.OrdinalIgnoreCase)
+        var results = RankLexicalResults(records, query.Query, lexicalTokens)
             .Take(limit)
+            .Select(result => recordsById[result.Id])
             .ToList();
 
         return Task.FromResult<IReadOnlyList<MemoryRecord>>(results);
@@ -520,7 +512,7 @@ public class MemoryApplicationService
         await _publisher.PublishStatsChangedAsync(StatsSnapshotFactory.Build(_store.LoadAll()));
     }
 
-    private void NormalizeRecord(MemoryRecord record)
+    private static void NormalizeRecord(MemoryRecord record)
     {
         record.Title = record.Title.Trim();
         record.Content = record.Content.Trim();
@@ -584,7 +576,7 @@ public class MemoryApplicationService
         }
     }
 
-    private static List<string> ValidateSourceLinks(IReadOnlyList<SourceLink> sourceLinks)
+    private static List<string> ValidateSourceLinks(List<SourceLink> sourceLinks)
     {
         var errors = new List<string>();
         for (var index = 0; index < sourceLinks.Count; index++)
@@ -625,7 +617,7 @@ public class MemoryApplicationService
     private static IEnumerable<MemoryRecord> ApplyListFilters(
         IEnumerable<MemoryRecord> records,
         MemoryStatus? status,
-        IReadOnlyList<string> tagFilters)
+        List<string> tagFilters)
     {
         if (status.HasValue)
         {
@@ -673,12 +665,12 @@ public class MemoryApplicationService
             matchReason,
             TruncateContent(record.Content, maxContentChars));
 
-    private static IReadOnlyList<string> NormalizeFilterList(string? values) =>
+    private static List<string> NormalizeFilterList(string? values) =>
         string.IsNullOrWhiteSpace(values)
             ? []
             : NormalizeValues(values.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
 
-    private static IReadOnlyList<string> NormalizeIdList(string? values, ICollection<string> warnings) =>
+    private static List<string> NormalizeIdList(string? values, List<string> warnings) =>
         string.IsNullOrWhiteSpace(values)
             ? []
             : values
@@ -704,15 +696,15 @@ public class MemoryApplicationService
             .ToList();
 
     private IReadOnlyList<MemorySearchResult> RankSemanticResults(
-        IReadOnlyList<MemoryRecord> records,
+        List<MemoryRecord> records,
         string? query,
         HashSet<string> queryTokens) =>
         _semanticEmbeddings?.TryRank(records, query, queryTokens, out var embeddingResults) == true
             ? embeddingResults
             : RankTokenSemanticResults(records, query, queryTokens);
 
-    private static IReadOnlyList<MemorySearchResult> RankTokenSemanticResults(
-        IReadOnlyList<MemoryRecord> records,
+    private static List<MemorySearchResult> RankTokenSemanticResults(
+        List<MemoryRecord> records,
         string? query,
         HashSet<string> queryTokens) =>
         records
@@ -724,8 +716,8 @@ public class MemoryApplicationService
             .ThenBy(result => result.Id, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-    private static IReadOnlyList<MemorySearchResult> RankLexicalResults(
-        IReadOnlyList<MemoryRecord> records,
+    private static List<MemorySearchResult> RankLexicalResults(
+        List<MemoryRecord> records,
         string? query,
         HashSet<string> queryTokens) =>
         records
@@ -976,6 +968,12 @@ public class MemoryApplicationService
         tokenStream.End();
         return tokens;
     }
+
+    [GeneratedRegex("^[A-Za-z0-9_-]+$")]
+    private static partial Regex SafeIdRegex();
+
+    [GeneratedRegex("[A-Za-z0-9]+")]
+    private static partial Regex SearchTokenRegex();
 
     private static string NormalizeSearchToken(string value)
     {

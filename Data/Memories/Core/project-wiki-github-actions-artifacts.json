@@ -1,0 +1,39 @@
+{
+  "Id": "project-wiki-github-actions-artifacts",
+  "Title": "GitHub Actions Coverage and Docs Artifacts",
+  "Content": "MemorySmith has two GitHub Actions workflows for CI and published documentation artifacts. .github/workflows/ci.yml restores, builds, and tests the solution on ubuntu-latest with .NET 10, collects XPlat Code Coverage in Cobertura format through coverlet.collector, generates an HTML/Cobertura/Markdown coverage report with dotnet-reportgenerator-globaltool, appends the Markdown summary to the GitHub step summary, and uploads cobertura-coverage plus coverage-html-report artifacts. The equivalent local coverage command was validated on 2026-05-17 and produced artifacts/TestResults/**/coverage.cobertura.xml with 146 passing tests. .github/workflows/docs-pages.yml mirrors the TMXLang-style Doxygen Pages workflow: install doxygen and graphviz, run doxygen docs/Doxyfile, upload doxygen-wiki-html, upload the Pages artifact from docs/output/html, and deploy GitHub Pages. docs/Doxyfile uses README.md as the main page and includes MemorySmith.Core/Docs, MemorySmith.App, MemorySmith.Core, MemorySmith.Storage, and Schemas with source browsing, tree view, and Graphviz diagrams enabled. Local Doxygen generation requires doxygen and graphviz on PATH; the GitHub workflow installs them before generation.",
+  "Status": 2,
+  "Confidence": 0.9,
+  "Tags": [
+    "project-wiki",
+    "github-actions",
+    "ci",
+    "coverage",
+    "cobertura",
+    "doxygen",
+    "docs",
+    "current-state"
+  ],
+  "References": [
+    "project-wiki-validation-command",
+    "project-wiki-test-architecture",
+    "project-wiki-active-architecture"
+  ],
+  "Conflicts": [],
+  "SourceLinks": [
+    {
+      "Label": "CI workflow",
+      "Uri": "%MemorySmithRepo%.github/workflows/ci.yml"
+    },
+    {
+      "Label": "Doxygen Pages workflow",
+      "Uri": "%MemorySmithRepo%.github/workflows/docs-pages.yml"
+    },
+    {
+      "Label": "Doxygen configuration",
+      "Uri": "%MemorySmithRepo%docs/Doxyfile"
+    }
+  ],
+  "UsageCount": 0,
+  "LastUpdated": "2026-05-17T17:00:00Z"
+}

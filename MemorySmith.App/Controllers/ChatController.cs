@@ -9,7 +9,7 @@ namespace MemorySmith.App.Controllers;
 public class ChatController : ControllerBase
 {
     private readonly IChatAgent _chat;
-    private readonly IReadOnlyList<IChatProvider> _providers;
+    private readonly List<IChatProvider> _providers;
     private readonly IOptionsMonitor<MemorySmithOptions> _options;
 
     public ChatController(IChatAgent chat, IEnumerable<IChatProvider> providers, IOptionsMonitor<MemorySmithOptions> options)
@@ -51,7 +51,10 @@ public class ChatController : ControllerBase
         }
         catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or TaskCanceledException)
         {
-            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { error = ex.Message });
+            var chatOptions = _options.CurrentValue.Chat;
+            var provider = string.IsNullOrWhiteSpace(request.Provider) ? chatOptions.Provider : request.Provider;
+            var model = string.IsNullOrWhiteSpace(request.Model) ? DefaultModelForProvider(provider, chatOptions) : request.Model;
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { error = ChatErrorMessages.Format(ex, provider, model) });
         }
     }
 
@@ -60,7 +63,7 @@ public class ChatController : ControllerBase
         var selected = _providers.FirstOrDefault(candidate =>
             string.Equals(candidate.Name, providerName, StringComparison.OrdinalIgnoreCase) ||
             (string.Equals(candidate.Name, "GitHub", StringComparison.OrdinalIgnoreCase) && string.Equals(providerName, "Copilot", StringComparison.OrdinalIgnoreCase)));
-        return selected ?? _providers.First();
+        return selected ?? _providers[0];
     }
 
     private static string DefaultModelForProvider(string providerName, ChatOptions options) =>

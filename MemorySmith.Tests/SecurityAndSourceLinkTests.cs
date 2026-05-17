@@ -174,7 +174,7 @@ public class SecurityAndSourceLinkTests
         {
             Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
             Assert.That(content, Does.Contain("truncated"));
-            Assert.That(content!.Length, Is.LessThan(120));
+            Assert.That(content!, Has.Length.LessThan(120));
         });
     }
 

@@ -1,6 +1,6 @@
 {
   "Id": "project-wiki-chat-image-attachments",
-  "Content": "Chat attachments support text files, browser file images, and pasted clipboard images. memorysmith.js registers the chat textarea and document paste handlers, reads clipboardData.files, permissive clipboardData.items file entries, and navigator.clipboard.read image blobs when available, then calls AttachClipboardImage with base64 data. Chat.razor enforces ChatOptions max attachment bytes/characters, saves images through ChatAttachmentFiles.SaveTempAsync under the trusted MemorySmith/ChatAttachments temp folder, stores LocalPath for provider readback, and keeps Base64Data only where needed for browser previews. Queued attachments render as chips with thumbnails when base64 is available and a dedicated X button to remove them. Ollama receives image payloads on the last user message; GitHub receives blob image attachments through the SDK.",
+  "Content": "Chat attachments support text files, browser file images, and pasted clipboard images. memorysmith.js registers the chat textarea and document paste handlers in capture phase so Ctrl+V is caught before other handlers consume the event. The paste path reads clipboardData.files, permissive clipboardData.items file entries, text/html and text/plain image references, data:image URLs, fetchable copied image URLs, blob/data Clipboard API image payloads from navigator.clipboard.read, and then calls AttachClipboardImage with base64 data. This covers copied screenshots, copied browser images that arrive as HTML img tags or data URLs, and normal file/image clipboard entries. Chat.razor enforces ChatOptions max attachment bytes/characters, saves images through ChatAttachmentFiles.SaveTempAsync under the trusted MemorySmith/ChatAttachments temp folder, stores LocalPath for provider readback, and keeps Base64Data only where needed for browser previews. Queued attachments render as chips with thumbnails when base64 is available and a dedicated X button to remove them. Ollama receives image payloads on the last user message; GitHub receives blob image attachments through the SDK.",
   "Title": "Chat Image Attachment Pipeline",
   "Status": 2,
   "Confidence": 0.94,
@@ -46,5 +46,5 @@
     }
   ],
   "UsageCount": 0,
-  "LastUpdated": "2026-05-17T02:35:00.0000000Z"
+  "LastUpdated": "2026-05-17T15:00:00Z"
 }

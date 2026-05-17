@@ -24,4 +24,37 @@ jobs:
         run: dotnet build --no-restore --configuration Release
 
       - name: Test
-        run: dotnet test --no-build --configuration Release --verbosity normal
+        run: >
+          dotnet test MemorySmith.slnx
+          --no-build
+          --configuration Release
+          --verbosity normal
+          --collect:"XPlat Code Coverage"
+          --results-directory artifacts/TestResults
+          --
+          DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura
+
+      - name: Generate coverage report
+        run: |
+          dotnet tool install --global dotnet-reportgenerator-globaltool
+          reportgenerator \
+            -reports:"artifacts/TestResults/**/coverage.cobertura.xml" \
+            -targetdir:"artifacts/coverage-report" \
+            -reporttypes:"HtmlInline_AzurePipelines;Cobertura;MarkdownSummaryGithub"
+          cat artifacts/coverage-report/SummaryGithub.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Cobertura coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: cobertura-coverage
+          path: |
+            artifacts/TestResults/**/coverage.cobertura.xml
+            artifacts/coverage-report/Cobertura.xml
+          if-no-files-found: error
+
+      - name: Upload coverage HTML report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html-report
+          path: artifacts/coverage-report
+          if-no-files-found: error

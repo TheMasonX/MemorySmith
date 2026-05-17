@@ -15,7 +15,8 @@ public class SearchBenchmarks
 
     private readonly HybridMemorySearchQuery _hybridQuery = new("hybrid search lucene rrf fusion", Tags: "project-wiki", Limit: 10);
     private readonly SemanticMemorySearchQuery _semanticQuery = new("model context protocol tool calling", Tags: "project-wiki", Limit: 10);
-    private readonly MemorySearchQuery _keywordQuery = new("Data Folder", Tags: "project-wiki", Limit: 10);
+    private readonly MemorySearchQuery _lexicalQuery = new("Data Folder", Tags: "project-wiki", Limit: 10);
+    private readonly HybridMemorySearchQuery _chatContextQuery = new("chat stop generating model used github haiku history", Tags: "project-wiki", Limit: 10);
     private readonly MemoryContextPackQuery _contextPackQuery = new("mcp context pack format json markdown", Tags: "project-wiki", Limit: 3, ReferenceDepth: 1, MaxRecords: 12);
 
     [GlobalSetup]
@@ -25,9 +26,9 @@ public class SearchBenchmarks
     }
 
     [Benchmark]
-    public async Task<int> KeywordSearch()
+    public async Task<int> LexicalSearch()
     {
-        var results = await _service.SearchAsync(_keywordQuery, CancellationToken.None);
+        var results = await _service.SearchAsync(_lexicalQuery, CancellationToken.None);
         return results.Count;
     }
 
@@ -46,6 +47,13 @@ public class SearchBenchmarks
     }
 
     [Benchmark]
+    public async Task<int> ChatContextSearch()
+    {
+        var results = await _service.HybridSearchAsync(_chatContextQuery, CancellationToken.None);
+        return results.Count;
+    }
+
+    [Benchmark]
     public async Task<int> ContextPack()
     {
         var pack = await _service.BuildContextPackAsync(_contextPackQuery, CancellationToken.None);
@@ -57,9 +65,10 @@ public class SearchBenchmarks
         var benchmarks = new SearchBenchmarks();
         benchmarks.Setup();
 
-        Console.WriteLine($"KeywordSearch: {await benchmarks.KeywordSearch()} results");
+        Console.WriteLine($"LexicalSearch: {await benchmarks.LexicalSearch()} results");
         Console.WriteLine($"SemanticSearch: {await benchmarks.SemanticSearch()} results");
         Console.WriteLine($"HybridSearch: {await benchmarks.HybridSearch()} results");
+        Console.WriteLine($"ChatContextSearch: {await benchmarks.ChatContextSearch()} results");
         Console.WriteLine($"ContextPack: {await benchmarks.ContextPack()} records");
     }
 }

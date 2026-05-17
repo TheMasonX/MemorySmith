@@ -1,6 +1,6 @@
 {
   "Id": "project-wiki-benchmarkdotnet-suite",
-  "Content": "MemorySmith.Benchmarks is an active solution project for BenchmarkDotNet coverage of keyword, semantic, hybrid, and context-pack workloads. Use dotnet run -c Release --project MemorySmith.Benchmarks -- --smoke for fast construction/runtime validation and dotnet run -c Release --project MemorySmith.Benchmarks -- --filter *SearchBenchmarks* for the benchmark suite.",
+  "Content": "MemorySmith.Benchmarks is an active solution project for BenchmarkDotNet coverage of lexical, semantic, hybrid, chat-context hybrid, and context-pack workloads. The chat-context workload queries terms such as stop generating, model used, GitHub, Haiku, history, context usage, Ctrl+V paste, and intercepted MCP/wiki tool calls so benchmark smoke catches whether the live project wiki stays useful for chat/search dogfooding. Use dotnet run -c Release --project MemorySmith.Benchmarks -- --smoke for fast construction/runtime validation and dotnet run -c Release --project MemorySmith.Benchmarks -- --filter *SearchBenchmarks* for the benchmark suite.",
   "Title": "BenchmarkDotNet search benchmark suite",
   "Status": 2,
   "Confidence": 0.93,
@@ -40,5 +40,5 @@
     }
   ],
   "UsageCount": 0,
-  "LastUpdated": "2026-05-15T05:53:55.5741348Z"
+  "LastUpdated": "2026-05-17T17:00:00Z"
 }

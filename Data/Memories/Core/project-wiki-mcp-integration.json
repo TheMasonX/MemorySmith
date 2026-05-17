@@ -1,7 +1,7 @@
 {
   "Id": "project-wiki-mcp-integration",
   "Title": "MCP Integration Friction",
-  "Content": "VS Code MCP configuration pointed at MemorySmith before the app exposed an MCP endpoint, which caused /mcp probes to return 404 or 405. MemorySmith should expose a small HTTP MCP-compatible JSON-RPC endpoint with tools for keyword search, semantic search, and record lookup. The workspace .vscode/mcp.json should point directly at http://localhost:5089/mcp.",
+  "Content": "VS Code MCP configuration pointed at MemorySmith before the app exposed an MCP endpoint, which caused /mcp probes to return 404 or 405. MemorySmith exposes a small HTTP MCP-compatible JSON-RPC endpoint with tools for lexical search, semantic search, hybrid search, context packs, record lookup, source bundles, and source-link back-mapping. The workspace .vscode/mcp.json should point directly at http://localhost:5089/mcp.",
   "Status": 2,
   "Confidence": 0.96,
   "Tags": [
@@ -17,7 +17,7 @@
   ],
   "Conflicts": [],
   "UsageCount": 2,
-  "LastUpdated": "2026-05-12T00:00:00Z",
+  "LastUpdated": "2026-05-17T12:00:00Z",
   "SourceLinks": [
     {
       "Label": "McpController.cs",

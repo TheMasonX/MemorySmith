@@ -1,7 +1,7 @@
 {
   "Id": "project-wiki-semantic-ui-current",
   "Title": "Memory Workbench UI Current State",
-  "Content": "The /memories page is now a compact VS Code-inspired dark workbench for scanning and editing the project wiki. It keeps a dense command bar, scrollable results pane, persistent detail pane, Keyword/Semantic/Hybrid mode switch, semantic and hybrid snippets, scores, match reasons, tag/reference chips, and copy-to-clipboard actions for raw content or agent context. The layout intentionally uses a fixed app shell with internal pane scrolling so agents can see search controls, results, and selected memory content without long document scrolling. Semantic mode still uses the local token, tag, title, reference, and alias scoring baseline; Hybrid mode fuses Lucene.NET lexical ranking with that semantic signal using RRF. The current hybrid path does not add embeddings or vector storage yet.",
+  "Content": "The /memories page is now a compact VS Code-inspired dark workbench for scanning and editing the project wiki. It keeps a dense command bar, scrollable results pane, persistent detail pane, Lexical/Semantic/Hybrid mode switch, semantic and hybrid snippets, scores, match reasons, tag/reference chips, and copy-to-clipboard actions for raw content or agent context. The layout intentionally uses a fixed app shell with internal pane scrolling so agents can see search controls, results, and selected memory content without long document scrolling. Lexical mode is the default and uses Lucene.NET StandardAnalyzer tokenization. Semantic mode uses optional ONNX embeddings when configured and falls back to local token, tag, title, reference, and alias scoring. Hybrid mode fuses Lucene.NET lexical ranking with the active semantic signal using RRF.",
   "Status": 2,
   "Confidence": 0.91,
   "Tags": [
@@ -24,7 +24,7 @@
   ],
   "Conflicts": [],
   "UsageCount": 1,
-  "LastUpdated": "2026-05-12T00:00:00Z",
+  "LastUpdated": "2026-05-17T12:00:00Z",
   "SourceLinks": [
     {
       "Label": "MemoryViewer.razor",

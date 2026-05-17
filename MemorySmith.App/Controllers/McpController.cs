@@ -17,6 +17,16 @@ public class McpController : ControllerBase
     };
 
     private static readonly JsonSerializerOptions CompactJsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly string[] ToolNames =
+    {
+        "memorysmith_search",
+        "memorysmith_semantic_search",
+        "memorysmith_hybrid_search",
+        "memorysmith_context_pack",
+        "memorysmith_get",
+        "memorysmith_source_bundle",
+        "memorysmith_find_by_source"
+    };
 
     private readonly MemoryApplicationService _memories;
     private readonly VarResolver _vars;
@@ -37,7 +47,7 @@ public class McpController : ControllerBase
             Name = "MemorySmithWiki",
             Endpoint = "/mcp",
             Transport = "HTTP JSON-RPC",
-            Tools = new[] { "memorysmith_search", "memorysmith_semantic_search", "memorysmith_hybrid_search", "memorysmith_context_pack", "memorysmith_get", "memorysmith_source_bundle", "memorysmith_find_by_source" }
+            Tools = ToolNames
         });
     }
 
@@ -101,7 +111,7 @@ public class McpController : ControllerBase
 
         return toolName switch
         {
-            "memorysmith_search" => ToolText(FormatKeywordResults(await _memories.SearchAsync(ReadKeywordQuery(argumentsElement), cancellationToken))),
+            "memorysmith_search" => ToolText(FormatLexicalResults(await _memories.SearchAsync(ReadLexicalQuery(argumentsElement), cancellationToken))),
             "memorysmith_semantic_search" => ToolText(FormatSemanticResults(await _memories.SemanticSearchAsync(ReadSemanticQuery(argumentsElement), cancellationToken))),
             "memorysmith_hybrid_search" => ToolText(FormatHybridResults(await _memories.HybridSearchAsync(ReadHybridQuery(argumentsElement), cancellationToken))),
             "memorysmith_context_pack" => ToolText(FormatContextPack(
@@ -234,7 +244,7 @@ public class McpController : ControllerBase
             : JsonSerializer.Serialize(record, ToolJsonOptions);
     }
 
-    private static MemorySearchQuery ReadKeywordQuery(JsonElement argumentsElement) => new(
+    private static MemorySearchQuery ReadLexicalQuery(JsonElement argumentsElement) => new(
         Query: GetString(argumentsElement, "query"),
         Status: GetStatus(argumentsElement),
         Tags: GetString(argumentsElement, "tags"),
@@ -263,11 +273,11 @@ public class McpController : ControllerBase
         Ids: GetString(argumentsElement, "ids"),
         IncludeBacklinks: GetBool(argumentsElement, "includeBacklinks", false));
 
-    private static string FormatKeywordResults(IReadOnlyList<MemoryRecord> records)
+    private static string FormatLexicalResults(IReadOnlyList<MemoryRecord> records)
     {
         if (records.Count == 0)
         {
-            return "No keyword search results.";
+            return "No lexical search results.";
         }
 
         return string.Join(Environment.NewLine + Environment.NewLine, records.Select(record =>
@@ -386,7 +396,7 @@ public class McpController : ControllerBase
         {
             BuildTool(
                 "memorysmith_search",
-                "Search MemorySmith wiki records with exact keyword and tag filtering.",
+                "Search MemorySmith wiki records with Lucene-style lexical ranking plus optional tag and status filters.",
                 BuildSearchSchema()),
             BuildTool(
                 "memorysmith_semantic_search",

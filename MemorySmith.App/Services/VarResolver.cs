@@ -24,10 +24,8 @@ public sealed record SourceOpenResult(bool Opened, string ResolvedUri, string Me
 /// Resolves <c>%VariableName%</c> tokens in source link URIs using the wiki variable store.
 /// Variables are defined per-wiki in <c>Data/vars.json</c> and are editable via the /variables page.
 /// </summary>
-public class VarResolver
+public partial class VarResolver
 {
-    private static readonly Regex TokenPattern = new(@"%(\w+)%", RegexOptions.Compiled);
-
     private readonly IVarStore _varStore;
     private readonly MemorySmithOptions _options;
 
@@ -47,7 +45,7 @@ public class VarResolver
             return raw;
 
         var vars = _varStore.Load();
-        return TokenPattern.Replace(raw, match =>
+        return TokenPattern().Replace(raw, match =>
             vars.TryGetValue(match.Groups[1].Value, out var val) ? val : match.Value);
     }
 
@@ -184,7 +182,7 @@ public class VarResolver
         return roots.Any(root => IsUnderRoot(fullPath, root));
     }
 
-    private IReadOnlyList<string> GetAllowedSourceRoots()
+    private List<string> GetAllowedSourceRoots()
     {
         var vars = _varStore.Load();
         var roots = new List<string>();
@@ -229,4 +227,7 @@ public class VarResolver
         var normalizedPath = fullPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
         return normalizedPath.StartsWith(normalizedRoot, StringComparison.OrdinalIgnoreCase);
     }
+
+    [GeneratedRegex(@"%(\w+)%")]
+    private static partial Regex TokenPattern();
 }

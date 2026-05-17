@@ -98,7 +98,13 @@
                     <article class="chat-message @turn.Role">
                         <div class="chat-message-topline">
                             <span class="chat-message-role">@turn.Role</span>
-                            <span>@turn.CreatedUtc.ToLocalTime().ToString("HH:mm")@if (turn.DurationMilliseconds is not null) { <span> · @FormatDuration(TimeSpan.FromMilliseconds(turn.DurationMilliseconds.Value))</span> }</span>
+                            <span class="chat-message-meta">
+                                @if (!string.IsNullOrWhiteSpace(turn.Model))
+                                {
+                                    <span class="chat-message-model">@FormatTurnModel(turn)</span>
+                                }
+                                <span>@turn.CreatedUtc.ToLocalTime().ToString("HH:mm")@if (turn.DurationMilliseconds is not null) { <span> · @FormatDuration(TimeSpan.FromMilliseconds(turn.DurationMilliseconds.Value))</span> }</span>
+                            </span>
                         </div>
                         @if (!string.IsNullOrWhiteSpace(turn.Thinking))
                         {
@@ -163,9 +169,13 @@
                       placeholder="Message"
                       value="@_draft"
                       @oninput="OnDraftInput"></textarea>
-            <div class="chat-composer-actions">
-                <MudCheckBox T="bool" Value="_sendOnEnter" ValueChanged="SetSendOnEnterAsync" Label="Send on Enter" Size="Size.Small" />
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Send" Disabled="@_isSending" OnClick="SendAsync">Send</MudButton>
+            <div class="chat-composer-side">
+                <div class="chat-usage-meter" title="@FormatUsageTitle(ActiveUsage)" aria-live="polite">@FormatUsageMeter(ActiveUsage)</div>
+                <div class="chat-composer-actions">
+                    <MudCheckBox T="bool" Value="_sendOnEnter" ValueChanged="SetSendOnEnterAsync" Label="Send on Enter" Size="Size.Small" />
+                    <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.Stop" Disabled="@(!_isSending)" OnClick="StopGeneratingAsync">Stop</MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Send" Disabled="@_isSending" OnClick="SendAsync">Send</MudButton>
+                </div>
             </div>
         </div>
     </section>
@@ -198,9 +208,11 @@
     private bool _scrollPending;
     private bool _storageWarningShown;
     private CancellationTokenSource? _responseTimerCts;
+    private CancellationTokenSource? _sendCts;
     private DateTimeOffset? _responseStartedUtc;
     private TimeSpan _responseElapsed = TimeSpan.Zero;
     private int _streamedCharacters;
+    private ChatUsageSummary? _currentUsage;
 
     private ChatSessionState ActiveSession =>
         _sessions.FirstOrDefault(session => session.Id == _activeSessionId) ?? _sessions.First();
@@ -208,6 +220,10 @@
     private string HistorySidebarClass => _historyOpen ? "chat-history-pane" : "chat-history-pane is-collapsed";
     private string ChatWorkbenchClass => _historyOpen ? "chat-workbench" : "chat-workbench is-history-collapsed";
     private bool HasPendingDraft => !string.IsNullOrWhiteSpace(_draft) || _attachments.Count > 0;
+    private ChatUsageSummary? ActiveUsage =>
+        _currentUsage
+        ?? (_sessions.Count == 0 ? null : ActiveSession.Turns.LastOrDefault(turn => turn.Usage is not null)?.Usage)
+        ?? SelectedModelUsage();
 
     protected override void OnInitialized()
     {
@@ -289,6 +305,7 @@
                 ?? _sessions.OrderByDescending(session => session.UpdatedUtc).First();
             _activeSessionId = active.Id;
             RestoreSessionDraft(active);
+            _currentUsage = null;
             _agentStatus = "Ready";
             _scrollPending = true;
         }
@@ -324,6 +341,7 @@
         _sessions.Insert(0, session);
         _activeSessionId = session.Id;
         RestoreSessionDraft(session);
+        _currentUsage = null;
         _agentStatus = "Ready";
         _scrollPending = true;
     }
@@ -335,6 +353,7 @@
             PersistActiveDraft();
             _activeSessionId = id;
             RestoreSessionDraft(session);
+            _currentUsage = null;
             _scrollPending = true;
             await SaveSessionsAsync();
             await SavePreferencesAsync();
@@ -365,6 +384,7 @@
             var next = _sessions.OrderByDescending(item => item.UpdatedUtc).First();
             _activeSessionId = next.Id;
             RestoreSessionDraft(next);
+            _currentUsage = null;
         }
 
         _agentStatus = "Chat deleted";
@@ -383,6 +403,7 @@
     {
         _selectedProvider = provider;
         _selectedModel = DefaultModelForProvider(provider);
+        _currentUsage = null;
         _agentStatus = $"Using {_selectedProvider} / {_selectedModel}";
         await SavePreferencesAsync();
         await RefreshModelsAsync(silent: true);
@@ -391,6 +412,7 @@
     private async Task OnModelChanged(string model)
     {
         _selectedModel = model;
+        _currentUsage = null;
         _agentStatus = $"Using {_selectedProvider} / {_selectedModel}";
         await SavePreferencesAsync();
     }
@@ -487,22 +509,36 @@
         _responseElapsed = TimeSpan.Zero;
         _streamedCharacters = 0;
         _agentStatus = _mode == MemoryChatMode.Agent ? "Agent thinking" : "Waiting for first token";
-        var pendingTurn = new ChatTurnState("assistant pending", "Waiting for first token...", DateTimeOffset.UtcNow, null, [], [], [], []);
+        _currentUsage = null;
+        var requestProvider = _selectedProvider;
+        var requestModel = _selectedModel;
+        var pendingTurn = new ChatTurnState("assistant pending", "Waiting for first token...", DateTimeOffset.UtcNow, null, [], [], [], [])
+        {
+            ProviderName = requestProvider,
+            Model = requestModel
+        };
         session.Turns.Add(pendingTurn);
         _scrollPending = true;
         StartResponseTimer();
         await SaveSessionsAsync();
         var lastStreamPersistUtc = DateTimeOffset.UtcNow;
+        var sendCts = new CancellationTokenSource();
+        _sendCts = sendCts;
 
         try
         {
             MemoryChatResponse? finalResponse = null;
-            await foreach (var update in ChatAgent.StreamAsync(new MemoryChatRequest(message, _mode, historyForRequest, _selectedModel, attachments, _selectedProvider), CancellationToken.None))
+            await foreach (var update in ChatAgent.StreamAsync(new MemoryChatRequest(message, _mode, historyForRequest, requestModel, attachments, requestProvider), sendCts.Token))
             {
                 var turnChanged = false;
                 if (!string.IsNullOrEmpty(update.Status))
                 {
                     _agentStatus = update.Status;
+                }
+                if (update.Usage is not null)
+                {
+                    _currentUsage = update.Usage;
+                    pendingTurn.Usage = update.Usage;
                 }
                 if (!string.IsNullOrEmpty(update.ContentDelta))
                 {
@@ -513,16 +549,20 @@
 
                     pendingTurn.Role = "assistant";
                     pendingTurn.Content += update.ContentDelta;
+                    pendingTurn.ProviderName = requestProvider;
+                    pendingTurn.Model = requestModel;
                     pendingTurn.ThinkingActive = false;
                     _streamedCharacters = pendingTurn.Content.Length;
-                    _agentStatus = $"Streaming {_selectedProvider} / {_selectedModel}";
+                    _agentStatus = $"Streaming {requestProvider} / {requestModel}";
                     turnChanged = true;
                 }
                 if (!string.IsNullOrEmpty(update.ThinkingDelta))
                 {
                     pendingTurn.Thinking = (pendingTurn.Thinking ?? string.Empty) + update.ThinkingDelta;
+                    pendingTurn.ProviderName = requestProvider;
+                    pendingTurn.Model = requestModel;
                     pendingTurn.ThinkingActive = true;
-                    _agentStatus = $"Thinking {_selectedProvider} / {_selectedModel}";
+                    _agentStatus = $"Thinking {requestProvider} / {requestModel}";
                     turnChanged = true;
                 }
                 if (update.Response is not null)
@@ -546,28 +586,61 @@
             pendingTurn.Content = response.Reply;
             pendingTurn.Thinking = response.Thinking;
             pendingTurn.ThinkingActive = false;
+            pendingTurn.ProviderName = response.ProviderName;
+            pendingTurn.Model = response.Model;
             pendingTurn.Context = response.Context.ToList();
             pendingTurn.WrittenMemories = response.WrittenMemories.ToList();
             pendingTurn.WrittenPages = response.WrittenPages.ToList();
+            pendingTurn.Usage = response.Usage;
             pendingTurn.DurationMilliseconds = (long)Math.Max(0, (DateTimeOffset.UtcNow - (_responseStartedUtc ?? DateTimeOffset.UtcNow)).TotalMilliseconds);
             session.History.Add(new ChatMessage("assistant", response.Reply));
             session.UpdatedUtc = DateTimeOffset.UtcNow;
             _agentStatus = $"{response.ProviderName} / {response.Model}: {response.Context.Count} resource(s), {response.WrittenMemories.Count + response.WrittenPages.Count} write(s)";
             _selectedProvider = response.ProviderName;
             _selectedModel = response.Model;
+            _currentUsage = response.Usage;
+        }
+        catch (OperationCanceledException) when (sendCts.IsCancellationRequested)
+        {
+            pendingTurn.Role = "assistant";
+            pendingTurn.Content = string.IsNullOrWhiteSpace(pendingTurn.Content) || string.Equals(pendingTurn.Content, "Waiting for first token...", StringComparison.Ordinal)
+                ? "Generation stopped before the first token."
+                : pendingTurn.Content.TrimEnd();
+            pendingTurn.ProviderName = requestProvider;
+            pendingTurn.Model = requestModel;
+            pendingTurn.Usage ??= _currentUsage;
+            pendingTurn.ThinkingActive = false;
+            pendingTurn.DurationMilliseconds = (long)Math.Max(0, (DateTimeOffset.UtcNow - (_responseStartedUtc ?? DateTimeOffset.UtcNow)).TotalMilliseconds);
+            if (!string.IsNullOrWhiteSpace(pendingTurn.Content) && !pendingTurn.Content.StartsWith("Generation stopped", StringComparison.Ordinal))
+            {
+                session.History.Add(new ChatMessage("assistant", pendingTurn.Content));
+            }
+
+            session.UpdatedUtc = DateTimeOffset.UtcNow;
+            _agentStatus = "Generation stopped";
         }
         catch (Exception ex)
         {
+            var errorMessage = ChatErrorMessages.Format(ex, requestProvider, requestModel);
             session.Turns.Remove(pendingTurn);
-            Snackbar.Add(ex.Message, Severity.Error);
-            session.Turns.Add(new ChatTurnState("assistant", ex.Message, DateTimeOffset.UtcNow, null, [], [], [], [])
+            Snackbar.Add(errorMessage, Severity.Error);
+            session.Turns.Add(new ChatTurnState("assistant", errorMessage, DateTimeOffset.UtcNow, null, [], [], [], [])
             {
+                ProviderName = requestProvider,
+                Model = requestModel,
+                Usage = _currentUsage,
                 DurationMilliseconds = (long)Math.Max(0, (DateTimeOffset.UtcNow - (_responseStartedUtc ?? DateTimeOffset.UtcNow)).TotalMilliseconds)
             });
             _agentStatus = "Request failed";
         }
         finally
         {
+            if (ReferenceEquals(_sendCts, sendCts))
+            {
+                _sendCts = null;
+            }
+
+            sendCts.Dispose();
             StopResponseTimer();
             _isSending = false;
             _scrollPending = true;
@@ -575,6 +648,18 @@
             await SaveSessionsAsync();
             await SavePreferencesAsync();
         }
+    }
+
+    private Task StopGeneratingAsync()
+    {
+        if (!_isSending || _sendCts is null || _sendCts.IsCancellationRequested)
+        {
+            return Task.CompletedTask;
+        }
+
+        _agentStatus = "Stopping generation";
+        _sendCts.Cancel();
+        return Task.CompletedTask;
     }
 
     private async Task OnFilesSelectedAsync(InputFileChangeEventArgs args)
@@ -777,6 +862,80 @@
     private static string ThinkingClass(ChatTurnState turn) =>
         turn.ThinkingActive ? "chat-thinking is-active" : "chat-thinking";
 
+    private static string FormatTurnModel(ChatTurnState turn) =>
+        string.IsNullOrWhiteSpace(turn.ProviderName) ? turn.Model ?? string.Empty : $"{turn.ProviderName} / {turn.Model}";
+
+    private ChatUsageSummary? SelectedModelUsage()
+    {
+        var model = _models.FirstOrDefault(item => string.Equals(item.Name, _selectedModel, StringComparison.OrdinalIgnoreCase));
+        if (model is null || (model.ContextWindowTokens is null && string.IsNullOrWhiteSpace(model.RateLimit)))
+        {
+            return null;
+        }
+
+        return new ChatUsageSummary(0, 0, ContextWindowTokens: model.ContextWindowTokens, RateLimit: model.RateLimit);
+    }
+
+    private static string FormatUsageMeter(ChatUsageSummary? usage)
+    {
+        if (usage is null)
+        {
+            return "Context: pending";
+        }
+
+        var contextTokens = usage.ContextTokens ?? usage.InputTokens;
+        var estimated = usage.IsEstimate && contextTokens > 0 ? "~" : string.Empty;
+        var text = contextTokens > 0 ? $"Context {estimated}{FormatTokenCount(contextTokens)}" : "Context";
+        if (usage.ContextWindowTokens is > 0)
+        {
+            text += $" / {FormatTokenCount(usage.ContextWindowTokens.Value)}";
+            if (contextTokens > 0)
+            {
+                text += $" ({(double)contextTokens / usage.ContextWindowTokens.Value:P1})";
+            }
+        }
+
+        if (usage.OutputTokens > 0)
+        {
+            text += $" · out {FormatTokenCount(usage.OutputTokens)}";
+        }
+
+        if (!string.IsNullOrWhiteSpace(usage.RateLimit))
+        {
+            text += $" · {usage.RateLimit}";
+        }
+
+        return text;
+    }
+
+    private static string FormatUsageTitle(ChatUsageSummary? usage)
+    {
+        if (usage is null)
+        {
+            return "Context usage is estimated after the next request starts.";
+        }
+
+        var contextTokens = usage.ContextTokens ?? usage.InputTokens;
+        var source = usage.IsEstimate ? "Estimated" : "Provider-reported";
+        var text = $"{source} context tokens: {contextTokens:N0}; input tokens: {usage.InputTokens:N0}; output tokens: {usage.OutputTokens:N0}";
+        if (usage.ContextWindowTokens is > 0)
+        {
+            text += $"; context window: {usage.ContextWindowTokens.Value:N0}";
+        }
+
+        if (!string.IsNullOrWhiteSpace(usage.RateLimit))
+        {
+            text += $"; rate/quota: {usage.RateLimit}";
+        }
+
+        return text;
+    }
+
+    private static string FormatTokenCount(int value) =>
+        value >= 1_000_000 ? $"{value / 1_000_000.0:0.#}M" :
+        value >= 1_000 ? $"{value / 1_000.0:0.#}K" :
+        value.ToString();
+
     private static string BuildSessionTitle(ChatSessionState session, string message)
     {
         if (!string.Equals(session.Title, "New chat", StringComparison.Ordinal))
@@ -817,7 +976,7 @@
     private static string FormatModelLabel(ChatModelSummary model)
     {
         var preferred = model.IsPreferred ? " *" : string.Empty;
-        var multiplier = model.ChatMultiplier is null ? string.Empty : $" x{model.ChatMultiplier:0.##}";
+        var multiplier = model.ChatMultiplier is null ? string.Empty : model.ChatMultiplier <= 0 ? " free" : $" x{model.ChatMultiplier:0.##}";
         return $"{model.Name}{preferred}{multiplier}";
     }
 
@@ -901,6 +1060,9 @@
 
     public async ValueTask DisposeAsync()
     {
+        _sendCts?.Cancel();
+        _sendCts?.Dispose();
+        _sendCts = null;
         StopResponseTimer();
         if (_composerRegistered)
         {
@@ -970,6 +1132,9 @@
         public List<string> WrittenMemories { get; set; } = [];
         public List<string> WrittenPages { get; set; } = [];
         public List<ChatAttachment> Attachments { get; set; } = [];
+        public string? ProviderName { get; set; }
+        public string? Model { get; set; }
+        public ChatUsageSummary? Usage { get; set; }
         public long? DurationMilliseconds { get; set; }
         public bool ThinkingActive { get; set; }
     }

@@ -57,7 +57,7 @@ public class FileMemoryStoreTests
         for (int i = 0; i < 3; i++)
             _store.Save(new MemoryRecord { Id = $"r{i}", Content = $"Content {i}" });
         var all = _store.LoadAll().ToList();
-        Assert.That(all.Count, Is.EqualTo(3));
+        Assert.That(all, Has.Count.EqualTo(3));
     }
 
     [Test]

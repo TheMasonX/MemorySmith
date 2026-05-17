@@ -103,10 +103,10 @@ public sealed class SemanticEmbeddingSearchService
         return content.Length <= maxCharacters ? content : content[..Math.Max(1, maxCharacters)].TrimEnd();
     }
 
-    private static double Dot(IReadOnlyList<float> left, IReadOnlyList<float> right)
+    private static double Dot(float[] left, float[] right)
     {
         var sum = 0.0;
-        for (var index = 0; index < left.Count; index++)
+        for (var index = 0; index < left.Length; index++)
         {
             sum += left[index] * right[index];
         }
@@ -244,7 +244,7 @@ public sealed class OnnxTextEmbeddingProvider : ITextEmbeddingProvider, IDisposa
     private static string ResolvePath(string path) =>
         Path.GetFullPath(Environment.ExpandEnvironmentVariables(path));
 
-    private static IReadOnlyList<NamedOnnxValue> CreateInputs(InferenceSession session, TokenizedText tokenized)
+    private static List<NamedOnnxValue> CreateInputs(InferenceSession session, TokenizedText tokenized)
     {
         var inputs = new List<NamedOnnxValue>();
         foreach (var input in session.InputMetadata)

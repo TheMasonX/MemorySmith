@@ -112,7 +112,7 @@ public class OperationalDiagnosticsService
             _storageDiagnostics.GetSnapshot());
     }
 
-    private static IReadOnlyList<OperationalWarning> GetWarnings(MemorySmithOptions settings)
+    private static List<OperationalWarning> GetWarnings(MemorySmithOptions settings)
     {
         var warnings = new List<OperationalWarning>();
         if (settings.AllowRemoteApi && string.IsNullOrWhiteSpace(settings.ApiKey))
@@ -126,7 +126,7 @@ public class OperationalDiagnosticsService
         return warnings;
     }
 
-    private IReadOnlyList<string> GetConfiguredUrls()
+    private string[] GetConfiguredUrls()
     {
         var configured = _configuration["urls"] ?? _configuration["ASPNETCORE_URLS"];
         return string.IsNullOrWhiteSpace(configured)

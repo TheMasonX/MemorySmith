@@ -31,12 +31,12 @@ public class PaginationTests
             _store.Save(new MemoryRecord { Id = $"r{i:D2}", Content = $"Content {i}" });
 
         var all = _store.LoadAll().ToList();
-        Assert.That(all.Count, Is.EqualTo(25));
+        Assert.That(all, Has.Count.EqualTo(25));
 
         var page1 = all.Skip(0).Take(20).ToList();
         var page2 = all.Skip(20).Take(20).ToList();
-        Assert.That(page1.Count, Is.EqualTo(20));
-        Assert.That(page2.Count, Is.EqualTo(5));
+        Assert.That(page1, Has.Count.EqualTo(20));
+        Assert.That(page2, Has.Count.EqualTo(5));
     }
 
     [Test]
@@ -47,7 +47,7 @@ public class PaginationTests
         _store.Save(new MemoryRecord { Id = "c1", Status = MemoryStatus.Core });
 
         var working = _store.LoadAll().Where(r => r.Status == MemoryStatus.Working).ToList();
-        Assert.That(working.Count, Is.EqualTo(2));
+        Assert.That(working, Has.Count.EqualTo(2));
         Assert.That(working.All(r => r.Status == MemoryStatus.Working), Is.True);
     }
 
@@ -132,7 +132,7 @@ public class StatsTests
         };
 
         Assert.That(meta.Id, Is.EqualTo("meta-1"));
-        Assert.That(meta.Tags.Count, Is.EqualTo(2));
+        Assert.That(meta.Tags, Has.Count.EqualTo(2));
         Assert.That(meta.Confidence, Is.EqualTo(0.8));
     }
 }

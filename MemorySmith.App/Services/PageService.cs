@@ -34,13 +34,8 @@ public interface IPageService
     string RenderHtml(string markdown);
 }
 
-public sealed class FilePageService : IPageService
+public sealed partial class FilePageService : IPageService
 {
-    private static readonly Regex TokenPattern = new("[A-Za-z0-9]+", RegexOptions.Compiled);
-    private static readonly Regex InvalidSlugCharacters = new("[^a-z0-9/_-]+", RegexOptions.Compiled);
-    private static readonly Regex DuplicateSeparators = new("[-_]{2,}", RegexOptions.Compiled);
-    private static readonly Regex MarkdownAssetPattern = new(@"(\]\()((?:\./|/)?assets/[^)\s]+)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-    private static readonly Regex HtmlAssetPattern = new(@"((?:src|href)=['""'])((?:\./|/)?assets/[^'""']+)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static readonly MarkdownPipeline TrustedMarkdownPipeline = new MarkdownPipelineBuilder()
         .UseAdvancedExtensions()
         .Build();
@@ -81,7 +76,7 @@ public sealed class FilePageService : IPageService
         cancellationToken.ThrowIfCancellationRequested();
         var limit = Math.Clamp(query.Limit, 1, 200);
         var searchText = query.Query?.Trim() ?? string.Empty;
-        var tokens = TokenPattern.Matches(searchText).Select(match => match.Value).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var tokens = TokenPattern().Matches(searchText).Select(match => match.Value).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         lock (_lock)
         {
@@ -204,8 +199,8 @@ public sealed class FilePageService : IPageService
 
     private static string BuildSnippet(string markdown)
     {
-        var text = Regex.Replace(markdown, @"[#>*_`\[\]()]", string.Empty);
-        text = Regex.Replace(text, "\\s+", " ").Trim();
+        var text = MarkdownFormattingPattern().Replace(markdown, string.Empty);
+        text = WhitespacePattern().Replace(text, " ").Trim();
         return text.Length <= 220 ? text : text[..220] + "...";
     }
 
@@ -271,8 +266,8 @@ public sealed class FilePageService : IPageService
             slug = slug[..^3];
         }
 
-        slug = InvalidSlugCharacters.Replace(slug, "-");
-        slug = DuplicateSeparators.Replace(slug, "-");
+        slug = InvalidSlugCharacters().Replace(slug, "-");
+        slug = DuplicateSeparators().Replace(slug, "-");
         slug = string.Join('/', slug.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
         return string.IsNullOrWhiteSpace(slug) ? $"page-{DateTime.UtcNow:yyyyMMddHHmmss}" : slug;
     }
@@ -294,8 +289,8 @@ public sealed class FilePageService : IPageService
 
     private static string NormalizeAssetReferences(string markdown)
     {
-        var normalized = MarkdownAssetPattern.Replace(markdown, match => match.Groups[1].Value + ToAssetRequestPath(match.Groups[2].Value));
-        return HtmlAssetPattern.Replace(normalized, match => match.Groups[1].Value + ToAssetRequestPath(match.Groups[2].Value));
+        var normalized = MarkdownAssetPattern().Replace(markdown, match => match.Groups[1].Value + ToAssetRequestPath(match.Groups[2].Value));
+        return HtmlAssetPattern().Replace(normalized, match => match.Groups[1].Value + ToAssetRequestPath(match.Groups[2].Value));
     }
 
     private static string ToAssetRequestPath(string path)
@@ -336,15 +331,42 @@ public sealed class FilePageService : IPageService
 
         var extension = Path.GetExtension(name).ToLowerInvariant();
         var baseName = Path.GetFileNameWithoutExtension(name).ToLowerInvariant();
-        baseName = Regex.Replace(baseName, "[^a-z0-9_-]+", "-").Trim('-');
+        baseName = AssetBaseNamePattern().Replace(baseName, "-").Trim('-');
         if (string.IsNullOrWhiteSpace(baseName))
         {
             baseName = $"asset-{DateTime.UtcNow:yyyyMMddHHmmss}";
         }
 
-        extension = Regex.Replace(extension, "[^.a-z0-9]+", string.Empty);
+        extension = AssetExtensionPattern().Replace(extension, string.Empty);
         return string.IsNullOrWhiteSpace(extension) ? baseName : baseName + extension;
     }
+
+    [GeneratedRegex("[A-Za-z0-9]+")]
+    private static partial Regex TokenPattern();
+
+    [GeneratedRegex("[^a-z0-9/_-]+")]
+    private static partial Regex InvalidSlugCharacters();
+
+    [GeneratedRegex("[-_]{2,}")]
+    private static partial Regex DuplicateSeparators();
+
+    [GeneratedRegex(@"(\]\()((?:\./|/)?assets/[^)\s]+)", RegexOptions.IgnoreCase)]
+    private static partial Regex MarkdownAssetPattern();
+
+    [GeneratedRegex(@"((?:src|href)=['""'])((?:\./|/)?assets/[^'""']+)", RegexOptions.IgnoreCase)]
+    private static partial Regex HtmlAssetPattern();
+
+    [GeneratedRegex(@"[#>*_`\[\]()]")]
+    private static partial Regex MarkdownFormattingPattern();
+
+    [GeneratedRegex("\\s+")]
+    private static partial Regex WhitespacePattern();
+
+    [GeneratedRegex("[^a-z0-9_-]+")]
+    private static partial Regex AssetBaseNamePattern();
+
+    [GeneratedRegex("[^.a-z0-9]+")]
+    private static partial Regex AssetExtensionPattern();
 
     private static bool IsUnderPath(string path, string root)
     {

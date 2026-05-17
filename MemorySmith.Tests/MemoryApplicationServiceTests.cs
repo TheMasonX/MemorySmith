@@ -186,6 +186,35 @@ public class MemoryApplicationServiceTests
     }
 
     [Test]
+    public async Task SearchAsync_UsesLuceneLexicalTokensInsteadOfSubstringContains()
+    {
+        _store.Save(new MemoryRecord
+        {
+            Id = "lexical-tokenized",
+            Title = "Tokenized Lexical Search",
+            Content = "The model context protocol path should match hyphenated lexical queries.",
+            Status = MemoryStatus.Core,
+            Tags = ["search"],
+            LastUpdated = new DateTime(2026, 05, 01, 0, 0, 0, DateTimeKind.Utc)
+        });
+        _store.Save(new MemoryRecord
+        {
+            Id = "newer-unrelated",
+            Title = "Newer Unrelated",
+            Content = "A newer record should not win without lexical token overlap.",
+            Status = MemoryStatus.Core,
+            Tags = ["search"],
+            LastUpdated = new DateTime(2026, 05, 02, 0, 0, 0, DateTimeKind.Utc)
+        });
+
+        var results = await _service.SearchAsync(
+            new MemorySearchQuery(Query: "model-context", Status: MemoryStatus.Core, Tags: "search", Limit: 5),
+            CancellationToken.None);
+
+        Assert.That(results.Select(result => result.Id), Is.EqualTo(new[] { "lexical-tokenized" }));
+    }
+
+    [Test]
     public async Task SemanticSearchAsync_ReturnsMetadataScoreAndMatchReason()
     {
         _store.Save(new MemoryRecord

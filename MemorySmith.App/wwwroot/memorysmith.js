@@ -30,10 +30,10 @@
                 textarea.removeEventListener("keydown", textarea.memorySmithComposerKeyHandler);
             }
             if (textarea.memorySmithComposerPasteHandler) {
-                textarea.removeEventListener("paste", textarea.memorySmithComposerPasteHandler);
+                textarea.removeEventListener("paste", textarea.memorySmithComposerPasteHandler, true);
             }
             if (textarea.memorySmithComposerDocumentPasteHandler) {
-                document.removeEventListener("paste", textarea.memorySmithComposerDocumentPasteHandler);
+                document.removeEventListener("paste", textarea.memorySmithComposerDocumentPasteHandler, true);
             }
 
             textarea.dataset.sendOnEnter = sendOnEnter ? "true" : "false";
@@ -59,8 +59,8 @@
                 void window.memorySmith.chat.attachClipboardImage(event, dotNetRef);
             };
             textarea.addEventListener("keydown", textarea.memorySmithComposerKeyHandler);
-            textarea.addEventListener("paste", textarea.memorySmithComposerPasteHandler);
-            document.addEventListener("paste", textarea.memorySmithComposerDocumentPasteHandler);
+            textarea.addEventListener("paste", textarea.memorySmithComposerPasteHandler, true);
+            document.addEventListener("paste", textarea.memorySmithComposerDocumentPasteHandler, true);
         },
 
         unregisterComposer: function (textarea) {
@@ -73,11 +73,11 @@
                 textarea.memorySmithComposerKeyHandler = null;
             }
             if (textarea.memorySmithComposerPasteHandler) {
-                textarea.removeEventListener("paste", textarea.memorySmithComposerPasteHandler);
+                textarea.removeEventListener("paste", textarea.memorySmithComposerPasteHandler, true);
                 textarea.memorySmithComposerPasteHandler = null;
             }
             if (textarea.memorySmithComposerDocumentPasteHandler) {
-                document.removeEventListener("paste", textarea.memorySmithComposerDocumentPasteHandler);
+                document.removeEventListener("paste", textarea.memorySmithComposerDocumentPasteHandler, true);
                 textarea.memorySmithComposerDocumentPasteHandler = null;
             }
         },
@@ -90,6 +90,16 @@
             event.memorySmithClipboardHandled = true;
             const clipboardData = event.clipboardData || window.clipboardData;
             let files = window.memorySmith.chat.getClipboardImageFiles(clipboardData);
+            const hasImageHint = files.length > 0 || window.memorySmith.chat.clipboardHasImageReference(clipboardData);
+            if (hasImageHint) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+
+            if (files.length === 0) {
+                files = await window.memorySmith.chat.getClipboardReferencedImages(clipboardData);
+            }
+
             if (files.length === 0) {
                 files = await window.memorySmith.chat.readNavigatorClipboardImages();
             }
@@ -134,6 +144,92 @@
             }
 
             return files;
+        },
+
+        clipboardHasImageReference: function (clipboardData) {
+            const text = window.memorySmith.chat.readClipboardText(clipboardData, "text/html") + "\n" + window.memorySmith.chat.readClipboardText(clipboardData, "text/plain");
+            return /<img\b/i.test(text) || /data:image\//i.test(text) || /^https?:\/\/\S+\.(png|jpe?g|gif|webp|bmp|heic|heif)(\?\S*)?$/im.test(text.trim());
+        },
+
+        getClipboardReferencedImages: async function (clipboardData) {
+            const references = window.memorySmith.chat.extractImageReferences(
+                window.memorySmith.chat.readClipboardText(clipboardData, "text/html"),
+                window.memorySmith.chat.readClipboardText(clipboardData, "text/plain"));
+            const files = [];
+            let index = 0;
+            for (const reference of references) {
+                const file = await window.memorySmith.chat.referenceToImageFile(reference, ++index);
+                if (file) {
+                    files.push(file);
+                }
+            }
+
+            return files;
+        },
+
+        readClipboardText: function (clipboardData, type) {
+            if (!clipboardData || typeof clipboardData.getData !== "function") {
+                return "";
+            }
+
+            try {
+                return clipboardData.getData(type) || "";
+            } catch {
+                return "";
+            }
+        },
+
+        extractImageReferences: function (html, plainText) {
+            const references = [];
+            const add = function (value) {
+                const reference = String(value || "").trim();
+                if (!reference || references.includes(reference)) {
+                    return;
+                }
+
+                if (/^data:image\//i.test(reference) || /^https?:\/\//i.test(reference) || /^blob:/i.test(reference)) {
+                    references.push(reference);
+                }
+            };
+
+            const dataUrlMatches = `${html || ""}\n${plainText || ""}`.match(/data:image\/[a-z0-9.+-]+;base64,[A-Za-z0-9+/=\r\n]+/gi) || [];
+            dataUrlMatches.forEach(match => add(match.replace(/\s+/g, "")));
+
+            if (html) {
+                try {
+                    const document = new DOMParser().parseFromString(html, "text/html");
+                    Array.from(document.images || []).forEach(image => add(image.currentSrc || image.src));
+                } catch {
+                }
+            }
+
+            const plain = String(plainText || "").trim();
+            if (/^https?:\/\/\S+\.(png|jpe?g|gif|webp|bmp|heic|heif)(\?\S*)?$/i.test(plain)) {
+                add(plain);
+            }
+
+            return references.slice(0, 4);
+        },
+
+        referenceToImageFile: async function (reference, index) {
+            try {
+                const response = await fetch(reference);
+                if (!response.ok) {
+                    return null;
+                }
+
+                const blob = await response.blob();
+                if (!window.memorySmith.chat.isImageFile(blob, blob.type)) {
+                    return null;
+                }
+
+                const contentType = blob.type || "image/png";
+                const extension = window.memorySmith.chat.extensionForContentType(contentType);
+                const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+                return new File([blob], `clipboard-${stamp}-${index}.${extension}`, { type: contentType });
+            } catch {
+                return null;
+            }
         },
 
         readNavigatorClipboardImages: async function () {

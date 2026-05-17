@@ -664,14 +664,15 @@ body {
 }
 
 .chat-history-list {
-    overflow: auto;
+    overflow-y: auto;
+    overflow-x: hidden;
     min-height: 0;
 }
 
 .chat-history-item {
     width: 100%;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 34px;
+    grid-template-columns: minmax(0, 1fr) 28px;
     align-items: center;
     gap: 4px;
     border-bottom: 1px solid var(--vscode-border-soft);
@@ -682,9 +683,12 @@ body {
 .chat-history-select {
     display: flex;
     flex-direction: column;
+    align-items: flex-start;
     gap: 2px;
+    width: 100%;
     min-width: 0;
-    padding: 8px 10px;
+    overflow: hidden;
+    padding: 7px 8px;
     border: 0;
     background: transparent;
     color: inherit;
@@ -698,14 +702,18 @@ body {
 }
 
 .chat-history-select span {
+    display: block;
+    max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    font-size: 0.78rem;
+    line-height: 1.22;
 }
 
 .chat-history-select small {
     color: var(--vscode-text-muted);
-    font-size: 0.72rem;
+    font-size: 0.68rem;
 }
 
 .chat-shell {
@@ -809,9 +817,27 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 8px;
     color: var(--vscode-text-muted);
     font-size: 0.76rem;
     margin-bottom: 4px;
+}
+
+.chat-message-meta {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    min-width: 0;
+    text-align: right;
+}
+
+.chat-message-model {
+    max-width: min(260px, 42vw);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--vscode-text);
 }
 
 .chat-message-role {
@@ -965,6 +991,27 @@ body {
     align-items: flex-end;
     border-top: 1px solid var(--vscode-border);
     border-bottom: 0;
+}
+
+.chat-composer-side {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 5px;
+    flex: 0 0 auto;
+    min-width: 230px;
+    max-width: min(460px, 42vw);
+}
+
+.chat-usage-meter {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--vscode-text-muted);
+    font-size: 0.72rem;
+    line-height: 1.2;
+    text-align: right;
 }
 
 .chat-composer-input {
@@ -1218,6 +1265,11 @@ body {
     .chat-composer {
         display: grid;
     }
+
+    .chat-composer-side {
+        max-width: none;
+        width: 100%;
+    }
 }
 
 @media (max-width: 640px) {
@@ -1283,6 +1335,7 @@ body {
     .page-editor-header,
     .chat-toolbar,
     .chat-composer,
+    .chat-composer-side,
     .chat-composer-actions,
     .chat-model-controls {
         align-items: stretch;

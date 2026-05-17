@@ -15,7 +15,7 @@ namespace MemorySmith.Storage;
 /// for scenarios where a lightweight, file-based persistence mechanism is required.
 /// Ensure that the application has appropriate file system permissions for the base directory and its subfolders.
 /// </remarks>
-public class FileMemoryStore : IMemoryStore
+public partial class FileMemoryStore : IMemoryStore
 {
     private readonly string _basePath;
     private readonly StorageDiagnostics? _diagnostics;
@@ -183,8 +183,11 @@ public class FileMemoryStore : IMemoryStore
     private static string SanitizeId(string id)
     {
         // Replace path separators and other unsafe characters with underscore
-        return Regex.Replace(id, @"[/\\:?*]", "_");
+        return UnsafeIdCharacters().Replace(id, "_");
     }
+
+    [GeneratedRegex(@"[/\\:?*]")]
+    private static partial Regex UnsafeIdCharacters();
 
     /// <summary>
     /// Searches all status folders for a file matching the given ID and returns its path, or <see langword="null"/> if not found.

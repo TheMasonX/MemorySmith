@@ -14,7 +14,7 @@ Opens on `http://localhost:5089` by default. Pages:
 |---|---|
 | `/memories` | Browse, search, create, edit, delete memory records |
 | `/pages` | Create, search, edit, preview, and render markdown-backed pages from `Data/Pages` |
-| `/chat` | Memory-enhanced chat and agent mode with provider/model selection, streaming responses, attachments, and local chat history |
+| `/chat` | Memory-enhanced chat and agent mode with provider/model selection, streaming responses, context usage, attachments, and local chat history |
 | `/health` | Scrollable stat cards, activity charts (queries/day, changes/day), maintenance telemetry |
 | `/variables` | Manage `%VarName%` path variables used in source link URIs |
 | `/about` | MemorySmith and third-party license information |
@@ -64,7 +64,8 @@ User-created markdown files under `Data/Pages/` are valid project wiki content a
 | `project-wiki-generalization-friction` | Known gaps for broader adoption |
 | `project-wiki-benchmarkdotnet-suite` | BenchmarkDotNet project: smoke validation and full benchmark commands |
 | `project-wiki-semantic-tool-quality-suite` | Search relevance probes, aggregate MRR, and MCP tool output quality assertions |
-| `project-wiki-current-validation-132-tests` | Validated test baseline: 132 NUnit tests across the solution |
+| `project-wiki-current-validation-146-tests` | Validated test baseline: 146 NUnit tests across the solution |
+| `project-wiki-github-actions-artifacts` | CI Cobertura coverage artifacts and Doxygen GitHub Pages export |
 | `project-wiki-maintenance-observability-refinements` | Startup triage/index scheduling and stats activity bucket API |
 | `project-wiki-operational-diagnostics-dashboard` | `/health` dashboard and `/api/diagnostics` operational snapshot |
 | `project-wiki-request-guard-hardening` | Request guard middleware, `AllowRemoteApi` and `ApiKey` enforcement |
@@ -120,11 +121,11 @@ The page editor has a markdown toolbar for common inserts, an image upload/embed
 
 ## Chat and Agent Mode
 
-`/chat` uses the `IChatProvider` and `IChatAgent` abstractions. The registered providers are `OllamaChatProvider`, which calls a local Ollama HTTP service, and `GitHubCopilotChatProvider`, which uses the GitHub Copilot SDK with GitHub CLI authentication or a configured token environment variable. `MemoryChatAgent` builds context from hybrid memory search plus page search before sending the request.
+`/chat` uses the `IChatProvider` and `IChatAgent` abstractions. The registered providers are `OllamaChatProvider`, which calls a local Ollama HTTP service, and `GitHubCopilotChatProvider`, which uses the GitHub Copilot SDK with GitHub CLI authentication or a configured token environment variable. `MemoryChatAgent` builds context from hybrid memory search plus page search before sending the request. When that preloaded context is not enough, the shared prompt lets the model request an app-intercepted, MCP-compatible read-only wiki tool call by returning JSON such as `{"toolCalls":[{"name":"memorysmith_hybrid_search","arguments":{"query":"search text","limit":5}}]}`. The app executes supported local tools (`memorysmith_search`, `memorysmith_semantic_search`, `memorysmith_hybrid_search`, `memorysmith_context_pack`, and `memorysmith_get`) inside the same user turn and then asks the provider for the final answer with the tool results included.
 
-The chat UI queries the selected provider for available models, supports provider/model selection, persists the last used provider/model and active chat, streams live response chunks with an elapsed timer, shows per-response durations, deletes chats from history with confirmation, supports text and image file attachments, supports pasted clipboard images, Enter-to-send with Shift+Enter newlines, autoscroll, clickable memory/page resource chips, pending-response feedback, collapsible thinking blocks when the provider returns reasoning content, and browser-local chat history behind a fully collapsible sidebar. Text attachments are bounded and supplied as context. Image attachments are saved to trusted temp files for persistence and supplied as native image payloads when the selected provider supports them. Draft text and queued attachments are retained per chat session when switching chats, and navigation warns before leaving with unsent content.
+The chat UI queries the selected provider for available models, supports provider/model selection, persists the last used provider/model and active chat, streams live response chunks with an elapsed timer, shows the provider/model used on assistant turns, shows per-response durations, displays bottom-right context usage with context-window percentage when known and provider quota/rate text when reported, deletes chats from history with confirmation, supports a Stop button beside Send for active generation cancellation, supports text and image file attachments, supports pasted clipboard images, Enter-to-send with Shift+Enter newlines, autoscroll, clickable memory/page resource chips, pending-response feedback, compact browser-local chat history, and collapsible thinking blocks when the provider returns reasoning content. Text attachments are bounded and supplied as context. Image attachments are saved to trusted temp files for persistence and supplied as native image payloads when the selected provider supports them; Ctrl+V handles copied image files, Clipboard API image blobs, copied HTML image references, and data:image URLs. Draft text and queued attachments are retained per chat session when switching chats, and navigation warns before leaving with unsent content.
 
-Chat mode answers questions. Agent mode asks the provider for structured actions and can write memories and pages when `Chat:AgentWritesEnabled` is true. The shared system prompt is stored in `MemorySmith.Core/Docs/Prompts/wiki-chat-agent.md` and copied into the app output for service/publish runs.
+Chat mode answers questions. Agent mode asks the provider for structured actions and can write memories and pages when `Chat:AgentWritesEnabled` is true. Tool-call execution is read-only and bounded by `Chat:MaxToolIterations`, `Chat:MaxToolCallsPerTurn`, and `Chat:MaxToolResultCharacters`; write actions still require Agent mode structured output and `Chat:AgentWritesEnabled`. The shared system prompt is stored in `MemorySmith.Core/Docs/Prompts/wiki-chat-agent.md` and copied into the app output for service/publish runs.
 
 The provider interface is intentionally narrow so OpenAI, Anthropic, or other APIs can be added without changing the UI or agent workflow.
 
@@ -134,7 +135,7 @@ Three search modes are available in the UI (`/memories` search bar) and the REST
 
 | Mode | Endpoint | Behavior |
 |---|---|---|
-| Keyword | `POST /api/memories/search` | Verbatim `Contains` over title, content, tags. Deterministic ordering by `LastUpdated`. |
+| Lexical | `POST /api/memories/search` | Lucene.NET `StandardAnalyzer` tokenization and weighted title/tag/reference/content scoring. Empty queries retain deterministic `LastUpdated` ordering. |
 | Semantic | `POST /api/memories/search/semantic` | ONNX embedding cosine ranking when `SemanticSearch` model and vocabulary files are available; otherwise local token/tag/title/reference/alias scoring with match explanations. |
 | Hybrid | `POST /api/memories/search/hybrid` | Lucene.NET lexical analysis + the active semantic ranker, fused with Reciprocal Rank Fusion (RRF). Best for discovery. |
 
@@ -148,7 +149,7 @@ The MCP endpoint is at `http://localhost:5089/mcp`. VS Code config lives in `.vs
 
 | Tool | Key args | Returns |
 |---|---|---|
-| `memorysmith_search` | `query`, `tags`, `status`, `limit` | Keyword results |
+| `memorysmith_search` | `query`, `tags`, `status`, `limit` | Lexical results |
 | `memorysmith_semantic_search` | `query`, `tags`, `status`, `limit` | Scored results with match reasons |
 | `memorysmith_hybrid_search` | `query`, `tags`, `status`, `limit` | RRF-ranked results |
 | `memorysmith_context_pack` | `query` or `ids`, `tags`, `referenceDepth`, `includeBacklinks`, `maxRecords`, `maxContentChars`, `format` | Search results + linked references/conflicts in one response |
@@ -209,15 +210,31 @@ All settings live under `MemorySmith` in `appsettings.json`:
       "Provider": "Ollama",
       "OllamaEndpoint": "http://localhost:11434",
       "OllamaModel": "gemma4:e4b",
-      "GitHubModel": "gpt-4o-mini",
+      "OllamaContextWindowTokens": null,
+      "GitHubModel": "gpt-4.1",
       "GitHubTokenEnvironmentVariable": "GITHUB_TOKEN",
+      "GitHubModels": [
+        { "Name": "gpt-4.1", "ChatMultiplier": 0, "IsPreferred": true, "Description": "Free/standard Copilot GPT option when available" },
+        { "Name": "gpt-4.1-mini", "ChatMultiplier": 0, "IsPreferred": true, "Description": "Free/low-cost GPT mini option when available" },
+        { "Name": "gpt-4o-mini", "ChatMultiplier": 0, "IsPreferred": true, "Description": "Free/low-cost GPT-4o mini option when available" },
+        { "Name": "claude-3.5-haiku", "IsPreferred": true, "Description": "Lower-cost Claude Haiku option before Sonnet" },
+        { "Name": "gpt-5.1-mini", "Description": "GPT-5.1 mini option when available" },
+        { "Name": "gpt-4o", "Description": "GPT-4o option when available" },
+        { "Name": "gpt-5", "Description": "GPT-5 option when available" },
+        { "Name": "claude-sonnet-4.5", "Description": "Claude Sonnet option when available after cheaper candidates" }
+      ],
       "SystemPromptPath": "Prompts/wiki-chat-agent.md",
       "RequestTimeoutSeconds": 600,
       "MaxContextRecords": 5,
       "MaxContextPages": 5,
+      "MaxContextItemCharacters": 4000,
       "MaxHistoryMessages": 16,
       "MaxAttachmentCharacters": 120000,
       "MaxAttachmentBytes": 8388608,
+      "ToolCallsEnabled": true,
+      "MaxToolIterations": 2,
+      "MaxToolCallsPerTurn": 3,
+      "MaxToolResultCharacters": 12000,
       "AgentWritesEnabled": true
     }
   }
@@ -237,7 +254,7 @@ Override via `appsettings.Development.json` or environment variables (`MemorySmi
 - **`SourceLinks:AllowOpenWithDefaultApp`** — allows Ctrl+Click source-link opening after variable resolution and allowed-root checks.
 - **`SourceLinks:AllowedFileRootVariables`** — variable names whose resolved values are trusted roots for local source-link file reads. Defaults to `MemorySmithRepo`.
 - **`SourceLinks:AllowedFileRoots`** — optional explicit local roots, useful when source links need access outside the repo wiki root.
-- **`Chat:*`** — provider, Ollama endpoint/model, GitHub Copilot model/token environment settings, prompt path, timeout, context/history/attachment limits, and whether agent-mode writes are enabled. `MaxAttachmentCharacters` bounds text context and `MaxAttachmentBytes` bounds uploaded/pasted files. Set `OllamaModel` to a model returned by `ollama list`; set `GitHubModel` to a Copilot model available to the authenticated GitHub account. The UI can query providers directly for available models and stores the last selected provider/model in browser storage.
+- **`Chat:*`** — provider, Ollama endpoint/model, GitHub Copilot model/token environment settings, prompt path, timeout, context/history/attachment limits, read-only intercepted wiki tool-call limits, and whether agent-mode writes are enabled. `MaxContextItemCharacters` bounds each memory/page item sent to the chat provider, `MaxAttachmentCharacters` bounds text attachments, and `MaxAttachmentBytes` bounds uploaded/pasted files. `ToolCallsEnabled` allows models to request app-executed MemorySmith search/context/get calls inside the same user turn, while `MaxToolIterations`, `MaxToolCallsPerTurn`, and `MaxToolResultCharacters` bound cost and result size. `OllamaContextWindowTokens` is optional metadata for the UI usage meter when a local model's context window is known. Set `OllamaModel` to a model returned by `ollama list`; set `GitHubModel` to a Copilot model available to the authenticated GitHub account. The configured GitHub fallback order prefers free/low-cost GPT models first, then Claude Haiku, then Sonnet. The UI can query providers directly for available models and stores the last selected provider/model in browser storage.
 
 ## Windows Service
 
@@ -284,6 +301,18 @@ dotnet build MemorySmith.slnx -v minimal
 dotnet test MemorySmith.slnx -v minimal
 ```
 
+Collect local Cobertura coverage with the same collector used by CI:
+
+```powershell
+dotnet test MemorySmith.slnx --configuration Release --collect:"XPlat Code Coverage" --results-directory artifacts/TestResults -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura
+```
+
+Generate the Doxygen wiki locally when Doxygen and Graphviz are installed:
+
+```powershell
+doxygen docs/Doxyfile
+```
+
 Run BenchmarkDotNet search benchmarks:
 
 ```powershell
@@ -291,4 +320,4 @@ dotnet run -c Release --project MemorySmith.Benchmarks -- --smoke
 dotnet run -c Release --project MemorySmith.Benchmarks -- --filter *SearchBenchmarks*
 ```
 
-The solution builds `MemorySmith.App` as the single deployable host. `MemorySmith.Tests` includes unit tests, integration tests (via `WebApplicationFactory`), and a `[Category("Benchmark")]` suite of 23 search quality probes with latency thresholds. Older `Worker` and `Dashboard` projects are retained as migration history and are not in the active solution.
+The solution builds `MemorySmith.App` as the single deployable host. `MemorySmith.Tests` includes unit tests, integration tests (via `WebApplicationFactory`), and a `[Category("Benchmark")]` suite of 32 search quality probes with latency thresholds. GitHub Actions collects Cobertura coverage in CI and publishes a Doxygen HTML wiki through the Pages workflow. Older `Worker` and `Dashboard` projects are retained as migration history and are not in the active solution.

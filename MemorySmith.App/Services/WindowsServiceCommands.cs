@@ -384,7 +384,7 @@ Notes:
         }
     }
 
-    private static bool ContainsOption(IReadOnlyList<string> args, string optionName)
+    private static bool ContainsOption(List<string> args, string optionName)
     {
         for (var index = 0; index < args.Count; index++)
         {

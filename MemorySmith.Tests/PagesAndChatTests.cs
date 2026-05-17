@@ -162,9 +162,122 @@ public class PagesAndChatTests
         {
             Assert.That(response.Model, Is.EqualTo("custom-model"));
             Assert.That(response.Thinking, Is.EqualTo("private reasoning"));
+            Assert.That(response.Usage, Is.Not.Null);
+            Assert.That(response.Usage!.IsEstimate, Is.True);
+            Assert.That(response.Usage.InputTokens, Is.GreaterThan(0));
             Assert.That(provider.LastRequest!.Model, Is.EqualTo("custom-model"));
             Assert.That(provider.LastRequest.Messages.Any(message => message.Content.Contains("Use the project wiki prompt.", StringComparison.Ordinal)), Is.True);
             Assert.That(provider.LastRequest.Messages.Any(message => message.Content.Contains("Attached note body", StringComparison.Ordinal)), Is.True);
+        });
+    }
+
+    [Test]
+    public async Task MemoryChatAgent_HydratesMemoryContextBeyondSearchSnippet()
+    {
+        var memoryStore = new InMemoryMemoryStore();
+        var eventStore = new RecordingEventStore();
+        var publisher = new RecordingMemoryChangePublisher();
+        var memories = TestServiceFactory.CreateMemoryApplicationService(memoryStore, eventStore, publisher);
+        memoryStore.Save(new MemoryRecord
+        {
+            Id = "chat-provider-context",
+            Title = "Chat Provider Context",
+            Status = MemoryStatus.Core,
+            Content = "MemorySmith chat context starts with a broad architecture summary. "
+                + new string('x', 300)
+                + " GitHub model ordering prefers free GPTs first, then Claude Haiku before Sonnet, and compact chat history titles persist locally."
+        });
+        var pages = new FilePageService(_tempDir);
+        var provider = new FakeChatProvider("Done.");
+        var options = Options.Create(new MemorySmithOptions
+        {
+            Chat = new ChatOptions
+            {
+                MaxContextItemCharacters = 1000
+            }
+        });
+        var agent = new MemoryChatAgent([provider], memories, pages, options);
+
+        await agent.SendAsync(new MemoryChatRequest("chat GitHub Haiku Sonnet", MemoryChatMode.Chat), CancellationToken.None);
+        var contextMessage = provider.LastRequest!.Messages.Single(message => message.Content.StartsWith("Local MemorySmith context", StringComparison.Ordinal));
+
+        Assert.That(contextMessage.Content, Does.Contain("Claude Haiku before Sonnet"));
+    }
+
+    [Test]
+    public async Task MemoryChatAgent_ExecutesInterceptedToolCallsBeforeReturningReply()
+    {
+        var memoryStore = new InMemoryMemoryStore();
+        var eventStore = new RecordingEventStore();
+        var publisher = new RecordingMemoryChangePublisher();
+        var memories = TestServiceFactory.CreateMemoryApplicationService(memoryStore, eventStore, publisher);
+        memoryStore.Save(new MemoryRecord
+        {
+            Id = "tool-target",
+            Title = "Tool Target",
+            Status = MemoryStatus.Core,
+            Content = "Durable tool-call evidence lives in this wiki record.",
+            Tags = ["project-wiki", "tooling"]
+        });
+        var pages = new FilePageService(_tempDir);
+        var provider = new SequencedChatProvider(
+            """
+            {"toolCalls":[{"name":"memorysmith_hybrid_search","arguments":{"query":"durable tool-call evidence","limit":5}}]}
+            """,
+            "Found the durable tool-call evidence in tool-target.");
+        var agent = new MemoryChatAgent([provider], memories, pages, Options.Create(new MemorySmithOptions()));
+
+        var response = await agent.SendAsync(new MemoryChatRequest("Search for durable tool-call evidence", MemoryChatMode.Chat), CancellationToken.None);
+        var toolResultMessage = provider.Requests[1].Messages.Single(message => message.Content.StartsWith("Local MemorySmith tool results", StringComparison.Ordinal));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(response.Reply, Is.EqualTo("Found the durable tool-call evidence in tool-target."));
+            Assert.That(response.Reply, Does.Not.Contain("toolCalls"));
+            Assert.That(provider.Requests, Has.Count.EqualTo(2));
+            Assert.That(toolResultMessage.Content, Does.Contain("memorysmith_hybrid_search"));
+            Assert.That(toolResultMessage.Content, Does.Contain("tool-target"));
+        });
+    }
+
+    [Test]
+    public async Task MemoryChatAgent_StreamsToolCallStatusWithoutLeakingToolJson()
+    {
+        var memoryStore = new InMemoryMemoryStore();
+        var eventStore = new RecordingEventStore();
+        var publisher = new RecordingMemoryChangePublisher();
+        var memories = TestServiceFactory.CreateMemoryApplicationService(memoryStore, eventStore, publisher);
+        memoryStore.Save(new MemoryRecord
+        {
+            Id = "stream-tool-target",
+            Title = "Stream Tool Target",
+            Status = MemoryStatus.Core,
+            Content = "Streaming tool-call evidence is searchable inside the same user turn.",
+            Tags = ["project-wiki", "tooling"]
+        });
+        var pages = new FilePageService(_tempDir);
+        var provider = new SequencedChatProvider(
+            """
+            {"jsonrpc":"2.0","id":"search","method":"tools/call","params":{"name":"memorysmith_get","arguments":{"id":"stream-tool-target"}}}
+            """,
+            "stream-tool-target has the evidence.");
+        var agent = new MemoryChatAgent([provider], memories, pages, Options.Create(new MemorySmithOptions()));
+
+        var updates = new List<MemoryChatStreamUpdate>();
+        await foreach (var update in agent.StreamAsync(new MemoryChatRequest("Look up the streaming tool target", MemoryChatMode.Chat), CancellationToken.None))
+        {
+            updates.Add(update);
+        }
+
+        var visibleDeltas = string.Concat(updates.Select(update => update.ContentDelta));
+        var final = updates.Single(update => update.IsFinal).Response!;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(visibleDeltas, Does.Not.Contain("tools/call"));
+            Assert.That(updates.Select(update => update.Status).Where(status => !string.IsNullOrWhiteSpace(status)), Does.Contain("Ran 1 MemorySmith wiki tool call(s): memorysmith_get"));
+            Assert.That(final.Reply, Is.EqualTo("stream-tool-target has the evidence."));
+            Assert.That(provider.Requests, Has.Count.EqualTo(2));
         });
     }
 
@@ -188,6 +301,27 @@ public class PagesAndChatTests
             Assert.That(provider.LastRequest!.Attachments, Is.Not.Null);
             Assert.That(provider.LastRequest.Attachments!.Single().IsImage, Is.True);
             Assert.That(provider.LastRequest.Messages.Any(message => message.Content.Contains("native image payload", StringComparison.Ordinal)), Is.True);
+        });
+    }
+
+    [Test]
+    public void ChatErrorMessages_ExplainGitHubModelAndAuthenticationFailures()
+    {
+        var unavailable = ChatErrorMessages.Format(
+            new InvalidOperationException("Request session.create failed with message: Model \"gpt-4.1\" is not available."),
+            "GitHub",
+            "gpt-4.1");
+        var auth = ChatErrorMessages.Format(
+            new InvalidOperationException("Session was not created with authentication info or custom provider"),
+            "GitHub",
+            "gpt-4.1");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(unavailable, Does.Contain("free GPTs"));
+            Assert.That(unavailable, Does.Contain("Claude Haiku"));
+            Assert.That(auth, Does.Contain("GITHUB_TOKEN"));
+            Assert.That(auth, Does.Contain("COPILOT_API_KEY"));
         });
     }
 
@@ -218,7 +352,7 @@ public class PagesAndChatTests
         var handler = new CapturingHandler("""
         {"message":{"content":"hel"},"done":false}
         {"message":{"content":"lo"},"done":false}
-        {"done":true}
+        {"done":true,"prompt_eval_count":23,"eval_count":5}
         """);
         var provider = new OllamaChatProvider(new HttpClient(handler), new StaticOptionsMonitor<MemorySmithOptions>(new MemorySmithOptions
         {
@@ -239,6 +373,7 @@ public class PagesAndChatTests
         {
             Assert.That(chunks.Where(chunk => !chunk.IsFinal).Select(chunk => chunk.ContentDelta), Is.EqualTo(new[] { "hel", "lo" }));
             Assert.That(chunks.Single(chunk => chunk.IsFinal).FinalContent, Is.EqualTo("hello"));
+            Assert.That(chunks.Single(chunk => chunk.IsFinal).Usage, Is.EqualTo(new ChatUsageSummary(23, 5, 23, IsEstimate: false)));
             Assert.That(handler.Body, Does.Contain("\"stream\":true"));
         });
     }
@@ -293,6 +428,48 @@ public class PagesAndChatTests
             LastRequest = request;
             await Task.Yield();
             yield return new ChatProviderChunk(_content, _thinking, _content, _thinking, IsFinal: true, Name, request.Model ?? "fake-model");
+        }
+    }
+
+    private sealed class SequencedChatProvider : IChatProvider
+    {
+        private readonly Queue<string> _responses;
+
+        public SequencedChatProvider(params string[] responses)
+        {
+            _responses = new Queue<string>(responses);
+        }
+
+        public string Name => "Fake";
+        public List<ChatProviderRequest> Requests { get; } = [];
+
+        public Task<ChatProviderResponse> CompleteAsync(ChatProviderRequest request, CancellationToken cancellationToken)
+        {
+            Requests.Add(request);
+            var content = NextResponse();
+            return Task.FromResult(new ChatProviderResponse(content, Name, request.Model ?? "fake-model"));
+        }
+
+        public Task<IReadOnlyList<ChatModelSummary>> ListModelsAsync(CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyList<ChatModelSummary>>([new ChatModelSummary("fake-model")]);
+
+        public async IAsyncEnumerable<ChatProviderChunk> StreamAsync(ChatProviderRequest request, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            Requests.Add(request);
+            var content = NextResponse();
+            await Task.Yield();
+            yield return new ChatProviderChunk(content, null, null, null, IsFinal: false, Name, request.Model ?? "fake-model");
+            yield return new ChatProviderChunk(string.Empty, null, content, null, IsFinal: true, Name, request.Model ?? "fake-model");
+        }
+
+        private string NextResponse()
+        {
+            if (_responses.Count == 0)
+            {
+                return string.Empty;
+            }
+
+            return _responses.Count == 1 ? _responses.Peek() : _responses.Dequeue();
         }
     }
 
