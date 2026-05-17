@@ -76,6 +76,20 @@
 @if (_diagnostics is not null)
 {
     <div class="health-lower-grid health-operations-grid">
+        @if (_diagnostics.Warnings.Count > 0)
+        {
+            <div class="health-lower-card health-warning-card">
+                <div class="health-section-title">Warnings</div>
+                @foreach (var warning in _diagnostics.Warnings)
+                {
+                    <div class="health-warning-item">
+                        <strong>@warning.Severity</strong>
+                        <span>@warning.Message</span>
+                    </div>
+                }
+            </div>
+        }
+
         <div class="health-lower-card">
             <div class="health-section-title">Runtime Configuration</div>
             <div class="health-config-grid">

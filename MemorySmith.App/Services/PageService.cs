@@ -41,18 +41,24 @@ public sealed class FilePageService : IPageService
     private static readonly Regex DuplicateSeparators = new("[-_]{2,}", RegexOptions.Compiled);
     private static readonly Regex MarkdownAssetPattern = new(@"(\]\()((?:\./|/)?assets/[^)\s]+)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static readonly Regex HtmlAssetPattern = new(@"((?:src|href)=['""'])((?:\./|/)?assets/[^'""']+)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-    private static readonly MarkdownPipeline MarkdownPipeline = new MarkdownPipelineBuilder()
+    private static readonly MarkdownPipeline TrustedMarkdownPipeline = new MarkdownPipelineBuilder()
         .UseAdvancedExtensions()
+        .Build();
+    private static readonly MarkdownPipeline SafeMarkdownPipeline = new MarkdownPipelineBuilder()
+        .UseAdvancedExtensions()
+        .DisableHtml()
         .Build();
 
     private readonly string _rootPath;
     private readonly string _assetPath;
+    private readonly bool _allowRawHtml;
     private readonly object _lock = new();
 
-    public FilePageService(string rootPath)
+    public FilePageService(string rootPath, PageOptions? options = null)
     {
         _rootPath = Path.GetFullPath(rootPath);
         _assetPath = Path.Combine(_rootPath, "assets");
+        _allowRawHtml = options?.AllowRawHtml ?? false;
         Directory.CreateDirectory(_rootPath);
         Directory.CreateDirectory(_assetPath);
     }
@@ -152,7 +158,7 @@ public sealed class FilePageService : IPageService
     }
 
     public string RenderHtml(string markdown) =>
-        Markdown.ToHtml(NormalizeAssetReferences(markdown), MarkdownPipeline);
+        Markdown.ToHtml(NormalizeAssetReferences(markdown), _allowRawHtml ? TrustedMarkdownPipeline : SafeMarkdownPipeline);
 
     private IEnumerable<string> EnumeratePageFiles() =>
         Directory.EnumerateFiles(_rootPath, "*.md", SearchOption.AllDirectories)

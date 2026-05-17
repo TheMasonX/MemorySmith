@@ -4,6 +4,7 @@ using MemorySmith.Core.Indexing;
 using MemorySmith.Storage;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting.WindowsServices;
+using Microsoft.Extensions.Options;
 using MudBlazor.Services;
 using Serilog;
 using System.Text.Json.Serialization;
@@ -50,8 +51,9 @@ try
     builder.Services.AddSingleton<IPageService>(sp =>
     {
         var configuration = sp.GetRequiredService<IConfiguration>();
+        var options = sp.GetRequiredService<IOptions<MemorySmithOptions>>().Value;
         var pagesPath = configuration["MemorySmith:PagesPath"] ?? Path.Combine("..", "Data", "Pages");
-        return new FilePageService(pagesPath);
+        return new FilePageService(pagesPath, options.Pages);
     });
     builder.Services.AddSingleton<VarResolver>();
     builder.Services.AddSingleton<IEventStore>(sp =>

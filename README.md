@@ -57,12 +57,13 @@ User-created markdown files under `Data/Pages/` are valid project wiki content a
 | `project-wiki-chat-image-attachments` | Image attachment pipeline, trusted temp storage, and vision payload routing |
 | `project-wiki-chat-local-storage-persistence` | Browser-local chat history, draft retention, and provider/model selection persistence |
 | `project-wiki-chat-streaming-thinking` | Streaming response chunks, thinking-block extraction, and elapsed timers |
+| `project-wiki-agent-instructions-source-of-truth` | Copilot instruction files and current agent-facing source-of-truth map |
 | `project-wiki-ui-layout-source-link-polish` | UI layout, source-link open behavior, and navigation polish |
 | `project-wiki-scope-boundaries` | What is and isn't in scope for the current implementation |
 | `project-wiki-generalization-friction` | Known gaps for broader adoption |
 | `project-wiki-benchmarkdotnet-suite` | BenchmarkDotNet project: smoke validation and full benchmark commands |
 | `project-wiki-semantic-tool-quality-suite` | Search relevance probes, aggregate MRR, and MCP tool output quality assertions |
-| `project-wiki-current-validation-127-tests` | Validated test baseline: 127 NUnit tests across the solution |
+| `project-wiki-current-validation-131-tests` | Validated test baseline: 131 NUnit tests across the solution |
 | `project-wiki-maintenance-observability-refinements` | Startup triage/index scheduling and stats activity bucket API |
 | `project-wiki-operational-diagnostics-dashboard` | `/health` dashboard and `/api/diagnostics` operational snapshot |
 | `project-wiki-request-guard-hardening` | Request guard middleware, `AllowRemoteApi` and `ApiKey` enforcement |
@@ -114,7 +115,7 @@ Local file source-link chips copy the resolved path on click. Ctrl+Click opens t
 
 `Data/Pages/` stores user and agent-editable markdown files. The `/pages` UI and `/api/pages` API keep page search and page navigation separate from structured memory search. `/api/search` returns a combined memory/page result set when broader discovery is useful. Page assets live under `Data/Pages/assets` and are served at `/page-assets`; markdown links such as `![diagram](assets/diagram.png)` are rewritten to that static route when rendered.
 
-The page editor has a markdown toolbar for common inserts, an image upload/embed tool that writes to `Data/Pages/assets`, a toggleable live preview, a manual preview refresh button, and an unsaved-change prompt for internal and external navigation. Pages are rendered with Markdig advanced extensions. Raw HTML media tags are supported for local page content, so audio and video can be embedded with `/page-assets/...` sources when browser codecs allow it.
+The page editor has a markdown toolbar for common inserts, an image upload/embed tool that writes to `Data/Pages/assets`, a toggleable live preview, a manual preview refresh button, and an unsaved-change prompt for internal and external navigation. Pages are rendered with Markdig advanced extensions. Raw HTML is disabled by default for rendered pages; trusted local deployments can enable `MemorySmith:Pages:AllowRawHtml` when raw HTML media tags are intentionally needed.
 
 ## Chat and Agent Mode
 
@@ -178,6 +179,9 @@ All settings live under `MemorySmith` in `appsettings.json`:
     "VarsPath": "../Data/vars.json",
     "ApiKey": null,
     "AllowRemoteApi": false,
+    "Pages": {
+      "AllowRawHtml": false
+    },
     "Maintenance": {
       "Enabled": true,
       "TriageMinutes": 5,
@@ -214,6 +218,7 @@ Override via `appsettings.Development.json` or environment variables (`MemorySmi
 
 - **`ApiKey`** — if set, all API and MCP requests must include `X-Api-Key: <value>`. Leave `null` for local use.
 - **`AllowRemoteApi`** — set `true` to allow non-localhost callers. Off by default.
+- **`Pages:AllowRawHtml`** — enables trusted raw HTML rendering in markdown pages. Off by default; leave disabled for agent-written or unreviewed pages.
 - **`DataPath`** — root of the memory store. Subdirectories (`Unconsolidated/`, `Working/`, `Core/`, `Deprecated/`) are created automatically.
 - **`PagesPath`** — root of the markdown page store. `assets/` under this directory is served at `/page-assets`.
 - **`VarsPath`** — path to the flat JSON dict used for `%VarName%` source link expansion.

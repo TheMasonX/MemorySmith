@@ -11,6 +11,7 @@ public sealed record OperationalDiagnosticsSnapshot(
     EffectiveMemorySmithConfiguration Configuration,
     IReadOnlyList<StoragePathStatus> Paths,
     IReadOnlyList<EndpointInfo> Endpoints,
+    IReadOnlyList<OperationalWarning> Warnings,
     StorageDiagnosticsSnapshot StorageDiagnostics);
 
 public sealed record EffectiveMemorySmithConfiguration(
@@ -38,6 +39,8 @@ public sealed record StoragePathStatus(
     string? Error);
 
 public sealed record EndpointInfo(string Name, string Path, string Description);
+
+public sealed record OperationalWarning(string Code, string Severity, string Message);
 
 public class OperationalDiagnosticsService
 {
@@ -98,7 +101,22 @@ public class OperationalDiagnosticsService
                 GetFileStatus("Variables", varsPath)
             ],
             GetEndpoints(),
+            GetWarnings(settings),
             _storageDiagnostics.GetSnapshot());
+    }
+
+    private static IReadOnlyList<OperationalWarning> GetWarnings(MemorySmithOptions settings)
+    {
+        var warnings = new List<OperationalWarning>();
+        if (settings.AllowRemoteApi && string.IsNullOrWhiteSpace(settings.ApiKey))
+        {
+            warnings.Add(new OperationalWarning(
+                "remote-api-without-api-key",
+                "High",
+                "Remote API access is enabled without MemorySmith:ApiKey. Configure an API key before exposing the service beyond localhost."));
+        }
+
+        return warnings;
     }
 
     private IReadOnlyList<string> GetConfiguredUrls()

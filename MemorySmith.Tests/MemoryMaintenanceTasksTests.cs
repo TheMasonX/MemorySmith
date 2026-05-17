@@ -94,4 +94,15 @@ public class MemoryMaintenanceTasksTests
             Assert.That(_store.Load("deprecate")!.Status, Is.EqualTo(MemoryStatus.Deprecated));
         });
     }
+
+    [Test]
+    public void FormatInterval_UsesConfiguredCadenceLabels()
+    {
+        Assert.Multiple(() =>
+        {
+            Assert.That(MemoryMaintenanceService.FormatInterval(TimeSpan.FromMinutes(7)), Is.EqualTo("7 min"));
+            Assert.That(MemoryMaintenanceService.FormatInterval(TimeSpan.FromMinutes(90)), Is.EqualTo("1.5h"));
+            Assert.That(MemoryMaintenanceService.FormatInterval(TimeSpan.FromHours(48)), Is.EqualTo("2d"));
+        });
+    }
 }

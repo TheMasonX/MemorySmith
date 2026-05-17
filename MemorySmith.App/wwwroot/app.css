@@ -1075,6 +1075,24 @@ body {
     padding: 10px 12px;
 }
 
+.health-warning-card {
+    border-color: rgba(245, 158, 11, 0.55);
+    background: rgba(245, 158, 11, 0.08);
+}
+
+.health-warning-item {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    color: var(--vscode-text);
+    font-size: 0.86rem;
+}
+
+.health-warning-item strong {
+    color: #f59e0b;
+    flex: 0 0 auto;
+}
+
 .health-chart-title,
 .health-section-title {
     font-size: 0.82rem;

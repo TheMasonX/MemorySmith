@@ -3,34 +3,37 @@
 ## Project Guidelines
 - User prefers NUnit over xUnit for test projects.
 - MVVM with minimal code-behind for UI components.
+- Treat `MemorySmith.App` as the active single-host app. `MemorySmith.Worker` and `MemorySmith.Dashboard` are migration history unless the user explicitly asks about them.
+- Keep `Data/Memories` stable: it is the live project wiki and realistic test fixture source. Tests should copy it to temp storage before mutation.
 
-## Knowledge Hub — Where to Find Things
+## Knowledge Hub - Where to Find Things
 
-All project knowledge is organized under `Docs/` at the repo root. The `src/SplitBrain.Meta/` project (net8.0, no code) exists solely to surface `Docs/` and `Scripts/` inside Visual Studio via `<None Include>` links.
+The current project map starts at `README.md`, `Data/Memories`, and `MemorySmith.Core/Docs`.
 
 ### Docs Directory Map
 
 | Path | Purpose |
 |---|---|
-| `Docs/Memories/` | **Active knowledge base.** Distilled, up-to-date facts about architecture, decisions, and current state. Start here for context. |
-| `Docs/Unconsolidated/` | **Unconsolidated memories inbox.** Raw knowledge fragments (gotchas, fixes, lessons) land here before being distilled. Periodic "dreaming" sessions consolidate them into `Docs/Memories/`. Do not treat as authoritative — these are raw material. |
-| `Docs/Plans/` | Architecture and implementation plans. `MasterPlanV4.md` is the canonical blueprint (mirrored at `Plans/MasterPlanV4.md` repo root). |
-| `Docs/Reviews/` | External and automated review reports against the plans (e.g. deep-research critiques). Cross-reference with codebase before trusting. |
-| `Docs/ProgressReports/` | Snapshot reports of implementation progress per phase. |
-| `Docs/UserDocs/` | End-user and operator documentation (setup, deployment, configuration, testing guides). |
+| `Data/Memories/Core/` | Active structured project wiki records. Search or read these before planning substantial changes. |
+| `Data/Memories/Working/` | In-progress structured memories. Treat as less authoritative than Core. |
+| `Data/Memories/Unconsolidated/` | Raw memory inbox. Do not treat as authoritative without verification. |
+| `Data/Pages/` | Markdown-backed project wiki pages and longer-form notes. |
+| `MemorySmith.Core/Docs/Plans/` | Architecture and implementation plans. `MemorySmith_FinalRefactorDesign_20260507.md` is the current broad refactor blueprint. |
+| `MemorySmith.Core/Docs/Reviews/` | Review/audit reports. Useful, but verify against code because older reports can be stale. |
+| `MemorySmith.Core/Docs/ProgressReports/` | Historical progress snapshots. Verify against current code before relying on them. |
+| `MemorySmith.Core/Docs/Prompts/` | Prompts used by the app, including the wiki chat/agent prompt. |
+| `Schemas/` | JSON schema and related data contracts. |
 
 ### Key Files to Read First
-- `Docs/Memories/` — current distilled knowledge (check this before any planning session)
-- `Docs/Plans/MasterPlanV4.md` — canonical architecture blueprint
-- `Plans/MasterPlanV4.md` — repo-root copy kept in sync with Docs version
+- `README.md` - current product shape, routes, configuration, validation commands.
+- `Data/Memories/Core/` - current structured project knowledge.
+- `MemorySmith.Core/Docs/Plans/MemorySmith_FinalRefactorDesign_20260507.md` - active broad architecture plan.
+- `MemorySmith.Core/Docs/Plans/SemantingSearch.md` - current semantic search/vector update plan when working on semantic retrieval.
 
 ### Reviewing Plans and Progress
 When reviewing plans or progress reports, cross-reference with the actual codebase to verify that the documented state matches reality.
 Plans may be aspirational and not yet fully implemented, while progress reports may be snapshots that have since evolved.
 Always check the latest code for the true source of truth.
 Always include any relevant code file paths in your notes.
-**Always note any assumptions and open questions that arise during review to facilitate discussion.**
+Always note assumptions and open questions that arise during review to facilitate discussion.
 Give confidence levels where appropriate.
-
-### SplitBrain.Meta
-`src/SplitBrain.Meta/SplitBrain.Meta.csproj` is a **documentation-only utility project** targeting net8.0 with no source files. Its sole purpose is to link `Docs/**` and `Scripts/**` into the Visual Studio Solution Explorer so they are browsable and searchable without being in the build graph.

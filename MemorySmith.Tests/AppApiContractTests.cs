@@ -128,6 +128,7 @@ public class AppApiContractTests
             Assert.That(body, Does.Contain("dataPath"));
             Assert.That(body, Does.Contain("pagesPath"));
             Assert.That(body, Does.Contain("apiKeyConfigured"));
+            Assert.That(body, Does.Contain("warnings"));
             Assert.That(body, Does.Contain("paths"));
             Assert.That(body, Does.Contain("storageDiagnostics"));
             Assert.That(body, Does.Not.Contain("apiKey\""));

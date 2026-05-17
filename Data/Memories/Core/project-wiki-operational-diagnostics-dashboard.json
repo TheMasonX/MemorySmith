@@ -1,6 +1,6 @@
 {
   "Id": "project-wiki-operational-diagnostics-dashboard",
-  "Content": "The single-host /health dashboard exposes operator-facing runtime configuration and storage health from OperationalDiagnosticsService. GET /api/diagnostics returns redacted configuration, configured URLs, Windows Service name, source-link roots, data/event/vars path status, endpoint links, and StorageDiagnostics corrupt-file information. HealthStats.razor renders those diagnostics beside stats, readiness, activity charts, maintenance telemetry, and recent in-session events so a service operator can verify the running app without inspecting local files.",
+  "Content": "The single-host /health dashboard exposes operator-facing runtime configuration and storage health from OperationalDiagnosticsService. GET /api/diagnostics returns redacted configuration, configured URLs, Windows Service name, source-link roots, data/event/vars path status, endpoint links, operational warnings, and StorageDiagnostics corrupt-file information. HealthStats.razor renders those diagnostics beside stats, readiness, activity charts, maintenance telemetry, and recent in-session events so a service operator can verify the running app without inspecting local files. The diagnostics warning list currently flags AllowRemoteApi=true without an API key as a high-severity configuration risk.",
   "Title": "Operational Diagnostics Dashboard",
   "Status": 2,
   "Confidence": 0.95,
@@ -51,5 +51,5 @@
     }
   ],
   "UsageCount": 0,
-  "LastUpdated": "2026-05-16T22:04:58.0157337Z"
+  "LastUpdated": "2026-05-17T03:25:00.0000000Z"
 }

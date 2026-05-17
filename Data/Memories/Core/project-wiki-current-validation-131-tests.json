@@ -1,6 +1,6 @@
 {
-  "Id": "project-wiki-current-validation-127-tests",
-  "Content": "Current validation after the chat/provider/pages refresh is dotnet test MemorySmith.slnx -v minimal with 127 passing NUnit tests. The solution build covers MemorySmith.Core, MemorySmith.Storage, MemorySmith.App, MemorySmith.Benchmarks, and MemorySmith.Tests; the preview .NET SDK NETSDK1057 notice is expected locally. Focused chat/page coverage lives in PagesAndChatTests, including page assets, provider attachments, Ollama streaming, and trusted temp-file image payloads. Benchmark validation remains available through the BenchmarkDotNet search benchmark project, but the normal regression gate is the full NUnit suite.",
+  "Id": "project-wiki-current-validation-131-tests",
+  "Content": "Current validation after the audit-hardening pass is dotnet test MemorySmith.slnx -v minimal with 131 passing NUnit tests. The solution build covers MemorySmith.Core, MemorySmith.Storage, MemorySmith.App, MemorySmith.Benchmarks, and MemorySmith.Tests. Focused chat/page coverage lives in PagesAndChatTests, including page assets, provider attachments, Ollama streaming, trusted temp-file image payloads, and the raw-HTML rendering gate. SecurityAndSourceLinkTests covers request guard behavior plus the remote API without API key diagnostics warning, and MemoryMaintenanceTasksTests covers configured maintenance interval labels. Benchmark validation remains available through the BenchmarkDotNet search benchmark project, but the normal regression gate is the full NUnit suite.",
   "Title": "Current validation baseline",
   "Status": 2,
   "Confidence": 0.94,
@@ -44,5 +44,5 @@
     }
   ],
   "UsageCount": 0,
-  "LastUpdated": "2026-05-17T02:35:00.0000000Z"
+  "LastUpdated": "2026-05-17T03:25:00.0000000Z"
 }

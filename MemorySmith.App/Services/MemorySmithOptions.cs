@@ -8,10 +8,16 @@ public class MemorySmithOptions
     public string VarsPath { get; set; } = Path.Combine("..", "Data", "vars.json");
     public string? ApiKey { get; set; }
     public bool AllowRemoteApi { get; set; }
+    public PageOptions Pages { get; set; } = new();
     public MaintenanceOptions Maintenance { get; set; } = new();
     public LimitOptions Limits { get; set; } = new();
     public SourceLinkOptions SourceLinks { get; set; } = new();
     public ChatOptions Chat { get; set; } = new();
+}
+
+public class PageOptions
+{
+    public bool AllowRawHtml { get; set; }
 }
 
 public class MaintenanceOptions

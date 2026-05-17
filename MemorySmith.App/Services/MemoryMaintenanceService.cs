@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using Microsoft.Extensions.Options;
 
 namespace MemorySmith.App.Services;
@@ -33,6 +34,9 @@ public class MemoryMaintenanceService : BackgroundService
         var triageInterval = TimeSpan.FromMinutes(Math.Max(1, _options.Maintenance.TriageMinutes));
         var indexInterval = TimeSpan.FromMinutes(Math.Max(1, _options.Maintenance.IndexingMinutes));
         var consolidationInterval = TimeSpan.FromHours(Math.Max(1, _options.Maintenance.ConsolidationHours));
+        var triageLabel = FormatInterval(triageInterval);
+        var indexLabel = FormatInterval(indexInterval);
+        var consolidationLabel = FormatInterval(consolidationInterval);
 
         var nextTriage = DateTimeOffset.UtcNow;
         var nextIndex = DateTimeOffset.UtcNow;
@@ -43,19 +47,19 @@ public class MemoryMaintenanceService : BackgroundService
             var now = DateTimeOffset.UtcNow;
             if (now >= nextTriage)
             {
-                await RunTrackedAsync("TriageService", "5 min", () => _tasks.RunTriageAsync(stoppingToken), stoppingToken);
+                await RunTrackedAsync("TriageService", triageLabel, () => _tasks.RunTriageAsync(stoppingToken), stoppingToken);
                 nextTriage = now.Add(triageInterval);
             }
 
             if (now >= nextIndex)
             {
-                await RunTrackedAsync("IndexingService", "1h", () => _tasks.RunIndexRebuildAsync(stoppingToken), stoppingToken);
+                await RunTrackedAsync("IndexingService", indexLabel, () => _tasks.RunIndexRebuildAsync(stoppingToken), stoppingToken);
                 nextIndex = now.Add(indexInterval);
             }
 
             if (now >= nextConsolidation)
             {
-                await RunTrackedAsync("ConsolidationService", "24h", () => _tasks.RunConsolidationAsync(stoppingToken), stoppingToken);
+                await RunTrackedAsync("ConsolidationService", consolidationLabel, () => _tasks.RunConsolidationAsync(stoppingToken), stoppingToken);
                 nextConsolidation = now.Add(consolidationInterval);
             }
 
@@ -85,5 +89,24 @@ public class MemoryMaintenanceService : BackgroundService
             _telemetry.RecordRunFailure(serviceName, stopwatch.Elapsed.TotalMilliseconds);
             _logger.LogError(ex, "Maintenance task {ServiceName} failed", serviceName);
         }
+    }
+
+    public static string FormatInterval(TimeSpan interval)
+    {
+        if (interval.TotalMinutes < 60)
+        {
+            return $"{Math.Max(1, (int)Math.Round(interval.TotalMinutes, MidpointRounding.AwayFromZero))} min";
+        }
+
+        if (interval.TotalHours < 24)
+        {
+            return interval.TotalMinutes % 60 == 0
+                ? $"{(int)interval.TotalHours}h"
+                : $"{interval.TotalHours.ToString("0.#", CultureInfo.InvariantCulture)}h";
+        }
+
+        return interval.TotalHours % 24 == 0
+            ? $"{(int)interval.TotalDays}d"
+            : $"{interval.TotalDays.ToString("0.#", CultureInfo.InvariantCulture)}d";
     }
 }

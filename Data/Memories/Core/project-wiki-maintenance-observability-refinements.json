@@ -1,6 +1,6 @@
 {
   "Id": "project-wiki-maintenance-observability-refinements",
-  "Content": "Maintenance startup now runs triage and index rebuild after the grace period, but delays consolidation until its configured interval instead of consolidating on every startup. Stats activity buckets are exposed through /api/stats/activity with day bounds clamped to 1-365. MemoryChangePublisher invokes all event subscribers and awaits their tasks, so multiple Blazor circuits receive memory and stats updates reliably.",
+  "Content": "Maintenance startup now runs triage and index rebuild after the grace period, but delays consolidation until its configured interval instead of consolidating on every startup. Maintenance telemetry labels are derived from the configured triage, indexing, and consolidation intervals rather than fixed defaults, so /health remains accurate when operators tune scheduling. Stats activity buckets are exposed through /api/stats/activity with day bounds clamped to 1-365. MemoryChangePublisher invokes all event subscribers and awaits their tasks, so multiple Blazor circuits receive memory and stats updates reliably.",
   "Title": "Maintenance and Observability Refinements",
   "Status": 2,
   "Confidence": 0.92,
@@ -49,5 +49,5 @@
     }
   ],
   "UsageCount": 0,
-  "LastUpdated": "2026-05-15T05:43:30.6252076Z"
+  "LastUpdated": "2026-05-17T03:25:00.0000000Z"
 }

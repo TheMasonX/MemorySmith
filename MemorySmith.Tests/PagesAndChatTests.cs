@@ -45,6 +45,36 @@ public class PagesAndChatTests
     }
 
     [Test]
+    public void FilePageService_DisablesRawHtmlByDefault()
+    {
+        var pages = new FilePageService(_tempDir);
+
+        var html = pages.RenderHtml("# Trusted markdown\n\n<script>alert(1)</script>\n\n<div onclick=\"alert(1)\">Unsafe</div>\n\n![diagram](assets/diagram.png)");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(html, Does.Contain(">Trusted markdown</h1>"));
+            Assert.That(html, Does.Contain("/page-assets/diagram.png"));
+            Assert.That(html, Does.Not.Contain("<script"));
+            Assert.That(html, Does.Not.Contain("<div"));
+        });
+    }
+
+    [Test]
+    public void FilePageService_AllowsRawHtmlWhenExplicitlyTrusted()
+    {
+        var pages = new FilePageService(_tempDir, new PageOptions { AllowRawHtml = true });
+
+        var html = pages.RenderHtml("<video src=\"assets/demo.mp4\" controls></video>");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(html, Does.Contain("<video"));
+            Assert.That(html, Does.Contain("/page-assets/demo.mp4"));
+        });
+    }
+
+    [Test]
     public async Task FilePageService_SavesImageAssetsForMarkdownEmbeds()
     {
         var pages = new FilePageService(_tempDir);

@@ -107,6 +107,20 @@ public class SecurityAndSourceLinkTests
     }
 
     [Test]
+    public async Task Diagnostics_WarnsWhenRemoteApiIsAllowedWithoutApiKey()
+    {
+        await using var factory = CreateFactory(new Dictionary<string, string?>
+        {
+            ["MemorySmith:AllowRemoteApi"] = "true"
+        });
+        using var client = factory.CreateClient();
+
+        var body = await client.GetStringAsync("/api/diagnostics");
+
+        Assert.That(body, Does.Contain("remote-api-without-api-key"));
+    }
+
+    [Test]
     public async Task SourceBundle_ClampsHugeMaxFileBytes()
     {
         var allowedRoot = Path.Combine(_tempRoot, "allowed");
