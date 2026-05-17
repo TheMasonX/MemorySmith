@@ -3,7 +3,7 @@
 ## Project Guidelines
 - User prefers NUnit over xUnit for test projects.
 - MVVM with minimal code-behind for UI components.
-- Treat `MemorySmith.App` as the active single-host app. `MemorySmith.Worker` and `MemorySmith.Dashboard` are migration history unless the user explicitly asks about them.
+- Treat `MemorySmith.App` as the active single-host app. Legacy `MemorySmith.Worker` and `MemorySmith.Dashboard` code has been removed from the active repository; references to them are historical only.
 - Keep `Data/Memories` stable: it is the live project wiki and realistic test fixture source. Tests should copy it to temp storage before mutation.
 
 ## Knowledge Hub - Where to Find Things
