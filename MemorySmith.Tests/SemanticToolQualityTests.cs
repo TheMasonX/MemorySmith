@@ -219,6 +219,14 @@ public class SemanticToolQualityTests
     private WebApplicationFactory<Program> CreateFactory(string memoryPath) =>
         new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
+            var varsPath = Path.Combine(_tempRoot, "vars.json");
+            var repoRoot = FindRepositoryRoot();
+            File.WriteAllText(varsPath, $$"""
+            {
+              "MemorySmithRepo": "{{repoRoot}}{{Path.DirectorySeparatorChar}}"
+            }
+            """);
+
             builder.UseEnvironment("Development");
             builder.ConfigureAppConfiguration((_, config) =>
             {
@@ -226,7 +234,7 @@ public class SemanticToolQualityTests
                 {
                     ["MemorySmith:DataPath"] = memoryPath,
                     ["MemorySmith:EventLogPath"] = Path.Combine(_tempRoot, "Events", "quality-audit.log"),
-                    ["MemorySmith:VarsPath"] = Path.Combine(FindRepositoryRoot(), "Data", "vars.json"),
+                    ["MemorySmith:VarsPath"] = varsPath,
                     ["MemorySmith:Maintenance:Enabled"] = "false"
                 });
             });

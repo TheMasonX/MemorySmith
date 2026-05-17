@@ -29,25 +29,21 @@ jobs:
         with:
           enablement: true
 
-      - name: Install Doxygen and Graphviz
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y doxygen graphviz
-
-      - name: Generate documentation
-        run: doxygen docs/Doxyfile
-
-      - name: Upload Doxygen HTML artifact
-        uses: actions/upload-artifact@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
-          name: doxygen-wiki-html
-          path: docs/output/html
-          if-no-files-found: error
+          python-version: "3.x"
+
+      - name: Install markdown renderer
+        run: python -m pip install --upgrade pip markdown
+
+      - name: Build wiki pages site
+        run: python docs/build_pages_site.py
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: docs/output/html
+          path: docs/output/wiki
 
   deploy-pages:
     needs: build-docs
