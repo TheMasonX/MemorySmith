@@ -209,6 +209,23 @@ public class PagesAndChatTests
     }
 
     [Test]
+    public async Task MemoryChatAgent_IncludesCurrentUserInProviderMessages()
+    {
+        var memoryStore = new InMemoryMemoryStore();
+        var eventStore = new RecordingEventStore();
+        var publisher = new RecordingMemoryChangePublisher();
+        var memories = TestServiceFactory.CreateMemoryApplicationService(memoryStore, eventStore, publisher);
+        var pages = new FilePageService(_tempDir);
+        var provider = new FakeChatProvider("Done.");
+        var currentUser = new FakeCurrentUserContext("user-1", "Signed In User", [MemorySmithRoles.Admin]);
+        var agent = new MemoryChatAgent([provider], memories, pages, Options.Create(new MemorySmithOptions()), currentUser);
+
+        await agent.SendAsync(new MemoryChatRequest("Who am I?", MemoryChatMode.Chat), CancellationToken.None);
+
+        Assert.That(provider.LastRequest!.Messages.Any(message => message.Content.Contains("Current MemorySmith user: Signed In User", StringComparison.Ordinal)), Is.True);
+    }
+
+    [Test]
     public async Task MemoryChatAgent_HydratesMemoryContextBeyondSearchSnippet()
     {
         var memoryStore = new InMemoryMemoryStore();
@@ -529,6 +546,24 @@ public class PagesAndChatTests
                 Content = new StringContent(_responseBody)
             };
         }
+    }
+
+    private sealed class FakeCurrentUserContext : ICurrentUserContext
+    {
+        public FakeCurrentUserContext(string userId, string displayName, IReadOnlyList<string> roles)
+        {
+            UserId = userId;
+            DisplayName = displayName;
+            Roles = roles;
+        }
+
+        public string? UserId { get; }
+        public string DisplayName { get; }
+        public string AuthScheme => "Test";
+        public string? Provider => MemorySmithProviders.LocalPassword;
+        public bool IsAuthenticated => true;
+        public IReadOnlyList<string> Roles { get; }
+        public string ActorKind => MemorySmithActorKinds.User;
     }
 
     private sealed class StaticOptionsMonitor<T> : IOptionsMonitor<T>

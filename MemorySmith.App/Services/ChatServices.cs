@@ -986,12 +986,14 @@ public sealed partial class MemoryChatAgent : IChatAgent
     private readonly MemoryApplicationService _memories;
     private readonly IPageService _pages;
     private readonly IOptions<MemorySmithOptions> _options;
+    private readonly ICurrentUserContext? _currentUser;
 
     public MemoryChatAgent(
         IEnumerable<IChatProvider> providers,
         MemoryApplicationService memories,
         IPageService pages,
-        IOptions<MemorySmithOptions> options)
+        IOptions<MemorySmithOptions> options,
+        ICurrentUserContext? currentUser = null)
     {
         _providers = providers.ToList();
         if (_providers.Count == 0)
@@ -1002,6 +1004,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
         _memories = memories;
         _pages = pages;
         _options = options;
+        _currentUser = currentUser;
     }
 
     public async Task<MemoryChatResponse> SendAsync(MemoryChatRequest request, CancellationToken cancellationToken)
@@ -1659,6 +1662,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
         var messages = new List<ChatMessage>
         {
             new("system", BuildSystemPrompt(request.Mode)),
+            new("system", FormatCurrentUser()),
             new("system", FormatContext(context))
         };
 
@@ -1677,6 +1681,17 @@ public sealed partial class MemoryChatAgent : IChatAgent
 
         messages.Add(new ChatMessage("user", request.Message));
         return messages;
+    }
+
+    private string FormatCurrentUser()
+    {
+        if (_currentUser?.IsAuthenticated != true)
+        {
+            return "Current MemorySmith user: Anonymous.";
+        }
+
+        var roles = _currentUser.Roles.Count == 0 ? "none" : string.Join(", ", _currentUser.Roles);
+        return $"Current MemorySmith user: {_currentUser.DisplayName} (roles: {roles}).";
     }
 
     private string BuildSystemPrompt(MemoryChatMode mode)

@@ -1,0 +1,239 @@
+@page "/profile"
+@rendermode InteractiveServer
+@attribute [Authorize]
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IMemorySmithDatabase Database
+@inject MemorySmithLocalAuthService Auth
+@inject IOptionsMonitor<MemorySmithOptions> Options
+@inject ISnackbar Snackbar
+@using Microsoft.Extensions.Options
+@using System.Security.Claims
+
+<PageTitle>Profile</PageTitle>
+
+<div class="wiki-workbench admin-workbench">
+    <section class="wiki-commandbar" aria-label="Profile">
+        <div class="wiki-title-block">
+            <MudText Typo="Typo.h5">Profile</MudText>
+            <span class="wiki-count">@SignedInLabel</span>
+        </div>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync">Refresh</MudButton>
+    </section>
+
+    @if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <MudAlert Severity="Severity.Error" Dense="true">@_error</MudAlert>
+    }
+
+    @if (_isLoading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+    else if (_user is null)
+    {
+        <div class="wiki-empty-state">Account unavailable.</div>
+    }
+    else
+    {
+        <section class="admin-panel-grid">
+            <div class="health-lower-card admin-form-panel">
+                <MudText Typo="Typo.h6">Account</MudText>
+                <div class="admin-form-stack">
+                    <MudTextField T="string" @bind-Value="_displayName" Label="Display name" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    <MudTextField T="string" @bind-Value="_email" Label="Email" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    <div class="chat-context-list">
+                        @foreach (var role in _roles)
+                        {
+                            <span class="wiki-status is-core">@role.Name</span>
+                        }
+                    </div>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save" Disabled="@_isBusy" OnClick="SaveProfileAsync">Save account</MudButton>
+                </div>
+            </div>
+
+            <div class="health-lower-card admin-form-panel">
+                <MudText Typo="Typo.h6">Local Password</MudText>
+                <div class="admin-form-stack">
+                    @if (_user.LocalPasswordEnabled)
+                    {
+                        <MudTextField T="string" @bind-Value="_currentPassword" Label="Current password" InputType="InputType.Password" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    }
+                    <MudTextField T="string" @bind-Value="_newPassword" Label="New password" InputType="InputType.Password" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    <MudTextField T="string" @bind-Value="_confirmPassword" Label="Confirm password" InputType="InputType.Password" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Password" Disabled="@_isBusy" OnClick="SavePasswordAsync">@(_user.LocalPasswordEnabled ? "Change password" : "Add password")</MudButton>
+                </div>
+            </div>
+        </section>
+
+        <section class="health-lower-card">
+            <div class="wiki-commandbar" aria-label="Sign-in methods">
+                <div class="wiki-title-block">
+                    <MudText Typo="Typo.h6">Sign-In Methods</MudText>
+                    <span class="wiki-count">@_links.Count linked</span>
+                </div>
+                <MudButton Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Link" Disabled="@(!_canLinkGitHub)" Href="@GitHubLinkHref">Link GitHub</MudButton>
+            </div>
+
+            <MudTable Items="@_links" Dense="true" Class="health-table">
+                <HeaderContent>
+                    <MudTh>Provider</MudTh>
+                    <MudTh>Account</MudTh>
+                    <MudTh>Linked</MudTh>
+                    <MudTh>Action</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>@ProviderDisplay(context.ProviderName)</MudTd>
+                    <MudTd>@ProviderAccountLabel(context)</MudTd>
+                    <MudTd>@context.LinkedAtUtc.ToLocalTime().ToString("g")</MudTd>
+                    <MudTd>
+                        <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error" Disabled="@(_isBusy || !CanRemoveLink(context))" OnClick="@(() => RemoveLinkAsync(context))">Remove</MudButton>
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        </section>
+    }
+</div>
+
+@code {
+    [SupplyParameterFromQuery(Name = "error")] public string? Error { get; set; }
+
+    private UserAccount? _user;
+    private IReadOnlyList<ProviderLink> _links = [];
+    private IReadOnlyList<RoleRecord> _roles = [];
+    private IReadOnlyList<AuthProviderRecord> _providers = [];
+    private string? _userId;
+    private string _displayName = string.Empty;
+    private string _email = string.Empty;
+    private string _currentPassword = string.Empty;
+    private string _newPassword = string.Empty;
+    private string _confirmPassword = string.Empty;
+    private string? _error;
+    private bool _isLoading = true;
+    private bool _isBusy;
+    private bool _canLinkGitHub;
+
+    private string SignedInLabel => _user is null ? "Signed in" : $"Signed in as {_user.DisplayName}";
+    private string GitHubLinkHref => $"/api/auth/challenge?scheme=GitHub&returnUrl={Uri.EscapeDataString("/profile")}";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _error = Error;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        _userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!string.IsNullOrWhiteSpace(_userId))
+        {
+            _user = await Database.Users.GetByIdAsync(_userId, CancellationToken.None);
+            _links = await Database.ProviderLinks.GetLinksForUserAsync(_userId, CancellationToken.None);
+            _roles = await Database.Roles.GetRolesForUserAsync(_userId, CancellationToken.None);
+            _providers = await Database.ProviderLinks.ListProvidersAsync(CancellationToken.None);
+        }
+
+        _displayName = _user?.DisplayName ?? string.Empty;
+        _email = _user?.Email ?? string.Empty;
+        _canLinkGitHub = CanLinkGitHub();
+        _isLoading = false;
+    }
+
+    private async Task SaveProfileAsync()
+    {
+        if (_userId is null) return;
+        _isBusy = true;
+        var result = await Auth.UpdateProfileAsync(_userId, _displayName, _email, CancellationToken.None);
+        await HandleResultAsync(result, "Account saved.");
+    }
+
+    private async Task SavePasswordAsync()
+    {
+        if (_userId is null) return;
+        if (!string.Equals(_newPassword, _confirmPassword, StringComparison.Ordinal))
+        {
+            Snackbar.Add("Passwords do not match.", Severity.Error);
+            return;
+        }
+
+        _isBusy = true;
+        var result = await Auth.SetLocalPasswordAsync(_userId, _currentPassword, _newPassword, CancellationToken.None);
+        _currentPassword = string.Empty;
+        _newPassword = string.Empty;
+        _confirmPassword = string.Empty;
+        await HandleResultAsync(result, _user?.LocalPasswordEnabled == true ? "Password changed." : "Password added.");
+    }
+
+    private async Task RemoveLinkAsync(ProviderLink link)
+    {
+        if (_userId is null) return;
+        _isBusy = true;
+        var result = string.Equals(link.ProviderName, MemorySmithProviders.LocalPassword, StringComparison.OrdinalIgnoreCase)
+            ? await Auth.RemoveLocalPasswordAsync(_userId, CancellationToken.None)
+            : await Auth.UnlinkProviderAsync(_userId, link.LinkId, CancellationToken.None);
+        await HandleResultAsync(result, "Sign-in method removed.");
+    }
+
+    private async Task HandleResultAsync(AuthResult result, string successMessage)
+    {
+        _isBusy = false;
+        if (!result.Succeeded)
+        {
+            Snackbar.Add(result.Error ?? "Account update failed.", Severity.Error);
+            return;
+        }
+
+        Snackbar.Add(successMessage, Severity.Success);
+        await LoadAsync();
+    }
+
+    private bool CanLinkGitHub()
+    {
+        if (_links.Any(link => string.Equals(link.ProviderName, MemorySmithProviders.GitHub, StringComparison.OrdinalIgnoreCase)))
+        {
+            return false;
+        }
+
+        var provider = _providers.FirstOrDefault(provider => string.Equals(provider.ProviderName, MemorySmithProviders.GitHub, StringComparison.OrdinalIgnoreCase));
+        var options = Options.CurrentValue.Auth.Providers.GitHub;
+        return provider?.IsEnabled == true && options.Enabled && !string.IsNullOrWhiteSpace(options.ClientId);
+    }
+
+    private bool CanRemoveLink(ProviderLink link) => UsableSignInMethodCount(excludingLinkId: link.LinkId) > 0;
+
+    private int UsableSignInMethodCount(string? excludingLinkId = null) => _links
+        .Where(link => !string.Equals(link.LinkId, excludingLinkId, StringComparison.OrdinalIgnoreCase))
+        .Count(IsUsableLink);
+
+    private bool IsUsableLink(ProviderLink link)
+    {
+        var provider = _providers.FirstOrDefault(item => string.Equals(item.ProviderName, link.ProviderName, StringComparison.OrdinalIgnoreCase));
+        if (provider?.IsEnabled != true || _user is null)
+        {
+            return false;
+        }
+
+        var auth = Options.CurrentValue.Auth;
+        return link.ProviderName switch
+        {
+            MemorySmithProviders.LocalPassword => auth.LocalPasswordEnabled && _user.LocalPasswordEnabled,
+            MemorySmithProviders.GitHub => auth.Providers.GitHub.Enabled && !string.IsNullOrWhiteSpace(auth.Providers.GitHub.ClientId),
+            MemorySmithProviders.Google => auth.Providers.Google.Enabled && !string.IsNullOrWhiteSpace(auth.Providers.Google.ClientId),
+            MemorySmithProviders.Microsoft => auth.Providers.Microsoft.Enabled && !string.IsNullOrWhiteSpace(auth.Providers.Microsoft.ClientId),
+            _ => false
+        };
+    }
+
+    private string ProviderDisplay(string providerName) => _providers.FirstOrDefault(provider => string.Equals(provider.ProviderName, providerName, StringComparison.OrdinalIgnoreCase))?.DisplayName ?? providerName;
+
+    private static string ProviderAccountLabel(ProviderLink link)
+    {
+        if (!string.IsNullOrWhiteSpace(link.ProviderDisplayName) && !string.IsNullOrWhiteSpace(link.ProviderEmail))
+        {
+            return $"{link.ProviderDisplayName} ({link.ProviderEmail})";
+        }
+
+        return link.ProviderDisplayName ?? link.ProviderEmail ?? link.ProviderSubject;
+    }
+}

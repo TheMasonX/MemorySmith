@@ -29,6 +29,9 @@
     </MudNavLink>
     <AuthorizeView>
         <Authorized>
+            <MudNavLink Href="/profile" Icon="@Icons.Material.Filled.AccountCircle">
+                Profile
+            </MudNavLink>
             <form method="post" action="/api/auth/logout?returnUrl=/" class="nav-auth-form">
                 <button type="submit" class="mud-nav-link mud-ripple nav-auth-button">
                     <span class="mud-nav-link-icon mud-nav-link-icon-default"><MudIcon Icon="@Icons.Material.Filled.Logout" Size="Size.Small" /></span>

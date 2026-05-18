@@ -71,6 +71,11 @@ public class AuthController : ControllerBase
         {
             RedirectUri = safeReturn
         };
+        if (_currentUser.IsAuthenticated && !string.IsNullOrWhiteSpace(_currentUser.UserId) && safeReturn.StartsWith("/profile", StringComparison.OrdinalIgnoreCase))
+        {
+            properties.Items[MemorySmithAuthProperties.LinkUserId] = _currentUser.UserId;
+        }
+
         return Challenge(properties, scheme);
     }
 }

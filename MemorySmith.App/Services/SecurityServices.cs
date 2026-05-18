@@ -27,6 +27,11 @@ public static class MemorySmithPolicies
     public const string CanApproveAgentWrites = "CanApproveAgentWrites";
 }
 
+public static class MemorySmithAuthProperties
+{
+    public const string LinkUserId = "MemorySmith.LinkUserId";
+}
+
 public enum MemorySmithPermission
 {
     View,
@@ -357,8 +362,195 @@ public sealed class MemorySmithLocalAuthService
         return new AuthResult(true, null, user);
     }
 
+    public async Task<AuthResult> UpdateProfileAsync(string userId, string displayName, string? email, CancellationToken cancellationToken)
+    {
+        var user = await _database.Users.GetByIdAsync(userId, cancellationToken);
+        if (user is null || user.IsDisabled)
+        {
+            return new AuthResult(false, "The account could not be found.");
+        }
+
+        displayName = displayName.Trim();
+        if (string.IsNullOrWhiteSpace(displayName))
+        {
+            return new AuthResult(false, "Display name is required.");
+        }
+
+        var normalizedDisplayName = Normalize(displayName);
+        var existingName = await _database.Users.GetByNormalizedDisplayNameAsync(normalizedDisplayName, cancellationToken);
+        if (existingName is not null && !string.Equals(existingName.UserId, user.UserId, StringComparison.Ordinal))
+        {
+            return new AuthResult(false, "That display name is already in use.");
+        }
+
+        var normalizedEmail = string.IsNullOrWhiteSpace(email) ? null : Normalize(email);
+        if (!string.IsNullOrWhiteSpace(normalizedEmail))
+        {
+            var existingEmail = await _database.Users.GetByNormalizedEmailAsync(normalizedEmail, cancellationToken);
+            if (existingEmail is not null && !string.Equals(existingEmail.UserId, user.UserId, StringComparison.Ordinal))
+            {
+                return new AuthResult(false, "That email address is already in use.");
+            }
+        }
+
+        user.DisplayName = displayName;
+        user.NormalizedDisplayName = normalizedDisplayName;
+        user.Email = string.IsNullOrWhiteSpace(email) ? null : email.Trim();
+        user.NormalizedEmail = normalizedEmail;
+        user.UpdatedAtUtc = DateTime.UtcNow;
+        await _database.Users.UpdateAsync(user, cancellationToken);
+        await _audit.RecordAsync("account.profile.updated", "User", user.UserId, MemorySmithAuditOutcomes.Success, details: new { user.DisplayName, user.Email }, cancellationToken: cancellationToken);
+        return new AuthResult(true, null, user);
+    }
+
+    public async Task<AuthResult> SetLocalPasswordAsync(string userId, string? currentPassword, string newPassword, CancellationToken cancellationToken)
+    {
+        if (!_options.CurrentValue.Auth.LocalPasswordEnabled)
+        {
+            return new AuthResult(false, "Local password sign-in is disabled.");
+        }
+
+        if (newPassword.Length < 15)
+        {
+            return new AuthResult(false, "Password must be at least 15 characters.");
+        }
+
+        var user = await _database.Users.GetByIdAsync(userId, cancellationToken);
+        if (user is null || user.IsDisabled)
+        {
+            return new AuthResult(false, "The account could not be found.");
+        }
+
+        var hasPassword = user.LocalPasswordEnabled && !string.IsNullOrWhiteSpace(user.PasswordHash);
+        if (hasPassword)
+        {
+            var verification = PasswordHasher.VerifyHashedPassword(user, user.PasswordHash!, currentPassword ?? string.Empty);
+            if (verification is not PasswordVerificationResult.Success and not PasswordVerificationResult.SuccessRehashNeeded)
+            {
+                return new AuthResult(false, "Current password is incorrect.");
+            }
+        }
+
+        user.LocalPasswordEnabled = true;
+        user.PasswordHash = PasswordHasher.HashPassword(user, newPassword);
+        user.SecurityStamp = Guid.NewGuid().ToString("N");
+        user.UpdatedAtUtc = DateTime.UtcNow;
+        await _database.Users.UpdateAsync(user, cancellationToken);
+        await EnsureLocalPasswordLinkAsync(user, cancellationToken);
+        await _audit.RecordAsync(hasPassword ? "account.local_password.changed" : "account.local_password.added", "User", user.UserId, MemorySmithAuditOutcomes.Success, cancellationToken: cancellationToken);
+        return new AuthResult(true, null, user);
+    }
+
+    public async Task<AuthResult> RemoveLocalPasswordAsync(string userId, CancellationToken cancellationToken)
+    {
+        var user = await _database.Users.GetByIdAsync(userId, cancellationToken);
+        if (user is null || user.IsDisabled)
+        {
+            return new AuthResult(false, "The account could not be found.");
+        }
+
+        var links = await _database.ProviderLinks.GetLinksForUserAsync(user.UserId, cancellationToken);
+        var localLinks = links.Where(link => string.Equals(link.ProviderName, MemorySmithProviders.LocalPassword, StringComparison.OrdinalIgnoreCase)).ToList();
+        var removedLinkIds = localLinks.Select(link => link.LinkId).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (!await HasUsableSignInMethodAfterRemovingAsync(user, links, removedLinkIds, cancellationToken))
+        {
+            return new AuthResult(false, "Add another working sign-in method before removing local password sign-in.");
+        }
+
+        user.LocalPasswordEnabled = false;
+        user.PasswordHash = null;
+        user.SecurityStamp = Guid.NewGuid().ToString("N");
+        user.UpdatedAtUtc = DateTime.UtcNow;
+        await _database.Users.UpdateAsync(user, cancellationToken);
+        foreach (var link in localLinks)
+        {
+            await _database.ProviderLinks.UnlinkAsync(link.LinkId, cancellationToken);
+        }
+
+        await _audit.RecordAsync("account.local_password.removed", "User", user.UserId, MemorySmithAuditOutcomes.Success, cancellationToken: cancellationToken);
+        return new AuthResult(true, null, user);
+    }
+
+    public async Task<AuthResult> UnlinkProviderAsync(string userId, string linkId, CancellationToken cancellationToken)
+    {
+        var user = await _database.Users.GetByIdAsync(userId, cancellationToken);
+        if (user is null || user.IsDisabled)
+        {
+            return new AuthResult(false, "The account could not be found.");
+        }
+
+        var links = await _database.ProviderLinks.GetLinksForUserAsync(user.UserId, cancellationToken);
+        var link = links.FirstOrDefault(item => string.Equals(item.LinkId, linkId, StringComparison.OrdinalIgnoreCase));
+        if (link is null)
+        {
+            return new AuthResult(false, "The sign-in method could not be found.");
+        }
+
+        if (string.Equals(link.ProviderName, MemorySmithProviders.LocalPassword, StringComparison.OrdinalIgnoreCase))
+        {
+            return await RemoveLocalPasswordAsync(userId, cancellationToken);
+        }
+
+        var removedLinkIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { link.LinkId };
+        if (!await HasUsableSignInMethodAfterRemovingAsync(user, links, removedLinkIds, cancellationToken))
+        {
+            return new AuthResult(false, "Add another working sign-in method before removing this provider.");
+        }
+
+        await _database.ProviderLinks.UnlinkAsync(link.LinkId, cancellationToken);
+        await _audit.RecordAsync("account.provider.unlinked", "User", user.UserId, MemorySmithAuditOutcomes.Success, details: new { link.ProviderName }, cancellationToken: cancellationToken);
+        return new AuthResult(true, null, user);
+    }
+
     public async Task SignOutAsync() =>
         await (_httpContextAccessor.HttpContext?.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme) ?? Task.CompletedTask);
+
+    private async Task EnsureLocalPasswordLinkAsync(UserAccount user, CancellationToken cancellationToken)
+    {
+        var links = await _database.ProviderLinks.GetLinksForUserAsync(user.UserId, cancellationToken);
+        if (links.Any(link => string.Equals(link.ProviderName, MemorySmithProviders.LocalPassword, StringComparison.OrdinalIgnoreCase)))
+        {
+            return;
+        }
+
+        await _database.ProviderLinks.LinkAsync(new ProviderLink
+        {
+            LinkId = Guid.NewGuid().ToString("N"),
+            UserId = user.UserId,
+            ProviderName = MemorySmithProviders.LocalPassword,
+            ProviderSubject = user.UserId,
+            ProviderDisplayName = user.DisplayName,
+            ProviderEmail = user.Email,
+            LinkedAtUtc = DateTime.UtcNow
+        }, cancellationToken);
+    }
+
+    private async Task<bool> HasUsableSignInMethodAfterRemovingAsync(UserAccount user, IReadOnlyList<ProviderLink> links, ISet<string> removedLinkIds, CancellationToken cancellationToken)
+    {
+        var providers = await _database.ProviderLinks.ListProvidersAsync(cancellationToken);
+        return links
+            .Where(link => !removedLinkIds.Contains(link.LinkId))
+            .Any(link => IsUsableSignInMethod(user, link, providers));
+    }
+
+    private bool IsUsableSignInMethod(UserAccount user, ProviderLink link, IReadOnlyList<AuthProviderRecord> providers)
+    {
+        var providerRecord = providers.FirstOrDefault(provider => string.Equals(provider.ProviderName, link.ProviderName, StringComparison.OrdinalIgnoreCase));
+        if (providerRecord?.IsEnabled != true)
+        {
+            return false;
+        }
+
+        var auth = _options.CurrentValue.Auth;
+        return link.ProviderName switch
+        {
+            MemorySmithProviders.LocalPassword => auth.LocalPasswordEnabled && user.LocalPasswordEnabled && !string.IsNullOrWhiteSpace(user.PasswordHash),
+            MemorySmithProviders.GitHub => auth.Providers.GitHub.Enabled && !string.IsNullOrWhiteSpace(auth.Providers.GitHub.ClientId),
+            MemorySmithProviders.Google => auth.Providers.Google.Enabled && !string.IsNullOrWhiteSpace(auth.Providers.Google.ClientId),
+            MemorySmithProviders.Microsoft => auth.Providers.Microsoft.Enabled && !string.IsNullOrWhiteSpace(auth.Providers.Microsoft.ClientId),
+            _ => false
+        };
+    }
 
     private async Task SignInUserAsync(UserAccount user, IEnumerable<string> roles, string? returnUrl, bool rememberMe, CancellationToken cancellationToken)
     {
