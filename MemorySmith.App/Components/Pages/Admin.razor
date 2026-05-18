@@ -2,6 +2,13 @@
 @rendermode InteractiveServer
 @attribute [Authorize(Policy = MemorySmithPolicies.CanAdminMemorySmith)]
 @inject IMemorySmithDatabase Database
+@inject IOptionsMonitor<MemorySmithOptions> Options
+@inject ICurrentUserContext CurrentUser
+@inject AuditLogService Audit
+@inject ISnackbar Snackbar
+@using Microsoft.Extensions.Options
+@using System.Text.Json
+@using System.Text.Json.Nodes
 
 <PageTitle>Admin</PageTitle>
 
@@ -9,25 +16,48 @@
     <section class="wiki-commandbar" aria-label="Admin">
         <div class="wiki-title-block">
             <MudText Typo="Typo.h5">Admin</MudText>
-            <span class="wiki-count">Auth, audit, history</span>
+            <span class="wiki-count">Users, providers, settings, audit, history</span>
         </div>
         <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync">Refresh</MudButton>
     </section>
 
     <MudTabs Rounded="false" Elevation="0" Class="admin-tabs">
         <MudTabPanel Text="Users" Icon="@Icons.Material.Filled.People">
-            <MudTable Items="@_users" Dense="true" Class="health-table">
+            <MudTable Items="@_userRows" Dense="true" Class="health-table">
                 <HeaderContent>
                     <MudTh>User</MudTh>
                     <MudTh>Email</MudTh>
                     <MudTh>Status</MudTh>
-                    <MudTh>Created</MudTh>
+                    <MudTh>Role</MudTh>
+                    <MudTh>Last login</MudTh>
+                    <MudTh>Action</MudTh>
                 </HeaderContent>
                 <RowTemplate>
-                    <MudTd>@context.DisplayName</MudTd>
-                    <MudTd>@(context.Email ?? "-")</MudTd>
-                    <MudTd>@(context.IsDisabled ? "Disabled" : "Active")</MudTd>
-                    <MudTd>@context.CreatedAtUtc.ToLocalTime().ToString("g")</MudTd>
+                    <MudTd>
+                        <strong>@context.User.DisplayName</strong><br />
+                        <small>@context.User.UserId</small>
+                    </MudTd>
+                    <MudTd>@(context.User.Email ?? "-")</MudTd>
+                    <MudTd>@(context.User.IsDisabled ? "Disabled" : "Active")</MudTd>
+                    <MudTd>
+                        @if (context.IsAdmin)
+                        {
+                            <span class="wiki-status is-core">Admin</span>
+                        }
+                        else
+                        {
+                            <MudSelect T="string" Value="@context.SelectedRole" ValueChanged="@((string role) => ChangeUserRoleAsync(context, role))" Dense="true" Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="@_isBusy">
+                                @foreach (var role in _assignableRoles)
+                                {
+                                    <MudSelectItem T="string" Value="@role.Name">@role.Name</MudSelectItem>
+                                }
+                            </MudSelect>
+                        }
+                    </MudTd>
+                    <MudTd>@(context.User.LastLoginAtUtc?.ToLocalTime().ToString("g") ?? "-")</MudTd>
+                    <MudTd>
+                        <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error" Disabled="@(_isBusy || context.IsAdmin || context.User.IsDisabled)" OnClick="@(() => DisableUserAsync(context))">Disable</MudButton>
+                    </MudTd>
                 </RowTemplate>
             </MudTable>
         </MudTabPanel>
@@ -36,12 +66,32 @@
                 <HeaderContent>
                     <MudTh>Provider</MudTh>
                     <MudTh>Status</MudTh>
+                    <MudTh>Configured</MudTh>
+                    <MudTh>Links</MudTh>
                     <MudTh>Updated</MudTh>
+                    <MudTh>Action</MudTh>
                 </HeaderContent>
                 <RowTemplate>
                     <MudTd>@context.DisplayName</MudTd>
                     <MudTd>@(context.IsEnabled ? "Enabled" : "Disabled")</MudTd>
+                    <MudTd>@ProviderConfigurationLabel(context.ProviderName)</MudTd>
+                    <MudTd>@ProviderLinkCount(context.ProviderName)</MudTd>
                     <MudTd>@context.UpdatedAtUtc.ToLocalTime().ToString("g")</MudTd>
+                    <MudTd>
+                        <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="@(context.IsEnabled ? Color.Warning : Color.Success)" Disabled="@_isBusy" OnClick="@(() => ToggleProviderAsync(context))">@(context.IsEnabled ? "Disable" : "Enable")</MudButton>
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        </MudTabPanel>
+        <MudTabPanel Text="Configuration" Icon="@Icons.Material.Filled.Tune">
+            <MudTable Items="@_configurationItems" Dense="true" Class="health-table" RowsPerPage="25">
+                <HeaderContent>
+                    <MudTh>Key</MudTh>
+                    <MudTh>Value</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>@context.Key</MudTd>
+                    <MudTd>@context.DisplayValue</MudTd>
                 </RowTemplate>
             </MudTable>
         </MudTabPanel>
@@ -83,19 +133,184 @@
 </div>
 
 @code {
-    private IReadOnlyList<UserAccount> _users = [];
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private IReadOnlyList<UserAdminRow> _userRows = [];
+    private IReadOnlyList<RoleRecord> _roles = [];
+    private IReadOnlyList<RoleRecord> _assignableRoles = [];
     private IReadOnlyList<AuthProviderRecord> _providers = [];
     private IReadOnlyList<AuditLogEntry> _audit = [];
     private IReadOnlyList<VersionHistoryEntry> _recentVersions = [];
+    private IReadOnlyList<ConfigurationItem> _configurationItems = [];
+    private Dictionary<string, int> _providerLinkCounts = new(StringComparer.OrdinalIgnoreCase);
+    private bool _isBusy;
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
 
     private async Task LoadAsync()
     {
-        _users = (await Database.Users.ListAsync(new UserQuery(PageSize: 100), CancellationToken.None)).Data;
+        var users = (await Database.Users.ListAsync(new UserQuery(PageSize: 100), CancellationToken.None)).Data;
+        _roles = await Database.Roles.ListRolesAsync(CancellationToken.None);
+        _assignableRoles = _roles.Where(role => !string.Equals(role.Name, MemorySmithRoles.Admin, StringComparison.OrdinalIgnoreCase)).ToList();
+        var rows = new List<UserAdminRow>();
+        _providerLinkCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var user in users)
+        {
+            var roles = await Database.Roles.GetRolesForUserAsync(user.UserId, CancellationToken.None);
+            rows.Add(new UserAdminRow(user, roles));
+            var links = await Database.ProviderLinks.GetLinksForUserAsync(user.UserId, CancellationToken.None);
+            foreach (var link in links)
+            {
+                _providerLinkCounts.TryGetValue(link.ProviderName, out var count);
+                _providerLinkCounts[link.ProviderName] = count + 1;
+            }
+        }
+
+        _userRows = rows;
         _providers = await Database.ProviderLinks.ListProvidersAsync(CancellationToken.None);
         _audit = (await Database.AuditLogs.QueryAsync(new AuditLogQuery(PageSize: 100), CancellationToken.None)).Data;
         _recentVersions = await LoadRecentVersionsAsync();
+        _configurationItems = BuildConfigurationItems();
+    }
+
+    private async Task ChangeUserRoleAsync(UserAdminRow row, string roleName)
+    {
+        if (row.IsAdmin || string.Equals(roleName, MemorySmithRoles.Admin, StringComparison.OrdinalIgnoreCase))
+        {
+            Snackbar.Add("Admin roles are not changed from this view.", Severity.Warning);
+            return;
+        }
+
+        _isBusy = true;
+        var currentRoles = await Database.Roles.GetRolesForUserAsync(row.User.UserId, CancellationToken.None);
+        if (currentRoles.Any(role => string.Equals(role.Name, MemorySmithRoles.Admin, StringComparison.OrdinalIgnoreCase)))
+        {
+            _isBusy = false;
+            Snackbar.Add("Admin roles are not changed from this view.", Severity.Warning);
+            return;
+        }
+
+        foreach (var role in currentRoles.Where(role => !string.Equals(role.Name, roleName, StringComparison.OrdinalIgnoreCase)))
+        {
+            await Database.Roles.RemoveRoleAsync(row.User.UserId, role.Name, CurrentUser.UserId, CancellationToken.None);
+        }
+
+        await Database.Roles.AssignRoleAsync(row.User.UserId, roleName, CurrentUser.UserId, CancellationToken.None);
+        await Audit.RecordAsync("user.role.changed", "User", row.User.UserId, MemorySmithAuditOutcomes.Success, details: new { roleName }, cancellationToken: CancellationToken.None);
+        Snackbar.Add($"{row.User.DisplayName} is now {roleName}.", Severity.Success);
+        _isBusy = false;
+        await LoadAsync();
+    }
+
+    private async Task DisableUserAsync(UserAdminRow row)
+    {
+        if (row.IsAdmin)
+        {
+            Snackbar.Add("Admin accounts are not disabled from this view.", Severity.Warning);
+            return;
+        }
+
+        _isBusy = true;
+        await Database.Users.DisableAsync(row.User.UserId, CurrentUser.UserId ?? MemorySmithProviders.System, CancellationToken.None);
+        await Audit.RecordAsync("user.disabled", "User", row.User.UserId, MemorySmithAuditOutcomes.Success, cancellationToken: CancellationToken.None);
+        Snackbar.Add($"{row.User.DisplayName} disabled.", Severity.Success);
+        _isBusy = false;
+        await LoadAsync();
+    }
+
+    private async Task ToggleProviderAsync(AuthProviderRecord provider)
+    {
+        _isBusy = true;
+        var enabled = !provider.IsEnabled;
+        await Database.ProviderLinks.SetProviderEnabledAsync(provider.ProviderName, enabled, CurrentUser.UserId, CancellationToken.None);
+        await Audit.RecordAsync("provider.enabled.changed", "Provider", provider.ProviderName, MemorySmithAuditOutcomes.Success, details: new { enabled }, cancellationToken: CancellationToken.None);
+        Snackbar.Add($"{provider.DisplayName} {(enabled ? "enabled" : "disabled")}.", Severity.Success);
+        _isBusy = false;
+        await LoadAsync();
+    }
+
+    private int ProviderLinkCount(string providerName) => _providerLinkCounts.TryGetValue(providerName, out var count) ? count : 0;
+
+    private string ProviderConfigurationLabel(string providerName)
+    {
+        var auth = Options.CurrentValue.Auth;
+        return providerName switch
+        {
+            MemorySmithProviders.LocalPassword => auth.LocalPasswordEnabled ? "Configured" : "Not configured",
+            MemorySmithProviders.ApiToken => string.IsNullOrWhiteSpace(Options.CurrentValue.ApiKey) ? "No shared key" : "Shared key configured",
+            MemorySmithProviders.System => "Built-in",
+            MemorySmithProviders.GitHub => auth.Providers.GitHub.Enabled && !string.IsNullOrWhiteSpace(auth.Providers.GitHub.ClientId) ? "Configured" : "Not configured",
+            MemorySmithProviders.Google => auth.Providers.Google.Enabled && !string.IsNullOrWhiteSpace(auth.Providers.Google.ClientId) ? "Configured" : "Not configured",
+            MemorySmithProviders.Microsoft => auth.Providers.Microsoft.Enabled && !string.IsNullOrWhiteSpace(auth.Providers.Microsoft.ClientId) ? "Configured" : "Not configured",
+            _ => "Unknown"
+        };
+    }
+
+    private IReadOnlyList<ConfigurationItem> BuildConfigurationItems()
+    {
+        var root = JsonSerializer.SerializeToNode(Options.CurrentValue, JsonOptions);
+        var items = new List<ConfigurationItem>();
+        FlattenConfiguration("MemorySmith", root, items);
+        return items.OrderBy(item => item.Key, StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
+    private static void FlattenConfiguration(string key, JsonNode? node, List<ConfigurationItem> items)
+    {
+        switch (node)
+        {
+            case JsonObject obj when obj.Count > 0:
+                foreach (var child in obj.OrderBy(child => child.Key, StringComparer.OrdinalIgnoreCase))
+                {
+                    FlattenConfiguration($"{key}:{child.Key}", child.Value, items);
+                }
+                break;
+            case JsonArray array when array.Count > 0:
+                for (var i = 0; i < array.Count; i++)
+                {
+                    FlattenConfiguration($"{key}:{i}", array[i], items);
+                }
+                break;
+            default:
+                items.Add(new ConfigurationItem(key, FormatConfigValue(node, IsSensitiveKey(key))));
+                break;
+        }
+    }
+
+    private static bool IsSensitiveKey(string key)
+    {
+        var name = key.Split(':').Last();
+        return name.Contains("Secret", StringComparison.OrdinalIgnoreCase)
+            || name.Contains("ApiKey", StringComparison.OrdinalIgnoreCase)
+            || name.Contains("ConnectionString", StringComparison.OrdinalIgnoreCase)
+            || name.Contains("PasswordHash", StringComparison.OrdinalIgnoreCase)
+            || name.Contains("BootstrapToken", StringComparison.OrdinalIgnoreCase)
+            || name.Equals("ClientId", StringComparison.OrdinalIgnoreCase)
+            || name.Equals("ClientSecret", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string FormatConfigValue(JsonNode? node, bool sensitive)
+    {
+        if (node is null)
+        {
+            return sensitive ? "Not configured" : "(null)";
+        }
+
+        if (sensitive)
+        {
+            var raw = node.ToJsonString(JsonOptions);
+            return raw is "null" or "\"\"" ? "Not configured" : "Configured";
+        }
+
+        if (node is JsonValue value)
+        {
+            if (value.TryGetValue<string>(out var text)) return string.IsNullOrEmpty(text) ? "(empty)" : text;
+            if (value.TryGetValue<bool>(out var boolean)) return boolean ? "true" : "false";
+            if (value.TryGetValue<int>(out var number)) return number.ToString();
+            if (value.TryGetValue<long>(out var longNumber)) return longNumber.ToString();
+            if (value.TryGetValue<double>(out var doubleNumber)) return doubleNumber.ToString("G");
+        }
+
+        return node.ToJsonString(JsonOptions);
     }
 
     private async Task<IReadOnlyList<VersionHistoryEntry>> LoadRecentVersionsAsync()
@@ -114,4 +329,15 @@
             .Take(50)
             .ToList();
     }
+
+    private sealed record UserAdminRow(UserAccount User, IReadOnlyList<RoleRecord> Roles)
+    {
+        public bool IsAdmin => Roles.Any(role => string.Equals(role.Name, MemorySmithRoles.Admin, StringComparison.OrdinalIgnoreCase));
+
+        public string SelectedRole => Roles.FirstOrDefault(role => string.Equals(role.Name, MemorySmithRoles.Editor, StringComparison.OrdinalIgnoreCase))?.Name
+            ?? Roles.FirstOrDefault(role => string.Equals(role.Name, MemorySmithRoles.Viewer, StringComparison.OrdinalIgnoreCase))?.Name
+            ?? MemorySmithRoles.Viewer;
+    }
+
+    private sealed record ConfigurationItem(string Key, string DisplayValue);
 }

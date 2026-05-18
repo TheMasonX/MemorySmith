@@ -93,20 +93,50 @@ try
                     var githubEmail = root.TryGetProperty("email", out var emailEl) && emailEl.ValueKind == JsonValueKind.String ? emailEl.GetString() : null;
                     var githubDisplayName = root.TryGetProperty("name", out var nameEl) && nameEl.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(nameEl.GetString()) ? nameEl.GetString() : null;
                     if (githubSubject == null) return;
-                    // Look up or provision MemorySmith user
                     var db = ctx.HttpContext.RequestServices.GetRequiredService<IMemorySmithDatabase>();
                     var msOpts = ctx.HttpContext.RequestServices.GetRequiredService<IOptions<MemorySmithOptions>>().Value;
                     var ct = ctx.HttpContext.RequestAborted;
+                    var displayName = githubDisplayName ?? githubLogin ?? githubSubject;
+                    var linkUserId = ctx.Properties?.Items.TryGetValue(MemorySmithAuthProperties.LinkUserId, out var requestedUserId) == true
+                        ? requestedUserId
+                        : null;
                     var link = await db.ProviderLinks.GetByProviderSubjectAsync(MemorySmithProviders.GitHub, githubSubject, ct);
                     string internalUserId;
                     if (link != null)
                     {
+                        if (!string.IsNullOrWhiteSpace(linkUserId) && !string.Equals(link.UserId, linkUserId, StringComparison.Ordinal))
+                        {
+                            ctx.Fail("This GitHub account is already linked to another MemorySmith user.");
+                            return;
+                        }
+
                         internalUserId = link.UserId;
+                    }
+                    else if (!string.IsNullOrWhiteSpace(linkUserId))
+                    {
+                        var linkedUser = await db.Users.GetByIdAsync(linkUserId, ct);
+                        if (linkedUser is null || linkedUser.IsDisabled)
+                        {
+                            ctx.Fail("The MemorySmith account for this link request is not available.");
+                            return;
+                        }
+
+                        internalUserId = linkedUser.UserId;
+                        await db.ProviderLinks.LinkAsync(new ProviderLink
+                        {
+                            LinkId = Guid.NewGuid().ToString("N"),
+                            UserId = internalUserId,
+                            ProviderName = MemorySmithProviders.GitHub,
+                            ProviderSubject = githubSubject,
+                            ProviderDisplayName = githubLogin ?? displayName,
+                            ProviderEmail = githubEmail,
+                            LinkedAtUtc = DateTime.UtcNow
+                        }, ct);
                     }
                     else
                     {
                         internalUserId = Guid.NewGuid().ToString("N");
-                        var displayName = githubDisplayName ?? githubLogin ?? githubSubject;
+                        var now = DateTime.UtcNow;
                         await db.Users.CreateAsync(new UserAccount
                         {
                             UserId = internalUserId,
@@ -115,6 +145,8 @@ try
                             Email = githubEmail,
                             NormalizedEmail = githubEmail?.ToUpperInvariant(),
                             LocalPasswordEnabled = false,
+                            CreatedAtUtc = now,
+                            UpdatedAtUtc = now
                         }, ct);
                         await db.ProviderLinks.LinkAsync(new ProviderLink
                         {
@@ -122,22 +154,55 @@ try
                             UserId = internalUserId,
                             ProviderName = MemorySmithProviders.GitHub,
                             ProviderSubject = githubSubject,
-                            ProviderDisplayName = githubLogin,
+                            ProviderDisplayName = githubLogin ?? displayName,
                             ProviderEmail = githubEmail,
+                            LinkedAtUtc = now
                         }, ct);
                         var isFirstAdmin = !await db.Users.HasAnyAdminAsync(ct);
                         var assignedRole = isFirstAdmin ? MemorySmithRoles.Admin : (msOpts.Auth.AuthenticatedDefaultRole ?? MemorySmithRoles.Viewer);
                         await db.Roles.AssignRoleAsync(internalUserId, assignedRole, null, ct);
                     }
-                    // Build claims using internal user ID and MemorySmith roles
                     var roles = await db.Roles.GetRolesForUserAsync(internalUserId, ct);
                     var user = await db.Users.GetByIdAsync(internalUserId, ct);
+                    if (user is null || user.IsDisabled)
+                    {
+                        ctx.Fail("The MemorySmith account is disabled or no longer exists.");
+                        return;
+                    }
+
+                    var resolvedUser = user;
+                    var loginAtUtc = DateTime.UtcNow;
+                    resolvedUser.LastLoginAtUtc = loginAtUtc;
+                    resolvedUser.UpdatedAtUtc = loginAtUtc;
+                    await db.Users.UpdateAsync(resolvedUser, ct);
+                    await db.LoginHistory.RecordAsync(new LoginHistoryEntry
+                    {
+                        LoginId = Guid.NewGuid().ToString("N"),
+                        UserId = resolvedUser.UserId,
+                        ProviderName = MemorySmithProviders.GitHub,
+                        ProviderSubject = githubSubject,
+                        OccurredAtUtc = loginAtUtc,
+                        Succeeded = true,
+                        RequestId = ctx.HttpContext.TraceIdentifier
+                    }, ct);
                     ctx.Identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, internalUserId, ClaimValueTypes.String, ctx.Options.ClaimsIssuer));
-                    ctx.Identity.AddClaim(new Claim(ClaimTypes.Name, user?.DisplayName ?? githubLogin ?? "", ClaimValueTypes.String, ctx.Options.ClaimsIssuer));
-                    if (user?.Email is not null)
-                        ctx.Identity.AddClaim(new Claim(ClaimTypes.Email, user.Email, ClaimValueTypes.String, ctx.Options.ClaimsIssuer));
+                    ctx.Identity.AddClaim(new Claim(ClaimTypes.Name, resolvedUser.DisplayName, ClaimValueTypes.String, ctx.Options.ClaimsIssuer));
+                    if (resolvedUser.Email is not null)
+                        ctx.Identity.AddClaim(new Claim(ClaimTypes.Email, resolvedUser.Email, ClaimValueTypes.String, ctx.Options.ClaimsIssuer));
+                    ctx.Identity.AddClaim(new Claim("provider", MemorySmithProviders.GitHub, ClaimValueTypes.String, ctx.Options.ClaimsIssuer));
+                    ctx.Identity.AddClaim(new Claim("security_stamp", resolvedUser.SecurityStamp, ClaimValueTypes.String, ctx.Options.ClaimsIssuer));
                     foreach (var role in roles)
                         ctx.Identity.AddClaim(new Claim(ClaimTypes.Role, role.Name, ClaimValueTypes.String, ctx.Options.ClaimsIssuer));
+                },
+                OnRemoteFailure = ctx =>
+                {
+                    ctx.HandleResponse();
+                    var returnUri = ctx.Properties?.RedirectUri;
+                    var target = !string.IsNullOrWhiteSpace(returnUri) && returnUri.StartsWith("/profile", StringComparison.Ordinal)
+                        ? $"/profile?error={Uri.EscapeDataString(ctx.Failure?.Message ?? "External sign-in failed.")}"
+                        : "/login?error=1";
+                    ctx.Response.Redirect(target);
+                    return Task.CompletedTask;
                 }
             };
         });
