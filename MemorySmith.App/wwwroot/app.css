@@ -579,8 +579,21 @@ body {
 }
 
 .mermaid-rendered {
+    margin: 0 0 12px;
     overflow: auto;
     padding: 12px;
+    border: 1px solid var(--vscode-border-soft);
+    border-radius: 3px;
+}
+
+.mermaid-rendered[data-mermaid-theme="light"] {
+    background: #f7f7fb;
+    color: #1f1f1f;
+}
+
+.mermaid-rendered[data-mermaid-theme="dark"] {
+    background: #15191f;
+    color: #f3f3f3;
 }
 
 .mermaid-rendered svg {
@@ -857,7 +870,7 @@ body {
 
 .chat-model-controls {
     display: grid;
-    grid-template-columns: minmax(110px, 140px) minmax(130px, 1fr) auto;
+    grid-template-columns: minmax(104px, 132px) minmax(130px, 1fr) minmax(92px, 116px) auto;
     align-items: center;
     justify-content: stretch;
     gap: 6px;
@@ -870,6 +883,11 @@ body {
 }
 
 .chat-model-select {
+    width: 100%;
+    min-width: 0;
+}
+
+.chat-mermaid-theme-select {
     width: 100%;
     min-width: 0;
 }
