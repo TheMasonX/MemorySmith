@@ -1842,17 +1842,11 @@ body {
     }
 
     .chat-workbench.is-sidebar-open {
-        grid-template-columns: minmax(0, 1fr);
-        grid-template-rows: minmax(0, 1fr) minmax(240px, 40vh);
+        grid-template-columns: minmax(0, 1fr) clamp(220px, 28%, 300px);
     }
 
     .chat-toolbar {
         grid-template-columns: auto minmax(0, 1fr) auto;
-    }
-
-    .chat-side-panel {
-        grid-column: 1;
-        grid-row: 2;
     }
 
     .health-charts-row,
@@ -2007,9 +2001,12 @@ body {
     }
 
     .page-editor-panels,
-    .chat-workbench,
-    .chat-workbench.is-sidebar-open {
+    .chat-workbench {
         grid-template-columns: 1fr;
+    }
+
+    .chat-workbench.is-sidebar-open {
+        grid-template-columns: minmax(0, 1fr) clamp(160px, 44%, 220px);
     }
 
     .chat-workbench,
@@ -2017,11 +2014,7 @@ body {
         height: auto;
         min-height: 0;
         overflow: visible;
-        grid-template-rows: auto;
-    }
-
-    .chat-workbench.is-sidebar-open {
-        grid-template-rows: auto minmax(220px, 42vh);
+        grid-template-rows: minmax(0, 1fr);
     }
 
     .chat-shell {
@@ -2035,8 +2028,8 @@ body {
     }
 
     .chat-side-panel {
-        height: min(360px, 42vh);
-        min-height: 220px;
+        min-height: 0;
+        overflow: hidden;
     }
 
     .chat-side-tabs {
