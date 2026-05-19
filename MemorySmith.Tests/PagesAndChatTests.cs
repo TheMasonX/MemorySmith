@@ -426,11 +426,16 @@ public class PagesAndChatTests
 
         var visibleDeltas = string.Concat(updates.Select(update => update.ContentDelta));
         var final = updates.Single(update => update.IsFinal).Response!;
+        var traceEvents = updates
+            .SelectMany(update => update.TraceEvents ?? [])
+            .ToList();
 
         Assert.Multiple(() =>
         {
             Assert.That(visibleDeltas, Does.Not.Contain("tools/call"));
             Assert.That(updates.Select(update => update.Status).Where(status => !string.IsNullOrWhiteSpace(status)), Does.Contain("Ran 1 MemorySmith wiki tool call(s): memorysmith_get"));
+            Assert.That(traceEvents.Any(trace => trace.Kind == ChatTraceKinds.ToolCall && trace.Title.Contains("memorysmith_get", StringComparison.Ordinal)), Is.True);
+            Assert.That(traceEvents.Any(trace => trace.Kind == ChatTraceKinds.ToolResult && trace.Title.Contains("memorysmith_get", StringComparison.Ordinal)), Is.True);
             Assert.That(final.Reply, Is.EqualTo("stream-tool-target has the evidence."));
             Assert.That(provider.Requests, Has.Count.EqualTo(2));
         });

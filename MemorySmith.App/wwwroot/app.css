@@ -922,6 +922,78 @@ body {
     46%, 100% { opacity: 0; }
 }
 
+.chat-trace-drawer {
+    margin: 0 0 6px;
+    border: 1px solid var(--vscode-border-soft);
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.chat-trace-drawer.is-active {
+    border-color: rgba(82, 156, 255, 0.48);
+}
+
+.chat-trace-drawer summary {
+    cursor: pointer;
+    color: var(--vscode-text-muted);
+    font-size: 0.76rem;
+    padding: 4px 6px;
+}
+
+.chat-trace-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 6px;
+    max-height: min(44vh, 320px);
+    overflow: auto;
+}
+
+.chat-trace-entry {
+    border: 1px solid var(--vscode-border-soft);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.chat-trace-entry.is-active {
+    border-color: var(--vscode-accent);
+}
+
+.chat-trace-entry.is-reasoning {
+    border-left: 3px solid rgba(204, 167, 0, 0.7);
+}
+
+.chat-trace-entry.is-tool-call {
+    border-left: 3px solid rgba(82, 156, 255, 0.7);
+}
+
+.chat-trace-entry.is-tool-result {
+    border-left: 3px solid rgba(78, 201, 176, 0.75);
+}
+
+.chat-trace-entry.is-error {
+    border-left: 3px solid rgba(244, 135, 113, 0.8);
+}
+
+.chat-trace-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    color: var(--vscode-text-muted);
+    font-size: 0.72rem;
+    padding: 4px 6px;
+    border-bottom: 1px solid var(--vscode-border-soft);
+}
+
+.chat-trace-entry pre {
+    margin: 0;
+    padding: 6px;
+    white-space: pre-wrap;
+    overflow: auto;
+    font-family: Consolas, "Cascadia Mono", "Segoe UI", monospace;
+    font-size: 0.75rem;
+    line-height: 1.35;
+}
+
 .chat-context-list {
     display: flex;
     flex-wrap: wrap;

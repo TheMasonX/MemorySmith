@@ -61,6 +61,8 @@ Chat keeps preloaded context conservative. Exact-reply smoke prompts, simple gre
 
 When the model needs more evidence, it can request read-only MemorySmith tools mid-turn. Those tool results are fed back into the same provider turn and their touched memory/page resources are shown in the transcript as blue resource chips. Preloaded context chips keep the neutral wiki-chip theme, while Agent-created pages remain green write chips.
 
+The chat transcript now also has a first-class Trace drawer on assistant turns. It records interleaved reasoning, tool-call requests, and tool-call results in chronological order so users can inspect what happened inside the same turn without reading raw tool JSON.
+
 Process note: for chat quality work, test both a no-context prompt such as `Reply exactly: ...` and a retrieval prompt that forces a tool or intercept. The first catches accidental context bloat; the second catches tool-loop and resource-chip regressions.
 
 ## Agent Mode
