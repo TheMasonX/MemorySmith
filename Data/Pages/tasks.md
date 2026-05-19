@@ -47,7 +47,7 @@ This page tracks user-facing work in plain language. Completed items stay here a
 - [x] Add shared chat tool catalog and deterministic intent intercepts for page/unified wiki retrieval
 - [x] Keep chat pre-context small for simple prompts and show mid-chat accessed resources as separate blue chips
 - [x] Add a first-class trace drawer for interleaved reasoning and tool call/result events per assistant turn
-- [x] Add a global chat Trace side panel with collapsible trace headers, responsive small-viewport layout, filters, compact execution graph, tool latency/token metadata, editable tool rerun, icon Finish Step/Stop controls, and per-action Agent write approval/rejection
+- [x] Add a global chat Trace panel with history-compatible medium-width layout, collapsible trace headers, responsive small-viewport layout, filters, compact execution graph, tool latency/token metadata, editable tool rerun, icon Finish Step/Stop controls, and per-action Agent write approval/rejection
 
 ## Health
 - [x] Make the health page scrollable inside the fixed app shell

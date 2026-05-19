@@ -131,13 +131,13 @@
                                 <div class="chat-trace-list">
                                     @foreach (var entry in turn.TraceEntries)
                                     {
-                                        <section class="@TraceEntryClass(entry)">
-                                            <header class="chat-trace-header">
+                                        <details class="@TraceEntryClass(entry)" open="@ShouldOpenTraceEntry(entry)">
+                                            <summary class="chat-trace-header">
                                                 <span>@entry.Title</span>
                                                 <small>@entry.CreatedUtc.ToLocalTime().ToString("HH:mm:ss")</small>
-                                            </header>
+                                            </summary>
                                             <pre>@entry.Content</pre>
-                                        </section>
+                                        </details>
                                     }
                                 </div>
                             </details>
@@ -474,6 +474,7 @@
                 ?? _sessions.OrderByDescending(session => session.UpdatedUtc).First();
             _activeSessionId = active.Id;
             RestoreSessionDraft(active);
+            SelectDefaultTraceTurn(active);
             _currentUsage = null;
             _agentStatus = "Ready";
             _scrollPending = true;
@@ -840,6 +841,7 @@
         _sessions.Insert(0, session);
         _activeSessionId = session.Id;
         RestoreSessionDraft(session);
+        SelectDefaultTraceTurn(session);
         _currentUsage = null;
         _agentStatus = "Ready";
         _scrollPending = true;
@@ -852,6 +854,7 @@
             PersistActiveDraft();
             _activeSessionId = id;
             RestoreSessionDraft(session);
+            SelectDefaultTraceTurn(session);
             _currentUsage = null;
             _scrollPending = true;
             await SaveSessionsAsync();
@@ -883,6 +886,7 @@
             var next = _sessions.OrderByDescending(item => item.UpdatedUtc).First();
             _activeSessionId = next.Id;
             RestoreSessionDraft(next);
+            SelectDefaultTraceTurn(next);
             _currentUsage = null;
         }
 
@@ -896,6 +900,11 @@
         _mode = mode;
         _agentStatus = mode == MemoryChatMode.Agent ? "Agent ready" : "Chat ready";
         await SavePreferencesAsync();
+    }
+
+    private void SelectDefaultTraceTurn(ChatSessionState session)
+    {
+        _selectedTraceTurnId = session.Turns.LastOrDefault(TurnHasInspectableState)?.Id;
     }
 
     private async Task OnProviderChanged(string provider)
