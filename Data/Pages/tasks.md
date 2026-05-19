@@ -13,7 +13,6 @@ This page tracks user-facing work in plain language. Completed items stay here a
 - [ ] Agent driven page generation - combined feature with chat that leverages chat interface and adds a preview pane
 - [ ] Grid panels like the markdown/preview plane and the pages/edit columns should be resizable to a degree, like a classic gridsplitter
 - [ ] admin/ page should allow the user to edit settings and not just view them (as appropriate)
-- [ ] Add explicit approval controls for high-impact Agent write actions before apply (memory/page writes with per-action accept/deny).
 
 ## Pages
 - [x] Page preview mode - live update or at least periodic refresh (toggleable) and a manual refresh button
@@ -48,6 +47,7 @@ This page tracks user-facing work in plain language. Completed items stay here a
 - [x] Add shared chat tool catalog and deterministic intent intercepts for page/unified wiki retrieval
 - [x] Keep chat pre-context small for simple prompts and show mid-chat accessed resources as separate blue chips
 - [x] Add a first-class trace drawer for interleaved reasoning and tool call/result events per assistant turn
+- [x] Add a global chat Trace side panel with collapsible trace headers, responsive small-viewport layout, filters, compact execution graph, tool latency/token metadata, editable tool rerun, icon Finish Step/Stop controls, and per-action Agent write approval/rejection
 
 ## Health
 - [x] Make the health page scrollable inside the fixed app shell
