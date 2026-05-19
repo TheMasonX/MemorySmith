@@ -1,6 +1,8 @@
 (function () {
     window.memorySmith = window.memorySmith || {};
 
+    const mermaidThemeStorageKey = "memorysmith.markdown.mermaidTheme.v1";
+    const mermaidThemeModes = new Set(["auto", "light", "dark"]);
     let mermaidSequence = 0;
     let mermaidTheme = null;
     let mermaidThemeWatcher = null;
@@ -9,8 +11,31 @@
         return root && typeof root.querySelectorAll === "function" ? root : document;
     }
 
-    function preferredMermaidTheme() {
-        return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "default";
+    function normalizeMermaidThemeMode(mode) {
+        const normalized = (mode || "").toString().trim().toLowerCase();
+        return mermaidThemeModes.has(normalized) ? normalized : "auto";
+    }
+
+    function storedMermaidThemeMode() {
+        try {
+            return normalizeMermaidThemeMode(localStorage.getItem(mermaidThemeStorageKey));
+        } catch {
+            return "auto";
+        }
+    }
+
+    function preferredMermaidThemeMode() {
+        return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+
+    function resolveMermaidTheme() {
+        const mode = storedMermaidThemeMode();
+        const resolvedMode = mode === "auto" ? preferredMermaidThemeMode() : mode;
+        return {
+            mode,
+            resolvedMode,
+            mermaidTheme: resolvedMode === "dark" ? "dark" : "default"
+        };
     }
 
     function configureMermaid() {
@@ -18,7 +43,7 @@
             return false;
         }
 
-        const theme = preferredMermaidTheme();
+        const theme = resolveMermaidTheme().mermaidTheme;
         if (theme !== mermaidTheme) {
             window.mermaid.initialize({ startOnLoad: false, theme: theme, securityLevel: "strict" });
             mermaidTheme = theme;
@@ -44,6 +69,10 @@
 
         mermaidThemeWatcher = window.matchMedia("(prefers-color-scheme: dark)");
         const handler = function () {
+            if (storedMermaidThemeMode() !== "auto") {
+                return;
+            }
+
             mermaidTheme = null;
             restoreMermaidSource(document);
             void window.renderMermaid(document);
@@ -63,6 +92,7 @@
 
         watchMermaidTheme();
         const scope = markdownRoot(root);
+        const theme = resolveMermaidTheme();
         const blocks = Array.from(scope.querySelectorAll("pre.mermaid"));
         for (const block of blocks) {
             const code = block.textContent || "";
@@ -71,6 +101,8 @@
             container.id = id;
             container.className = "mermaid-rendered";
             container.dataset.mermaidCode = code;
+            container.dataset.mermaidThemeMode = theme.mode;
+            container.dataset.mermaidTheme = theme.resolvedMode;
             block.replaceWith(container);
 
             try {
@@ -105,6 +137,23 @@
             textarea.setSelectionRange(cursor, cursor);
             textarea.dispatchEvent(new Event("input", { bubbles: true }));
             return textarea.value;
+        },
+
+        getMermaidThemeMode: function () {
+            return storedMermaidThemeMode();
+        },
+
+        setMermaidThemeMode: function (mode) {
+            const normalized = normalizeMermaidThemeMode(mode);
+            try {
+                localStorage.setItem(mermaidThemeStorageKey, normalized);
+            } catch {
+            }
+
+            mermaidTheme = null;
+            restoreMermaidSource(document);
+            void window.renderMermaid(document);
+            return normalized;
         },
 
         renderEnhancements: async function (root, options) {

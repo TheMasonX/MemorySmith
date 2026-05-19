@@ -55,6 +55,7 @@ This page tracks user-facing work in plain language. Completed items stay here a
 - [x] Render chat transcript messages as safe Markdown and update the shared/Athena prompts to request Markdown answers
 - [x] Render Mermaid diagrams and Prism-highlightable code blocks in chat messages
 - [x] Give all chat agents explicit guidance for wiki tool calls, Markdown answers, and Mermaid diagram output
+- [x] Make Mermaid diagram theme mode configurable with readable light/dark backgrounds
 
 ## Health
 - [x] Make the health page scrollable inside the fixed app shell

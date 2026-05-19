@@ -42,6 +42,11 @@
                         <MudSelectItem T="string" Value="@model.Name">@FormatModelLabel(model)</MudSelectItem>
                     }
                 </MudSelect>
+                <MudSelect T="string" Value="_mermaidThemeMode" ValueChanged="SetMermaidThemeModeAsync" Label="Diagram" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="chat-mermaid-theme-select">
+                    <MudSelectItem T="string" Value="@MermaidThemeAuto">Auto</MudSelectItem>
+                    <MudSelectItem T="string" Value="@MermaidThemeLight">Light</MudSelectItem>
+                    <MudSelectItem T="string" Value="@MermaidThemeDark">Dark</MudSelectItem>
+                </MudSelect>
                 <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Small" Color="Color.Primary" Disabled="@_isLoadingModels" OnClick="RefreshModelsAsync" aria-label="Refresh models" />
             </div>
 
@@ -324,6 +329,9 @@
 @code {
     private const string ChatStorageKey = "memorysmith.chat.sessions.v1";
     private const string ChatPreferencesStorageKey = "memorysmith.chat.preferences.v1";
+    private const string MermaidThemeAuto = "auto";
+    private const string MermaidThemeLight = "light";
+    private const string MermaidThemeDark = "dark";
     private const int MaxStoredChatSessions = 30;
     private const int MaxCompactStoredChatSessions = 12;
     private const int MaxStoredHistoryMessages = 40;
@@ -350,6 +358,7 @@
     private string _draft = string.Empty;
     private string _selectedProvider = "Ollama";
     private string _selectedModel = string.Empty;
+    private string _mermaidThemeMode = MermaidThemeAuto;
     private string _agentStatus = "Ready";
     private string? _preferredActiveSessionId;
     private string? _modelError;
@@ -440,6 +449,8 @@
         var preferences = await LoadStorageJsonAsync<ChatPreferencesState>(ChatPreferencesStorageKey, warnOnFailure: false);
         if (preferences is null)
         {
+            _mermaidThemeMode = NormalizeMermaidThemeMode(await JS.InvokeAsync<string?>("memorySmith.markdown.getMermaidThemeMode"));
+            await JS.InvokeVoidAsync("memorySmith.markdown.setMermaidThemeMode", _mermaidThemeMode);
             return;
         }
 
@@ -457,6 +468,14 @@
         {
             _mode = mode;
         }
+
+        _mermaidThemeMode = NormalizeMermaidThemeMode(preferences.MermaidThemeMode);
+        if (string.IsNullOrWhiteSpace(preferences.MermaidThemeMode))
+        {
+            _mermaidThemeMode = NormalizeMermaidThemeMode(await JS.InvokeAsync<string?>("memorySmith.markdown.getMermaidThemeMode"));
+        }
+
+        await JS.InvokeVoidAsync("memorySmith.markdown.setMermaidThemeMode", _mermaidThemeMode);
 
         _preferredActiveSessionId = preferences.ActiveSessionId;
     }
@@ -953,6 +972,14 @@
         _selectedModel = model;
         _currentUsage = null;
         _agentStatus = $"Using {_selectedProvider} / {_selectedModel}";
+        await SavePreferencesAsync();
+    }
+
+    private async Task SetMermaidThemeModeAsync(string mode)
+    {
+        _mermaidThemeMode = NormalizeMermaidThemeMode(mode);
+        await JS.InvokeVoidAsync("memorySmith.markdown.setMermaidThemeMode", _mermaidThemeMode);
+        _agentStatus = $"Diagram theme: {FormatMermaidThemeMode(_mermaidThemeMode)}";
         await SavePreferencesAsync();
     }
 
@@ -1679,6 +1706,7 @@
             Provider = _selectedProvider,
             Model = _selectedModel,
             Mode = _mode.ToString(),
+            MermaidThemeMode = _mermaidThemeMode,
             ActiveSessionId = _activeSessionId
         });
     }
@@ -2035,6 +2063,16 @@
         return $"{model.Name}{preferred}{multiplier}";
     }
 
+    private static string NormalizeMermaidThemeMode(string? mode) =>
+        string.Equals(mode, MermaidThemeDark, StringComparison.OrdinalIgnoreCase) ? MermaidThemeDark :
+        string.Equals(mode, MermaidThemeLight, StringComparison.OrdinalIgnoreCase) ? MermaidThemeLight :
+        MermaidThemeAuto;
+
+    private static string FormatMermaidThemeMode(string mode) =>
+        string.Equals(mode, MermaidThemeDark, StringComparison.OrdinalIgnoreCase) ? "Dark" :
+        string.Equals(mode, MermaidThemeLight, StringComparison.OrdinalIgnoreCase) ? "Light" :
+        "Auto";
+
     private static ChatAttachment ToDisplayAttachment(ChatAttachment attachment) =>
         attachment with
         {
@@ -2138,6 +2176,7 @@
         public string Provider { get; set; } = string.Empty;
         public string Model { get; set; } = string.Empty;
         public string Mode { get; set; } = string.Empty;
+        public string MermaidThemeMode { get; set; } = MermaidThemeAuto;
         public string? ActiveSessionId { get; set; }
     }
 
