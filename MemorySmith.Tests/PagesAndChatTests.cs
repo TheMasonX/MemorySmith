@@ -108,6 +108,74 @@ public class PagesAndChatTests
     }
 
     [Test]
+    public void ChatMarkdownRenderer_RendersMermaidAndPrismCodeBlocks()
+    {
+        var html = ChatMarkdownRenderer.RenderHtml("""
+        ```mermaid
+        graph TD
+            A[Start] --> B[Done]
+        ```
+
+        ```json
+        { "answer": true }
+        ```
+        """);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(html, Does.Contain("<pre class=\"mermaid\">"));
+            Assert.That(html, Does.Contain("graph TD"));
+            Assert.That(html, Does.Contain("<pre><code class=\"language-json\">"));
+            Assert.That(html, Does.Not.Contain("language-mermaid"));
+        });
+    }
+
+    [Test]
+    public void ChatMarkdownRenderer_KeepsUnclosedMermaidFenceAsCode()
+    {
+        var html = ChatMarkdownRenderer.RenderHtml("""
+        ```mermaid
+        graph TD
+        """);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(html, Does.Not.Contain("<pre class=\"mermaid\">"));
+            Assert.That(html, Does.Contain("<pre><code class=\"language-mermaid\">"));
+            Assert.That(html, Does.Contain("graph TD"));
+        });
+    }
+
+    [Test]
+    public void FilePageService_RendersMermaidAndPrismCodeBlocks()
+    {
+        var pages = new FilePageService(_tempDir);
+
+        var html = pages.RenderHtml("""
+        # Diagram
+
+        ```mermaid
+        sequenceDiagram
+            participant A
+            participant B
+            A->>B: Hello
+        ```
+
+        ```csharp
+        Console.WriteLine("highlighted");
+        ```
+        """);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(html, Does.Contain(">Diagram</h1>"));
+            Assert.That(html, Does.Contain("<pre class=\"mermaid\">"));
+            Assert.That(html, Does.Contain("sequenceDiagram"));
+            Assert.That(html, Does.Contain("<pre><code class=\"language-csharp\">"));
+        });
+    }
+
+    [Test]
     public async Task FilePageService_SavesImageAssetsForMarkdownEmbeds()
     {
         var pages = new FilePageService(_tempDir);
@@ -312,6 +380,8 @@ public class PagesAndChatTests
             Assert.That(response.Usage.InputTokens, Is.GreaterThan(0));
             Assert.That(provider.LastRequest!.Model, Is.EqualTo("custom-model"));
             Assert.That(provider.LastRequest.Messages.Any(message => message.Content.Contains("Use the project wiki prompt.", StringComparison.Ordinal)), Is.True);
+            Assert.That(provider.LastRequest.Messages.Any(message => message.Content.Contains("memorysmith_unified_search", StringComparison.Ordinal)), Is.True);
+            Assert.That(provider.LastRequest.Messages.Any(message => message.Content.Contains("Mermaid diagrams", StringComparison.Ordinal)), Is.True);
             Assert.That(provider.LastRequest.Messages.Any(message => message.Content.Contains("Attached note body", StringComparison.Ordinal)), Is.True);
         });
     }

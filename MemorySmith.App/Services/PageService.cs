@@ -1,6 +1,4 @@
 using System.Text.RegularExpressions;
-using Markdig;
-
 namespace MemorySmith.App.Services;
 
 public sealed record PageSummary(
@@ -36,14 +34,6 @@ public interface IPageService
 
 public sealed partial class FilePageService : IPageService
 {
-    private static readonly MarkdownPipeline TrustedMarkdownPipeline = new MarkdownPipelineBuilder()
-        .UseAdvancedExtensions()
-        .Build();
-    private static readonly MarkdownPipeline SafeMarkdownPipeline = new MarkdownPipelineBuilder()
-        .UseAdvancedExtensions()
-        .DisableHtml()
-        .Build();
-
     private readonly string _rootPath;
     private readonly string _assetPath;
     private readonly bool _allowRawHtml;
@@ -153,7 +143,7 @@ public sealed partial class FilePageService : IPageService
     }
 
     public string RenderHtml(string markdown) =>
-        Markdown.ToHtml(NormalizeAssetReferences(markdown), _allowRawHtml ? TrustedMarkdownPipeline : SafeMarkdownPipeline);
+        ChatMarkdownRenderer.RenderHtml(NormalizeAssetReferences(markdown), _allowRawHtml);
 
     private IEnumerable<string> EnumeratePageFiles() =>
         Directory.EnumerateFiles(_rootPath, "*.md", SearchOption.AllDirectories)

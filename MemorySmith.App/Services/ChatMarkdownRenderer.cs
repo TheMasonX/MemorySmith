@@ -5,20 +5,32 @@ namespace MemorySmith.App.Services;
 
 public static partial class ChatMarkdownRenderer
 {
-    private static readonly MarkdownPipeline Pipeline = new MarkdownPipelineBuilder()
-        .UseAdvancedExtensions()
-        .DisableHtml()
-        .Build();
+    private static readonly MarkdownPipeline SafePipeline = BuildPipeline(allowRawHtml: false);
+    private static readonly MarkdownPipeline TrustedPipeline = BuildPipeline(allowRawHtml: true);
 
-    public static string RenderHtml(string? markdown)
+    public static string RenderHtml(string? markdown, bool allowRawHtml = false)
     {
         if (string.IsNullOrWhiteSpace(markdown))
         {
             return string.Empty;
         }
 
-        var html = Markdown.ToHtml(markdown, Pipeline);
+        var html = Markdown.ToHtml(markdown, allowRawHtml ? TrustedPipeline : SafePipeline);
         return LinkAttributeRegex().Replace(html, SanitizeLinkAttribute);
+    }
+
+    private static MarkdownPipeline BuildPipeline(bool allowRawHtml)
+    {
+        var builder = new MarkdownPipelineBuilder()
+            .UseAdvancedExtensions();
+        builder.Extensions.Add(new MermaidExtension());
+
+        if (!allowRawHtml)
+        {
+            builder.DisableHtml();
+        }
+
+        return builder.Build();
     }
 
     private static string SanitizeLinkAttribute(Match match)

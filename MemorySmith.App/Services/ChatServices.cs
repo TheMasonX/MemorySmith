@@ -2064,16 +2064,24 @@ public sealed partial class MemoryChatAgent : IChatAgent
         var configuredPrompt = ReadConfiguredSystemPrompt();
         if (!string.IsNullOrWhiteSpace(configuredPrompt))
         {
-            var toolPrompt = configuredPrompt.Contains("toolCalls", StringComparison.OrdinalIgnoreCase)
-                ? string.Empty
-                : BuildToolProtocolPrompt(mode);
-            return configuredPrompt + $"\n\nCurrent mode: {mode}." + toolPrompt;
+            var extraPrompt = new StringBuilder();
+            if (!configuredPrompt.Contains("toolCalls", StringComparison.OrdinalIgnoreCase))
+            {
+                extraPrompt.Append(BuildToolProtocolPrompt(mode));
+            }
+
+            if (!HasMarkdownOutputGuidance(configuredPrompt))
+            {
+                extraPrompt.Append(BuildOutputCapabilityPrompt(mode));
+            }
+
+            return configuredPrompt + $"\n\nCurrent mode: {mode}." + extraPrompt;
         }
 
         var prompt = mode == MemoryChatMode.Agent
             ? "You are MemorySmith Agent. Answer the user and, only when useful, propose memoryWrites and pageWrites. Return strict JSON with keys reply, memoryWrites, and pageWrites. memoryWrites items may include id, title, content, tags, status, confidence. pageWrites items may include slug, title, markdown. Do not include markdown fences around the JSON."
             : "You are MemorySmith Chat. Answer the user's question using the supplied memories and pages when useful. Be direct when the local knowledge base does not contain enough evidence.";
-        return prompt + BuildToolProtocolPrompt(mode);
+        return prompt + BuildToolProtocolPrompt(mode) + BuildOutputCapabilityPrompt(mode);
     }
 
     private string BuildToolProtocolPrompt(MemoryChatMode mode)
@@ -2092,6 +2100,20 @@ public sealed partial class MemoryChatAgent : IChatAgent
             "Available read-only tools: memorysmith_unified_search (recommended for broad questions; searches memories AND pages), memorysmith_search, memorysmith_semantic_search, memorysmith_hybrid_search, memorysmith_context_pack, memorysmith_get, memorysmith_page_search, memorysmith_page_get. " +
             "The application will run the call locally and send results back in the same conversation turn. " +
             finalInstruction;
+    }
+
+    private static bool HasMarkdownOutputGuidance(string prompt) =>
+        prompt.Contains("GitHub-flavored Markdown", StringComparison.OrdinalIgnoreCase) &&
+        prompt.Contains("Mermaid", StringComparison.OrdinalIgnoreCase);
+
+    private static string BuildOutputCapabilityPrompt(MemoryChatMode mode)
+    {
+        if (mode == MemoryChatMode.Agent)
+        {
+            return "\n\nOutput formatting capabilities: MemorySmith renders Markdown inside reply and pageWrites.markdown values, including tables, fenced code with language identifiers, and complete mermaid fenced diagrams. Keep the outer Agent response strict JSON, escape newlines and quotes as JSON requires, and do not wrap the JSON in Markdown fences.";
+        }
+
+        return "\n\nOutput formatting capabilities: MemorySmith renders GitHub-flavored Markdown with raw HTML disabled, Prism-compatible fenced code blocks, and complete Mermaid diagrams. Use language identifiers on fenced code blocks. Use mermaid fences only for valid, complete diagrams that genuinely clarify the answer, and do not wrap the whole answer in a code block.";
     }
 
     private string? ReadConfiguredSystemPrompt()

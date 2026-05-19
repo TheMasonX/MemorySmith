@@ -13,6 +13,7 @@ This page tracks user-facing work in plain language. Completed items stay here a
 - [ ] Agent driven page generation - combined feature with chat that leverages chat interface and adds a preview pane
 - [ ] Grid panels like the markdown/preview plane and the pages/edit columns should be resizable to a degree, like a classic gridsplitter
 - [ ] admin/ page should allow the user to edit settings and not just view them (as appropriate)
+- [ ] Delete page/chat confirmation
 
 ## Pages
 - [x] Page preview mode - live update or at least periodic refresh (toggleable) and a manual refresh button
@@ -22,6 +23,7 @@ This page tracks user-facing work in plain language. Completed items stay here a
 - [x] Editor has unused space at the bottom - should fill down
 - [x] Image embed toolbar option to upload page images into `Data/Pages/assets` and insert markdown image links
 - [x] Add human-readable wiki pages for architecture, operations, and search/chat behavior
+- [x] Render Mermaid diagrams and Prism-highlightable code blocks in page preview/rendered pages
 
 ## Chat
 - [x] Chat model configuration (provider + model name) - would be nice if you can query the provider for which models are available
@@ -48,7 +50,11 @@ This page tracks user-facing work in plain language. Completed items stay here a
 - [x] Keep chat pre-context small for simple prompts and show mid-chat accessed resources as separate blue chips
 - [x] Add a first-class trace drawer for interleaved reasoning and tool call/result events per assistant turn
 - [x] Add a shared chat sidebar with History and Trace tabs, collapsible trace headers, responsive small-viewport layout, filters, compact execution graph, tool latency/token metadata, editable tool rerun, icon Finish Step/Stop controls, and per-action Agent write approval/rejection
+- [x] Keep the chat model toolbar and composer stable while switching History/Trace tabs, and collapse per-turn References resource chips by default
+- [x] Move the chat sidebar toggle to the right edge beside the History/Trace sidebar
 - [x] Render chat transcript messages as safe Markdown and update the shared/Athena prompts to request Markdown answers
+- [x] Render Mermaid diagrams and Prism-highlightable code blocks in chat messages
+- [x] Give all chat agents explicit guidance for wiki tool calls, Markdown answers, and Mermaid diagram output
 
 ## Health
 - [x] Make the health page scrollable inside the fixed app shell

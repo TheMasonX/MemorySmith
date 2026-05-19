@@ -1,6 +1,94 @@
 (function () {
     window.memorySmith = window.memorySmith || {};
 
+    let mermaidSequence = 0;
+    let mermaidTheme = null;
+    let mermaidThemeWatcher = null;
+
+    function markdownRoot(root) {
+        return root && typeof root.querySelectorAll === "function" ? root : document;
+    }
+
+    function preferredMermaidTheme() {
+        return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "default";
+    }
+
+    function configureMermaid() {
+        if (!window.mermaid || typeof window.mermaid.initialize !== "function") {
+            return false;
+        }
+
+        const theme = preferredMermaidTheme();
+        if (theme !== mermaidTheme) {
+            window.mermaid.initialize({ startOnLoad: false, theme: theme, securityLevel: "strict" });
+            mermaidTheme = theme;
+        }
+
+        return true;
+    }
+
+    function restoreMermaidSource(root) {
+        const scope = markdownRoot(root);
+        Array.from(scope.querySelectorAll(".mermaid-rendered[data-mermaid-code], .mermaid-error[data-mermaid-code]")).forEach(function (element) {
+            const source = document.createElement("pre");
+            source.className = "mermaid";
+            source.textContent = element.dataset.mermaidCode || "";
+            element.replaceWith(source);
+        });
+    }
+
+    function watchMermaidTheme() {
+        if (mermaidThemeWatcher || !window.matchMedia) {
+            return;
+        }
+
+        mermaidThemeWatcher = window.matchMedia("(prefers-color-scheme: dark)");
+        const handler = function () {
+            mermaidTheme = null;
+            restoreMermaidSource(document);
+            void window.renderMermaid(document);
+        };
+
+        if (typeof mermaidThemeWatcher.addEventListener === "function") {
+            mermaidThemeWatcher.addEventListener("change", handler);
+        } else if (typeof mermaidThemeWatcher.addListener === "function") {
+            mermaidThemeWatcher.addListener(handler);
+        }
+    }
+
+    window.renderMermaid = async function (root) {
+        if (!configureMermaid()) {
+            return;
+        }
+
+        watchMermaidTheme();
+        const scope = markdownRoot(root);
+        const blocks = Array.from(scope.querySelectorAll("pre.mermaid"));
+        for (const block of blocks) {
+            const code = block.textContent || "";
+            const container = document.createElement("div");
+            const id = `mermaid-${++mermaidSequence}`;
+            container.id = id;
+            container.className = "mermaid-rendered";
+            container.dataset.mermaidCode = code;
+            block.replaceWith(container);
+
+            try {
+                const result = await window.mermaid.render(`${id}-svg`, code);
+                container.innerHTML = result.svg || "";
+                if (typeof result.bindFunctions === "function") {
+                    result.bindFunctions(container);
+                }
+            } catch (error) {
+                const overlay = document.createElement("pre");
+                overlay.className = "mermaid-error";
+                overlay.dataset.mermaidCode = code;
+                overlay.textContent = `Mermaid render error:\n${error && error.message ? error.message : error}\n\n${code}`;
+                container.replaceWith(overlay);
+            }
+        }
+    };
+
     window.memorySmith.markdown = {
         insert: function (textarea, prefix, suffix, placeholder) {
             if (!textarea) {
@@ -17,6 +105,22 @@
             textarea.setSelectionRange(cursor, cursor);
             textarea.dispatchEvent(new Event("input", { bubbles: true }));
             return textarea.value;
+        },
+
+        renderEnhancements: async function (root, options) {
+            const scope = markdownRoot(root);
+            const settings = options || {};
+            if (window.Prism) {
+                if (typeof window.Prism.highlightAllUnder === "function" && scope !== document) {
+                    window.Prism.highlightAllUnder(scope);
+                } else if (typeof window.Prism.highlightAll === "function") {
+                    window.Prism.highlightAll();
+                }
+            }
+
+            if (settings.skipMermaid !== true) {
+                await window.renderMermaid(scope);
+            }
         }
     };
 

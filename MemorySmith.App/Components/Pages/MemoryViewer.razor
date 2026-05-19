@@ -209,7 +209,7 @@
                     }
                 </div>
 
-                <div class="wiki-content-scroll">@_selectedRecord.Content</div>
+                <div class="wiki-content-scroll markdown-rendered" @ref="_memoryContentPane">@((MarkupString)RenderMemoryContent(_selectedRecord.Content))</div>
 
                 <div class="wiki-link-grid">
                     <section>
@@ -234,6 +234,7 @@
     private List<MemoryMetadata> _memories = [];
     private MemoryRecord? _selectedRecord;
     private MemorySearchResult? _selectedSemanticMatch;
+    private ElementReference _memoryContentPane;
     private MemoryRecord _editRecord = new();
     private string _editTags = string.Empty;
     private string _editReferences = string.Empty;
@@ -271,6 +272,14 @@
     protected override async Task OnInitializedAsync()
     {
         await LoadAsync(selectFirst: true);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_isEditing && _selectedRecord is not null)
+        {
+            await JS.InvokeVoidAsync("memorySmith.markdown.renderEnhancements", _memoryContentPane);
+        }
     }
 
     private async Task LoadAsync(bool selectFirst = false)
@@ -632,6 +641,9 @@
         MemoryStatus.Deprecated => "is-deprecated",
         _ => string.Empty
     };
+
+    private static string RenderMemoryContent(string? content) =>
+        ChatMarkdownRenderer.RenderHtml(content);
 
     private static List<string> SplitValues(string value) =>
         value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();

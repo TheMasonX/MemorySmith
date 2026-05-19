@@ -20,8 +20,6 @@
 <div class="@ChatWorkbenchClass">
     <section class="chat-shell" aria-label="MemorySmith chat">
         <div class="chat-toolbar">
-            <MudIconButton Icon="@(_sidebarOpen ? Icons.Material.Filled.ChevronRight : Icons.Material.Filled.Menu)" Size="Size.Small" OnClick="ToggleSidebar" aria-label="Toggle sidebar" />
-
             <MudButtonGroup Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" Class="chat-mode-toggle">
                 <MudButton Variant="@ModeButtonVariant(MemoryChatMode.Chat)" Color="@ModeButtonColor(MemoryChatMode.Chat)" Class="@ModeButtonClass(MemoryChatMode.Chat)" OnClick="@(() => SetModeAsync(MemoryChatMode.Chat))">Chat</MudButton>
                 <MudButton Variant="@ModeButtonVariant(MemoryChatMode.Agent)" Color="@ModeButtonColor(MemoryChatMode.Agent)" Class="@ModeButtonClass(MemoryChatMode.Agent)" OnClick="@(() => SetModeAsync(MemoryChatMode.Agent))">Agent</MudButton>
@@ -46,6 +44,8 @@
                 </MudSelect>
                 <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Small" Color="Color.Primary" Disabled="@_isLoadingModels" OnClick="RefreshModelsAsync" aria-label="Refresh models" />
             </div>
+
+            <MudIconButton Icon="@(_sidebarOpen ? Icons.Material.Filled.ChevronRight : Icons.Material.Filled.Menu)" Size="Size.Small" OnClick="ToggleSidebar" aria-label="Toggle sidebar" />
         </div>
 
         <div class="chat-status-strip">
@@ -128,20 +128,23 @@
 
                         @if (turn.Context.Count > 0 || turn.WrittenMemories.Count > 0 || turn.WrittenPages.Count > 0)
                         {
-                            <div class="chat-context-list">
-                                @foreach (var item in turn.Context)
-                                {
-                                    <a class="@ContextResourceClass(item)" href="@ContextHref(item)" target="_blank" rel="noopener noreferrer" title="@item.Snippet">@item.Kind:@item.Title</a>
-                                }
-                                @foreach (var id in turn.WrittenMemories)
-                                {
-                                    <a class="wiki-status is-working chat-resource" href="@MemoryHref(id)" target="_blank" rel="noopener noreferrer">memory:@id</a>
-                                }
-                                @foreach (var slug in turn.WrittenPages)
-                                {
-                                    <a class="wiki-status is-core chat-resource" href="@PageHref(slug)" target="_blank" rel="noopener noreferrer">page:@slug</a>
-                                }
-                            </div>
+                            <details class="chat-context-drawer">
+                                <summary>References (@TurnReferenceCount(turn))</summary>
+                                <div class="chat-context-list">
+                                    @foreach (var item in turn.Context)
+                                    {
+                                        <a class="@ContextResourceClass(item)" href="@ContextHref(item)" target="_blank" rel="noopener noreferrer" title="@item.Snippet">@item.Kind:@item.Title</a>
+                                    }
+                                    @foreach (var id in turn.WrittenMemories)
+                                    {
+                                        <a class="wiki-status is-working chat-resource" href="@MemoryHref(id)" target="_blank" rel="noopener noreferrer">memory:@id</a>
+                                    }
+                                    @foreach (var slug in turn.WrittenPages)
+                                    {
+                                        <a class="wiki-status is-core chat-resource" href="@PageHref(slug)" target="_blank" rel="noopener noreferrer">page:@slug</a>
+                                    }
+                                </div>
+                            </details>
                         }
                     </article>
                 }
@@ -428,6 +431,8 @@
             _scrollPending = false;
             await JS.InvokeVoidAsync("memorySmith.chat.scrollToBottom", _transcriptPane);
         }
+
+        await JS.InvokeVoidAsync("memorySmith.markdown.renderEnhancements", _transcriptPane, new { skipMermaid = _isSending });
     }
 
     private async Task LoadPreferencesAsync()
@@ -1997,6 +2002,9 @@
         string.Equals(item.Origin, ChatContextOrigins.Tool, StringComparison.OrdinalIgnoreCase)
             ? "wiki-tag chat-resource chat-resource-tool"
             : "wiki-tag chat-resource";
+
+    private static int TurnReferenceCount(ChatTurnState turn) =>
+        turn.Context.Count + turn.WrittenMemories.Count + turn.WrittenPages.Count;
 
     private static string PageHref(string slug) =>
         "/pages/" + string.Join('/', slug.Split('/', StringSplitOptions.RemoveEmptyEntries).Select(Uri.EscapeDataString));
