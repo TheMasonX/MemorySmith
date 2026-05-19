@@ -93,6 +93,8 @@ public class PagesAndChatTests
         <script>alert(1)</script>
 
         [bad](javascript:alert(1))
+
+        ![bad image](javascript:alert(1))
         """);
 
         Assert.Multiple(() =>
@@ -104,6 +106,8 @@ public class PagesAndChatTests
             Assert.That(html, Does.Not.Contain("<script"));
             Assert.That(html, Does.Not.Contain("javascript:alert"));
             Assert.That(html, Does.Contain("href=\"#\""));
+            Assert.That(html, Does.Contain("src=\"\""));
+            Assert.That(html, Does.Not.Contain("src=\"#\""));
         });
     }
 
@@ -266,83 +270,83 @@ public class PagesAndChatTests
         });
     }
 
-        [Test]
-        public async Task MemoryChatAgent_ReturnsProposedWritesWhenApprovalRequired()
+    [Test]
+    public async Task MemoryChatAgent_ReturnsProposedWritesWhenApprovalRequired()
+    {
+        var memoryStore = new InMemoryMemoryStore();
+        var eventStore = new RecordingEventStore();
+        var publisher = new RecordingMemoryChangePublisher();
+        var memories = TestServiceFactory.CreateMemoryApplicationService(memoryStore, eventStore, publisher);
+        var pages = new FilePageService(_tempDir);
+        var provider = new FakeChatProvider("""
         {
-                var memoryStore = new InMemoryMemoryStore();
-                var eventStore = new RecordingEventStore();
-                var publisher = new RecordingMemoryChangePublisher();
-                var memories = TestServiceFactory.CreateMemoryApplicationService(memoryStore, eventStore, publisher);
-                var pages = new FilePageService(_tempDir);
-                var provider = new FakeChatProvider("""
-                {
-                    "reply": "Ready to record.",
-                    "memoryWrites": [
-                        { "id": "agent-approval-note", "title": "Agent Approval Note", "content": "Approve this from chat.", "tags": ["agent"], "status": "Core", "confidence": 0.9 }
-                    ],
-                    "pageWrites": [
-                        { "slug": "agent-approval-page", "title": "Agent Approval Page", "markdown": "Approval page body." }
-                    ]
-                }
-                """);
-                var agent = new MemoryChatAgent([provider], memories, pages, Options.Create(new MemorySmithOptions
-                {
-                        Chat = new ChatOptions { AgentWritesEnabled = true }
-                }));
-
-                var response = await agent.SendAsync(new MemoryChatRequest("Capture this", MemoryChatMode.Agent, RequireAgentWriteApproval: true), CancellationToken.None);
-                var missingBeforeApproval = await pages.GetAsync("agent-approval-page", CancellationToken.None);
-                var applied = await agent.ApplyAgentWritesAsync(response.ProposedMemoryWrites!, response.ProposedPageWrites!, CancellationToken.None);
-                var writtenPage = await pages.GetAsync("agent-approval-page", CancellationToken.None);
-
-                Assert.Multiple(() =>
-                {
-                        Assert.That(response.Reply, Is.EqualTo("Ready to record."));
-                        Assert.That(response.WrittenMemories, Is.Empty);
-                        Assert.That(response.WrittenPages, Is.Empty);
-                        Assert.That(response.ProposedMemoryWrites, Has.Count.EqualTo(1));
-                        Assert.That(response.ProposedPageWrites, Has.Count.EqualTo(1));
-                        Assert.That(memoryStore.Load("agent-approval-note"), Is.Not.Null);
-                        Assert.That(missingBeforeApproval, Is.Null);
-                        Assert.That(applied.WrittenMemories, Is.EqualTo(new[] { "agent-approval-note" }));
-                        Assert.That(applied.WrittenPages, Is.EqualTo(new[] { "agent-approval-page" }));
-                        Assert.That(writtenPage, Is.Not.Null);
-                });
+            "reply": "Ready to record.",
+            "memoryWrites": [
+                { "id": "agent-approval-note", "title": "Agent Approval Note", "content": "Approve this from chat.", "tags": ["agent"], "status": "Core", "confidence": 0.9 }
+            ],
+            "pageWrites": [
+                { "slug": "agent-approval-page", "title": "Agent Approval Page", "markdown": "Approval page body." }
+            ]
         }
-
-        [Test]
-        public async Task MemoryChatAgent_AgentWritesAreDisabledByDefault()
+        """);
+        var agent = new MemoryChatAgent([provider], memories, pages, Options.Create(new MemorySmithOptions
         {
-                var memoryStore = new InMemoryMemoryStore();
-                var eventStore = new RecordingEventStore();
-                var publisher = new RecordingMemoryChangePublisher();
-                var memories = TestServiceFactory.CreateMemoryApplicationService(memoryStore, eventStore, publisher);
-                var pages = new FilePageService(_tempDir);
-                var provider = new FakeChatProvider("""
-                {
-                    "reply": "Recorded.",
-                    "memoryWrites": [
-                        { "id": "agent-note", "title": "Agent Note", "content": "Remember this from chat." }
-                    ],
-                    "pageWrites": [
-                        { "slug": "agent-page", "title": "Agent Page", "markdown": "Agent page body." }
-                    ]
-                }
-                """);
-                var agent = new MemoryChatAgent([provider], memories, pages, Options.Create(new MemorySmithOptions()));
+            Chat = new ChatOptions { AgentWritesEnabled = true }
+        }));
 
-                var response = await agent.SendAsync(new MemoryChatRequest("Capture this", MemoryChatMode.Agent), CancellationToken.None);
-                var writtenPage = await pages.GetAsync("agent-page", CancellationToken.None);
+        var response = await agent.SendAsync(new MemoryChatRequest("Capture this", MemoryChatMode.Agent, RequireAgentWriteApproval: true), CancellationToken.None);
+        var missingBeforeApproval = await pages.GetAsync("agent-approval-page", CancellationToken.None);
+        var applied = await agent.ApplyAgentWritesAsync(response.ProposedMemoryWrites!, response.ProposedPageWrites!, CancellationToken.None);
+        var writtenPage = await pages.GetAsync("agent-approval-page", CancellationToken.None);
 
-                Assert.Multiple(() =>
-                {
-                    Assert.That(response.Reply, Is.EqualTo("Recorded.\n\nAgent write actions are disabled; no memories or pages were changed."));
-                        Assert.That(response.WrittenMemories, Is.Empty);
-                        Assert.That(response.WrittenPages, Is.Empty);
-                        Assert.That(memoryStore.Load("agent-note"), Is.Null);
-                    Assert.That(writtenPage, Is.Null);
-                });
+        Assert.Multiple(() =>
+        {
+            Assert.That(response.Reply, Is.EqualTo("Ready to record."));
+            Assert.That(response.WrittenMemories, Is.Empty);
+            Assert.That(response.WrittenPages, Is.Empty);
+            Assert.That(response.ProposedMemoryWrites, Has.Count.EqualTo(1));
+            Assert.That(response.ProposedPageWrites, Has.Count.EqualTo(1));
+            Assert.That(memoryStore.Load("agent-approval-note"), Is.Not.Null);
+            Assert.That(missingBeforeApproval, Is.Null);
+            Assert.That(applied.WrittenMemories, Is.EqualTo(new[] { "agent-approval-note" }));
+            Assert.That(applied.WrittenPages, Is.EqualTo(new[] { "agent-approval-page" }));
+            Assert.That(writtenPage, Is.Not.Null);
+        });
+    }
+
+    [Test]
+    public async Task MemoryChatAgent_AgentWritesAreDisabledByDefault()
+    {
+        var memoryStore = new InMemoryMemoryStore();
+        var eventStore = new RecordingEventStore();
+        var publisher = new RecordingMemoryChangePublisher();
+        var memories = TestServiceFactory.CreateMemoryApplicationService(memoryStore, eventStore, publisher);
+        var pages = new FilePageService(_tempDir);
+        var provider = new FakeChatProvider("""
+        {
+            "reply": "Recorded.",
+            "memoryWrites": [
+                { "id": "agent-note", "title": "Agent Note", "content": "Remember this from chat." }
+            ],
+            "pageWrites": [
+                { "slug": "agent-page", "title": "Agent Page", "markdown": "Agent page body." }
+            ]
         }
+        """);
+        var agent = new MemoryChatAgent([provider], memories, pages, Options.Create(new MemorySmithOptions()));
+
+        var response = await agent.SendAsync(new MemoryChatRequest("Capture this", MemoryChatMode.Agent), CancellationToken.None);
+        var writtenPage = await pages.GetAsync("agent-page", CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(response.Reply, Is.EqualTo("Recorded.\n\nAgent write actions are disabled; no memories or pages were changed."));
+            Assert.That(response.WrittenMemories, Is.Empty);
+            Assert.That(response.WrittenPages, Is.Empty);
+            Assert.That(memoryStore.Load("agent-note"), Is.Null);
+            Assert.That(writtenPage, Is.Null);
+        });
+    }
 
     [Test]
     public async Task MemoryChatAgent_UsesModelOverridePromptFileAndAttachments()

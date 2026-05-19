@@ -191,6 +191,8 @@
     private bool _isEditing;
     private bool _editingExisting;
     private bool _livePreview = true;
+    private bool _previewEnhancementsPending;
+    private bool _renderedPageEnhancementsPending;
 
     private bool HasUnsavedChanges => _isEditing &&
         (!string.Equals(_editSlug, _originalSlug, StringComparison.Ordinal) ||
@@ -204,12 +206,14 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (_isEditing)
+        if (_isEditing && _previewEnhancementsPending)
         {
+            _previewEnhancementsPending = false;
             await JS.InvokeVoidAsync("memorySmith.markdown.renderEnhancements", _previewPane);
         }
-        else if (_selectedPage is not null)
+        else if (_selectedPage is not null && _renderedPageEnhancementsPending)
         {
+            _renderedPageEnhancementsPending = false;
             await JS.InvokeVoidAsync("memorySmith.markdown.renderEnhancements", _renderedPagePane);
         }
     }
@@ -274,6 +278,7 @@
 
         _selectedPage = page;
         _isEditing = false;
+        _renderedPageEnhancementsPending = true;
         PopulateEditor(page, editingExisting: true);
         if (navigate)
         {
@@ -296,6 +301,7 @@
         _originalTitle = string.Empty;
         _originalMarkdown = string.Empty;
         _previewHtml = string.Empty;
+        _previewEnhancementsPending = true;
         _editingExisting = false;
         _isEditing = true;
     }
@@ -321,6 +327,7 @@
         _isEditing = false;
         if (_selectedPage is not null)
         {
+            _renderedPageEnhancementsPending = true;
             PopulateEditor(_selectedPage, editingExisting: true);
         }
     }
@@ -384,6 +391,7 @@
     private void RefreshPreview()
     {
         _previewHtml = PageService.RenderHtml(_editMarkdown ?? string.Empty);
+        _previewEnhancementsPending = true;
     }
 
     private async Task InsertMarkdownAsync(string prefix, string suffix, string placeholder)
