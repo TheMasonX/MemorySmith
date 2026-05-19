@@ -137,7 +137,7 @@
                         </div>
                         <div class="page-preview-pane">
                             <div class="page-pane-label">Preview</div>
-                            <div class="page-rendered page-editor-preview">@((MarkupString)_previewHtml)</div>
+                            <div class="page-rendered page-editor-preview" @ref="_previewPane">@((MarkupString)_previewHtml)</div>
                         </div>
                     </div>
                 </div>
@@ -165,7 +165,7 @@
                         </Authorized>
                     </AuthorizeView>
                 </div>
-                <div class="page-rendered">@((MarkupString)_selectedPage.Html)</div>
+                <div class="page-rendered" @ref="_renderedPagePane">@((MarkupString)_selectedPage.Html)</div>
             }
         </main>
     </section>
@@ -177,6 +177,8 @@
     private List<PageSummary> _pages = [];
     private PageDocument? _selectedPage;
     private ElementReference _markdownEditor;
+    private ElementReference _previewPane;
+    private ElementReference _renderedPagePane;
     private string _searchQuery = string.Empty;
     private string _editSlug = string.Empty;
     private string _editTitle = string.Empty;
@@ -198,6 +200,18 @@
     protected override async Task OnParametersSetAsync()
     {
         await LoadAsync(Slug);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_isEditing)
+        {
+            await JS.InvokeVoidAsync("memorySmith.markdown.renderEnhancements", _previewPane);
+        }
+        else if (_selectedPage is not null)
+        {
+            await JS.InvokeVoidAsync("memorySmith.markdown.renderEnhancements", _renderedPagePane);
+        }
     }
 
     private async Task LoadAsync(string? selectedSlug = null)
