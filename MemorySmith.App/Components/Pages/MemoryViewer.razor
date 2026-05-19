@@ -253,6 +253,7 @@
     private bool _editingExisting;
     private bool _isSemanticSearchMode;
     private bool _isEditing;
+    private bool _memoryContentEnhancementsPending;
 
     private int TotalPages => Math.Max(1, (int)Math.Ceiling((double)_totalCount / _pageSize));
     private string SearchModeLabel => _searchMode.ToString();
@@ -276,8 +277,9 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!_isEditing && _selectedRecord is not null)
+        if (!_isEditing && _selectedRecord is not null && _memoryContentEnhancementsPending)
         {
+            _memoryContentEnhancementsPending = false;
             await JS.InvokeVoidAsync("memorySmith.markdown.renderEnhancements", _memoryContentPane);
         }
     }
@@ -383,6 +385,7 @@
         {
             _selectedRecord = null;
             _selectedSemanticMatch = null;
+            _memoryContentEnhancementsPending = false;
         }
     }
 
@@ -398,6 +401,7 @@
         _selectedRecord = record;
         _selectedSemanticMatch = _semanticMatches.TryGetValue(record.Id, out var match) ? match : null;
         _isEditing = false;
+        _memoryContentEnhancementsPending = true;
         PopulateEditor(record, editingExisting: true);
     }
 
@@ -425,6 +429,7 @@
         _isEditing = false;
         if (_selectedRecord is not null)
         {
+            _memoryContentEnhancementsPending = true;
             PopulateEditor(_selectedRecord, editingExisting: true);
         }
     }
@@ -454,6 +459,7 @@
             {
                 _selectedRecord = saved;
                 _isEditing = false;
+                _memoryContentEnhancementsPending = true;
             }
 
             await LoadAsync(selectFirst: saved is null);

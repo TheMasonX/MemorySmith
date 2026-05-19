@@ -37,8 +37,11 @@ public static partial class ChatMarkdownRenderer
     {
         var name = match.Groups["name"].Value;
         var value = match.Groups["value"].Value;
-        return IsSafeLinkTarget(value) ? match.Value : $"{name}=\"#\"";
+        return IsSafeLinkTarget(value) ? match.Value : $"{name}=\"{UnsafeAttributeFallback(name)}\"";
     }
+
+    private static string UnsafeAttributeFallback(string attributeName) =>
+        attributeName.Equals("src", StringComparison.OrdinalIgnoreCase) ? string.Empty : "#";
 
     private static bool IsSafeLinkTarget(string value)
     {

@@ -1,9 +1,9 @@
 # MemorySmith Chat Capability Improvements Plan
 
-Date: 2026-05-18  
-Status: Design-only first commit for review  
-Branch: `feature/chat-capability-improvements-plan`  
-Primary decision level: high confidence on current-state diagnosis, medium confidence on native tool-call implementation details until provider SDK behavior is spiked  
+Date: 2026-05-18
+Status: Plan plus shipped implementation slices under PR review
+Branch: `feature/chat-capability-improvements-plan`
+Primary decision level: high confidence on current-state diagnosis, medium confidence on native tool-call implementation details until provider SDK behavior is spiked
 Overall confidence: 0.86
 
 ## 1. Executive Summary
@@ -532,7 +532,7 @@ Confidence: 0.93.
 
 ## 9. Implementation Plan
 
-### Phase 0 - Design-only first commit
+### Phase 0 - Initial planning commit
 
 Scope:
 
@@ -838,7 +838,7 @@ This slice improves natural chat capability and page retrieval while avoiding th
 Confidence: 0.87.
 ## 17. P0 Implementation Status (2026-05-18 shipped)
 
-Phases 1-3 plus the §16 first-slice recommendations have shipped on this branch. Verified against dotnet test MemorySmith.slnx -c Debug → 169 / 169 passing and against the live MemorySmith Windows service on http://localhost:5089 (MCP tools/list + tools/call smoke).
+Phases 1-3 plus the §16 first-slice recommendations have shipped on this branch. Current branch validation is `dotnet test MemorySmith.slnx -c Debug --no-build -v minimal` → 179 / 179 passing. The original first slice was also smoke-tested against the live MemorySmith Windows service on http://localhost:5089 (MCP tools/list + tools/call smoke).
 
 | Item | File | Status |
 |---|---|---|

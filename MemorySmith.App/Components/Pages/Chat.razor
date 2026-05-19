@@ -342,6 +342,7 @@
     private const int MaxStoredTraceCharacters = 3000;
     private const int MaxStoredAttachmentTextCharacters = 6000;
     private const int MaxStoredAttachmentImageCharacters = 12000;
+    private const int NarrowChatViewportWidth = 640;
     private static readonly JsonSerializerOptions StorageJsonOptions = new(JsonSerializerDefaults.Web)
     {
         PropertyNameCaseInsensitive = true
@@ -430,6 +431,7 @@
             await JS.InvokeVoidAsync("memorySmith.chat.registerComposer", _composerInput, _dotNetRef, _sendOnEnter);
             _composerRegistered = true;
             await LoadPreferencesAsync();
+            await CollapseSidebarOnNarrowViewportAsync();
             await LoadSessionsAsync();
             await RefreshModelsAsync(silent: true);
             StateHasChanged();
@@ -478,6 +480,14 @@
         await JS.InvokeVoidAsync("memorySmith.markdown.setMermaidThemeMode", _mermaidThemeMode);
 
         _preferredActiveSessionId = preferences.ActiveSessionId;
+    }
+
+    private async Task CollapseSidebarOnNarrowViewportAsync()
+    {
+        if (await JS.InvokeAsync<bool>("memorySmith.chat.isNarrowViewport", NarrowChatViewportWidth))
+        {
+            _sidebarOpen = false;
+        }
     }
 
     private async Task LoadSessionsAsync()

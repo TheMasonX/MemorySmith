@@ -174,6 +174,15 @@
     };
 
     window.memorySmith.chat = {
+        isNarrowViewport: function (maxWidth) {
+            const width = Number.isFinite(maxWidth) ? maxWidth : 640;
+            if (window.matchMedia) {
+                return window.matchMedia(`(max-width: ${width}px)`).matches;
+            }
+
+            return window.innerWidth <= width;
+        },
+
         registerComposer: function (textarea, dotNetRef, sendOnEnter) {
             if (!textarea) {
                 return;
