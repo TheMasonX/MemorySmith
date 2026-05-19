@@ -300,7 +300,7 @@
                             </section>
                         }
 
-                        <div class="chat-trace-panel-list">
+                        <div class="chat-trace-panel-list" @ref="_tracePanelList">
                             @foreach (var entry in FilteredTraceEntries(selectedTurn))
                             {
                                 <details class="@TraceEntryClass(entry)" open="@ShouldOpenTraceEntry(entry)">
@@ -354,6 +354,7 @@
     private DotNetObjectReference<Chat>? _dotNetRef;
     private ElementReference _composerInput;
     private ElementReference _transcriptPane;
+    private ElementReference _tracePanelList;
     private MemoryChatMode _mode = MemoryChatMode.Chat;
     private string _activeSessionId = string.Empty;
     private string _draft = string.Empty;
@@ -441,6 +442,7 @@
         {
             _scrollPending = false;
             await JS.InvokeVoidAsync("memorySmith.chat.scrollToBottom", _transcriptPane);
+            await JS.InvokeVoidAsync("memorySmith.chat.scrollToBottom", _tracePanelList);
         }
 
         await JS.InvokeVoidAsync("memorySmith.markdown.renderEnhancements", _transcriptPane, new { skipMermaid = _isSending });
