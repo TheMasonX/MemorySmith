@@ -48,6 +48,7 @@ This page tracks user-facing work in plain language. Completed items stay here a
 - [x] Keep chat pre-context small for simple prompts and show mid-chat accessed resources as separate blue chips
 - [x] Add a first-class trace drawer for interleaved reasoning and tool call/result events per assistant turn
 - [x] Add a shared chat sidebar with History and Trace tabs, collapsible trace headers, responsive small-viewport layout, filters, compact execution graph, tool latency/token metadata, editable tool rerun, icon Finish Step/Stop controls, and per-action Agent write approval/rejection
+- [x] Render chat transcript messages as safe Markdown and update the shared/Athena prompts to request Markdown answers
 
 ## Health
 - [x] Make the health page scrollable inside the fixed app shell
