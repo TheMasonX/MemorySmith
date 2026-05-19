@@ -125,6 +125,22 @@ public static class ChatContextOrigins
     public const string Tool = "tool";
 }
 
+public static class ChatTraceKinds
+{
+    public const string Assistant = "assistant";
+    public const string Reasoning = "reasoning";
+    public const string ToolCall = "tool-call";
+    public const string ToolResult = "tool-result";
+    public const string System = "system";
+}
+
+public sealed record ChatTraceEvent(
+    string Kind,
+    string Title,
+    string Content,
+    bool IsError = false,
+    DateTimeOffset? TimestampUtc = null);
+
 public sealed record ChatContextItem(string Kind, string Id, string Title, string Snippet, string Origin = ChatContextOrigins.Preloaded);
 
 public sealed record MemoryChatResponse(
@@ -144,7 +160,8 @@ public sealed record MemoryChatStreamUpdate(
     MemoryChatResponse? Response = null,
     IReadOnlyList<ChatContextItem>? Context = null,
     string? Status = null,
-    ChatUsageSummary? Usage = null);
+    ChatUsageSummary? Usage = null,
+    IReadOnlyList<ChatTraceEvent>? TraceEvents = null);
 
 public interface IChatProvider
 {
@@ -1054,10 +1071,22 @@ public sealed partial class MemoryChatAgent : IChatAgent
         var provider = ResolveProvider(request.Provider);
         var resolvedModel = string.IsNullOrWhiteSpace(request.Model) ? DefaultModelForProvider(provider.Name) : request.Model.Trim();
         var currentUsage = CompleteUsage(provider.Name, resolvedModel, messages, string.Empty, null);
+        var interceptTrace = interceptResults
+            .Select(result => new ChatTraceEvent(
+                ChatTraceKinds.ToolResult,
+                $"Auto-intercept result: {result.Name}",
+                result.Content,
+                result.IsError,
+                DateTimeOffset.UtcNow))
+            .ToList();
         var interceptStatus = interceptResults.Count == 0
             ? string.Empty
             : $" + intercept {interceptResults[0].Name}";
-        yield return new MemoryChatStreamUpdate(Context: MergeContext(context, accessedContext), Status: $"Loaded {context.Count} pre-context resource(s){interceptStatus}", Usage: currentUsage);
+        yield return new MemoryChatStreamUpdate(
+            Context: MergeContext(context, accessedContext),
+            Status: $"Loaded {context.Count} pre-context resource(s){interceptStatus}",
+            Usage: currentUsage,
+            TraceEvents: interceptTrace.Count == 0 ? null : interceptTrace);
 
         ChatUsageSummary? aggregateUsage = null;
         var maxToolIterations = MaxToolIterations();
@@ -1133,14 +1162,36 @@ public sealed partial class MemoryChatAgent : IChatAgent
                     yield break;
                 }
 
+                var requestedToolTrace = toolCalls
+                    .Select(toolCall => new ChatTraceEvent(
+                        ChatTraceKinds.ToolCall,
+                        $"Tool call requested: {toolCall.Name}",
+                        toolCall.Arguments.ToJsonString(ToolJsonOptions),
+                        TimestampUtc: DateTimeOffset.UtcNow))
+                    .ToList();
+                yield return new MemoryChatStreamUpdate(
+                    Status: $"Model requested {toolCalls.Count} MemorySmith wiki tool call(s)",
+                    Context: MergeContext(context, accessedContext),
+                    Usage: currentUsage,
+                    TraceEvents: requestedToolTrace);
+
                 var toolResults = await ExecuteToolCallsAsync(toolCalls, cancellationToken);
                 accessedContext.AddRange(ExtractToolContext(toolResults));
                 messages.Add(new ChatMessage("assistant", providerResponse.Content));
                 messages.Add(new ChatMessage("system", FormatToolResults(toolResults)));
+                var toolResultTrace = toolResults
+                    .Select(result => new ChatTraceEvent(
+                        ChatTraceKinds.ToolResult,
+                        $"Tool result: {result.Name}",
+                        result.Content,
+                        result.IsError,
+                        DateTimeOffset.UtcNow))
+                    .ToList();
                 yield return new MemoryChatStreamUpdate(
                     Status: $"Ran {toolResults.Count} MemorySmith wiki tool call(s): {string.Join(", ", toolResults.Select(result => result.Name).Distinct(StringComparer.OrdinalIgnoreCase))}",
                     Context: MergeContext(context, accessedContext),
-                    Usage: currentUsage);
+                    Usage: currentUsage,
+                    TraceEvents: toolResultTrace);
                 continue;
             }
 

@@ -115,6 +115,24 @@
                                 <pre>@turn.Thinking</pre>
                             </details>
                         }
+                        @if (turn.TraceEntries.Count > 0)
+                        {
+                            <details class="@TraceDrawerClass(turn)" open="@turn.TraceDrawerOpen">
+                                <summary>Trace (@turn.TraceEntries.Count)</summary>
+                                <div class="chat-trace-list">
+                                    @foreach (var entry in turn.TraceEntries)
+                                    {
+                                        <section class="@TraceEntryClass(entry)">
+                                            <header class="chat-trace-header">
+                                                <span>@entry.Title</span>
+                                                <small>@entry.CreatedUtc.ToLocalTime().ToString("HH:mm:ss")</small>
+                                            </header>
+                                            <pre>@entry.Content</pre>
+                                        </section>
+                                    }
+                                </div>
+                            </details>
+                        }
                         <div class="chat-message-body">@turn.Content</div>
 
                         @if (turn.Attachments.Count > 0)
@@ -192,6 +210,8 @@
     private const int MaxStoredTurnCharacters = 16000;
     private const int MaxStoredThinkingCharacters = 6000;
     private const int MaxStoredContextSnippetCharacters = 600;
+    private const int MaxStoredTraceEntries = 80;
+    private const int MaxStoredTraceCharacters = 3000;
     private const int MaxStoredAttachmentTextCharacters = 6000;
     private const int MaxStoredAttachmentImageCharacters = 12000;
     private static readonly JsonSerializerOptions StorageJsonOptions = new(JsonSerializerDefaults.Web)
@@ -445,7 +465,30 @@
             Model = ReadJsonString(item, "model"),
             Usage = ParseStoredUsage(item),
             DurationMilliseconds = ReadJsonLong(item, "durationMilliseconds"),
+            TraceEntries = ReadJsonObjects(item, "traceEntries").Select(ParseStoredTraceEntry).Where(entry => entry is not null).Select(entry => entry!).ToList(),
+            TraceDrawerOpen = false,
             ThinkingActive = false
+        };
+    }
+
+    private static ChatTraceEntryState? ParseStoredTraceEntry(JsonObject item)
+    {
+        var kind = ReadJsonString(item, "kind") ?? string.Empty;
+        var title = ReadJsonString(item, "title") ?? string.Empty;
+        var content = ReadJsonString(item, "content") ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(kind) || string.IsNullOrWhiteSpace(content))
+        {
+            return null;
+        }
+
+        return new ChatTraceEntryState
+        {
+            Kind = kind,
+            Title = string.IsNullOrWhiteSpace(title) ? kind : title,
+            Content = content,
+            IsError = ReadJsonBool(item, "isError"),
+            IsActive = false,
+            CreatedUtc = ReadJsonDateTimeOffset(item, "createdUtc", DateTimeOffset.UtcNow)
         };
     }
 
@@ -734,7 +777,8 @@
         var pendingTurn = new ChatTurnState("assistant pending", "Waiting for first token...", DateTimeOffset.UtcNow, null, [], [], [], [])
         {
             ProviderName = requestProvider,
-            Model = requestModel
+            Model = requestModel,
+            TraceDrawerOpen = true
         };
         session.Turns.Add(pendingTurn);
         _scrollPending = true;
@@ -771,6 +815,7 @@
                     pendingTurn.ProviderName = requestProvider;
                     pendingTurn.Model = requestModel;
                     pendingTurn.ThinkingActive = false;
+                    AppendTraceDelta(pendingTurn, ChatTraceKinds.Assistant, "Assistant response", update.ContentDelta);
                     _streamedCharacters = pendingTurn.Content.Length;
                     _agentStatus = $"Streaming {requestProvider} / {requestModel}";
                     turnChanged = true;
@@ -781,13 +826,20 @@
                     pendingTurn.ProviderName = requestProvider;
                     pendingTurn.Model = requestModel;
                     pendingTurn.ThinkingActive = true;
+                    AppendTraceDelta(pendingTurn, ChatTraceKinds.Reasoning, "Model reasoning", update.ThinkingDelta);
                     _agentStatus = $"Thinking {requestProvider} / {requestModel}";
+                    turnChanged = true;
+                }
+                if (update.TraceEvents is { Count: > 0 })
+                {
+                    AppendTraceEvents(pendingTurn, update.TraceEvents);
                     turnChanged = true;
                 }
                 if (update.Response is not null)
                 {
                     finalResponse = update.Response;
                     pendingTurn.ThinkingActive = false;
+                    FinalizeActiveTraceEntries(pendingTurn);
                 }
 
                 _scrollPending = true;
@@ -811,6 +863,29 @@
             pendingTurn.WrittenMemories = response.WrittenMemories.ToList();
             pendingTurn.WrittenPages = response.WrittenPages.ToList();
             pendingTurn.Usage = response.Usage;
+            if (!string.IsNullOrWhiteSpace(response.Thinking) && !pendingTurn.TraceEntries.Any(entry => string.Equals(entry.Kind, ChatTraceKinds.Reasoning, StringComparison.OrdinalIgnoreCase)))
+            {
+                pendingTurn.TraceEntries.Add(new ChatTraceEntryState
+                {
+                    Kind = ChatTraceKinds.Reasoning,
+                    Title = "Model reasoning",
+                    Content = response.Thinking,
+                    CreatedUtc = DateTimeOffset.UtcNow
+                });
+            }
+
+            if (!string.IsNullOrWhiteSpace(response.Reply) && !pendingTurn.TraceEntries.Any(entry => string.Equals(entry.Kind, ChatTraceKinds.Assistant, StringComparison.OrdinalIgnoreCase)))
+            {
+                pendingTurn.TraceEntries.Add(new ChatTraceEntryState
+                {
+                    Kind = ChatTraceKinds.Assistant,
+                    Title = "Assistant response",
+                    Content = response.Reply,
+                    CreatedUtc = DateTimeOffset.UtcNow
+                });
+            }
+
+            FinalizeActiveTraceEntries(pendingTurn);
             pendingTurn.DurationMilliseconds = (long)Math.Max(0, (DateTimeOffset.UtcNow - (_responseStartedUtc ?? DateTimeOffset.UtcNow)).TotalMilliseconds);
             session.History.Add(new ChatMessage("assistant", response.Reply));
             session.UpdatedUtc = DateTimeOffset.UtcNow;
@@ -829,6 +904,7 @@
             pendingTurn.Model = requestModel;
             pendingTurn.Usage ??= _currentUsage;
             pendingTurn.ThinkingActive = false;
+            FinalizeActiveTraceEntries(pendingTurn);
             pendingTurn.DurationMilliseconds = (long)Math.Max(0, (DateTimeOffset.UtcNow - (_responseStartedUtc ?? DateTimeOffset.UtcNow)).TotalMilliseconds);
             if (!string.IsNullOrWhiteSpace(pendingTurn.Content) && !pendingTurn.Content.StartsWith("Generation stopped", StringComparison.Ordinal))
             {
@@ -1075,6 +1151,18 @@
                     TrimForStorage(item.Snippet, MaxStoredContextSnippetCharacters),
                     item.Origin)).ToList()
                 : [],
+            TraceEntries = turn.TraceEntries
+                .TakeLast(MaxStoredTraceEntries)
+                .Select(entry => new ChatTraceEntryState
+                {
+                    Kind = entry.Kind,
+                    Title = entry.Title,
+                    Content = TrimForStorage(entry.Content, MaxStoredTraceCharacters),
+                    IsError = entry.IsError,
+                    IsActive = false,
+                    CreatedUtc = entry.CreatedUtc
+                }).ToList(),
+            TraceDrawerOpen = false,
             WrittenMemories = turn.WrittenMemories.ToList(),
             WrittenPages = turn.WrittenPages.ToList(),
             Attachments = includeAttachments ? turn.Attachments.Select(TrimAttachmentForStorage).ToList() : [],
@@ -1168,6 +1256,82 @@
 
     private static string ThinkingClass(ChatTurnState turn) =>
         turn.ThinkingActive ? "chat-thinking is-active" : "chat-thinking";
+
+    private static string TraceDrawerClass(ChatTurnState turn) =>
+        turn.TraceEntries.Any(entry => entry.IsActive) ? "chat-trace-drawer is-active" : "chat-trace-drawer";
+
+    private static string TraceEntryClass(ChatTraceEntryState entry)
+    {
+        var tone = entry.IsError ? "is-error" : entry.Kind switch
+        {
+            ChatTraceKinds.Reasoning => "is-reasoning",
+            ChatTraceKinds.ToolCall => "is-tool-call",
+            ChatTraceKinds.ToolResult => "is-tool-result",
+            ChatTraceKinds.System => "is-system",
+            _ => "is-assistant"
+        };
+
+        return entry.IsActive
+            ? $"chat-trace-entry {tone} is-active"
+            : $"chat-trace-entry {tone}";
+    }
+
+    private static void AppendTraceDelta(ChatTurnState turn, string kind, string title, string delta)
+    {
+        if (string.IsNullOrEmpty(delta))
+        {
+            return;
+        }
+
+        if (turn.TraceEntries.LastOrDefault() is { } last &&
+            string.Equals(last.Kind, kind, StringComparison.OrdinalIgnoreCase) &&
+            !last.IsError)
+        {
+            last.Content += delta;
+            last.IsActive = true;
+            return;
+        }
+
+        FinalizeActiveTraceEntries(turn);
+        turn.TraceEntries.Add(new ChatTraceEntryState
+        {
+            Kind = kind,
+            Title = title,
+            Content = delta,
+            CreatedUtc = DateTimeOffset.UtcNow,
+            IsActive = true
+        });
+    }
+
+    private static void AppendTraceEvents(ChatTurnState turn, IReadOnlyList<ChatTraceEvent> events)
+    {
+        if (events.Count == 0)
+        {
+            return;
+        }
+
+        FinalizeActiveTraceEntries(turn);
+        foreach (var traceEvent in events)
+        {
+            turn.TraceEntries.Add(new ChatTraceEntryState
+            {
+                Kind = string.IsNullOrWhiteSpace(traceEvent.Kind) ? ChatTraceKinds.System : traceEvent.Kind,
+                Title = string.IsNullOrWhiteSpace(traceEvent.Title) ? "Trace event" : traceEvent.Title,
+                Content = traceEvent.Content,
+                IsError = traceEvent.IsError,
+                CreatedUtc = traceEvent.TimestampUtc ?? DateTimeOffset.UtcNow,
+                IsActive = false
+            });
+        }
+    }
+
+    private static void FinalizeActiveTraceEntries(ChatTurnState turn)
+    {
+        foreach (var entry in turn.TraceEntries)
+        {
+            entry.IsActive = false;
+        }
+    }
 
     private static string FormatTurnModel(ChatTurnState turn) =>
         string.IsNullOrWhiteSpace(turn.ProviderName) ? turn.Model ?? string.Empty : $"{turn.ProviderName} / {turn.Model}";
@@ -1441,6 +1605,8 @@
         public DateTimeOffset CreatedUtc { get; set; }
         public string? Thinking { get; set; }
         public List<ChatContextItem> Context { get; set; } = [];
+        public List<ChatTraceEntryState> TraceEntries { get; set; } = [];
+        public bool TraceDrawerOpen { get; set; }
         public List<string> WrittenMemories { get; set; } = [];
         public List<string> WrittenPages { get; set; } = [];
         public List<ChatAttachment> Attachments { get; set; } = [];
@@ -1449,5 +1615,15 @@
         public ChatUsageSummary? Usage { get; set; }
         public long? DurationMilliseconds { get; set; }
         public bool ThinkingActive { get; set; }
+    }
+
+    private sealed class ChatTraceEntryState
+    {
+        public string Kind { get; set; } = ChatTraceKinds.System;
+        public string Title { get; set; } = string.Empty;
+        public string Content { get; set; } = string.Empty;
+        public bool IsError { get; set; }
+        public bool IsActive { get; set; }
+        public DateTimeOffset CreatedUtc { get; set; } = DateTimeOffset.UtcNow;
     }
 }

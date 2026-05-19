@@ -4,6 +4,7 @@ This page tracks user-facing work in plain language. Completed items stay here a
 
 ## Current Priorities
 
+- [ ] CRITICAL: I should not be able to view the admin page, let alone change roles, without admin access, and especially not signed in. This is a massive oversight and needs to be fixed immediately.
 - [ ] Add browser-level smoke coverage for the main app routes: `/memories`, `/pages`, `/chat`, and `/health`.
 - [ ] Add schema or fixture validation for the live `Data/Memories` wiki so bad records are caught before runtime.
 - [ ] Keep reducing large UI/service files where extraction makes behavior easier to review.
@@ -12,7 +13,7 @@ This page tracks user-facing work in plain language. Completed items stay here a
 - [ ] Agent driven page generation - combined feature with chat that leverages chat interface and adds a preview pane
 - [ ] Grid panels like the markdown/preview plane and the pages/edit columns should be resizable to a degree, like a classic gridsplitter
 - [ ] admin/ page should allow the user to edit settings and not just view them (as appropriate)
-- [ ] Add a first-class chat trace drawer that separates preloaded context, deterministic intercepts, model-requested tools, and write actions per turn.
+- [ ] Add explicit approval controls for high-impact Agent write actions before apply (memory/page writes with per-action accept/deny).
 
 ## Pages
 - [x] Page preview mode - live update or at least periodic refresh (toggleable) and a manual refresh button
@@ -46,6 +47,7 @@ This page tracks user-facing work in plain language. Completed items stay here a
 - [x] Add GitHub Copilot as a selectable provider using GitHub CLI auth or token env vars, with preferred mini model defaults
 - [x] Add shared chat tool catalog and deterministic intent intercepts for page/unified wiki retrieval
 - [x] Keep chat pre-context small for simple prompts and show mid-chat accessed resources as separate blue chips
+- [x] Add a first-class trace drawer for interleaved reasoning and tool call/result events per assistant turn
 
 ## Health
 - [x] Make the health page scrollable inside the fixed app shell
