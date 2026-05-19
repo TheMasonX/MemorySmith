@@ -166,6 +166,50 @@ public class PagesAndChatTests
     }
 
         [Test]
+        public async Task MemoryChatAgent_ReturnsProposedWritesWhenApprovalRequired()
+        {
+                var memoryStore = new InMemoryMemoryStore();
+                var eventStore = new RecordingEventStore();
+                var publisher = new RecordingMemoryChangePublisher();
+                var memories = TestServiceFactory.CreateMemoryApplicationService(memoryStore, eventStore, publisher);
+                var pages = new FilePageService(_tempDir);
+                var provider = new FakeChatProvider("""
+                {
+                    "reply": "Ready to record.",
+                    "memoryWrites": [
+                        { "id": "agent-approval-note", "title": "Agent Approval Note", "content": "Approve this from chat.", "tags": ["agent"], "status": "Core", "confidence": 0.9 }
+                    ],
+                    "pageWrites": [
+                        { "slug": "agent-approval-page", "title": "Agent Approval Page", "markdown": "Approval page body." }
+                    ]
+                }
+                """);
+                var agent = new MemoryChatAgent([provider], memories, pages, Options.Create(new MemorySmithOptions
+                {
+                        Chat = new ChatOptions { AgentWritesEnabled = true }
+                }));
+
+                var response = await agent.SendAsync(new MemoryChatRequest("Capture this", MemoryChatMode.Agent, RequireAgentWriteApproval: true), CancellationToken.None);
+                var missingBeforeApproval = await pages.GetAsync("agent-approval-page", CancellationToken.None);
+                var applied = await agent.ApplyAgentWritesAsync(response.ProposedMemoryWrites!, response.ProposedPageWrites!, CancellationToken.None);
+                var writtenPage = await pages.GetAsync("agent-approval-page", CancellationToken.None);
+
+                Assert.Multiple(() =>
+                {
+                        Assert.That(response.Reply, Is.EqualTo("Ready to record."));
+                        Assert.That(response.WrittenMemories, Is.Empty);
+                        Assert.That(response.WrittenPages, Is.Empty);
+                        Assert.That(response.ProposedMemoryWrites, Has.Count.EqualTo(1));
+                        Assert.That(response.ProposedPageWrites, Has.Count.EqualTo(1));
+                        Assert.That(memoryStore.Load("agent-approval-note"), Is.Not.Null);
+                        Assert.That(missingBeforeApproval, Is.Null);
+                        Assert.That(applied.WrittenMemories, Is.EqualTo(new[] { "agent-approval-note" }));
+                        Assert.That(applied.WrittenPages, Is.EqualTo(new[] { "agent-approval-page" }));
+                        Assert.That(writtenPage, Is.Not.Null);
+                });
+        }
+
+        [Test]
         public async Task MemoryChatAgent_AgentWritesAreDisabledByDefault()
         {
                 var memoryStore = new InMemoryMemoryStore();
@@ -396,6 +440,37 @@ public class PagesAndChatTests
     }
 
     [Test]
+    public async Task MemoryChatAgent_ExecutesInlineFencedToolCallJson()
+    {
+        var memoryStore = new InMemoryMemoryStore();
+        var eventStore = new RecordingEventStore();
+        var publisher = new RecordingMemoryChangePublisher();
+        var memories = TestServiceFactory.CreateMemoryApplicationService(memoryStore, eventStore, publisher);
+        memoryStore.Save(new MemoryRecord
+        {
+            Id = "fenced-tool-target",
+            Title = "Fenced Tool Target",
+            Status = MemoryStatus.Core,
+            Content = "Inline fenced JSON tool calls should still execute.",
+            Tags = ["project-wiki", "tooling"]
+        });
+        var pages = new FilePageService(_tempDir);
+        var provider = new SequencedChatProvider(
+            """```json {"toolCalls":[{"name":"memorysmith_get","arguments":{"id":"fenced-tool-target"}}]} ```""",
+            "fenced-tool-target was fetched.");
+        var agent = new MemoryChatAgent([provider], memories, pages, Options.Create(new MemorySmithOptions()));
+
+        var response = await agent.SendAsync(new MemoryChatRequest("Use a fenced tool call", MemoryChatMode.Chat), CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(response.Reply, Is.EqualTo("fenced-tool-target was fetched."));
+            Assert.That(provider.Requests, Has.Count.EqualTo(2));
+            Assert.That(response.Context.Select(item => item.Id), Does.Contain("fenced-tool-target"));
+        });
+    }
+
+    [Test]
     public async Task MemoryChatAgent_StreamsToolCallStatusWithoutLeakingToolJson()
     {
         var memoryStore = new InMemoryMemoryStore();
@@ -438,6 +513,48 @@ public class PagesAndChatTests
             Assert.That(traceEvents.Any(trace => trace.Kind == ChatTraceKinds.ToolResult && trace.Title.Contains("memorysmith_get", StringComparison.Ordinal)), Is.True);
             Assert.That(final.Reply, Is.EqualTo("stream-tool-target has the evidence."));
             Assert.That(provider.Requests, Has.Count.EqualTo(2));
+        });
+    }
+
+    [Test]
+    public async Task MemoryChatAgent_StopAfterCurrentStepSkipsRequestedToolCalls()
+    {
+        var memoryStore = new InMemoryMemoryStore();
+        var eventStore = new RecordingEventStore();
+        var publisher = new RecordingMemoryChangePublisher();
+        var memories = TestServiceFactory.CreateMemoryApplicationService(memoryStore, eventStore, publisher);
+        memoryStore.Save(new MemoryRecord
+        {
+            Id = "stop-step-target",
+            Title = "Stop Step Target",
+            Status = MemoryStatus.Core,
+            Content = "This should not be fetched when stop-after-step is already requested."
+        });
+        var pages = new FilePageService(_tempDir);
+        var provider = new SequencedChatProvider(
+            """
+            {"toolCalls":[{"name":"memorysmith_get","arguments":{"id":"stop-step-target"}}]}
+            """,
+            "This should not be reached.");
+        var runControl = new ChatRunControl();
+        runControl.RequestStopAfterCurrentStep();
+        var agent = new MemoryChatAgent([provider], memories, pages, Options.Create(new MemorySmithOptions()));
+
+        var updates = new List<MemoryChatStreamUpdate>();
+        await foreach (var update in agent.StreamAsync(new MemoryChatRequest("Continue this turn", MemoryChatMode.Chat, RunControl: runControl), CancellationToken.None))
+        {
+            updates.Add(update);
+        }
+
+        var final = updates.Single(update => update.IsFinal).Response!;
+        var traceEvents = updates.SelectMany(update => update.TraceEvents ?? []).ToList();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(provider.Requests, Has.Count.EqualTo(1));
+            Assert.That(final.Reply, Is.EqualTo("Stopped before running the requested MemorySmith wiki tool call(s)."));
+            Assert.That(final.Context.Select(item => item.Id), Does.Not.Contain("stop-step-target"));
+            Assert.That(traceEvents.Any(trace => trace.Title == "Stop after step"), Is.True);
         });
     }
 
