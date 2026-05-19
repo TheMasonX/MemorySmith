@@ -1590,11 +1590,17 @@ body {
 @media (max-width: 1400px) {
     .chat-workbench.is-trace-open,
     .chat-workbench.is-history-collapsed.is-trace-open {
-        grid-template-columns: minmax(0, 1fr) minmax(300px, 38vw);
+        grid-template-columns: minmax(180px, 220px) minmax(0, 1fr);
+        grid-template-rows: minmax(0, 1fr) minmax(240px, 40vh);
     }
 
-    .chat-workbench.is-trace-open .chat-history-pane {
-        display: none;
+    .chat-workbench.is-history-collapsed.is-trace-open {
+        grid-template-columns: 0 minmax(0, 1fr);
+    }
+
+    .chat-workbench.is-trace-open .chat-trace-panel {
+        grid-column: 1 / -1;
+        grid-row: 2;
     }
 }
 
@@ -1645,6 +1651,11 @@ body {
 
     .chat-workbench.is-trace-open .chat-trace-panel {
         grid-column: 1;
+        grid-row: 2;
+    }
+
+    .chat-workbench.is-trace-open .chat-history-pane {
+        display: none;
     }
 
     .chat-workbench:has(.chat-history-pane.is-collapsed) {
