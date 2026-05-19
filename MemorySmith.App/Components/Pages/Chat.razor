@@ -114,7 +114,7 @@
                                 </div>
                             </details>
                         }
-                        <div class="chat-message-body">@turn.Content</div>
+                        <div class="chat-message-body chat-message-markdown">@((MarkupString)ChatMarkdownRenderer.RenderHtml(turn.Content))</div>
 
                         @if (turn.Attachments.Count > 0)
                         {

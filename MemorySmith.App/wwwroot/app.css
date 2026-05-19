@@ -877,9 +877,87 @@ body {
 }
 
 .chat-message-body {
-    white-space: pre-wrap;
     line-height: 1.38;
     font-size: 0.9rem;
+    overflow-wrap: anywhere;
+}
+
+.chat-message-markdown > :first-child {
+    margin-top: 0;
+}
+
+.chat-message-markdown > :last-child {
+    margin-bottom: 0;
+}
+
+.chat-message-markdown p,
+.chat-message-markdown ul,
+.chat-message-markdown ol,
+.chat-message-markdown blockquote,
+.chat-message-markdown pre,
+.chat-message-markdown table {
+    margin: 0 0 0.65rem;
+}
+
+.chat-message-markdown ul,
+.chat-message-markdown ol {
+    padding-left: 1.25rem;
+}
+
+.chat-message-markdown blockquote {
+    padding-left: 0.75rem;
+    border-left: 3px solid var(--vscode-border);
+    color: var(--vscode-text-muted);
+}
+
+.chat-message-markdown a {
+    color: var(--vscode-accent);
+}
+
+.chat-message-markdown code {
+    border: 1px solid var(--vscode-border-soft);
+    border-radius: 3px;
+    background: rgba(0, 0, 0, 0.22);
+    padding: 0.08rem 0.28rem;
+    font-family: Consolas, "Cascadia Mono", "Segoe UI", monospace;
+    font-size: 0.84em;
+}
+
+.chat-message-markdown pre {
+    max-width: 100%;
+    overflow: auto;
+    border: 1px solid var(--vscode-border-soft);
+    border-radius: 3px;
+    background: rgba(0, 0, 0, 0.28);
+    padding: 8px;
+}
+
+.chat-message-markdown pre code {
+    display: block;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    font-size: 0.78rem;
+    line-height: 1.4;
+}
+
+.chat-message-markdown table {
+    display: block;
+    max-width: 100%;
+    overflow: auto;
+    border-collapse: collapse;
+}
+
+.chat-message-markdown th,
+.chat-message-markdown td {
+    border: 1px solid var(--vscode-border-soft);
+    padding: 4px 7px;
+    text-align: left;
+    vertical-align: top;
+}
+
+.chat-message-markdown th {
+    background: var(--vscode-panel-strong);
 }
 
 .chat-thinking {

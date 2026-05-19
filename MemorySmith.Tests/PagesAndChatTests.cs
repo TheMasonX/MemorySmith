@@ -75,6 +75,39 @@ public class PagesAndChatTests
     }
 
     [Test]
+    public void ChatMarkdownRenderer_RendersMarkdownAndBlocksUnsafeHtml()
+    {
+        var html = ChatMarkdownRenderer.RenderHtml("""
+        # Answer
+
+        **Bold** text with `code`.
+
+        | Item | Value |
+        | --- | --- |
+        | One | Two |
+
+        ```csharp
+        Console.WriteLine("hello");
+        ```
+
+        <script>alert(1)</script>
+
+        [bad](javascript:alert(1))
+        """);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(html, Does.Contain(">Answer</h1>"));
+            Assert.That(html, Does.Contain("<strong>Bold</strong>"));
+            Assert.That(html, Does.Contain("<table>"));
+            Assert.That(html, Does.Contain("language-csharp"));
+            Assert.That(html, Does.Not.Contain("<script"));
+            Assert.That(html, Does.Not.Contain("javascript:alert"));
+            Assert.That(html, Does.Contain("href=\"#\""));
+        });
+    }
+
+    [Test]
     public async Task FilePageService_SavesImageAssetsForMarkdownEmbeds()
     {
         var pages = new FilePageService(_tempDir);

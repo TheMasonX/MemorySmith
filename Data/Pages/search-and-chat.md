@@ -49,9 +49,11 @@ Use `context_pack` before `source_bundle` when researching code changes. The con
 
 ## Chat Mode
 
-Chat mode answers questions with wiki context. It can use memory search, page search, provider/model selection, attachments, streaming responses, context chips, and local chat history.
+Chat mode answers questions with wiki context. It can use memory search, page search, provider/model selection, attachments, streaming responses, safe Markdown-rendered message bodies, context chips, and local chat history.
 
 The chat provider abstraction currently supports local Ollama and GitHub Copilot-backed chat. The UI can ask providers for available models and remembers the last selected provider/model in browser storage.
+
+The shared chat prompt asks providers to use GitHub-flavored Markdown for normal Chat mode answers. The UI renders that Markdown with raw HTML disabled and neutralizes unsafe link schemes before inserting the HTML into the transcript. The Athena Ollama modelfile uses the same formatting instruction.
 
 The chat tool path now uses a shared tool catalog for page and unified search tools in addition to memory search tools. The app can also intercept clearly worded wiki intents before provider generation (for example, "search the wiki for ..." or "open page ...") so common retrieval tasks do not depend entirely on model-formatted tool JSON.
 
