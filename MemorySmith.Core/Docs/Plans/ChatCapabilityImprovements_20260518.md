@@ -836,3 +836,29 @@ Start with the smallest slice that improves reliability without changing safety 
 This slice improves natural chat capability and page retrieval while avoiding the higher-risk source-bundle and write-approval work.
 
 Confidence: 0.87.
+## 17. P0 Implementation Status (2026-05-18 shipped)
+
+Phases 1-3 plus the §16 first-slice recommendations have shipped on this branch. Verified against dotnet test MemorySmith.slnx -c Debug → 169 / 169 passing and against the live MemorySmith Windows service on http://localhost:5089 (MCP tools/list + tools/call smoke).
+
+| Item | File | Status |
+|---|---|---|
+| Shared read-only tool registry (8 tools) | `MemorySmith.App/Services/ChatToolCatalog.cs` | shipped |
+| Chat agent delegates to catalog | `MemorySmith.App/Services/ChatServices.cs` | shipped |
+| MCP controller delegates to catalog + schema clone on tools/list | `MemorySmith.App/Controllers/McpController.cs` | shipped |
+| New tools: `memorysmith_page_search`, `memorysmith_page_get`, `memorysmith_unified_search` exposed on /mcp and /chat | catalog | shipped |
+| Deterministic intent intercepts (search / get / hybrid / semantic / page / context-pack) | `MemorySmith.App/Services/ChatIntentInterceptor.cs` | shipped |
+| Intercept feeds a distinct `Local MemorySmith auto-intercept results` system message | `ChatServices.FormatInterceptResults` | shipped |
+| Untrusted-data preamble wrapped around `FormatContext` and `FormatToolResults` | `ChatServices.cs` | shipped |
+| DI registrations (`ChatToolCatalog` + `ChatIntentInterceptor` as singletons) | `MemorySmith.App/Program.cs` | shipped |
+| Wiki chat agent prompt updated for untrusted-data + 8-tool surface + auto-intercept guidance | `MemorySmith.Core/Docs/Prompts/wiki-chat-agent.md` | shipped |
+| New NUnit tests: catalog parity, page tool slug safety, page tool truncation, page search, intent intercepts | `MemorySmith.Tests/ChatToolCatalogAndInterceptTests.cs` | shipped (14 cases) |
+
+Explicitly deferred follow-up work (still tracked under Phases 4-6):
+
+- Native provider tool-call SDK plumbing (Ollama function calling, GitHub Copilot tools[] surface).
+- `AutoContextPolicy` budgeted-context planner replacing the eager preload path.
+- `ChatToolTrace` UI surface (badge + timeline of intercept + tool calls).
+- Write-approval UX gate for Agent mode (currently controlled solely by `AgentWritesEnabled`).
+- Per-provider capability metadata + chat-side capability negotiation.
+
+Confidence: 0.92.

@@ -11,6 +11,8 @@ This page tracks user-facing work in plain language. Completed items stay here a
 - [ ] Improve static Pages publishing with richer navigation once the first GitHub Pages workflow is proven in CI.
 - [ ] Agent driven page generation - combined feature with chat that leverages chat interface and adds a preview pane
 - [ ] Grid panels like the markdown/preview plane and the pages/edit columns should be resizable to a degree, like a classic gridsplitter
+- [ ] admin/ page should allow the user to edit settings and not just view them (as appropriate)
+- [ ] Add a first-class chat trace drawer that separates preloaded context, deterministic intercepts, model-requested tools, and write actions per turn.
 
 ## Pages
 - [x] Page preview mode - live update or at least periodic refresh (toggleable) and a manual refresh button
@@ -42,6 +44,8 @@ This page tracks user-facing work in plain language. Completed items stay here a
 - [x] Persist the last used provider/model and restore active chat history across page navigation
 - [x] Delete chats from history with a confirmation prompt
 - [x] Add GitHub Copilot as a selectable provider using GitHub CLI auth or token env vars, with preferred mini model defaults
+- [x] Add shared chat tool catalog and deterministic intent intercepts for page/unified wiki retrieval
+- [x] Keep chat pre-context small for simple prompts and show mid-chat accessed resources as separate blue chips
 
 ## Health
 - [x] Make the health page scrollable inside the fixed app shell

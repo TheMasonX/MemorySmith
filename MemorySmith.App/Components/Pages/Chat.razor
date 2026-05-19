@@ -1,6 +1,8 @@
 @page "/chat"
 @rendermode InteractiveServer
 @implements IAsyncDisposable
+@using System.Text.Json
+@using System.Text.Json.Nodes
 @using Microsoft.Extensions.Options
 @inject IChatAgent ChatAgent
 @inject IEnumerable<IChatProvider> ChatProviders
@@ -130,7 +132,7 @@
                             <div class="chat-context-list">
                                 @foreach (var item in turn.Context)
                                 {
-                                    <a class="wiki-tag chat-resource" href="@ContextHref(item)" target="_blank" rel="noopener noreferrer" title="@item.Snippet">@item.Kind:@item.Title</a>
+                                    <a class="@ContextResourceClass(item)" href="@ContextHref(item)" target="_blank" rel="noopener noreferrer" title="@item.Snippet">@item.Kind:@item.Title</a>
                                 }
                                 @foreach (var id in turn.WrittenMemories)
                                 {
@@ -184,6 +186,18 @@
 @code {
     private const string ChatStorageKey = "memorysmith.chat.sessions.v1";
     private const string ChatPreferencesStorageKey = "memorysmith.chat.preferences.v1";
+    private const int MaxStoredChatSessions = 30;
+    private const int MaxCompactStoredChatSessions = 12;
+    private const int MaxStoredHistoryMessages = 40;
+    private const int MaxStoredTurnCharacters = 16000;
+    private const int MaxStoredThinkingCharacters = 6000;
+    private const int MaxStoredContextSnippetCharacters = 600;
+    private const int MaxStoredAttachmentTextCharacters = 6000;
+    private const int MaxStoredAttachmentImageCharacters = 12000;
+    private static readonly JsonSerializerOptions StorageJsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        PropertyNameCaseInsensitive = true
+    };
     private readonly List<ChatSessionState> _sessions = [];
     private readonly List<ChatModelSummary> _models = [];
     private readonly List<string> _availableProviders = [];
@@ -204,6 +218,7 @@
     private bool _isSending;
     private bool _isLoadingModels;
     private bool _hasLoadedSessions;
+    private bool _sessionLoadFailed;
     private bool _composerRegistered;
     private bool _scrollPending;
     private bool _storageWarningShown;
@@ -262,7 +277,7 @@
 
     private async Task LoadPreferencesAsync()
     {
-        var preferences = await JS.InvokeAsync<ChatPreferencesState?>("memorySmith.storage.getJson", ChatPreferencesStorageKey);
+        var preferences = await LoadStorageJsonAsync<ChatPreferencesState>(ChatPreferencesStorageKey, warnOnFailure: false);
         if (preferences is null)
         {
             return;
@@ -288,7 +303,18 @@
 
     private async Task LoadSessionsAsync()
     {
-        var saved = await JS.InvokeAsync<List<ChatSessionState>?>("memorySmith.storage.getJson", ChatStorageKey);
+        _sessionLoadFailed = false;
+        var raw = await LoadStorageTextAsync(ChatStorageKey, warnOnFailure: true);
+        var saved = string.IsNullOrWhiteSpace(raw) ? null : ParseStoredSessions(raw);
+        if (_sessionLoadFailed)
+        {
+            _sessions.Clear();
+            StartNewChat();
+            _hasLoadedSessions = true;
+            await SavePreferencesAsync();
+            return;
+        }
+
         _sessions.Clear();
         if (saved is not null)
         {
@@ -314,6 +340,199 @@
         await SaveSessionsAsync();
         await SavePreferencesAsync();
     }
+
+    private async Task<T?> LoadStorageJsonAsync<T>(string key, bool warnOnFailure)
+    {
+        var raw = await LoadStorageTextAsync(key, warnOnFailure);
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return default;
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<T>(raw, StorageJsonOptions);
+        }
+        catch (Exception)
+        {
+            MarkStorageLoadFailed(warnOnFailure);
+            return default;
+        }
+    }
+
+    private async Task<string?> LoadStorageTextAsync(string key, bool warnOnFailure)
+    {
+        try
+        {
+            return await JS.InvokeAsync<string?>("memorySmith.storage.getJsonString", key);
+        }
+        catch
+        {
+            MarkStorageLoadFailed(warnOnFailure);
+            return default;
+        }
+    }
+
+    private void MarkStorageLoadFailed(bool warnOnFailure)
+    {
+        if (!warnOnFailure)
+        {
+            return;
+        }
+
+        _sessionLoadFailed = true;
+        Snackbar.Add("Saved chat history could not be read. A fresh local chat session was started without overwriting existing browser storage.", Severity.Warning);
+    }
+
+    private List<ChatSessionState>? ParseStoredSessions(string raw)
+    {
+        try
+        {
+            if (JsonNode.Parse(raw) is not JsonArray array)
+            {
+                return null;
+            }
+
+            return array.OfType<JsonObject>()
+                .Select(ParseStoredSession)
+                .Where(session => session is not null)
+                .Select(session => session!)
+                .ToList();
+        }
+        catch (Exception)
+        {
+            MarkStorageLoadFailed(warnOnFailure: true);
+            return default;
+        }
+    }
+
+    private static ChatSessionState? ParseStoredSession(JsonObject item)
+    {
+        var id = ReadJsonString(item, "id");
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            return null;
+        }
+
+        var created = ReadJsonDateTimeOffset(item, "createdUtc", DateTimeOffset.UtcNow);
+        return new ChatSessionState
+        {
+            Id = id,
+            Title = ReadJsonString(item, "title") ?? "New chat",
+            CreatedUtc = created,
+            UpdatedUtc = ReadJsonDateTimeOffset(item, "updatedUtc", created),
+            Draft = ReadJsonString(item, "draft") ?? string.Empty,
+            PendingAttachments = ReadJsonObjects(item, "pendingAttachments").Select(ParseStoredAttachment).Where(attachment => attachment is not null).Select(attachment => attachment!).ToList(),
+            Turns = ReadJsonObjects(item, "turns").Select(ParseStoredTurn).ToList(),
+            History = ReadJsonObjects(item, "history").Select(ParseStoredMessage).Where(message => message is not null).Select(message => message!).ToList()
+        };
+    }
+
+    private static ChatTurnState ParseStoredTurn(JsonObject item)
+    {
+        var created = ReadJsonDateTimeOffset(item, "createdUtc", DateTimeOffset.UtcNow);
+        return new ChatTurnState
+        {
+            Role = ReadJsonString(item, "role") ?? string.Empty,
+            Content = ReadJsonString(item, "content") ?? string.Empty,
+            CreatedUtc = created,
+            Thinking = ReadJsonString(item, "thinking"),
+            Context = ReadJsonObjects(item, "context").Select(ParseStoredContextItem).ToList(),
+            WrittenMemories = ReadJsonStrings(item, "writtenMemories"),
+            WrittenPages = ReadJsonStrings(item, "writtenPages"),
+            Attachments = ReadJsonObjects(item, "attachments").Select(ParseStoredAttachment).Where(attachment => attachment is not null).Select(attachment => attachment!).ToList(),
+            ProviderName = ReadJsonString(item, "providerName"),
+            Model = ReadJsonString(item, "model"),
+            Usage = ParseStoredUsage(item),
+            DurationMilliseconds = ReadJsonLong(item, "durationMilliseconds"),
+            ThinkingActive = false
+        };
+    }
+
+    private static ChatMessage? ParseStoredMessage(JsonObject item)
+    {
+        var role = ReadJsonString(item, "role");
+        var content = ReadJsonString(item, "content");
+        return string.IsNullOrWhiteSpace(role) || content is null ? null : new ChatMessage(role, content);
+    }
+
+    private static ChatContextItem ParseStoredContextItem(JsonObject item) =>
+        new(
+            ReadJsonString(item, "kind") ?? string.Empty,
+            ReadJsonString(item, "id") ?? string.Empty,
+            ReadJsonString(item, "title") ?? string.Empty,
+            ReadJsonString(item, "snippet") ?? string.Empty,
+            ReadJsonString(item, "origin") ?? ChatContextOrigins.Preloaded);
+
+    private static ChatAttachment? ParseStoredAttachment(JsonObject item)
+    {
+        var name = ReadJsonString(item, "name");
+        return string.IsNullOrWhiteSpace(name)
+            ? null
+            : new ChatAttachment(
+                name,
+                ReadJsonString(item, "contentType") ?? string.Empty,
+                ReadJsonString(item, "text") ?? string.Empty,
+                ReadJsonLong(item, "size") ?? 0,
+                ReadJsonString(item, "base64Data"),
+                ReadJsonBool(item, "isImage"),
+                ReadJsonBool(item, "isTruncated"),
+                ReadJsonString(item, "localPath"));
+    }
+
+    private static ChatUsageSummary? ParseStoredUsage(JsonObject item)
+    {
+        if (GetJsonObject(item, "usage") is not { } usage)
+        {
+            return null;
+        }
+
+        return new ChatUsageSummary(
+            ReadJsonInt(usage, "inputTokens") ?? 0,
+            ReadJsonInt(usage, "outputTokens") ?? 0,
+            ReadJsonInt(usage, "contextTokens"),
+            ReadJsonInt(usage, "contextWindowTokens"),
+            ReadJsonString(usage, "rateLimit"),
+            ReadJsonBool(usage, "isEstimate", defaultValue: true));
+    }
+
+    private static IEnumerable<JsonObject> ReadJsonObjects(JsonObject item, string name) =>
+        GetJsonArray(item, name)?.OfType<JsonObject>() ?? [];
+
+    private static List<string> ReadJsonStrings(JsonObject item, string name) =>
+        GetJsonArray(item, name)?.OfType<JsonValue>()
+            .Select(value => value.TryGetValue<string>(out var text) ? text : string.Empty)
+            .Where(text => !string.IsNullOrWhiteSpace(text))
+            .ToList() ?? [];
+
+    private static JsonArray? GetJsonArray(JsonObject item, string name) =>
+        item.TryGetPropertyValue(name, out var node) ? node as JsonArray : null;
+
+    private static JsonObject? GetJsonObject(JsonObject item, string name) =>
+        item.TryGetPropertyValue(name, out var node) ? node as JsonObject : null;
+
+    private static string? ReadJsonString(JsonObject item, string name) =>
+        item.TryGetPropertyValue(name, out var node) && node is JsonValue value && value.TryGetValue<string>(out var text)
+            ? text
+            : null;
+
+    private static int? ReadJsonInt(JsonObject item, string name) =>
+        item.TryGetPropertyValue(name, out var node) && node is JsonValue value && value.TryGetValue<int>(out var number)
+            ? number
+            : null;
+
+    private static long? ReadJsonLong(JsonObject item, string name) =>
+        item.TryGetPropertyValue(name, out var node) && node is JsonValue value && value.TryGetValue<long>(out var number)
+            ? number
+            : null;
+
+    private static bool ReadJsonBool(JsonObject item, string name, bool defaultValue = false) =>
+        item.TryGetPropertyValue(name, out var node) && node is JsonValue value && value.TryGetValue<bool>(out var flag)
+            ? flag
+            : defaultValue;
+
+    private static DateTimeOffset ReadJsonDateTimeOffset(JsonObject item, string name, DateTimeOffset fallback) =>
+        DateTimeOffset.TryParse(ReadJsonString(item, name), out var value) ? value : fallback;
 
     private void ToggleHistory()
     {
@@ -786,17 +1005,105 @@
         var retained = _sessions
             .Where(session => session.Id == _activeSessionId || session.Turns.Count > 0 || !string.IsNullOrWhiteSpace(session.Draft) || session.PendingAttachments.Count > 0)
             .OrderByDescending(session => session.UpdatedUtc)
-            .Take(30)
+            .Take(MaxStoredChatSessions)
             .ToList();
         _sessions.Clear();
         _sessions.AddRange(retained);
-        var stored = await JS.InvokeAsync<bool>("memorySmith.storage.setJson", ChatStorageKey, _sessions);
-        if (!stored && !_storageWarningShown)
+
+        var compactSnapshot = retained
+            .Select(session => CloneSessionForStorage(session, includeContext: true, includeAttachments: true))
+            .ToList();
+        if (await TrySaveSessionSnapshotAsync(compactSnapshot))
+        {
+            return;
+        }
+
+        var minimalSnapshot = retained
+            .Take(MaxCompactStoredChatSessions)
+            .Select(session => CloneSessionForStorage(session, includeContext: false, includeAttachments: false))
+            .ToList();
+        if (await TrySaveSessionSnapshotAsync(minimalSnapshot))
+        {
+            if (!_storageWarningShown)
+            {
+                _storageWarningShown = true;
+                Snackbar.Add("Chat history was saved in compact mode because browser storage is nearly full.", Severity.Warning);
+            }
+            return;
+        }
+
+        if (!_storageWarningShown)
         {
             _storageWarningShown = true;
             Snackbar.Add("Chat history was too large to persist in browser storage. Current in-page draft is still retained.", Severity.Warning);
         }
     }
+
+    private async Task<bool> TrySaveSessionSnapshotAsync(IReadOnlyList<ChatSessionState> sessions) =>
+        await JS.InvokeAsync<bool>("memorySmith.storage.setJson", ChatStorageKey, sessions);
+
+    private static ChatSessionState CloneSessionForStorage(ChatSessionState session, bool includeContext, bool includeAttachments) =>
+        new()
+        {
+            Id = session.Id,
+            Title = session.Title,
+            CreatedUtc = session.CreatedUtc,
+            UpdatedUtc = session.UpdatedUtc,
+            Draft = TrimForStorage(session.Draft, MaxStoredTurnCharacters),
+            PendingAttachments = includeAttachments
+                ? session.PendingAttachments.Select(TrimAttachmentForStorage).ToList()
+                : [],
+            Turns = session.Turns.Select(turn => TrimTurnForStorage(turn, includeContext, includeAttachments)).ToList(),
+            History = session.History
+                .TakeLast(MaxStoredHistoryMessages)
+                .Select(message => new ChatMessage(message.Role, TrimForStorage(message.Content, MaxStoredTurnCharacters)))
+                .ToList()
+        };
+
+    private static ChatTurnState TrimTurnForStorage(ChatTurnState turn, bool includeContext, bool includeAttachments) =>
+        new()
+        {
+            Role = turn.Role,
+            Content = TrimForStorage(turn.Content, MaxStoredTurnCharacters),
+            CreatedUtc = turn.CreatedUtc,
+            Thinking = TrimNullableForStorage(turn.Thinking, MaxStoredThinkingCharacters),
+            Context = includeContext
+                ? turn.Context.Select(item => new ChatContextItem(
+                    item.Kind,
+                    item.Id,
+                    item.Title,
+                    TrimForStorage(item.Snippet, MaxStoredContextSnippetCharacters),
+                    item.Origin)).ToList()
+                : [],
+            WrittenMemories = turn.WrittenMemories.ToList(),
+            WrittenPages = turn.WrittenPages.ToList(),
+            Attachments = includeAttachments ? turn.Attachments.Select(TrimAttachmentForStorage).ToList() : [],
+            ProviderName = turn.ProviderName,
+            Model = turn.Model,
+            Usage = turn.Usage,
+            DurationMilliseconds = turn.DurationMilliseconds,
+            ThinkingActive = false
+        };
+
+    private static ChatAttachment TrimAttachmentForStorage(ChatAttachment attachment) =>
+        attachment with
+        {
+            Text = TrimForStorage(attachment.Text, MaxStoredAttachmentTextCharacters),
+            Base64Data = TrimNullableForStorage(attachment.Base64Data, MaxStoredAttachmentImageCharacters)
+        };
+
+    private static string TrimForStorage(string? value, int maxCharacters)
+    {
+        if (string.IsNullOrEmpty(value) || value.Length <= maxCharacters)
+        {
+            return value ?? string.Empty;
+        }
+
+        return value[..maxCharacters].TrimEnd() + "...";
+    }
+
+    private static string? TrimNullableForStorage(string? value, int maxCharacters) =>
+        value is null ? null : TrimForStorage(value, maxCharacters);
 
     private async Task SavePreferencesAsync()
     {
@@ -950,6 +1257,11 @@
         string.Equals(item.Kind, "page", StringComparison.OrdinalIgnoreCase)
             ? PageHref(item.Id)
             : MemoryHref(item.Id);
+
+    private static string ContextResourceClass(ChatContextItem item) =>
+        string.Equals(item.Origin, ChatContextOrigins.Tool, StringComparison.OrdinalIgnoreCase)
+            ? "wiki-tag chat-resource chat-resource-tool"
+            : "wiki-tag chat-resource";
 
     private static string PageHref(string slug) =>
         "/pages/" + string.Join('/', slug.Split('/', StringSplitOptions.RemoveEmptyEntries).Select(Uri.EscapeDataString));

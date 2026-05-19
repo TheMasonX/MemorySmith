@@ -148,6 +148,9 @@ public class ChatOptions
     public int RequestTimeoutSeconds { get; set; } = 600;
     public int MaxContextRecords { get; set; } = 5;
     public int MaxContextPages { get; set; } = 5;
+    public bool PreloadContextEnabled { get; set; } = true;
+    public int MaxPreloadedContextRecords { get; set; } = 2;
+    public int MaxPreloadedContextPages { get; set; } = 1;
     public int MaxContextItemCharacters { get; set; } = 4000;
     public int MaxHistoryMessages { get; set; } = 16;
     public int MaxAttachmentCharacters { get; set; } = 120000;

@@ -28,6 +28,7 @@
 
   <ItemGroup>
     <Content Include="..\MemorySmith.Core\Docs\Prompts\wiki-chat-agent.md" Link="Prompts\wiki-chat-agent.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Update="appsettings.LocalDevelopment.json" CopyToOutputDirectory="Never" CopyToPublishDirectory="Never" />
   </ItemGroup>
 
 </Project>
