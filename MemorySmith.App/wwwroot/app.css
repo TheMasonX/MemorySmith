@@ -933,6 +933,12 @@ body {
     text-decoration: none;
 }
 
+.chat-resource-tool {
+    background: rgba(82, 156, 255, 0.14);
+    border-color: rgba(82, 156, 255, 0.5);
+    color: #9cdcfe;
+}
+
 .chat-resource:hover {
     border-color: var(--vscode-accent);
     color: #9cdcfe;

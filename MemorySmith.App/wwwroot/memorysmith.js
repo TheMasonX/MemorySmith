@@ -324,6 +324,14 @@
             }
         },
 
+        getJsonString: function (key) {
+            try {
+                return localStorage.getItem(key);
+            } catch {
+                return null;
+            }
+        },
+
         setJson: function (key, value) {
             try {
                 localStorage.setItem(key, JSON.stringify(value));

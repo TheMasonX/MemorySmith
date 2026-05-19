@@ -26,6 +26,9 @@ public class McpController : ControllerBase
         "memorysmith_hybrid_search",
         "memorysmith_context_pack",
         "memorysmith_get",
+        "memorysmith_page_search",
+        "memorysmith_page_get",
+        "memorysmith_unified_search",
         "memorysmith_source_bundle",
         "memorysmith_find_by_source"
     };
@@ -34,13 +37,23 @@ public class McpController : ControllerBase
     private readonly VarResolver _vars;
     private readonly MemorySmithOptions _options;
     private readonly IAuthorizationService _authorization;
+    private readonly ChatToolCatalog _toolCatalog;
+    private readonly IPageService _pages;
 
-    public McpController(MemoryApplicationService memories, VarResolver vars, IOptions<MemorySmithOptions> options, IAuthorizationService authorization)
+    public McpController(
+        MemoryApplicationService memories,
+        VarResolver vars,
+        IOptions<MemorySmithOptions> options,
+        IAuthorizationService authorization,
+        ChatToolCatalog toolCatalog,
+        IPageService pages)
     {
         _memories = memories;
         _vars = vars;
         _options = options.Value;
         _authorization = authorization;
+        _toolCatalog = toolCatalog;
+        _pages = pages;
     }
 
     [HttpGet]
@@ -126,8 +139,24 @@ public class McpController : ControllerBase
                 ? ToolText(await FormatSourceBundleAsync(argumentsElement, cancellationToken))
                 : ToolText("The caller is not authorized to read source bundles.", isError: true),
             "memorysmith_find_by_source" => ToolText(await FormatFindBySourceAsync(argumentsElement, cancellationToken)),
+            "memorysmith_page_search" or "memorysmith_page_get" or "memorysmith_unified_search"
+                => await DelegateToCatalogAsync(toolName, argumentsElement, cancellationToken),
             _ => ToolText($"Unknown MemorySmith tool '{toolName}'.", isError: true)
         };
+    }
+
+    private async Task<JsonObject> DelegateToCatalogAsync(string toolName, JsonElement argumentsElement, CancellationToken cancellationToken)
+    {
+        if (!_toolCatalog.TryGet(toolName, out var tool) || !tool.AvailableInMcp)
+        {
+            return ToolText($"Unknown MemorySmith tool '{toolName}'.", isError: true);
+        }
+        var args = argumentsElement.ValueKind == JsonValueKind.Object
+            ? JsonNode.Parse(argumentsElement.GetRawText()) as JsonObject ?? new JsonObject()
+            : new JsonObject();
+        var ctx = new ChatToolExecutionContext(_memories, _pages, Transport: "mcp");
+        var result = await tool.Execute(args, ctx, cancellationToken);
+        return ToolText(result.Text, isError: result.IsError);
     }
 
     private async Task<bool> CanReadSourceBundleAsync() =>
@@ -399,9 +428,9 @@ public class McpController : ControllerBase
         }
     };
 
-    private static JsonObject BuildToolsListResult() => new()
+    private JsonObject BuildToolsListResult()
     {
-        ["tools"] = new JsonArray
+        var array = new JsonArray
         {
             BuildTool(
                 "memorysmith_search",
@@ -443,8 +472,21 @@ public class McpController : ControllerBase
                 "memorysmith_find_by_source",
                 "Back-map a source path or URL fragment to every KB entry that references it. Matches against both raw and resolved (variable-expanded) URIs.",
                 BuildFindBySourceSchema())
+        };
+
+        // Add the page/unified tools that live in the shared ChatToolCatalog so MCP and chat stay in sync.
+        var sharedToolNames = new[] { "memorysmith_page_search", "memorysmith_page_get", "memorysmith_unified_search" };
+        foreach (var name in sharedToolNames)
+        {
+            if (_toolCatalog.TryGet(name, out var tool))
+            {
+                // Clone the schema; JsonNodes cannot have two parents and BuildToolsListResult may run repeatedly.
+                var clonedSchema = JsonNode.Parse(tool.InputSchema.ToJsonString()) as JsonObject ?? new JsonObject();
+                array.Add(BuildTool(tool.Name, tool.Description, clonedSchema));
+            }
         }
-    };
+        return new JsonObject { ["tools"] = array };
+    }
 
     private static JsonObject BuildTool(string name, string description, JsonObject inputSchema) => new()
     {

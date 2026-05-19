@@ -9,7 +9,7 @@
     "blazor",
     "architecture"
   ],
-  "Content": "MemorySmith uses Blazor Server with Interactive Server render mode on all pages. The host is MemorySmith.App with MudBlazor 9.4 for components. Pages: /memories (MemoryViewer.razor) is the main workbench, a VS Code-inspired compact dark editor for browsing and editing MemoryRecords with inline source link editing and agent-context copy. /pages (Pages.razor) manages markdown project-wiki pages, rendered previews, and page assets. /chat (Chat.razor) has a collapsible history sidebar with compact ellipsis titles, provider/model dropdowns, Chat/Agent toggle buttons, streamed response status, visible assistant provider/model metadata, local draft/history persistence, a Stop button beside Send for active generation cancellation, attachment chips, context chips, and agent write chips. /health (HealthStats.razor) shows stat cards, two MudChart<double> activity charts, maintenance telemetry, diagnostics, and recent events. /variables (Variables.razor) is a simple CRUD table for vars.json bindings used in source link %VarName% expansion. All pages use MVVM-lite: minimal code-behind, services injected. MudBlazor 9.4 breaking changes: MudChart is now generic (MudChart T='double', ChartSeries<double>), axis labels use ChartLabels not XAxisLabels. CSS is in wwwroot/app.css.",
+  "Content": "MemorySmith uses Blazor Server with Interactive Server render mode on all pages. The host is MemorySmith.App with MudBlazor 9.4 for components. Pages: /memories (MemoryViewer.razor) is the main workbench, a VS Code-inspired compact dark editor for browsing and editing MemoryRecords with inline source link editing and agent-context copy. /pages (Pages.razor) manages markdown project-wiki pages, rendered previews, and page assets. /chat (Chat.razor) has a collapsible history sidebar with compact ellipsis titles, provider/model dropdowns, Chat/Agent toggle buttons, streamed response status, visible assistant provider/model metadata, local draft/history persistence, a Stop button beside Send for active generation cancellation, attachment chips, neutral preloaded context chips, blue mid-chat tool resource chips, and green agent write chips for created pages. /health (HealthStats.razor) shows stat cards, two MudChart<double> activity charts, maintenance telemetry, diagnostics, and recent events. /variables (Variables.razor) is a simple CRUD table for vars.json bindings used in source link %VarName% expansion. All pages use MVVM-lite: minimal code-behind, services injected. MudBlazor 9.4 breaking changes: MudChart is now generic (MudChart T='double', ChartSeries<double>), axis labels use ChartLabels not XAxisLabels. CSS is in wwwroot/app.css.",
   "References": [
     "project-wiki-active-architecture",
     "project-wiki-source-links-feature",
@@ -28,5 +28,5 @@
     { "Label": "app.css", "Uri": "%MemorySmithRepo%MemorySmith.App/wwwroot/app.css" }
   ],
   "UsageCount": 0,
-  "LastUpdated": "2026-05-17T13:00:00Z"
+  "LastUpdated": "2026-05-19T01:20:00Z"
 }

@@ -37,14 +37,19 @@ try
     var secretsFile = Path.Combine(AppContext.BaseDirectory, "appsettings.Secrets.json");
     if (File.Exists(secretsFile))
         builder.Configuration.AddJsonFile(secretsFile, optional: true, reloadOnChange: false);
+    var localDevelopmentFile = Path.Combine(AppContext.BaseDirectory, "appsettings.LocalDevelopment.json");
+    if (File.Exists(localDevelopmentFile))
+        builder.Configuration.AddJsonFile(localDevelopmentFile, optional: true, reloadOnChange: false);
     builder.Host.UseSerilog();
     builder.Host.UseWindowsService(options =>
     {
         options.ServiceName = builder.Configuration["MemorySmith:WindowsService:Name"] ?? WindowsServiceCommands.DefaultServiceName;
     });
 
+    var blazorMaximumReceiveMessageSize = builder.Configuration.GetValue<long?>("MemorySmith:Blazor:MaximumReceiveMessageSizeBytes") ?? 1024 * 1024;
     builder.Services.AddRazorComponents()
-        .AddInteractiveServerComponents();
+        .AddInteractiveServerComponents()
+        .AddHubOptions(options => options.MaximumReceiveMessageSize = blazorMaximumReceiveMessageSize);
     builder.Services.AddMudServices();
 
     builder.Services.Configure<MemorySmithOptions>(builder.Configuration.GetSection("MemorySmith"));
@@ -291,6 +296,8 @@ try
     builder.Services.AddScoped<GitHubCopilotChatProvider>();
     builder.Services.AddScoped<IChatProvider>(sp => sp.GetRequiredService<OllamaChatProvider>());
     builder.Services.AddScoped<IChatProvider>(sp => sp.GetRequiredService<GitHubCopilotChatProvider>());
+    builder.Services.AddSingleton<ChatToolCatalog>();
+    builder.Services.AddSingleton<ChatIntentInterceptor>();
     builder.Services.AddScoped<IChatAgent, MemoryChatAgent>();
 
     var maintenanceEnabled = builder.Configuration.GetValue("MemorySmith:Maintenance:Enabled", true);

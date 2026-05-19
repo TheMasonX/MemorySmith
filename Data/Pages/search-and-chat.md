@@ -39,6 +39,9 @@ The MCP endpoint is available at `/mcp` and exposes local tools over the wiki. T
 | `memorysmith_hybrid_search` | You need balanced discovery. |
 | `memorysmith_context_pack` | You want root records plus references, conflicts, and backlinks. |
 | `memorysmith_get` | You know the exact memory ID. |
+| `memorysmith_page_search` | You need markdown page hits by query text. |
+| `memorysmith_page_get` | You know the exact page slug and need the page body. |
+| `memorysmith_unified_search` | You want one call that searches memories and pages together. |
 | `memorysmith_source_bundle` | You need source-linked file slices with the memory records. |
 | `memorysmith_find_by_source` | You want records tied to a file path or source-link pattern. |
 
@@ -49,6 +52,16 @@ Use `context_pack` before `source_bundle` when researching code changes. The con
 Chat mode answers questions with wiki context. It can use memory search, page search, provider/model selection, attachments, streaming responses, context chips, and local chat history.
 
 The chat provider abstraction currently supports local Ollama and GitHub Copilot-backed chat. The UI can ask providers for available models and remembers the last selected provider/model in browser storage.
+
+The chat tool path now uses a shared tool catalog for page and unified search tools in addition to memory search tools. The app can also intercept clearly worded wiki intents before provider generation (for example, "search the wiki for ..." or "open page ...") so common retrieval tasks do not depend entirely on model-formatted tool JSON.
+
+## Chat Context Loading
+
+Chat keeps preloaded context conservative. Exact-reply smoke prompts, simple greetings, and write-only Agent commands do not pull the project wiki into the first provider call. Explicit MemorySmith/wiki/codebase questions get a small bounded pre-context controlled by `Chat:MaxPreloadedContextRecords` and `Chat:MaxPreloadedContextPages`.
+
+When the model needs more evidence, it can request read-only MemorySmith tools mid-turn. Those tool results are fed back into the same provider turn and their touched memory/page resources are shown in the transcript as blue resource chips. Preloaded context chips keep the neutral wiki-chip theme, while Agent-created pages remain green write chips.
+
+Process note: for chat quality work, test both a no-context prompt such as `Reply exactly: ...` and a retrieval prompt that forces a tool or intercept. The first catches accidental context bloat; the second catches tool-loop and resource-chip regressions.
 
 ## Agent Mode
 

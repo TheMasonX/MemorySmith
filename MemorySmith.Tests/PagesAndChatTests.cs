@@ -134,6 +134,37 @@ public class PagesAndChatTests
         });
     }
 
+    [Test]
+    public async Task MemoryChatAgent_AgentModeSynthesizesReplyWhenProviderReplyIsEmpty()
+    {
+        var memoryStore = new InMemoryMemoryStore();
+        var eventStore = new RecordingEventStore();
+        var publisher = new RecordingMemoryChangePublisher();
+        var memories = TestServiceFactory.CreateMemoryApplicationService(memoryStore, eventStore, publisher);
+        var pages = new FilePageService(_tempDir);
+        var provider = new FakeChatProvider("""
+        {
+          "reply": null,
+          "memoryWrites": [],
+          "pageWrites": [
+            { "slug": "agent-page", "title": "Agent Page", "markdown": "Agent page body." }
+          ]
+        }
+        """);
+        var agent = new MemoryChatAgent([provider], memories, pages, Options.Create(new MemorySmithOptions
+        {
+            Chat = new ChatOptions { AgentWritesEnabled = true }
+        }));
+
+        var response = await agent.SendAsync(new MemoryChatRequest("Create a page", MemoryChatMode.Agent), CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(response.Reply, Is.EqualTo("Created or updated page agent-page."));
+            Assert.That(response.WrittenPages, Is.EqualTo(new[] { "agent-page" }));
+        });
+    }
+
         [Test]
         public async Task MemoryChatAgent_AgentWritesAreDisabledByDefault()
         {
@@ -160,7 +191,7 @@ public class PagesAndChatTests
 
                 Assert.Multiple(() =>
                 {
-                        Assert.That(response.Reply, Is.EqualTo("Recorded."));
+                    Assert.That(response.Reply, Is.EqualTo("Recorded.\n\nAgent write actions are disabled; no memories or pages were changed."));
                         Assert.That(response.WrittenMemories, Is.Empty);
                         Assert.That(response.WrittenPages, Is.Empty);
                         Assert.That(memoryStore.Load("agent-note"), Is.Null);
@@ -252,10 +283,78 @@ public class PagesAndChatTests
         });
         var agent = new MemoryChatAgent([provider], memories, pages, options);
 
-        await agent.SendAsync(new MemoryChatRequest("chat GitHub Haiku Sonnet", MemoryChatMode.Chat), CancellationToken.None);
+        await agent.SendAsync(new MemoryChatRequest("What does the MemorySmith wiki say about chat GitHub Haiku Sonnet?", MemoryChatMode.Chat), CancellationToken.None);
         var contextMessage = provider.LastRequest!.Messages.Single(message => message.Content.StartsWith("Local MemorySmith context", StringComparison.Ordinal));
 
         Assert.That(contextMessage.Content, Does.Contain("Claude Haiku before Sonnet"));
+    }
+
+    [Test]
+    public async Task MemoryChatAgent_SkipsPreloadedContextForSimpleDirectPrompt()
+    {
+        var memoryStore = new InMemoryMemoryStore();
+        var eventStore = new RecordingEventStore();
+        var publisher = new RecordingMemoryChangePublisher();
+        var memories = TestServiceFactory.CreateMemoryApplicationService(memoryStore, eventStore, publisher);
+        memoryStore.Save(new MemoryRecord
+        {
+            Id = "direct-prompt-noise",
+            Title = "Direct Prompt Noise",
+            Status = MemoryStatus.Core,
+            Content = "This local wiki record should not be sent for an exact-reply smoke prompt."
+        });
+        var pages = new FilePageService(_tempDir);
+        var provider = new FakeChatProvider("DIRECT_OK");
+        var agent = new MemoryChatAgent([provider], memories, pages, Options.Create(new MemorySmithOptions()));
+
+        var response = await agent.SendAsync(new MemoryChatRequest("Reply exactly: DIRECT_OK", MemoryChatMode.Chat), CancellationToken.None);
+        var contextMessage = provider.LastRequest!.Messages.Single(message => message.Content.StartsWith("Local MemorySmith context", StringComparison.Ordinal));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(response.Context, Is.Empty);
+            Assert.That(contextMessage.Content, Does.Contain("no memories or pages were preloaded"));
+            Assert.That(contextMessage.Content, Does.Not.Contain("exact-reply smoke prompt"));
+        });
+    }
+
+    [Test]
+    public async Task MemoryChatAgent_BoundsPreloadedContextForLocalKnowledgePrompt()
+    {
+        var memoryStore = new InMemoryMemoryStore();
+        var eventStore = new RecordingEventStore();
+        var publisher = new RecordingMemoryChangePublisher();
+        var memories = TestServiceFactory.CreateMemoryApplicationService(memoryStore, eventStore, publisher);
+        for (var index = 1; index <= 3; index++)
+        {
+            memoryStore.Save(new MemoryRecord
+            {
+                Id = $"bounded-context-{index}",
+                Title = $"Bounded Context {index}",
+                Status = MemoryStatus.Core,
+                Content = "MemorySmith wiki context should be bounded before the model call."
+            });
+        }
+        var pages = new FilePageService(_tempDir);
+        var provider = new FakeChatProvider("Done.");
+        var agent = new MemoryChatAgent([provider], memories, pages, Options.Create(new MemorySmithOptions
+        {
+            Chat = new ChatOptions
+            {
+                MaxContextRecords = 5,
+                MaxPreloadedContextRecords = 1,
+                MaxContextPages = 0,
+                MaxPreloadedContextPages = 0
+            }
+        }));
+
+        var response = await agent.SendAsync(new MemoryChatRequest("What does the MemorySmith wiki say about bounded context?", MemoryChatMode.Chat), CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(response.Context, Has.Count.EqualTo(1));
+            Assert.That(response.Context.Single().Origin, Is.EqualTo(ChatContextOrigins.Preloaded));
+        });
     }
 
     [Test]
@@ -291,6 +390,8 @@ public class PagesAndChatTests
             Assert.That(provider.Requests, Has.Count.EqualTo(2));
             Assert.That(toolResultMessage.Content, Does.Contain("memorysmith_hybrid_search"));
             Assert.That(toolResultMessage.Content, Does.Contain("tool-target"));
+            Assert.That(response.Context.Select(item => item.Id), Does.Contain("tool-target"));
+            Assert.That(response.Context.Single(item => item.Id == "tool-target").Origin, Is.EqualTo(ChatContextOrigins.Tool));
         });
     }
 
