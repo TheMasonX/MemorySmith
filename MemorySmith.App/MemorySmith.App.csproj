@@ -28,6 +28,9 @@
 
   <ItemGroup>
     <Content Include="..\MemorySmith.Core\Docs\Prompts\wiki-chat-agent.md" Link="Prompts\wiki-chat-agent.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\MemorySmith.Core\Docs\Prompts\maintenance-agent-task.md" Link="Prompts\maintenance-agent-task.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\MemorySmith.Core\Docs\Prompts\maintenance-proposal-generation.md" Link="Prompts\maintenance-proposal-generation.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\MemorySmith.Core\Docs\Prompts\maintenance-revision-cycle.md" Link="Prompts\maintenance-revision-cycle.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Update="appsettings.LocalDevelopment.json" CopyToOutputDirectory="Never" CopyToPublishDirectory="Never" />
   </ItemGroup>
 

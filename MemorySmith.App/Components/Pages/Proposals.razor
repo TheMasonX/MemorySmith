@@ -1,0 +1,290 @@
+@page "/proposals"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = MemorySmithPolicies.CanApproveAgentWrites)]
+@inject MaintenanceProposalWorkflow ProposalWorkflow
+@inject MaintenanceAgentService Agent
+@inject MaintenanceTopicMapService TopicMapService
+@inject ISnackbar Snackbar
+
+<PageTitle>Proposals</PageTitle>
+
+<div class="wiki-workbench proposals-workbench">
+    <section class="wiki-commandbar proposals-commandbar" aria-label="Maintenance proposals">
+        <div class="wiki-title-block">
+            <MudText Typo="Typo.h5">Proposals</MudText>
+            <span class="wiki-count">Maintenance agent review queue</span>
+        </div>
+        <div class="wiki-search-strip">
+            <MudSelect T="string" Value="@_statusFilter" ValueChanged="@((string value) => _statusFilter = value)" Label="Status" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="wiki-filter">
+                <MudSelectItem T="string" Value="@AllFilterValue">All</MudSelectItem>
+                @foreach (var status in StatusOptions)
+                {
+                    <MudSelectItem T="string" Value="@status">@StatusLabel(status)</MudSelectItem>
+                }
+            </MudSelect>
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" Disabled="@_isBusy" OnClick="LoadAsync">Refresh</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Psychology" Disabled="@_isBusy" OnClick="RunNowAsync">Run Now</MudButton>
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.AccountTree" Disabled="@_isBusy" OnClick="RefreshTopicMapAsync">Topic Map</MudButton>
+        </div>
+    </section>
+
+    <section class="proposals-body">
+        <div class="wiki-results-pane proposals-list-pane">
+            <div class="wiki-pane-header">
+                <strong>@FilteredProposals.Count proposal(s)</strong>
+                @if (_lastRun is not null)
+                {
+                    <span class="wiki-muted">Last run: @_lastRun.Trigger</span>
+                }
+            </div>
+            <div class="wiki-results-list">
+                @foreach (var proposal in FilteredProposals)
+                {
+                    <button class="proposal-row @(proposal.ProposalId == _selectedProposal?.ProposalId ? "is-selected" : null)" @onclick="@(() => SelectProposal(proposal))">
+                        <span class="proposal-row-main">
+                            <strong>@proposal.Metadata.Task</strong>
+                            <small>@proposal.ProposalId</small>
+                        </span>
+                        <span class="proposal-row-meta">
+                            <span class="proposal-status @StatusClass(proposal.Status)">@StatusLabel(proposal.Status)</span>
+                            <span class="proposal-risk @RiskClass(proposal.RiskLevel)">@proposal.RiskLevel</span>
+                            <span>@proposal.Changes.Count change(s)</span>
+                        </span>
+                    </button>
+                }
+            </div>
+        </div>
+
+        <div class="wiki-detail-pane proposals-detail-pane">
+            @if (_selectedProposal is null)
+            {
+                <div class="proposal-empty-state">
+                    <MudIcon Icon="@Icons.Material.Filled.RuleFolder" Size="Size.Large" />
+                    <span>Select a proposal or run maintenance.</span>
+                </div>
+            }
+            else
+            {
+                <div class="wiki-pane-header proposal-detail-header">
+                    <div class="wiki-title-block">
+                        <MudText Typo="Typo.h6">@_selectedProposal.Metadata.Task</MudText>
+                        <span class="wiki-count">@_selectedProposal.ProposalId</span>
+                    </div>
+                    <span class="proposal-status @StatusClass(_selectedProposal.Status)">@StatusLabel(_selectedProposal.Status)</span>
+                    <span class="proposal-risk @RiskClass(_selectedProposal.RiskLevel)">@_selectedProposal.RiskLevel</span>
+                </div>
+
+                <div class="proposal-detail-scroll">
+                    <div class="proposal-metadata-grid">
+                        <span>Confidence</span><strong>@_selectedProposal.Confidence.ToString("P0")</strong>
+                        <span>Related</span><strong>@(_selectedProposal.RelatedRecords.Count == 0 ? "-" : string.Join(", ", _selectedProposal.RelatedRecords))</strong>
+                        <span>Supersedes</span><strong>@(_selectedProposal.Metadata.Supersedes.Count == 0 ? "-" : string.Join(", ", _selectedProposal.Metadata.Supersedes))</strong>
+                        <span>Updated</span><strong>@_selectedProposal.UpdatedAtUtc.ToLocalTime().ToString("g")</strong>
+                    </div>
+
+                    <MudTabs Rounded="false" Elevation="0" Class="proposal-tabs">
+                        <MudTabPanel Text="Diff" Icon="@Icons.Material.Filled.Difference">
+                            @foreach (var change in _selectedProposal.Changes)
+                            {
+                                <details class="proposal-change" open>
+                                    <summary>@change.Path</summary>
+                                    <ProposalDiffViewer Change="@change" />
+                                </details>
+                            }
+                        </MudTabPanel>
+                        <MudTabPanel Text="Evidence" Icon="@Icons.Material.Filled.FactCheck">
+                            @if (_selectedProposal.Evidence.Count == 0)
+                            {
+                                <span class="wiki-muted">No evidence bundle was supplied.</span>
+                            }
+                            else
+                            {
+                                <div class="proposal-evidence-list">
+                                    @foreach (var evidence in _selectedProposal.Evidence)
+                                    {
+                                        <div class="proposal-evidence-item">
+                                            <strong>@evidence.Kind</strong>
+                                            <span>@evidence.Citation</span>
+                                            @if (!string.IsNullOrWhiteSpace(evidence.SourceLink))
+                                            {
+                                                <small>@evidence.SourceLink</small>
+                                            }
+                                            @if (!string.IsNullOrWhiteSpace(evidence.Excerpt))
+                                            {
+                                                <p>@evidence.Excerpt</p>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </MudTabPanel>
+                        <MudTabPanel Text="Comments" Icon="@Icons.Material.Filled.Forum">
+                            <ProposalCommentThread Proposal="@_selectedProposal" />
+                        </MudTabPanel>
+                        <MudTabPanel Text="Topic Map" Icon="@Icons.Material.Filled.Hub">
+                            <TopicMapVisualization TopicMap="@_topicMap" />
+                        </MudTabPanel>
+                    </MudTabs>
+                </div>
+
+                <div class="proposal-actions">
+                    <MudTextField T="string" Value="@_comment" ValueChanged="@((string value) => _comment = value)" Placeholder="Comment for respond/reject/approve history" Variant="Variant.Outlined" Margin="Margin.Dense" Lines="2" Class="proposal-comment-input" />
+                    <MudButton Variant="Variant.Filled" Color="Color.Success" StartIcon="@Icons.Material.Filled.Check" Disabled="@(_isBusy || !IsOpen(_selectedProposal))" OnClick="ApproveAsync">Approve</MudButton>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Warning" StartIcon="@Icons.Material.Filled.Reply" Disabled="@(_isBusy || !IsOpen(_selectedProposal))" OnClick="RespondAsync">Respond</MudButton>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.Close" Disabled="@(_isBusy || IsClosed(_selectedProposal))" OnClick="RejectAsync">Reject</MudButton>
+                </div>
+            }
+        </div>
+    </section>
+</div>
+
+@code {
+    private const string AllFilterValue = "__all__";
+    private static readonly IReadOnlyList<string> StatusOptions = [MaintenanceProposalStatuses.Open, MaintenanceProposalStatuses.NeedsRevision, MaintenanceProposalStatuses.Approved, MaintenanceProposalStatuses.Rejected];
+    private IReadOnlyList<MaintenanceWriteProposal> _proposals = [];
+    private MaintenanceWriteProposal? _selectedProposal;
+    private TopicMapDocument? _topicMap;
+    private MaintenanceRunResult? _lastRun;
+    private string _statusFilter = AllFilterValue;
+    private string _comment = string.Empty;
+    private bool _isBusy;
+
+    private IReadOnlyList<MaintenanceWriteProposal> FilteredProposals => _proposals
+        .Where(proposal => _statusFilter == AllFilterValue || string.Equals(proposal.Status, _statusFilter, StringComparison.OrdinalIgnoreCase))
+        .OrderByDescending(proposal => proposal.UpdatedAtUtc)
+        .ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+        _topicMap = await TopicMapService.LoadCachedAsync(CancellationToken.None);
+    }
+
+    private async Task LoadAsync()
+    {
+        _isBusy = true;
+        try
+        {
+            _proposals = await ProposalWorkflow.ListAsync(CancellationToken.None);
+            if (_selectedProposal is not null)
+            {
+                _selectedProposal = _proposals.FirstOrDefault(item => item.ProposalId == _selectedProposal.ProposalId);
+            }
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private void SelectProposal(MaintenanceWriteProposal proposal)
+    {
+        _selectedProposal = proposal;
+        _comment = string.Empty;
+    }
+
+    private async Task RunNowAsync()
+    {
+        _isBusy = true;
+        try
+        {
+            _lastRun = await Agent.RunMaintenanceNowAsync(CancellationToken.None);
+            _topicMap = await TopicMapService.LoadCachedAsync(CancellationToken.None);
+            await LoadAsync();
+            Snackbar.Add($"Maintenance run completed with {_lastRun.Outputs.Sum(output => output.Findings.Count)} finding(s).", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private async Task RefreshTopicMapAsync()
+    {
+        _isBusy = true;
+        try
+        {
+            _topicMap = await TopicMapService.BuildAsync(CancellationToken.None);
+            Snackbar.Add("Topic map refreshed.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private async Task ApproveAsync()
+    {
+        if (_selectedProposal is null)
+        {
+            return;
+        }
+
+        await ActAsync(() => ProposalWorkflow.ApproveAsync(_selectedProposal.ProposalId, _comment, CancellationToken.None), "Proposal approved.");
+    }
+
+    private async Task RespondAsync()
+    {
+        if (_selectedProposal is null)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_comment))
+        {
+            Snackbar.Add("Respond requires a comment.", Severity.Warning);
+            return;
+        }
+
+        await ActAsync(() => ProposalWorkflow.RespondAsync(_selectedProposal.ProposalId, _comment, CancellationToken.None), "Proposal marked as needing revision.");
+    }
+
+    private async Task RejectAsync()
+    {
+        if (_selectedProposal is null)
+        {
+            return;
+        }
+
+        await ActAsync(() => ProposalWorkflow.RejectAsync(_selectedProposal.ProposalId, _comment, CancellationToken.None), "Proposal rejected.");
+    }
+
+    private async Task ActAsync(Func<Task<MaintenanceWriteProposal>> action, string successMessage)
+    {
+        _isBusy = true;
+        try
+        {
+            _selectedProposal = await action();
+            _comment = string.Empty;
+            await LoadAsync();
+            Snackbar.Add(successMessage, Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private static bool IsClosed(MaintenanceWriteProposal proposal) =>
+        string.Equals(proposal.Status, MaintenanceProposalStatuses.Approved, StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(proposal.Status, MaintenanceProposalStatuses.Rejected, StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsOpen(MaintenanceWriteProposal proposal) =>
+        string.Equals(proposal.Status, MaintenanceProposalStatuses.Open, StringComparison.OrdinalIgnoreCase);
+
+    private static string StatusLabel(string status) => status.Replace('_', ' ');
+    private static string StatusClass(string status) => "is-" + status.Replace('_', '-');
+    private static string RiskClass(string risk) => "is-" + risk.ToLowerInvariant();
+}

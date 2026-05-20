@@ -1,0 +1,37 @@
+@using MemorySmith.App.Services
+
+<div class="proposal-comment-thread">
+    @if (Proposal is null || (Proposal.Comments.Count == 0 && Proposal.History.Count == 0))
+    {
+        <span class="wiki-muted">No comments or history yet.</span>
+    }
+    else
+    {
+        @foreach (var entry in Proposal.History.OrderBy(item => item.Timestamp))
+        {
+            <div class="proposal-history-entry">
+                <strong>@entry.Action</strong>
+                <span>@entry.User</span>
+                <small>@entry.Timestamp.ToLocalTime().ToString("g")</small>
+                @if (!string.IsNullOrWhiteSpace(entry.Comment))
+                {
+                    <p>@entry.Comment</p>
+                }
+            </div>
+        }
+        @foreach (var comment in Proposal.Comments.OrderBy(item => item.Timestamp))
+        {
+            <div class="proposal-history-entry is-comment">
+                <strong>comment</strong>
+                <span>@comment.User</span>
+                <small>@comment.Timestamp.ToLocalTime().ToString("g")</small>
+                <p>@comment.Comment</p>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter]
+    public MaintenanceWriteProposal? Proposal { get; set; }
+}

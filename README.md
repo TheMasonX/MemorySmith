@@ -18,6 +18,7 @@ Opens on `http://localhost:5089` by default. Pages:
 | `/memories` | Browse, search, create, edit, delete memory records |
 | `/pages` | Create, search, edit, preview, and render markdown-backed pages from `Data/Pages` |
 | `/chat` | Memory-enhanced chat and agent mode with provider/model selection, streaming responses, context usage, attachments, and local chat history |
+| `/proposals` | Maintenance-agent proposal dashboard with diff previews, evidence, comments, risk indicators, and topic map visualization |
 | `/login`, `/profile`, `/admin/setup`, `/admin` | Local sign-in/profile management, first-admin bootstrap, and searchable RBAC/audit/history/settings administration |
 | `/health` | Scrollable stat cards, activity charts (queries/day, changes/day), maintenance telemetry |
 | `/variables` | Manage `%VarName%` path variables used in source link URIs |
@@ -83,6 +84,8 @@ User-created markdown files under `Data/Pages/` are valid project wiki content a
 | `project-wiki-test-fixture-conflict-note` | Conflict fixture |
 
 Retrieve any record via the MCP tool `memorysmith_get` with its ID, or search the `/memories` page.
+
+Maintenance agent configuration lives under `MemorySmith:MaintenanceAgent` and can be overridden by `Data/maintenance_agent.json`. It supports read/write directory allowlists, proposal-only default writes, task switches, local Ollama model settings, weekly scheduling, busy-session skip probes, and file-backed proposal/topic-map storage.
 
 ## Authentication, Audit, And History
 
