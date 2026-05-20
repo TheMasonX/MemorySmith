@@ -2292,6 +2292,14 @@ public sealed partial class MemoryChatAgent : IChatAgent
 
     private AgentActionResult PrepareApprovalRequiredResult(AgentActionResult result)
     {
+        if (!result.ParsedJson)
+        {
+            return result with
+            {
+                Reply = result.Reply + "\n\n*(Agent response could not be interpreted as a structured write plan; no changes were applied. Write approval is required before any memories or pages are modified.)*"
+            };
+        }
+
         var proposalCount = result.ProposedMemoryWrites.Count + result.ProposedPageWrites.Count;
         if (proposalCount == 0)
         {

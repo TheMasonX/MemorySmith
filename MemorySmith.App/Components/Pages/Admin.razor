@@ -109,8 +109,8 @@
             <div class="admin-settings-groups">
                 @foreach (var group in FilteredEditableSettingGroups)
                 {
-                    <details class="admin-settings-expander" open>
-                        <summary>
+                    <details class="admin-settings-expander" open="@IsSettingGroupExpanded(group.Category)">
+                        <summary @onclick="@(() => ToggleSettingGroupExpanded(group.Category))" @onclick:preventDefault>
                             <span>@group.Category</span>
                             <small>@group.Items.Count setting(s)</small>
                         </summary>
@@ -237,6 +237,7 @@
     private Dictionary<string, int> _providerLinkCounts = new(StringComparer.OrdinalIgnoreCase);
     private string _settingsSearch = string.Empty;
     private string _settingsCategory = AllFilterValue;
+    private HashSet<string> _expandedSettingGroups = new(StringComparer.OrdinalIgnoreCase);
     private string _configurationSearch = string.Empty;
     private string _auditSearch = string.Empty;
     private string _auditOutcomeFilter = AllFilterValue;
@@ -304,6 +305,7 @@
         _audit = (await Database.AuditLogs.QueryAsync(new AuditLogQuery(PageSize: 100), CancellationToken.None)).Data;
         _recentVersions = await LoadRecentVersionsAsync();
         _editableSettings = Settings.ListEditableSettings().Select(item => new EditableConfigurationRow(item)).ToList();
+        _expandedSettingGroups = new HashSet<string>(SettingCategories, StringComparer.OrdinalIgnoreCase);
         _configurationItems = BuildConfigurationItems();
     }
 
@@ -452,6 +454,16 @@
             MemorySmithProviders.Microsoft => auth.Providers.Microsoft.Enabled && !string.IsNullOrWhiteSpace(auth.Providers.Microsoft.ClientId) ? "Configured" : "Not configured",
             _ => "Unknown"
         };
+    }
+
+    private bool IsSettingGroupExpanded(string category) => _expandedSettingGroups.Contains(category);
+
+    private void ToggleSettingGroupExpanded(string category)
+    {
+        if (!_expandedSettingGroups.Remove(category))
+        {
+            _expandedSettingGroups.Add(category);
+        }
     }
 
     private bool MatchesSettingFilter(EditableConfigurationRow row)
