@@ -9,6 +9,9 @@ This folder is the human-readable side of the project wiki. Pages here are meant
 - [Architecture](architecture.md) explains the single-host app shape and where each project fits.
 - [Operations](operations.md) covers running, validating, publishing, and the important data paths.
 - [Search and Chat](search-and-chat.md) explains lexical, semantic, hybrid, MCP, chat, and agent behavior.
+- [Core Memory System Improvements RFC](temp-plan.md) reviews long-term options for making memories, search, pages, and chat more useful for AI agents and humans.
+- [Council Workflow](llm-council.md) describes the multi-perspective review method for major MemorySmith decisions.
+- [Deep Research Prompt](memory-system-deep-research-prompt.md) turns the RFC's externally researchable questions into a prompt for Microsoft Copilot or ChatGPT Deep Research.
 - [Future Tasks](tasks.md) tracks product work in a checklist format.
 
 ## What Lives Where

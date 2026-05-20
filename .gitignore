@@ -372,3 +372,6 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+# MemorySmith Local Database & Data Protection Keys
+Data/memorysmith.db*
+Data/Keys/

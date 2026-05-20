@@ -313,6 +313,64 @@ public sealed class ChatToolCatalog
                     .ToList();
                 return new ChatToolExecutionResult(sb.ToString().TrimEnd(), ContextItems: contextItems);
             });
+
+        yield return new ChatToolDescriptor(
+            "memorysmith_page_save",
+            "Create or update a wiki page. Slug is derived from the title if omitted. Requires edit permission.",
+            new JsonObject
+            {
+                ["type"] = "object",
+                ["properties"] = new JsonObject
+                {
+                    ["markdown"] = new JsonObject { ["type"] = "string", ["description"] = "Full markdown content of the page." },
+                    ["slug"] = new JsonObject { ["type"] = "string", ["description"] = "Optional slug. Omit to auto-derive from title or first heading." },
+                    ["title"] = new JsonObject { ["type"] = "string", ["description"] = "Optional explicit title. Overrides the first heading in the markdown." }
+                },
+                ["required"] = new JsonArray { "markdown" }
+            },
+            ChatToolRisk.Write,
+            AvailableInChat: false,
+            AvailableInMcp: true,
+            Execute: async (args, ctx, ct) =>
+            {
+                var markdown = ReadString(args, "markdown");
+                if (string.IsNullOrWhiteSpace(markdown))
+                {
+                    return new ChatToolExecutionResult("The memorysmith_page_save tool requires a markdown argument.", IsError: true);
+                }
+                var slug = ReadString(args, "slug");
+                var title = ReadString(args, "title");
+                var saved = await ctx.Pages.SaveAsync(new PageSaveRequest(slug, title, markdown), ct);
+                return new ChatToolExecutionResult($"Page saved. Slug: {saved.Slug}  Title: {saved.Title}  Updated: {saved.LastUpdatedUtc:O}");
+            });
+
+        yield return new ChatToolDescriptor(
+            "memorysmith_page_delete",
+            "Delete a wiki page by slug. Requires edit permission.",
+            new JsonObject
+            {
+                ["type"] = "object",
+                ["properties"] = new JsonObject
+                {
+                    ["slug"] = new JsonObject { ["type"] = "string", ["description"] = "Slug of the page to delete." }
+                },
+                ["required"] = new JsonArray { "slug" }
+            },
+            ChatToolRisk.Write,
+            AvailableInChat: false,
+            AvailableInMcp: true,
+            Execute: async (args, ctx, ct) =>
+            {
+                var slug = ReadString(args, "slug");
+                if (string.IsNullOrWhiteSpace(slug))
+                {
+                    return new ChatToolExecutionResult("The memorysmith_page_delete tool requires a slug argument.", IsError: true);
+                }
+                var deleted = await ctx.Pages.DeleteAsync(slug, ct);
+                return new ChatToolExecutionResult(deleted
+                    ? $"Page '{slug}' deleted."
+                    : $"No page found with slug '{slug}'.");
+            });
     }
 
     // ---------- Schema builders ----------

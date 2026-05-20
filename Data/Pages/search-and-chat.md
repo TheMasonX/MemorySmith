@@ -86,3 +86,45 @@ Use Agent mode when the desired outcome is a wiki update or a multi-step change.
 - Use exact IDs with `memorysmith_get` once a record is known.
 - Pull source bundles only after narrowing the record set.
 - Check pages as well as memories when the question needs narrative context.
+
+## Agent Retrieval Patterns
+
+Use memories and pages differently. Structured memories are best for compact facts, source links, status, confidence, tags, references, and conflicts. Markdown pages are best for explanations, runbooks, RFCs, examples, and human learning paths.
+
+For agent workflows:
+
+| Task | Best first tool | Follow-up |
+|---|---|---|
+| Broad project discovery | `memorysmith_unified_search` or hybrid search | Fetch the most relevant page or memory directly. |
+| Architecture or implementation planning | `memorysmith_context_pack` | Pull `memorysmith_source_bundle` only for records whose source links matter. |
+| Exact fact lookup | Lexical search or `memorysmith_get` | Check references/conflicts before treating the fact as current. |
+| Conceptual recall | Semantic or hybrid search | Confirm with lexical/source evidence before changing docs or code. |
+| Human explanation | Page search/get plus relevant memories | Answer with page context first, then cite memory facts as evidence. |
+| Review of a major decision | [Council Workflow](llm-council.md) | Run separate architecture, retrieval, UX, and skeptical passes. |
+
+Prefer JSON output for agent parsing when a tool offers it. Prefer Markdown output when a human is reading the result directly.
+
+## Search Quality And Long-Term Memory
+
+The long-term search goal is not only higher scores; it is better recall of the right memory at the right time. For MemorySmith, that means:
+
+- strict rules should be visible as rules, not diluted into ordinary context;
+- stale, deprecated, expired, or superseded records should warn before they mislead;
+- pages should remain discoverable when a question needs narrative explanation;
+- context packs should preserve relationships, warnings, and enough provenance for agents to reason safely;
+- source bundles should stay bounded and be used after search has narrowed the evidence set.
+
+The [Core Memory System Improvements RFC](temp-plan.md) recommends a convention-first approach with validation and schema-promotion gates. Namespaced tags and markdown alert blocks are useful planning conventions, but search ranking should not depend on them until validators, probes, and trace-visible warnings exist.
+
+Do not silently hide old Core records with temporal decay. Start by surfacing staleness warnings, then measure whether ranking changes are needed.
+
+## Council Review For Search Changes
+
+Use council review before changing search ranking, context-pack output shape, page chunking, vector indexes, or Agent write behavior. A useful search council should include:
+
+- a retrieval specialist checking lexical, semantic, hybrid, page, context-pack, and source-bundle behavior;
+- a data-model reviewer checking whether a proposed convention should become schema;
+- a human-learning reviewer checking whether pages/chat explain the behavior clearly;
+- a skeptical reviewer checking whether the change can bury important records or create hidden migration work.
+
+Record the final decision and dissent in the wiki before implementation.

@@ -29,6 +29,8 @@ public class McpController : ControllerBase
         "memorysmith_page_search",
         "memorysmith_page_get",
         "memorysmith_unified_search",
+        "memorysmith_page_save",
+        "memorysmith_page_delete",
         "memorysmith_source_bundle",
         "memorysmith_find_by_source"
     };
@@ -140,6 +142,7 @@ public class McpController : ControllerBase
                 : ToolText("The caller is not authorized to read source bundles.", isError: true),
             "memorysmith_find_by_source" => ToolText(await FormatFindBySourceAsync(argumentsElement, cancellationToken)),
             "memorysmith_page_search" or "memorysmith_page_get" or "memorysmith_unified_search"
+            or "memorysmith_page_save" or "memorysmith_page_delete"
                 => await DelegateToCatalogAsync(toolName, argumentsElement, cancellationToken),
             _ => ToolText($"Unknown MemorySmith tool '{toolName}'.", isError: true)
         };
@@ -151,6 +154,10 @@ public class McpController : ControllerBase
         {
             return ToolText($"Unknown MemorySmith tool '{toolName}'.", isError: true);
         }
+        if (tool.Risk == ChatToolRisk.Write && !await CanEditMemorySmithAsync())
+        {
+            return ToolText("The caller is not authorized to perform write operations.", isError: true);
+        }
         var args = argumentsElement.ValueKind == JsonValueKind.Object
             ? JsonNode.Parse(argumentsElement.GetRawText()) as JsonObject ?? new JsonObject()
             : new JsonObject();
@@ -161,6 +168,9 @@ public class McpController : ControllerBase
 
     private async Task<bool> CanReadSourceBundleAsync() =>
         (await _authorization.AuthorizeAsync(User, null, MemorySmithPolicies.CanReadSourceBundle)).Succeeded;
+
+    private async Task<bool> CanEditMemorySmithAsync() =>
+        (await _authorization.AuthorizeAsync(User, null, MemorySmithPolicies.CanEditMemorySmith)).Succeeded;
 
     private async Task<string> FormatSourceBundleAsync(JsonElement args, CancellationToken ct)
     {
@@ -474,8 +484,8 @@ public class McpController : ControllerBase
                 BuildFindBySourceSchema())
         };
 
-        // Add the page/unified tools that live in the shared ChatToolCatalog so MCP and chat stay in sync.
-        var sharedToolNames = new[] { "memorysmith_page_search", "memorysmith_page_get", "memorysmith_unified_search" };
+        // Add the page/unified/write tools that live in the shared ChatToolCatalog so MCP and chat stay in sync.
+        var sharedToolNames = new[] { "memorysmith_page_search", "memorysmith_page_get", "memorysmith_unified_search", "memorysmith_page_save", "memorysmith_page_delete" };
         foreach (var name in sharedToolNames)
         {
             if (_toolCatalog.TryGet(name, out var tool))

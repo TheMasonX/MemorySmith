@@ -156,20 +156,22 @@ The embedding path uses ONNX Runtime, a local WordPiece vocabulary, E5-style `qu
 
 ## MCP Tools
 
-The MCP endpoint is at `http://localhost:5089/mcp`. VS Code config lives in `.vscode/mcp.json`. Ten tools are exposed (eight read-only chat-allowlisted plus two source-aware tools available only over MCP):
+The MCP endpoint is at `http://localhost:5089/mcp`. VS Code config lives in `.vscode/mcp.json`. Twelve tools are exposed (eight read-only chat-allowlisted, two write tools requiring edit permission, plus two source-aware tools available only over MCP):
 
-| Tool | Key args | Returns |
-|---|---|---|
-| `memorysmith_search` | `query`, `tags`, `status`, `limit` | Lexical results |
-| `memorysmith_semantic_search` | `query`, `tags`, `status`, `limit` | Scored results with match reasons |
-| `memorysmith_hybrid_search` | `query`, `tags`, `status`, `limit` | RRF-ranked results |
-| `memorysmith_context_pack` | `query` or `ids`, `tags`, `referenceDepth`, `includeBacklinks`, `maxRecords`, `maxContentChars`, `format` | Search results + linked references/conflicts in one response |
-| `memorysmith_get` | `id` | Single read-only record by ID |
-| `memorysmith_page_search` | `query`, `limit` | Markdown page summaries from `Data/Pages` |
-| `memorysmith_page_get` | `slug`, `maxCharacters` | One markdown page body, bounded for safe context inclusion |
-| `memorysmith_unified_search` | `query`, `memoryLimit`, `pageLimit`, `tags`, `status` | One call across memories + pages, returning separate memory and page result sections |
-| `memorysmith_source_bundle` | `ids` or `query`/`tags`/`limit`, `maxFileBytes`, `format` | Records + resolved file content slices for every source link (MCP only) |
-| `memorysmith_find_by_source` | `pattern` | Records whose source link URIs match the substring (MCP only) |
+| Tool | Key args | Returns | Permission |
+|---|---|---|---|
+| `memorysmith_search` | `query`, `tags`, `status`, `limit` | Lexical results | View |
+| `memorysmith_semantic_search` | `query`, `tags`, `status`, `limit` | Scored results with match reasons | View |
+| `memorysmith_hybrid_search` | `query`, `tags`, `status`, `limit` | RRF-ranked results | View |
+| `memorysmith_context_pack` | `query` or `ids`, `tags`, `referenceDepth`, `includeBacklinks`, `maxRecords`, `maxContentChars`, `format` | Search results + linked references/conflicts in one response | View |
+| `memorysmith_get` | `id` | Single read-only record by ID | View |
+| `memorysmith_page_search` | `query`, `limit` | Markdown page summaries from `Data/Pages` | View |
+| `memorysmith_page_get` | `slug`, `maxCharacters` | One markdown page body, bounded for safe context inclusion | View |
+| `memorysmith_unified_search` | `query`, `memoryLimit`, `pageLimit`, `tags`, `status` | One call across memories + pages, returning separate memory and page result sections | View |
+| `memorysmith_page_save` | `markdown`, `slug` (opt), `title` (opt) | Creates or updates a wiki page; returns slug, title, and updated timestamp | **Edit** |
+| `memorysmith_page_delete` | `slug` | Deletes a wiki page; returns success or not-found | **Edit** |
+| `memorysmith_source_bundle` | `ids` or `query`/`tags`/`limit`, `maxFileBytes`, `format` | Records + resolved file content slices for every source link (MCP only) | Source bundle |
+| `memorysmith_find_by_source` | `pattern` | Records whose source link URIs match the substring (MCP only) | View |
 
 **`memorysmith_context_pack` tips:**
 - Use `query` for open-ended discovery; use `ids` for anchoring to known records.

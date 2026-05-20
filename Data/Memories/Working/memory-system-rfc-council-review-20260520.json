@@ -1,0 +1,41 @@
+{
+  "Id": "memory-system-rfc-council-review-20260520",
+  "Title": "Memory System RFC Council Review",
+  "Content": "A council-style review of the lean core memory improvement draft concluded that MemorySmith should use a convention-first, validation-backed, evidence-gated approach rather than convention-only or schema-first design. The revised RFC in Data/Pages/temp-plan.md now treats tag namespaces, markdown alert blocks, relationship notes, staleness warnings, search quality probes, page retrieval, chat trace evidence, and Agent write governance as staged planning work. Schema fields such as Relations, Constraints, ValidUntil, ReviewAfter, or Priority should be promoted only after conventions prove durable and search/chat behavior needs reliable machine parsing. The LLM council page was rewritten as a MemorySmith-specific multi-perspective review workflow, not a generic external-link summary. No code implementation is implied by these docs.",
+  "Status": 1,
+  "Confidence": 0.82,
+  "Tags": [
+    "project-wiki",
+    "memory-system",
+    "rfc",
+    "council-review",
+    "agent-memory",
+    "search",
+    "chat",
+    "pages",
+    "working"
+  ],
+  "References": [
+    "project-wiki-search-roadmap",
+    "project-wiki-chat-agent-provider",
+    "project-wiki-markdown-pages",
+    "project-wiki-mcp-context-pack"
+  ],
+  "Conflicts": [],
+  "SourceLinks": [
+    {
+      "Label": "Core Memory System Improvements RFC",
+      "Uri": "%MemorySmithRepo%Data/Pages/temp-plan.md"
+    },
+    {
+      "Label": "Council Workflow",
+      "Uri": "%MemorySmithRepo%Data/Pages/llm-council.md"
+    },
+    {
+      "Label": "Search and Chat",
+      "Uri": "%MemorySmithRepo%Data/Pages/search-and-chat.md"
+    }
+  ],
+  "UsageCount": 0,
+  "LastUpdated": "2026-05-20T03:45:00Z"
+}
