@@ -22,8 +22,15 @@
                     <MudSelectItem T="string" Value="@status">@StatusLabel(status)</MudSelectItem>
                 }
             </MudSelect>
+            <MudSelect T="string" Value="@_selectedTask" ValueChanged="@((string value) => _selectedTask = value)" Label="Task" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="wiki-filter">
+                @foreach (var task in TaskOptions)
+                {
+                    <MudSelectItem T="string" Value="@task">@TaskLabel(task)</MudSelectItem>
+                }
+            </MudSelect>
             <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" Disabled="@_isBusy" OnClick="LoadAsync">Refresh</MudButton>
             <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Psychology" Disabled="@_isBusy" OnClick="RunNowAsync">Run Now</MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PlayArrow" Disabled="@_isBusy" OnClick="RunTaskAsync">Run Task</MudButton>
             <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.AccountTree" Disabled="@_isBusy" OnClick="RefreshTopicMapAsync">Topic Map</MudButton>
         </div>
     </section>
@@ -37,6 +44,15 @@
                     <span class="wiki-muted">Last run: @_lastRun.Trigger</span>
                 }
             </div>
+            @if (_lastRun?.Warnings.Count > 0)
+            {
+                <div class="proposal-run-warnings">
+                    @foreach (var warning in _lastRun.Warnings.Take(3))
+                    {
+                        <span>@warning</span>
+                    }
+                </div>
+            }
             <div class="wiki-results-list">
                 @foreach (var proposal in FilteredProposals)
                 {
@@ -141,11 +157,13 @@
 @code {
     private const string AllFilterValue = "__all__";
     private static readonly IReadOnlyList<string> StatusOptions = [MaintenanceProposalStatuses.Open, MaintenanceProposalStatuses.NeedsRevision, MaintenanceProposalStatuses.Approved, MaintenanceProposalStatuses.Rejected];
+    private static readonly IReadOnlyList<string> TaskOptions = ["staleness_scan", "relationship_integrity", "topic_map", "embedding_chunking_maintenance", "spot_checks", "consistency_checks", "synthesis"];
     private IReadOnlyList<MaintenanceWriteProposal> _proposals = [];
     private MaintenanceWriteProposal? _selectedProposal;
     private TopicMapDocument? _topicMap;
     private MaintenanceRunResult? _lastRun;
     private string _statusFilter = AllFilterValue;
+    private string _selectedTask = "staleness_scan";
     private string _comment = string.Empty;
     private bool _isBusy;
 
@@ -191,7 +209,27 @@
             _lastRun = await Agent.RunMaintenanceNowAsync(CancellationToken.None);
             _topicMap = await TopicMapService.LoadCachedAsync(CancellationToken.None);
             await LoadAsync();
-            Snackbar.Add($"Maintenance run completed with {_lastRun.Outputs.Sum(output => output.Findings.Count)} finding(s).", Severity.Success);
+            Snackbar.Add(RunSummary(_lastRun), Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private async Task RunTaskAsync()
+    {
+        _isBusy = true;
+        try
+        {
+            _lastRun = await Agent.RunMaintenanceOnDemandAsync(_selectedTask, CancellationToken.None);
+            _topicMap = await TopicMapService.LoadCachedAsync(CancellationToken.None);
+            await LoadAsync();
+            Snackbar.Add(RunSummary(_lastRun), Severity.Success);
         }
         catch (Exception ex)
         {
@@ -285,6 +323,9 @@
         string.Equals(proposal.Status, MaintenanceProposalStatuses.Open, StringComparison.OrdinalIgnoreCase);
 
     private static string StatusLabel(string status) => status.Replace('_', ' ');
+    private static string TaskLabel(string task) => task.Replace('_', ' ');
     private static string StatusClass(string status) => "is-" + status.Replace('_', '-');
     private static string RiskClass(string risk) => "is-" + risk.ToLowerInvariant();
+    private static string RunSummary(MaintenanceRunResult run) =>
+        $"Maintenance run completed with {run.Outputs.Sum(output => output.Findings.Count)} finding(s) and {run.Outputs.Sum(output => output.Proposals.Count)} proposal(s).";
 }

@@ -85,7 +85,7 @@ User-created markdown files under `Data/Pages/` are valid project wiki content a
 
 Retrieve any record via the MCP tool `memorysmith_get` with its ID, or search the `/memories` page.
 
-Maintenance agent configuration lives under `MemorySmith:MaintenanceAgent` and can be overridden by `Data/maintenance_agent.yaml`, parsed with YamlDotNet. It supports read/write directory allowlists, proposal-only default writes, task switches, local Ollama model settings, weekly scheduling, busy-session skip probes, and file-backed proposal/topic-map storage.
+Maintenance agent configuration lives under `MemorySmith:MaintenanceAgent` and can be overridden by YAML-only `Data/maintenance_agent.yaml`, parsed with YamlDotNet. It supports read/write directory allowlists, proposal-only default writes, task switches, local Ollama model settings, weekly scheduling, busy-session skip probes, generated review proposals, and file-backed proposal/topic-map storage. The proposal dashboard can run all tasks or one selected task, and `/api/maintenance-agent/topic-map/mermaid` exports the cached topic map for PR notes and diagrams.
 
 ## Authentication, Audit, And History
 

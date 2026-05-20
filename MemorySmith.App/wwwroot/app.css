@@ -2100,6 +2100,15 @@ body {
     min-width: 0;
 }
 
+.proposal-run-warnings {
+    display: grid;
+    gap: 4px;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--vscode-border-soft);
+    color: var(--vscode-yellow);
+    font-size: 0.78rem;
+}
+
 .topic-map-visualization {
     display: flex;
     flex-direction: column;
@@ -2111,6 +2120,12 @@ body {
     min-height: 260px;
     border: 1px solid var(--vscode-border-soft);
     background: var(--vscode-panel-soft);
+}
+
+.topic-edge {
+    stroke: var(--vscode-border-strong);
+    stroke-width: 1.2;
+    opacity: 0.45;
 }
 
 .topic-node {

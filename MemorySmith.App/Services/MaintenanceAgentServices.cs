@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using MemorySmith.Core.Models;
@@ -189,10 +188,10 @@ public sealed class MaintenanceAgentConfigService
 
     private static MaintenanceAgentOptions? LoadConfigFile(string configPath)
     {
-        if (Path.GetExtension(configPath).Equals(".json", StringComparison.OrdinalIgnoreCase))
+        var extension = Path.GetExtension(configPath);
+        if (!extension.Equals(".yaml", StringComparison.OrdinalIgnoreCase) && !extension.Equals(".yml", StringComparison.OrdinalIgnoreCase))
         {
-            using var stream = File.OpenRead(configPath);
-            return JsonSerializer.Deserialize<MaintenanceAgentOptions>(stream, JsonOptions);
+            throw new InvalidOperationException("Maintenance agent config must be a YAML file parsed with YamlDotNet. Use maintenance_agent.yaml or maintenance_agent.yml.");
         }
 
         using var reader = File.OpenText(configPath);
@@ -808,8 +807,19 @@ public sealed class MaintenanceTopicMapService
             return null;
         }
 
-        await using var stream = File.OpenRead(path);
-        return await JsonSerializer.DeserializeAsync<TopicMapDocument>(stream, JsonOptions, cancellationToken);
+        try
+        {
+            await using var stream = File.OpenRead(path);
+            return await JsonSerializer.DeserializeAsync<TopicMapDocument>(stream, JsonOptions, cancellationToken);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+        catch (IOException)
+        {
+            return null;
+        }
     }
 
     public static string GenerateMermaid(TopicMapDocument document, int maxEdges = 80)
@@ -1003,21 +1013,33 @@ public sealed class MaintenanceTopicMapService
 
 public sealed class MaintenanceAgentService
 {
+    private static readonly JsonSerializerOptions AgentJsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        PropertyNameCaseInsensitive = true,
+        WriteIndented = true
+    };
+
     private readonly MaintenanceAgentConfigService _config;
     private readonly MaintenanceResourceProbe _resourceProbe;
     private readonly MaintenanceTopicMapService _topicMap;
+    private readonly MaintenanceProposalWorkflow _proposalWorkflow;
     private readonly IEnumerable<IChatProvider> _providers;
+    private readonly ILogger<MaintenanceAgentService> _logger;
 
     public MaintenanceAgentService(
         MaintenanceAgentConfigService config,
         MaintenanceResourceProbe resourceProbe,
         MaintenanceTopicMapService topicMap,
-        IEnumerable<IChatProvider> providers)
+        MaintenanceProposalWorkflow proposalWorkflow,
+        IEnumerable<IChatProvider> providers,
+        ILogger<MaintenanceAgentService> logger)
     {
         _config = config;
         _resourceProbe = resourceProbe;
         _topicMap = topicMap;
+        _proposalWorkflow = proposalWorkflow;
         _providers = providers;
+        _logger = logger;
     }
 
     public Task<MaintenanceRunResult> RunMaintenanceNowAsync(CancellationToken cancellationToken) =>
@@ -1046,15 +1068,16 @@ public sealed class MaintenanceAgentService
         var outputs = new List<MaintenanceTaskOutput>();
         foreach (var task in EnabledTasks(config, taskFilter))
         {
-            outputs.Add(BuildDeterministicOutput(task, topicMap, config));
+            var output = BuildDeterministicOutput(task, topicMap, config, started);
+            outputs.Add(await SubmitOutputProposalsAsync(output, warnings, cancellationToken));
         }
 
         if (config.UseLlm)
         {
-            var llmOutput = await TryRunLlmReviewAsync(config, outputs, cancellationToken);
+            var llmOutput = await TryRunLlmReviewAsync(config, outputs, warnings, cancellationToken);
             if (llmOutput is not null)
             {
-                outputs.Add(llmOutput);
+                outputs.Add(await SubmitOutputProposalsAsync(llmOutput, warnings, cancellationToken));
             }
             else
             {
@@ -1080,7 +1103,31 @@ public sealed class MaintenanceAgentService
         }
     }
 
-    private static MaintenanceTaskOutput BuildDeterministicOutput(string task, TopicMapDocument topicMap, MaintenanceAgentOptions config)
+    private async Task<MaintenanceTaskOutput> SubmitOutputProposalsAsync(MaintenanceTaskOutput output, List<string> warnings, CancellationToken cancellationToken)
+    {
+        if (output.Proposals.Count == 0)
+        {
+            return output;
+        }
+
+        var saved = new List<MaintenanceWriteProposal>();
+        foreach (var proposal in output.Proposals)
+        {
+            try
+            {
+                saved.Add(await _proposalWorkflow.SubmitAsync(proposal, cancellationToken));
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or IOException or UnauthorizedAccessException)
+            {
+                warnings.Add($"Proposal for task '{output.Task}' was not saved: {ex.Message}");
+                _logger.LogWarning(ex, "Maintenance proposal for task {Task} was not saved", output.Task);
+            }
+        }
+
+        return output with { Proposals = saved };
+    }
+
+    private static MaintenanceTaskOutput BuildDeterministicOutput(string task, TopicMapDocument topicMap, MaintenanceAgentOptions config, DateTimeOffset runStartedAtUtc)
     {
         var findings = task switch
         {
@@ -1105,11 +1152,12 @@ public sealed class MaintenanceAgentService
                 .ToList(),
             _ => []
         };
+        var proposals = BuildDeterministicProposals(task, findings, config, runStartedAtUtc);
 
         return new MaintenanceTaskOutput(
             task,
             findings,
-            [],
+            proposals,
             [],
             task == "synthesis" ? 0.45 : 0.78,
             new Dictionary<string, object?>
@@ -1120,6 +1168,108 @@ public sealed class MaintenanceAgentService
                 ["nodeCount"] = topicMap.Nodes.Count,
                 ["edgeCount"] = topicMap.Edges.Count
             });
+    }
+
+    private static IReadOnlyList<MaintenanceWriteProposal> BuildDeterministicProposals(
+        string task,
+        IReadOnlyList<MaintenanceFinding> findings,
+        MaintenanceAgentOptions config,
+        DateTimeOffset runStartedAtUtc)
+    {
+        if (findings.Count == 0)
+        {
+            return [];
+        }
+
+        var pagesRoot = ResolveWritablePagesRoot(config);
+        if (pagesRoot is null)
+        {
+            return [];
+        }
+
+        var relatedRecords = findings
+            .SelectMany(finding => finding.RelatedRecords ?? Array.Empty<string>())
+            .Where(value => !string.IsNullOrWhiteSpace(value) && !value.StartsWith("page:", StringComparison.OrdinalIgnoreCase))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Take(50)
+            .ToList();
+        var risk = findings.Any(finding => string.Equals(finding.Severity, "high", StringComparison.OrdinalIgnoreCase))
+            ? MaintenanceProposalRiskLevels.High
+            : findings.Any(finding => string.Equals(finding.Severity, "medium", StringComparison.OrdinalIgnoreCase))
+                ? MaintenanceProposalRiskLevels.Medium
+                : MaintenanceProposalRiskLevels.Low;
+        var path = Path.Combine(pagesRoot, "maintenance-agent", $"{runStartedAtUtc:yyyyMMdd-HHmmssfff}-{Slugify(task)}.md");
+        var markdown = BuildFindingsReviewPage(task, findings, runStartedAtUtc, config.AgentVersion);
+        var proposalId = $"maintenance-{Slugify(task)}-{runStartedAtUtc:yyyyMMddHHmmssfff}";
+
+        return
+        [
+            new MaintenanceWriteProposal
+            {
+                ProposalId = proposalId,
+                Changes = [new MaintenanceProposalChange(path, string.Empty, markdown)],
+                Evidence = findings.Take(20).Select(finding => new MaintenanceEvidenceItem(
+                    "finding",
+                    finding.Id,
+                    Reference: finding.Path,
+                    Excerpt: finding.Message)).ToList(),
+                RelatedRecords = relatedRecords,
+                RiskLevel = risk,
+                Confidence = 0.78,
+                Metadata = new MaintenanceProposalMetadata(task, 0.78, risk, relatedRecords, [], [], config.AgentVersion)
+            }
+        ];
+    }
+
+    private static string? ResolveWritablePagesRoot(MaintenanceAgentOptions config)
+    {
+        var candidate = config.Write
+            .Select(Path.GetFullPath)
+            .FirstOrDefault(path => Path.GetFileName(path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)).Equals("Pages", StringComparison.OrdinalIgnoreCase));
+        return candidate;
+    }
+
+    private static string BuildFindingsReviewPage(string task, IReadOnlyList<MaintenanceFinding> findings, DateTimeOffset runStartedAtUtc, string agentVersion)
+    {
+        var lines = new List<string>
+        {
+            $"# Maintenance Review: {task.Replace('_', ' ')}",
+            string.Empty,
+            $"Generated: {runStartedAtUtc:O}",
+            $"Agent version: {agentVersion}",
+            string.Empty,
+            "## Findings",
+            string.Empty
+        };
+
+        foreach (var finding in findings)
+        {
+            lines.Add($"### {finding.Title}");
+            lines.Add(string.Empty);
+            lines.Add($"- Id: `{finding.Id}`");
+            lines.Add($"- Severity: `{finding.Severity}`");
+            if (!string.IsNullOrWhiteSpace(finding.Path))
+            {
+                lines.Add($"- Path: `{finding.Path}`");
+            }
+
+            if (finding.RelatedRecords is { Count: > 0 })
+            {
+                lines.Add("- Related records: " + string.Join(", ", finding.RelatedRecords.Select(record => $"`{record}`")));
+            }
+
+            lines.Add(string.Empty);
+            lines.Add(finding.Message);
+            lines.Add(string.Empty);
+        }
+
+        return string.Join(Environment.NewLine, lines).TrimEnd() + Environment.NewLine;
+    }
+
+    private static string Slugify(string value)
+    {
+        var slug = Regex.Replace(value.Trim().ToLowerInvariant(), "[^a-z0-9]+", "-").Trim('-');
+        return string.IsNullOrWhiteSpace(slug) ? "maintenance" : slug;
     }
 
     private static IEnumerable<MaintenanceFinding> FindMissingSupersessionPairs(TopicMapDocument topicMap)
@@ -1143,11 +1293,12 @@ public sealed class MaintenanceAgentService
         }
     }
 
-    private async Task<MaintenanceTaskOutput?> TryRunLlmReviewAsync(MaintenanceAgentOptions config, IReadOnlyList<MaintenanceTaskOutput> outputs, CancellationToken cancellationToken)
+    private async Task<MaintenanceTaskOutput?> TryRunLlmReviewAsync(MaintenanceAgentOptions config, IReadOnlyList<MaintenanceTaskOutput> outputs, List<string> warnings, CancellationToken cancellationToken)
     {
         var provider = _providers.FirstOrDefault(candidate => string.Equals(candidate.Name, config.Provider, StringComparison.OrdinalIgnoreCase));
         if (provider is null)
         {
+            warnings.Add($"LLM review skipped: provider '{config.Provider}' is not registered.");
             return null;
         }
 
@@ -1162,15 +1313,21 @@ public sealed class MaintenanceAgentService
             var parsed = ParseTaskOutput(response.Content);
             return parsed with
             {
-                Metadata = parsed.Metadata.Concat(new Dictionary<string, object?>
+                Metadata = (parsed.Metadata ?? new Dictionary<string, object?>()).Concat(new Dictionary<string, object?>
                 {
                     ["provider"] = response.ProviderName,
                     ["model"] = response.Model
                 }).ToDictionary(item => item.Key, item => item.Value)
             };
         }
-        catch
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
+            throw;
+        }
+        catch (Exception ex) when (ex is JsonException or HttpRequestException or InvalidOperationException or TaskCanceledException)
+        {
+            warnings.Add($"LLM review skipped: {ex.Message}");
+            _logger.LogWarning(ex, "Maintenance LLM review failed");
             return null;
         }
     }
@@ -1188,10 +1345,22 @@ public sealed class MaintenanceAgentService
                 config.AgentVersion
             },
             deterministicOutputs = outputs
-        }, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        }, AgentJsonOptions);
 
     private static MaintenanceTaskOutput ParseTaskOutput(string json)
     {
+        try
+        {
+            var deserialized = JsonSerializer.Deserialize<MaintenanceTaskOutput>(json, AgentJsonOptions);
+            if (deserialized is not null)
+            {
+                return NormalizeTaskOutput(deserialized);
+            }
+        }
+        catch (JsonException)
+        {
+        }
+
         using var document = JsonDocument.Parse(json);
         var root = document.RootElement;
         return new MaintenanceTaskOutput(
@@ -1204,6 +1373,16 @@ public sealed class MaintenanceAgentService
             root.TryGetProperty("confidence", out var confidence) && confidence.TryGetDouble(out var value) ? value : 0.5,
             new Dictionary<string, object?> { ["schemaVersion"] = "memorysmith.maintenance.task.v1", ["source"] = "llm" });
     }
+
+    private static MaintenanceTaskOutput NormalizeTaskOutput(MaintenanceTaskOutput output) =>
+        output with
+        {
+            Task = string.IsNullOrWhiteSpace(output.Task) ? "llm_review" : output.Task,
+            Findings = output.Findings is null ? [] : output.Findings,
+            Proposals = output.Proposals is null ? [] : output.Proposals,
+            Warnings = output.Warnings is null ? [] : output.Warnings,
+            Metadata = output.Metadata ?? new Dictionary<string, object?>()
+        };
 
     private async Task SaveLastRunAsync(MaintenanceAgentOptions config, string trigger, DateTimeOffset started, IReadOnlyList<MaintenanceTaskOutput> outputs, IReadOnlyList<string> warnings, CancellationToken cancellationToken)
     {
@@ -1263,10 +1442,13 @@ public sealed class MaintenanceAgentSchedulerService : BackgroundService
         }
     }
 
-    private static bool IsWeeklyWindow(MaintenanceAgentScheduleOptions schedule, DateTimeOffset localNow) =>
+    public static bool IsWeeklyWindow(MaintenanceAgentScheduleOptions schedule, DateTimeOffset localNow) =>
         Enum.TryParse<DayOfWeek>(schedule.WeeklyDay, ignoreCase: true, out var day) &&
         localNow.DayOfWeek == day &&
         localNow.Hour == Math.Clamp(schedule.WeeklyHourLocal, 0, 23);
+
+    public static bool ShouldRun(DateTimeOffset? lastRun, MaintenanceAgentScheduleOptions schedule, DateTimeOffset utcNow) =>
+        lastRun is null || utcNow - lastRun.Value >= TimeSpan.FromHours(Math.Max(1, schedule.MinimumHoursBetweenRuns));
 
     private static bool ShouldRun(DateTimeOffset? lastRun, MaintenanceAgentScheduleOptions schedule) =>
         lastRun is null || DateTimeOffset.UtcNow - lastRun.Value >= TimeSpan.FromHours(Math.Max(1, schedule.MinimumHoursBetweenRuns));
