@@ -16,6 +16,10 @@
     <Routes @rendermode="InteractiveServer" />
     <script src="_framework/blazor.web.js"></script>
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>
+    <!-- Prism and Mermaid are loaded from jsDelivr CDN with pinned versions and SRI hashes.
+         Tradeoff: syntax highlighting and Mermaid diagrams require network access to the CDN.
+         Graceful degradation: code blocks render as plain text without Prism; Mermaid fences
+         fall back to visible code blocks without the diagram. Both features are non-critical UI enhancements. -->
     <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js" integrity="sha384-ZM8fDxYm+GXOWeJcxDetoRImNnEAS7XwVFH5kv0pT6RXNy92Nemw/Sj7NfciXpqg" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-csharp.min.js" integrity="sha384-nMKYzg6yfy0qgpaRpVhHvZp0gT5sgvmZYlFC0XAKZSp+zFUB9rE6zsdmIEiou4bV" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-json.min.js" integrity="sha384-RhrmFFMb0ZCHImjFMpR/UE3VEtIVTCtNrtKQqXCzqXZNJala02N3UbVhi+qzw3CY" crossorigin="anonymous"></script>
