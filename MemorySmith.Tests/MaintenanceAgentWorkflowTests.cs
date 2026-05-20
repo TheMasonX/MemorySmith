@@ -26,7 +26,7 @@ public class MaintenanceAgentWorkflowTests
         {
             MaintenanceAgent = new MaintenanceAgentOptions
             {
-                ConfigPath = Path.Combine(_tempDir, "missing-maintenance-agent.json"),
+                ConfigPath = Path.Combine(_tempDir, "missing-maintenance-agent.yaml"),
                 Read = [Path.Combine(_tempDir, "Memories"), Path.Combine(_tempDir, "Pages")],
                 Write = [Path.Combine(_tempDir, "Memories", "Working"), Path.Combine(_tempDir, "Pages")],
                 UseLlm = false,
@@ -114,7 +114,7 @@ public class MaintenanceAgentWorkflowTests
     public void PermissionGuardRejectsOutsideDirectoriesAndConfigFiles()
     {
         var outside = Path.Combine(_tempDir, "Outside", "note.md");
-        var configPath = Path.Combine(_tempDir, "Pages", "maintenance_agent.json");
+        var configPath = Path.Combine(_tempDir, "Pages", "maintenance_agent.yaml");
 
         Assert.Multiple(() =>
         {
@@ -122,6 +122,54 @@ public class MaintenanceAgentWorkflowTests
             Assert.That(() => _permissions.ValidateWritablePath(configPath), Throws.InvalidOperationException.With.Message.Contains("schema or configuration"));
         });
     }
+
+        [Test]
+        public void ConfigService_LoadsYamlDotNetMaintenanceAgentConfig()
+        {
+                var configPath = Path.Combine(_tempDir, "maintenance_agent.yaml");
+                File.WriteAllText(configPath, $$"""
+                read:
+                    - '{{Path.Combine(_tempDir, "Memories")}}'
+                write:
+                    - '{{Path.Combine(_tempDir, "Pages")}}'
+                direct_write: true
+                use_llm: false
+                provider: Ollama
+                model: llama3.1:8b
+                tasks:
+                    staleness_scan: true
+                    synthesis: false
+                schedule:
+                    enabled: true
+                    weekly_day: Monday
+                    weekly_hour_local: 4
+                resource_probe:
+                    skip_when_busy: false
+                storage:
+                    proposals_path: '{{Path.Combine(_tempDir, "YamlProposals")}}'
+                """);
+                var options = new MemorySmithOptions
+                {
+                        MaintenanceAgent = new MaintenanceAgentOptions { ConfigPath = configPath }
+                };
+                var service = new MaintenanceAgentConfigService(new StaticOptionsMonitor<MemorySmithOptions>(options));
+
+                var loaded = service.GetCurrent();
+
+                Assert.Multiple(() =>
+                {
+                        Assert.That(loaded.DirectWrite, Is.True);
+                        Assert.That(loaded.UseLlm, Is.False);
+                        Assert.That(loaded.Model, Is.EqualTo("llama3.1:8b"));
+                        Assert.That(loaded.Tasks["staleness_scan"], Is.True);
+                        Assert.That(loaded.Tasks["synthesis"], Is.False);
+                        Assert.That(loaded.Schedule.Enabled, Is.True);
+                        Assert.That(loaded.Schedule.WeeklyDay, Is.EqualTo("Monday"));
+                        Assert.That(loaded.Schedule.WeeklyHourLocal, Is.EqualTo(4));
+                        Assert.That(loaded.ResourceProbe.SkipWhenBusy, Is.False);
+                        Assert.That(loaded.Storage.ProposalsPath, Is.EqualTo(Path.Combine(_tempDir, "YamlProposals")));
+                });
+        }
 
     [Test]
     public async Task TopicMap_ExtractsHeadingsRelationshipsCyclesAndStaleness()

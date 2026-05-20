@@ -7,6 +7,8 @@ using System.Text.RegularExpressions;
 using MemorySmith.Core.Models;
 using MemorySmith.Storage;
 using Microsoft.Extensions.Options;
+using YamlDotNet.Serialization;
+using YamlDotNet.Serialization.NamingConventions;
 
 namespace MemorySmith.App.Services;
 
@@ -147,6 +149,10 @@ public sealed class MaintenanceAgentConfigService
         ReadCommentHandling = JsonCommentHandling.Skip,
         AllowTrailingCommas = true
     };
+    private static readonly IDeserializer YamlDeserializer = new DeserializerBuilder()
+        .WithNamingConvention(UnderscoredNamingConvention.Instance)
+        .IgnoreUnmatchedProperties()
+        .Build();
 
     private readonly IOptionsMonitor<MemorySmithOptions> _options;
 
@@ -161,8 +167,7 @@ public sealed class MaintenanceAgentConfigService
         var configPath = ResolvePath(options.ConfigPath);
         if (File.Exists(configPath))
         {
-            using var stream = File.OpenRead(configPath);
-            var fileConfig = JsonSerializer.Deserialize<MaintenanceAgentOptions>(stream, JsonOptions);
+            var fileConfig = LoadConfigFile(configPath);
             if (fileConfig is not null)
             {
                 options = fileConfig;
@@ -181,6 +186,18 @@ public sealed class MaintenanceAgentConfigService
 
     private MaintenanceAgentOptions Clone(MaintenanceAgentOptions source) =>
         JsonSerializer.Deserialize<MaintenanceAgentOptions>(JsonSerializer.Serialize(source, JsonOptions), JsonOptions) ?? new MaintenanceAgentOptions();
+
+    private static MaintenanceAgentOptions? LoadConfigFile(string configPath)
+    {
+        if (Path.GetExtension(configPath).Equals(".json", StringComparison.OrdinalIgnoreCase))
+        {
+            using var stream = File.OpenRead(configPath);
+            return JsonSerializer.Deserialize<MaintenanceAgentOptions>(stream, JsonOptions);
+        }
+
+        using var reader = File.OpenText(configPath);
+        return YamlDeserializer.Deserialize<MaintenanceAgentOptions>(reader);
+    }
 
     private void Normalize(MaintenanceAgentOptions config)
     {
