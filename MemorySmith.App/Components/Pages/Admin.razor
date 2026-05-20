@@ -5,6 +5,7 @@
 @inject IOptionsMonitor<MemorySmithOptions> Options
 @inject ICurrentUserContext CurrentUser
 @inject AuditLogService Audit
+@inject AdminSettingsService Settings
 @inject ISnackbar Snackbar
 @using Microsoft.Extensions.Options
 @using System.Text.Json
@@ -84,6 +85,26 @@
             </MudTable>
         </MudTabPanel>
         <MudTabPanel Text="Configuration" Icon="@Icons.Material.Filled.Tune">
+            <MudTable Items="@_editableSettings" Dense="true" Class="health-table" RowsPerPage="25">
+                <HeaderContent>
+                    <MudTh>Category</MudTh>
+                    <MudTh>Setting</MudTh>
+                    <MudTh>Value</MudTh>
+                    <MudTh>Action</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>@context.Item.Category</MudTd>
+                    <MudTd>
+                        <strong>@context.Item.Label</strong><br />
+                        <small>@context.Item.Key</small>
+                    </MudTd>
+                    <MudTd>@SettingEditor(context)</MudTd>
+                    <MudTd>
+                        <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" Disabled="@(_isBusy || !context.IsDirty)" OnClick="@(() => SaveSettingAsync(context))">Save</MudButton>
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+
             <MudTable Items="@_configurationItems" Dense="true" Class="health-table" RowsPerPage="25">
                 <HeaderContent>
                     <MudTh>Key</MudTh>
@@ -140,6 +161,7 @@
     private IReadOnlyList<AuthProviderRecord> _providers = [];
     private IReadOnlyList<AuditLogEntry> _audit = [];
     private IReadOnlyList<VersionHistoryEntry> _recentVersions = [];
+    private IReadOnlyList<EditableConfigurationRow> _editableSettings = [];
     private IReadOnlyList<ConfigurationItem> _configurationItems = [];
     private Dictionary<string, int> _providerLinkCounts = new(StringComparer.OrdinalIgnoreCase);
     private bool _isBusy;
@@ -170,6 +192,7 @@
         _providers = await Database.ProviderLinks.ListProvidersAsync(CancellationToken.None);
         _audit = (await Database.AuditLogs.QueryAsync(new AuditLogQuery(PageSize: 100), CancellationToken.None)).Data;
         _recentVersions = await LoadRecentVersionsAsync();
+        _editableSettings = Settings.ListEditableSettings().Select(item => new EditableConfigurationRow(item)).ToList();
         _configurationItems = BuildConfigurationItems();
     }
 
@@ -227,6 +250,72 @@
         Snackbar.Add($"{provider.DisplayName} {(enabled ? "enabled" : "disabled")}.", Severity.Success);
         _isBusy = false;
         await LoadAsync();
+    }
+
+    private RenderFragment SettingEditor(EditableConfigurationRow row) => builder =>
+    {
+        switch (row.Item.ValueKind)
+        {
+            case nameof(AdminSettingValueKind.Boolean):
+                builder.OpenComponent<MudSwitch<bool>>(0);
+                builder.AddAttribute(1, "Value", bool.TryParse(row.PendingValue, out var boolean) && boolean);
+                builder.AddAttribute(2, "ValueChanged", EventCallback.Factory.Create<bool>(this, value => SetPendingValue(row, value ? "true" : "false")));
+                builder.AddAttribute(3, "Disabled", _isBusy);
+                builder.CloseComponent();
+                break;
+            case nameof(AdminSettingValueKind.Choice):
+                builder.OpenComponent<MudSelect<string>>(10);
+                builder.AddAttribute(11, "Value", row.PendingValue);
+                builder.AddAttribute(12, "ValueChanged", EventCallback.Factory.Create<string>(this, value => SetPendingValue(row, value)));
+                builder.AddAttribute(13, "Dense", true);
+                builder.AddAttribute(14, "Variant", Variant.Outlined);
+                builder.AddAttribute(15, "Margin", Margin.Dense);
+                builder.AddAttribute(16, "Disabled", _isBusy);
+                builder.AddAttribute(17, "ChildContent", (RenderFragment)(selectBuilder =>
+                {
+                    var sequence = 0;
+                    foreach (var option in row.Item.Options)
+                    {
+                        selectBuilder.OpenComponent<MudSelectItem<string>>(sequence++);
+                        selectBuilder.AddAttribute(sequence++, "Value", option);
+                        selectBuilder.AddContent(sequence++, option);
+                        selectBuilder.CloseComponent();
+                    }
+                }));
+                builder.CloseComponent();
+                break;
+            default:
+                builder.OpenComponent<MudTextField<string>>(20);
+                builder.AddAttribute(21, "Value", row.PendingValue);
+                builder.AddAttribute(22, "ValueChanged", EventCallback.Factory.Create<string>(this, value => SetPendingValue(row, value)));
+                builder.AddAttribute(23, "Dense", true);
+                builder.AddAttribute(24, "Variant", Variant.Outlined);
+                builder.AddAttribute(25, "Margin", Margin.Dense);
+                builder.AddAttribute(26, "Disabled", _isBusy);
+                builder.CloseComponent();
+                break;
+        }
+    };
+
+    private static void SetPendingValue(EditableConfigurationRow row, string? value)
+    {
+        row.PendingValue = value ?? string.Empty;
+    }
+
+    private async Task SaveSettingAsync(EditableConfigurationRow row)
+    {
+        _isBusy = true;
+        var result = await Settings.UpdateAsync(new AdminSettingUpdateRequest(row.Item.Key, row.PendingValue), CancellationToken.None);
+        if (result.Succeeded)
+        {
+            Snackbar.Add($"{row.Item.Label} saved.", Severity.Success);
+            _isBusy = false;
+            await LoadAsync();
+            return;
+        }
+
+        Snackbar.Add(result.Error ?? "Setting could not be saved.", Severity.Error);
+        _isBusy = false;
     }
 
     private int ProviderLinkCount(string providerName) => _providerLinkCounts.TryGetValue(providerName, out var count) ? count : 0;
@@ -337,6 +426,19 @@
         public string SelectedRole => Roles.FirstOrDefault(role => string.Equals(role.Name, MemorySmithRoles.Editor, StringComparison.OrdinalIgnoreCase))?.Name
             ?? Roles.FirstOrDefault(role => string.Equals(role.Name, MemorySmithRoles.Viewer, StringComparison.OrdinalIgnoreCase))?.Name
             ?? MemorySmithRoles.Viewer;
+    }
+
+    private sealed class EditableConfigurationRow
+    {
+        public EditableConfigurationRow(AdminSettingItem item)
+        {
+            Item = item;
+            PendingValue = item.Value;
+        }
+
+        public AdminSettingItem Item { get; }
+        public string PendingValue { get; set; }
+        public bool IsDirty => !string.Equals(PendingValue, Item.Value, StringComparison.Ordinal);
     }
 
     private sealed record ConfigurationItem(string Key, string DisplayValue);

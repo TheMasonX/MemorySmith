@@ -81,6 +81,18 @@ public sealed class MemorySmithPermissionHandler : AuthorizationHandler<MemorySm
             return;
         }
 
+        var roles = context.User.FindAll(ClaimTypes.Role).Select(claim => claim.Value).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var isAuthenticated = context.User.Identity?.IsAuthenticated == true;
+        if (RequiresAuthenticatedAdmin(requirement.Permission))
+        {
+            if (isAuthenticated && roles.Contains(MemorySmithRoles.Admin))
+            {
+                context.Succeed(requirement);
+            }
+
+            return;
+        }
+
         if (HasConfiguredApiKeyAccess())
         {
             context.Succeed(requirement);
@@ -94,8 +106,7 @@ public sealed class MemorySmithPermissionHandler : AuthorizationHandler<MemorySm
             return;
         }
 
-        var roles = context.User.FindAll(ClaimTypes.Role).Select(claim => claim.Value).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        if (context.User.Identity?.IsAuthenticated == true)
+        if (isAuthenticated)
         {
             if (auth.AutoEditorForAuthenticatedUsers)
             {
@@ -103,7 +114,7 @@ public sealed class MemorySmithPermissionHandler : AuthorizationHandler<MemorySm
             }
             else if (roles.Count == 0 && !string.IsNullOrWhiteSpace(auth.AuthenticatedDefaultRole))
             {
-                roles.Add(auth.AuthenticatedDefaultRole);
+                roles.Add(NormalizeAuthenticatedDefaultRole(auth.AuthenticatedDefaultRole));
             }
         }
         else
@@ -116,6 +127,18 @@ public sealed class MemorySmithPermissionHandler : AuthorizationHandler<MemorySm
             context.Succeed(requirement);
         }
     }
+
+    public static string NormalizeAuthenticatedDefaultRole(string? roleName) =>
+        string.Equals(roleName, MemorySmithRoles.Editor, StringComparison.OrdinalIgnoreCase)
+            ? MemorySmithRoles.Editor
+            : MemorySmithRoles.Viewer;
+
+    private static bool RequiresAuthenticatedAdmin(MemorySmithPermission permission) =>
+        permission is MemorySmithPermission.Admin
+            or MemorySmithPermission.ManageUsers
+            or MemorySmithPermission.ManageSettings
+            or MemorySmithPermission.ViewAudit
+            or MemorySmithPermission.RestoreHistory;
 
     private bool IsLoopbackRequest()
     {
@@ -152,15 +175,7 @@ public sealed class MemorySmithPermissionHandler : AuthorizationHandler<MemorySm
 
     private static void AddAnonymousRole(string anonymousAccess, HashSet<string> roles)
     {
-        if (string.Equals(anonymousAccess, MemorySmithRoles.Admin, StringComparison.OrdinalIgnoreCase))
-        {
-            roles.Add(MemorySmithRoles.Admin);
-        }
-        else if (string.Equals(anonymousAccess, MemorySmithRoles.Editor, StringComparison.OrdinalIgnoreCase))
-        {
-            roles.Add(MemorySmithRoles.Editor);
-        }
-        else if (string.Equals(anonymousAccess, MemorySmithRoles.Viewer, StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(anonymousAccess, MemorySmithRoles.Viewer, StringComparison.OrdinalIgnoreCase))
         {
             roles.Add(MemorySmithRoles.Viewer);
         }
@@ -251,7 +266,8 @@ public sealed class MemorySmithLocalAuthService
 
     public async Task<AuthResult> CreateFirstAdminAsync(SetupAdminRequest request, CancellationToken cancellationToken)
     {
-        if (!_options.CurrentValue.Auth.LocalPasswordEnabled)
+        var auth = _options.CurrentValue.Auth;
+        if (!auth.LocalPasswordEnabled)
         {
             return new AuthResult(false, "Local password sign-in is disabled.");
         }
@@ -261,9 +277,16 @@ public sealed class MemorySmithLocalAuthService
             return new AuthResult(false, "Setup has already been completed.");
         }
 
-        if (!MemorySmithRequestGuardMiddleware.IsLoopback(_httpContextAccessor.HttpContext?.Connection.RemoteIpAddress))
+        var isLoopback = MemorySmithRequestGuardMiddleware.IsLoopback(_httpContextAccessor.HttpContext?.Connection.RemoteIpAddress);
+        var tokenIsValid = ValidateBootstrapToken(request.BootstrapToken, auth.Setup.BootstrapTokenHash);
+        if (!isLoopback && !tokenIsValid)
         {
-            return new AuthResult(false, "Initial setup is only available from localhost.");
+            return new AuthResult(false, "Initial setup is only available from localhost or with a valid bootstrap token.");
+        }
+
+        if (isLoopback && !auth.Setup.AllowLoopbackBootstrap && !tokenIsValid)
+        {
+            return new AuthResult(false, "Initial setup requires a valid bootstrap token.");
         }
 
         var displayName = request.DisplayName.Trim();
@@ -504,6 +527,24 @@ public sealed class MemorySmithLocalAuthService
 
     public async Task SignOutAsync() =>
         await (_httpContextAccessor.HttpContext?.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme) ?? Task.CompletedTask);
+
+    private static bool ValidateBootstrapToken(string? token, string? expectedHash)
+    {
+        if (string.IsNullOrWhiteSpace(expectedHash) || string.IsNullOrWhiteSpace(token))
+        {
+            return false;
+        }
+
+        var tokenHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token.Trim())));
+        return FixedTimeEquals(tokenHash, expectedHash.Trim());
+    }
+
+    private static bool FixedTimeEquals(string actual, string expected)
+    {
+        var actualBytes = Encoding.UTF8.GetBytes(actual.ToUpperInvariant());
+        var expectedBytes = Encoding.UTF8.GetBytes(expected.ToUpperInvariant());
+        return actualBytes.Length == expectedBytes.Length && CryptographicOperations.FixedTimeEquals(actualBytes, expectedBytes);
+    }
 
     private async Task EnsureLocalPasswordLinkAsync(UserAccount user, CancellationToken cancellationToken)
     {

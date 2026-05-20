@@ -71,6 +71,7 @@ User-created markdown files under `Data/Pages/` are valid project wiki content a
 | `project-wiki-maintenance-observability-refinements` | Startup triage/index scheduling and stats activity bucket API |
 | `project-wiki-operational-diagnostics-dashboard` | `/health` dashboard and `/api/diagnostics` operational snapshot |
 | `project-wiki-request-guard-hardening` | Request guard middleware, `AllowRemoteApi` and `ApiKey` enforcement |
+| `project-wiki-admin-auth-hardening` | Admin-policy hardening and editable settings current state |
 | `project-wiki-source-link-security-boundaries` | Source bundle read boundaries and allowed root variable rules |
 | `project-wiki-test-fixture-overview` | Overview of the five integration-test fixture records |
 | `project-wiki-test-fixture-context-root` | Context pack root fixture (context pack traversal tests) |
@@ -82,9 +83,9 @@ Retrieve any record via the MCP tool `memorysmith_get` with its ID, or search th
 
 ## Authentication, Audit, And History
 
-MemorySmith keeps memory/page content file-backed and stores security metadata in SQLite at `Data/memorysmith.db` by default. Cookie authentication and RBAC policies protect the UI, REST APIs, and MCP tools. Built-in roles are `Viewer`, `Editor`, and `Admin`; the default local policy allows anonymous Viewer access, while mutation, diagnostics, admin, audit, and restore workflows require stronger roles.
+MemorySmith keeps memory/page content file-backed and stores security metadata in SQLite at `Data/memorysmith.db` by default. Cookie authentication and RBAC policies protect the UI, REST APIs, and MCP tools. Built-in roles are `Viewer`, `Editor`, and `Admin`; the default local policy allows anonymous Viewer access, while mutation, diagnostics, admin, audit, settings, and restore workflows require stronger roles.
 
-On a fresh local install, `Auth:OpenLocalEditorCompatibility` grants loopback requests full access until the first Admin user exists. Create that first account at `/admin/setup`, then sign in at `/login`. Local password auth is implemented; external provider rows for GitHub, Google, and Microsoft are seeded for administration and later OAuth wiring.
+On a fresh local install, `Auth:OpenLocalEditorCompatibility` grants loopback requests non-admin local write compatibility until the first Admin user exists. Admin, user-management, settings, audit, diagnostics, and restore workflows always require a signed-in Admin user. Create that first account at `/admin/setup`, then sign in at `/login`. Local password auth is implemented; external provider rows for GitHub, Google, and Microsoft are seeded for administration and later OAuth wiring.
 
 Audit metadata is written to SQLite and mirrored to weekly JSONL files under `Data/Events`. Memory and page writes also create version-history artifacts under `Data/.history`; these artifacts are metadata/history records, not replacements for `Data/Memories` or `Data/Pages` as the source of truth.
 
@@ -195,6 +196,7 @@ All settings live under `MemorySmith` in `appsettings.json`:
     "ApiKey": null,
     "AllowRemoteApi": false,
     "DataProtectionKeysPath": "../Data/Keys",
+    "SettingsOverridePath": null,
     "Database": {
       "Provider": "SQLite",
       "ConnectionString": "Data Source=../Data/memorysmith.db",
@@ -281,11 +283,12 @@ All settings live under `MemorySmith` in `appsettings.json`:
 
 Override via `appsettings.Development.json` or environment variables (`MemorySmith__DataPath`, etc.).
 
-- **`ApiKey`** — if set, all API and MCP requests must include `X-Api-Key: <value>`. Leave `null` for local use.
+- **`ApiKey`** — if set, all API and MCP requests must include `X-Api-Key: <value>`. Leave `null` for local use. The shared API key can satisfy non-admin API/MCP policies; it does not grant admin, user-management, settings, audit, diagnostics, or restore access.
 - **`AllowRemoteApi`** — set `true` to allow non-localhost callers. Off by default.
 - **`DataProtectionKeysPath`** — stores ASP.NET Core cookie/data-protection keys outside build output so local sign-in cookies survive app restarts.
 - **`Database:*`** — controls the SQLite metadata database used for users, roles, provider links, login history, audit metadata, version metadata, token metadata, admin settings, and semantic-index metadata. Content files remain in `Data/Memories` and `Data/Pages`.
-- **`Auth:*`** — controls cookie/RBAC behavior. `AnonymousAccess=Viewer` keeps local browsing open by default; `OpenLocalEditorCompatibility=true` preserves full loopback access until the first Admin is bootstrapped.
+- **`SettingsOverridePath`** — optional path for admin-edited local settings. Defaults to `appsettings.LocalDevelopment.json` beside the running app.
+- **`Auth:*`** — controls cookie/RBAC behavior. `AnonymousAccess=Viewer` keeps local browsing open by default; config-derived anonymous/default roles are clamped below Admin, and `OpenLocalEditorCompatibility=true` preserves pre-setup loopback write compatibility only for non-admin operations.
 - **`Audit:*`** — controls the weekly JSONL audit mirror. SQLite remains the queryable metadata store.
 - **`History:*`** — controls version-history artifact storage for memory and page mutations.
 - **`Pages:AllowRawHtml`** — enables trusted raw HTML rendering in markdown pages. Off by default; leave disabled for agent-written or unreviewed pages.

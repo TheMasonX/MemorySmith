@@ -4,6 +4,7 @@ using System.Text.Json;
 using MemorySmith.App.Services;
 using MemorySmith.Core.Models;
 using MemorySmith.Storage;
+using Microsoft.Data.Sqlite;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
@@ -25,6 +26,7 @@ public class SecurityAndSourceLinkTests
     [TearDown]
     public void TearDown()
     {
+        SqliteConnection.ClearAllPools();
         if (Directory.Exists(_tempRoot))
         {
             Directory.Delete(_tempRoot, recursive: true);
@@ -114,6 +116,9 @@ public class SecurityAndSourceLinkTests
             ["MemorySmith:AllowRemoteApi"] = "true"
         });
         using var client = factory.CreateClient();
+
+        var setupResponse = await client.PostAsJsonAsync("/api/admin/setup", new SetupAdminRequest("Admin User", "admin@example.test", "ThisIsAValidPassword123!"));
+        setupResponse.EnsureSuccessStatusCode();
 
         var body = await client.GetStringAsync("/api/diagnostics");
 
@@ -234,8 +239,13 @@ public class SecurityAndSourceLinkTests
                 var values = new Dictionary<string, string?>
                 {
                     ["MemorySmith:DataPath"] = Path.Combine(_tempRoot, "Memories"),
+                    ["MemorySmith:PagesPath"] = Path.Combine(_tempRoot, "Pages"),
                     ["MemorySmith:EventLogPath"] = Path.Combine(_tempRoot, "Events", "audit.log"),
                     ["MemorySmith:VarsPath"] = Path.Combine(_tempRoot, "vars.json"),
+                    ["MemorySmith:DataProtectionKeysPath"] = Path.Combine(_tempRoot, "Keys"),
+                    ["MemorySmith:Database:ConnectionString"] = $"Data Source={Path.Combine(_tempRoot, "memorysmith.db")};Pooling=False",
+                    ["MemorySmith:Audit:JsonlPath"] = Path.Combine(_tempRoot, "Events", "audit-{yyyy}-W{week}.jsonl"),
+                    ["MemorySmith:History:RootPath"] = Path.Combine(_tempRoot, ".history"),
                     ["MemorySmith:Maintenance:Enabled"] = "false"
                 };
 

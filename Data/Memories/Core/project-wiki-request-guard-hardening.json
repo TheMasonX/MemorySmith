@@ -1,9 +1,9 @@
 {
   "Id": "project-wiki-request-guard-hardening",
-  "Content": "MemorySmith now has a request guard middleware at startup. When MemorySmith:AllowRemoteApi is false, non-loopback callers are rejected before reaching controllers. When MemorySmith:ApiKey is configured, /api and /mcp requests must include X-Api-Key with a matching value; null ApiKey remains frictionless for local development. This makes the documented configuration real while keeping the default local workflow open.",
+  "Content": "MemorySmith has request guard middleware at startup. When MemorySmith:AllowRemoteApi is false, non-loopback callers are rejected before reaching controllers. When MemorySmith:ApiKey is configured, /api and /mcp requests must include X-Api-Key with a matching value; null ApiKey remains frictionless for local development. The API key compatibility path can satisfy non-admin API/MCP policies, but admin, user-management, settings, audit, diagnostics, and restore policies require a signed-in Admin user. Config-derived anonymous/default roles are clamped below Admin, and OpenLocalEditorCompatibility only grants pre-setup loopback compatibility for non-admin operations.",
   "Title": "Request Guard and Optional API Key Enforcement",
   "Status": 2,
-  "Confidence": 0.95,
+  "Confidence": 0.97,
   "Tags": [
     "project-wiki",
     "security",
@@ -37,5 +37,5 @@
     }
   ],
   "UsageCount": 0,
-  "LastUpdated": "2026-05-15T05:43:30.5516447Z"
+  "LastUpdated": "2026-05-19T00:00:00Z"
 }

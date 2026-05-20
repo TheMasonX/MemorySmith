@@ -37,9 +37,11 @@ try
     var secretsFile = Path.Combine(AppContext.BaseDirectory, "appsettings.Secrets.json");
     if (File.Exists(secretsFile))
         builder.Configuration.AddJsonFile(secretsFile, optional: true, reloadOnChange: false);
-    var localDevelopmentFile = Path.Combine(AppContext.BaseDirectory, "appsettings.LocalDevelopment.json");
-    if (File.Exists(localDevelopmentFile))
-        builder.Configuration.AddJsonFile(localDevelopmentFile, optional: true, reloadOnChange: false);
+    var configuredSettingsOverridePath = builder.Configuration["MemorySmith:SettingsOverridePath"];
+    var localDevelopmentFile = string.IsNullOrWhiteSpace(configuredSettingsOverridePath)
+        ? Path.Combine(AppContext.BaseDirectory, "appsettings.LocalDevelopment.json")
+        : Path.GetFullPath(configuredSettingsOverridePath);
+    builder.Configuration.AddJsonFile(localDevelopmentFile, optional: true, reloadOnChange: true);
     builder.Host.UseSerilog();
     builder.Host.UseWindowsService(options =>
     {
@@ -164,7 +166,7 @@ try
                             LinkedAtUtc = now
                         }, ct);
                         var isFirstAdmin = !await db.Users.HasAnyAdminAsync(ct);
-                        var assignedRole = isFirstAdmin ? MemorySmithRoles.Admin : (msOpts.Auth.AuthenticatedDefaultRole ?? MemorySmithRoles.Viewer);
+                        var assignedRole = isFirstAdmin ? MemorySmithRoles.Admin : MemorySmithPermissionHandler.NormalizeAuthenticatedDefaultRole(msOpts.Auth.AuthenticatedDefaultRole);
                         await db.Roles.AssignRoleAsync(internalUserId, assignedRole, null, ct);
                     }
                     var roles = await db.Roles.GetRolesForUserAsync(internalUserId, ct);
@@ -250,6 +252,7 @@ try
     });
     builder.Services.AddSingleton<ICurrentUserContext, HttpCurrentUserContext>();
     builder.Services.AddSingleton<AuditLogService>();
+    builder.Services.AddSingleton<AdminSettingsService>();
     builder.Services.AddSingleton<VersionHistoryService>();
     builder.Services.AddScoped<MemorySmithLocalAuthService>();
 

@@ -164,6 +164,107 @@ public class AppApiContractTests
     }
 
     [Test]
+    public async Task AdminPage_WithAnonymousAdminConfig_DoesNotRenderAdminWorkbenchForSignedOutUser()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"memorysmith-admin-page-{Guid.NewGuid():N}");
+        var factory = CreateIsolatedFactory(tempDir, new Dictionary<string, string?>
+        {
+            ["MemorySmith:Auth:AnonymousAccess"] = MemorySmithRoles.Admin,
+            ["MemorySmith:Auth:AuthenticatedDefaultRole"] = MemorySmithRoles.Admin,
+            ["MemorySmith:Auth:AutoEditorForAuthenticatedUsers"] = "true"
+        });
+
+        try
+        {
+            using var setupClient = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+            var setupResponse = await setupClient.PostAsJsonAsync("/api/admin/setup", new SetupAdminRequest("Admin User", "admin@example.test", "ThisIsAValidPassword123!"));
+            setupResponse.EnsureSuccessStatusCode();
+
+            using var anonymousClient = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+            var pageResponse = await anonymousClient.GetAsync("/admin");
+            var body = await pageResponse.Content.ReadAsStringAsync();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(pageResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK).Or.EqualTo(HttpStatusCode.Redirect).Or.EqualTo(HttpStatusCode.Unauthorized).Or.EqualTo(HttpStatusCode.Forbidden));
+                Assert.That(body, Does.Not.Contain("Users, providers, settings, audit, history"));
+                if (pageResponse.StatusCode == HttpStatusCode.OK)
+                {
+                    Assert.That(body, Does.Contain("Sign In"));
+                }
+            });
+        }
+        finally
+        {
+            await DisposeFactoryTempDirAsync(factory, tempDir);
+        }
+    }
+
+    [Test]
+    public async Task AdminRoleApi_WithAnonymousAdminConfig_RejectsSignedOutRoleChanges()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"memorysmith-admin-api-{Guid.NewGuid():N}");
+        var factory = CreateIsolatedFactory(tempDir, new Dictionary<string, string?>
+        {
+            ["MemorySmith:Auth:AnonymousAccess"] = MemorySmithRoles.Admin,
+            ["MemorySmith:Auth:AuthenticatedDefaultRole"] = MemorySmithRoles.Admin,
+            ["MemorySmith:Auth:AutoEditorForAuthenticatedUsers"] = "true"
+        });
+
+        try
+        {
+            using var setupClient = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+            var setupResponse = await setupClient.PostAsJsonAsync("/api/admin/setup", new SetupAdminRequest("Admin User", "admin@example.test", "ThisIsAValidPassword123!"));
+            setupResponse.EnsureSuccessStatusCode();
+
+            using var anonymousClient = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+            var roleResponse = await anonymousClient.PostAsync($"/api/admin/users/{Guid.NewGuid():N}/roles/{MemorySmithRoles.Editor}", null);
+
+            Assert.That(IsAuthChallenge(roleResponse.StatusCode), Is.True);
+        }
+        finally
+        {
+            await DisposeFactoryTempDirAsync(factory, tempDir);
+        }
+    }
+
+    [Test]
+    public async Task AdminSettings_UpdateRequiresAdminAndPersistsAllowedSetting()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"memorysmith-admin-settings-{Guid.NewGuid():N}");
+        var settingsPath = Path.Combine(tempDir, "appsettings.LocalDevelopment.json");
+        var factory = CreateIsolatedFactory(tempDir, new Dictionary<string, string?>
+        {
+            ["MemorySmith:SettingsOverridePath"] = settingsPath
+        });
+
+        try
+        {
+            using var anonymousClient = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+            var anonymousResponse = await anonymousClient.PutAsJsonAsync("/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:Chat:MaxToolIterations", "3"));
+
+            using var adminClient = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+            var setupResponse = await adminClient.PostAsJsonAsync("/api/admin/setup", new SetupAdminRequest("Admin User", "admin@example.test", "ThisIsAValidPassword123!"));
+            setupResponse.EnsureSuccessStatusCode();
+            var updateResponse = await adminClient.PutAsJsonAsync("/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:Chat:MaxToolIterations", "3"));
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(IsAuthChallenge(anonymousResponse.StatusCode), Is.True);
+                Assert.That(updateResponse.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
+                Assert.That(File.Exists(settingsPath), Is.True);
+            });
+
+            var json = await File.ReadAllTextAsync(settingsPath);
+            Assert.That(json, Does.Contain("\"MaxToolIterations\": 3"));
+        }
+        finally
+        {
+            await DisposeFactoryTempDirAsync(factory, tempDir);
+        }
+    }
+
+    [Test]
     public async Task HealthLiveAndReady_ReturnSuccessWithoutStartingWorker()
     {
         var live = await _client.GetAsync("/api/health/live");
@@ -179,6 +280,9 @@ public class AppApiContractTests
     [Test]
     public async Task Diagnostics_ReturnsRedactedConfigurationAndPathStatus()
     {
+        var setupResponse = await _client.PostAsJsonAsync("/api/admin/setup", new SetupAdminRequest("Admin User", "admin@example.test", "ThisIsAValidPassword123!"));
+        setupResponse.EnsureSuccessStatusCode();
+
         var response = await _client.GetAsync("/api/diagnostics");
         response.EnsureSuccessStatusCode();
         var body = await response.Content.ReadAsStringAsync();
@@ -254,5 +358,48 @@ public class AppApiContractTests
         var response = await _client.PostAsJsonAsync("/api/chat", new { message = "", mode = "Chat" });
 
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+    }
+
+    private static WebApplicationFactory<Program> CreateIsolatedFactory(string tempDir, Dictionary<string, string?>? overrides = null) =>
+        new WebApplicationFactory<Program>()
+            .WithWebHostBuilder(builder =>
+            {
+                builder.ConfigureAppConfiguration((_, config) =>
+                {
+                    var values = new Dictionary<string, string?>
+                    {
+                        ["MemorySmith:DataPath"] = Path.Combine(tempDir, "Memories"),
+                        ["MemorySmith:PagesPath"] = Path.Combine(tempDir, "Pages"),
+                        ["MemorySmith:EventLogPath"] = Path.Combine(tempDir, "Events", "audit.log"),
+                        ["MemorySmith:DataProtectionKeysPath"] = Path.Combine(tempDir, "Keys"),
+                        ["MemorySmith:Database:ConnectionString"] = $"Data Source={Path.Combine(tempDir, "memorysmith.db")};Pooling=False",
+                        ["MemorySmith:Audit:JsonlPath"] = Path.Combine(tempDir, "Events", "audit-{yyyy}-W{week}.jsonl"),
+                        ["MemorySmith:History:RootPath"] = Path.Combine(tempDir, ".history"),
+                        ["MemorySmith:Maintenance:Enabled"] = "false"
+                    };
+
+                    if (overrides is not null)
+                    {
+                        foreach (var pair in overrides)
+                        {
+                            values[pair.Key] = pair.Value;
+                        }
+                    }
+
+                    config.AddInMemoryCollection(values);
+                });
+            });
+
+    private static bool IsAuthChallenge(HttpStatusCode statusCode) =>
+        statusCode is HttpStatusCode.Redirect or HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden;
+
+    private static async Task DisposeFactoryTempDirAsync(WebApplicationFactory<Program> factory, string tempDir)
+    {
+        await factory.DisposeAsync();
+        SqliteConnection.ClearAllPools();
+        if (Directory.Exists(tempDir))
+        {
+            Directory.Delete(tempDir, recursive: true);
+        }
     }
 }

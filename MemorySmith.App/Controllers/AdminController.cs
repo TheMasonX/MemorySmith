@@ -14,17 +14,20 @@ public class AdminController : ControllerBase
     private readonly MemorySmithLocalAuthService _auth;
     private readonly ICurrentUserContext _currentUser;
     private readonly AuditLogService _audit;
+    private readonly AdminSettingsService _settings;
 
     public AdminController(
         IMemorySmithDatabase database,
         MemorySmithLocalAuthService auth,
         ICurrentUserContext currentUser,
-        AuditLogService audit)
+        AuditLogService audit,
+        AdminSettingsService settings)
     {
         _database = database;
         _auth = auth;
         _currentUser = currentUser;
         _audit = audit;
+        _settings = settings;
     }
 
     [HttpGet("setup/status")]
@@ -107,6 +110,21 @@ public class AdminController : ControllerBase
         await _database.ProviderLinks.SetProviderEnabledAsync(providerName, request.Enabled, _currentUser.UserId, cancellationToken);
         await _audit.RecordAsync("provider.enabled.changed", "Provider", providerName, MemorySmithAuditOutcomes.Success, details: request, cancellationToken: cancellationToken);
         return NoContent();
+    }
+
+    [HttpGet("settings")]
+    [Authorize(Policy = MemorySmithPolicies.CanManageSettings)]
+    public ActionResult<IReadOnlyList<AdminSettingItem>> Settings()
+    {
+        return Ok(_settings.ListEditableSettings());
+    }
+
+    [HttpPut("settings")]
+    [Authorize(Policy = MemorySmithPolicies.CanManageSettings)]
+    public async Task<IActionResult> UpdateSetting([FromBody] AdminSettingUpdateRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _settings.UpdateAsync(request, cancellationToken);
+        return result.Succeeded ? NoContent() : BadRequest(new { error = result.Error });
     }
 
     [HttpGet("audit")]

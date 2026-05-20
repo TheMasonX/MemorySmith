@@ -8,6 +8,7 @@ public class MemorySmithOptions
     public string PagesPath { get; set; } = Path.Combine("..", "Data", "Pages");
     public string EventLogPath { get; set; } = Path.Combine("..", "Data", "Events", "audit.log");
     public string VarsPath { get; set; } = Path.Combine("..", "Data", "vars.json");
+    public string? SettingsOverridePath { get; set; }
     public string? ApiKey { get; set; }
     public bool AllowRemoteApi { get; set; }
     public DatabaseOptions Database { get; set; } = new();

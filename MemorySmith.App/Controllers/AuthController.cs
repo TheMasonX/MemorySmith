@@ -1,7 +1,9 @@
 using MemorySmith.App.Services;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Options;
 
 namespace MemorySmith.App.Controllers;
 
@@ -11,11 +13,19 @@ public class AuthController : ControllerBase
 {
     private readonly MemorySmithLocalAuthService _auth;
     private readonly ICurrentUserContext _currentUser;
+    private readonly IAuthenticationSchemeProvider _schemeProvider;
+    private readonly IOptionsMonitor<MemorySmithOptions> _options;
 
-    public AuthController(MemorySmithLocalAuthService auth, ICurrentUserContext currentUser)
+    public AuthController(
+        MemorySmithLocalAuthService auth,
+        ICurrentUserContext currentUser,
+        IAuthenticationSchemeProvider schemeProvider,
+        IOptionsMonitor<MemorySmithOptions> options)
     {
         _auth = auth;
         _currentUser = currentUser;
+        _schemeProvider = schemeProvider;
+        _options = options;
     }
 
     [HttpGet("me")]
@@ -62,10 +72,15 @@ public class AuthController : ControllerBase
 
     [HttpGet("challenge")]
     [AllowAnonymous]
-    public IActionResult ExternalChallenge([FromQuery] string scheme, [FromQuery] string? returnUrl = null)
+    public async Task<IActionResult> ExternalChallenge([FromQuery] string scheme, [FromQuery] string? returnUrl = null)
     {
         if (string.IsNullOrWhiteSpace(scheme))
             return BadRequest("scheme is required");
+        if (!IsAllowedExternalScheme(scheme) || await _schemeProvider.GetSchemeAsync(scheme) is null)
+            return BadRequest("External sign-in provider is not configured.");
+        if (_options.CurrentValue.Auth.RequireHttpsForRemoteAuth && !Request.IsHttps && !MemorySmithRequestGuardMiddleware.IsLoopback(HttpContext.Connection.RemoteIpAddress))
+            return BadRequest("External sign-in requires HTTPS for remote requests.");
+
         var safeReturn = MemorySmithLocalAuthService.SanitizeReturnUrl(returnUrl);
         var properties = new Microsoft.AspNetCore.Authentication.AuthenticationProperties
         {
@@ -77,6 +92,14 @@ public class AuthController : ControllerBase
         }
 
         return Challenge(properties, scheme);
+    }
+
+    private bool IsAllowedExternalScheme(string scheme)
+    {
+        var providers = _options.CurrentValue.Auth.Providers;
+        return string.Equals(scheme, "GitHub", StringComparison.OrdinalIgnoreCase)
+            && providers.GitHub.Enabled
+            && !string.IsNullOrWhiteSpace(providers.GitHub.ClientId);
     }
 }
 
