@@ -238,6 +238,7 @@
     private string _settingsSearch = string.Empty;
     private string _settingsCategory = AllFilterValue;
     private HashSet<string> _expandedSettingGroups = new(StringComparer.OrdinalIgnoreCase);
+    private HashSet<string> _knownSettingCategories = new(StringComparer.OrdinalIgnoreCase);
     private string _configurationSearch = string.Empty;
     private string _auditSearch = string.Empty;
     private string _auditOutcomeFilter = AllFilterValue;
@@ -305,7 +306,13 @@
         _audit = (await Database.AuditLogs.QueryAsync(new AuditLogQuery(PageSize: 100), CancellationToken.None)).Data;
         _recentVersions = await LoadRecentVersionsAsync();
         _editableSettings = Settings.ListEditableSettings().Select(item => new EditableConfigurationRow(item)).ToList();
-        _expandedSettingGroups = new HashSet<string>(SettingCategories, StringComparer.OrdinalIgnoreCase);
+        foreach (var category in SettingCategories)
+        {
+            if (_knownSettingCategories.Add(category))
+            {
+                _expandedSettingGroups.Add(category); // new categories start expanded; user-collapsed state is preserved
+            }
+        }
         _configurationItems = BuildConfigurationItems();
     }
 
