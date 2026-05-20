@@ -1,7 +1,7 @@
 {
   "Id": "project-wiki-admin-auth-hardening",
   "Title": "Admin Auth Hardening Current State",
-  "Content": "Admin, user-management, settings, audit, diagnostics, and restore policies now require an authenticated user with an explicit Admin role claim. AnonymousAccess=Admin, AuthenticatedDefaultRole=Admin, AutoEditorForAuthenticatedUsers, X-Api-Key compatibility, and OpenLocalEditorCompatibility do not satisfy privileged policies. Anonymous access is clamped to Viewer-only behavior; authenticated default role is clamped to Viewer or Editor. First-admin setup remains anonymous but loopback/token constrained. /admin exposes allowlisted non-secret settings through AdminSettingsService, persists them to appsettings.LocalDevelopment.json or MemorySmith:SettingsOverridePath, reloads configuration, and records settings.updated audit entries.",
+  "Content": "Admin, user-management, settings, audit, diagnostics, and restore policies now require an authenticated user with an explicit Admin role claim. AnonymousAccess=Admin, AuthenticatedDefaultRole=Admin, AutoEditorForAuthenticatedUsers, X-Api-Key compatibility, Auth:Enabled=false, and OpenLocalEditorCompatibility do not satisfy privileged policies. Anonymous access is clamped to Viewer-only behavior; authenticated default role is clamped to Viewer or Editor. First-admin setup remains anonymous but loopback/token constrained. /admin exposes allowlisted non-secret settings through AdminSettingsService, persists them to appsettings.LocalDevelopment.json or MemorySmith:SettingsOverridePath, reloads configuration, and records settings.updated audit entries.",
   "Status": 2,
   "Confidence": 0.9,
   "Tags": [

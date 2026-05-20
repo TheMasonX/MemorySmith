@@ -229,6 +229,33 @@ public class AppApiContractTests
     }
 
     [Test]
+    public async Task AdminApi_WithAuthDisabled_StillRejectsSignedOutAdminAccess()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"memorysmith-admin-auth-disabled-{Guid.NewGuid():N}");
+        var factory = CreateIsolatedFactory(tempDir, new Dictionary<string, string?>
+        {
+            ["MemorySmith:Auth:Enabled"] = "false"
+        });
+
+        try
+        {
+            using var anonymousClient = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+            var usersResponse = await anonymousClient.GetAsync("/api/admin/users");
+            var settingsResponse = await anonymousClient.GetAsync("/api/admin/settings");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(IsAuthChallenge(usersResponse.StatusCode), Is.True);
+                Assert.That(IsAuthChallenge(settingsResponse.StatusCode), Is.True);
+            });
+        }
+        finally
+        {
+            await DisposeFactoryTempDirAsync(factory, tempDir);
+        }
+    }
+
+    [Test]
     public async Task AdminSettings_UpdateRequiresAdminAndPersistsAllowedSetting()
     {
         var tempDir = Path.Combine(Path.GetTempPath(), $"memorysmith-admin-settings-{Guid.NewGuid():N}");

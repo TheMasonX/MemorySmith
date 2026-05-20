@@ -75,12 +75,6 @@ public sealed class MemorySmithPermissionHandler : AuthorizationHandler<MemorySm
     protected override async Task HandleRequirementAsync(AuthorizationHandlerContext context, MemorySmithPermissionRequirement requirement)
     {
         var auth = _options.CurrentValue.Auth;
-        if (!auth.Enabled)
-        {
-            context.Succeed(requirement);
-            return;
-        }
-
         var roles = context.User.FindAll(ClaimTypes.Role).Select(claim => claim.Value).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var isAuthenticated = context.User.Identity?.IsAuthenticated == true;
         if (RequiresAuthenticatedAdmin(requirement.Permission))
@@ -90,6 +84,12 @@ public sealed class MemorySmithPermissionHandler : AuthorizationHandler<MemorySm
                 context.Succeed(requirement);
             }
 
+            return;
+        }
+
+        if (!auth.Enabled)
+        {
+            context.Succeed(requirement);
             return;
         }
 

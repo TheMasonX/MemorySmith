@@ -13,7 +13,7 @@ The fix is to make privileged policies require an authenticated user with an exp
 
 ## Scope
 
-- Harden policy evaluation so `Admin`, `ManageUsers`, `ManageSettings`, `ViewAudit`, and `RestoreHistory` require a signed-in Admin user.
+- Harden policy evaluation so `Admin`, `ManageUsers`, `ManageSettings`, `ViewAudit`, and `RestoreHistory` require a signed-in Admin user even when compatibility settings or `Auth:Enabled=false` would otherwise relax authorization.
 - Keep `/admin/setup` anonymous but loopback/token constrained for first-admin bootstrap.
 - Sanitize config-derived anonymous/default roles so they cannot become `Admin`.
 - Add regression tests for the anonymous-admin misconfiguration and role-change endpoint.
