@@ -2306,6 +2306,16 @@ public sealed partial class MemoryChatAgent : IChatAgent
             return result;
         }
 
+        if (!_options.Value.Chat.AgentWritesEnabled)
+        {
+            return result with
+            {
+                Reply = "Agent writes are disabled by configuration; no memories or pages were changed.",
+                ProposedMemoryWrites = [],
+                ProposedPageWrites = []
+            };
+        }
+
         if (!CanApplyAgentWrites())
         {
             return result with
