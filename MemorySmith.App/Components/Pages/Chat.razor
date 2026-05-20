@@ -1082,6 +1082,11 @@
 
     private async Task SendAsync(string? explicitMessage)
     {
+        if (_mode == MemoryChatMode.Agent && !CanUseAgentMode)
+        {
+            _mode = MemoryChatMode.Chat;
+        }
+
         var message = (explicitMessage ?? _draft).Trim();
         if (string.IsNullOrWhiteSpace(message) || _isSending)
         {
