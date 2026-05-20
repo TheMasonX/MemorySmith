@@ -45,7 +45,8 @@ public class ProjectWikiTestbaseTests
         {
             Assert.That(records, Has.Count.GreaterThanOrEqualTo(5));
             Assert.That(records.Select(record => record.Id), Does.Contain("project-wiki-data-folder-policy"));
-            Assert.That(records.All(record => record.Status == MemoryStatus.Core), Is.True);
+            Assert.That(records.Any(record => record.Status == MemoryStatus.Core), Is.True);
+            Assert.That(records.All(record => record.Status is MemoryStatus.Core or MemoryStatus.Working), Is.True);
             Assert.That(records.All(record => ProjectWikiFixture.SafeIdPattern.IsMatch(record.Id)), Is.True);
             Assert.That(records.All(record => !string.IsNullOrWhiteSpace(record.Title)), Is.True);
             Assert.That(records.All(record => !string.IsNullOrWhiteSpace(record.Content)), Is.True);

@@ -1,5 +1,8 @@
 # MemorySmith
 
+[![CI](https://github.com/TheMasonX/MemorySmith/workflows/CI/badge.svg)](https://github.com/TheMasonX/MemorySmith/actions/workflows/ci.yml)
+[![Docs Pages](https://github.com/TheMasonX/MemorySmith/workflows/Docs%20Pages/badge.svg)](https://github.com/TheMasonX/MemorySmith/actions/workflows/docs-pages.yml)
+
 MemorySmith is a single-host ASP.NET Core app for local structured memory management. It hosts a Blazor workbench UI, markdown pages, REST API, MCP endpoint, file-backed content storage, SQLite-backed security/audit metadata, local chat/agent workflows, and background maintenance in one process. The `/memories` page is the primary structured memory workbench. The repository ships with a live project wiki inside `Data/Memories`, and the app uses its own memory store as a testbed.
 
 ## Quick Start

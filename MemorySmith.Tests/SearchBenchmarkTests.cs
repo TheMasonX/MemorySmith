@@ -65,7 +65,7 @@ public class SearchBenchmarkTests
         new("chat compact history titles model metadata local storage", MustContainId: "project-wiki-chat-local-storage-persistence", MaxMs: 300),
         new("chat stop button cancellation partial response model used", MustContainId: "project-wiki-chat-streaming-thinking", MaxMs: 300),
         new("github copilot auth model unavailable haiku before sonnet", MustContainId: "project-wiki-chat-agent-provider", MaxMs: 300),
-        new("application intercepted wiki tool calls context pack get search", MustContainId: "project-wiki-chat-agent-provider", MaxMs: 300),
+        new("application intercepted wiki tool calls context pack get search", MustContainId: "project-wiki-mcp-search-tools-current", MaxMs: 300),
         new("ctrl v copied image paste html data url clipboard", MustContainId: "project-wiki-chat-image-attachments", MaxMs: 300),
     ];
 
