@@ -178,7 +178,7 @@ public class ChatModelOption
 public class MaintenanceAgentOptions
 {
     [JsonPropertyName("config_path")]
-    public string ConfigPath { get; set; } = Path.Combine("..", "Data", "maintenance_agent.json");
+    public string ConfigPath { get; set; } = Path.Combine("..", "Data", "maintenance_agent.yaml");
 
     [JsonPropertyName("read")]
     public List<string> Read { get; set; } = [Path.Combine("..", "Data", "Memories"), Path.Combine("..", "Data", "Pages")];
