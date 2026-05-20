@@ -1897,6 +1897,259 @@ body {
     cursor: pointer;
 }
 
+.proposals-commandbar {
+    grid-template-columns: 180px minmax(0, 1fr);
+}
+
+.proposals-body {
+    display: grid;
+    grid-template-columns: minmax(340px, 34%) minmax(520px, 1fr);
+    gap: 8px;
+    min-height: 0;
+    flex: 1;
+}
+
+.proposal-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+    width: 100%;
+    padding: 10px 12px;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--vscode-border-soft);
+    color: var(--vscode-text);
+    text-align: left;
+    cursor: pointer;
+}
+
+.proposal-row:hover,
+.proposal-row.is-selected {
+    background: var(--vscode-accent-hover);
+}
+
+.proposal-row-main,
+.proposal-row-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-width: 0;
+}
+
+.proposal-row-main small,
+.proposal-row-meta,
+.proposal-history-entry small {
+    color: var(--vscode-text-muted);
+    font-size: 0.76rem;
+}
+
+.proposal-status,
+.proposal-risk {
+    display: inline-flex;
+    align-items: center;
+    min-height: 20px;
+    padding: 2px 7px;
+    border: 1px solid var(--vscode-border);
+    border-radius: 4px;
+    font-size: 0.74rem;
+    line-height: 1.2;
+    text-transform: capitalize;
+}
+
+.proposal-status.is-open {
+    border-color: var(--vscode-accent);
+    color: #8ccfff;
+}
+
+.proposal-status.is-needs-revision,
+.proposal-risk.is-medium {
+    border-color: var(--vscode-yellow);
+    color: var(--vscode-yellow);
+}
+
+.proposal-status.is-approved,
+.proposal-risk.is-low {
+    border-color: var(--vscode-green);
+    color: var(--vscode-green);
+}
+
+.proposal-status.is-rejected,
+.proposal-risk.is-high {
+    border-color: var(--vscode-red);
+    color: var(--vscode-red);
+}
+
+.proposal-detail-header {
+    justify-content: space-between;
+}
+
+.proposal-detail-scroll {
+    overflow: auto;
+    min-height: 0;
+    flex: 1;
+    padding: 10px;
+}
+
+.proposal-empty-state {
+    display: grid;
+    place-items: center;
+    gap: 8px;
+    height: 100%;
+    color: var(--vscode-text-muted);
+}
+
+.proposal-metadata-grid {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: 6px 12px;
+    margin-bottom: 10px;
+    padding: 10px;
+    background: var(--vscode-panel-soft);
+    border: 1px solid var(--vscode-border-soft);
+}
+
+.proposal-metadata-grid span {
+    color: var(--vscode-text-muted);
+}
+
+.proposal-metadata-grid strong {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.proposal-change {
+    margin-bottom: 10px;
+    border: 1px solid var(--vscode-border-soft);
+    background: var(--vscode-panel-soft);
+}
+
+.proposal-change summary {
+    padding: 8px 10px;
+    cursor: pointer;
+    color: var(--vscode-text);
+    overflow-wrap: anywhere;
+}
+
+.proposal-diff-viewer {
+    overflow: auto;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 0.78rem;
+    line-height: 1.35;
+    border-top: 1px solid var(--vscode-border-soft);
+}
+
+.proposal-diff-line {
+    white-space: pre;
+    padding: 2px 8px;
+}
+
+.proposal-diff-line.is-header {
+    color: var(--vscode-text-muted);
+    background: var(--vscode-panel-strong);
+}
+
+.proposal-diff-line.is-added {
+    color: var(--vscode-green);
+    background: rgba(137, 209, 133, 0.08);
+}
+
+.proposal-diff-line.is-removed {
+    color: var(--vscode-red);
+    background: rgba(241, 76, 76, 0.08);
+}
+
+.proposal-evidence-list,
+.proposal-comment-thread {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.proposal-evidence-item,
+.proposal-history-entry {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 8px 10px;
+    border: 1px solid var(--vscode-border-soft);
+    background: var(--vscode-panel-soft);
+}
+
+.proposal-history-entry.is-comment {
+    border-color: var(--vscode-accent-soft);
+}
+
+.proposal-evidence-item p,
+.proposal-history-entry p {
+    margin: 2px 0 0;
+    color: #cccccc;
+}
+
+.proposal-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) max-content max-content max-content;
+    gap: 8px;
+    align-items: end;
+    padding: 10px;
+    border-top: 1px solid var(--vscode-border);
+    background: var(--vscode-panel-strong);
+}
+
+.proposal-comment-input {
+    min-width: 0;
+}
+
+.topic-map-visualization {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.topic-map-svg {
+    width: 100%;
+    min-height: 260px;
+    border: 1px solid var(--vscode-border-soft);
+    background: var(--vscode-panel-soft);
+}
+
+.topic-node {
+    stroke-width: 2;
+}
+
+.topic-node.is-memory {
+    fill: var(--vscode-accent-soft);
+    stroke: #8ccfff;
+}
+
+.topic-node.is-page {
+    fill: rgba(137, 209, 133, 0.18);
+    stroke: var(--vscode-green);
+}
+
+.topic-node.is-review-due {
+    fill: rgba(204, 167, 0, 0.18);
+    stroke: var(--vscode-yellow);
+}
+
+.topic-node.is-expired {
+    fill: rgba(241, 76, 76, 0.18);
+    stroke: var(--vscode-red);
+}
+
+.topic-map-svg text {
+    fill: var(--vscode-text);
+    font-size: 11px;
+}
+
+.topic-map-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    color: var(--vscode-text-muted);
+    font-size: 0.78rem;
+}
+
 @media (max-width: 1400px) {
     .chat-workbench.is-sidebar-open {
         grid-template-columns: minmax(0, 1fr) clamp(300px, 30%, 360px);
@@ -1949,7 +2202,9 @@ body {
     .health-charts-row,
     .health-lower-grid,
     .health-operations-grid,
-    .chat-composer {
+    .chat-composer,
+    .proposals-body,
+    .proposal-actions {
         grid-template-columns: 1fr;
     }
 

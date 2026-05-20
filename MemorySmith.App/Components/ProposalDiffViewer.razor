@@ -1,0 +1,27 @@
+@using MemorySmith.App.Services
+
+<div class="proposal-diff-viewer">
+    @foreach (var line in Lines)
+    {
+        <div class="proposal-diff-line @DiffLineClass(line)">@line</div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public MaintenanceProposalChange? Change { get; set; }
+
+    private IReadOnlyList<string> Lines => (Change?.Diff ?? string.Empty)
+        .Replace("\r\n", "\n", StringComparison.Ordinal)
+        .Split('\n')
+        .Where(line => line.Length > 0)
+        .ToList();
+
+    private static string DiffLineClass(string line) => line switch
+    {
+        var value when value.StartsWith("+", StringComparison.Ordinal) && !value.StartsWith("+++", StringComparison.Ordinal) => "is-added",
+        var value when value.StartsWith("-", StringComparison.Ordinal) && !value.StartsWith("---", StringComparison.Ordinal) => "is-removed",
+        var value when value.StartsWith("+++", StringComparison.Ordinal) || value.StartsWith("---", StringComparison.Ordinal) => "is-header",
+        _ => "is-context"
+    };
+}

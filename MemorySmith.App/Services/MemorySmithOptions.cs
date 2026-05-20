@@ -1,5 +1,6 @@
 namespace MemorySmith.App.Services;
 
+using System.Text.Json.Serialization;
 using MemorySmith.Storage;
 
 public class MemorySmithOptions
@@ -21,6 +22,7 @@ public class MemorySmithOptions
     public LimitOptions Limits { get; set; } = new();
     public SourceLinkOptions SourceLinks { get; set; } = new();
     public ChatOptions Chat { get; set; } = new();
+    public MaintenanceAgentOptions MaintenanceAgent { get; set; } = new();
 }
 
 public class AuthOptions
@@ -171,4 +173,106 @@ public class ChatModelOption
     public string? Description { get; set; }
     public int? ContextWindowTokens { get; set; }
     public string? RateLimit { get; set; }
+}
+
+public class MaintenanceAgentOptions
+{
+    [JsonPropertyName("config_path")]
+    public string ConfigPath { get; set; } = Path.Combine("..", "Data", "maintenance_agent.json");
+
+    [JsonPropertyName("read")]
+    public List<string> Read { get; set; } = [Path.Combine("..", "Data", "Memories"), Path.Combine("..", "Data", "Pages")];
+
+    [JsonPropertyName("write")]
+    public List<string> Write { get; set; } = [Path.Combine("..", "Data", "Memories", "Working"), Path.Combine("..", "Data", "Pages")];
+
+    [JsonPropertyName("direct_write")]
+    public bool DirectWrite { get; set; }
+
+    [JsonPropertyName("use_llm")]
+    public bool UseLlm { get; set; } = true;
+
+    [JsonPropertyName("provider")]
+    public string Provider { get; set; } = "Ollama";
+
+    [JsonPropertyName("ollama_endpoint")]
+    public string OllamaEndpoint { get; set; } = "http://localhost:11434";
+
+    [JsonPropertyName("model")]
+    public string Model { get; set; } = "gemma4:e4b";
+
+    [JsonPropertyName("agent_version")]
+    public string AgentVersion { get; set; } = "maintenance-agent.v1";
+
+    [JsonPropertyName("max_findings_per_task")]
+    public int MaxFindingsPerTask { get; set; } = 50;
+
+    [JsonPropertyName("tasks")]
+    public Dictionary<string, bool> Tasks { get; set; } = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["spot_checks"] = true,
+        ["staleness_scan"] = true,
+        ["consistency_checks"] = true,
+        ["relationship_integrity"] = true,
+        ["topic_map"] = true,
+        ["synthesis"] = false,
+        ["embedding_chunking_maintenance"] = true
+    };
+
+    [JsonPropertyName("schedule")]
+    public MaintenanceAgentScheduleOptions Schedule { get; set; } = new();
+
+    [JsonPropertyName("resource_probe")]
+    public MaintenanceAgentResourceProbeOptions ResourceProbe { get; set; } = new();
+
+    [JsonPropertyName("storage")]
+    public MaintenanceAgentStorageOptions Storage { get; set; } = new();
+}
+
+public class MaintenanceAgentScheduleOptions
+{
+    [JsonPropertyName("enabled")]
+    public bool Enabled { get; set; }
+
+    [JsonPropertyName("weekly_day")]
+    public string WeeklyDay { get; set; } = "Sunday";
+
+    [JsonPropertyName("weekly_hour_local")]
+    public int WeeklyHourLocal { get; set; } = 3;
+
+    [JsonPropertyName("minimum_hours_between_runs")]
+    public int MinimumHoursBetweenRuns { get; set; } = 24;
+}
+
+public class MaintenanceAgentResourceProbeOptions
+{
+    [JsonPropertyName("enabled")]
+    public bool Enabled { get; set; } = true;
+
+    [JsonPropertyName("skip_when_busy")]
+    public bool SkipWhenBusy { get; set; } = true;
+
+    [JsonPropertyName("busy_process_names")]
+    public List<string> BusyProcessNames { get; set; } =
+    [
+        "steam",
+        "epicgameslauncher",
+        "fortniteclient-win64-shipping",
+        "r5apex",
+        "cyberpunk2077",
+        "starfield",
+        "eldenring"
+    ];
+}
+
+public class MaintenanceAgentStorageOptions
+{
+    [JsonPropertyName("proposals_path")]
+    public string ProposalsPath { get; set; } = Path.Combine("..", "Data", "Proposals");
+
+    [JsonPropertyName("topic_map_cache_path")]
+    public string TopicMapCachePath { get; set; } = Path.Combine("..", "Data", "Graph", "topic-map-cache.json");
+
+    [JsonPropertyName("last_run_path")]
+    public string LastRunPath { get; set; } = Path.Combine("..", "Data", "Events", "maintenance-agent-last-run.json");
 }

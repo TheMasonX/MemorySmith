@@ -11,6 +11,13 @@
     <MudNavLink Href="/chat" Icon="@Icons.Material.Filled.Chat">
         Chat
     </MudNavLink>
+    <AuthorizeView Policy="@MemorySmithPolicies.CanApproveAgentWrites">
+        <Authorized>
+            <MudNavLink Href="/proposals" Icon="@Icons.Material.Filled.RuleFolder">
+                Proposals
+            </MudNavLink>
+        </Authorized>
+    </AuthorizeView>
     <MudNavLink Href="/variables" Icon="@Icons.Material.Filled.DataObject">
         Variables
     </MudNavLink>

@@ -294,6 +294,14 @@ try
     builder.Services.AddSingleton<IMemoryChangePublisher, MemoryChangePublisher>();
     builder.Services.AddSingleton<MemoryApplicationService>();
     builder.Services.AddSingleton<MemoryMaintenanceTasks>();
+    builder.Services.AddSingleton<MaintenanceAgentConfigService>();
+    builder.Services.AddSingleton<MaintenanceResourceProbe>();
+    builder.Services.AddSingleton<MaintenanceDiffService>();
+    builder.Services.AddSingleton<MaintenanceWritePermissionService>();
+    builder.Services.AddSingleton<IMaintenanceProposalStore, FileMaintenanceProposalStore>();
+    builder.Services.AddSingleton<MaintenanceProposalWorkflow>();
+    builder.Services.AddSingleton<MaintenanceTopicMapService>();
+    builder.Services.AddScoped<MaintenanceAgentService>();
     builder.Services.AddSingleton<OperationalDiagnosticsService>();
     builder.Services.AddHttpClient<OllamaChatProvider>();
     builder.Services.AddScoped<GitHubCopilotChatProvider>();
@@ -307,6 +315,12 @@ try
     if (maintenanceEnabled)
     {
         builder.Services.AddHostedService<MemoryMaintenanceService>();
+    }
+
+    var maintenanceAgentSchedulerEnabled = builder.Configuration.GetValue("MemorySmith:MaintenanceAgent:Schedule:Enabled", false);
+    if (maintenanceAgentSchedulerEnabled)
+    {
+        builder.Services.AddHostedService<MaintenanceAgentSchedulerService>();
     }
 
     builder.Services.AddControllers()

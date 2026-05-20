@@ -1,0 +1,50 @@
+{
+  "read": [
+    "../Data/Memories",
+    "../Data/Pages"
+  ],
+  "write": [
+    "../Data/Memories/Working",
+    "../Data/Pages"
+  ],
+  "direct_write": false,
+  "use_llm": true,
+  "provider": "Ollama",
+  "ollama_endpoint": "http://localhost:11434",
+  "model": "gemma4:e4b",
+  "agent_version": "maintenance-agent.v1",
+  "max_findings_per_task": 50,
+  "tasks": {
+    "spot_checks": true,
+    "staleness_scan": true,
+    "consistency_checks": true,
+    "relationship_integrity": true,
+    "topic_map": true,
+    "synthesis": false,
+    "embedding_chunking_maintenance": true
+  },
+  "schedule": {
+    "enabled": false,
+    "weekly_day": "Sunday",
+    "weekly_hour_local": 3,
+    "minimum_hours_between_runs": 24
+  },
+  "resource_probe": {
+    "enabled": true,
+    "skip_when_busy": true,
+    "busy_process_names": [
+      "steam",
+      "epicgameslauncher",
+      "fortniteclient-win64-shipping",
+      "r5apex",
+      "cyberpunk2077",
+      "starfield",
+      "eldenring"
+    ]
+  },
+  "storage": {
+    "proposals_path": "../Data/Proposals",
+    "topic_map_cache_path": "../Data/Graph/topic-map-cache.json",
+    "last_run_path": "../Data/Events/maintenance-agent-last-run.json"
+  }
+}

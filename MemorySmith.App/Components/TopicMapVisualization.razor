@@ -1,0 +1,71 @@
+@using MemorySmith.App.Services
+
+<div class="topic-map-visualization">
+    @if (TopicMap is null)
+    {
+        <span class="wiki-muted">No topic map has been generated yet.</span>
+    }
+    else
+    {
+        <svg viewBox="0 0 900 360" class="topic-map-svg" role="img" aria-label="Topic map preview">
+            @foreach (var item in LayoutNodes)
+            {
+                <g>
+                    <circle cx="@item.X" cy="@item.Y" r="@item.Radius" class="@NodeClass(item.Node)" />
+                    <text x="@(item.X + item.Radius + 4)" y="@(item.Y + 4)">@ShortLabel(item.Node.Id)</text>
+                </g>
+            }
+        </svg>
+        <div class="topic-map-summary">
+            <span>@TopicMap.Nodes.Count node(s)</span>
+            <span>@TopicMap.Edges.Count edge(s)</span>
+            <span>@TopicMap.Clusters.Count cluster(s)</span>
+            <span>@TopicMap.OrphanedNodes.Count orphan(s)</span>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public TopicMapDocument? TopicMap { get; set; }
+
+    private IReadOnlyList<LayoutNode> LayoutNodes
+    {
+        get
+        {
+            if (TopicMap is null)
+            {
+                return [];
+            }
+
+            var nodes = TopicMap.Nodes.Take(32).ToList();
+            var result = new List<LayoutNode>();
+            var centerX = 450d;
+            var centerY = 180d;
+            var radius = 120d;
+            for (var index = 0; index < nodes.Count; index++)
+            {
+                var angle = nodes.Count == 0 ? 0 : 2 * Math.PI * index / nodes.Count;
+                result.Add(new LayoutNode(
+                    nodes[index],
+                    Math.Round(centerX + Math.Cos(angle) * radius, 1),
+                    Math.Round(centerY + Math.Sin(angle) * radius, 1),
+                    nodes[index].Kind == "page" ? 7 : 9));
+            }
+
+            return result;
+        }
+    }
+
+    private static string NodeClass(TopicMapNode node) => node.StalenessStatus switch
+    {
+        "expired" => "topic-node is-expired",
+        "review_due" => "topic-node is-review-due",
+        _ when node.Kind == "page" => "topic-node is-page",
+        _ => "topic-node is-memory"
+    };
+
+    private static string ShortLabel(string value) => value.Length <= 34 ? value : value[..31] + "...";
+
+    private sealed record LayoutNode(TopicMapNode Node, double X, double Y, int Radius);
+}
