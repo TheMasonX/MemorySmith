@@ -77,6 +77,15 @@ public sealed class MaintenanceAgentController : ControllerBase
 
         return Ok(await _topicMap.BuildAsync(cancellationToken));
     }
+
+    [HttpGet("topic-map/mermaid")]
+    public async Task<IActionResult> TopicMapMermaid([FromQuery] bool refresh = false, [FromQuery] int maxEdges = 80, CancellationToken cancellationToken = default)
+    {
+        var document = refresh
+            ? await _topicMap.BuildAsync(cancellationToken)
+            : await _topicMap.LoadCachedAsync(cancellationToken) ?? await _topicMap.BuildAsync(cancellationToken);
+        return Content(MaintenanceTopicMapService.GenerateMermaid(document, maxEdges), "text/plain");
+    }
 }
 
 public sealed record MaintenanceOnDemandRequest(string Task);

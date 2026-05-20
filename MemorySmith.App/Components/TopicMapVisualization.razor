@@ -8,6 +8,12 @@
     else
     {
         <svg viewBox="0 0 900 360" class="topic-map-svg" role="img" aria-label="Topic map preview">
+            @foreach (var edge in LayoutEdges)
+            {
+                <line x1="@edge.Source.X" y1="@edge.Source.Y" x2="@edge.Target.X" y2="@edge.Target.Y" class="topic-edge">
+                    <title>@edge.Type</title>
+                </line>
+            }
             @foreach (var item in LayoutNodes)
             {
                 <g>
@@ -57,6 +63,24 @@
         }
     }
 
+    private IReadOnlyList<LayoutEdge> LayoutEdges
+    {
+        get
+        {
+            if (TopicMap is null)
+            {
+                return [];
+            }
+
+            var nodes = LayoutNodes.ToDictionary(item => item.Node.Id, StringComparer.OrdinalIgnoreCase);
+            return TopicMap.Edges
+                .Take(120)
+                .Where(edge => nodes.ContainsKey(edge.SourceId) && nodes.ContainsKey(edge.TargetId))
+                .Select(edge => new LayoutEdge(nodes[edge.SourceId], nodes[edge.TargetId], edge.Type))
+                .ToList();
+        }
+    }
+
     private static string NodeClass(TopicMapNode node) => node.StalenessStatus switch
     {
         "expired" => "topic-node is-expired",
@@ -68,4 +92,5 @@
     private static string ShortLabel(string value) => value.Length <= 34 ? value : value[..31] + "...";
 
     private sealed record LayoutNode(TopicMapNode Node, double X, double Y, int Radius);
+    private sealed record LayoutEdge(LayoutNode Source, LayoutNode Target, string Type);
 }

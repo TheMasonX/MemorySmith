@@ -1,5 +1,6 @@
 using MemorySmith.App.Services;
 using MemorySmith.Core.Models;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 namespace MemorySmith.Tests;
@@ -171,6 +172,20 @@ public class MaintenanceAgentWorkflowTests
                 });
         }
 
+        [Test]
+        public void ConfigService_RejectsJsonConfigPath()
+        {
+                var configPath = Path.Combine(_tempDir, "maintenance_agent.json");
+                File.WriteAllText(configPath, "{ \"direct_write\": true }");
+                var options = new MemorySmithOptions
+                {
+                        MaintenanceAgent = new MaintenanceAgentOptions { ConfigPath = configPath }
+                };
+                var service = new MaintenanceAgentConfigService(new StaticOptionsMonitor<MemorySmithOptions>(options));
+
+                Assert.That(() => service.GetCurrent(), Throws.InvalidOperationException.With.Message.Contains("YAML"));
+        }
+
     [Test]
     public async Task TopicMap_ExtractsHeadingsRelationshipsCyclesAndStaleness()
     {
@@ -201,9 +216,80 @@ public class MaintenanceAgentWorkflowTests
             Assert.That(topicMap.Nodes.Single(node => node.Id == "old-record").StalenessStatus, Is.EqualTo("expired"));
             Assert.That(topicMap.Edges.Any(edge => edge.SourceId == "new-record" && edge.TargetId == "old-record" && edge.Type == "Supersedes"), Is.True);
             Assert.That(topicMap.Edges.Any(edge => edge.SourceId == "page:topic-page" && edge.TargetId == "new-record" && edge.Type == "Mentions"), Is.True);
+            Assert.That(MaintenanceTopicMapService.GenerateMermaid(topicMap), Does.Contain("Supersedes"));
             Assert.That(topicMap.DependencyCycles, Is.Not.Empty);
             Assert.That(topicMap.Clusters.Single(cluster => cluster.Key == "project-wiki").NodeIds, Is.EquivalentTo(new[] { "old-record", "new-record" }));
             Assert.That(File.Exists(Path.Combine(_tempDir, "Graph", "topic-map-cache.json")), Is.True);
+        });
+    }
+
+    [Test]
+    public async Task TopicMap_LoadCachedReturnsNullForCorruptCache()
+    {
+        var cachePath = Path.Combine(_tempDir, "Graph", "topic-map-cache.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(cachePath)!);
+        await File.WriteAllTextAsync(cachePath, "not json");
+        var service = new MaintenanceTopicMapService(_memoryStore, _pages, _config);
+
+        var cached = await service.LoadCachedAsync(CancellationToken.None);
+
+        Assert.That(cached, Is.Null);
+    }
+
+    [Test]
+    public async Task AgentRun_CreatesReviewProposalForDeterministicFindings()
+    {
+        _memoryStore.Save(new MemoryRecord
+        {
+            Id = "expired-record",
+            Title = "Expired Record",
+            Content = "Old guidance.",
+            Tags = ["project-wiki", "expires:2000-01"],
+            LastUpdated = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+        });
+        var topicMap = new MaintenanceTopicMapService(_memoryStore, _pages, _config);
+        var agent = new MaintenanceAgentService(
+            _config,
+            new MaintenanceResourceProbe(),
+            topicMap,
+            _workflow,
+            [],
+            NullLogger<MaintenanceAgentService>.Instance);
+
+        var result = await agent.RunMaintenanceOnDemandAsync("staleness_scan", CancellationToken.None);
+        var proposals = await _workflow.ListAsync(CancellationToken.None);
+        var proposal = proposals.Single();
+        await _workflow.ApproveAsync(proposal.ProposalId, "Create review page.", CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Outputs.Single().Findings, Has.Count.EqualTo(1));
+            Assert.That(result.Outputs.Single().Proposals, Has.Count.EqualTo(1));
+            Assert.That(proposal.Changes.Single().Path, Does.Contain(Path.Combine("Pages", "maintenance-agent")));
+            Assert.That(proposal.Changes.Single().After, Does.Contain("expired-record"));
+            Assert.That(File.Exists(proposal.Changes.Single().Path), Is.True);
+        });
+    }
+
+    [Test]
+    public void SchedulerTiming_RespectsWeeklyWindowAndMinimumInterval()
+    {
+        var schedule = new MaintenanceAgentScheduleOptions
+        {
+            WeeklyDay = "Monday",
+            WeeklyHourLocal = 4,
+            MinimumHoursBetweenRuns = 24
+        };
+        var mondayWindow = new DateTimeOffset(2026, 5, 18, 4, 15, 0, TimeSpan.Zero);
+        var utcNow = new DateTimeOffset(2026, 5, 19, 4, 15, 0, TimeSpan.Zero);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(MaintenanceAgentSchedulerService.IsWeeklyWindow(schedule, mondayWindow), Is.True);
+            Assert.That(MaintenanceAgentSchedulerService.IsWeeklyWindow(schedule, mondayWindow.AddHours(1)), Is.False);
+            Assert.That(MaintenanceAgentSchedulerService.ShouldRun(null, schedule, utcNow), Is.True);
+            Assert.That(MaintenanceAgentSchedulerService.ShouldRun(utcNow.AddHours(-23), schedule, utcNow), Is.False);
+            Assert.That(MaintenanceAgentSchedulerService.ShouldRun(utcNow.AddHours(-24), schedule, utcNow), Is.True);
         });
     }
 
