@@ -10,14 +10,16 @@ This folder is the human-readable side of the project wiki. Pages here are meant
 - [Operations](operations.md) covers running, validating, publishing, and the important data paths.
 - [Search and Chat](search-and-chat.md) explains lexical, semantic, hybrid, MCP, chat, and agent behavior.
 - [Core Memory System Improvements RFC](temp-plan.md) reviews long-term options for making memories, search, pages, and chat more useful for AI agents and humans.
+- [AI Memory Suite Implementation Plan](ai-memory-suite-implementation-plan.md) records the full 10-round council synthesis and phased plan for tag policy, staleness, retrieval, Agent writes, schema promotion, and page chunking.
 - [Council Workflow](llm-council.md) describes the multi-perspective review method for major MemorySmith decisions.
 - [Deep Research Prompt](memory-system-deep-research-prompt.md) turns the RFC's externally researchable questions into a prompt for Microsoft Copilot or ChatGPT Deep Research.
+- [Deep Research Intake Notes](deep-research-intake-20260520.md) distills the latest external-research response into decision-ready guidance and unresolved local questions.
 - [Future Tasks](tasks.md) tracks product work in a checklist format.
 
 ## What Lives Where
 
 | Area | Purpose |
-|---|---|
+| --- | --- |
 | `Data/Memories` | Structured wiki records used by search, MCP, tests, and agent context. |
 | `Data/Pages` | Markdown pages for readable notes, runbooks, and planning context. |
 | `Data/Pages/assets` | Page images, video, audio, and other files served through `/page-assets`. |
@@ -29,7 +31,7 @@ This folder is the human-readable side of the project wiki. Pages here are meant
 ## Current App Surfaces
 
 | Surface | What it is for |
-|---|---|
+| --- | --- |
 | `/memories` | Browse, search, create, edit, and maintain structured memory records. |
 | `/pages` | Create, search, edit, preview, and render markdown-backed pages from this folder. |
 | `/chat` | Ask questions with wiki context, use provider/model selection, attachments, and optional agent mode. |

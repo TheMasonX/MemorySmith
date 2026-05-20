@@ -99,3 +99,5 @@ After research returns, run a [Council Workflow](llm-council.md) review before c
 - findings that justify a prototype;
 - findings that require local benchmarks or user testing;
 - findings that should be rejected because they conflict with MemorySmith's local-first goals.
+
+The latest captured response has been summarized in [Deep Research Intake Notes](deep-research-intake-20260520.md).

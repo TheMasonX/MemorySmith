@@ -4,7 +4,7 @@ Status: Draft RFC, council-reviewed on 2026-05-20
 
 Scope: Wiki and memory-system planning only; no implementation is implied by this page
 
-Related: [Search and Chat](search-and-chat.md), [Council Workflow](llm-council.md), [Deep Research Prompt](memory-system-deep-research-prompt.md), `MemorySmith.Core/Docs/Plans/MemorySystemSchemaImprovements_20260519.md`
+Related: [Search and Chat](search-and-chat.md), [Council Workflow](llm-council.md), [Deep Research Prompt](memory-system-deep-research-prompt.md), [AI Memory Suite Implementation Plan](ai-memory-suite-implementation-plan.md), `MemorySmith.Core/Docs/Plans/MemorySystemSchemaImprovements_20260519.md`
 
 ## 1. Executive Summary
 
@@ -24,7 +24,7 @@ Confidence in this revised direction: 82%. The biggest risks are manual conventi
 This plan optimizes for three audiences at once.
 
 | Audience | Need | Design implication |
-|---|---|---|
+| --- | --- | --- |
 | AI coding agents | Compact, source-grounded truth that ranks well in MCP/search/context packs | Keep structured memories atomic, tagged, sourced, and linked. Prefer JSON output for tools when an agent will parse it. |
 | Human wiki readers | Browseable explanations, decisions, runbooks, and learning paths | Keep longer narrative in markdown pages. Link pages to structured memories when a fact needs source links or lifecycle metadata. |
 | Chat users | Ask questions, learn concepts, inspect evidence, and optionally approve Agent writes | Chat should retrieve both memories and pages, show references/trace evidence, and explain when an answer depends on strict rules or stale records. |
@@ -70,7 +70,7 @@ Keep normal flat tags for broad topics, such as `project-wiki`, `chat`, `search`
 Use namespaced tags only for behavior-relevant hints. Prefer lowercase, colon-delimited tags without a leading `#` because current MemorySmith tags are stored as plain strings:
 
 | Tag | Meaning | Example |
-|---|---|---|
+| --- | --- | --- |
 | `kind:rule` | A strict rule or invariant appears in the content | `kind:rule` |
 | `kind:procedure` | The memory describes a repeatable workflow | `kind:procedure` |
 | `priority:critical` | Agents should treat this as high priority when relevant | `priority:critical` |

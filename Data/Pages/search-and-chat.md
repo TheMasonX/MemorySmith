@@ -5,7 +5,7 @@ MemorySmith has three search modes and one chat surface that can use those modes
 ## Search Modes
 
 | Mode | Best for | Behavior |
-|---|---|---|
+| --- | --- | --- |
 | Lexical | Exact terms, tags, IDs, source words | Uses Lucene-style tokenization and weighted title/tag/reference/content scoring. |
 | Semantic | Conceptual matches | Uses ONNX embeddings when local model assets are present, otherwise falls back to token/tag/title/reference/alias scoring. |
 | Hybrid | General discovery | Combines lexical and semantic ranks with Reciprocal Rank Fusion. |
@@ -33,7 +33,7 @@ Check `/health` after restart to confirm whether the provider is active or falli
 The MCP endpoint is available at `/mcp` and exposes local tools over the wiki. The most useful tools are:
 
 | Tool | Use it when |
-|---|---|
+| --- | --- |
 | `memorysmith_search` | You need direct lexical matches. |
 | `memorysmith_semantic_search` | You need concept-level recall. |
 | `memorysmith_hybrid_search` | You need balanced discovery. |
@@ -94,7 +94,7 @@ Use memories and pages differently. Structured memories are best for compact fac
 For agent workflows:
 
 | Task | Best first tool | Follow-up |
-|---|---|---|
+| --- | --- | --- |
 | Broad project discovery | `memorysmith_unified_search` or hybrid search | Fetch the most relevant page or memory directly. |
 | Architecture or implementation planning | `memorysmith_context_pack` | Pull `memorysmith_source_bundle` only for records whose source links matter. |
 | Exact fact lookup | Lexical search or `memorysmith_get` | Check references/conflicts before treating the fact as current. |
@@ -114,7 +114,7 @@ The long-term search goal is not only higher scores; it is better recall of the 
 - context packs should preserve relationships, warnings, and enough provenance for agents to reason safely;
 - source bundles should stay bounded and be used after search has narrowed the evidence set.
 
-The [Core Memory System Improvements RFC](temp-plan.md) recommends a convention-first approach with validation and schema-promotion gates. Namespaced tags and markdown alert blocks are useful planning conventions, but search ranking should not depend on them until validators, probes, and trace-visible warnings exist.
+The [Core Memory System Improvements RFC](temp-plan.md) recommends a convention-first approach with validation and schema-promotion gates. The [AI Memory Suite Implementation Plan](ai-memory-suite-implementation-plan.md) turns that direction into a phased plan covering tag policy, staleness warnings, maintenance audit, structured tool output, Agent write governance, and page retrieval. Namespaced tags and markdown alert blocks are useful planning conventions, but search ranking should not depend on them until validators, probes, and trace-visible warnings exist.
 
 Do not silently hide old Core records with temporal decay. Start by surfacing staleness warnings, then measure whether ranking changes are needed.
 
