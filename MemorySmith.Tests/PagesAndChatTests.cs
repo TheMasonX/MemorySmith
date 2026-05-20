@@ -825,6 +825,42 @@ public class PagesAndChatTests
         Assert.That(handler.Body, Does.Contain("\"images\":[\"AQID\"]"));
     }
 
+    [Test]
+    public async Task MemoryChatAgent_ApplyAgentWritesThrowsForViewerRole()
+    {
+        var memoryStore = new InMemoryMemoryStore();
+        var eventStore = new RecordingEventStore();
+        var publisher = new RecordingMemoryChangePublisher();
+        var memories = TestServiceFactory.CreateMemoryApplicationService(memoryStore, eventStore, publisher);
+        var pages = new FilePageService(_tempDir);
+        var provider = new FakeChatProvider("""
+        {
+            "reply": "Ready.",
+            "memoryWrites": [
+                { "id": "viewer-note", "title": "Viewer Note", "content": "Should not be written." }
+            ],
+            "pageWrites": []
+        }
+        """);
+        var viewerUser = new FakeCurrentUserContext("viewer-1", "Viewer User", [MemorySmithRoles.Viewer]);
+        var agent = new MemoryChatAgent([provider], memories, pages, Options.Create(new MemorySmithOptions
+        {
+            Chat = new ChatOptions { AgentWritesEnabled = true }
+        }), viewerUser);
+
+        var response = await agent.SendAsync(new MemoryChatRequest("Capture this", MemoryChatMode.Agent, RequireAgentWriteApproval: true), CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(response.ProposedMemoryWrites, Has.Count.EqualTo(0), "Viewer should not receive proposals");
+            Assert.That(response.Reply, Does.Contain("cannot approve"), "Reply should explain role restriction");
+            Assert.ThrowsAsync<InvalidOperationException>(() =>
+                agent.ApplyAgentWritesAsync([], [], CancellationToken.None),
+                "Viewer calling ApplyAgentWritesAsync should throw");
+            Assert.That(memoryStore.Load("viewer-note"), Is.Null, "No memory should be written");
+        });
+    }
+
     private sealed class FakeChatProvider : IChatProvider
     {
         private readonly string _content;
