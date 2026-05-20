@@ -220,7 +220,7 @@ public class PagesAndChatTests
         var agent = new MemoryChatAgent([provider], memories, pages, Options.Create(new MemorySmithOptions
         {
             Chat = new ChatOptions { AgentWritesEnabled = true }
-        }));
+        }), new FakeCurrentUserContext("editor-1", "Editor User", [MemorySmithRoles.Editor]));
 
         var response = await agent.SendAsync(new MemoryChatRequest("Capture this", MemoryChatMode.Agent), CancellationToken.None);
         var writtenMemory = memoryStore.Load("agent-note");
@@ -259,7 +259,7 @@ public class PagesAndChatTests
         var agent = new MemoryChatAgent([provider], memories, pages, Options.Create(new MemorySmithOptions
         {
             Chat = new ChatOptions { AgentWritesEnabled = true }
-        }));
+        }), new FakeCurrentUserContext("editor-1", "Editor User", [MemorySmithRoles.Editor]));
 
         var response = await agent.SendAsync(new MemoryChatRequest("Create a page", MemoryChatMode.Agent), CancellationToken.None);
 
@@ -292,7 +292,7 @@ public class PagesAndChatTests
         var agent = new MemoryChatAgent([provider], memories, pages, Options.Create(new MemorySmithOptions
         {
             Chat = new ChatOptions { AgentWritesEnabled = true }
-        }));
+        }), new FakeCurrentUserContext("editor-1", "Editor User", [MemorySmithRoles.Editor]));
 
         var response = await agent.SendAsync(new MemoryChatRequest("Capture this", MemoryChatMode.Agent, RequireAgentWriteApproval: true), CancellationToken.None);
         var missingBeforeApproval = await pages.GetAsync("agent-approval-page", CancellationToken.None);
@@ -301,7 +301,7 @@ public class PagesAndChatTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(response.Reply, Is.EqualTo("Ready to record."));
+            Assert.That(response.Reply, Is.EqualTo("2 write proposals are ready for review. No memories or pages have been changed yet; approve the proposed write(s) in MemorySmith to apply them."));
             Assert.That(response.WrittenMemories, Is.Empty);
             Assert.That(response.WrittenPages, Is.Empty);
             Assert.That(response.ProposedMemoryWrites, Has.Count.EqualTo(1));
@@ -311,6 +311,42 @@ public class PagesAndChatTests
             Assert.That(applied.WrittenMemories, Is.EqualTo(new[] { "agent-approval-note" }));
             Assert.That(applied.WrittenPages, Is.EqualTo(new[] { "agent-approval-page" }));
             Assert.That(writtenPage, Is.Not.Null);
+        });
+    }
+
+    [Test]
+    public async Task MemoryChatAgent_AgentModeApprovalReplyDoesNotClaimWritesWereApplied()
+    {
+        var memoryStore = new InMemoryMemoryStore();
+        var eventStore = new RecordingEventStore();
+        var publisher = new RecordingMemoryChangePublisher();
+        var memories = TestServiceFactory.CreateMemoryApplicationService(memoryStore, eventStore, publisher);
+        var pages = new FilePageService(_tempDir);
+        var provider = new FakeChatProvider("""
+        {
+            "reply": "Created the page.",
+            "memoryWrites": [],
+            "pageWrites": [
+                { "slug": "pending-page", "title": "Pending Page", "markdown": "Pending page body." }
+            ]
+        }
+        """);
+        var agent = new MemoryChatAgent([provider], memories, pages, Options.Create(new MemorySmithOptions
+        {
+            Chat = new ChatOptions { AgentWritesEnabled = true }
+        }), new FakeCurrentUserContext("editor-1", "Editor User", [MemorySmithRoles.Editor]));
+
+        var response = await agent.SendAsync(new MemoryChatRequest("Create a page", MemoryChatMode.Agent, RequireAgentWriteApproval: true), CancellationToken.None);
+        var writtenPage = await pages.GetAsync("pending-page", CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(response.Reply, Does.Contain("ready for review"));
+            Assert.That(response.Reply, Does.Contain("No memories or pages have been changed yet"));
+            Assert.That(response.Reply, Does.Not.Contain("Created the page"));
+            Assert.That(response.WrittenPages, Is.Empty);
+            Assert.That(response.ProposedPageWrites, Has.Count.EqualTo(1));
+            Assert.That(writtenPage, Is.Null);
         });
     }
 
@@ -404,7 +440,12 @@ public class PagesAndChatTests
 
         await agent.SendAsync(new MemoryChatRequest("Who am I?", MemoryChatMode.Chat), CancellationToken.None);
 
-        Assert.That(provider.LastRequest!.Messages.Any(message => message.Content.Contains("Current MemorySmith user: Signed In User", StringComparison.Ordinal)), Is.True);
+        Assert.Multiple(() =>
+        {
+            Assert.That(provider.LastRequest!.Messages.Any(message => message.Content.Contains("Current MemorySmith user: Signed In User", StringComparison.Ordinal)), Is.True);
+            Assert.That(provider.LastRequest.Messages.Any(message => message.Content.Contains("Current MemorySmith capabilities and limits", StringComparison.Ordinal)), Is.True);
+            Assert.That(provider.LastRequest.Messages.Any(message => message.Content.Contains("Chat mode cannot create, update, or delete MemorySmith memories or pages", StringComparison.Ordinal)), Is.True);
+        });
     }
 
     [Test]

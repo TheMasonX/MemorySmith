@@ -11,8 +11,8 @@
 
 <PageTitle>Profile</PageTitle>
 
-<div class="wiki-workbench admin-workbench">
-    <section class="wiki-commandbar" aria-label="Profile">
+<div class="wiki-workbench admin-workbench profile-workbench">
+    <section class="wiki-commandbar profile-commandbar" aria-label="Profile">
         <div class="wiki-title-block">
             <MudText Typo="Typo.h5">Profile</MudText>
             <span class="wiki-count">@SignedInLabel</span>
@@ -35,7 +35,7 @@
     }
     else
     {
-        <section class="admin-panel-grid">
+        <section class="admin-panel-grid profile-panel-grid">
             <div class="health-lower-card admin-form-panel">
                 <MudText Typo="Typo.h6">Account</MudText>
                 <div class="admin-form-stack">
@@ -65,8 +65,8 @@
             </div>
         </section>
 
-        <section class="health-lower-card">
-            <div class="wiki-commandbar" aria-label="Sign-in methods">
+        <section class="health-lower-card profile-signin-card">
+            <div class="wiki-commandbar profile-sectionbar" aria-label="Sign-in methods">
                 <div class="wiki-title-block">
                     <MudText Typo="Typo.h6">Sign-In Methods</MudText>
                     <span class="wiki-count">@_links.Count linked</span>

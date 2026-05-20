@@ -73,7 +73,17 @@
                     <MudTh>Action</MudTh>
                 </HeaderContent>
                 <RowTemplate>
-                    <MudTd>@context.DisplayName</MudTd>
+                    <MudTd>
+                        <div class="admin-provider-cell">
+                            <span>@context.DisplayName</span>
+                            @if (ProviderOAuthSetupUrl(context.ProviderName) is { } setupUrl)
+                            {
+                                <a class="admin-provider-setup-link" href="@setupUrl" target="_blank" rel="noopener noreferrer" title="Open @context.DisplayName OAuth setup" aria-label="Open @context.DisplayName OAuth setup">
+                                    <MudIcon Icon="@Icons.Material.Filled.OpenInNew" Size="Size.Small" />
+                                </a>
+                            }
+                        </div>
+                    </MudTd>
                     <MudTd>@(context.IsEnabled ? "Enabled" : "Disabled")</MudTd>
                     <MudTd>@ProviderConfigurationLabel(context.ProviderName)</MudTd>
                     <MudTd>@ProviderLinkCount(context.ProviderName)</MudTd>
@@ -85,27 +95,51 @@
             </MudTable>
         </MudTabPanel>
         <MudTabPanel Text="Configuration" Icon="@Icons.Material.Filled.Tune">
-            <MudTable Items="@_editableSettings" Dense="true" Class="health-table" RowsPerPage="25">
-                <HeaderContent>
-                    <MudTh>Category</MudTh>
-                    <MudTh>Setting</MudTh>
-                    <MudTh>Value</MudTh>
-                    <MudTh>Action</MudTh>
-                </HeaderContent>
-                <RowTemplate>
-                    <MudTd>@context.Item.Category</MudTd>
-                    <MudTd>
-                        <strong>@context.Item.Label</strong><br />
-                        <small>@context.Item.Key</small>
-                    </MudTd>
-                    <MudTd>@SettingEditor(context)</MudTd>
-                    <MudTd>
-                        <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" Disabled="@(_isBusy || !context.IsDirty)" OnClick="@(() => SaveSettingAsync(context))">Save</MudButton>
-                    </MudTd>
-                </RowTemplate>
-            </MudTable>
+            <div class="admin-filter-bar" aria-label="Editable settings filters">
+                <MudTextField T="string" Value="@_settingsSearch" ValueChanged="@((string value) => _settingsSearch = value)" Immediate="true" Label="Search settings" Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Class="admin-filter-input" />
+                <MudSelect T="string" Value="@_settingsCategory" ValueChanged="@((string value) => _settingsCategory = value)" Label="Category" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="admin-filter-select">
+                    <MudSelectItem T="string" Value="@AllFilterValue">All categories</MudSelectItem>
+                    @foreach (var category in SettingCategories)
+                    {
+                        <MudSelectItem T="string" Value="@category">@category</MudSelectItem>
+                    }
+                </MudSelect>
+            </div>
 
-            <MudTable Items="@_configurationItems" Dense="true" Class="health-table" RowsPerPage="25">
+            <div class="admin-settings-groups">
+                @foreach (var group in FilteredEditableSettingGroups)
+                {
+                    <details class="admin-settings-expander" open>
+                        <summary>
+                            <span>@group.Category</span>
+                            <small>@group.Items.Count setting(s)</small>
+                        </summary>
+                        <MudTable Items="@group.Items" Dense="true" Class="health-table admin-settings-table" RowsPerPage="25">
+                            <HeaderContent>
+                                <MudTh>Setting</MudTh>
+                                <MudTh>Value</MudTh>
+                                <MudTh>Action</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd>
+                                    <strong>@context.Item.Label</strong><br />
+                                    <small>@context.Item.Key</small>
+                                </MudTd>
+                                <MudTd>@SettingEditor(context)</MudTd>
+                                <MudTd>
+                                    <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" Disabled="@(_isBusy || !context.IsDirty)" OnClick="@(() => SaveSettingAsync(context))">Save</MudButton>
+                                </MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    </details>
+                }
+            </div>
+
+            <div class="admin-filter-bar" aria-label="Effective configuration filters">
+                <MudTextField T="string" Value="@_configurationSearch" ValueChanged="@((string value) => _configurationSearch = value)" Immediate="true" Label="Search effective configuration" Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Class="admin-filter-input" />
+            </div>
+
+            <MudTable Items="@FilteredConfigurationItems" Dense="true" Class="health-table" RowsPerPage="25">
                 <HeaderContent>
                     <MudTh>Key</MudTh>
                     <MudTh>Value</MudTh>
@@ -117,7 +151,24 @@
             </MudTable>
         </MudTabPanel>
         <MudTabPanel Text="Audit" Icon="@Icons.Material.Filled.FactCheck">
-            <MudTable Items="@_audit" Dense="true" Class="health-table">
+            <div class="admin-filter-bar" aria-label="Audit filters">
+                <MudTextField T="string" Value="@_auditSearch" ValueChanged="@((string value) => _auditSearch = value)" Immediate="true" Label="Search audit" Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Class="admin-filter-input" />
+                <MudSelect T="string" Value="@_auditOutcomeFilter" ValueChanged="@((string value) => _auditOutcomeFilter = value)" Label="Outcome" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="admin-filter-select">
+                    <MudSelectItem T="string" Value="@AllFilterValue">All outcomes</MudSelectItem>
+                    @foreach (var outcome in AuditOutcomeOptions)
+                    {
+                        <MudSelectItem T="string" Value="@outcome">@outcome</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudSelect T="string" Value="@_auditTargetKindFilter" ValueChanged="@((string value) => _auditTargetKindFilter = value)" Label="Target" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="admin-filter-select">
+                    <MudSelectItem T="string" Value="@AllFilterValue">All targets</MudSelectItem>
+                    @foreach (var targetKind in AuditTargetKindOptions)
+                    {
+                        <MudSelectItem T="string" Value="@targetKind">@targetKind</MudSelectItem>
+                    }
+                </MudSelect>
+            </div>
+            <MudTable Items="@FilteredAudit" Dense="true" Class="health-table">
                 <HeaderContent>
                     <MudTh>Time</MudTh>
                     <MudTh>Actor</MudTh>
@@ -135,16 +186,35 @@
             </MudTable>
         </MudTabPanel>
         <MudTabPanel Text="History" Icon="@Icons.Material.Filled.History">
-            <MudTable Items="@_recentVersions" Dense="true" Class="health-table">
+            <div class="admin-filter-bar" aria-label="History filters">
+                <MudTextField T="string" Value="@_historySearch" ValueChanged="@((string value) => _historySearch = value)" Immediate="true" Label="Search history" Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Class="admin-filter-input" />
+                <MudSelect T="string" Value="@_historyTargetKindFilter" ValueChanged="@((string value) => _historyTargetKindFilter = value)" Label="Target" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="admin-filter-select">
+                    <MudSelectItem T="string" Value="@AllFilterValue">All targets</MudSelectItem>
+                    @foreach (var targetKind in HistoryTargetKindOptions)
+                    {
+                        <MudSelectItem T="string" Value="@targetKind">@targetKind</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudSelect T="string" Value="@_historyFormatFilter" ValueChanged="@((string value) => _historyFormatFilter = value)" Label="Format" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="admin-filter-select">
+                    <MudSelectItem T="string" Value="@AllFilterValue">All formats</MudSelectItem>
+                    @foreach (var format in HistoryFormatOptions)
+                    {
+                        <MudSelectItem T="string" Value="@format">@format</MudSelectItem>
+                    }
+                </MudSelect>
+            </div>
+            <MudTable Items="@FilteredHistory" Dense="true" Class="health-table">
                 <HeaderContent>
                     <MudTh>Target</MudTh>
                     <MudTh>Version</MudTh>
+                    <MudTh>Created</MudTh>
                     <MudTh>Format</MudTh>
                     <MudTh>Artifact</MudTh>
                 </HeaderContent>
                 <RowTemplate>
                     <MudTd>@context.TargetKind:@context.TargetId</MudTd>
                     <MudTd>@context.VersionNumber</MudTd>
+                    <MudTd>@context.CreatedAtUtc.ToLocalTime().ToString("g")</MudTd>
                     <MudTd>@context.Format</MudTd>
                     <MudTd>@context.HistoryPath</MudTd>
                 </RowTemplate>
@@ -154,6 +224,7 @@
 </div>
 
 @code {
+    private const string AllFilterValue = "__all__";
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private IReadOnlyList<UserAdminRow> _userRows = [];
     private IReadOnlyList<RoleRecord> _roles = [];
@@ -164,7 +235,47 @@
     private IReadOnlyList<EditableConfigurationRow> _editableSettings = [];
     private IReadOnlyList<ConfigurationItem> _configurationItems = [];
     private Dictionary<string, int> _providerLinkCounts = new(StringComparer.OrdinalIgnoreCase);
+    private string _settingsSearch = string.Empty;
+    private string _settingsCategory = AllFilterValue;
+    private string _configurationSearch = string.Empty;
+    private string _auditSearch = string.Empty;
+    private string _auditOutcomeFilter = AllFilterValue;
+    private string _auditTargetKindFilter = AllFilterValue;
+    private string _historySearch = string.Empty;
+    private string _historyTargetKindFilter = AllFilterValue;
+    private string _historyFormatFilter = AllFilterValue;
     private bool _isBusy;
+
+    private IReadOnlyList<string> SettingCategories => _editableSettings
+        .Select(row => row.Item.Category)
+        .Where(value => !string.IsNullOrWhiteSpace(value))
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .OrderBy(value => value, StringComparer.OrdinalIgnoreCase)
+        .ToList();
+
+    private IReadOnlyList<SettingCategoryGroup> FilteredEditableSettingGroups => _editableSettings
+        .Where(MatchesSettingFilter)
+        .GroupBy(row => row.Item.Category)
+        .OrderBy(group => group.Key, StringComparer.OrdinalIgnoreCase)
+        .Select(group => new SettingCategoryGroup(group.Key, group.OrderBy(row => row.Item.Label, StringComparer.OrdinalIgnoreCase).ToList()))
+        .ToList();
+
+    private IReadOnlyList<ConfigurationItem> FilteredConfigurationItems => _configurationItems
+        .Where(item => IsSearchMatch(_configurationSearch, item.Key, item.DisplayValue))
+        .ToList();
+
+    private IReadOnlyList<string> AuditOutcomeOptions => DistinctSorted(_audit.Select(entry => entry.Outcome));
+    private IReadOnlyList<string> AuditTargetKindOptions => DistinctSorted(_audit.Select(entry => entry.TargetKind));
+    private IReadOnlyList<string> HistoryTargetKindOptions => DistinctSorted(_recentVersions.Select(entry => entry.TargetKind));
+    private IReadOnlyList<string> HistoryFormatOptions => DistinctSorted(_recentVersions.Select(entry => entry.Format));
+
+    private IReadOnlyList<AuditLogEntry> FilteredAudit => _audit
+        .Where(MatchesAuditFilter)
+        .ToList();
+
+    private IReadOnlyList<VersionHistoryEntry> FilteredHistory => _recentVersions
+        .Where(MatchesHistoryFilter)
+        .ToList();
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
 
@@ -320,6 +431,14 @@
 
     private int ProviderLinkCount(string providerName) => _providerLinkCounts.TryGetValue(providerName, out var count) ? count : 0;
 
+    private static string? ProviderOAuthSetupUrl(string providerName) => providerName switch
+    {
+        MemorySmithProviders.GitHub => "https://github.com/settings/developers",
+        MemorySmithProviders.Google => "https://console.cloud.google.com/apis/credentials",
+        MemorySmithProviders.Microsoft => "https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade",
+        _ => null
+    };
+
     private string ProviderConfigurationLabel(string providerName)
     {
         var auth = Options.CurrentValue.Auth;
@@ -334,6 +453,66 @@
             _ => "Unknown"
         };
     }
+
+    private bool MatchesSettingFilter(EditableConfigurationRow row)
+    {
+        if (!IsAllFilter(_settingsCategory) && !string.Equals(row.Item.Category, _settingsCategory, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return IsSearchMatch(_settingsSearch, row.Item.Category, row.Item.Label, row.Item.Key, row.Item.ValueKind, row.PendingValue);
+    }
+
+    private bool MatchesAuditFilter(AuditLogEntry entry)
+    {
+        if (!IsAllFilter(_auditOutcomeFilter) && !string.Equals(entry.Outcome, _auditOutcomeFilter, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (!IsAllFilter(_auditTargetKindFilter) && !string.Equals(entry.TargetKind, _auditTargetKindFilter, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return IsSearchMatch(_auditSearch, entry.ActorDisplay, entry.ActorUserId, entry.Action, entry.TargetKind, entry.TargetId, entry.Outcome, entry.Reason, entry.RequestId, entry.CorrelationId, entry.DetailsJson);
+    }
+
+    private bool MatchesHistoryFilter(VersionHistoryEntry entry)
+    {
+        if (!IsAllFilter(_historyTargetKindFilter) && !string.Equals(entry.TargetKind, _historyTargetKindFilter, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (!IsAllFilter(_historyFormatFilter) && !string.Equals(entry.Format, _historyFormatFilter, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return IsSearchMatch(_historySearch, entry.TargetKind, entry.TargetId, entry.VersionId, entry.ParentVersionId, entry.Format, entry.HistoryPath, entry.CreatedByUserId, entry.AuditId);
+    }
+
+    private static bool IsAllFilter(string value) => string.IsNullOrWhiteSpace(value) || string.Equals(value, AllFilterValue, StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsSearchMatch(string search, params string?[] values)
+    {
+        if (string.IsNullOrWhiteSpace(search))
+        {
+            return true;
+        }
+
+        var text = search.Trim();
+        return values.Any(value => !string.IsNullOrWhiteSpace(value) && value.Contains(text, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static IReadOnlyList<string> DistinctSorted(IEnumerable<string?> values) => values
+        .Where(value => !string.IsNullOrWhiteSpace(value))
+        .Select(value => value!)
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .OrderBy(value => value, StringComparer.OrdinalIgnoreCase)
+        .ToList();
 
     private IReadOnlyList<ConfigurationItem> BuildConfigurationItems()
     {
@@ -440,6 +619,8 @@
         public string PendingValue { get; set; }
         public bool IsDirty => !string.Equals(PendingValue, Item.Value, StringComparison.Ordinal);
     }
+
+    private sealed record SettingCategoryGroup(string Category, IReadOnlyList<EditableConfigurationRow> Items);
 
     private sealed record ConfigurationItem(string Key, string DisplayValue);
 }
