@@ -1342,6 +1342,11 @@ public sealed partial class MemoryChatAgent : IChatAgent
             var agentResult = request.RequireAgentWriteApproval
                 ? PlanAgentActions(providerResponse.Content)
                 : await TryApplyAgentActionsAsync(providerResponse.Content, cancellationToken);
+            if (request.RequireAgentWriteApproval)
+            {
+                agentResult = PrepareApprovalRequiredResult(agentResult);
+            }
+
             return new MemoryChatResponse(
                 agentResult.Reply,
                 providerResponse.ProviderName,
@@ -1374,6 +1379,11 @@ public sealed partial class MemoryChatAgent : IChatAgent
         if (!_options.Value.Chat.AgentWritesEnabled)
         {
             throw new InvalidOperationException("Agent write actions are disabled; no memories or pages were changed.");
+        }
+
+        if (!CanApplyAgentWrites())
+        {
+            throw new InvalidOperationException("Your current MemorySmith role cannot approve agent writes; no memories or pages were changed.");
         }
 
         var writtenMemories = new List<string>();
@@ -2023,6 +2033,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
         {
             new("system", BuildSystemPrompt(request.Mode)),
             new("system", FormatCurrentUser()),
+            new("system", FormatCapabilityContext(request)),
             new("system", FormatContext(context))
         };
 
@@ -2058,6 +2069,39 @@ public sealed partial class MemoryChatAgent : IChatAgent
         var roles = _currentUser.Roles.Count == 0 ? "none" : string.Join(", ", _currentUser.Roles);
         return $"Current MemorySmith user: {_currentUser.DisplayName} (roles: {roles}).";
     }
+
+    private string FormatCapabilityContext(MemoryChatRequest request)
+    {
+        var chat = _options.Value.Chat;
+        var canApplyWrites = CanApplyAgentWrites();
+        var writeFlow = request.Mode == MemoryChatMode.Agent
+            ? request.RequireAgentWriteApproval
+                ? "Agent write proposals require explicit user approval in the MemorySmith UI before anything is changed."
+                : canApplyWrites
+                    ? "The app may apply valid Agent write JSON directly for this request."
+                    : "The current user cannot apply Agent writes."
+            : "Chat mode cannot create, update, or delete MemorySmith memories or pages.";
+
+        var writeCapability = chat.AgentWritesEnabled
+            ? canApplyWrites
+                ? "enabled for this user"
+                : "configured, but not allowed for this user"
+            : "disabled by configuration";
+
+        return "Current MemorySmith capabilities and limits:\n" +
+            $"- Mode: {request.Mode}.\n" +
+            $"- Read-only local wiki tools: {(chat.ToolCallsEnabled ? "enabled" : "disabled")}. These tools can only read MemorySmith memories/pages; they cannot write files, create pages, use shell commands, browse the web, or call external MCP tools.\n" +
+            $"- Agent writes: {writeCapability}.\n" +
+            $"- Write flow: {writeFlow}\n" +
+            "- Never claim that a memory or page was created, updated, deleted, or saved unless the application response includes written memory/page ids. Pending proposals are not changes.";
+    }
+
+    private bool CanApplyAgentWrites() =>
+        _options.Value.Chat.AgentWritesEnabled &&
+        _currentUser?.IsAuthenticated == true &&
+        _currentUser.Roles.Any(role =>
+            string.Equals(role, MemorySmithRoles.Admin, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(role, MemorySmithRoles.Editor, StringComparison.OrdinalIgnoreCase));
 
     private string BuildSystemPrompt(MemoryChatMode mode)
     {
@@ -2224,6 +2268,18 @@ public sealed partial class MemoryChatAgent : IChatAgent
             return plan;
         }
 
+        if (!CanApplyAgentWrites())
+        {
+            if (plan.ProposedMemoryWrites.Count > 0 || plan.ProposedPageWrites.Count > 0)
+            {
+                var deniedNotice = "Your current MemorySmith role cannot approve agent writes; no memories or pages were changed.";
+                var reply = string.IsNullOrWhiteSpace(plan.Reply) ? deniedNotice : $"{plan.Reply.TrimEnd()}\n\n{deniedNotice}";
+                return plan with { Reply = reply, ProposedMemoryWrites = [], ProposedPageWrites = [] };
+            }
+
+            return plan;
+        }
+
         var applied = await ApplyAgentWritesAsync(plan.ProposedMemoryWrites, plan.ProposedPageWrites, cancellationToken);
         return new AgentActionResult(
             ResolveAgentReply(plan.Reply, applied.WrittenMemories, applied.WrittenPages, providerContent),
@@ -2232,6 +2288,31 @@ public sealed partial class MemoryChatAgent : IChatAgent
             [],
             [],
             ParsedJson: true);
+    }
+
+    private AgentActionResult PrepareApprovalRequiredResult(AgentActionResult result)
+    {
+        var proposalCount = result.ProposedMemoryWrites.Count + result.ProposedPageWrites.Count;
+        if (proposalCount == 0)
+        {
+            return result;
+        }
+
+        if (!CanApplyAgentWrites())
+        {
+            return result with
+            {
+                Reply = "Your current MemorySmith role cannot approve agent writes; no memories or pages were changed.",
+                ProposedMemoryWrites = [],
+                ProposedPageWrites = []
+            };
+        }
+
+        var plural = proposalCount == 1 ? "proposal is" : "proposals are";
+        return result with
+        {
+            Reply = $"{proposalCount} write {plural} ready for review. No memories or pages have been changed yet; approve the proposed write(s) in MemorySmith to apply them."
+        };
     }
 
     private AgentActionResult PlanAgentActions(string providerContent)

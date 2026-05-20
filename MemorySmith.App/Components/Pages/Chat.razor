@@ -13,6 +13,7 @@
 @inject IOptionsMonitor<MemorySmithOptions> Options
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
+@inject ICurrentUserContext CurrentUser
 
 <PageTitle>Chat</PageTitle>
 <NavigationLock ConfirmExternalNavigation="@HasPendingDraft" OnBeforeInternalNavigation="ConfirmInternalNavigation" />
@@ -22,7 +23,7 @@
         <div class="chat-toolbar">
             <MudButtonGroup Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" Class="chat-mode-toggle">
                 <MudButton Variant="@ModeButtonVariant(MemoryChatMode.Chat)" Color="@ModeButtonColor(MemoryChatMode.Chat)" Class="@ModeButtonClass(MemoryChatMode.Chat)" OnClick="@(() => SetModeAsync(MemoryChatMode.Chat))">Chat</MudButton>
-                <MudButton Variant="@ModeButtonVariant(MemoryChatMode.Agent)" Color="@ModeButtonColor(MemoryChatMode.Agent)" Class="@ModeButtonClass(MemoryChatMode.Agent)" OnClick="@(() => SetModeAsync(MemoryChatMode.Agent))">Agent</MudButton>
+                <MudButton Variant="@ModeButtonVariant(MemoryChatMode.Agent)" Color="@ModeButtonColor(MemoryChatMode.Agent)" Class="@ModeButtonClass(MemoryChatMode.Agent)" Disabled="@(!CanUseAgentMode)" OnClick="@(() => SetModeAsync(MemoryChatMode.Agent))">Agent</MudButton>
             </MudButtonGroup>
 
             <div class="chat-model-controls">
@@ -408,6 +409,12 @@
         _currentUsage
         ?? (_sessions.Count == 0 ? null : ActiveSession.Turns.LastOrDefault(turn => turn.Usage is not null)?.Usage)
         ?? SelectedModelUsage();
+    private bool CanUseAgentMode =>
+        Options.CurrentValue.Chat.AgentWritesEnabled &&
+        CurrentUser.IsAuthenticated &&
+        CurrentUser.Roles.Any(role =>
+            string.Equals(role, MemorySmithRoles.Admin, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(role, MemorySmithRoles.Editor, StringComparison.OrdinalIgnoreCase));
 
     protected override void OnInitialized()
     {
@@ -471,6 +478,11 @@
         if (!string.IsNullOrWhiteSpace(preferences.Mode) && Enum.TryParse<MemoryChatMode>(preferences.Mode, ignoreCase: true, out var mode))
         {
             _mode = mode;
+        }
+
+        if (_mode == MemoryChatMode.Agent && !CanUseAgentMode)
+        {
+            _mode = MemoryChatMode.Chat;
         }
 
         _mermaidThemeMode = NormalizeMermaidThemeMode(preferences.MermaidThemeMode);
@@ -959,6 +971,12 @@
 
     private async Task SetModeAsync(MemoryChatMode mode)
     {
+        if (mode == MemoryChatMode.Agent && !CanUseAgentMode)
+        {
+            Snackbar.Add("Agent writes require an Editor or Admin role and enabled AgentWrites configuration.", Severity.Warning);
+            return;
+        }
+
         _mode = mode;
         _agentStatus = mode == MemoryChatMode.Agent ? "Agent ready" : "Chat ready";
         await SavePreferencesAsync();

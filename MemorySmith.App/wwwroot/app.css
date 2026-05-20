@@ -1752,6 +1752,103 @@ body {
     gap: 8px;
 }
 
+.admin-filter-bar {
+    display: grid;
+    grid-template-columns: minmax(260px, 1fr) repeat(auto-fit, minmax(180px, 220px));
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.admin-filter-input,
+.admin-filter-select {
+    min-width: 0;
+}
+
+.admin-settings-groups {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.admin-settings-expander {
+    border: 1px solid var(--vscode-border);
+    border-radius: 4px;
+    background: var(--vscode-panel-soft);
+    overflow: hidden;
+}
+
+.admin-settings-expander > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-height: 36px;
+    padding: 8px 10px;
+    cursor: pointer;
+    color: var(--vscode-text);
+    font-weight: 600;
+    list-style-position: inside;
+}
+
+.admin-settings-expander > summary small {
+    color: var(--vscode-text-muted);
+    font-weight: 400;
+}
+
+.admin-settings-table {
+    border-top: 1px solid var(--vscode-border);
+}
+
+.admin-provider-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
+.admin-provider-setup-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    color: #9cdcfe;
+    text-decoration: none;
+    border-radius: 3px;
+}
+
+.admin-provider-setup-link:hover {
+    background: var(--vscode-accent-soft);
+    color: #ffffff;
+}
+
+.profile-workbench {
+    height: auto;
+    min-height: 100%;
+    overflow: visible;
+}
+
+.profile-commandbar {
+    grid-template-columns: minmax(180px, max-content) minmax(240px, 1fr);
+}
+
+.profile-panel-grid {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    align-items: start;
+    margin-bottom: 10px;
+}
+
+.profile-sectionbar {
+    grid-template-columns: minmax(190px, max-content) minmax(220px, 1fr);
+    margin: -2px 0 8px;
+}
+
+.profile-signin-card {
+    overflow: auto;
+}
+
 .admin-input-label {
     color: var(--vscode-text-muted);
     font-size: 0.78rem;
@@ -1852,9 +1949,22 @@ body {
     .health-charts-row,
     .health-lower-grid,
     .health-operations-grid,
-    .admin-panel-grid,
     .chat-composer {
         grid-template-columns: 1fr;
+    }
+
+    .admin-panel-grid:not(.profile-panel-grid) {
+        grid-template-columns: 1fr;
+    }
+
+    .profile-commandbar {
+        grid-template-columns: minmax(180px, max-content) minmax(180px, 1fr);
+        align-items: center;
+    }
+
+    .profile-sectionbar {
+        grid-template-columns: minmax(190px, max-content) minmax(180px, 1fr);
+        align-items: center;
     }
 
     .chat-composer {
@@ -1874,6 +1984,22 @@ body {
 
     .wiki-title-block {
         display: none;
+    }
+
+    .profile-workbench .wiki-title-block {
+        display: flex;
+    }
+
+    .profile-commandbar,
+    .profile-sectionbar,
+    .admin-filter-bar,
+    .profile-panel-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .profile-commandbar,
+    .profile-sectionbar {
+        align-items: stretch;
     }
 
     .wiki-body {
