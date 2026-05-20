@@ -2079,7 +2079,9 @@ public sealed partial class MemoryChatAgent : IChatAgent
                 ? "Agent write proposals require explicit user approval in the MemorySmith UI before anything is changed."
                 : canApplyWrites
                     ? "The app may apply valid Agent write JSON directly for this request."
-                    : "The current user cannot apply Agent writes."
+                    : !chat.AgentWritesEnabled
+                        ? "Agent writes are disabled by configuration; no writes will be applied."
+                        : "The current user's role does not permit applying Agent writes."
             : "Chat mode cannot create, update, or delete MemorySmith memories or pages.";
 
         var writeCapability = chat.AgentWritesEnabled
