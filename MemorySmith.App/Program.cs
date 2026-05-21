@@ -369,6 +369,11 @@ try
         }
 
         var normalizedAssetPath = NormalizePageAssetRequestPath(assetPath);
+        if (normalizedAssetPath is null)
+        {
+            return Results.BadRequest();
+        }
+
         var canView = await CanViewPageAssetAsync(pages, normalizedAssetPath, httpContext.User, options.CurrentValue.Auth, authorization, cancellationToken);
         if (!canView)
         {
