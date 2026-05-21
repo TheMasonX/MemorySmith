@@ -58,12 +58,12 @@ public class PagesController : ControllerBase
     [Authorize(Policy = MemorySmithPolicies.CanEditMemorySmith)]
     public async Task<ActionResult<PageDocument>> Save([FromBody] PageSaveRequest request, CancellationToken cancellationToken)
     {
-        if (!ValidateRequestedMinimumRole(request, existing: null, out var validationResult))
+        if (!TryResolveMinimumRole(request, existing: null, out var resolvedMinimumRole, out var validationResult))
         {
             return validationResult!;
         }
 
-        var page = await _pages.SaveAsync(request, cancellationToken);
+        var page = await _pages.SaveAsync(request with { MinimumRole = resolvedMinimumRole }, cancellationToken);
         return CreatedAtAction(nameof(Get), new { slug = page.Slug }, page);
     }
 
@@ -77,12 +77,12 @@ public class PagesController : ControllerBase
             return Forbid();
         }
 
-        if (!ValidateRequestedMinimumRole(request, existing, out var validationResult))
+        if (!TryResolveMinimumRole(request, existing, out var resolvedMinimumRole, out var validationResult))
         {
             return validationResult!;
         }
 
-        return Ok(await _pages.SaveAsync(request with { Slug = slug }, cancellationToken));
+        return Ok(await _pages.SaveAsync(request with { Slug = slug, MinimumRole = resolvedMinimumRole }, cancellationToken));
     }
 
     [HttpDelete("{**slug}")]
@@ -104,9 +104,10 @@ public class PagesController : ControllerBase
     private bool CanView(PageDocument page) =>
         PageAccessLevels.CanView(page.MinimumRole, User, _options.CurrentValue.Auth);
 
-    private bool ValidateRequestedMinimumRole(PageSaveRequest request, PageDocument? existing, out ActionResult<PageDocument>? result)
+    private bool TryResolveMinimumRole(PageSaveRequest request, PageDocument? existing, out string resolvedMinimumRole, out ActionResult<PageDocument>? result)
     {
         result = null;
+        resolvedMinimumRole = existing?.MinimumRole ?? PageAccessLevels.Normalize(_options.CurrentValue.Pages.DefaultMinimumRole);
         string? normalizedRequestedRole = null;
 
         if (!string.IsNullOrWhiteSpace(request.MinimumRole) && !PageAccessLevels.TryNormalize(request.MinimumRole, out normalizedRequestedRole))
@@ -115,7 +116,7 @@ public class PagesController : ControllerBase
             return false;
         }
 
-        var resolvedMinimumRole = PageAccessLevels.ResolveStoredMinimumRole(
+        resolvedMinimumRole = PageAccessLevels.ResolveStoredMinimumRole(
             normalizedRequestedRole,
             existing?.MinimumRole,
             _options.CurrentValue.Pages.DefaultMinimumRole);
