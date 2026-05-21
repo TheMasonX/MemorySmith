@@ -317,11 +317,7 @@ try
         builder.Services.AddHostedService<MemoryMaintenanceService>();
     }
 
-    var maintenanceAgentSchedulerEnabled = builder.Configuration.GetValue("MemorySmith:MaintenanceAgent:Schedule:Enabled", false);
-    if (maintenanceAgentSchedulerEnabled)
-    {
-        builder.Services.AddHostedService<MaintenanceAgentSchedulerService>();
-    }
+    builder.Services.AddHostedService<MaintenanceAgentSchedulerService>();
 
     builder.Services.AddControllers()
         .AddJsonOptions(options =>

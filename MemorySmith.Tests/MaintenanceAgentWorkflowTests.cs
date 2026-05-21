@@ -89,6 +89,7 @@ public class MaintenanceAgentWorkflowTests
             Assert.That(responseError!.Message, Does.Contain("Respond requires"));
             Assert.That(needsRevision.Status, Is.EqualTo(MaintenanceProposalStatuses.NeedsRevision));
             Assert.That(needsRevision.Comments.Single().Comment, Is.EqualTo("Please cite the source page."));
+            Assert.That(needsRevision.History.Single(item => item.Action == "respond").Comment, Is.Null);
             Assert.That(approveError!.Message, Does.Contain("Only open"));
             Assert.That(revised.Metadata.Supersedes, Does.Contain(submitted.ProposalId));
             Assert.That(approved.Status, Is.EqualTo(MaintenanceProposalStatuses.Approved));
@@ -290,6 +291,26 @@ public class MaintenanceAgentWorkflowTests
             Assert.That(MaintenanceAgentSchedulerService.ShouldRun(null, schedule, utcNow), Is.True);
             Assert.That(MaintenanceAgentSchedulerService.ShouldRun(utcNow.AddHours(-23), schedule, utcNow), Is.False);
             Assert.That(MaintenanceAgentSchedulerService.ShouldRun(utcNow.AddHours(-24), schedule, utcNow), Is.True);
+        });
+    }
+
+    [Test]
+    public void SchedulerTiming_ParsesPersistedLastRunState()
+    {
+        var started = new DateTimeOffset(2026, 5, 18, 4, 0, 0, TimeSpan.Zero);
+        var finished = started.AddMinutes(2);
+        var payload = $$"""
+        {
+          "startedAtUtc": "{{started:O}}",
+          "finishedAtUtc": "{{finished:O}}"
+        }
+        """;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(MaintenanceAgentSchedulerService.ParsePersistedLastRun(payload), Is.EqualTo(finished));
+            Assert.That(MaintenanceAgentSchedulerService.ParsePersistedLastRun(" "), Is.Null);
+            Assert.That(MaintenanceAgentSchedulerService.MostRecent(started, finished), Is.EqualTo(finished));
         });
     }
 
