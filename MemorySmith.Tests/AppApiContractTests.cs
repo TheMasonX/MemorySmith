@@ -356,6 +356,25 @@ public class AppApiContractTests
     }
 
     [Test]
+    public async Task PagesApi_GetHtmlSupportsNestedSlugs()
+    {
+        var createResponse = await _client.PostAsJsonAsync("/api/pages", new PageSaveRequest(
+            "notes/intro",
+            "Intro",
+            "Nested body"));
+        createResponse.EnsureSuccessStatusCode();
+
+        var htmlResponse = await _client.GetAsync("/api/pages/notes/intro/html");
+        var html = await htmlResponse.Content.ReadAsStringAsync();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(htmlResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+            Assert.That(html, Does.Contain(">Intro</h1>"));
+        });
+    }
+
+    [Test]
     public async Task PagesApi_FiltersPagesByMinimumRole()
     {
         var tempDir = Path.Combine(Path.GetTempPath(), $"memorysmith-page-visibility-{Guid.NewGuid():N}");

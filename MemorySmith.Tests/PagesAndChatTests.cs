@@ -214,7 +214,7 @@ public class PagesAndChatTests
     }
 
     [Test]
-    public async Task FilePageService_UsesLeastRestrictiveReferencedPageRoleForAssetAccess()
+    public async Task FilePageService_UsesMostRestrictiveReferencedPageRoleForAssetAccess()
     {
         var pages = new FilePageService(_tempDir);
 
@@ -226,6 +226,31 @@ public class PagesAndChatTests
         Assert.Multiple(() =>
         {
             Assert.That(accessInfo.IsReferenced, Is.True);
+            Assert.That(accessInfo.MinimumRole, Is.EqualTo(PageAccessLevels.Admin));
+        });
+    }
+
+    [Test]
+    public async Task FilePageService_IgnoresPlainTextAndCodeBlockAssetMentionsWhenBuildingAssetAccessIndex()
+    {
+        var pages = new FilePageService(_tempDir);
+
+        await pages.SaveAsync(new PageSaveRequest("notes", "Notes", """
+        Plain text mention: assets/ghost.png
+
+        `assets/ghost.png`
+
+        ```md
+        ![ghost](assets/ghost.png)
+        <img src="assets/ghost.png" />
+        ```
+        """), CancellationToken.None);
+
+        var accessInfo = await pages.GetAssetAccessInfoAsync("ghost.png", CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(accessInfo.IsReferenced, Is.False);
             Assert.That(accessInfo.MinimumRole, Is.EqualTo(PageAccessLevels.Anonymous));
         });
     }

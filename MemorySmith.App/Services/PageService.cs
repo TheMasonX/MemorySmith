@@ -1,6 +1,9 @@
 using System.Security.Claims;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Markdig;
+using Markdig.Syntax;
+using Markdig.Syntax.Inlines;
 using MemorySmith.Core.Models;
 namespace MemorySmith.App.Services;
 
@@ -247,6 +250,10 @@ public interface IPageService
 
 public sealed partial class FilePageService : IPageService
 {
+    private static readonly MarkdownPipeline AssetReferencePipeline = new MarkdownPipelineBuilder()
+        .UseAdvancedExtensions()
+        .Build();
+
     private static readonly JsonSerializerOptions MetadataJsonOptions = new(JsonSerializerDefaults.Web)
     {
         WriteIndented = true
@@ -559,7 +566,7 @@ public sealed partial class FilePageService : IPageService
             {
                 if (index.TryGetValue(assetPath, out var existingMinimumRole))
                 {
-                    index[assetPath] = MorePermissiveMinimumRole(existingMinimumRole, minimumRole);
+                    index[assetPath] = MoreRestrictiveMinimumRole(existingMinimumRole, minimumRole);
                 }
                 else
                 {
@@ -571,16 +578,16 @@ public sealed partial class FilePageService : IPageService
         return index;
     }
 
-    private static IEnumerable<string> ExtractReferencedAssetPaths(string markdown)
+    private IEnumerable<string> ExtractReferencedAssetPaths(string markdown)
     {
-        foreach (Match match in AssetReferencePattern().Matches(markdown.Replace('\\', '/')))
+        var assetPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var document = Markdown.Parse(markdown ?? string.Empty, AssetReferencePipeline);
+        foreach (var block in document)
         {
-            var assetPath = NormalizeAssetLookupPath(match.Groups["path"].Value);
-            if (!string.IsNullOrWhiteSpace(assetPath))
-            {
-                yield return assetPath;
-            }
+            CollectReferencedAssetPaths(block, assetPaths);
         }
+
+        return assetPaths;
     }
 
     private static string NormalizeAssetLookupPath(string? assetPath)
@@ -604,8 +611,94 @@ public sealed partial class FilePageService : IPageService
         return normalized.Trim('/');
     }
 
-    private static string MorePermissiveMinimumRole(string left, string right) =>
-        MinimumRoleRank(left) <= MinimumRoleRank(right)
+    private void CollectReferencedAssetPaths(Block block, ISet<string> assetPaths)
+    {
+        if (block is LeafBlock leafBlock && leafBlock.Inline is not null)
+        {
+            CollectReferencedAssetPaths(leafBlock.Inline, assetPaths);
+        }
+
+        if (_allowRawHtml && block is HtmlBlock htmlBlock)
+        {
+            AddHtmlAssetPaths(htmlBlock.Lines.ToString(), assetPaths);
+        }
+
+        if (block is ContainerBlock containerBlock)
+        {
+            foreach (var childBlock in containerBlock)
+            {
+                CollectReferencedAssetPaths(childBlock, assetPaths);
+            }
+        }
+    }
+
+    private void CollectReferencedAssetPaths(ContainerInline inline, ISet<string> assetPaths)
+    {
+        for (var current = inline.FirstChild; current is not null; current = current.NextSibling)
+        {
+            if (current is LinkInline link && TryNormalizeReferencedAssetPath(link.Url, out var assetPath))
+            {
+                assetPaths.Add(assetPath);
+            }
+
+            if (_allowRawHtml && current is HtmlInline htmlInline)
+            {
+                AddHtmlAssetPaths(htmlInline.Tag, assetPaths);
+            }
+
+            if (current is ContainerInline childInline)
+            {
+                CollectReferencedAssetPaths(childInline, assetPaths);
+            }
+        }
+    }
+
+    private void AddHtmlAssetPaths(string html, ISet<string> assetPaths)
+    {
+        foreach (Match match in HtmlAssetReferencePattern().Matches(html.Replace('\\', '/')))
+        {
+            if (TryNormalizeReferencedAssetPath(match.Groups[2].Value, out var assetPath))
+            {
+                assetPaths.Add(assetPath);
+            }
+        }
+    }
+
+    private static bool TryNormalizeReferencedAssetPath(string? assetPath, out string normalizedAssetPath)
+    {
+        normalizedAssetPath = string.Empty;
+        var normalized = (assetPath ?? string.Empty).Replace('\\', '/').Trim();
+        if (normalized.StartsWith("./", StringComparison.Ordinal))
+        {
+            normalized = normalized[2..];
+        }
+
+        normalized = normalized.TrimStart('/');
+        if (normalized.StartsWith("page-assets/", StringComparison.OrdinalIgnoreCase))
+        {
+            normalized = normalized["page-assets/".Length..];
+        }
+        else if (normalized.StartsWith("assets/", StringComparison.OrdinalIgnoreCase))
+        {
+            normalized = normalized["assets/".Length..];
+        }
+        else
+        {
+            return false;
+        }
+
+        var terminatorIndex = normalized.IndexOfAny(['?', '#']);
+        if (terminatorIndex >= 0)
+        {
+            normalized = normalized[..terminatorIndex];
+        }
+
+        normalizedAssetPath = normalized.Trim('/');
+        return !string.IsNullOrWhiteSpace(normalizedAssetPath);
+    }
+
+    private static string MoreRestrictiveMinimumRole(string left, string right) =>
+        MinimumRoleRank(left) >= MinimumRoleRank(right)
             ? PageAccessLevels.Normalize(left)
             : PageAccessLevels.Normalize(right);
 
@@ -695,10 +788,10 @@ public sealed partial class FilePageService : IPageService
     [GeneratedRegex("[-_]{2,}")]
     private static partial Regex DuplicateSeparators();
 
-    [GeneratedRegex(@"(\]\()((?:\./|/)?assets/[^)\s]+)", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"(\]\()((?:\./|/)?(?:assets|page-assets)/[^)\s]+)", RegexOptions.IgnoreCase)]
     private static partial Regex MarkdownAssetPattern();
 
-    [GeneratedRegex(@"((?:src|href)=['""'])((?:\./|/)?assets/[^'""']+)", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"((?:src|href)=['""'])((?:\./|/)?(?:assets|page-assets)/[^'""']+)", RegexOptions.IgnoreCase)]
     private static partial Regex HtmlAssetPattern();
 
     [GeneratedRegex(@"[#>*_`\[\]()]")]
@@ -707,8 +800,8 @@ public sealed partial class FilePageService : IPageService
     [GeneratedRegex("\\s+")]
     private static partial Regex WhitespacePattern();
 
-    [GeneratedRegex("(?:/page-assets/|assets/)(?<path>[^)\\s\"'>]+)", RegexOptions.IgnoreCase)]
-    private static partial Regex AssetReferencePattern();
+    [GeneratedRegex(@"((?:src|href)=['""'])((?:\./|/)?(?:assets|page-assets)/[^'""']+)", RegexOptions.IgnoreCase)]
+    private static partial Regex HtmlAssetReferencePattern();
 
     [GeneratedRegex("[^a-z0-9_-]+")]
     private static partial Regex AssetBaseNamePattern();

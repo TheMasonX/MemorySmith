@@ -31,8 +31,14 @@ public class PagesController : ControllerBase
     }
 
     [HttpGet("{**slug}")]
-    public async Task<ActionResult<PageDocument>> Get(string slug, CancellationToken cancellationToken)
+    public async Task<IActionResult> Get(string slug, CancellationToken cancellationToken)
     {
+        var normalizedSlug = slug.TrimEnd('/');
+        if (normalizedSlug.Length > "/html".Length && normalizedSlug.EndsWith("/html", StringComparison.OrdinalIgnoreCase))
+        {
+            return await GetHtmlCore(normalizedSlug[..^"/html".Length], cancellationToken);
+        }
+
         var page = await _pages.GetAsync(slug, cancellationToken);
         if (page is null)
         {
@@ -42,8 +48,7 @@ public class PagesController : ControllerBase
         return CanView(page) ? Ok(page) : Forbid();
     }
 
-    [HttpGet("{slug}/html")]
-    public async Task<IActionResult> GetHtml(string slug, CancellationToken cancellationToken)
+    private async Task<IActionResult> GetHtmlCore(string slug, CancellationToken cancellationToken)
     {
         var page = await _pages.GetAsync(slug, cancellationToken);
         if (page is null)
