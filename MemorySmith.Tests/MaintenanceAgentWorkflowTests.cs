@@ -27,7 +27,6 @@ public class MaintenanceAgentWorkflowTests
         {
             MaintenanceAgent = new MaintenanceAgentOptions
             {
-                ConfigPath = Path.Combine(_tempDir, "missing-maintenance-agent.yaml"),
                 Read = [Path.Combine(_tempDir, "Memories"), Path.Combine(_tempDir, "Pages")],
                 Write = [Path.Combine(_tempDir, "Memories", "Working"), Path.Combine(_tempDir, "Pages")],
                 UseLlm = false,
@@ -125,67 +124,113 @@ public class MaintenanceAgentWorkflowTests
         });
     }
 
-        [Test]
-        public void ConfigService_LoadsYamlDotNetMaintenanceAgentConfig()
+    [Test]
+    public void ConfigService_UsesStandardMaintenanceAgentOptions()
+    {
+        var readRoots = new[] { Path.Combine(_tempDir, "Memories"), Path.Combine(_tempDir, "Pages") };
+        var writeRoots = new[] { Path.Combine(_tempDir, "Memories", "Working"), Path.Combine(_tempDir, "Pages") };
+        var options = new MemorySmithOptions
         {
-                var configPath = Path.Combine(_tempDir, "maintenance_agent.yaml");
-                File.WriteAllText(configPath, $$"""
-                read:
-                    - '{{Path.Combine(_tempDir, "Memories")}}'
-                write:
-                    - '{{Path.Combine(_tempDir, "Pages")}}'
-                direct_write: true
-                use_llm: false
-                provider: Ollama
-                model: llama3.1:8b
-                tasks:
-                    staleness_scan: true
-                    synthesis: false
-                schedule:
-                    enabled: true
-                    weekly_day: Monday
-                    weekly_hour_local: 4
-                resource_probe:
-                    skip_when_busy: false
-                storage:
-                    proposals_path: '{{Path.Combine(_tempDir, "YamlProposals")}}'
-                """);
-                var options = new MemorySmithOptions
+            Chat = new ChatOptions { OllamaEndpoint = "http://localhost:2345", OllamaModel = "chat-default" },
+            MaintenanceAgent = new MaintenanceAgentOptions
+            {
+                Read = readRoots.ToList(),
+                Write = writeRoots.ToList(),
+                DirectWrite = true,
+                UseLlm = false,
+                Provider = "GitHub",
+                OllamaEndpoint = "http://localhost:11434",
+                Model = "gpt-5-mini",
+                AgentVersion = "maintenance-agent.v2",
+                MaxFindingsPerTask = 7,
+                Tasks = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase)
                 {
-                        MaintenanceAgent = new MaintenanceAgentOptions { ConfigPath = configPath }
-                };
-                var service = new MaintenanceAgentConfigService(new StaticOptionsMonitor<MemorySmithOptions>(options));
-
-                var loaded = service.GetCurrent();
-
-                Assert.Multiple(() =>
+                    ["spot_checks"] = false,
+                    ["staleness_scan"] = true,
+                    ["synthesis"] = true
+                },
+                Schedule = new MaintenanceAgentScheduleOptions
                 {
-                        Assert.That(loaded.DirectWrite, Is.True);
-                        Assert.That(loaded.UseLlm, Is.False);
-                        Assert.That(loaded.Model, Is.EqualTo("llama3.1:8b"));
-                        Assert.That(loaded.Tasks["staleness_scan"], Is.True);
-                        Assert.That(loaded.Tasks["synthesis"], Is.False);
-                        Assert.That(loaded.Schedule.Enabled, Is.True);
-                        Assert.That(loaded.Schedule.WeeklyDay, Is.EqualTo("Monday"));
-                        Assert.That(loaded.Schedule.WeeklyHourLocal, Is.EqualTo(4));
-                        Assert.That(loaded.ResourceProbe.SkipWhenBusy, Is.False);
-                        Assert.That(loaded.Storage.ProposalsPath, Is.EqualTo(Path.Combine(_tempDir, "YamlProposals")));
-                });
-        }
+                    Enabled = true,
+                    WeeklyDay = "Monday",
+                    WeeklyHourLocal = 4,
+                    MinimumHoursBetweenRuns = 48
+                },
+                ResourceProbe = new MaintenanceAgentResourceProbeOptions
+                {
+                    Enabled = false,
+                    SkipWhenBusy = false,
+                    BusyProcessNames = ["steam"]
+                },
+                Storage = new MaintenanceAgentStorageOptions
+                {
+                    ProposalsPath = Path.Combine(_tempDir, "YamlProposals")
+                }
+            }
+        };
+        var service = new MaintenanceAgentConfigService(new StaticOptionsMonitor<MemorySmithOptions>(options));
 
-        [Test]
-        public void ConfigService_RejectsJsonConfigPath()
+        var loaded = service.GetCurrent();
+
+        Assert.Multiple(() =>
         {
-                var configPath = Path.Combine(_tempDir, "maintenance_agent.json");
-                File.WriteAllText(configPath, "{ \"direct_write\": true }");
-                var options = new MemorySmithOptions
-                {
-                        MaintenanceAgent = new MaintenanceAgentOptions { ConfigPath = configPath }
-                };
-                var service = new MaintenanceAgentConfigService(new StaticOptionsMonitor<MemorySmithOptions>(options));
+            Assert.That(loaded.Read, Is.EquivalentTo(readRoots));
+            Assert.That(loaded.Write, Is.EquivalentTo(writeRoots));
+            Assert.That(loaded.DirectWrite, Is.True);
+            Assert.That(loaded.UseLlm, Is.False);
+            Assert.That(loaded.Provider, Is.EqualTo("GitHub"));
+            Assert.That(loaded.Model, Is.EqualTo("gpt-5-mini"));
+            Assert.That(loaded.MaxFindingsPerTask, Is.EqualTo(7));
+            Assert.That(loaded.Tasks["spot_checks"], Is.False);
+            Assert.That(loaded.Tasks["staleness_scan"], Is.True);
+            Assert.That(loaded.Tasks["synthesis"], Is.True);
+            Assert.That(loaded.Schedule.Enabled, Is.True);
+            Assert.That(loaded.Schedule.WeeklyDay, Is.EqualTo("Monday"));
+            Assert.That(loaded.Schedule.MinimumHoursBetweenRuns, Is.EqualTo(48));
+            Assert.That(loaded.ResourceProbe.Enabled, Is.False);
+            Assert.That(loaded.ResourceProbe.SkipWhenBusy, Is.False);
+            Assert.That(loaded.Storage.ProposalsPath, Is.EqualTo(Path.Combine(_tempDir, "YamlProposals")));
+        });
+    }
 
-                Assert.That(() => service.GetCurrent(), Throws.InvalidOperationException.With.Message.Contains("YAML"));
-        }
+    [Test]
+    public void ConfigService_NormalizesDefaultsFromStandardConfig()
+    {
+        var dataPath = Path.Combine(_tempDir, "Memories");
+        var pagesPath = Path.Combine(_tempDir, "Pages");
+        var options = new MemorySmithOptions
+        {
+            DataPath = dataPath,
+            PagesPath = pagesPath,
+            Chat = new ChatOptions
+            {
+                OllamaEndpoint = "http://localhost:6789",
+                OllamaModel = "fallback-model"
+            },
+            MaintenanceAgent = new MaintenanceAgentOptions
+            {
+                Read = [],
+                Write = [],
+                Provider = string.Empty,
+                OllamaEndpoint = string.Empty,
+                Model = string.Empty,
+                AgentVersion = string.Empty
+            }
+        };
+        var service = new MaintenanceAgentConfigService(new StaticOptionsMonitor<MemorySmithOptions>(options));
+
+        var loaded = service.GetCurrent();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(loaded.Read, Is.EqualTo(new[] { dataPath, pagesPath }));
+            Assert.That(loaded.Write, Is.EqualTo(new[] { Path.Combine(dataPath, "Working"), pagesPath }));
+            Assert.That(loaded.Provider, Is.EqualTo("Ollama"));
+            Assert.That(loaded.OllamaEndpoint, Is.EqualTo("http://localhost:6789"));
+            Assert.That(loaded.Model, Is.EqualTo("fallback-model"));
+            Assert.That(loaded.AgentVersion, Is.EqualTo("maintenance-agent.v1"));
+        });
+    }
 
     [Test]
     public async Task TopicMap_ExtractsHeadingsRelationshipsCyclesAndStaleness()
