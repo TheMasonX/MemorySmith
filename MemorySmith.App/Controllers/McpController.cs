@@ -161,7 +161,7 @@ public class McpController : ControllerBase
         var args = argumentsElement.ValueKind == JsonValueKind.Object
             ? JsonNode.Parse(argumentsElement.GetRawText()) as JsonObject ?? new JsonObject()
             : new JsonObject();
-        var ctx = new ChatToolExecutionContext(_memories, _pages, Transport: "mcp", User: User, Auth: _options.Auth);
+        var ctx = new ChatToolExecutionContext(_memories, _pages, Transport: "mcp", User: User, Auth: _options.Auth, DefaultPageMinimumRole: _options.Pages.DefaultMinimumRole);
         var result = await tool.Execute(args, ctx, cancellationToken);
         return ToolText(result.Text, isError: result.IsError);
     }

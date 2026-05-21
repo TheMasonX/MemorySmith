@@ -1665,7 +1665,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
             return new ChatToolExecutionResult($"Unknown MemorySmith tool '{toolCall.Name}'.", IsError: true);
         }
 
-        var executionContext = new ChatToolExecutionContext(_memories, _pages, Transport: "chat", CurrentUser: _currentUser, Auth: _options.Value.Auth);
+        var executionContext = new ChatToolExecutionContext(_memories, _pages, Transport: "chat", CurrentUser: _currentUser, Auth: _options.Value.Auth, DefaultPageMinimumRole: _options.Value.Pages.DefaultMinimumRole);
         return await tool.Execute(toolCall.Arguments, executionContext, cancellationToken);
     }
 

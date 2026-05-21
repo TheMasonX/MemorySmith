@@ -1,5 +1,8 @@
 using MemorySmith.App.Services;
+using MemorySmith.App.Controllers;
 using MemorySmith.Core.Models;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using System.Net;
 using System.Security.Claims;
@@ -85,6 +88,75 @@ public class PagesAndChatTests
             Assert.That(PageAccessLevels.CanSetMinimumRole(PageAccessLevels.Admin, editor, new AuthOptions()), Is.False);
             Assert.That(PageAccessLevels.CanSetMinimumRole(PageAccessLevels.Admin, admin, new AuthOptions()), Is.True);
             Assert.That(PageAccessLevels.CanSetMinimumRole(PageAccessLevels.Anonymous, anonymous, new AuthOptions()), Is.False);
+        });
+    }
+
+    [Test]
+    public void PageAccessLevels_AuthDisabledAllowsViewingAndEditingAllMinimumRoles()
+    {
+        var anonymous = new ClaimsPrincipal(new ClaimsIdentity());
+        var authDisabled = new AuthOptions { Enabled = false };
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(PageAccessLevels.CanView(PageAccessLevels.Admin, anonymous, authDisabled), Is.True);
+            Assert.That(PageAccessLevels.CanSetMinimumRole(PageAccessLevels.Admin, anonymous, authDisabled), Is.True);
+        });
+    }
+
+    [Test]
+    public void PageAccessLevels_AutoEditorTreatsAuthenticatedUsersAsEditorsEvenWithViewerRole()
+    {
+        var viewer = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Role, MemorySmithRoles.Viewer)], "Test"));
+        var auth = new AuthOptions { AutoEditorForAuthenticatedUsers = true };
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(PageAccessLevels.CanSetMinimumRole(PageAccessLevels.Anonymous, viewer, auth), Is.True);
+            Assert.That(PageAccessLevels.CanSetMinimumRole(PageAccessLevels.Authenticated, viewer, auth), Is.True);
+            Assert.That(PageAccessLevels.CanSetMinimumRole(PageAccessLevels.Admin, viewer, auth), Is.False);
+        });
+    }
+
+    [Test]
+    public async Task PagesController_Save_RejectsResolvedAdminDefaultForNonAdminEditor()
+    {
+        var pages = new FilePageService(_tempDir, new PageOptions { DefaultMinimumRole = PageAccessLevels.Admin });
+        var options = new StaticOptionsMonitor<MemorySmithOptions>(new MemorySmithOptions
+        {
+            Pages = new PageOptions { DefaultMinimumRole = PageAccessLevels.Admin },
+            Auth = new AuthOptions()
+        });
+        var controller = new PagesController(pages, options)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Role, MemorySmithRoles.Editor)], "Test"))
+                }
+            }
+        };
+
+        var response = await controller.Save(new PageSaveRequest("editor-page", "Editor Page", "Body"), CancellationToken.None);
+
+        Assert.That(response.Result, Is.InstanceOf<ForbidResult>());
+    }
+
+    [Test]
+    public async Task FilePageService_UsesLeastRestrictiveReferencedPageRoleForAssetAccess()
+    {
+        var pages = new FilePageService(_tempDir);
+
+        await pages.SaveAsync(new PageSaveRequest("admin-page", "Admin Page", "![asset](assets/shared.png)", PageAccessLevels.Admin), CancellationToken.None);
+        await pages.SaveAsync(new PageSaveRequest("public-page", "Public Page", "![asset](/page-assets/shared.png)", PageAccessLevels.Anonymous), CancellationToken.None);
+
+        var accessInfo = await pages.GetAssetAccessInfoAsync("shared.png", CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(accessInfo.IsReferenced, Is.True);
+            Assert.That(accessInfo.MinimumRole, Is.EqualTo(PageAccessLevels.Anonymous));
         });
     }
 

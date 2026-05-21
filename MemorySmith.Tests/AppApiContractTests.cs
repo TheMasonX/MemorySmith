@@ -409,6 +409,14 @@ public class AppApiContractTests
     }
 
     [Test]
+    public async Task PageAssetsApi_RejectsMalformedPercentEncoding()
+    {
+        var response = await _client.GetAsync("/page-assets/%zz");
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+    }
+
+    [Test]
     public async Task CombinedSearch_ReturnsMemoryAndPageResults()
     {
         await _client.PostAsJsonAsync("/api/memories", new MemoryRecord

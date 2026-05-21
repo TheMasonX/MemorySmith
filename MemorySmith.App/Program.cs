@@ -414,8 +414,28 @@ public partial class Program
         return resolvedPath.StartsWith(normalizedRoot, StringComparison.OrdinalIgnoreCase) ? resolvedPath : null;
     }
 
-    private static string NormalizePageAssetRequestPath(string assetPath) =>
-        Uri.UnescapeDataString((assetPath ?? string.Empty).Replace('\\', '/').TrimStart('/'));
+    private static string? NormalizePageAssetRequestPath(string assetPath)
+    {
+        var normalizedAssetPath = (assetPath ?? string.Empty).Replace('\\', '/').TrimStart('/');
+        if (!HasValidPercentEncoding(normalizedAssetPath))
+        {
+            return null;
+        }
+
+        try
+        {
+            normalizedAssetPath = Uri.UnescapeDataString(normalizedAssetPath);
+        }
+        catch (UriFormatException)
+        {
+            return null;
+        }
+
+        var terminatorIndex = normalizedAssetPath.IndexOfAny(['?', '#']);
+        return terminatorIndex >= 0
+            ? normalizedAssetPath[..terminatorIndex]
+            : normalizedAssetPath;
+    }
 
     private static async Task<bool> CanViewPageAssetAsync(
         FilePageService pages,
@@ -425,32 +445,33 @@ public partial class Program
         IAuthorizationService authorization,
         CancellationToken cancellationToken)
     {
-        var summaries = await pages.ListAsync(cancellationToken);
-        var isReferencedByAnyPage = false;
-        foreach (var summary in summaries)
+        var accessInfo = await pages.GetAssetAccessInfoAsync(assetPath, cancellationToken);
+        if (accessInfo.IsReferenced)
         {
-            var page = await pages.GetAsync(summary.Slug, cancellationToken);
-            if (page is null || !PageReferencesAsset(page.Markdown, assetPath))
+            return PageAccessLevels.CanView(accessInfo.MinimumRole, user, auth);
+        }
+
+        return
+            (await authorization.AuthorizeAsync(user, null, MemorySmithPolicies.CanEditMemorySmith)).Succeeded;
+    }
+
+    private static bool HasValidPercentEncoding(string value)
+    {
+        for (var index = 0; index < value.Length; index++)
+        {
+            if (value[index] != '%')
             {
                 continue;
             }
 
-            isReferencedByAnyPage = true;
-            if (PageAccessLevels.CanView(page.MinimumRole, user, auth))
+            if (index + 2 >= value.Length || !Uri.IsHexDigit(value[index + 1]) || !Uri.IsHexDigit(value[index + 2]))
             {
-                return true;
+                return false;
             }
+
+            index += 2;
         }
 
-        return !isReferencedByAnyPage &&
-            (await authorization.AuthorizeAsync(user, null, MemorySmithPolicies.CanEditMemorySmith)).Succeeded;
-    }
-
-    private static bool PageReferencesAsset(string markdown, string assetPath)
-    {
-        var normalizedMarkdown = markdown.Replace('\\', '/');
-        var normalizedAssetPath = NormalizePageAssetRequestPath(assetPath);
-        return normalizedMarkdown.Contains($"assets/{normalizedAssetPath}", StringComparison.OrdinalIgnoreCase) ||
-            normalizedMarkdown.Contains($"/page-assets/{normalizedAssetPath}", StringComparison.OrdinalIgnoreCase);
+        return true;
     }
 }

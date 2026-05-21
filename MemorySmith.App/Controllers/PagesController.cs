@@ -107,23 +107,26 @@ public class PagesController : ControllerBase
     private bool ValidateRequestedMinimumRole(PageSaveRequest request, PageDocument? existing, out ActionResult<PageDocument>? result)
     {
         result = null;
-        if (string.IsNullOrWhiteSpace(request.MinimumRole))
-        {
-            return true;
-        }
+        string? normalizedRequestedRole = null;
 
-        if (!PageAccessLevels.TryNormalize(request.MinimumRole, out var normalized))
+        if (!string.IsNullOrWhiteSpace(request.MinimumRole) && !PageAccessLevels.TryNormalize(request.MinimumRole, out normalizedRequestedRole))
         {
             result = BadRequest("Choose Anonymous, Authenticated, or Admin for page visibility.");
             return false;
         }
 
-        if (existing is not null && string.Equals(existing.MinimumRole, normalized, StringComparison.OrdinalIgnoreCase))
+        var resolvedMinimumRole = PageAccessLevels.ResolveStoredMinimumRole(
+            normalizedRequestedRole,
+            existing?.MinimumRole,
+            _options.CurrentValue.Pages.DefaultMinimumRole);
+
+        if (existing is not null && string.Equals(existing.MinimumRole, resolvedMinimumRole, StringComparison.OrdinalIgnoreCase))
         {
             return true;
         }
 
-        if (!PageAccessLevels.CanSetMinimumRole(normalized, User, _options.CurrentValue.Auth))
+        if (string.Equals(resolvedMinimumRole, PageAccessLevels.Admin, StringComparison.OrdinalIgnoreCase)
+            && !PageAccessLevels.CanSetMinimumRole(PageAccessLevels.Admin, User, _options.CurrentValue.Auth))
         {
             result = Forbid();
             return false;

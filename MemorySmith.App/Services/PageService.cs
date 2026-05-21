@@ -45,6 +45,11 @@ public static class PageAccessLevels
 
     public static bool CanView(string minimumRole, ClaimsPrincipal? user, AuthOptions? auth)
     {
+        if (IsAuthorizationDisabled(auth))
+        {
+            return true;
+        }
+
         var normalized = Normalize(minimumRole);
         if (normalized == Anonymous)
         {
@@ -61,6 +66,11 @@ public static class PageAccessLevels
 
     public static bool CanView(string minimumRole, ICurrentUserContext? currentUser, AuthOptions? auth)
     {
+        if (IsAuthorizationDisabled(auth))
+        {
+            return true;
+        }
+
         var normalized = Normalize(minimumRole);
         if (normalized == Anonymous)
         {
@@ -77,6 +87,11 @@ public static class PageAccessLevels
 
     public static bool CanSetMinimumRole(string minimumRole, ClaimsPrincipal? user, AuthOptions? auth)
     {
+        if (IsAuthorizationDisabled(auth))
+        {
+            return true;
+        }
+
         var normalized = Normalize(minimumRole);
         if (user?.Identity?.IsAuthenticated != true)
         {
@@ -93,6 +108,11 @@ public static class PageAccessLevels
 
     public static bool CanSetMinimumRole(string minimumRole, ICurrentUserContext? currentUser, AuthOptions? auth)
     {
+        if (IsAuthorizationDisabled(auth))
+        {
+            return true;
+        }
+
         var normalized = Normalize(minimumRole);
         if (currentUser?.IsAuthenticated != true)
         {
@@ -108,9 +128,26 @@ public static class PageAccessLevels
     }
 
     public static IReadOnlyList<string> EditableOptions(ICurrentUserContext? currentUser, AuthOptions? auth) =>
-        HasExplicitAdminRole(currentUser)
+        IsAuthorizationDisabled(auth)
+            ? All
+            : HasExplicitAdminRole(currentUser)
             ? All
             : HasEffectiveEditorRole(currentUser, auth) ? [Anonymous, Authenticated] : [];
+
+    public static string ResolveStoredMinimumRole(string? requestedMinimumRole, string? existingMinimumRole, string configuredDefaultMinimumRole)
+    {
+        if (!string.IsNullOrWhiteSpace(requestedMinimumRole))
+        {
+            return Normalize(requestedMinimumRole);
+        }
+
+        if (!string.IsNullOrWhiteSpace(existingMinimumRole))
+        {
+            return Normalize(existingMinimumRole);
+        }
+
+        return Normalize(configuredDefaultMinimumRole);
+    }
 
     public static string DefaultForEditor(ICurrentUserContext? currentUser, AuthOptions? auth, string configuredDefault)
     {
@@ -134,12 +171,17 @@ public static class PageAccessLevels
         }
 
         var roles = user.FindAll(ClaimTypes.Role).Select(claim => claim.Value).ToList();
+        if (auth?.AutoEditorForAuthenticatedUsers == true)
+        {
+            return true;
+        }
+
         if (roles.Any(role => string.Equals(role, MemorySmithRoles.Editor, StringComparison.OrdinalIgnoreCase)))
         {
             return true;
         }
 
-        return roles.Count == 0 && IsConfiguredEditor(auth);
+        return roles.Count == 0 && HasConfiguredDefaultEditorRole(auth);
     }
 
     private static bool HasEffectiveEditorRole(ICurrentUserContext? currentUser, AuthOptions? auth)
@@ -149,17 +191,23 @@ public static class PageAccessLevels
             return false;
         }
 
+        if (auth?.AutoEditorForAuthenticatedUsers == true)
+        {
+            return true;
+        }
+
         if (currentUser.Roles.Any(role => string.Equals(role, MemorySmithRoles.Editor, StringComparison.OrdinalIgnoreCase)))
         {
             return true;
         }
 
-        return currentUser.Roles.Count == 0 && IsConfiguredEditor(auth);
+        return currentUser.Roles.Count == 0 && HasConfiguredDefaultEditorRole(auth);
     }
 
-    private static bool IsConfiguredEditor(AuthOptions? auth) =>
-        auth?.AutoEditorForAuthenticatedUsers == true ||
+    private static bool HasConfiguredDefaultEditorRole(AuthOptions? auth) =>
         string.Equals(MemorySmithPermissionHandler.NormalizeAuthenticatedDefaultRole(auth?.AuthenticatedDefaultRole), MemorySmithRoles.Editor, StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsAuthorizationDisabled(AuthOptions? auth) => auth?.Enabled == false;
 }
 
 public sealed record PageSummary(
@@ -184,6 +232,8 @@ public sealed record PageSearchQuery(string? Query = null, int Limit = 50);
 
 public sealed record PageAsset(string FileName, string MarkdownPath, string RequestPath, long Size);
 
+public sealed record PageAssetAccessInfo(bool IsReferenced, string MinimumRole);
+
 public interface IPageService
 {
     Task<IReadOnlyList<PageSummary>> ListAsync(CancellationToken cancellationToken);
@@ -207,6 +257,7 @@ public sealed partial class FilePageService : IPageService
     private readonly bool _allowRawHtml;
     private readonly string _defaultMinimumRole;
     private readonly object _lock = new();
+    private Dictionary<string, string>? _assetMinimumRoleIndex;
 
     public FilePageService(string rootPath, PageOptions? options = null)
     {
@@ -283,6 +334,7 @@ public sealed partial class FilePageService : IPageService
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             File.WriteAllText(path, EnsureMarkdownHasTitle(request.Markdown, request.Title));
             WriteMetadata(path, minimumRole);
+            InvalidateAssetMinimumRoleIndex();
             return Task.FromResult(ReadDocument(path)!);
         }
     }
@@ -296,6 +348,24 @@ public sealed partial class FilePageService : IPageService
         await using var output = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None);
         await content.CopyToAsync(output, cancellationToken);
         return new PageAsset(safeFileName, $"assets/{safeFileName}", $"/page-assets/{safeFileName}", output.Length);
+    }
+
+    public Task<PageAssetAccessInfo> GetAssetAccessInfoAsync(string assetPath, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var normalizedAssetPath = NormalizeAssetLookupPath(assetPath);
+        if (string.IsNullOrWhiteSpace(normalizedAssetPath))
+        {
+            return Task.FromResult(new PageAssetAccessInfo(false, PageAccessLevels.Anonymous));
+        }
+
+        lock (_lock)
+        {
+            _assetMinimumRoleIndex ??= BuildAssetMinimumRoleIndex();
+            return Task.FromResult(_assetMinimumRoleIndex.TryGetValue(normalizedAssetPath, out var minimumRole)
+                ? new PageAssetAccessInfo(true, minimumRole)
+                : new PageAssetAccessInfo(false, PageAccessLevels.Anonymous));
+        }
     }
 
     public Task<bool> DeleteAsync(string slug, CancellationToken cancellationToken)
@@ -315,6 +385,8 @@ public sealed partial class FilePageService : IPageService
             {
                 File.Delete(metadataPath);
             }
+
+            InvalidateAssetMinimumRoleIndex();
 
             return Task.FromResult(true);
         }
@@ -473,6 +545,78 @@ public sealed partial class FilePageService : IPageService
         return string.IsNullOrWhiteSpace(slug) ? $"page-{DateTime.UtcNow:yyyyMMddHHmmss}" : slug;
     }
 
+    private void InvalidateAssetMinimumRoleIndex() =>
+        _assetMinimumRoleIndex = null;
+
+    private Dictionary<string, string> BuildAssetMinimumRoleIndex()
+    {
+        var index = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var path in EnumeratePageFiles())
+        {
+            var markdown = File.ReadAllText(path);
+            var minimumRole = ReadMinimumRole(path);
+            foreach (var assetPath in ExtractReferencedAssetPaths(markdown))
+            {
+                if (index.TryGetValue(assetPath, out var existingMinimumRole))
+                {
+                    index[assetPath] = MorePermissiveMinimumRole(existingMinimumRole, minimumRole);
+                }
+                else
+                {
+                    index[assetPath] = minimumRole;
+                }
+            }
+        }
+
+        return index;
+    }
+
+    private static IEnumerable<string> ExtractReferencedAssetPaths(string markdown)
+    {
+        foreach (Match match in AssetReferencePattern().Matches(markdown.Replace('\\', '/')))
+        {
+            var assetPath = NormalizeAssetLookupPath(match.Groups["path"].Value);
+            if (!string.IsNullOrWhiteSpace(assetPath))
+            {
+                yield return assetPath;
+            }
+        }
+    }
+
+    private static string NormalizeAssetLookupPath(string? assetPath)
+    {
+        var normalized = (assetPath ?? string.Empty).Replace('\\', '/').Trim();
+        if (normalized.StartsWith("/page-assets/", StringComparison.OrdinalIgnoreCase))
+        {
+            normalized = normalized["/page-assets/".Length..];
+        }
+        else if (normalized.StartsWith("assets/", StringComparison.OrdinalIgnoreCase))
+        {
+            normalized = normalized["assets/".Length..];
+        }
+
+        var terminatorIndex = normalized.IndexOfAny(['?', '#']);
+        if (terminatorIndex >= 0)
+        {
+            normalized = normalized[..terminatorIndex];
+        }
+
+        return normalized.Trim('/');
+    }
+
+    private static string MorePermissiveMinimumRole(string left, string right) =>
+        MinimumRoleRank(left) <= MinimumRoleRank(right)
+            ? PageAccessLevels.Normalize(left)
+            : PageAccessLevels.Normalize(right);
+
+    private static int MinimumRoleRank(string minimumRole) => PageAccessLevels.Normalize(minimumRole) switch
+    {
+        PageAccessLevels.Anonymous => 0,
+        PageAccessLevels.Authenticated => 1,
+        PageAccessLevels.Admin => 2,
+        _ => 0
+    };
+
     private static string ToTitle(string slug) =>
         string.Join(' ', slug.Split(['/', '-', '_'], StringSplitOptions.RemoveEmptyEntries)
             .Select(part => char.ToUpperInvariant(part[0]) + part[1..]));
@@ -562,6 +706,9 @@ public sealed partial class FilePageService : IPageService
 
     [GeneratedRegex("\\s+")]
     private static partial Regex WhitespacePattern();
+
+    [GeneratedRegex("(?:/page-assets/|assets/)(?<path>[^)\\s\"'>]+)", RegexOptions.IgnoreCase)]
+    private static partial Regex AssetReferencePattern();
 
     [GeneratedRegex("[^a-z0-9_-]+")]
     private static partial Regex AssetBaseNamePattern();
