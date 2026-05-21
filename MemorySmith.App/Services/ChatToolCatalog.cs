@@ -579,7 +579,50 @@ public sealed class ChatToolCatalog
     {
         if (string.Equals(format, "json", StringComparison.OrdinalIgnoreCase))
         {
-            return JsonSerializer.Serialize(pack, ToolJsonOptions);
+            var projected = new
+            {
+                schemaVersion = pack.SchemaVersion,
+                query = pack.Query,
+                generatedAt = pack.GeneratedAt,
+                warnings = pack.Warnings,
+                diagnostics = pack.Diagnostics.Select(diagnostic => new
+                {
+                    code = diagnostic.Code,
+                    severity = diagnostic.Severity.ToString(),
+                    message = diagnostic.Message
+                }),
+                records = pack.Records.Select(record => new
+                {
+                    id = record.Id,
+                    title = record.Title,
+                    status = record.Status,
+                    confidence = record.Confidence,
+                    tags = record.Tags,
+                    references = record.References,
+                    conflicts = record.Conflicts,
+                    diagnostics = record.Diagnostics.Select(diagnostic => new
+                    {
+                        code = diagnostic.Code,
+                        severity = diagnostic.Severity.ToString(),
+                        message = diagnostic.Message
+                    }),
+                    sourceLinks = record.SourceLinks.Select(sourceLink => new
+                    {
+                        label = sourceLink.Label,
+                        uri = sourceLink.Uri,
+                        startLine = sourceLink.StartLine,
+                        endLine = sourceLink.EndLine
+                    }),
+                    usageCount = record.UsageCount,
+                    lastUpdated = record.LastUpdated,
+                    relationship = record.Relationship,
+                    score = record.Score,
+                    matchReason = record.MatchReason,
+                    content = record.Content
+                })
+            };
+
+            return JsonSerializer.Serialize(projected, ToolJsonOptions);
         }
         var warnings = pack.Warnings.Count == 0
             ? string.Empty

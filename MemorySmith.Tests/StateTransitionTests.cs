@@ -28,6 +28,24 @@ public class StateTransitionTests
     }
 
     [Test]
+    public void LowScore_DoesNotDeprecateWhenDeprecationDisabled()
+    {
+        var record = new MemoryRecord
+        {
+            Status = MemoryStatus.Working,
+            UsageCount = 0,
+            Confidence = 0,
+            LastUpdated = DateTime.UtcNow.AddDays(-1000)
+        };
+        var (status, evt) = _machine.Evaluate(record, allowDeprecation: false);
+        Assert.Multiple(() =>
+        {
+            Assert.That(status, Is.EqualTo(MemoryStatus.Working));
+            Assert.That(evt, Is.Null);
+        });
+    }
+
+    [Test]
     public void HighScore_PromotesUnconsolidatedToWorking()
     {
         var record = new MemoryRecord

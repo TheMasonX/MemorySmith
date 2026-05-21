@@ -296,11 +296,15 @@ public class McpAndSemanticSearchTests
 
         var text = await ExtractFirstToolTextAsync(response);
         using var document = JsonDocument.Parse(text);
+        var records = document.RootElement.GetProperty("records").EnumerateArray().ToList();
+        var warnings = document.RootElement.GetProperty("warnings").EnumerateArray().Select(warning => warning.GetString()).ToList();
         Assert.Multiple(() =>
         {
+            Assert.That(document.RootElement.GetProperty("schemaVersion").GetString(), Is.EqualTo("memorysmith.context-pack.v1"));
             Assert.That(document.RootElement.GetProperty("query").ValueKind, Is.EqualTo(JsonValueKind.Null));
-            Assert.That(document.RootElement.GetProperty("records").EnumerateArray().Single().GetProperty("id").GetString(), Is.EqualTo("project-wiki-mcp-context-pack"));
-            Assert.That(document.RootElement.GetProperty("warnings").EnumerateArray().Single().GetString(), Does.Contain("missing-project-memory"));
+            Assert.That(records.Single().GetProperty("id").GetString(), Is.EqualTo("project-wiki-mcp-context-pack"));
+            Assert.That(records.Single().TryGetProperty("diagnostics", out _), Is.True);
+            Assert.That(warnings, Has.Some.Contains("missing-project-memory"));
         });
     }
 

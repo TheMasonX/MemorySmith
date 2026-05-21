@@ -18,6 +18,7 @@ public class MemorySmithOptions
     public HistoryOptions History { get; set; } = new();
     public PageOptions Pages { get; set; } = new();
     public SemanticSearchOptions SemanticSearch { get; set; } = new();
+    public GovernanceOptions Governance { get; set; } = new();
     public MaintenanceOptions Maintenance { get; set; } = new();
     public LimitOptions Limits { get; set; } = new();
     public SourceLinkOptions SourceLinks { get; set; } = new();
@@ -101,6 +102,11 @@ public class SemanticSearchOptions
     public string DocumentPrefix { get; set; } = "passage: ";
 }
 
+public class GovernanceOptions
+{
+    public string TagPolicyPath { get; set; } = Path.Combine("..", "Data", "Policies", "tag-policy.json");
+}
+
 public class MaintenanceOptions
 {
     public bool Enabled { get; set; } = true;
@@ -108,6 +114,7 @@ public class MaintenanceOptions
     public int IndexingMinutes { get; set; } = 60;
     public int ConsolidationHours { get; set; } = 24;
     public int StartupGraceSeconds { get; set; } = 30;
+    public bool AutomaticDeprecationEnabled { get; set; }
 }
 
 public class LimitOptions

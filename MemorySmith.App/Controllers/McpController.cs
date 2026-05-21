@@ -361,21 +361,44 @@ public class McpController : ControllerBase
             // Serialize with resolved source link URIs so agents get actionable paths.
             var projected = new
             {
-                pack.Query,
-                pack.GeneratedAt,
-                pack.Warnings,
-                Records = pack.Records.Select(r => new
+                schemaVersion = pack.SchemaVersion,
+                query = pack.Query,
+                generatedAt = pack.GeneratedAt,
+                warnings = pack.Warnings,
+                diagnostics = pack.Diagnostics.Select(diagnostic => new
                 {
-                    r.Id, r.Title, r.Status, r.Confidence, r.Tags,
-                    r.References, r.Conflicts,
-                    SourceLinks = r.SourceLinks.Select(sl => new
+                    code = diagnostic.Code,
+                    severity = diagnostic.Severity.ToString(),
+                    message = diagnostic.Message
+                }),
+                records = pack.Records.Select(r => new
+                {
+                    id = r.Id,
+                    title = r.Title,
+                    status = r.Status,
+                    confidence = r.Confidence,
+                    tags = r.Tags,
+                    references = r.References,
+                    conflicts = r.Conflicts,
+                    diagnostics = r.Diagnostics.Select(diagnostic => new
                     {
-                        sl.Label,
-                        Uri = _vars.Resolve(sl.Uri),
-                        sl.StartLine,
-                        sl.EndLine
+                        code = diagnostic.Code,
+                        severity = diagnostic.Severity.ToString(),
+                        message = diagnostic.Message
                     }),
-                    r.UsageCount, r.LastUpdated, r.Relationship, r.Score, r.MatchReason, r.Content
+                    sourceLinks = r.SourceLinks.Select(sl => new
+                    {
+                        label = sl.Label,
+                        uri = _vars.Resolve(sl.Uri),
+                        startLine = sl.StartLine,
+                        endLine = sl.EndLine
+                    }),
+                    usageCount = r.UsageCount,
+                    lastUpdated = r.LastUpdated,
+                    relationship = r.Relationship,
+                    score = r.Score,
+                    matchReason = r.MatchReason,
+                    content = r.Content
                 })
             };
             return JsonSerializer.Serialize(projected, ToolJsonOptions);

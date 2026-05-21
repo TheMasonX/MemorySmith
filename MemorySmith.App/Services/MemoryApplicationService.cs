@@ -45,6 +45,7 @@ public partial class MemoryApplicationService
     private readonly SemanticEmbeddingSearchService? _semanticEmbeddings;
     private readonly AuditLogService? _audit;
     private readonly VersionHistoryService? _history;
+    private readonly MemoryDiagnosticsService? _diagnostics;
 
     public MemoryApplicationService(
         IMemoryStore store,
@@ -55,7 +56,8 @@ public partial class MemoryApplicationService
         IOptions<MemorySmithOptions> options,
         SemanticEmbeddingSearchService? semanticEmbeddings = null,
         AuditLogService? audit = null,
-        VersionHistoryService? history = null)
+        VersionHistoryService? history = null,
+        MemoryDiagnosticsService? diagnostics = null)
     {
         _store = store;
         _eventStore = eventStore;
@@ -66,6 +68,7 @@ public partial class MemoryApplicationService
         _semanticEmbeddings = semanticEmbeddings;
         _audit = audit;
         _history = history;
+        _diagnostics = diagnostics;
     }
 
     public Task<PagedResult<MemoryMetadata>> GetMemoriesAsync(MemoryListQuery query, CancellationToken cancellationToken)
@@ -76,7 +79,9 @@ public partial class MemoryApplicationService
         var pageSize = Clamp(query.PageSize, 1, _options.Limits.MaxPageSize, 20);
         var tagFilters = NormalizeFilterList(query.Tags);
 
-        var records = ApplyListFilters(_store.LoadAll(), query.Status, tagFilters)
+        var allRecords = _store.LoadAll().ToList();
+        var allRecordsById = allRecords.ToDictionary(record => record.Id, StringComparer.OrdinalIgnoreCase);
+        var records = ApplyListFilters(allRecords, query.Status, tagFilters)
             .OrderByDescending(r => r.LastUpdated)
             .ThenBy(r => r.Title, StringComparer.OrdinalIgnoreCase)
             .ThenBy(r => r.Id, StringComparer.OrdinalIgnoreCase)
@@ -85,7 +90,7 @@ public partial class MemoryApplicationService
         var data = records
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(ToMetadata)
+            .Select(record => ToMetadata(record, allRecordsById))
             .ToList();
 
         return Task.FromResult(new PagedResult<MemoryMetadata>
@@ -107,7 +112,8 @@ public partial class MemoryApplicationService
         var tagFilters = NormalizeFilterList(query.Tags);
         var lexicalTokens = AnalyzeLexicalText(query.Query ?? string.Empty);
 
-        var records = ApplyListFilters(_store.LoadAll(), query.Status, tagFilters).ToList();
+        var allRecords = _store.LoadAll().ToList();
+        var records = ApplyListFilters(allRecords, query.Status, tagFilters).ToList();
         var recordsById = records.ToDictionary(record => record.Id, StringComparer.OrdinalIgnoreCase);
 
         var results = RankLexicalResults(records, query.Query, lexicalTokens)
@@ -127,10 +133,15 @@ public partial class MemoryApplicationService
         var limit = Clamp(query.Limit, 1, _options.Limits.MaxSearchLimit, 20);
         var tagFilters = NormalizeFilterList(query.Tags);
         var queryTokens = ExpandSearchTokens(TokenizeSearchText(query.Query ?? string.Empty));
-        var records = ApplyListFilters(_store.LoadAll(), query.Status, tagFilters).ToList();
+        var allRecords = _store.LoadAll().ToList();
+        var allRecordsById = allRecords.ToDictionary(record => record.Id, StringComparer.OrdinalIgnoreCase);
+        var records = ApplyListFilters(allRecords, query.Status, tagFilters).ToList();
 
         var results = RankSemanticResults(records, query.Query, queryTokens)
             .Take(limit)
+            .Select(result => records.FirstOrDefault(record => string.Equals(record.Id, result.Id, StringComparison.OrdinalIgnoreCase)) is { } record
+                ? result with { Diagnostics = GetDiagnostics(record, allRecordsById) }
+                : result)
             .ToList();
 
         return Task.FromResult<IReadOnlyList<MemorySearchResult>>(results);
@@ -144,7 +155,9 @@ public partial class MemoryApplicationService
 
         var limit = Clamp(query.Limit, 1, _options.Limits.MaxSearchLimit, 20);
         var tagFilters = NormalizeFilterList(query.Tags);
-        var records = ApplyListFilters(_store.LoadAll(), query.Status, tagFilters).ToList();
+        var allRecords = _store.LoadAll().ToList();
+        var allRecordsById = allRecords.ToDictionary(record => record.Id, StringComparer.OrdinalIgnoreCase);
+        var records = ApplyListFilters(allRecords, query.Status, tagFilters).ToList();
         var semanticTokens = ExpandSearchTokens(TokenizeSearchText(query.Query ?? string.Empty));
         var lexicalTokens = AnalyzeLexicalText(query.Query ?? string.Empty);
 
@@ -179,7 +192,10 @@ public partial class MemoryApplicationService
                     record.UsageCount,
                     semanticResult?.Snippet ?? lexicalResult?.Snippet ?? BuildSnippet(record.Content, semanticTokens),
                     BuildHybridMatchReason(lexicalRank, lexicalResult, semanticRank, semanticResult),
-                    record.LastUpdated);
+                    record.LastUpdated)
+                {
+                    Diagnostics = GetDiagnostics(record, allRecordsById)
+                };
             })
             .OrderByDescending(result => result.Score)
             .ThenByDescending(result => result.LastUpdated)
@@ -281,7 +297,14 @@ public partial class MemoryApplicationService
             frontier = nextFrontier;
         }
 
-        return new MemoryContextPack(query.Query, DateTime.UtcNow, records, warnings.Distinct(StringComparer.OrdinalIgnoreCase).ToList());
+        var diagnosticWarnings = records
+            .SelectMany(record => record.Diagnostics.Select(diagnostic => $"{record.Id}: {diagnostic.Code} - {diagnostic.Message}"));
+
+        return new MemoryContextPack(
+            query.Query,
+            DateTime.UtcNow,
+            records,
+            warnings.Concat(diagnosticWarnings).Distinct(StringComparer.OrdinalIgnoreCase).ToList());
 
         bool TryAddToPack(MemoryRecord record, string relationship, double? score, string? matchReason, List<MemoryRecord> targetFrontier)
         {
@@ -297,7 +320,7 @@ public partial class MemoryApplicationService
             }
 
             seen.Add(record.Id);
-            records.Add(ToContextPackRecord(record, relationship, score, matchReason, maxContentChars));
+            records.Add(ToContextPackRecord(record, relationship, score, matchReason, maxContentChars, recordsById));
             targetFrontier.Add(record);
             return true;
         }
@@ -359,6 +382,19 @@ public partial class MemoryApplicationService
     {
         cancellationToken.ThrowIfCancellationRequested();
         return Task.FromResult(IsValidId(id) ? _store.Load(id) : null);
+    }
+
+    public Task<IReadOnlyList<MemoryDiagnostic>> GetDiagnosticsAsync(string id, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var record = IsValidId(id) ? _store.Load(id) : null;
+        if (record is null)
+        {
+            return Task.FromResult<IReadOnlyList<MemoryDiagnostic>>([]);
+        }
+
+        var recordsById = _store.LoadAll().ToDictionary(item => item.Id, StringComparer.OrdinalIgnoreCase);
+        return Task.FromResult(GetDiagnostics(record, recordsById));
     }
 
     /// <summary>
@@ -712,23 +748,25 @@ public partial class MemoryApplicationService
         return records;
     }
 
-    private static MemoryMetadata ToMetadata(MemoryRecord record) => new()
+    private MemoryMetadata ToMetadata(MemoryRecord record, IReadOnlyDictionary<string, MemoryRecord> recordsById) => new()
     {
         Id = record.Id,
         Title = record.Title,
         Status = record.Status,
         Confidence = record.Confidence,
         Tags = record.Tags,
+        Diagnostics = GetDiagnostics(record, recordsById).ToList(),
         UsageCount = record.UsageCount,
         LastUpdated = record.LastUpdated
     };
 
-    private static MemoryContextPackRecord ToContextPackRecord(
+    private MemoryContextPackRecord ToContextPackRecord(
         MemoryRecord record,
         string relationship,
         double? score,
         string? matchReason,
-        int maxContentChars) => new(
+        int maxContentChars,
+        IReadOnlyDictionary<string, MemoryRecord> recordsById) => new(
             record.Id,
             record.Title,
             record.Status,
@@ -742,7 +780,13 @@ public partial class MemoryApplicationService
             relationship,
             score,
             matchReason,
-            TruncateContent(record.Content, maxContentChars));
+            TruncateContent(record.Content, maxContentChars))
+        {
+            Diagnostics = GetDiagnostics(record, recordsById)
+        };
+
+    private IReadOnlyList<MemoryDiagnostic> GetDiagnostics(MemoryRecord record, IReadOnlyDictionary<string, MemoryRecord> recordsById) =>
+        _diagnostics?.Analyze(record, recordsById) ?? [];
 
     private static List<string> NormalizeFilterList(string? values) =>
         string.IsNullOrWhiteSpace(values)

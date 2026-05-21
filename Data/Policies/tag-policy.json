@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "mode": "warn",
+  "namespaces": [
+    {
+      "name": "kind",
+      "cardinality": "single",
+      "valueKind": "enum",
+      "allowedValues": [ "fact", "rule", "procedure", "decision", "plan", "research", "guide", "concept", "issue", "example", "index" ]
+    },
+    {
+      "name": "priority",
+      "cardinality": "single",
+      "valueKind": "enum",
+      "allowedValues": [ "critical", "high", "normal", "low" ]
+    },
+    {
+      "name": "audience",
+      "cardinality": "many",
+      "valueKind": "enum",
+      "allowedValues": [ "agent", "human", "chat", "developer", "admin" ]
+    },
+    {
+      "name": "scope",
+      "cardinality": "many",
+      "valueKind": "tag"
+    },
+    {
+      "name": "review-after",
+      "cardinality": "single",
+      "valueKind": "year-month"
+    },
+    {
+      "name": "expires",
+      "cardinality": "single",
+      "valueKind": "year-month"
+    },
+    {
+      "name": "stale-risk",
+      "cardinality": "single",
+      "valueKind": "year-month"
+    },
+    {
+      "name": "supersedes",
+      "cardinality": "many",
+      "valueKind": "memory-id"
+    },
+    {
+      "name": "superseded-by",
+      "cardinality": "many",
+      "valueKind": "memory-id"
+    }
+  ],
+  "plainTags": {
+    "mode": "allowWithSuggestions",
+    "allowlist": [ "project-wiki", "search", "semantic-search", "hybrid-search", "chat", "mcp", "pages", "ui", "storage", "tests", "security", "docs", "current-state" ],
+    "blocklist": [ "misc", "general", "important", "stuff", "todo", "notes", "old", "new", "core", "working", "deprecated", "unconsolidated" ],
+    "aliases": {
+      "retrieval": "search",
+      "semantic-searching": "semantic-search",
+      "model-context-protocol": "mcp",
+      "documentation": "docs"
+    }
+  }
+}

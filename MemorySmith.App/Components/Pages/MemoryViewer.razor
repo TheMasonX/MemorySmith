@@ -96,6 +96,19 @@
                                         <span class="wiki-tag-muted">+@(memory.Tags.Count - 5)</span>
                                     }
                                 </div>
+                                @if (memory.Diagnostics.Count > 0)
+                                {
+                                    <div class="wiki-diagnostic-line">
+                                        @foreach (var diagnostic in memory.Diagnostics.Take(2))
+                                        {
+                                            <span class="wiki-diagnostic-chip @DiagnosticClass(diagnostic)">@diagnostic.Code</span>
+                                        }
+                                        @if (memory.Diagnostics.Count > 2)
+                                        {
+                                            <span class="wiki-diagnostic-chip is-muted">+@(memory.Diagnostics.Count - 2)</span>
+                                        }
+                                    </div>
+                                }
                             </div>
                             @if (semantic is not null)
                             {
@@ -202,6 +215,20 @@
                     </div>
                 }
 
+                @if (_selectedDiagnostics.Count > 0)
+                {
+                    <div class="wiki-diagnostics-panel">
+                        <div class="wiki-section-title">Diagnostics</div>
+                        @foreach (var diagnostic in _selectedDiagnostics)
+                        {
+                            <div class="wiki-diagnostic-row @DiagnosticClass(diagnostic)">
+                                <strong>@diagnostic.Code</strong>
+                                <span>@diagnostic.Message</span>
+                            </div>
+                        }
+                    </div>
+                }
+
                 <div class="wiki-tag-line wiki-detail-tags">
                     @foreach (var tag in _selectedRecord.Tags)
                     {
@@ -234,6 +261,7 @@
     private List<MemoryMetadata> _memories = [];
     private MemoryRecord? _selectedRecord;
     private MemorySearchResult? _selectedSemanticMatch;
+    private List<MemoryDiagnostic> _selectedDiagnostics = [];
     private ElementReference _memoryContentPane;
     private MemoryRecord _editRecord = new();
     private string _editTags = string.Empty;
@@ -322,16 +350,23 @@
         {
             var results = await Memories.SearchAsync(new MemorySearchQuery(_searchQuery, _statusFilter, _tagsFilter, 100), CancellationToken.None);
             _semanticMatches.Clear();
-            _memories = results.Select(r => new MemoryMetadata
+            var lexicalMetadata = new List<MemoryMetadata>();
+            foreach (var record in results)
             {
-                Id = r.Id,
-                Title = r.Title,
-                Status = r.Status,
-                Confidence = r.Confidence,
-                Tags = r.Tags,
-                UsageCount = r.UsageCount,
-                LastUpdated = r.LastUpdated
-            }).ToList();
+                lexicalMetadata.Add(new MemoryMetadata
+                {
+                    Id = record.Id,
+                    Title = record.Title,
+                    Status = record.Status,
+                    Confidence = record.Confidence,
+                    Tags = record.Tags,
+                    Diagnostics = (await Memories.GetDiagnosticsAsync(record.Id, CancellationToken.None)).ToList(),
+                    UsageCount = record.UsageCount,
+                    LastUpdated = record.LastUpdated
+                });
+            }
+
+            _memories = lexicalMetadata;
         }
 
         _totalCount = _memories.Count;
@@ -385,6 +420,7 @@
         {
             _selectedRecord = null;
             _selectedSemanticMatch = null;
+            _selectedDiagnostics = [];
             _memoryContentEnhancementsPending = false;
         }
     }
@@ -400,6 +436,7 @@
 
         _selectedRecord = record;
         _selectedSemanticMatch = _semanticMatches.TryGetValue(record.Id, out var match) ? match : null;
+        _selectedDiagnostics = (await Memories.GetDiagnosticsAsync(record.Id, CancellationToken.None)).ToList();
         _isEditing = false;
         _memoryContentEnhancementsPending = true;
         PopulateEditor(record, editingExisting: true);
@@ -420,6 +457,7 @@
     {
         _selectedRecord = null;
         _selectedSemanticMatch = null;
+        _selectedDiagnostics = [];
         PopulateEditor(new MemoryRecord(), editingExisting: false);
         _isEditing = true;
     }
@@ -483,6 +521,7 @@
         {
             _selectedRecord = null;
             _selectedSemanticMatch = null;
+            _selectedDiagnostics = [];
         }
 
         await LoadAsync(selectFirst: true);
@@ -635,8 +674,16 @@
         Status = result.Status,
         Confidence = result.Confidence,
         Tags = result.Tags.ToList(),
+        Diagnostics = result.Diagnostics.ToList(),
         UsageCount = result.UsageCount,
         LastUpdated = result.LastUpdated
+    };
+
+    private static string DiagnosticClass(MemoryDiagnostic diagnostic) => diagnostic.Severity switch
+    {
+        "Warning" => "is-warning",
+        "Error" => "is-error",
+        _ => "is-info"
     };
 
     private static string StatusClass(MemoryStatus status) => status switch

@@ -21,7 +21,11 @@ public sealed record MemoryContextPackQuery(
 	string? Ids = null,
 	bool IncludeBacklinks = false);
 
-public sealed record MemoryContextPack(string? Query, DateTime GeneratedAt, IReadOnlyList<MemoryContextPackRecord> Records, IReadOnlyList<string> Warnings);
+public sealed record MemoryContextPack(string? Query, DateTime GeneratedAt, IReadOnlyList<MemoryContextPackRecord> Records, IReadOnlyList<string> Warnings)
+{
+	public string SchemaVersion => "memorysmith.context-pack.v1";
+	public IReadOnlyList<MemoryDiagnostic> Diagnostics => Records.SelectMany(record => record.Diagnostics).ToList();
+}
 
 public sealed record MemoryContextPackRecord(
 	string Id,
@@ -37,7 +41,10 @@ public sealed record MemoryContextPackRecord(
 	string Relationship,
 	double? Score,
 	string? MatchReason,
-	string Content);
+	string Content)
+{
+    public IReadOnlyList<MemoryDiagnostic> Diagnostics { get; init; } = [];
+}
 
 public sealed record MemorySearchResult(
 	string Id,
@@ -49,4 +56,7 @@ public sealed record MemorySearchResult(
 	int UsageCount,
 	string Snippet,
 	string MatchReason,
-	DateTime LastUpdated);
+	DateTime LastUpdated)
+{
+    public IReadOnlyList<MemoryDiagnostic> Diagnostics { get; init; } = [];
+}

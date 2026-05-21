@@ -11,6 +11,7 @@ This folder is the human-readable side of the project wiki. Pages here are meant
 - [Search and Chat](search-and-chat.md) explains lexical, semantic, hybrid, MCP, chat, and agent behavior.
 - [Core Memory System Improvements RFC](temp-plan.md) reviews long-term options for making memories, search, pages, and chat more useful for AI agents and humans.
 - [AI Memory Suite Implementation Plan](ai-memory-suite-implementation-plan.md) records the full 10-round council synthesis and phased plan for tag policy, staleness, retrieval, Agent writes, schema promotion, and page chunking.
+- [Memory Governance Guide](memory-governance-guide.md) documents the first warning-first governance slice: tag policy, diagnostics, maintenance recommendations, and context-pack warning metadata.
 - [Council Workflow](llm-council.md) describes the multi-perspective review method for major MemorySmith decisions.
 - [Deep Research Prompt](memory-system-deep-research-prompt.md) turns the RFC's externally researchable questions into a prompt for Microsoft Copilot or ChatGPT Deep Research.
 - [Deep Research Intake Notes](deep-research-intake-20260520.md) distills the latest external-research response into decision-ready guidance and unresolved local questions.
@@ -25,6 +26,7 @@ This folder is the human-readable side of the project wiki. Pages here are meant
 | `Data/Pages/assets` | Page images, video, audio, and other files served through `/page-assets`. |
 | `Data/Events` | Append-only audit/activity log. |
 | `Data/Graph` | Reserved data folder for graph-oriented project knowledge. |
+| `Data/Policies` | File-backed governance policy such as the local tag policy. |
 | `Data/Models` | Optional local ONNX embedding model and vocabulary files. |
 | `Data/vars.json` | Path variables such as `%MemorySmithRepo%` for source links. |
 

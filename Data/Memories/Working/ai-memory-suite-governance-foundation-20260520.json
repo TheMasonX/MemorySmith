@@ -1,0 +1,53 @@
+{
+  "Id": "ai-memory-suite-governance-foundation-20260520",
+  "Title": "AI Memory Suite Governance Foundation",
+  "Content": "First implementation slice for the AI Memory Suite plan: maintenance is warning-first by default through MemorySmith:Maintenance:AutomaticDeprecationEnabled=false, so low-score records produce DeprecationRecommended events instead of silent Deprecated status moves. A file-backed tag policy now lives at Data/Policies/tag-policy.json, and MemoryDiagnosticsService reports tag, source-link, relationship, staleness, and maintenance warnings without changing ranking or persisted memory schema. Context-pack JSON preserves records/warnings while adding schemaVersion memorysmith.context-pack.v1 and per-record diagnostics. The /memories workbench shows diagnostic chips and a selected-record diagnostics panel. Ranking changes, temporal decay, schema promotion, page chunking/frontmatter, and stricter Agent write behavior remain gated behind future council review and tests.",
+  "Status": 1,
+  "Confidence": 0.82,
+  "Tags": [
+    "project-wiki",
+    "memory-system",
+    "implementation-status",
+    "tag-governance",
+    "staleness",
+    "maintenance",
+    "context-pack",
+    "diagnostics",
+    "working"
+  ],
+  "References": [
+    "ai-memory-suite-implementation-plan-20260520",
+    "memory-system-rfc-council-review-20260520",
+    "project-wiki-mcp-context-pack",
+    "project-wiki-semantic-ui-current"
+  ],
+  "Conflicts": [],
+  "SourceLinks": [
+    {
+      "Label": "Memory governance guide",
+      "Uri": "%MemorySmithRepo%Data/Pages/memory-governance-guide.md"
+    },
+    {
+      "Label": "Tag policy",
+      "Uri": "%MemorySmithRepo%Data/Policies/tag-policy.json"
+    },
+    {
+      "Label": "Memory governance services",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/MemoryGovernanceServices.cs"
+    },
+    {
+      "Label": "Maintenance tasks",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/MemoryMaintenanceTasks.cs"
+    },
+    {
+      "Label": "Context pack DTOs",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/MemoryQueries.cs"
+    },
+    {
+      "Label": "Diagnostics tests",
+      "Uri": "%MemorySmithRepo%MemorySmith.Tests/MemoryDiagnosticsTests.cs"
+    }
+  ],
+  "UsageCount": 0,
+  "LastUpdated": "2026-05-20T23:40:00Z"
+}

@@ -8,6 +8,7 @@ public class MemoryMetadata
     public MemoryStatus Status { get; set; }
     public double Confidence { get; set; }
     public List<string> Tags { get; set; } = new();
+    public List<MemoryDiagnostic> Diagnostics { get; set; } = new();
     public int UsageCount { get; set; }
     public DateTime LastUpdated { get; set; }
 }

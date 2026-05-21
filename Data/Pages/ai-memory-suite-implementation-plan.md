@@ -12,6 +12,27 @@ Build MemorySmith into a governed AI memory suite by adding a custom per-wiki ta
 
 Overall confidence: 86%. The main reason this confidence is not higher is that MemorySmith already has automatic maintenance paths that can move records to Deprecated based on score, which conflicts with the warning-first design goal unless it is audited and changed deliberately.
 
+## Implementation Status
+
+2026-05-20 first feature slice: warning-first governance foundations are implemented on the feature branch, while later ranking, schema, chunking, and Agent-write behavior changes remain gated.
+
+Implemented now:
+
+- `MemorySmith:Maintenance:AutomaticDeprecationEnabled` defaults to `false`; low-score records generate `DeprecationRecommended` events instead of being silently moved to Deprecated.
+- `Data/Policies/tag-policy.json` defines the first per-wiki tag policy with canonical namespaces, plain-tag blocklist, and aliases.
+- `MemoryDiagnosticsService` emits tag, source-link, relationship, staleness, and maintenance diagnostics without mutating memory records.
+- `/memories` shows diagnostic chips in result rows and a diagnostics panel for the selected memory.
+- Context-pack JSON keeps the existing `records` and `warnings` shape while adding `schemaVersion: memorysmith.context-pack.v1` and per-record diagnostics.
+- NUnit coverage now locks warning-first maintenance, tag/source/relation/staleness diagnostics, and additive context-pack metadata.
+
+Still gated:
+
+- search ranking, RRF, or temporal decay changes;
+- persisted `MemoryRecord` schema promotion;
+- page frontmatter/chunking/embedding work;
+- default MCP envelope changes beyond additive context-pack metadata;
+- stricter Agent write approval behavior beyond the existing proposal workflow.
+
 ## User Direction Incorporated
 
 - There are no existing clients outside this application itself, so internal contracts can move when long-term usefulness justifies it.
