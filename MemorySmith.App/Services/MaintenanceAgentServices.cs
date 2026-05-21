@@ -6,8 +6,6 @@ using System.Text.RegularExpressions;
 using MemorySmith.Core.Models;
 using MemorySmith.Storage;
 using Microsoft.Extensions.Options;
-using YamlDotNet.Serialization;
-using YamlDotNet.Serialization.NamingConventions;
 
 namespace MemorySmith.App.Services;
 
@@ -148,10 +146,6 @@ public sealed class MaintenanceAgentConfigService
         ReadCommentHandling = JsonCommentHandling.Skip,
         AllowTrailingCommas = true
     };
-    private static readonly IDeserializer YamlDeserializer = new DeserializerBuilder()
-        .WithNamingConvention(UnderscoredNamingConvention.Instance)
-        .IgnoreUnmatchedProperties()
-        .Build();
 
     private readonly IOptionsMonitor<MemorySmithOptions> _options;
 
@@ -163,20 +157,6 @@ public sealed class MaintenanceAgentConfigService
     public MaintenanceAgentOptions GetCurrent()
     {
         var options = Clone(_options.CurrentValue.MaintenanceAgent);
-        var configPath = ResolvePath(options.ConfigPath);
-        if (File.Exists(configPath))
-        {
-            var fileConfig = LoadConfigFile(configPath);
-            if (fileConfig is not null)
-            {
-                options = fileConfig;
-                if (string.IsNullOrWhiteSpace(options.ConfigPath))
-                {
-                    options.ConfigPath = _options.CurrentValue.MaintenanceAgent.ConfigPath;
-                }
-            }
-        }
-
         Normalize(options);
         return options;
     }
@@ -185,18 +165,6 @@ public sealed class MaintenanceAgentConfigService
 
     private MaintenanceAgentOptions Clone(MaintenanceAgentOptions source) =>
         JsonSerializer.Deserialize<MaintenanceAgentOptions>(JsonSerializer.Serialize(source, JsonOptions), JsonOptions) ?? new MaintenanceAgentOptions();
-
-    private static MaintenanceAgentOptions? LoadConfigFile(string configPath)
-    {
-        var extension = Path.GetExtension(configPath);
-        if (!extension.Equals(".yaml", StringComparison.OrdinalIgnoreCase) && !extension.Equals(".yml", StringComparison.OrdinalIgnoreCase))
-        {
-            throw new InvalidOperationException("Maintenance agent config must be a YAML file parsed with YamlDotNet. Use maintenance_agent.yaml or maintenance_agent.yml.");
-        }
-
-        using var reader = File.OpenText(configPath);
-        return YamlDeserializer.Deserialize<MaintenanceAgentOptions>(reader);
-    }
 
     private void Normalize(MaintenanceAgentOptions config)
     {

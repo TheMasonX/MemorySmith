@@ -12,6 +12,7 @@ public sealed class AdminSettingsService
     {
         WriteIndented = true
     };
+    private static readonly IReadOnlyList<string> DayOfWeekOptions = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
     private readonly IOptionsMonitor<MemorySmithOptions> _options;
     private readonly IConfiguration _configuration;
@@ -133,14 +134,24 @@ public sealed class AdminSettingsService
         EditableSettingDescriptor.Integer("MemorySmith:Maintenance:TriageMinutes", "Triage interval minutes", "Maintenance", settings => settings.Maintenance.TriageMinutes, 1, 1440),
         EditableSettingDescriptor.Integer("MemorySmith:Maintenance:IndexingMinutes", "Indexing interval minutes", "Maintenance", settings => settings.Maintenance.IndexingMinutes, 1, 1440),
         EditableSettingDescriptor.Integer("MemorySmith:Maintenance:ConsolidationHours", "Consolidation interval hours", "Maintenance", settings => settings.Maintenance.ConsolidationHours, 1, 720),
-        EditableSettingDescriptor.String("MemorySmith:MaintenanceAgent:ConfigPath", "Agent config path", "Maintenance agent", settings => settings.MaintenanceAgent.ConfigPath, 500),
         EditableSettingDescriptor.Boolean("MemorySmith:MaintenanceAgent:UseLlm", "Use LLM review", "Maintenance agent", settings => settings.MaintenanceAgent.UseLlm),
         EditableSettingDescriptor.Choice("MemorySmith:MaintenanceAgent:Provider", "Agent provider", "Maintenance agent", settings => settings.MaintenanceAgent.Provider, ["Ollama", "GitHub"]),
         EditableSettingDescriptor.String("MemorySmith:MaintenanceAgent:OllamaEndpoint", "Agent Ollama endpoint", "Maintenance agent", settings => settings.MaintenanceAgent.OllamaEndpoint, 200),
         EditableSettingDescriptor.String("MemorySmith:MaintenanceAgent:Model", "Agent model", "Maintenance agent", settings => settings.MaintenanceAgent.Model, 100),
+        EditableSettingDescriptor.Integer("MemorySmith:MaintenanceAgent:MaxFindingsPerTask", "Max findings per task", "Maintenance agent", settings => settings.MaintenanceAgent.MaxFindingsPerTask, 1, 500),
         EditableSettingDescriptor.Boolean("MemorySmith:MaintenanceAgent:DirectWrite", "Allow direct agent writes", "Maintenance agent", settings => settings.MaintenanceAgent.DirectWrite),
+        EditableSettingDescriptor.Boolean("MemorySmith:MaintenanceAgent:Tasks:spot_checks", "Enable spot checks", "Maintenance agent", settings => MaintenanceTaskEnabled(settings, "spot_checks")),
+        EditableSettingDescriptor.Boolean("MemorySmith:MaintenanceAgent:Tasks:staleness_scan", "Enable staleness scan", "Maintenance agent", settings => MaintenanceTaskEnabled(settings, "staleness_scan")),
+        EditableSettingDescriptor.Boolean("MemorySmith:MaintenanceAgent:Tasks:consistency_checks", "Enable consistency checks", "Maintenance agent", settings => MaintenanceTaskEnabled(settings, "consistency_checks")),
+        EditableSettingDescriptor.Boolean("MemorySmith:MaintenanceAgent:Tasks:relationship_integrity", "Enable relationship integrity checks", "Maintenance agent", settings => MaintenanceTaskEnabled(settings, "relationship_integrity")),
+        EditableSettingDescriptor.Boolean("MemorySmith:MaintenanceAgent:Tasks:topic_map", "Enable topic map maintenance", "Maintenance agent", settings => MaintenanceTaskEnabled(settings, "topic_map")),
+        EditableSettingDescriptor.Boolean("MemorySmith:MaintenanceAgent:Tasks:synthesis", "Enable synthesis maintenance", "Maintenance agent", settings => MaintenanceTaskEnabled(settings, "synthesis")),
+        EditableSettingDescriptor.Boolean("MemorySmith:MaintenanceAgent:Tasks:embedding_chunking_maintenance", "Enable embedding chunking maintenance", "Maintenance agent", settings => MaintenanceTaskEnabled(settings, "embedding_chunking_maintenance")),
         EditableSettingDescriptor.Boolean("MemorySmith:MaintenanceAgent:Schedule:Enabled", "Weekly scheduler enabled", "Maintenance agent", settings => settings.MaintenanceAgent.Schedule.Enabled),
+        EditableSettingDescriptor.Choice("MemorySmith:MaintenanceAgent:Schedule:WeeklyDay", "Weekly run day", "Maintenance agent", settings => settings.MaintenanceAgent.Schedule.WeeklyDay, DayOfWeekOptions),
         EditableSettingDescriptor.Integer("MemorySmith:MaintenanceAgent:Schedule:WeeklyHourLocal", "Weekly run hour", "Maintenance agent", settings => settings.MaintenanceAgent.Schedule.WeeklyHourLocal, 0, 23),
+        EditableSettingDescriptor.Integer("MemorySmith:MaintenanceAgent:Schedule:MinimumHoursBetweenRuns", "Minimum hours between runs", "Maintenance agent", settings => settings.MaintenanceAgent.Schedule.MinimumHoursBetweenRuns, 1, 720),
+        EditableSettingDescriptor.Boolean("MemorySmith:MaintenanceAgent:ResourceProbe:Enabled", "Resource probe enabled", "Maintenance agent", settings => settings.MaintenanceAgent.ResourceProbe.Enabled),
         EditableSettingDescriptor.Boolean("MemorySmith:MaintenanceAgent:ResourceProbe:SkipWhenBusy", "Skip when busy", "Maintenance agent", settings => settings.MaintenanceAgent.ResourceProbe.SkipWhenBusy),
         EditableSettingDescriptor.Integer("MemorySmith:Limits:MaxPageSize", "Max page size", "Limits", settings => settings.Limits.MaxPageSize, 1, 1000),
         EditableSettingDescriptor.Integer("MemorySmith:Limits:MaxSearchLimit", "Max search limit", "Limits", settings => settings.Limits.MaxSearchLimit, 1, 1000),
@@ -165,6 +176,9 @@ public sealed class AdminSettingsService
         EditableSettingDescriptor.Integer("MemorySmith:Chat:MaxToolResultCharacters", "Max tool result characters", "Chat", settings => settings.Chat.MaxToolResultCharacters, 1000, 100000),
         EditableSettingDescriptor.Boolean("MemorySmith:Chat:AgentWritesEnabled", "Agent writes enabled", "Chat", settings => settings.Chat.AgentWritesEnabled)
     ];
+
+    private static bool MaintenanceTaskEnabled(MemorySmithOptions settings, string taskKey) =>
+        settings.MaintenanceAgent.Tasks.TryGetValue(taskKey, out var enabled) && enabled;
 
     private sealed record EditableSettingDescriptor(
         string Key,
