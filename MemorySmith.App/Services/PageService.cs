@@ -1,11 +1,173 @@
+using System.Security.Claims;
+using System.Text.Json;
 using System.Text.RegularExpressions;
+using MemorySmith.Core.Models;
 namespace MemorySmith.App.Services;
+
+public static class PageAccessLevels
+{
+    public const string Anonymous = "Anonymous";
+    public const string Authenticated = "Authenticated";
+    public const string Admin = "Admin";
+
+    public static readonly IReadOnlyList<string> All = [Anonymous, Authenticated, Admin];
+
+    public static bool TryNormalize(string? value, out string normalized)
+    {
+        normalized = Anonymous;
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        var compact = value.Trim().Replace(" ", string.Empty, StringComparison.Ordinal).Replace("-", string.Empty, StringComparison.Ordinal).Replace("_", string.Empty, StringComparison.Ordinal).ToLowerInvariant();
+        normalized = compact switch
+        {
+            "anonymous" or "anon" or "public" => Anonymous,
+            "authenticated" or "loggedin" or "signin" or "signedin" or "user" or "users" => Authenticated,
+            "admin" or "administrator" => Admin,
+            _ => Anonymous
+        };
+        return compact is "anonymous" or "anon" or "public" or "authenticated" or "loggedin" or "signin" or "signedin" or "user" or "users" or "admin" or "administrator";
+    }
+
+    public static string Normalize(string? value, string fallback = Anonymous) =>
+        TryNormalize(value, out var normalized)
+            ? normalized
+            : TryNormalize(fallback, out var fallbackNormalized) ? fallbackNormalized : Anonymous;
+
+    public static string Label(string value) => Normalize(value) switch
+    {
+        Authenticated => "Signed in",
+        Admin => "Admin",
+        _ => "Anonymous"
+    };
+
+    public static bool CanView(string minimumRole, ClaimsPrincipal? user, AuthOptions? auth)
+    {
+        var normalized = Normalize(minimumRole);
+        if (normalized == Anonymous)
+        {
+            return true;
+        }
+
+        if (user?.Identity?.IsAuthenticated != true)
+        {
+            return false;
+        }
+
+        return normalized != Admin || HasExplicitAdminRole(user);
+    }
+
+    public static bool CanView(string minimumRole, ICurrentUserContext? currentUser, AuthOptions? auth)
+    {
+        var normalized = Normalize(minimumRole);
+        if (normalized == Anonymous)
+        {
+            return true;
+        }
+
+        if (currentUser?.IsAuthenticated != true)
+        {
+            return false;
+        }
+
+        return normalized != Admin || HasExplicitAdminRole(currentUser);
+    }
+
+    public static bool CanSetMinimumRole(string minimumRole, ClaimsPrincipal? user, AuthOptions? auth)
+    {
+        var normalized = Normalize(minimumRole);
+        if (user?.Identity?.IsAuthenticated != true)
+        {
+            return false;
+        }
+
+        if (HasExplicitAdminRole(user))
+        {
+            return true;
+        }
+
+        return normalized != Admin && HasEffectiveEditorRole(user, auth);
+    }
+
+    public static bool CanSetMinimumRole(string minimumRole, ICurrentUserContext? currentUser, AuthOptions? auth)
+    {
+        var normalized = Normalize(minimumRole);
+        if (currentUser?.IsAuthenticated != true)
+        {
+            return false;
+        }
+
+        if (HasExplicitAdminRole(currentUser))
+        {
+            return true;
+        }
+
+        return normalized != Admin && HasEffectiveEditorRole(currentUser, auth);
+    }
+
+    public static IReadOnlyList<string> EditableOptions(ICurrentUserContext? currentUser, AuthOptions? auth) =>
+        HasExplicitAdminRole(currentUser)
+            ? All
+            : HasEffectiveEditorRole(currentUser, auth) ? [Anonymous, Authenticated] : [];
+
+    public static string DefaultForEditor(ICurrentUserContext? currentUser, AuthOptions? auth, string configuredDefault)
+    {
+        var normalized = Normalize(configuredDefault);
+        return CanSetMinimumRole(normalized, currentUser, auth)
+            ? normalized
+            : HasEffectiveEditorRole(currentUser, auth) ? Authenticated : Anonymous;
+    }
+
+    private static bool HasExplicitAdminRole(ClaimsPrincipal? user) =>
+        user?.FindAll(ClaimTypes.Role).Any(claim => string.Equals(claim.Value, MemorySmithRoles.Admin, StringComparison.OrdinalIgnoreCase)) == true;
+
+    private static bool HasExplicitAdminRole(ICurrentUserContext? currentUser) =>
+        currentUser?.Roles.Any(role => string.Equals(role, MemorySmithRoles.Admin, StringComparison.OrdinalIgnoreCase)) == true;
+
+    private static bool HasEffectiveEditorRole(ClaimsPrincipal? user, AuthOptions? auth)
+    {
+        if (user?.Identity?.IsAuthenticated != true)
+        {
+            return false;
+        }
+
+        var roles = user.FindAll(ClaimTypes.Role).Select(claim => claim.Value).ToList();
+        if (roles.Any(role => string.Equals(role, MemorySmithRoles.Editor, StringComparison.OrdinalIgnoreCase)))
+        {
+            return true;
+        }
+
+        return roles.Count == 0 && IsConfiguredEditor(auth);
+    }
+
+    private static bool HasEffectiveEditorRole(ICurrentUserContext? currentUser, AuthOptions? auth)
+    {
+        if (currentUser?.IsAuthenticated != true)
+        {
+            return false;
+        }
+
+        if (currentUser.Roles.Any(role => string.Equals(role, MemorySmithRoles.Editor, StringComparison.OrdinalIgnoreCase)))
+        {
+            return true;
+        }
+
+        return currentUser.Roles.Count == 0 && IsConfiguredEditor(auth);
+    }
+
+    private static bool IsConfiguredEditor(AuthOptions? auth) =>
+        auth?.AutoEditorForAuthenticatedUsers == true ||
+        string.Equals(MemorySmithPermissionHandler.NormalizeAuthenticatedDefaultRole(auth?.AuthenticatedDefaultRole), MemorySmithRoles.Editor, StringComparison.OrdinalIgnoreCase);
+}
 
 public sealed record PageSummary(
     string Slug,
     string Title,
     string Snippet,
-    DateTime LastUpdatedUtc);
+    DateTime LastUpdatedUtc,
+    string MinimumRole = PageAccessLevels.Anonymous);
 
 public sealed record PageDocument(
     string Slug,
@@ -13,9 +175,10 @@ public sealed record PageDocument(
     string Markdown,
     string Html,
     DateTime LastUpdatedUtc,
-    string RelativePath);
+    string RelativePath,
+    string MinimumRole = PageAccessLevels.Anonymous);
 
-public sealed record PageSaveRequest(string? Slug, string? Title, string Markdown);
+public sealed record PageSaveRequest(string? Slug, string? Title, string Markdown, string? MinimumRole = null);
 
 public sealed record PageSearchQuery(string? Query = null, int Limit = 50);
 
@@ -34,9 +197,15 @@ public interface IPageService
 
 public sealed partial class FilePageService : IPageService
 {
+    private static readonly JsonSerializerOptions MetadataJsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        WriteIndented = true
+    };
+
     private readonly string _rootPath;
     private readonly string _assetPath;
     private readonly bool _allowRawHtml;
+    private readonly string _defaultMinimumRole;
     private readonly object _lock = new();
 
     public FilePageService(string rootPath, PageOptions? options = null)
@@ -44,6 +213,7 @@ public sealed partial class FilePageService : IPageService
         _rootPath = Path.GetFullPath(rootPath);
         _assetPath = Path.Combine(_rootPath, "assets");
         _allowRawHtml = options?.AllowRawHtml ?? false;
+        _defaultMinimumRole = PageAccessLevels.Normalize(options?.DefaultMinimumRole);
         Directory.CreateDirectory(_rootPath);
         Directory.CreateDirectory(_assetPath);
     }
@@ -109,8 +279,10 @@ public sealed partial class FilePageService : IPageService
         {
             var slug = NormalizeSlug(string.IsNullOrWhiteSpace(request.Slug) ? request.Title : request.Slug);
             var path = GetPagePath(slug);
+            var minimumRole = PageAccessLevels.Normalize(request.MinimumRole, File.Exists(path) ? ReadMinimumRole(path) : _defaultMinimumRole);
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             File.WriteAllText(path, EnsureMarkdownHasTitle(request.Markdown, request.Title));
+            WriteMetadata(path, minimumRole);
             return Task.FromResult(ReadDocument(path)!);
         }
     }
@@ -138,6 +310,12 @@ public sealed partial class FilePageService : IPageService
             }
 
             File.Delete(path);
+            var metadataPath = GetMetadataPath(path);
+            if (File.Exists(metadataPath))
+            {
+                File.Delete(metadataPath);
+            }
+
             return Task.FromResult(true);
         }
     }
@@ -165,7 +343,8 @@ public sealed partial class FilePageService : IPageService
             markdown,
             RenderHtml(markdown),
             File.GetLastWriteTimeUtc(path),
-            Path.GetRelativePath(_rootPath, path));
+            Path.GetRelativePath(_rootPath, path),
+            ReadMinimumRole(path));
     }
 
     private PageSummary ReadSummary(string path)
@@ -175,8 +354,40 @@ public sealed partial class FilePageService : IPageService
         return ToSummary(slug, ExtractTitle(markdown, slug), markdown, path);
     }
 
-    private static PageSummary ToSummary(string slug, string title, string markdown, string path) =>
-        new(slug, title, BuildSnippet(markdown), File.GetLastWriteTimeUtc(path));
+    private PageSummary ToSummary(string slug, string title, string markdown, string path) =>
+        new(slug, title, BuildSnippet(markdown), File.GetLastWriteTimeUtc(path), ReadMinimumRole(path));
+
+    private string ReadMinimumRole(string pagePath)
+    {
+        var metadataPath = GetMetadataPath(pagePath);
+        if (!File.Exists(metadataPath))
+        {
+            return _defaultMinimumRole;
+        }
+
+        try
+        {
+            var metadata = JsonSerializer.Deserialize<PageMetadata>(File.ReadAllText(metadataPath), MetadataJsonOptions);
+            return PageAccessLevels.Normalize(metadata?.MinimumRole, _defaultMinimumRole);
+        }
+        catch (JsonException)
+        {
+            return _defaultMinimumRole;
+        }
+    }
+
+    private static void WriteMetadata(string pagePath, string minimumRole)
+    {
+        var metadataPath = GetMetadataPath(pagePath);
+        var tempPath = metadataPath + ".tmp";
+        File.WriteAllText(tempPath, JsonSerializer.Serialize(new PageMetadata(PageAccessLevels.Normalize(minimumRole)), MetadataJsonOptions) + Environment.NewLine);
+        File.Move(tempPath, metadataPath, overwrite: true);
+    }
+
+    private static string GetMetadataPath(string pagePath) =>
+        Path.Combine(Path.GetDirectoryName(pagePath)!, Path.GetFileNameWithoutExtension(pagePath) + ".page.json");
+
+    private sealed record PageMetadata(string MinimumRole);
 
     private static string ExtractTitle(string markdown, string slug)
     {

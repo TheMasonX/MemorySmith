@@ -1665,7 +1665,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
             return new ChatToolExecutionResult($"Unknown MemorySmith tool '{toolCall.Name}'.", IsError: true);
         }
 
-        var executionContext = new ChatToolExecutionContext(_memories, _pages, Transport: "chat");
+        var executionContext = new ChatToolExecutionContext(_memories, _pages, Transport: "chat", CurrentUser: _currentUser, Auth: _options.Value.Auth);
         return await tool.Execute(toolCall.Arguments, executionContext, cancellationToken);
     }
 
@@ -1963,7 +1963,10 @@ public sealed partial class MemoryChatAgent : IChatAgent
 
         var pages = pageLimit == 0
             ? Array.Empty<PageSummary>()
-            : await _pages.SearchAsync(new PageSearchQuery(query, pageLimit), cancellationToken);
+            : (await _pages.SearchAsync(new PageSearchQuery(query, 200), cancellationToken))
+                .Where(page => PageAccessLevels.CanView(page.MinimumRole, _currentUser, _options.Value.Auth))
+                .Take(pageLimit)
+                .ToArray();
         context.AddRange(pages.Select(page => new ChatContextItem(
             "page",
             page.Slug,

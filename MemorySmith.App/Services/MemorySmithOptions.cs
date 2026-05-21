@@ -86,6 +86,7 @@ public class HistoryOptions
 
 public class PageOptions
 {
+    public string DefaultMinimumRole { get; set; } = PageAccessLevels.Anonymous;
     public bool AllowRawHtml { get; set; }
 }
 

@@ -11,7 +11,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.Extensions.FileProviders;
+using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.Hosting.WindowsServices;
 using Microsoft.Extensions.Options;
 using MudBlazor.Services;
@@ -348,10 +348,36 @@ try
     var pagesPath = app.Configuration["MemorySmith:PagesPath"] ?? Path.Combine("..", "Data", "Pages");
     var pageAssetsPath = Path.GetFullPath(Path.Combine(pagesPath, "assets"));
     Directory.CreateDirectory(pageAssetsPath);
-    app.UseStaticFiles(new StaticFileOptions
+    var contentTypeProvider = new FileExtensionContentTypeProvider();
+    app.MapGet("/page-assets/{**assetPath}", async (
+        string assetPath,
+        FilePageService pages,
+        IOptionsMonitor<MemorySmithOptions> options,
+        IAuthorizationService authorization,
+        HttpContext httpContext,
+        CancellationToken cancellationToken) =>
     {
-        FileProvider = new PhysicalFileProvider(pageAssetsPath),
-        RequestPath = "/page-assets"
+        var resolvedAssetPath = ResolvePageAssetPath(pageAssetsPath, assetPath);
+        if (resolvedAssetPath is null)
+        {
+            return Results.BadRequest();
+        }
+
+        if (!File.Exists(resolvedAssetPath))
+        {
+            return Results.NotFound();
+        }
+
+        var normalizedAssetPath = NormalizePageAssetRequestPath(assetPath);
+        var canView = await CanViewPageAssetAsync(pages, normalizedAssetPath, httpContext.User, options.CurrentValue.Auth, authorization, cancellationToken);
+        if (!canView)
+        {
+            return Results.NotFound();
+        }
+
+        return Results.File(
+            resolvedAssetPath,
+            contentTypeProvider.TryGetContentType(resolvedAssetPath, out var contentType) ? contentType : "application/octet-stream");
     });
 
     app.MapStaticAssets();
@@ -374,4 +400,57 @@ public partial class Program
 {
     private static void AddPermissionPolicy(AuthorizationOptions options, string name, MemorySmithPermission permission) =>
         options.AddPolicy(name, policy => policy.AddRequirements(new MemorySmithPermissionRequirement(permission)));
+
+    private static string? ResolvePageAssetPath(string pageAssetsPath, string assetPath)
+    {
+        var normalizedAssetPath = NormalizePageAssetRequestPath(assetPath);
+        if (string.IsNullOrWhiteSpace(normalizedAssetPath) || normalizedAssetPath.Split('/').Any(segment => segment is ".." or "."))
+        {
+            return null;
+        }
+
+        var resolvedPath = Path.GetFullPath(Path.Combine(pageAssetsPath, normalizedAssetPath.Replace('/', Path.DirectorySeparatorChar)));
+        var normalizedRoot = pageAssetsPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        return resolvedPath.StartsWith(normalizedRoot, StringComparison.OrdinalIgnoreCase) ? resolvedPath : null;
+    }
+
+    private static string NormalizePageAssetRequestPath(string assetPath) =>
+        Uri.UnescapeDataString((assetPath ?? string.Empty).Replace('\\', '/').TrimStart('/'));
+
+    private static async Task<bool> CanViewPageAssetAsync(
+        FilePageService pages,
+        string assetPath,
+        ClaimsPrincipal user,
+        AuthOptions auth,
+        IAuthorizationService authorization,
+        CancellationToken cancellationToken)
+    {
+        var summaries = await pages.ListAsync(cancellationToken);
+        var isReferencedByAnyPage = false;
+        foreach (var summary in summaries)
+        {
+            var page = await pages.GetAsync(summary.Slug, cancellationToken);
+            if (page is null || !PageReferencesAsset(page.Markdown, assetPath))
+            {
+                continue;
+            }
+
+            isReferencedByAnyPage = true;
+            if (PageAccessLevels.CanView(page.MinimumRole, user, auth))
+            {
+                return true;
+            }
+        }
+
+        return !isReferencedByAnyPage &&
+            (await authorization.AuthorizeAsync(user, null, MemorySmithPolicies.CanEditMemorySmith)).Succeeded;
+    }
+
+    private static bool PageReferencesAsset(string markdown, string assetPath)
+    {
+        var normalizedMarkdown = markdown.Replace('\\', '/');
+        var normalizedAssetPath = NormalizePageAssetRequestPath(assetPath);
+        return normalizedMarkdown.Contains($"assets/{normalizedAssetPath}", StringComparison.OrdinalIgnoreCase) ||
+            normalizedMarkdown.Contains($"/page-assets/{normalizedAssetPath}", StringComparison.OrdinalIgnoreCase);
+    }
 }
