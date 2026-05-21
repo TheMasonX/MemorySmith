@@ -1,5 +1,6 @@
 using MemorySmith.App.Services;
 using MemorySmith.Core.Models;
+using Microsoft.Extensions.Options;
 
 namespace MemorySmith.Tests;
 
@@ -17,7 +18,7 @@ public class MemoryMaintenanceTasksTests
         _store = new InMemoryMemoryStore();
         _events = new RecordingEventStore();
         _index = new MemorySmith.Core.Indexing.MemoryIndex();
-        _tasks = new MemoryMaintenanceTasks(_store, _events, _index);
+        _tasks = new MemoryMaintenanceTasks(_store, _events, _index, Options.Create(new MemorySmithOptions()));
     }
 
     [Test]
@@ -59,7 +60,7 @@ public class MemoryMaintenanceTasksTests
     }
 
     [Test]
-    public async Task RunConsolidationAsync_MergesPromotesAndDeprecates()
+    public async Task RunConsolidationAsync_MergesPromotesAndRecommendsDeprecationByDefault()
     {
         _store.Save(new MemoryRecord { Id = "dupe-1", Title = "Same", Content = "A", UsageCount = 1, Tags = ["one"] });
         _store.Save(new MemoryRecord { Id = "dupe-2", Title = "same", Content = "B", UsageCount = 2, Tags = ["two"] });
@@ -91,8 +92,35 @@ public class MemoryMaintenanceTasksTests
             Assert.That(_store.Load("dupe-1")!.Tags, Is.EquivalentTo(new[] { "one", "two" }));
             Assert.That(_store.Load("dupe-2"), Is.Null);
             Assert.That(_store.Load("promote")!.Status, Is.EqualTo(MemoryStatus.Core));
-            Assert.That(_store.Load("deprecate")!.Status, Is.EqualTo(MemoryStatus.Deprecated));
+            Assert.That(_store.Load("deprecate")!.Status, Is.EqualTo(MemoryStatus.Unconsolidated));
+            Assert.That(_events.Events.Single().Action, Is.EqualTo("DeprecationRecommended"));
         });
+    }
+
+    [Test]
+    public async Task RunConsolidationAsync_DeprecatesLowScoreRecordsWhenExplicitlyEnabled()
+    {
+        var tasks = new MemoryMaintenanceTasks(
+            _store,
+            _events,
+            _index,
+            Options.Create(new MemorySmithOptions
+            {
+                Maintenance = new MaintenanceOptions { AutomaticDeprecationEnabled = true }
+            }));
+        _store.Save(new MemoryRecord
+        {
+            Id = "deprecate",
+            Title = "Deprecate",
+            Content = "Old low value",
+            Status = MemoryStatus.Unconsolidated,
+            Confidence = 0,
+            LastUpdated = DateTime.UtcNow.AddDays(-200)
+        });
+
+        await tasks.RunConsolidationAsync(CancellationToken.None);
+
+        Assert.That(_store.Load("deprecate")!.Status, Is.EqualTo(MemoryStatus.Deprecated));
     }
 
     [Test]

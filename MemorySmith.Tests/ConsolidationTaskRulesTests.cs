@@ -1,6 +1,7 @@
 using MemorySmith.App.Services;
 using MemorySmith.Core.Indexing;
 using MemorySmith.Core.Models;
+using Microsoft.Extensions.Options;
 
 namespace MemorySmith.Tests;
 
@@ -8,13 +9,15 @@ namespace MemorySmith.Tests;
 public class ConsolidationTaskRulesTests
 {
     private InMemoryMemoryStore _store = null!;
+    private RecordingEventStore _events = null!;
     private MemoryMaintenanceTasks _tasks = null!;
 
     [SetUp]
     public void Setup()
     {
         _store = new InMemoryMemoryStore();
-        _tasks = new MemoryMaintenanceTasks(_store, new RecordingEventStore(), new MemoryIndex());
+        _events = new RecordingEventStore();
+        _tasks = new MemoryMaintenanceTasks(_store, _events, new MemoryIndex(), Options.Create(new MemorySmithOptions()));
     }
 
     [Test]
@@ -120,7 +123,7 @@ public class ConsolidationTaskRulesTests
     }
 
     [Test]
-    public async Task LowScoreMemory_Deprecates()
+    public async Task LowScoreMemory_StaysVisibleAndRecordsRecommendationByDefault()
     {
         _store.Save(new MemoryRecord
         {
@@ -134,6 +137,37 @@ public class ConsolidationTaskRulesTests
         });
 
         await _tasks.RunConsolidationAsync(CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(_store.Load("low-score")!.Status, Is.EqualTo(MemoryStatus.Unconsolidated));
+            Assert.That(_events.Events.Single().Action, Is.EqualTo("DeprecationRecommended"));
+        });
+    }
+
+    [Test]
+    public async Task LowScoreMemory_DeprecatesWhenAutomaticDeprecationIsEnabled()
+    {
+        var tasks = new MemoryMaintenanceTasks(
+            _store,
+            _events,
+            new MemoryIndex(),
+            Options.Create(new MemorySmithOptions
+            {
+                Maintenance = new MaintenanceOptions { AutomaticDeprecationEnabled = true }
+            }));
+        _store.Save(new MemoryRecord
+        {
+            Id = "low-score",
+            Title = "Low Score",
+            Content = "Low score content",
+            Status = MemoryStatus.Unconsolidated,
+            UsageCount = 0,
+            Confidence = 0.1,
+            LastUpdated = DateTime.UtcNow.AddMonths(-6)
+        });
+
+        await tasks.RunConsolidationAsync(CancellationToken.None);
 
         Assert.That(_store.Load("low-score")!.Status, Is.EqualTo(MemoryStatus.Deprecated));
     }

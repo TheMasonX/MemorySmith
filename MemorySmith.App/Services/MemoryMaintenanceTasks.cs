@@ -2,20 +2,29 @@ using MemorySmith.Core.Indexing;
 using MemorySmith.Core.Models;
 using MemorySmith.Core.StateMachine;
 using MemorySmith.Storage;
+using Microsoft.Extensions.Options;
 
 namespace MemorySmith.App.Services;
 
 public class MemoryMaintenanceTasks
 {
+    private const double DeprecationRecommendationThreshold = 0.2;
+
     private readonly IMemoryStore _store;
     private readonly IEventStore _eventStore;
     private readonly MemoryIndex _index;
+    private readonly MemorySmithOptions _options;
 
-    public MemoryMaintenanceTasks(IMemoryStore store, IEventStore eventStore, MemoryIndex index)
+    public MemoryMaintenanceTasks(
+        IMemoryStore store,
+        IEventStore eventStore,
+        MemoryIndex index,
+        IOptions<MemorySmithOptions>? options = null)
     {
         _store = store;
         _eventStore = eventStore;
         _index = index;
+        _options = options?.Value ?? new MemorySmithOptions();
     }
 
     public Task RunTriageAsync(CancellationToken cancellationToken)
@@ -26,7 +35,7 @@ public class MemoryMaintenanceTasks
         foreach (var record in _store.LoadAll().ToList())
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var (newStatus, evt) = stateMachine.Evaluate(record);
+            var (newStatus, evt) = stateMachine.Evaluate(record, _options.Maintenance.AutomaticDeprecationEnabled);
             if (newStatus == record.Status)
             {
                 continue;
@@ -57,7 +66,14 @@ public class MemoryMaintenanceTasks
         var records = _store.LoadAll().ToList();
         DeduplicateRecords(records);
         PromoteStableRecords(records);
-        DeprecateObsoleteRecords(records);
+        if (_options.Maintenance.AutomaticDeprecationEnabled)
+        {
+            DeprecateObsoleteRecords(records);
+        }
+        else
+        {
+            RecommendObsoleteRecords(records);
+        }
         return Task.CompletedTask;
     }
 
@@ -111,6 +127,26 @@ public class MemoryMaintenanceTasks
                 record.Status = MemoryStatus.Deprecated;
                 _store.Save(record);
             }
+        }
+    }
+
+    private void RecommendObsoleteRecords(IEnumerable<MemoryRecord> records)
+    {
+        foreach (var record in records.Where(r => r.Status != MemoryStatus.Deprecated))
+        {
+            var score = MemoryScorer.Score(record);
+            if (score >= DeprecationRecommendationThreshold)
+            {
+                continue;
+            }
+
+            _eventStore.AppendEvent(new MemoryEvent
+            {
+                MemoryId = record.Id,
+                Action = "DeprecationRecommended",
+                Details = $"Low score {score:F3}; automatic deprecation is disabled.",
+                Timestamp = DateTime.UtcNow
+            });
         }
     }
 

@@ -1,0 +1,60 @@
+{
+  "Id": "ai-memory-suite-implementation-plan-20260520",
+  "Content": "A full six-seat, ten-round council review produced a phased implementation plan for turning MemorySmith into a governed AI memory suite. The first feature slice now implements warning-first maintenance, a file-backed tag policy, tag/source/relation/staleness/maintenance diagnostics, additive context-pack diagnostic metadata, /memories diagnostics display, and focused NUnit coverage. Later ranking changes, persisted schema promotion, page chunking/frontmatter, and stricter Agent write behavior remain gated behind future council review, probes, and rollback notes.",
+  "Title": "AI Memory Suite Implementation Plan",
+  "Status": 2,
+  "Confidence": 0.86,
+  "Tags": [
+    "project-wiki",
+    "memory-system",
+    "implementation-plan",
+    "council-review",
+    "agent-memory",
+    "tag-governance",
+    "staleness",
+    "search",
+    "chat",
+    "pages",
+    "working"
+  ],
+  "References": [
+    "ai-memory-suite-governance-foundation-20260520",
+    "memory-system-rfc-council-review-20260520",
+    "project-wiki-search-roadmap",
+    "project-wiki-chat-agent-provider",
+    "project-wiki-markdown-pages",
+    "project-wiki-mcp-context-pack",
+    "project-wiki-source-links-feature",
+    "project-wiki-semantic-ui-current",
+    "project-wiki-current-validation-146-tests"
+  ],
+  "Conflicts": [],
+  "SourceLinks": [
+    {
+      "Label": "AI Memory Suite Implementation Plan",
+      "Uri": "%MemorySmithRepo%Data/Pages/ai-memory-suite-implementation-plan.md",
+      "StartLine": null,
+      "EndLine": null
+    },
+    {
+      "Label": "Core Memory System Improvements RFC",
+      "Uri": "%MemorySmithRepo%Data/Pages/temp-plan.md",
+      "StartLine": null,
+      "EndLine": null
+    },
+    {
+      "Label": "Memory maintenance tasks",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/MemoryMaintenanceTasks.cs",
+      "StartLine": null,
+      "EndLine": null
+    },
+    {
+      "Label": "Memory state machine",
+      "Uri": "%MemorySmithRepo%MemorySmith.Core/StateMachine/MemoryStateMachine.cs",
+      "StartLine": null,
+      "EndLine": null
+    }
+  ],
+  "UsageCount": 0,
+  "LastUpdated": "2026-05-21T02:07:23.9374268Z"
+}

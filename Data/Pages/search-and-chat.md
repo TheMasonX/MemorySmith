@@ -102,7 +102,7 @@ For agent workflows:
 | Human explanation | Page search/get plus relevant memories | Answer with page context first, then cite memory facts as evidence. |
 | Review of a major decision | [Council Workflow](llm-council.md) | Run separate architecture, retrieval, UX, and skeptical passes. |
 
-Prefer JSON output for agent parsing when a tool offers it. Prefer Markdown output when a human is reading the result directly.
+Prefer JSON output for agent parsing when a tool offers it. Prefer Markdown output when a human is reading the result directly. Context-pack JSON includes `schemaVersion: memorysmith.context-pack.v1`, preserves the existing `records` and `warnings` fields, and can include per-record diagnostics for stale, broken-source, relationship, tag-policy, and maintenance warnings.
 
 ## Search Quality And Long-Term Memory
 
@@ -116,7 +116,7 @@ The long-term search goal is not only higher scores; it is better recall of the 
 
 The [Core Memory System Improvements RFC](temp-plan.md) recommends a convention-first approach with validation and schema-promotion gates. The [AI Memory Suite Implementation Plan](ai-memory-suite-implementation-plan.md) turns that direction into a phased plan covering tag policy, staleness warnings, maintenance audit, structured tool output, Agent write governance, and page retrieval. Namespaced tags and markdown alert blocks are useful planning conventions, but search ranking should not depend on them until validators, probes, and trace-visible warnings exist.
 
-Do not silently hide old Core records with temporal decay. Start by surfacing staleness warnings, then measure whether ranking changes are needed.
+Do not silently hide old Core records with temporal decay. The first governance slice disables automatic score-based deprecation by default, surfaces low-score records as `DeprecationRecommended` maintenance warnings, and keeps ranking unchanged while diagnostics and probes mature.
 
 ## Council Review For Search Changes
 

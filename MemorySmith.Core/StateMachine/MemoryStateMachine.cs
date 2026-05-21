@@ -8,13 +8,13 @@ public class MemoryStateMachine
     private const double CoreThreshold = 2.0;
     private const double DeprecationThreshold = 0.2;
 
-    public (MemoryStatus NewStatus, MemoryEvent? Event) Evaluate(MemoryRecord record)
+    public (MemoryStatus NewStatus, MemoryEvent? Event) Evaluate(MemoryRecord record, bool allowDeprecation = true)
     {
         var score = MemoryScorer.Score(record);
         var original = record.Status;
         MemoryStatus newStatus = original;
 
-        if (score < DeprecationThreshold && original != MemoryStatus.Deprecated)
+        if (allowDeprecation && score < DeprecationThreshold && original != MemoryStatus.Deprecated)
         {
             newStatus = MemoryStatus.Deprecated;
         }
