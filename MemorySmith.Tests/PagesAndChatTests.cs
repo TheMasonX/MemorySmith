@@ -75,6 +75,26 @@ public class PagesAndChatTests
     }
 
     [Test]
+    public async Task PageSearchVisibleAsync_FindsVisibleMatchesBeyondFirstTwoHundredHiddenResults()
+    {
+        var pages = new FilePageService(_tempDir);
+        const string query = "crowded visibility search token";
+        var anonymous = new ClaimsPrincipal(new ClaimsIdentity());
+        await PageVisibilitySearchFixture.SeedAsync(pages, query, CancellationToken.None);
+
+        var visiblePages = await pages.SearchVisibleAsync(
+            query,
+            page => PageAccessLevels.CanView(page.MinimumRole, anonymous, new AuthOptions()),
+            CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(visiblePages, Has.Count.EqualTo(PageVisibilitySearchFixture.PublicPageSlugs.Length));
+            Assert.That(visiblePages.Select(page => page.Slug), Is.EquivalentTo(PageVisibilitySearchFixture.PublicPageSlugs));
+        });
+    }
+
+    [Test]
     public void PageAccessLevels_EditorsCannotSetAdminMinimumRole()
     {
         var editor = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Role, MemorySmithRoles.Editor)], "Test"));
@@ -757,6 +777,39 @@ public class PagesAndChatTests
         {
             Assert.That(response.Context, Has.Count.EqualTo(1));
             Assert.That(response.Context.Single().Origin, Is.EqualTo(ChatContextOrigins.Preloaded));
+        });
+    }
+
+    [Test]
+    public async Task MemoryChatAgent_PreloadsVisiblePagesBeyondFirstTwoHundredHiddenResults()
+    {
+        var memoryStore = new InMemoryMemoryStore();
+        var eventStore = new RecordingEventStore();
+        var publisher = new RecordingMemoryChangePublisher();
+        var memories = TestServiceFactory.CreateMemoryApplicationService(memoryStore, eventStore, publisher);
+        var pages = new FilePageService(_tempDir);
+        const string query = "crowded preload visibility token";
+        await PageVisibilitySearchFixture.SeedAsync(pages, query, CancellationToken.None);
+
+        var provider = new FakeChatProvider("Done.");
+        var agent = new MemoryChatAgent([provider], memories, pages, Options.Create(new MemorySmithOptions
+        {
+            Chat = new ChatOptions
+            {
+                MaxContextRecords = 0,
+                MaxPreloadedContextRecords = 0,
+                MaxContextPages = 2,
+                MaxPreloadedContextPages = 2
+            }
+        }));
+
+        var response = await agent.SendAsync(new MemoryChatRequest($"What does the MemorySmith wiki say about {query}?", MemoryChatMode.Chat), CancellationToken.None);
+        var pageContextIds = response.Context.Where(item => item.Kind == "page").Select(item => item.Id).ToArray();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(pageContextIds, Has.Length.EqualTo(PageVisibilitySearchFixture.PublicPageSlugs.Length));
+            Assert.That(pageContextIds, Is.EquivalentTo(PageVisibilitySearchFixture.PublicPageSlugs));
         });
     }
 

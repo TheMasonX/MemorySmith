@@ -28,10 +28,11 @@ public class SearchController : ControllerBase
         var memoryLimit = Math.Max(1, limit / 2);
         var pageLimit = Math.Max(1, limit - memoryLimit);
         var memoryResults = await _memories.HybridSearchAsync(new HybridMemorySearchQuery(query, Limit: memoryLimit), cancellationToken);
-        var pageResults = (await _pages.SearchAsync(new PageSearchQuery(query, 200), cancellationToken))
-            .Where(page => PageAccessLevels.CanView(page.MinimumRole, User, _options.CurrentValue.Auth))
-            .Take(pageLimit)
-            .ToList();
+        var pageResults = await _pages.SearchVisibleAsync(
+            query,
+            pageLimit,
+            page => PageAccessLevels.CanView(page.MinimumRole, User, _options.CurrentValue.Auth),
+            cancellationToken);
 
         var results = memoryResults.Select(memory => new UnifiedSearchResult(
                 "memory",

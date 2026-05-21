@@ -1963,9 +1963,11 @@ public sealed partial class MemoryChatAgent : IChatAgent
 
         var pages = pageLimit == 0
             ? Array.Empty<PageSummary>()
-            : (await _pages.SearchAsync(new PageSearchQuery(query, 200), cancellationToken))
-                .Where(page => PageAccessLevels.CanView(page.MinimumRole, _currentUser, _options.Value.Auth))
-                .Take(pageLimit)
+            : (await _pages.SearchVisibleAsync(
+                    query,
+                    pageLimit,
+                    page => PageAccessLevels.CanView(page.MinimumRole, _currentUser, _options.Value.Auth),
+                    cancellationToken))
                 .ToArray();
         context.AddRange(pages.Select(page => new ChatContextItem(
             "page",
