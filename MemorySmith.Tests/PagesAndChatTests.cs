@@ -144,6 +144,76 @@ public class PagesAndChatTests
     }
 
     [Test]
+    public async Task PagesController_Save_PersistsResolvedConfiguredDefaultMinimumRole()
+    {
+        var pages = new FilePageService(_tempDir, new PageOptions { DefaultMinimumRole = PageAccessLevels.Anonymous });
+        var options = new StaticOptionsMonitor<MemorySmithOptions>(new MemorySmithOptions
+        {
+            Pages = new PageOptions { DefaultMinimumRole = PageAccessLevels.Authenticated },
+            Auth = new AuthOptions()
+        });
+        var controller = new PagesController(pages, options)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Role, MemorySmithRoles.Editor)], "Test"))
+                }
+            }
+        };
+
+        var response = await controller.Save(new PageSaveRequest("editor-page", "Editor Page", "Body"), CancellationToken.None);
+        var created = response.Result as CreatedAtActionResult;
+        var saved = created?.Value as PageDocument;
+        var loaded = await pages.GetAsync("editor-page", CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(created, Is.Not.Null);
+            Assert.That(saved, Is.Not.Null);
+            Assert.That(saved!.MinimumRole, Is.EqualTo(PageAccessLevels.Authenticated));
+            Assert.That(loaded, Is.Not.Null);
+            Assert.That(loaded!.MinimumRole, Is.EqualTo(PageAccessLevels.Authenticated));
+        });
+    }
+
+    [Test]
+    public async Task PagesController_Update_CreatesMissingPageWithResolvedConfiguredDefaultMinimumRole()
+    {
+        var pages = new FilePageService(_tempDir, new PageOptions { DefaultMinimumRole = PageAccessLevels.Anonymous });
+        var options = new StaticOptionsMonitor<MemorySmithOptions>(new MemorySmithOptions
+        {
+            Pages = new PageOptions { DefaultMinimumRole = PageAccessLevels.Authenticated },
+            Auth = new AuthOptions()
+        });
+        var controller = new PagesController(pages, options)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Role, MemorySmithRoles.Editor)], "Test"))
+                }
+            }
+        };
+
+        var response = await controller.Update("editor-page", new PageSaveRequest(null, "Editor Page", "Body"), CancellationToken.None);
+        var updated = response.Result as OkObjectResult;
+        var saved = updated?.Value as PageDocument;
+        var loaded = await pages.GetAsync("editor-page", CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(updated, Is.Not.Null);
+            Assert.That(saved, Is.Not.Null);
+            Assert.That(saved!.MinimumRole, Is.EqualTo(PageAccessLevels.Authenticated));
+            Assert.That(loaded, Is.Not.Null);
+            Assert.That(loaded!.MinimumRole, Is.EqualTo(PageAccessLevels.Authenticated));
+        });
+    }
+
+    [Test]
     public async Task FilePageService_UsesLeastRestrictiveReferencedPageRoleForAssetAccess()
     {
         var pages = new FilePageService(_tempDir);
