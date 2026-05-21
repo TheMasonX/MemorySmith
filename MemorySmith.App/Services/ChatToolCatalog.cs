@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using MemorySmith.Core.Models;
@@ -29,7 +30,21 @@ public sealed record ChatToolDescriptor(
 public sealed record ChatToolExecutionContext(
     MemoryApplicationService Memories,
     IPageService Pages,
-    string Transport);
+    string Transport,
+    ClaimsPrincipal? User = null,
+    ICurrentUserContext? CurrentUser = null,
+    AuthOptions? Auth = null)
+{
+    public bool CanViewPage(string minimumRole) =>
+        CurrentUser is not null
+            ? PageAccessLevels.CanView(minimumRole, CurrentUser, Auth)
+            : PageAccessLevels.CanView(minimumRole, User, Auth);
+
+    public bool CanSetPageMinimumRole(string minimumRole) =>
+        CurrentUser is not null
+            ? PageAccessLevels.CanSetMinimumRole(minimumRole, CurrentUser, Auth)
+            : PageAccessLevels.CanSetMinimumRole(minimumRole, User, Auth);
+}
 
 public sealed record ChatToolExecutionResult(
     string Text,
@@ -182,7 +197,10 @@ public sealed class ChatToolCatalog
             {
                 var query = ReadString(args, "query");
                 var limit = Math.Clamp(ReadInt(args, "limit", 10), 1, 50);
-                var pages = await ctx.Pages.SearchAsync(new PageSearchQuery(query, limit), ct);
+                var pages = (await ctx.Pages.SearchAsync(new PageSearchQuery(query, 200), ct))
+                    .Where(page => ctx.CanViewPage(page.MinimumRole))
+                    .Take(limit)
+                    .ToList();
                 if (pages.Count == 0)
                 {
                     return new ChatToolExecutionResult("No matching pages.");
@@ -228,6 +246,11 @@ public sealed class ChatToolCatalog
                 {
                     return new ChatToolExecutionResult($"No page found for slug '{slug}'.");
                 }
+                if (!ctx.CanViewPage(page.MinimumRole))
+                {
+                    return new ChatToolExecutionResult($"No page found for slug '{slug}'.");
+                }
+
                 var maxChars = Math.Clamp(ReadInt(args, "maxCharacters", 4000), 200, 20000);
                 var markdown = page.Markdown.Length <= maxChars
                     ? page.Markdown
@@ -272,10 +295,13 @@ public sealed class ChatToolCatalog
                     : ctx.Memories.HybridSearchAsync(new HybridMemorySearchQuery(query, ReadStatus(args), ReadString(args, "tags"), memoryLimit), ct);
                 var pageTask = pageLimit == 0
                     ? Task.FromResult<IReadOnlyList<PageSummary>>(Array.Empty<PageSummary>())
-                    : ctx.Pages.SearchAsync(new PageSearchQuery(query, pageLimit), ct);
+                    : ctx.Pages.SearchAsync(new PageSearchQuery(query, 200), ct);
                 await Task.WhenAll(memoryTask, pageTask);
                 var memoryResults = await memoryTask;
-                var pageResults = await pageTask;
+                var pageResults = (await pageTask)
+                    .Where(page => ctx.CanViewPage(page.MinimumRole))
+                    .Take(pageLimit)
+                    .ToList();
                 var sb = new System.Text.StringBuilder();
                 sb.Append("Unified MemorySmith search results for: ").AppendLine(query);
                 sb.AppendLine();
@@ -324,7 +350,8 @@ public sealed class ChatToolCatalog
                 {
                     ["markdown"] = new JsonObject { ["type"] = "string", ["description"] = "Full markdown content of the page." },
                     ["slug"] = new JsonObject { ["type"] = "string", ["description"] = "Optional slug. Omit to auto-derive from title or first heading." },
-                    ["title"] = new JsonObject { ["type"] = "string", ["description"] = "Optional explicit title. Overrides the first heading in the markdown." }
+                    ["title"] = new JsonObject { ["type"] = "string", ["description"] = "Optional explicit title. Overrides the first heading in the markdown." },
+                    ["minimumRole"] = new JsonObject { ["type"] = "string", ["description"] = "Optional page visibility: Anonymous, Authenticated, or Admin." }
                 },
                 ["required"] = new JsonArray { "markdown" }
             },
@@ -340,7 +367,32 @@ public sealed class ChatToolCatalog
                 }
                 var slug = ReadString(args, "slug");
                 var title = ReadString(args, "title");
-                var saved = await ctx.Pages.SaveAsync(new PageSaveRequest(slug, title, markdown), ct);
+                var minimumRole = ReadString(args, "minimumRole");
+                if (!string.IsNullOrWhiteSpace(minimumRole))
+                {
+                    if (!PageAccessLevels.TryNormalize(minimumRole, out var normalizedMinimumRole))
+                    {
+                        return new ChatToolExecutionResult("Choose Anonymous, Authenticated, or Admin for page visibility.", IsError: true);
+                    }
+
+                    if (!ctx.CanSetPageMinimumRole(normalizedMinimumRole))
+                    {
+                        return new ChatToolExecutionResult("The caller is not authorized to set that page visibility.", IsError: true);
+                    }
+
+                    minimumRole = normalizedMinimumRole;
+                }
+
+                if (!string.IsNullOrWhiteSpace(slug))
+                {
+                    var existing = await ctx.Pages.GetAsync(slug, ct);
+                    if (existing is not null && !ctx.CanViewPage(existing.MinimumRole))
+                    {
+                        return new ChatToolExecutionResult($"No page found for slug '{slug}'.", IsError: true);
+                    }
+                }
+
+                var saved = await ctx.Pages.SaveAsync(new PageSaveRequest(slug, title, markdown, minimumRole), ct);
                 return new ChatToolExecutionResult($"Page saved. Slug: {saved.Slug}  Title: {saved.Title}  Updated: {saved.LastUpdatedUtc:O}");
             });
 
@@ -366,6 +418,12 @@ public sealed class ChatToolCatalog
                 {
                     return new ChatToolExecutionResult("The memorysmith_page_delete tool requires a slug argument.", IsError: true);
                 }
+                var existing = await ctx.Pages.GetAsync(slug, ct);
+                if (existing is not null && !ctx.CanViewPage(existing.MinimumRole))
+                {
+                    return new ChatToolExecutionResult($"No page found with slug '{slug}'.", IsError: true);
+                }
+
                 var deleted = await ctx.Pages.DeleteAsync(slug, ct);
                 return new ChatToolExecutionResult(deleted
                     ? $"Page '{slug}' deleted."

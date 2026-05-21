@@ -1,10 +1,13 @@
 @page "/pages"
 @page "/pages/{*Slug}"
 @rendermode InteractiveServer
+@using Microsoft.Extensions.Options
 @inject IPageService PageService
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
+@inject IOptionsMonitor<MemorySmithOptions> Options
+@inject ICurrentUserContext CurrentUser
 
 <PageTitle>Pages</PageTitle>
 <NavigationLock ConfirmExternalNavigation="@HasUnsavedChanges" OnBeforeInternalNavigation="ConfirmInternalNavigation" />
@@ -60,6 +63,7 @@
                                 <div class="wiki-result-title">@summary.Title</div>
                                 <div class="wiki-result-meta">
                                     <span class="wiki-status">Markdown</span>
+                                    <span class="wiki-status">@VisibilityLabel(summary.MinimumRole)</span>
                                     <span>@summary.LastUpdatedUtc.ToLocalTime().ToString("M/d HH:mm")</span>
                                 </div>
                                 <div class="wiki-result-snippet">@summary.Snippet</div>
@@ -95,6 +99,15 @@
                     <div class="wiki-editor-grid page-editor-fields">
                         <MudTextField @bind-Value="_editSlug" Label="Slug" Disabled="@_editingExisting" Immediate="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
                         <MudTextField @bind-Value="_editTitle" Label="Title" Immediate="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        @if (EditableMinimumRoleOptions.Count > 0)
+                        {
+                            <MudSelect T="string" Value="_editMinimumRole" ValueChanged="@((string value) => _editMinimumRole = value)" Label="Visibility" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                                @foreach (var role in EditableMinimumRoleOptions)
+                                {
+                                    <MudSelectItem T="string" Value="@role">@VisibilityLabel(role)</MudSelectItem>
+                                }
+                            </MudSelect>
+                        }
                     </div>
 
                     <div class="page-editor-toolbar" role="toolbar" aria-label="Markdown tools">
@@ -153,6 +166,7 @@
                         <MudText Typo="Typo.h6">@_selectedPage.Title</MudText>
                         <div class="wiki-result-meta">
                             <span class="wiki-status">Markdown</span>
+                            <span class="wiki-status">@VisibilityLabel(_selectedPage.MinimumRole)</span>
                             <span>@_selectedPage.RelativePath</span>
                             <span>@_selectedPage.LastUpdatedUtc.ToLocalTime().ToString("g")</span>
                         </div>
@@ -183,10 +197,12 @@
     private string _editSlug = string.Empty;
     private string _editTitle = string.Empty;
     private string _editMarkdown = string.Empty;
+    private string _editMinimumRole = PageAccessLevels.Anonymous;
     private string _previewHtml = string.Empty;
     private string _originalSlug = string.Empty;
     private string _originalTitle = string.Empty;
     private string _originalMarkdown = string.Empty;
+    private string _originalMinimumRole = PageAccessLevels.Anonymous;
     private bool _isLoading;
     private bool _isEditing;
     private bool _editingExisting;
@@ -197,7 +213,10 @@
     private bool HasUnsavedChanges => _isEditing &&
         (!string.Equals(_editSlug, _originalSlug, StringComparison.Ordinal) ||
          !string.Equals(_editTitle, _originalTitle, StringComparison.Ordinal) ||
-         !string.Equals(_editMarkdown, _originalMarkdown, StringComparison.Ordinal));
+         !string.Equals(_editMarkdown, _originalMarkdown, StringComparison.Ordinal) ||
+         !string.Equals(_editMinimumRole, _originalMinimumRole, StringComparison.Ordinal));
+
+    private IReadOnlyList<string> EditableMinimumRoleOptions => PageAccessLevels.EditableOptions(CurrentUser, Options.CurrentValue.Auth);
 
     protected override async Task OnParametersSetAsync()
     {
@@ -223,8 +242,10 @@
         _isLoading = true;
         var pages = string.IsNullOrWhiteSpace(_searchQuery)
             ? await PageService.ListAsync(CancellationToken.None)
-            : await PageService.SearchAsync(new PageSearchQuery(_searchQuery), CancellationToken.None);
-        _pages = pages.ToList();
+            : await PageService.SearchAsync(new PageSearchQuery(_searchQuery, 200), CancellationToken.None);
+        _pages = pages
+            .Where(page => PageAccessLevels.CanView(page.MinimumRole, CurrentUser, Options.CurrentValue.Auth))
+            .ToList();
         _isLoading = false;
 
         if (!string.IsNullOrWhiteSpace(selectedSlug))
@@ -276,6 +297,12 @@
             return;
         }
 
+        if (!PageAccessLevels.CanView(page.MinimumRole, CurrentUser, Options.CurrentValue.Auth))
+        {
+            Snackbar.Add("Page not found", Severity.Warning);
+            return;
+        }
+
         _selectedPage = page;
         _isEditing = false;
         _renderedPageEnhancementsPending = true;
@@ -297,9 +324,11 @@
         _editSlug = string.Empty;
         _editTitle = string.Empty;
         _editMarkdown = string.Empty;
+        _editMinimumRole = PageAccessLevels.DefaultForEditor(CurrentUser, Options.CurrentValue.Auth, Options.CurrentValue.Pages.DefaultMinimumRole);
         _originalSlug = string.Empty;
         _originalTitle = string.Empty;
         _originalMarkdown = string.Empty;
+        _originalMinimumRole = _editMinimumRole;
         _previewHtml = string.Empty;
         _previewEnhancementsPending = true;
         _editingExisting = false;
@@ -334,7 +363,8 @@
 
     private async Task SaveAsync()
     {
-        var page = await PageService.SaveAsync(new PageSaveRequest(_editSlug, _editTitle, _editMarkdown), CancellationToken.None);
+        var requestedMinimumRole = EditableMinimumRoleOptions.Count > 0 ? _editMinimumRole : null;
+        var page = await PageService.SaveAsync(new PageSaveRequest(_editSlug, _editTitle, _editMarkdown, requestedMinimumRole), CancellationToken.None);
         Snackbar.Add("Page saved", Severity.Success);
         _selectedPage = page;
         _isEditing = false;
@@ -361,12 +391,16 @@
         _editSlug = page.Slug;
         _editTitle = page.Title;
         _editMarkdown = page.Markdown;
+        _editMinimumRole = PageAccessLevels.Normalize(page.MinimumRole);
         _originalSlug = page.Slug;
         _originalTitle = page.Title;
         _originalMarkdown = page.Markdown;
+        _originalMinimumRole = _editMinimumRole;
         _editingExisting = editingExisting;
         RefreshPreview();
     }
+
+    private static string VisibilityLabel(string minimumRole) => PageAccessLevels.Label(minimumRole);
 
     private void OnMarkdownInput(ChangeEventArgs args)
     {

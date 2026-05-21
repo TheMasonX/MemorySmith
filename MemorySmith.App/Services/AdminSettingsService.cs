@@ -129,6 +129,7 @@ public sealed class AdminSettingsService
         EditableSettingDescriptor.Choice("MemorySmith:Auth:AuthenticatedDefaultRole", "Default signed-in role", "Auth", settings => MemorySmithPermissionHandler.NormalizeAuthenticatedDefaultRole(settings.Auth.AuthenticatedDefaultRole), [MemorySmithRoles.Viewer, MemorySmithRoles.Editor]),
         EditableSettingDescriptor.Boolean("MemorySmith:Auth:AutoEditorForAuthenticatedUsers", "Auto editor for signed-in users", "Auth", settings => settings.Auth.AutoEditorForAuthenticatedUsers),
         EditableSettingDescriptor.Boolean("MemorySmith:Auth:OpenLocalEditorCompatibility", "Pre-setup local write compatibility", "Auth", settings => settings.Auth.OpenLocalEditorCompatibility),
+        EditableSettingDescriptor.Choice("MemorySmith:Pages:DefaultMinimumRole", "Default page visibility", "Pages", settings => PageAccessLevels.Normalize(settings.Pages.DefaultMinimumRole), PageAccessLevels.All),
         EditableSettingDescriptor.Boolean("MemorySmith:Pages:AllowRawHtml", "Allow raw page HTML", "Pages", settings => settings.Pages.AllowRawHtml),
         EditableSettingDescriptor.Boolean("MemorySmith:Maintenance:Enabled", "Maintenance enabled", "Maintenance", settings => settings.Maintenance.Enabled),
         EditableSettingDescriptor.Integer("MemorySmith:Maintenance:TriageMinutes", "Triage interval minutes", "Maintenance", settings => settings.Maintenance.TriageMinutes, 1, 1440),

@@ -2,6 +2,7 @@ using MemorySmith.App.Services;
 using MemorySmith.Core.Models;
 using Microsoft.Extensions.Options;
 using System.Net;
+using System.Security.Claims;
 
 namespace MemorySmith.Tests;
 
@@ -37,10 +38,53 @@ public class PagesAndChatTests
         Assert.Multiple(() =>
         {
             Assert.That(saved.Slug, Is.EqualTo("design-notes"));
+            Assert.That(saved.MinimumRole, Is.EqualTo(PageAccessLevels.Anonymous));
             Assert.That(loaded, Is.Not.Null);
             Assert.That(loaded!.Html, Does.Contain(">Design Notes</h1>"));
             Assert.That(loaded.Html, Does.Contain("/page-assets/diagram.png"));
             Assert.That(search.Select(page => page.Slug), Does.Contain("design-notes"));
+        });
+    }
+
+    [Test]
+    public async Task FilePageService_PersistsPageMinimumRoleMetadata()
+    {
+        var pages = new FilePageService(_tempDir, new PageOptions { DefaultMinimumRole = PageAccessLevels.Authenticated });
+
+        var saved = await pages.SaveAsync(new PageSaveRequest("secure-page", "Secure Page", "Private by default"), CancellationToken.None);
+        var updated = await pages.SaveAsync(new PageSaveRequest("secure-page", "Secure Page", "Still private"), CancellationToken.None);
+        var publicPage = await pages.SaveAsync(new PageSaveRequest("secure-page", "Secure Page", "Now public", PageAccessLevels.Anonymous), CancellationToken.None);
+        var listed = await pages.ListAsync(CancellationToken.None);
+        var metadataPath = Path.Combine(_tempDir, "secure-page.page.json");
+        var metadata = await File.ReadAllTextAsync(metadataPath);
+        var deleted = await pages.DeleteAsync("secure-page", CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(saved.MinimumRole, Is.EqualTo(PageAccessLevels.Authenticated));
+            Assert.That(updated.MinimumRole, Is.EqualTo(PageAccessLevels.Authenticated));
+            Assert.That(publicPage.MinimumRole, Is.EqualTo(PageAccessLevels.Anonymous));
+            Assert.That(listed.Single().MinimumRole, Is.EqualTo(PageAccessLevels.Anonymous));
+            Assert.That(metadata, Does.Contain("Anonymous"));
+            Assert.That(deleted, Is.True);
+            Assert.That(File.Exists(metadataPath), Is.False);
+        });
+    }
+
+    [Test]
+    public void PageAccessLevels_EditorsCannotSetAdminMinimumRole()
+    {
+        var editor = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Role, MemorySmithRoles.Editor)], "Test"));
+        var admin = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Role, MemorySmithRoles.Admin)], "Test"));
+        var anonymous = new ClaimsPrincipal(new ClaimsIdentity());
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(PageAccessLevels.CanSetMinimumRole(PageAccessLevels.Anonymous, editor, new AuthOptions()), Is.True);
+            Assert.That(PageAccessLevels.CanSetMinimumRole(PageAccessLevels.Authenticated, editor, new AuthOptions()), Is.True);
+            Assert.That(PageAccessLevels.CanSetMinimumRole(PageAccessLevels.Admin, editor, new AuthOptions()), Is.False);
+            Assert.That(PageAccessLevels.CanSetMinimumRole(PageAccessLevels.Admin, admin, new AuthOptions()), Is.True);
+            Assert.That(PageAccessLevels.CanSetMinimumRole(PageAccessLevels.Anonymous, anonymous, new AuthOptions()), Is.False);
         });
     }
 

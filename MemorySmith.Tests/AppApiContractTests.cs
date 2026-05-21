@@ -274,16 +274,19 @@ public class AppApiContractTests
             var setupResponse = await adminClient.PostAsJsonAsync("/api/admin/setup", new SetupAdminRequest("Admin User", "admin@example.test", "ThisIsAValidPassword123!"));
             setupResponse.EnsureSuccessStatusCode();
             var updateResponse = await adminClient.PutAsJsonAsync("/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:Chat:MaxToolIterations", "3"));
+            var defaultVisibilityResponse = await adminClient.PutAsJsonAsync("/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:Pages:DefaultMinimumRole", PageAccessLevels.Authenticated));
 
             Assert.Multiple(() =>
             {
                 Assert.That(IsAuthChallenge(anonymousResponse.StatusCode), Is.True);
                 Assert.That(updateResponse.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
+                Assert.That(defaultVisibilityResponse.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
                 Assert.That(File.Exists(settingsPath), Is.True);
             });
 
             var json = await File.ReadAllTextAsync(settingsPath);
             Assert.That(json, Does.Contain("\"MaxToolIterations\": 3"));
+            Assert.That(json, Does.Contain("\"DefaultMinimumRole\": \"Authenticated\""));
         }
         finally
         {
@@ -350,6 +353,59 @@ public class AppApiContractTests
             Assert.That(html, Does.Contain("/page-assets/example.png"));
             Assert.That(deleteResponse.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
         });
+    }
+
+    [Test]
+    public async Task PagesApi_FiltersPagesByMinimumRole()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"memorysmith-page-visibility-{Guid.NewGuid():N}");
+        var pagesPath = Path.Combine(tempDir, "Pages");
+        var factory = CreateIsolatedFactory(tempDir, new Dictionary<string, string?>
+        {
+            ["MemorySmith:Auth:AnonymousAccess"] = "None"
+        });
+
+        try
+        {
+            var pages = new FilePageService(pagesPath);
+            var assetsPath = Path.Combine(pagesPath, "assets");
+            Directory.CreateDirectory(assetsPath);
+            await File.WriteAllBytesAsync(Path.Combine(assetsPath, "public.png"), [1, 2, 3]);
+            await File.WriteAllBytesAsync(Path.Combine(assetsPath, "admin.png"), [4, 5, 6]);
+            await pages.SaveAsync(new PageSaveRequest("public-page", "Public Page", "Public body ![public](assets/public.png)", PageAccessLevels.Anonymous), CancellationToken.None);
+            await pages.SaveAsync(new PageSaveRequest("signed-in-page", "Signed In Page", "Signed-in body", PageAccessLevels.Authenticated), CancellationToken.None);
+            await pages.SaveAsync(new PageSaveRequest("admin-page", "Admin Page", "Admin body ![admin](assets/admin.png)", PageAccessLevels.Admin), CancellationToken.None);
+
+            using var anonymousClient = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+            var anonymousPages = await anonymousClient.GetFromJsonAsync<PageSummary[]>("/api/pages");
+            var signedInResponse = await anonymousClient.GetAsync("/api/pages/signed-in-page");
+            var adminResponse = await anonymousClient.GetAsync("/api/pages/admin-page");
+            var publicAssetResponse = await anonymousClient.GetAsync("/page-assets/public.png");
+            var adminAssetResponse = await anonymousClient.GetAsync("/page-assets/admin.png");
+
+            using var adminClient = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+            var setupResponse = await adminClient.PostAsJsonAsync("/api/admin/setup", new SetupAdminRequest("Admin User", "admin@example.test", "ThisIsAValidPassword123!"));
+            setupResponse.EnsureSuccessStatusCode();
+            var adminPages = await adminClient.GetFromJsonAsync<PageSummary[]>("/api/pages");
+            var adminPageResponse = await adminClient.GetAsync("/api/pages/admin-page");
+            var adminPageAssetResponse = await adminClient.GetAsync("/page-assets/admin.png");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(anonymousPages!.Select(page => page.Slug), Is.EqualTo(new[] { "public-page" }));
+                Assert.That(signedInResponse.StatusCode, Is.EqualTo(HttpStatusCode.Forbidden));
+                Assert.That(adminResponse.StatusCode, Is.EqualTo(HttpStatusCode.Forbidden));
+                Assert.That(publicAssetResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+                Assert.That(adminAssetResponse.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
+                Assert.That(adminPages!.Select(page => page.Slug), Is.SupersetOf(new[] { "public-page", "signed-in-page", "admin-page" }));
+                Assert.That(adminPageResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+                Assert.That(adminPageAssetResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+            });
+        }
+        finally
+        {
+            await DisposeFactoryTempDirAsync(factory, tempDir);
+        }
     }
 
     [Test]

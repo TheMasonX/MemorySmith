@@ -1,6 +1,7 @@
 using MemorySmith.App.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace MemorySmith.App.Controllers;
 
@@ -11,11 +12,13 @@ public class SearchController : ControllerBase
 {
     private readonly MemoryApplicationService _memories;
     private readonly IPageService _pages;
+    private readonly IOptionsMonitor<MemorySmithOptions> _options;
 
-    public SearchController(MemoryApplicationService memories, IPageService pages)
+    public SearchController(MemoryApplicationService memories, IPageService pages, IOptionsMonitor<MemorySmithOptions> options)
     {
         _memories = memories;
         _pages = pages;
+        _options = options;
     }
 
     [HttpGet]
@@ -25,7 +28,10 @@ public class SearchController : ControllerBase
         var memoryLimit = Math.Max(1, limit / 2);
         var pageLimit = Math.Max(1, limit - memoryLimit);
         var memoryResults = await _memories.HybridSearchAsync(new HybridMemorySearchQuery(query, Limit: memoryLimit), cancellationToken);
-        var pageResults = await _pages.SearchAsync(new PageSearchQuery(query, pageLimit), cancellationToken);
+        var pageResults = (await _pages.SearchAsync(new PageSearchQuery(query, 200), cancellationToken))
+            .Where(page => PageAccessLevels.CanView(page.MinimumRole, User, _options.CurrentValue.Auth))
+            .Take(pageLimit)
+            .ToList();
 
         var results = memoryResults.Select(memory => new UnifiedSearchResult(
                 "memory",
