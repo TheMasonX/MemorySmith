@@ -292,6 +292,8 @@ try
     builder.Services.AddSingleton<SemanticEmbeddingSearchService>();
     builder.Services.AddSingleton<BackgroundServiceTelemetryTracker>();
     builder.Services.AddSingleton<IMemoryChangePublisher, MemoryChangePublisher>();
+    builder.Services.AddSingleton<TagPolicyService>();
+    builder.Services.AddSingleton<MemoryDiagnosticsService>();
     builder.Services.AddSingleton<MemoryApplicationService>();
     builder.Services.AddSingleton<MemoryMaintenanceTasks>();
     builder.Services.AddSingleton<MaintenanceAgentConfigService>();
