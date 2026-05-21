@@ -2,6 +2,7 @@ using System.Text.Json.Nodes;
 using MemorySmith.App.Services;
 using MemorySmith.Core.Models;
 using Microsoft.Extensions.Options;
+using System.Security.Claims;
 using NUnit.Framework;
 
 namespace MemorySmith.Tests;
@@ -108,6 +109,30 @@ public class ChatToolCatalogAndInterceptTests
         var result = await tool.Execute(new JsonObject { ["query"] = "durable evidence" }, ctx, CancellationToken.None);
 
         Assert.That(result.Text, Does.Contain("alpha"));
+    }
+
+    [Test]
+    public async Task PageSaveTool_RejectsResolvedAdminDefaultForNonAdminEditor()
+    {
+        var pages = new FilePageService(_tempDir, new PageOptions { DefaultMinimumRole = PageAccessLevels.Admin });
+        var catalog = new ChatToolCatalog();
+        Assert.That(catalog.TryGet("memorysmith_page_save", out var tool), Is.True);
+
+        var editor = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Role, MemorySmithRoles.Editor)], "Test"));
+        var ctx = new ChatToolExecutionContext(null!, pages, "test", User: editor, Auth: new AuthOptions(), DefaultPageMinimumRole: PageAccessLevels.Admin);
+
+        var result = await tool.Execute(new JsonObject
+        {
+            ["slug"] = "editor-page",
+            ["title"] = "Editor Page",
+            ["markdown"] = "Body"
+        }, ctx, CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.IsError, Is.True);
+            Assert.That(result.Text, Does.Contain("not authorized"));
+        });
     }
 
     [TestCase("search the wiki for durable evidence", "memorysmith_unified_search")]

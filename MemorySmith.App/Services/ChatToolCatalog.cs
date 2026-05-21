@@ -33,7 +33,8 @@ public sealed record ChatToolExecutionContext(
     string Transport,
     ClaimsPrincipal? User = null,
     ICurrentUserContext? CurrentUser = null,
-    AuthOptions? Auth = null)
+    AuthOptions? Auth = null,
+    string? DefaultPageMinimumRole = null)
 {
     public bool CanViewPage(string minimumRole) =>
         CurrentUser is not null
@@ -368,31 +369,38 @@ public sealed class ChatToolCatalog
                 var slug = ReadString(args, "slug");
                 var title = ReadString(args, "title");
                 var minimumRole = ReadString(args, "minimumRole");
+                string? normalizedMinimumRole = null;
                 if (!string.IsNullOrWhiteSpace(minimumRole))
                 {
-                    if (!PageAccessLevels.TryNormalize(minimumRole, out var normalizedMinimumRole))
+                    if (!PageAccessLevels.TryNormalize(minimumRole, out normalizedMinimumRole))
                     {
                         return new ChatToolExecutionResult("Choose Anonymous, Authenticated, or Admin for page visibility.", IsError: true);
                     }
-
-                    if (!ctx.CanSetPageMinimumRole(normalizedMinimumRole))
-                    {
-                        return new ChatToolExecutionResult("The caller is not authorized to set that page visibility.", IsError: true);
-                    }
-
-                    minimumRole = normalizedMinimumRole;
                 }
 
+                PageDocument? existing = null;
                 if (!string.IsNullOrWhiteSpace(slug))
                 {
-                    var existing = await ctx.Pages.GetAsync(slug, ct);
+                    existing = await ctx.Pages.GetAsync(slug, ct);
                     if (existing is not null && !ctx.CanViewPage(existing.MinimumRole))
                     {
                         return new ChatToolExecutionResult($"No page found for slug '{slug}'.", IsError: true);
                     }
                 }
 
-                var saved = await ctx.Pages.SaveAsync(new PageSaveRequest(slug, title, markdown, minimumRole), ct);
+                var resolvedMinimumRole = PageAccessLevels.ResolveStoredMinimumRole(
+                    normalizedMinimumRole,
+                    existing?.MinimumRole,
+                    ctx.DefaultPageMinimumRole ?? PageAccessLevels.Anonymous);
+
+                if ((existing is null || !string.Equals(existing.MinimumRole, resolvedMinimumRole, StringComparison.OrdinalIgnoreCase))
+                    && string.Equals(resolvedMinimumRole, PageAccessLevels.Admin, StringComparison.OrdinalIgnoreCase)
+                    && !ctx.CanSetPageMinimumRole(PageAccessLevels.Admin))
+                {
+                    return new ChatToolExecutionResult("The caller is not authorized to set that page visibility.", IsError: true);
+                }
+
+                var saved = await ctx.Pages.SaveAsync(new PageSaveRequest(slug, title, markdown, resolvedMinimumRole), ct);
                 return new ChatToolExecutionResult($"Page saved. Slug: {saved.Slug}  Title: {saved.Title}  Updated: {saved.LastUpdatedUtc:O}");
             });
 
