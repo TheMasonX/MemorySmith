@@ -198,10 +198,11 @@ public sealed class ChatToolCatalog
             {
                 var query = ReadString(args, "query");
                 var limit = Math.Clamp(ReadInt(args, "limit", 10), 1, 50);
-                var pages = (await ctx.Pages.SearchAsync(new PageSearchQuery(query, 200), ct))
-                    .Where(page => ctx.CanViewPage(page.MinimumRole))
-                    .Take(limit)
-                    .ToList();
+                var pages = await ctx.Pages.SearchVisibleAsync(
+                    query,
+                    limit,
+                    page => ctx.CanViewPage(page.MinimumRole),
+                    ct);
                 if (pages.Count == 0)
                 {
                     return new ChatToolExecutionResult("No matching pages.");
@@ -296,13 +297,10 @@ public sealed class ChatToolCatalog
                     : ctx.Memories.HybridSearchAsync(new HybridMemorySearchQuery(query, ReadStatus(args), ReadString(args, "tags"), memoryLimit), ct);
                 var pageTask = pageLimit == 0
                     ? Task.FromResult<IReadOnlyList<PageSummary>>(Array.Empty<PageSummary>())
-                    : ctx.Pages.SearchAsync(new PageSearchQuery(query, 200), ct);
+                    : ctx.Pages.SearchVisibleAsync(query, pageLimit, page => ctx.CanViewPage(page.MinimumRole), ct);
                 await Task.WhenAll(memoryTask, pageTask);
                 var memoryResults = await memoryTask;
-                var pageResults = (await pageTask)
-                    .Where(page => ctx.CanViewPage(page.MinimumRole))
-                    .Take(pageLimit)
-                    .ToList();
+                var pageResults = (await pageTask).ToList();
                 var sb = new System.Text.StringBuilder();
                 sb.Append("Unified MemorySmith search results for: ").AppendLine(query);
                 sb.AppendLine();

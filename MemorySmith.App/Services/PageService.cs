@@ -231,7 +231,7 @@ public sealed record PageDocument(
 
 public sealed record PageSaveRequest(string? Slug, string? Title, string Markdown, string? MinimumRole = null);
 
-public sealed record PageSearchQuery(string? Query = null, int Limit = 50);
+public sealed record PageSearchQuery(string? Query = null, int Limit = 50, bool Exhaustive = false);
 
 public sealed record PageAsset(string FileName, string MarkdownPath, string RequestPath, long Size);
 
@@ -246,6 +246,40 @@ public interface IPageService
     Task<PageAsset> SaveAssetAsync(string fileName, Stream content, CancellationToken cancellationToken);
     Task<bool> DeleteAsync(string slug, CancellationToken cancellationToken);
     string RenderHtml(string markdown);
+}
+
+public static class PageServiceSearchExtensions
+{
+    public static async Task<IReadOnlyList<PageSummary>> SearchVisibleAsync(
+        this IPageService pages,
+        string? query,
+        Func<PageSummary, bool> canView,
+        CancellationToken cancellationToken)
+    {
+        var candidates = string.IsNullOrWhiteSpace(query)
+            ? await pages.ListAsync(cancellationToken)
+            : await pages.SearchAsync(new PageSearchQuery(query, Exhaustive: true), cancellationToken);
+
+        return candidates.Where(canView).ToList();
+    }
+
+    public static async Task<IReadOnlyList<PageSummary>> SearchVisibleAsync(
+        this IPageService pages,
+        string? query,
+        int limit,
+        Func<PageSummary, bool> canView,
+        CancellationToken cancellationToken)
+    {
+        if (limit <= 0)
+        {
+            return Array.Empty<PageSummary>();
+        }
+
+        var requestedLimit = Math.Clamp(limit, 1, 200);
+        return (await pages.SearchVisibleAsync(query, canView, cancellationToken))
+            .Take(requestedLimit)
+            .ToList();
+    }
 }
 
 public sealed partial class FilePageService : IPageService
@@ -292,7 +326,7 @@ public sealed partial class FilePageService : IPageService
     public Task<IReadOnlyList<PageSummary>> SearchAsync(PageSearchQuery query, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var limit = Math.Clamp(query.Limit, 1, 200);
+        var limit = query.Exhaustive ? int.MaxValue : Math.Clamp(query.Limit, 1, 200);
         var searchText = query.Query?.Trim() ?? string.Empty;
         var tokens = TokenPattern().Matches(searchText).Select(match => match.Value).ToHashSet(StringComparer.OrdinalIgnoreCase);
 

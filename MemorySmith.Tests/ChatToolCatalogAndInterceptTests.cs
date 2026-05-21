@@ -112,6 +112,43 @@ public class ChatToolCatalogAndInterceptTests
     }
 
     [Test]
+    public async Task PageSearchAndUnifiedSearchTools_ReturnVisibleMatchesBeyondFirstTwoHundredHiddenResults()
+    {
+        var pages = new FilePageService(_tempDir);
+        const string query = "crowded tool visibility token";
+        await PageVisibilitySearchFixture.SeedAsync(pages, query, CancellationToken.None);
+
+        var catalog = new ChatToolCatalog();
+        catalog.TryGet("memorysmith_page_search", out var pageSearchTool);
+        catalog.TryGet("memorysmith_unified_search", out var unifiedSearchTool);
+        var ctx = new ChatToolExecutionContext(null!, pages, "test");
+
+        var pageSearchResult = await pageSearchTool.Execute(new JsonObject
+        {
+            ["query"] = query,
+            ["limit"] = 2
+        }, ctx, CancellationToken.None);
+        var unifiedSearchResult = await unifiedSearchTool.Execute(new JsonObject
+        {
+            ["query"] = query,
+            ["memoryLimit"] = 0,
+            ["pageLimit"] = 2
+        }, ctx, CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            foreach (var slug in PageVisibilitySearchFixture.PublicPageSlugs)
+            {
+                Assert.That(pageSearchResult.Text, Does.Contain(slug));
+                Assert.That(unifiedSearchResult.Text, Does.Contain(slug));
+            }
+
+            Assert.That(pageSearchResult.Text, Does.Not.Contain("signed-in-page-001"));
+            Assert.That(unifiedSearchResult.Text, Does.Not.Contain("signed-in-page-001"));
+        });
+    }
+
+    [Test]
     public async Task PageSaveTool_RejectsResolvedAdminDefaultForNonAdminEditor()
     {
         var pages = new FilePageService(_tempDir, new PageOptions { DefaultMinimumRole = PageAccessLevels.Admin });

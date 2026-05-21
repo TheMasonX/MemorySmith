@@ -428,6 +428,46 @@ public class AppApiContractTests
     }
 
     [Test]
+    public async Task PageSearchApis_ReturnVisibleMatchesBeyondFirstTwoHundredHiddenResults()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"memorysmith-page-search-visibility-{Guid.NewGuid():N}");
+        var pagesPath = Path.Combine(tempDir, "Pages");
+        var factory = CreateIsolatedFactory(tempDir, new Dictionary<string, string?>
+        {
+            ["MemorySmith:Auth:AnonymousAccess"] = MemorySmithRoles.Viewer
+        });
+
+        try
+        {
+            var pages = new FilePageService(pagesPath);
+            const string query = "crowded api visibility token";
+            await PageVisibilitySearchFixture.SeedAsync(pages, query, CancellationToken.None);
+
+            using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+            var pageResults = await client.GetFromJsonAsync<PageSummary[]>($"/api/pages?query={Uri.EscapeDataString(query)}&limit=2");
+            var unifiedResults = await client.GetFromJsonAsync<UnifiedSearchResult[]>($"/api/search?query={Uri.EscapeDataString(query)}&limit=4");
+            var unifiedPageIds = unifiedResults!
+                .Where(result => string.Equals(result.Kind, "page", StringComparison.OrdinalIgnoreCase))
+                .Select(result => result.Id)
+                .ToArray();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(pageResults, Is.Not.Null);
+                Assert.That(pageResults!, Has.Length.EqualTo(PageVisibilitySearchFixture.PublicPageSlugs.Length));
+                Assert.That(pageResults.Select(page => page.Slug), Is.EquivalentTo(PageVisibilitySearchFixture.PublicPageSlugs));
+                Assert.That(unifiedResults, Is.Not.Null);
+                Assert.That(unifiedPageIds, Has.Length.EqualTo(PageVisibilitySearchFixture.PublicPageSlugs.Length));
+                Assert.That(unifiedPageIds, Is.EquivalentTo(PageVisibilitySearchFixture.PublicPageSlugs));
+            });
+        }
+        finally
+        {
+            await DisposeFactoryTempDirAsync(factory, tempDir);
+        }
+    }
+
+    [Test]
     public async Task PageAssetsApi_RejectsMalformedPercentEncoding()
     {
         var response = await _client.GetAsync("/page-assets/%zz");

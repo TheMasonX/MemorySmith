@@ -21,13 +21,18 @@ public class PagesController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<PageSummary>>> GetAll([FromQuery] string? query, [FromQuery] int limit = 50, CancellationToken cancellationToken = default)
     {
-        var requestedLimit = Math.Clamp(limit, 1, 200);
-        var pages = string.IsNullOrWhiteSpace(query)
-            ? await _pages.ListAsync(cancellationToken)
-            : await _pages.SearchAsync(new PageSearchQuery(query, 200), cancellationToken);
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            return Ok(FilterVisible(await _pages.ListAsync(cancellationToken)));
+        }
 
-        var visiblePages = FilterVisible(pages);
-        return Ok(string.IsNullOrWhiteSpace(query) ? visiblePages : visiblePages.Take(requestedLimit).ToList());
+        var visiblePages = await _pages.SearchVisibleAsync(
+            query,
+            limit,
+            page => PageAccessLevels.CanView(page.MinimumRole, User, _options.CurrentValue.Auth),
+            cancellationToken);
+
+        return Ok(visiblePages);
     }
 
     [HttpGet("{**slug}")]

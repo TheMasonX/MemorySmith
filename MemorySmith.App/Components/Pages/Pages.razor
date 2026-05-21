@@ -240,12 +240,21 @@
     private async Task LoadAsync(string? selectedSlug = null)
     {
         _isLoading = true;
-        var pages = string.IsNullOrWhiteSpace(_searchQuery)
-            ? await PageService.ListAsync(CancellationToken.None)
-            : await PageService.SearchAsync(new PageSearchQuery(_searchQuery, 200), CancellationToken.None);
-        _pages = pages
-            .Where(page => PageAccessLevels.CanView(page.MinimumRole, CurrentUser, Options.CurrentValue.Auth))
-            .ToList();
+        if (string.IsNullOrWhiteSpace(_searchQuery))
+        {
+            var pages = await PageService.ListAsync(CancellationToken.None);
+            _pages = pages
+                .Where(page => PageAccessLevels.CanView(page.MinimumRole, CurrentUser, Options.CurrentValue.Auth))
+                .ToList();
+        }
+        else
+        {
+            _pages = (await PageService.SearchVisibleAsync(
+                    _searchQuery,
+                    page => PageAccessLevels.CanView(page.MinimumRole, CurrentUser, Options.CurrentValue.Auth),
+                    CancellationToken.None))
+                .ToList();
+        }
         _isLoading = false;
 
         if (!string.IsNullOrWhiteSpace(selectedSlug))
