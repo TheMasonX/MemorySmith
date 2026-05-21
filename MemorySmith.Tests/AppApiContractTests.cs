@@ -455,7 +455,7 @@ public class AppApiContractTests
             {
                 Assert.That(pageResults, Is.Not.Null);
                 Assert.That(pageResults!, Has.Length.EqualTo(PageVisibilitySearchFixture.PublicPageSlugs.Length));
-                Assert.That(pageResults.Select(page => page.Slug), Is.EquivalentTo(PageVisibilitySearchFixture.PublicPageSlugs));
+                Assert.That(pageResults!.Select(page => page.Slug), Is.EquivalentTo(PageVisibilitySearchFixture.PublicPageSlugs));
                 Assert.That(unifiedResults, Is.Not.Null);
                 Assert.That(unifiedPageIds, Has.Length.EqualTo(PageVisibilitySearchFixture.PublicPageSlugs.Length));
                 Assert.That(unifiedPageIds, Is.EquivalentTo(PageVisibilitySearchFixture.PublicPageSlugs));
