@@ -495,22 +495,28 @@ public sealed class FileMaintenanceProposalStore : IMaintenanceProposalStore
     public Task ApplyAsync(MaintenanceWriteProposal proposal, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        foreach (var change in proposal.Changes)
+        lock (_lock)
         {
-            var fullPath = _permissions.ValidateWritablePath(change.Path);
-            var current = File.Exists(fullPath) ? File.ReadAllText(fullPath) : string.Empty;
-            if (!string.Equals(current, change.Before, StringComparison.Ordinal))
-            {
-                throw new InvalidOperationException($"Current file content for '{change.Path}' no longer matches the proposal.");
-            }
-        }
+            var validatedChanges = proposal.Changes
+                .Select(change => (Change: change, FullPath: _permissions.ValidateWritablePath(change.Path)))
+                .ToList();
 
-        foreach (var change in proposal.Changes)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            var fullPath = _permissions.ValidateWritablePath(change.Path);
-            Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
-            File.WriteAllText(fullPath, change.After);
+            foreach (var item in validatedChanges)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var current = File.Exists(item.FullPath) ? File.ReadAllText(item.FullPath) : string.Empty;
+                if (!string.Equals(current, item.Change.Before, StringComparison.Ordinal))
+                {
+                    throw new InvalidOperationException($"Current file content for '{item.Change.Path}' no longer matches the proposal.");
+                }
+            }
+
+            foreach (var item in validatedChanges)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                Directory.CreateDirectory(Path.GetDirectoryName(item.FullPath)!);
+                File.WriteAllText(item.FullPath, item.Change.After);
+            }
         }
 
         return Task.CompletedTask;
@@ -596,7 +602,7 @@ public sealed class MaintenanceProposalWorkflow
         EnsureOpen(proposal, "Only open proposals can be sent back for revision.");
         var comments = proposal.Comments.ToList();
         comments.Add(new MaintenanceProposalComment(Actor(), DateTimeOffset.UtcNow, comment.Trim()));
-        var updated = AppendHistory(proposal with { Comments = comments }, MaintenanceProposalStatuses.NeedsRevision, "respond", comment.Trim());
+        var updated = AppendHistory(proposal with { Comments = comments }, MaintenanceProposalStatuses.NeedsRevision, "respond", null);
         var saved = await _store.SaveAsync(updated, cancellationToken);
         await RecordAuditAsync("maintenance.proposal.responded", saved, cancellationToken);
         return saved;
@@ -1419,14 +1425,19 @@ public sealed class MaintenanceAgentSchedulerService : BackgroundService
         while (!stoppingToken.IsCancellationRequested)
         {
             var config = _config.GetCurrent();
-            if (config.Schedule.Enabled && IsWeeklyWindow(config.Schedule, DateTimeOffset.Now) && ShouldRun(lastRun, config.Schedule))
+            var persistedLastRun = await LoadPersistedLastRunAsync(config, stoppingToken);
+            var effectiveLastRun = MostRecent(lastRun, persistedLastRun);
+            var localNow = DateTimeOffset.Now;
+            var utcNow = DateTimeOffset.UtcNow;
+
+            if (config.Schedule.Enabled && IsWeeklyWindow(config.Schedule, localNow) && ShouldRun(effectiveLastRun, config.Schedule, utcNow))
             {
                 try
                 {
                     using var scope = _scopeFactory.CreateScope();
                     var agent = scope.ServiceProvider.GetRequiredService<MaintenanceAgentService>();
                     await agent.RunMaintenanceWeeklyAsync(stoppingToken);
-                    lastRun = DateTimeOffset.UtcNow;
+                    lastRun = await LoadPersistedLastRunAsync(config, stoppingToken) ?? DateTimeOffset.UtcNow;
                 }
                 catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
                 {
@@ -1442,6 +1453,33 @@ public sealed class MaintenanceAgentSchedulerService : BackgroundService
         }
     }
 
+    public static DateTimeOffset? ParsePersistedLastRun(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return null;
+        }
+
+        using var document = JsonDocument.Parse(json);
+        var root = document.RootElement;
+        return TryReadTimestamp(root, "finishedAtUtc") ?? TryReadTimestamp(root, "startedAtUtc");
+    }
+
+    public static DateTimeOffset? MostRecent(DateTimeOffset? left, DateTimeOffset? right)
+    {
+        if (left is null)
+        {
+            return right;
+        }
+
+        if (right is null)
+        {
+            return left;
+        }
+
+        return left >= right ? left : right;
+    }
+
     public static bool IsWeeklyWindow(MaintenanceAgentScheduleOptions schedule, DateTimeOffset localNow) =>
         Enum.TryParse<DayOfWeek>(schedule.WeeklyDay, ignoreCase: true, out var day) &&
         localNow.DayOfWeek == day &&
@@ -1450,6 +1488,34 @@ public sealed class MaintenanceAgentSchedulerService : BackgroundService
     public static bool ShouldRun(DateTimeOffset? lastRun, MaintenanceAgentScheduleOptions schedule, DateTimeOffset utcNow) =>
         lastRun is null || utcNow - lastRun.Value >= TimeSpan.FromHours(Math.Max(1, schedule.MinimumHoursBetweenRuns));
 
-    private static bool ShouldRun(DateTimeOffset? lastRun, MaintenanceAgentScheduleOptions schedule) =>
-        lastRun is null || DateTimeOffset.UtcNow - lastRun.Value >= TimeSpan.FromHours(Math.Max(1, schedule.MinimumHoursBetweenRuns));
+    private async Task<DateTimeOffset?> LoadPersistedLastRunAsync(MaintenanceAgentOptions config, CancellationToken cancellationToken)
+    {
+        var path = _config.ResolvePath(config.Storage.LastRunPath);
+        if (!File.Exists(path))
+        {
+            return null;
+        }
+
+        try
+        {
+            var json = await File.ReadAllTextAsync(path, cancellationToken);
+            return ParsePersistedLastRun(json);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
+        {
+            _logger.LogWarning(ex, "Could not read persisted maintenance-agent last-run state from {Path}", path);
+            return null;
+        }
+    }
+
+    private static DateTimeOffset? TryReadTimestamp(JsonElement root, string propertyName) =>
+        root.TryGetProperty(propertyName, out var property) &&
+        property.ValueKind == JsonValueKind.String &&
+        property.TryGetDateTimeOffset(out var timestamp)
+            ? timestamp
+            : null;
 }
