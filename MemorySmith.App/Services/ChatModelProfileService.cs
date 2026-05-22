@@ -14,6 +14,9 @@ public sealed record ChatModelProfileView(
     int? ContextWindowTokens,
     bool Enabled,
     bool IsDefault,
+    bool IsMaintenanceRunDefault,
+    bool IsProposalReviewDefault,
+    bool IsAdminMaintenanceChatDefault,
     IReadOnlyList<string> AllowedRoles,
     string? Description,
     bool IsImplicit = false)
@@ -29,6 +32,9 @@ public sealed record ChatModelProfileUpsertRequest(
     int? ContextWindowTokens,
     bool Enabled,
     bool IsDefault,
+    bool IsMaintenanceRunDefault,
+    bool IsProposalReviewDefault,
+    bool IsAdminMaintenanceChatDefault,
     IReadOnlyList<string>? AllowedRoles = null,
     string? Description = null);
 
@@ -63,10 +69,12 @@ public sealed class ChatModelProfileService
     public IReadOnlyList<ChatModelProfileView> ListProfiles()
     {
         var chat = _options.CurrentValue.Chat;
+        var maintenance = _options.CurrentValue.MaintenanceAgent;
         var explicitProfiles = chat.ModelProfiles
-            .Select(profile => ToView(profile, chat.DefaultModelProfileId))
+            .Select(profile => ToView(profile, chat.DefaultModelProfileId, maintenance.ModelProfileId, maintenance.ProposalReviewModelProfileId, maintenance.AdminChatModelProfileId))
             .Where(profile => !string.IsNullOrWhiteSpace(profile.Id))
             .OrderByDescending(profile => profile.IsDefault)
+            .ThenByDescending(profile => profile.IsMaintenanceRunDefault || profile.IsProposalReviewDefault || profile.IsAdminMaintenanceChatDefault)
             .ThenBy(profile => profile.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
@@ -126,8 +134,27 @@ public sealed class ChatModelProfileService
             defaultId = NoDefaultProfileId;
         }
 
-        await SaveProfilesAsync(profiles, defaultId, "chat.model_profile.saved", normalized.Id, cancellationToken);
-        return new ChatModelProfileMutationResult(true, null, ToView(normalized, defaultId));
+        var maintenance = _options.CurrentValue.MaintenanceAgent;
+        var maintenanceRunProfileId = UpdateAssignment(maintenance.ModelProfileId, normalized.Id, request.IsMaintenanceRunDefault, normalized.Enabled, "maintenance runs", out error);
+        if (error is not null)
+        {
+            return new ChatModelProfileMutationResult(false, error);
+        }
+
+        var proposalReviewProfileId = UpdateAssignment(maintenance.ProposalReviewModelProfileId, normalized.Id, request.IsProposalReviewDefault, normalized.Enabled, "proposal reviews", out error);
+        if (error is not null)
+        {
+            return new ChatModelProfileMutationResult(false, error);
+        }
+
+        var adminChatProfileId = UpdateAssignment(maintenance.AdminChatModelProfileId, normalized.Id, request.IsAdminMaintenanceChatDefault, normalized.Enabled, "admin maintenance chat", out error);
+        if (error is not null)
+        {
+            return new ChatModelProfileMutationResult(false, error);
+        }
+
+        await SaveProfilesAsync(profiles, defaultId, maintenanceRunProfileId, proposalReviewProfileId, adminChatProfileId, "chat.model_profile.saved", normalized.Id, cancellationToken);
+        return new ChatModelProfileMutationResult(true, null, ToView(normalized, defaultId, maintenanceRunProfileId, proposalReviewProfileId, adminChatProfileId));
     }
 
     public async Task<ChatModelProfileMutationResult> DeleteAsync(string id, CancellationToken cancellationToken)
@@ -150,7 +177,12 @@ public sealed class ChatModelProfileService
             defaultId = NoDefaultProfileId;
         }
 
-        await SaveProfilesAsync(profiles, defaultId, "chat.model_profile.deleted", normalizedId, cancellationToken);
+        var maintenance = _options.CurrentValue.MaintenanceAgent;
+        var maintenanceRunProfileId = ClearAssignment(maintenance.ModelProfileId, normalizedId);
+        var proposalReviewProfileId = ClearAssignment(maintenance.ProposalReviewModelProfileId, normalizedId);
+        var adminChatProfileId = ClearAssignment(maintenance.AdminChatModelProfileId, normalizedId);
+
+        await SaveProfilesAsync(profiles, defaultId, maintenanceRunProfileId, proposalReviewProfileId, adminChatProfileId, "chat.model_profile.deleted", normalizedId, cancellationToken);
         return new ChatModelProfileMutationResult(true, null);
     }
 
@@ -165,7 +197,15 @@ public sealed class ChatModelProfileService
         return profile.AllowedRoles.Any(role => roleSet.Contains(role));
     }
 
-    private async Task SaveProfilesAsync(IReadOnlyList<ChatModelProfileOptions> profiles, string? defaultId, string action, string targetId, CancellationToken cancellationToken)
+    private async Task SaveProfilesAsync(
+        IReadOnlyList<ChatModelProfileOptions> profiles,
+        string? defaultId,
+        string? maintenanceRunProfileId,
+        string? proposalReviewProfileId,
+        string? adminChatProfileId,
+        string action,
+        string targetId,
+        CancellationToken cancellationToken)
     {
         JsonObject root;
         try
@@ -181,6 +221,10 @@ public sealed class ChatModelProfileService
         var chat = GetOrCreateObject(memorySmith, "Chat");
         chat["DefaultModelProfileId"] = defaultId ?? string.Empty;
         chat["ModelProfiles"] = JsonSerializer.SerializeToNode(profiles, JsonOptions);
+        var maintenanceAgent = GetOrCreateObject(memorySmith, "MaintenanceAgent");
+        maintenanceAgent["ModelProfileId"] = maintenanceRunProfileId ?? string.Empty;
+        maintenanceAgent["ProposalReviewModelProfileId"] = proposalReviewProfileId ?? string.Empty;
+        maintenanceAgent["AdminChatModelProfileId"] = adminChatProfileId ?? string.Empty;
 
         Directory.CreateDirectory(Path.GetDirectoryName(_settingsPath)!);
         var tempPath = _settingsPath + ".tmp";
@@ -197,7 +241,7 @@ public sealed class ChatModelProfileService
             "ChatModelProfile",
             targetId,
             MemorySmithAuditOutcomes.Success,
-            details: new { targetId, defaultId, profileCount = profiles.Count },
+                details: new { targetId, defaultId, maintenanceRunProfileId, proposalReviewProfileId, adminChatProfileId, profileCount = profiles.Count },
             cancellationToken: cancellationToken);
     }
 
@@ -240,12 +284,15 @@ public sealed class ChatModelProfileService
             ProviderMatches(provider, "Ollama") ? chat.OllamaContextWindowTokens : null,
             Enabled: !string.IsNullOrWhiteSpace(model),
             IsDefault: !string.IsNullOrWhiteSpace(model),
+                IsMaintenanceRunDefault: false,
+                IsProposalReviewDefault: false,
+                IsAdminMaintenanceChatDefault: false,
             AllowedRoles: [],
             Description: "Derived from existing Chat provider/model settings.",
             IsImplicit: true);
     }
 
-    private static ChatModelProfileView ToView(ChatModelProfileOptions profile, string? defaultId)
+            private static ChatModelProfileView ToView(ChatModelProfileOptions profile, string? defaultId, string? maintenanceRunProfileId, string? proposalReviewProfileId, string? adminChatProfileId)
     {
         var id = NormalizeId(profile.Id);
         var provider = NormalizeProvider(profile.Provider);
@@ -257,9 +304,32 @@ public sealed class ChatModelProfileService
             profile.ContextWindowTokens,
             profile.Enabled,
             string.Equals(id, defaultId, StringComparison.OrdinalIgnoreCase),
+            string.Equals(id, maintenanceRunProfileId, StringComparison.OrdinalIgnoreCase),
+            string.Equals(id, proposalReviewProfileId, StringComparison.OrdinalIgnoreCase),
+            string.Equals(id, adminChatProfileId, StringComparison.OrdinalIgnoreCase),
             NormalizeRoles(profile.AllowedRoles),
             string.IsNullOrWhiteSpace(profile.Description) ? null : profile.Description.Trim());
     }
+
+    private static string? UpdateAssignment(string? currentId, string profileId, bool shouldAssign, bool profileEnabled, string label, out string? error)
+    {
+        error = null;
+        if (shouldAssign)
+        {
+            if (!profileEnabled)
+            {
+                error = $"Only enabled profiles can be assigned to {label}.";
+                return currentId;
+            }
+
+            return profileId;
+        }
+
+        return string.Equals(currentId, profileId, StringComparison.OrdinalIgnoreCase) ? string.Empty : currentId;
+    }
+
+    private static string? ClearAssignment(string? currentId, string deletedId) =>
+        string.Equals(currentId, deletedId, StringComparison.OrdinalIgnoreCase) ? string.Empty : currentId;
 
     private static bool TryNormalizeRequest(ChatModelProfileUpsertRequest request, out ChatModelProfileOptions profile, out string? error)
     {

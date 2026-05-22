@@ -221,6 +221,12 @@ public class MaintenanceAgentOptions
     [JsonPropertyName("model")]
     public string Model { get; set; } = "gemma4:e4b";
 
+    public string? ModelProfileId { get; set; }
+
+    public string? ProposalReviewModelProfileId { get; set; }
+
+    public string? AdminChatModelProfileId { get; set; }
+
     [JsonPropertyName("agent_version")]
     public string AgentVersion { get; set; } = "maintenance-agent.v1";
 

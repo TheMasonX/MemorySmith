@@ -1,7 +1,7 @@
 {
   "Id": "project-wiki-configuration-settings-current",
   "Title": "Configuration Settings Current State",
-  "Content": "MemorySmith configuration is rooted under the MemorySmith section and bound to MemorySmithOptions plus DatabaseOptions. The web admin editor exposes current operational settings for core data paths, remote API/API key posture, SQLite metadata storage, authentication and OAuth providers, audit JSONL/history behavior, page visibility/raw HTML, semantic search assets and limits, tag policy path, maintenance intervals, validation limits, source-link roots, chat providers/context/tool budgets, and maintenance-agent scheduling/storage. Admin chat model profiles are managed from the /admin Models tab rather than the generic settings table because ModelProfiles is a structured collection with default-profile and role-access semantics. Generic setting edits are allowlisted descriptors rather than arbitrary JSON writes, so SettingsOverridePath itself and complex GitHubModels entries remain file-managed. List settings such as source-link roots and maintenance-agent read/write roots are edited one value per line. Nullable integers such as OllamaContextWindowTokens accept a blank value to clear the override.",
+  "Content": "MemorySmith configuration is rooted under the MemorySmith section and bound to MemorySmithOptions plus DatabaseOptions. The web admin editor exposes current operational settings for core data paths, remote API/API key posture, SQLite metadata storage, authentication and OAuth providers, audit JSONL/history behavior, page visibility/raw HTML, semantic search assets and limits, tag policy path, maintenance intervals, validation limits, source-link roots, chat providers/context/tool budgets, and maintenance-agent scheduling/storage/model assignment ids. Admin chat model profiles are managed from the /admin Models tab rather than the generic settings table because ModelProfiles is a structured collection with default-profile, workflow-assignment, and role-access semantics. Generic setting edits are allowlisted descriptors rather than arbitrary JSON writes, so SettingsOverridePath itself and complex GitHubModels entries remain file-managed. List settings such as source-link roots and maintenance-agent read/write roots are edited one value per line. Nullable integers such as OllamaContextWindowTokens accept a blank value to clear the override.",
   "Status": 2,
   "Confidence": 0.9,
   "Tags": [
@@ -41,5 +41,5 @@
     }
   ],
   "UsageCount": 0,
-  "LastUpdated": "2026-05-22T16:35:00Z"
+  "LastUpdated": "2026-05-22T19:05:00Z"
 }

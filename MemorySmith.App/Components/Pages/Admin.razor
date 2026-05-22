@@ -110,6 +110,7 @@
                             <MudTh>Model</MudTh>
                             <MudTh>Context</MudTh>
                             <MudTh>Roles</MudTh>
+                            <MudTh>Assignments</MudTh>
                             <MudTh>Status</MudTh>
                             <MudTh>Action</MudTh>
                         </HeaderContent>
@@ -133,6 +134,7 @@
                             <MudTd>@context.Model</MudTd>
                             <MudTd>@FormatContextWindow(context.ContextWindowTokens)</MudTd>
                             <MudTd>@FormatProfileRoles(context)</MudTd>
+                            <MudTd>@FormatProfileAssignments(context)</MudTd>
                             <MudTd>@(context.Enabled ? "Enabled" : "Disabled")</MudTd>
                             <MudTd>
                                 <MudButton Size="Size.Small" Variant="Variant.Outlined" Disabled="@_isBusy" OnClick="@(() => EditModelProfile(context))">@(context.IsImplicit ? "Make explicit" : "Edit")</MudButton>
@@ -163,6 +165,9 @@
                     <div class="admin-model-switches">
                         <MudSwitch T="bool" Value="@_modelProfileEditor.Enabled" ValueChanged="@((bool value) => _modelProfileEditor.Enabled = value)" Label="Enabled" Disabled="@_isBusy" />
                         <MudSwitch T="bool" Value="@_modelProfileEditor.IsDefault" ValueChanged="@((bool value) => _modelProfileEditor.IsDefault = value)" Label="Default chat model" Disabled="@_isBusy" />
+                        <MudSwitch T="bool" Value="@_modelProfileEditor.IsMaintenanceRunDefault" ValueChanged="@((bool value) => _modelProfileEditor.IsMaintenanceRunDefault = value)" Label="Maintenance runs" Disabled="@_isBusy" />
+                        <MudSwitch T="bool" Value="@_modelProfileEditor.IsProposalReviewDefault" ValueChanged="@((bool value) => _modelProfileEditor.IsProposalReviewDefault = value)" Label="Proposal reviews" Disabled="@_isBusy" />
+                        <MudSwitch T="bool" Value="@_modelProfileEditor.IsAdminMaintenanceChatDefault" ValueChanged="@((bool value) => _modelProfileEditor.IsAdminMaintenanceChatDefault = value)" Label="Admin maintenance chat" Disabled="@_isBusy" />
                     </div>
                     <small class="admin-setting-key">Leave Allowed roles blank to allow any user with chat access. Admins can use every enabled profile.</small>
                     <div class="admin-model-editor-actions">
@@ -578,6 +583,9 @@
                 _modelProfileEditor.ContextWindowTokens,
                 _modelProfileEditor.Enabled,
                 _modelProfileEditor.IsDefault,
+                _modelProfileEditor.IsMaintenanceRunDefault,
+                _modelProfileEditor.IsProposalReviewDefault,
+                _modelProfileEditor.IsAdminMaintenanceChatDefault,
                 ParseRoleText(_modelProfileEditor.AllowedRolesText),
                 _modelProfileEditor.Description), CancellationToken.None);
             if (!result.Succeeded)
@@ -704,6 +712,15 @@
         string.IsNullOrWhiteSpace(entry.Provider) ? "No provider" : $"{entry.Provider} / {entry.Model ?? "default model"}";
 
     private static string FormatProfileRoles(ChatModelProfileView profile) => profile.AllowedRoles.Count == 0 ? "All chat users" : string.Join(", ", profile.AllowedRoles);
+
+    private static string FormatProfileAssignments(ChatModelProfileView profile)
+    {
+        var assignments = new List<string>();
+        if (profile.IsMaintenanceRunDefault) assignments.Add("Maintenance runs");
+        if (profile.IsProposalReviewDefault) assignments.Add("Proposal reviews");
+        if (profile.IsAdminMaintenanceChatDefault) assignments.Add("Admin maintenance chat");
+        return assignments.Count == 0 ? "None" : string.Join(", ", assignments);
+    }
 
     private static IReadOnlyList<string> ParseRoleText(string value) => value
         .Replace("\r", string.Empty)
@@ -923,6 +940,9 @@
         public int? ContextWindowTokens { get; set; }
         public bool Enabled { get; set; } = true;
         public bool IsDefault { get; set; } = true;
+        public bool IsMaintenanceRunDefault { get; set; }
+        public bool IsProposalReviewDefault { get; set; }
+        public bool IsAdminMaintenanceChatDefault { get; set; }
         public string AllowedRolesText { get; set; } = string.Empty;
         public string? Description { get; set; }
         public bool IsNew => string.IsNullOrWhiteSpace(Id);
@@ -938,6 +958,9 @@
             ContextWindowTokens = profile.ContextWindowTokens,
             Enabled = profile.Enabled,
             IsDefault = profile.IsDefault,
+            IsMaintenanceRunDefault = profile.IsMaintenanceRunDefault,
+            IsProposalReviewDefault = profile.IsProposalReviewDefault,
+            IsAdminMaintenanceChatDefault = profile.IsAdminMaintenanceChatDefault,
             AllowedRolesText = string.Join(", ", profile.AllowedRoles),
             Description = profile.Description
         };

@@ -184,10 +184,10 @@ public sealed class MaintenanceAgentConfigService
         _options = options;
     }
 
-    public MaintenanceAgentOptions GetCurrent()
+    public MaintenanceAgentOptions GetCurrent(MaintenanceAgentModelPurpose purpose = MaintenanceAgentModelPurpose.MaintenanceRun)
     {
         var options = Clone(_options.CurrentValue.MaintenanceAgent);
-        Normalize(options);
+        Normalize(options, purpose);
         return options;
     }
 
@@ -196,9 +196,10 @@ public sealed class MaintenanceAgentConfigService
     private MaintenanceAgentOptions Clone(MaintenanceAgentOptions source) =>
         JsonSerializer.Deserialize<MaintenanceAgentOptions>(JsonSerializer.Serialize(source, JsonOptions), JsonOptions) ?? new MaintenanceAgentOptions();
 
-    private void Normalize(MaintenanceAgentOptions config)
+    private void Normalize(MaintenanceAgentOptions config, MaintenanceAgentModelPurpose purpose)
     {
         var appOptions = _options.CurrentValue;
+        ApplyAssignedModelProfile(config, appOptions, purpose);
         if (config.Read.Count == 0)
         {
             config.Read = [appOptions.DataPath, appOptions.PagesPath];
@@ -229,6 +230,44 @@ public sealed class MaintenanceAgentConfigService
             config.AgentVersion = "maintenance-agent.v1";
         }
     }
+
+    private static void ApplyAssignedModelProfile(MaintenanceAgentOptions config, MemorySmithOptions appOptions, MaintenanceAgentModelPurpose purpose)
+    {
+        var assignmentId = purpose switch
+        {
+            MaintenanceAgentModelPurpose.ProposalReview => FirstNonEmpty(config.ProposalReviewModelProfileId, config.ModelProfileId),
+            MaintenanceAgentModelPurpose.AdminChat => FirstNonEmpty(config.AdminChatModelProfileId, config.ModelProfileId),
+            _ => config.ModelProfileId
+        };
+        if (string.IsNullOrWhiteSpace(assignmentId))
+        {
+            return;
+        }
+
+        var profile = appOptions.Chat.ModelProfiles.FirstOrDefault(candidate =>
+            candidate.Enabled && string.Equals(candidate.Id, assignmentId, StringComparison.OrdinalIgnoreCase));
+        if (profile is null || string.IsNullOrWhiteSpace(profile.Model))
+        {
+            return;
+        }
+
+        config.Provider = string.IsNullOrWhiteSpace(profile.Provider) ? config.Provider : profile.Provider;
+        config.Model = profile.Model;
+        if (string.Equals(config.Provider, "Ollama", StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(config.OllamaEndpoint))
+        {
+            config.OllamaEndpoint = appOptions.Chat.OllamaEndpoint;
+        }
+    }
+
+    private static string? FirstNonEmpty(params string?[] values) =>
+        values.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
+}
+
+public enum MaintenanceAgentModelPurpose
+{
+    MaintenanceRun,
+    ProposalReview,
+    AdminChat
 }
 
 public sealed class MaintenanceResourceProbe
@@ -1163,7 +1202,7 @@ public sealed class MaintenanceAgentService
             throw new InvalidOperationException("Maintenance agent messages cannot be empty.");
         }
 
-        var config = _config.GetCurrent();
+        var config = _config.GetCurrent(MaintenanceAgentModelPurpose.AdminChat);
         var prompt = message.Trim();
         var warnings = new List<string>();
         MaintenanceAdminTranscriptEntry entry;
@@ -1207,7 +1246,7 @@ public sealed class MaintenanceAgentService
     {
         var warnings = new List<string>();
         var requested = await _proposalWorkflow.RequestAgentReviewAsync(proposalId, requesterComment, cancellationToken);
-        var config = _config.GetCurrent();
+        var config = _config.GetCurrent(MaintenanceAgentModelPurpose.ProposalReview);
         if (!config.UseLlm)
         {
             warnings.Add("Proposal review request was recorded, but LLM review is disabled for the maintenance agent.");

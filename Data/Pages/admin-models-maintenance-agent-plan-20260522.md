@@ -14,14 +14,14 @@ This page tracks a grouped set of user-facing configuration and agent-governance
 
 ## Model Registry
 
-Implemented baseline: `/admin` now includes a Models tab backed by `ChatModelProfileService`. Admins can define chat model profiles with name, provider, model id, optional context-window tokens, enabled state, default chat selection, role allowlist, and description. `/chat` now selects from enabled model profiles allowed for the current user role and disables send when no enabled default profile is available. Existing installs continue to get an implicit legacy default derived from the older Chat provider/model settings until explicit profiles are configured.
+Implemented baseline: `/admin` now includes a Models tab backed by `ChatModelProfileService`. Admins can define chat model profiles with name, provider, model id, optional context-window tokens, enabled state, default chat selection, role allowlist, description, and assignments for maintenance runs, proposal reviews, and Admin Maintenance chat. `/chat` now selects from enabled model profiles allowed for the current user role and disables send when no enabled default profile is available. Existing installs continue to get an implicit legacy default derived from the older Chat provider/model settings until explicit profiles are configured.
 
-Remaining design work: model profiles still need maintenance-agent/review-agent assignments and provider-safe chat settings beyond context-window metadata. Future profile fields should include at least:
+Remaining design work: model profiles still need provider-safe chat settings beyond context-window metadata. Future profile fields should include at least:
 
 | Field | Purpose |
 | --- | --- |
 | Chat settings | Temperature, tool budget, context preload, compaction policy, or other provider-safe settings. |
-| Assignments | Optional default for maintenance agent, proposal review agent, or specialized workflows. |
+| Specialized workflow settings | Optional temperature/tool/context/compaction settings for maintenance or review workflows once governance defines their safe ranges. |
 
 ## Maintenance Agent Tasks And Logs
 
@@ -32,18 +32,16 @@ Remaining design work: admins still need deeper visibility into maintenance-agen
 - active task state;
 - proposal ids per task run;
 - transcript retention/search/redaction controls;
-- model-profile assignment for admin maintenance chat;
 - optional tool-enabled maintenance chat once proposal governance covers generated writes.
 
 ## Proposal Review Agent
 
 Implemented baseline: the Proposals page now exposes a Request Agent Review action for actionable proposals. The button calls `MaintenanceAgentService.ReviewProposalAsync`, records an `agent_review_requested` history event plus the optional human comment, runs the configured maintenance-agent LLM provider when enabled, records `agent_review_completed` feedback, and can save a validated revised proposal through `SubmitAgentRevisionAsync` while preserving the original proposal and diff.
 
-Remaining design work: proposal review still needs a dedicated model-profile assignment, richer review verdict metadata, detailed transcript logs, and optional fresh wiki-context retrieval. Users can currently disagree with the review by keeping the original proposal path open and ignoring or rejecting the revised proposal.
+Remaining design work: proposal review still needs richer review verdict metadata, detailed transcript logs, and optional fresh wiki-context retrieval. Users can currently disagree with the review by keeping the original proposal path open and ignoring or rejecting the revised proposal.
 
 Open design questions:
 
-- Which model profile should perform proposal reviews by default?
 - Should review verdicts become filterable proposal metadata?
 - How should conflicting human and agent comments be represented in proposal history?
 - Should review agents be allowed to inspect only proposal evidence, or also pull fresh wiki context?

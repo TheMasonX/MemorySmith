@@ -256,6 +256,67 @@ public class MaintenanceAgentWorkflowTests
     }
 
     [Test]
+    public void ConfigService_UsesAssignedModelProfilesForAgentPurposes()
+    {
+        var options = new MemorySmithOptions
+        {
+            Chat = new ChatOptions
+            {
+                OllamaEndpoint = "http://localhost:4321",
+                ModelProfiles =
+                [
+                    new ChatModelProfileOptions
+                    {
+                        Id = "maintenance-runner",
+                        Provider = "Ollama",
+                        Model = "runner-model",
+                        Enabled = true
+                    },
+                    new ChatModelProfileOptions
+                    {
+                        Id = "proposal-reviewer",
+                        Provider = "GitHub",
+                        Model = "review-model",
+                        Enabled = true
+                    },
+                    new ChatModelProfileOptions
+                    {
+                        Id = "admin-maintenance-chat",
+                        Provider = "Ollama",
+                        Model = "admin-chat-model",
+                        Enabled = true
+                    }
+                ]
+            },
+            MaintenanceAgent = new MaintenanceAgentOptions
+            {
+                Provider = "GitHub",
+                Model = "legacy-model",
+                OllamaEndpoint = string.Empty,
+                ModelProfileId = "maintenance-runner",
+                ProposalReviewModelProfileId = "proposal-reviewer",
+                AdminChatModelProfileId = "admin-maintenance-chat"
+            }
+        };
+        var service = new MaintenanceAgentConfigService(new StaticOptionsMonitor<MemorySmithOptions>(options));
+
+        var runConfig = service.GetCurrent();
+        var reviewConfig = service.GetCurrent(MaintenanceAgentModelPurpose.ProposalReview);
+        var adminChatConfig = service.GetCurrent(MaintenanceAgentModelPurpose.AdminChat);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(runConfig.Provider, Is.EqualTo("Ollama"));
+            Assert.That(runConfig.Model, Is.EqualTo("runner-model"));
+            Assert.That(runConfig.OllamaEndpoint, Is.EqualTo("http://localhost:4321"));
+            Assert.That(reviewConfig.Provider, Is.EqualTo("GitHub"));
+            Assert.That(reviewConfig.Model, Is.EqualTo("review-model"));
+            Assert.That(adminChatConfig.Provider, Is.EqualTo("Ollama"));
+            Assert.That(adminChatConfig.Model, Is.EqualTo("admin-chat-model"));
+        });
+    }
+
+    [Test]
     public async Task TopicMap_ExtractsHeadingsRelationshipsCyclesAndStaleness()
     {
         _memoryStore.Save(new MemoryRecord

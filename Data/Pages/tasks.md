@@ -17,7 +17,8 @@ This page tracks user-facing work in plain language. Completed items stay here a
 - [ ] Decide whether MCP-only source bridge tools (`memorysmith_source_bundle`, `memorysmith_find_by_source`) should move into the shared tool catalog with a richer risk model.
 - [x] Add an Admin Models tab for named chat model profiles with provider, model id, context window, role-based access, and default chat profile selection.
 - [x] Disable Chat until an Admin has configured an enabled default model profile, then make Chat select from model profiles instead of free-form provider/model editing.
-- [ ] Extend model profiles with maintenance-agent/review-agent assignments and any provider-safe chat settings beyond context-window metadata.
+- [x] Extend model profiles with maintenance-agent/review-agent assignments.
+- [ ] Extend model profiles with provider-safe chat settings beyond context-window metadata.
 - [x] Add durable admin-visible maintenance-agent task activity history for completed/skipped runs on the Proposals page.
 - [x] Add an admin-only non-mutating maintenance-agent conversation surface with durable transcript entries.
 - [ ] Add fuller maintenance-agent active task state, transcript retention/search/redaction, proposal-id drilldown, and tool-enabled maintenance chat once proposal governance covers generated writes.
