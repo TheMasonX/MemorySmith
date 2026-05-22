@@ -6,6 +6,7 @@
 @inject ICurrentUserContext CurrentUser
 @inject AuditLogService Audit
 @inject AdminSettingsService Settings
+@inject ChatModelProfileService ModelProfiles
 @inject ISnackbar Snackbar
 @using Microsoft.Extensions.Options
 @using System.Text.Json
@@ -17,7 +18,7 @@
     <section class="wiki-commandbar" aria-label="Admin">
         <div class="wiki-title-block">
             <MudText Typo="Typo.h5">Admin</MudText>
-            <span class="wiki-count">Users, OAuth, settings, audit, history</span>
+            <span class="wiki-count">Users, OAuth, models, settings, audit, history</span>
         </div>
         <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync">Refresh</MudButton>
     </section>
@@ -93,6 +94,82 @@
                     </MudTd>
                 </RowTemplate>
             </MudTable>
+        </MudTabPanel>
+        <MudTabPanel Text="Models" Icon="@Icons.Material.Filled.Memory">
+            <div class="admin-models-layout">
+                <section class="admin-model-list" aria-label="Model profiles">
+                    @if (!_modelProfiles.Any(profile => profile.IsDefault && profile.Enabled))
+                    {
+                        <div class="wiki-empty-state">No enabled default model profile is configured. Chat is disabled until one is selected.</div>
+                    }
+                    <MudTable Items="@_modelProfiles" Dense="true" Class="health-table admin-models-table">
+                        <HeaderContent>
+                            <MudTh>Name</MudTh>
+                            <MudTh>Provider</MudTh>
+                            <MudTh>Model</MudTh>
+                            <MudTh>Context</MudTh>
+                            <MudTh>Roles</MudTh>
+                            <MudTh>Status</MudTh>
+                            <MudTh>Action</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd>
+                                <strong>@context.Name</strong>
+                                @if (context.IsDefault)
+                                {
+                                    <span class="wiki-status is-core">Default</span>
+                                }
+                                @if (context.IsImplicit)
+                                {
+                                    <small class="admin-setting-key">Derived from legacy Chat provider/model settings</small>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(context.Description))
+                                {
+                                    <small class="admin-setting-key">@context.Description</small>
+                                }
+                            </MudTd>
+                            <MudTd>@context.Provider</MudTd>
+                            <MudTd>@context.Model</MudTd>
+                            <MudTd>@FormatContextWindow(context.ContextWindowTokens)</MudTd>
+                            <MudTd>@FormatProfileRoles(context)</MudTd>
+                            <MudTd>@(context.Enabled ? "Enabled" : "Disabled")</MudTd>
+                            <MudTd>
+                                <MudButton Size="Size.Small" Variant="Variant.Outlined" Disabled="@_isBusy" OnClick="@(() => EditModelProfile(context))">@(context.IsImplicit ? "Make explicit" : "Edit")</MudButton>
+                                <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error" Disabled="@(_isBusy || context.IsImplicit)" OnClick="@(() => DeleteModelProfileAsync(context))">Delete</MudButton>
+                            </MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                </section>
+
+                <section class="admin-model-editor" aria-label="Edit model profile">
+                    <div class="admin-model-editor-header">
+                        <MudText Typo="Typo.subtitle1">@(_modelProfileEditor.IsNew ? "New model profile" : "Edit model profile")</MudText>
+                        <MudButton Size="Size.Small" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Add" Disabled="@_isBusy" OnClick="StartNewModelProfile">New</MudButton>
+                    </div>
+                    <div class="admin-model-editor-grid">
+                        <MudTextField T="string" Value="@_modelProfileEditor.Name" ValueChanged="@((string value) => _modelProfileEditor.Name = value)" Label="Name" Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="@_isBusy" />
+                        <MudSelect T="string" Value="@_modelProfileEditor.Provider" ValueChanged="@((string value) => _modelProfileEditor.Provider = value)" Label="Provider" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Disabled="@_isBusy">
+                            @foreach (var provider in ModelProfiles.ProviderOptions)
+                            {
+                                <MudSelectItem T="string" Value="@provider">@provider</MudSelectItem>
+                            }
+                        </MudSelect>
+                        <MudTextField T="string" Value="@_modelProfileEditor.Model" ValueChanged="@((string value) => _modelProfileEditor.Model = value)" Label="Model id" Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="@_isBusy" />
+                        <MudNumericField T="int?" Value="@_modelProfileEditor.ContextWindowTokens" ValueChanged="@((int? value) => _modelProfileEditor.ContextWindowTokens = value)" Label="Context tokens" Variant="Variant.Outlined" Margin="Margin.Dense" Min="512" Max="262144" Disabled="@_isBusy" />
+                        <MudTextField T="string" Value="@_modelProfileEditor.AllowedRolesText" ValueChanged="@((string value) => _modelProfileEditor.AllowedRolesText = value)" Label="Allowed roles" Variant="Variant.Outlined" Margin="Margin.Dense" Placeholder="Viewer, Editor, Admin" Disabled="@_isBusy" />
+                        <MudTextField T="string" Value="@_modelProfileEditor.Description" ValueChanged="@((string value) => _modelProfileEditor.Description = value)" Label="Description" Variant="Variant.Outlined" Margin="Margin.Dense" Lines="2" Disabled="@_isBusy" />
+                    </div>
+                    <div class="admin-model-switches">
+                        <MudSwitch T="bool" Value="@_modelProfileEditor.Enabled" ValueChanged="@((bool value) => _modelProfileEditor.Enabled = value)" Label="Enabled" Disabled="@_isBusy" />
+                        <MudSwitch T="bool" Value="@_modelProfileEditor.IsDefault" ValueChanged="@((bool value) => _modelProfileEditor.IsDefault = value)" Label="Default chat model" Disabled="@_isBusy" />
+                    </div>
+                    <small class="admin-setting-key">Leave Allowed roles blank to allow any user with chat access. Admins can use every enabled profile.</small>
+                    <div class="admin-model-editor-actions">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save" Disabled="@_isBusy" OnClick="SaveModelProfileAsync">Save profile</MudButton>
+                        <MudButton Variant="Variant.Outlined" Disabled="@_isBusy" OnClick="StartNewModelProfile">Clear</MudButton>
+                    </div>
+                </section>
+            </div>
         </MudTabPanel>
         <MudTabPanel Text="Configuration" Icon="@Icons.Material.Filled.Tune">
             <div class="admin-filter-bar" aria-label="Editable settings filters">
@@ -241,6 +318,7 @@
     private IReadOnlyList<RoleRecord> _roles = [];
     private IReadOnlyList<RoleRecord> _assignableRoles = [];
     private IReadOnlyList<AuthProviderRecord> _providers = [];
+    private IReadOnlyList<ChatModelProfileView> _modelProfiles = [];
     private IReadOnlyList<AuditLogEntry> _audit = [];
     private IReadOnlyList<VersionHistoryEntry> _recentVersions = [];
     private IReadOnlyList<EditableConfigurationRow> _editableSettings = [];
@@ -257,6 +335,7 @@
     private string _historySearch = string.Empty;
     private string _historyTargetKindFilter = AllFilterValue;
     private string _historyFormatFilter = AllFilterValue;
+    private ModelProfileEditor _modelProfileEditor = ModelProfileEditor.New();
     private bool _isBusy;
 
     private IReadOnlyList<string> SettingCategories => _editableSettings
@@ -314,6 +393,7 @@
 
         _userRows = rows;
         _providers = await Database.ProviderLinks.ListProvidersAsync(CancellationToken.None);
+    _modelProfiles = ModelProfiles.ListProfiles();
         _audit = (await Database.AuditLogs.QueryAsync(new AuditLogQuery(PageSize: 100), CancellationToken.None)).Data;
         _recentVersions = await LoadRecentVersionsAsync();
         _editableSettings = Settings.ListEditableSettings().Select(item => new EditableConfigurationRow(item)).ToList();
@@ -381,6 +461,69 @@
         Snackbar.Add($"{provider.DisplayName} {(enabled ? "enabled" : "disabled")}.", Severity.Success);
         _isBusy = false;
         await LoadAsync();
+    }
+
+    private void EditModelProfile(ChatModelProfileView profile)
+    {
+        _modelProfileEditor = ModelProfileEditor.From(profile);
+    }
+
+    private void StartNewModelProfile()
+    {
+        _modelProfileEditor = ModelProfileEditor.New();
+    }
+
+    private async Task SaveModelProfileAsync()
+    {
+        _isBusy = true;
+        try
+        {
+            var result = await ModelProfiles.UpsertAsync(new ChatModelProfileUpsertRequest(
+                _modelProfileEditor.Id,
+                _modelProfileEditor.Name,
+                _modelProfileEditor.Provider,
+                _modelProfileEditor.Model,
+                _modelProfileEditor.ContextWindowTokens,
+                _modelProfileEditor.Enabled,
+                _modelProfileEditor.IsDefault,
+                ParseRoleText(_modelProfileEditor.AllowedRolesText),
+                _modelProfileEditor.Description), CancellationToken.None);
+            if (!result.Succeeded)
+            {
+                Snackbar.Add(result.Error ?? "Model profile could not be saved.", Severity.Error);
+                return;
+            }
+
+            Snackbar.Add("Model profile saved.", Severity.Success);
+            _modelProfileEditor = result.Profile is null ? ModelProfileEditor.New() : ModelProfileEditor.From(result.Profile);
+            await LoadAsync();
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private async Task DeleteModelProfileAsync(ChatModelProfileView profile)
+    {
+        _isBusy = true;
+        var result = await ModelProfiles.DeleteAsync(profile.Id, CancellationToken.None);
+        if (result.Succeeded)
+        {
+            Snackbar.Add("Model profile deleted.", Severity.Success);
+            StartNewModelProfile();
+            await LoadAsync();
+        }
+        else
+        {
+            Snackbar.Add(result.Error ?? "Model profile could not be deleted.", Severity.Error);
+        }
+
+        _isBusy = false;
     }
 
     private RenderFragment SettingEditor(EditableConfigurationRow row) => builder =>
@@ -462,6 +605,16 @@
     }
 
     private int ProviderLinkCount(string providerName) => _providerLinkCounts.TryGetValue(providerName, out var count) ? count : 0;
+
+    private static string FormatContextWindow(int? tokens) => tokens is null ? "Provider default" : $"{tokens.Value:n0}";
+
+    private static string FormatProfileRoles(ChatModelProfileView profile) => profile.AllowedRoles.Count == 0 ? "All chat users" : string.Join(", ", profile.AllowedRoles);
+
+    private static IReadOnlyList<string> ParseRoleText(string value) => value
+        .Replace("\r", string.Empty)
+        .Split([',', ';', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .Where(role => !string.IsNullOrWhiteSpace(role))
+        .ToList();
 
     private static string? ProviderOAuthSetupUrl(string providerName) => providerName switch
     {
@@ -665,4 +818,33 @@
     private sealed record SettingCategoryGroup(string Category, IReadOnlyList<EditableConfigurationRow> Items);
 
     private sealed record ConfigurationItem(string Key, string DisplayValue);
+
+    private sealed class ModelProfileEditor
+    {
+        public string? Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Provider { get; set; } = "Ollama";
+        public string Model { get; set; } = string.Empty;
+        public int? ContextWindowTokens { get; set; }
+        public bool Enabled { get; set; } = true;
+        public bool IsDefault { get; set; } = true;
+        public string AllowedRolesText { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public bool IsNew => string.IsNullOrWhiteSpace(Id);
+
+        public static ModelProfileEditor New() => new();
+
+        public static ModelProfileEditor From(ChatModelProfileView profile) => new()
+        {
+            Id = profile.IsImplicit ? null : profile.Id,
+            Name = profile.Name,
+            Provider = profile.Provider,
+            Model = profile.Model,
+            ContextWindowTokens = profile.ContextWindowTokens,
+            Enabled = profile.Enabled,
+            IsDefault = profile.IsDefault,
+            AllowedRolesText = string.Join(", ", profile.AllowedRoles),
+            Description = profile.Description
+        };
+    }
 }

@@ -1081,19 +1081,14 @@ body {
 
 .chat-model-controls {
     display: grid;
-    grid-template-columns: minmax(96px, 0.65fr) minmax(120px, 1fr) minmax(86px, 0.55fr) auto;
+    grid-template-columns: minmax(180px, 1fr) minmax(86px, 0.45fr) auto;
     align-items: center;
     justify-content: stretch;
     gap: 6px;
     min-width: 0;
 }
 
-.chat-provider-select {
-    width: 100%;
-    min-width: 0;
-}
-
-.chat-model-select {
+.chat-model-profile-select {
     width: 100%;
     min-width: 0;
 }
@@ -2010,6 +2005,52 @@ body {
     border-top: 1px solid var(--vscode-border);
 }
 
+.admin-models-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
+    gap: 12px;
+    align-items: start;
+}
+
+.admin-model-list,
+.admin-model-editor {
+    min-width: 0;
+}
+
+.admin-model-editor {
+    border: 1px solid var(--vscode-border);
+    border-radius: 4px;
+    background: var(--vscode-panel-soft);
+    padding: 12px;
+}
+
+.admin-model-editor-header,
+.admin-model-switches,
+.admin-model-editor-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.admin-model-editor-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.admin-model-switches,
+.admin-model-editor-actions {
+    justify-content: flex-start;
+    margin-top: 10px;
+}
+
+.admin-models-table .mud-table-cell:last-child {
+    min-width: 150px;
+}
+
 .admin-provider-cell {
     display: inline-flex;
     align-items: center;
@@ -2483,6 +2524,11 @@ body {
         grid-template-columns: 1fr;
     }
 
+    .admin-models-layout,
+    .admin-model-editor-grid {
+        grid-template-columns: 1fr;
+    }
+
     .profile-commandbar {
         grid-template-columns: minmax(180px, max-content) minmax(180px, 1fr);
         align-items: center;
@@ -2631,8 +2677,7 @@ body {
 
     .chat-mode-toggle,
     .chat-model-controls,
-    .chat-provider-select,
-    .chat-model-select,
+    .chat-model-profile-select,
     .chat-mermaid-theme-select {
         width: 100%;
         max-width: 100%;

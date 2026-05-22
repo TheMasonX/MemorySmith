@@ -138,6 +138,8 @@ public class SourceLinkOptions
 public class ChatOptions
 {
     public string Provider { get; set; } = "Ollama";
+    public string DefaultModelProfileId { get; set; } = string.Empty;
+    public List<ChatModelProfileOptions> ModelProfiles { get; set; } = [];
     public string OllamaEndpoint { get; set; } = "http://localhost:11434";
     public string OllamaModel { get; set; } = "gemma4:e4b";
     public int? OllamaContextWindowTokens { get; set; }
@@ -182,6 +184,18 @@ public class ChatModelOption
     public string? Description { get; set; }
     public int? ContextWindowTokens { get; set; }
     public string? RateLimit { get; set; }
+}
+
+public class ChatModelProfileOptions
+{
+    public string Id { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string Provider { get; set; } = "Ollama";
+    public string Model { get; set; } = string.Empty;
+    public int? ContextWindowTokens { get; set; }
+    public bool Enabled { get; set; } = true;
+    public List<string> AllowedRoles { get; set; } = [];
+    public string? Description { get; set; }
 }
 
 public class MaintenanceAgentOptions

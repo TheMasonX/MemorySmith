@@ -15,8 +15,9 @@ This page tracks user-facing work in plain language. Completed items stay here a
 - [ ] admin/ page should allow the user to edit settings and not just view them (as appropriate)
 - [ ] Delete page/chat confirmation
 - [ ] Decide whether MCP-only source bridge tools (`memorysmith_source_bundle`, `memorysmith_find_by_source`) should move into the shared tool catalog with a richer risk model.
-- [ ] Add an Admin Models page for named model profiles with provider, model id, context window, chat settings, role-based access, and default chat/maintenance assignments.
-- [ ] Disable Chat until an Admin has configured a default model profile, then make Chat select from model profiles instead of free-form provider/model editing.
+- [x] Add an Admin Models tab for named chat model profiles with provider, model id, context window, role-based access, and default chat profile selection.
+- [x] Disable Chat until an Admin has configured an enabled default model profile, then make Chat select from model profiles instead of free-form provider/model editing.
+- [ ] Extend model profiles with maintenance-agent/review-agent assignments and any provider-safe chat settings beyond context-window metadata.
 - [ ] Add durable admin-visible maintenance-agent task state, logs, and an admin conversation surface for the maintenance worker.
 - [ ] Add Request Agent Review on proposals so another agent can review, comment, and optionally create a revised proposal while preserving the original diff.
 - [ ] Route standard chat-agent edits through the proposal workflow so agent writes share diff review, history, and approval semantics.

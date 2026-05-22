@@ -1,7 +1,7 @@
 {
   "Id": "project-wiki-chat-configuration-current",
   "Title": "Chat Configuration Current State",
-  "Content": "MemorySmith chat configuration lives under MemorySmith:Chat. Provider selects Ollama or GitHubCopilot by default; OllamaEndpoint/OllamaModel and GitHubModel/GitHubTokenEnvironmentVariable configure the provider defaults. SystemPromptPath points to the wiki chat/agent prompt. RequestTimeoutSeconds bounds provider calls. MaxContextRecords, MaxContextPages, PreloadContextEnabled, MaxPreloadedContextRecords, MaxPreloadedContextPages, MaxContextItemCharacters, and MaxHistoryMessages shape the context planner and token budget. MaxAttachmentCharacters and MaxAttachmentBytes bound user attachments. ToolCallsEnabled, MaxToolIterations, MaxToolCallsPerTurn, and MaxToolResultCharacters bound the app-intercepted MemorySmith wiki tool protocol. AgentWritesEnabled only allows Agent write application when the caller role and approval flow also permit it; Chat mode remains read-only.",
+  "Content": "MemorySmith chat configuration lives under MemorySmith:Chat. ChatModelProfileService exposes admin-defined ModelProfiles with id, name, provider, model id, optional context-window tokens, enabled state, allowed roles, description, and DefaultModelProfileId. The /chat UI selects from enabled model profiles allowed for the current user's roles; Admin users can use every enabled profile. Chat send is disabled when no enabled default profile is available. When no explicit profile configuration exists, the service exposes an implicit legacy default derived from Provider, OllamaModel, GitHubModel, and OllamaContextWindowTokens so existing installs continue to work. OllamaEndpoint and GitHubTokenEnvironmentVariable still configure provider transport defaults. SystemPromptPath points to the wiki chat/agent prompt. RequestTimeoutSeconds bounds provider calls. MaxContextRecords, MaxContextPages, PreloadContextEnabled, MaxPreloadedContextRecords, MaxPreloadedContextPages, MaxContextItemCharacters, and MaxHistoryMessages shape the context planner and token budget. MaxAttachmentCharacters and MaxAttachmentBytes bound user attachments. ToolCallsEnabled, MaxToolIterations, MaxToolCallsPerTurn, and MaxToolResultCharacters bound the app-intercepted MemorySmith wiki tool protocol. AgentWritesEnabled only allows Agent write application when the caller role and approval flow also permit it; Chat mode remains read-only.",
   "Status": 2,
   "Confidence": 0.92,
   "Tags": [
@@ -28,6 +28,10 @@
       "Uri": "%MemorySmithRepo%MemorySmith.App/Services/MemorySmithOptions.cs"
     },
     {
+      "Label": "Chat model profiles",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/ChatModelProfileService.cs"
+    },
+    {
       "Label": "MemoryChatAgent",
       "Uri": "%MemorySmithRepo%MemorySmith.App/Services/ChatServices.cs"
     },
@@ -37,5 +41,5 @@
     }
   ],
   "UsageCount": 0,
-  "LastUpdated": "2026-05-22T09:00:00Z"
+  "LastUpdated": "2026-05-22T16:35:00Z"
 }
