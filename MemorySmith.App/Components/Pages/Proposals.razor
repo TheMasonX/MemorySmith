@@ -60,6 +60,35 @@
                     }
                 </div>
             }
+            <div class="maintenance-activity-panel" aria-label="Recent maintenance task activity">
+                <header>
+                    <strong>Recent task activity</strong>
+                    <span>@_activity.Count logged</span>
+                </header>
+                @if (_activity.Count == 0)
+                {
+                    <span class="wiki-muted">No maintenance task activity has been logged yet.</span>
+                }
+                else
+                {
+                    <div class="maintenance-activity-list">
+                        @foreach (var activity in _activity.Take(6))
+                        {
+                            <div class="maintenance-activity-row @(activity.Skipped ? "is-skipped" : null)">
+                                <span class="maintenance-activity-main">
+                                    <strong>@ActivitySummary(activity)</strong>
+                                    <small>@activity.FinishedAtUtc.ToLocalTime().ToString("g")</small>
+                                </span>
+                                <span>@activity.FindingCount finding(s) - @activity.ProposalCount proposal(s)</span>
+                                @if (activity.Warnings.Count > 0)
+                                {
+                                    <small class="maintenance-activity-warning">@activity.Warnings.First()</small>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
             <div class="wiki-results-list">
                 @foreach (var proposal in FilteredProposals)
                 {
@@ -170,6 +199,7 @@
     private MaintenanceWriteProposal? _selectedProposal;
     private TopicMapDocument? _topicMap;
     private MaintenanceRunResult? _lastRun;
+    private IReadOnlyList<MaintenanceRunActivity> _activity = [];
     private string _statusFilter = AllFilterValue;
     private string _selectedTask = "staleness_scan";
     private string _comment = string.Empty;
@@ -194,6 +224,7 @@
         try
         {
             _proposals = await ProposalWorkflow.ListAsync(CancellationToken.None);
+            _activity = await Agent.ListRecentActivityAsync(20, CancellationToken.None);
             if (_selectedProposal is not null)
             {
                 _selectedProposal = _proposals.FirstOrDefault(item => item.ProposalId == _selectedProposal.ProposalId);
@@ -389,6 +420,13 @@
     private static string TaskLabel(string task) => task.Replace('_', ' ');
     private static string StatusClass(string status) => "is-" + status.Replace('_', '-');
     private static string RiskClass(string risk) => "is-" + risk.ToLowerInvariant();
+    private static string ActivitySummary(MaintenanceRunActivity activity)
+    {
+        var status = activity.Skipped ? "Skipped" : "Completed";
+        var tasks = activity.Tasks.Count == 0 ? "No tasks" : string.Join(", ", activity.Tasks.Select(TaskLabel));
+        return $"{status}: {tasks}";
+    }
+
     private static string RunSummary(MaintenanceRunResult run) =>
         $"Maintenance run completed with {run.Outputs.Sum(output => output.Findings.Count)} finding(s) and {run.Outputs.Sum(output => output.Proposals.Count)} proposal(s).";
 }

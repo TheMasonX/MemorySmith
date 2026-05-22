@@ -295,4 +295,7 @@ public class MaintenanceAgentStorageOptions
 
     [JsonPropertyName("last_run_path")]
     public string LastRunPath { get; set; } = Path.Combine("..", "Data", "Events", "maintenance-agent-last-run.json");
+
+    [JsonPropertyName("activity_log_path")]
+    public string ActivityLogPath { get; set; } = Path.Combine("..", "Data", "Events", "maintenance-agent-runs.jsonl");
 }
