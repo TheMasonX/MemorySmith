@@ -2,6 +2,8 @@ using MemorySmith.App.Services;
 using MemorySmith.Core.Models;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using System.Runtime.CompilerServices;
+using System.Text.Json;
 
 namespace MemorySmith.Tests;
 
@@ -337,6 +339,86 @@ public class MaintenanceAgentWorkflowTests
     }
 
     [Test]
+    public async Task AgentReview_AddsProviderFeedbackWithoutChangingProposalStatus()
+    {
+        var targetPath = Path.Combine(_tempDir, "Pages", "agent-review-note.md");
+        Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
+        await File.WriteAllTextAsync(targetPath, "before");
+        var submitted = await _workflow.SubmitAsync(CreateProposal(targetPath, "before", "after"), CancellationToken.None);
+        var provider = new FakeChatProvider(JsonSerializer.Serialize(new
+        {
+            recommendation = "approve",
+            comments = new[] { "The evidence and diff are consistent." },
+            confidence = 0.84
+        }));
+        var agent = CreateReviewAgent(provider);
+
+        var result = await agent.ReviewProposalAsync(submitted.ProposalId, "Please review before approval.", CancellationToken.None);
+        var refreshed = await _workflow.GetAsync(submitted.ProposalId, CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Warnings, Is.Empty);
+            Assert.That(result.RevisedProposal, Is.Null);
+            Assert.That(refreshed!.Status, Is.EqualTo(MaintenanceProposalStatuses.Open));
+            Assert.That(refreshed.History.Select(item => item.Action), Does.Contain("agent_review_requested"));
+            Assert.That(refreshed.History.Select(item => item.Action), Does.Contain("agent_review_completed"));
+            Assert.That(refreshed.Comments.Select(item => item.Comment), Does.Contain("Please review before approval."));
+            Assert.That(refreshed.Comments.Last().Comment, Does.Contain("The evidence and diff are consistent."));
+            Assert.That(provider.LastRequest?.Model, Is.EqualTo("review-model"));
+        });
+    }
+
+    [Test]
+    public async Task AgentReview_WithValidRevisedProposal_PreservesOriginalAndSubmitsRevision()
+    {
+        var targetPath = Path.Combine(_tempDir, "Pages", "agent-revision-note.md");
+        Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
+        await File.WriteAllTextAsync(targetPath, "before");
+        var submitted = await _workflow.SubmitAsync(CreateProposal(targetPath, "before", "after"), CancellationToken.None);
+        var provider = new FakeChatProvider(JsonSerializer.Serialize(new
+        {
+            recommendation = "revise",
+            comments = new[] { "Narrow the proposed text before approval." },
+            confidence = 0.72,
+            revisedProposal = new
+            {
+                proposal_id = "agent-revision-1",
+                changes = new[] { new { path = targetPath, before = "before", after = "after revised" } },
+                evidence = new[] { new { kind = "review", citation = "agent-review", reference = "test-memory", excerpt = "Narrowed wording." } },
+                related_records = new[] { "test-memory" },
+                risk_level = MaintenanceProposalRiskLevels.Low,
+                confidence = 0.72,
+                metadata = new
+                {
+                    task = "proposal_review",
+                    confidence = 0.72,
+                    risk_level = MaintenanceProposalRiskLevels.Low,
+                    related_records = new[] { "test-memory" },
+                    supersedes = Array.Empty<string>(),
+                    superseded_by = Array.Empty<string>(),
+                    agent_version = "test-agent"
+                }
+            }
+        }));
+        var agent = CreateReviewAgent(provider);
+
+        var result = await agent.ReviewProposalAsync(submitted.ProposalId, null, CancellationToken.None);
+        var proposals = await _workflow.ListAsync(CancellationToken.None);
+        var original = proposals.Single(item => item.ProposalId == submitted.ProposalId);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.RevisedProposal, Is.Not.Null);
+            Assert.That(original.Status, Is.EqualTo(MaintenanceProposalStatuses.Open));
+            Assert.That(original.Metadata.SupersededBy, Does.Contain(result.RevisedProposal!.ProposalId));
+            Assert.That(original.History.Select(item => item.Action), Does.Contain("agent_revision_proposed"));
+            Assert.That(result.RevisedProposal.Metadata.Supersedes, Does.Contain(original.ProposalId));
+            Assert.That(result.RevisedProposal.Changes.Single().After, Is.EqualTo("after revised"));
+        });
+    }
+
+    [Test]
     public void SchedulerTiming_RespectsWeeklyWindowAndMinimumInterval()
     {
         var schedule = new MaintenanceAgentScheduleOptions
@@ -389,6 +471,55 @@ public class MaintenanceAgentWorkflowTests
             Confidence = 0.9,
             Metadata = new MaintenanceProposalMetadata("staleness_scan", 0.9, MaintenanceProposalRiskLevels.Low, ["test-memory"], [], [], "test-agent")
         };
+
+    private MaintenanceAgentService CreateReviewAgent(FakeChatProvider provider)
+    {
+        var config = new MaintenanceAgentConfigService(new StaticOptionsMonitor<MemorySmithOptions>(new MemorySmithOptions
+        {
+            MaintenanceAgent = new MaintenanceAgentOptions
+            {
+                Read = [Path.Combine(_tempDir, "Memories"), Path.Combine(_tempDir, "Pages")],
+                Write = [Path.Combine(_tempDir, "Memories", "Working"), Path.Combine(_tempDir, "Pages")],
+                UseLlm = true,
+                Provider = provider.Name,
+                Model = "review-model",
+                Storage = new MaintenanceAgentStorageOptions
+                {
+                    ProposalsPath = Path.Combine(_tempDir, "Proposals"),
+                    TopicMapCachePath = Path.Combine(_tempDir, "Graph", "topic-map-cache.json"),
+                    LastRunPath = Path.Combine(_tempDir, "Events", "maintenance-agent-last-run.json")
+                }
+            }
+        }));
+        return new MaintenanceAgentService(
+            config,
+            new MaintenanceResourceProbe(),
+            new MaintenanceTopicMapService(_memoryStore, _pages, config),
+            _workflow,
+            [provider],
+            NullLogger<MaintenanceAgentService>.Instance);
+    }
+
+    private sealed class FakeChatProvider(string response) : IChatProvider
+    {
+        public string Name => "Ollama";
+        public ChatProviderRequest? LastRequest { get; private set; }
+
+        public Task<ChatProviderResponse> CompleteAsync(ChatProviderRequest request, CancellationToken cancellationToken)
+        {
+            LastRequest = request;
+            return Task.FromResult(new ChatProviderResponse(response, Name, request.Model ?? "test-model"));
+        }
+
+        public async IAsyncEnumerable<ChatProviderChunk> StreamAsync(ChatProviderRequest request, [EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            await Task.CompletedTask;
+            yield break;
+        }
+
+        public Task<IReadOnlyList<ChatModelSummary>> ListModelsAsync(CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyList<ChatModelSummary>>([]);
+    }
 
     private sealed class TestCurrentUserContext : ICurrentUserContext
     {

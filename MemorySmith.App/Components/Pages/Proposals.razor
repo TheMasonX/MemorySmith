@@ -318,7 +318,34 @@
             return;
         }
 
-        await ActAsync(() => ProposalWorkflow.RequestAgentReviewAsync(_selectedProposal.ProposalId, _comment, CancellationToken.None), "Agent review requested.");
+        _isBusy = true;
+        try
+        {
+            var result = await Agent.ReviewProposalAsync(_selectedProposal.ProposalId, _comment, CancellationToken.None);
+            _selectedProposal = result.Proposal;
+            _comment = string.Empty;
+            await LoadAsync();
+            if (result.Warnings.Count > 0)
+            {
+                Snackbar.Add(string.Join(" ", result.Warnings), Severity.Warning);
+            }
+            else if (result.RevisedProposal is not null)
+            {
+                Snackbar.Add($"Agent review completed and proposed revision {result.RevisedProposal.ProposalId}.", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("Agent review completed.", Severity.Success);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _isBusy = false;
+        }
     }
 
     private async Task RejectAsync()

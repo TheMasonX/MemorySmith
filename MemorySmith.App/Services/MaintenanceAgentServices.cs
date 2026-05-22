@@ -17,6 +17,17 @@ public sealed record MaintenanceRunResult(
     IReadOnlyList<string> Warnings,
     bool Skipped = false);
 
+public sealed record MaintenanceProposalReviewRunResult(
+    MaintenanceWriteProposal Proposal,
+    MaintenanceWriteProposal? RevisedProposal,
+    IReadOnlyList<string> Warnings);
+
+public sealed record MaintenanceProposalReviewEnvelope(
+    string? Recommendation,
+    IReadOnlyList<string>? Comments,
+    double? Confidence,
+    MaintenanceWriteProposal? RevisedProposal = null);
+
 public sealed record MaintenanceTaskOutput(
     [property: JsonPropertyName("task")] string Task,
     [property: JsonPropertyName("findings")] IReadOnlyList<MaintenanceFinding> Findings,
@@ -590,6 +601,50 @@ public sealed class MaintenanceProposalWorkflow
         return saved;
     }
 
+    public async Task<MaintenanceWriteProposal> RecordAgentReviewAsync(string proposalId, string comment, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(comment))
+        {
+            throw new ArgumentException("Agent review requires a comment.", nameof(comment));
+        }
+
+        var proposal = await LoadRequiredAsync(proposalId, cancellationToken);
+        EnsureActionable(proposal);
+        var comments = proposal.Comments.ToList();
+        comments.Add(new MaintenanceProposalComment("Maintenance agent", DateTimeOffset.UtcNow, comment.Trim()));
+        var updated = AppendHistory(proposal with { Comments = comments }, proposal.Status, "agent_review_completed", null, "Maintenance agent");
+        var saved = await _store.SaveAsync(updated, cancellationToken);
+        await RecordAuditAsync("maintenance.proposal.agent_review_completed", saved, cancellationToken);
+        return saved;
+    }
+
+    public async Task<MaintenanceWriteProposal> SubmitAgentRevisionAsync(string originalProposalId, MaintenanceWriteProposal revisedProposal, CancellationToken cancellationToken)
+    {
+        var original = await LoadRequiredAsync(originalProposalId, cancellationToken);
+        EnsureActionable(original);
+        var revision = revisedProposal with
+        {
+            Metadata = revisedProposal.Metadata with
+            {
+                Supersedes = revisedProposal.Metadata.Supersedes.Append(original.ProposalId).Distinct(StringComparer.OrdinalIgnoreCase).ToList()
+            },
+            History = revisedProposal.History.Append(new MaintenanceProposalHistoryEntry("open", "Maintenance agent", DateTimeOffset.UtcNow, "Agent review proposed this revision.")).ToList()
+        };
+        var savedRevision = await SubmitAsync(revision, cancellationToken);
+        var updatedOriginal = original with
+        {
+            Metadata = original.Metadata with
+            {
+                SupersededBy = original.Metadata.SupersededBy.Append(savedRevision.ProposalId).Distinct(StringComparer.OrdinalIgnoreCase).ToList()
+            },
+            History = original.History.Append(new MaintenanceProposalHistoryEntry("agent_revision_proposed", "Maintenance agent", DateTimeOffset.UtcNow, $"Revision proposed as {savedRevision.ProposalId}.")).ToList(),
+            UpdatedAtUtc = DateTimeOffset.UtcNow
+        };
+        var savedOriginal = await _store.SaveAsync(updatedOriginal, cancellationToken);
+        await RecordAuditAsync("maintenance.proposal.agent_revision_proposed", savedOriginal, cancellationToken);
+        return savedRevision;
+    }
+
     public async Task<MaintenanceWriteProposal> RejectAsync(string proposalId, string? comment, CancellationToken cancellationToken)
     {
         var proposal = await LoadRequiredAsync(proposalId, cancellationToken);
@@ -654,10 +709,10 @@ public sealed class MaintenanceProposalWorkflow
         }
     }
 
-    private MaintenanceWriteProposal AppendHistory(MaintenanceWriteProposal proposal, string status, string action, string? comment)
+    private MaintenanceWriteProposal AppendHistory(MaintenanceWriteProposal proposal, string status, string action, string? comment, string? actor = null)
     {
         var history = proposal.History.ToList();
-        history.Add(new MaintenanceProposalHistoryEntry(action, Actor(), DateTimeOffset.UtcNow, string.IsNullOrWhiteSpace(comment) ? null : comment.Trim()));
+        history.Add(new MaintenanceProposalHistoryEntry(action, string.IsNullOrWhiteSpace(actor) ? Actor() : actor, DateTimeOffset.UtcNow, string.IsNullOrWhiteSpace(comment) ? null : comment.Trim()));
         return proposal with
         {
             Status = status,
@@ -1039,6 +1094,63 @@ public sealed class MaintenanceAgentService
     public Task<MaintenanceRunResult> RunMaintenanceOnDemandAsync(string task, CancellationToken cancellationToken) =>
         RunAsync("run_maintenance_on_demand", cancellationToken, task);
 
+    public async Task<MaintenanceProposalReviewRunResult> ReviewProposalAsync(string proposalId, string? requesterComment, CancellationToken cancellationToken)
+    {
+        var warnings = new List<string>();
+        var requested = await _proposalWorkflow.RequestAgentReviewAsync(proposalId, requesterComment, cancellationToken);
+        var config = _config.GetCurrent();
+        if (!config.UseLlm)
+        {
+            warnings.Add("Proposal review request was recorded, but LLM review is disabled for the maintenance agent.");
+            return new MaintenanceProposalReviewRunResult(requested, null, warnings);
+        }
+
+        var provider = _providers.FirstOrDefault(candidate => string.Equals(candidate.Name, config.Provider, StringComparison.OrdinalIgnoreCase));
+        if (provider is null)
+        {
+            warnings.Add($"Proposal review request was recorded, but provider '{config.Provider}' is not registered.");
+            return new MaintenanceProposalReviewRunResult(requested, null, warnings);
+        }
+
+        try
+        {
+            var providerResponse = await provider.CompleteAsync(new ChatProviderRequest(
+            [
+                new ChatMessage("system", "You are MemorySmith's proposal review agent. Return strict JSON with recommendation, comments, confidence, and optional revisedProposal."),
+                new ChatMessage("user", BuildProposalReviewPrompt(requested, requesterComment, config))
+            ], MemoryChatMode.Agent, config.Model, Provider: config.Provider), cancellationToken);
+            var review = ParseProposalReview(providerResponse.Content);
+            var reviewed = await _proposalWorkflow.RecordAgentReviewAsync(requested.ProposalId, FormatProposalReviewComment(review, providerResponse), cancellationToken);
+            MaintenanceWriteProposal? revisedProposal = null;
+            if (review.RevisedProposal is not null)
+            {
+                try
+                {
+                    revisedProposal = await _proposalWorkflow.SubmitAgentRevisionAsync(reviewed.ProposalId, NormalizeReviewRevision(review.RevisedProposal, reviewed, config), cancellationToken);
+                    reviewed = await _proposalWorkflow.GetAsync(reviewed.ProposalId, cancellationToken) ?? reviewed;
+                }
+                catch (Exception ex) when (ex is InvalidOperationException or IOException or UnauthorizedAccessException)
+                {
+                    warnings.Add($"Agent review comment was recorded, but the revised proposal was not saved: {ex.Message}");
+                    _logger.LogWarning(ex, "Proposal review revision was not saved for {ProposalId}", reviewed.ProposalId);
+                }
+            }
+
+            return new MaintenanceProposalReviewRunResult(reviewed, revisedProposal, warnings);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex) when (ex is JsonException or HttpRequestException or InvalidOperationException or TaskCanceledException)
+        {
+            warnings.Add($"Proposal review request was recorded, but agent review failed: {ex.Message}");
+            _logger.LogWarning(ex, "Proposal review failed for {ProposalId}", requested.ProposalId);
+            var reviewed = await _proposalWorkflow.RecordAgentReviewAsync(requested.ProposalId, $"Agent review failed: {ex.Message}", cancellationToken);
+            return new MaintenanceProposalReviewRunResult(reviewed, null, warnings);
+        }
+    }
+
     private async Task<MaintenanceRunResult> RunAsync(string trigger, CancellationToken cancellationToken, string? taskFilter = null)
     {
         var started = DateTimeOffset.UtcNow;
@@ -1371,6 +1483,87 @@ public sealed class MaintenanceAgentService
             Warnings = output.Warnings is null ? [] : output.Warnings,
             Metadata = output.Metadata ?? new Dictionary<string, object?>()
         };
+
+    private static string BuildProposalReviewPrompt(MaintenanceWriteProposal proposal, string? requesterComment, MaintenanceAgentOptions config) =>
+        JsonSerializer.Serialize(new
+        {
+            instruction = "Review this MemorySmith write proposal like a cautious pull request reviewer. Do not approve or apply writes. Return strict JSON with recommendation, comments, confidence, and optional revisedProposal. Include revisedProposal only when a concrete safer revision is warranted and it preserves the same proposal contract.",
+            reviewerComment = string.IsNullOrWhiteSpace(requesterComment) ? null : requesterComment.Trim(),
+            config = new
+            {
+                config.AgentVersion,
+                config.Read,
+                config.Write
+            },
+            proposal
+        }, AgentJsonOptions);
+
+    private static MaintenanceProposalReviewEnvelope ParseProposalReview(string content)
+    {
+        try
+        {
+            var parsed = JsonSerializer.Deserialize<MaintenanceProposalReviewEnvelope>(content, AgentJsonOptions);
+            if (parsed is not null)
+            {
+                return parsed with
+                {
+                    Recommendation = string.IsNullOrWhiteSpace(parsed.Recommendation) ? "reviewed" : parsed.Recommendation.Trim(),
+                    Comments = parsed.Comments?.Where(comment => !string.IsNullOrWhiteSpace(comment)).Select(comment => comment.Trim()).ToList() ?? []
+                };
+            }
+        }
+        catch (JsonException)
+        {
+        }
+
+        return new MaintenanceProposalReviewEnvelope("reviewed", [string.IsNullOrWhiteSpace(content) ? "Agent review returned no text." : content.Trim()], null);
+    }
+
+    private static string FormatProposalReviewComment(MaintenanceProposalReviewEnvelope review, ChatProviderResponse response)
+    {
+        var lines = new List<string>
+        {
+            $"Recommendation: {review.Recommendation ?? "reviewed"}"
+        };
+        if (review.Confidence is not null)
+        {
+            lines.Add($"Confidence: {review.Confidence.Value:P0}");
+        }
+
+        lines.Add($"Model: {response.ProviderName} / {response.Model}");
+        lines.Add(string.Empty);
+        lines.AddRange((review.Comments is { Count: > 0 } ? review.Comments : [response.Content]).Select(comment => $"- {comment}"));
+        return string.Join(Environment.NewLine, lines);
+    }
+
+    private static MaintenanceWriteProposal NormalizeReviewRevision(MaintenanceWriteProposal revision, MaintenanceWriteProposal original, MaintenanceAgentOptions config)
+    {
+        if (revision.Changes.Count == 0)
+        {
+            throw new InvalidOperationException("Agent review revisions must include at least one change.");
+        }
+
+        var relatedRecords = revision.RelatedRecords.Count > 0 ? revision.RelatedRecords : original.RelatedRecords;
+        var riskLevel = string.IsNullOrWhiteSpace(revision.RiskLevel) ? original.RiskLevel : revision.RiskLevel;
+        var confidence = revision.Confidence > 0 ? revision.Confidence : Math.Min(original.Confidence, 0.7);
+        return revision with
+        {
+            ProposalId = string.IsNullOrWhiteSpace(revision.ProposalId) ? $"agent-review-{Slugify(original.ProposalId)}-{DateTimeOffset.UtcNow:yyyyMMddHHmmssfff}" : revision.ProposalId,
+            Evidence = revision.Evidence.Count > 0 ? revision.Evidence : original.Evidence,
+            RelatedRecords = relatedRecords,
+            RiskLevel = riskLevel,
+            Confidence = confidence,
+            Metadata = revision.Metadata with
+            {
+                Task = string.IsNullOrWhiteSpace(revision.Metadata.Task) ? "proposal_review" : revision.Metadata.Task,
+                Confidence = revision.Metadata.Confidence > 0 ? revision.Metadata.Confidence : confidence,
+                RiskLevel = string.IsNullOrWhiteSpace(revision.Metadata.RiskLevel) ? riskLevel : revision.Metadata.RiskLevel,
+                RelatedRecords = revision.Metadata.RelatedRecords.Count > 0 ? revision.Metadata.RelatedRecords : relatedRecords,
+                Supersedes = revision.Metadata.Supersedes.Append(original.ProposalId).Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+                AgentVersion = string.IsNullOrWhiteSpace(revision.Metadata.AgentVersion) ? config.AgentVersion : revision.Metadata.AgentVersion
+            }
+        };
+    }
 
     private async Task SaveLastRunAsync(MaintenanceAgentOptions config, string trigger, DateTimeOffset started, IReadOnlyList<MaintenanceTaskOutput> outputs, IReadOnlyList<string> warnings, CancellationToken cancellationToken)
     {
