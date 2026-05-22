@@ -635,6 +635,7 @@ public sealed class ChatToolCatalog
         {
             var scoreLine = record.Score.HasValue ? $"Score: {record.Score:0.######}" : "Score: linked context";
             var matchLine = string.IsNullOrWhiteSpace(record.MatchReason) ? string.Empty : $"Match: {record.MatchReason}{Environment.NewLine}";
+            var diagnostics = MemoryDiagnosticFormatting.FormatMarkdownSection(record.Diagnostics);
             return $"## {record.Id}: {record.Title}{Environment.NewLine}" +
                    $"Relationship: {record.Relationship}{Environment.NewLine}" +
                    $"Status: {record.Status}; Confidence: {record.Confidence:P0}; Uses: {record.UsageCount}{Environment.NewLine}" +
@@ -643,6 +644,7 @@ public sealed class ChatToolCatalog
                    $"Conflicts: {FormatLinks(record.Conflicts)}{Environment.NewLine}" +
                    $"{scoreLine}{Environment.NewLine}" +
                    matchLine +
+                   diagnostics +
                    record.Content;
         });
         return $"# Context Pack{Environment.NewLine}Query: {pack.Query ?? string.Empty}{Environment.NewLine}Generated: {pack.GeneratedAt:O}{warnings}{Environment.NewLine}" +

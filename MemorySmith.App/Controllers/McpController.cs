@@ -420,6 +420,7 @@ public class McpController : ControllerBase
             var sourceLinks = record.SourceLinks.Count == 0
                 ? string.Empty
                 : $"Source Links: {string.Join(", ", record.SourceLinks.Select(sl => FormatSourceLink(sl)))}{Environment.NewLine}";
+            var diagnostics = MemoryDiagnosticFormatting.FormatMarkdownSection(record.Diagnostics);
             return $"## {record.Id}: {record.Title}{Environment.NewLine}" +
                    $"Relationship: {record.Relationship}{Environment.NewLine}" +
                    $"Status: {record.Status}; Confidence: {record.Confidence:P0}; Uses: {record.UsageCount}{Environment.NewLine}" +
@@ -429,6 +430,7 @@ public class McpController : ControllerBase
                    sourceLinks +
                    $"{scoreLine}{Environment.NewLine}" +
                    matchLine +
+                   diagnostics +
                    record.Content;
         });
 

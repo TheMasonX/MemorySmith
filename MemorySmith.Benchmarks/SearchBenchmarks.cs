@@ -33,6 +33,13 @@ public class SearchBenchmarks
     }
 
     [Benchmark]
+    public async Task<int> LexicalSearchMetadataWithDiagnostics()
+    {
+        var results = await _service.SearchMetadataAsync(_lexicalQuery, CancellationToken.None);
+        return results.Count;
+    }
+
+    [Benchmark]
     public async Task<int> SemanticSearch()
     {
         var results = await _service.SemanticSearchAsync(_semanticQuery, CancellationToken.None);
@@ -66,6 +73,7 @@ public class SearchBenchmarks
         benchmarks.Setup();
 
         Console.WriteLine($"LexicalSearch: {await benchmarks.LexicalSearch()} results");
+        Console.WriteLine($"LexicalSearchMetadataWithDiagnostics: {await benchmarks.LexicalSearchMetadataWithDiagnostics()} results");
         Console.WriteLine($"SemanticSearch: {await benchmarks.SemanticSearch()} results");
         Console.WriteLine($"HybridSearch: {await benchmarks.HybridSearch()} results");
         Console.WriteLine($"ChatContextSearch: {await benchmarks.ChatContextSearch()} results");
@@ -85,13 +93,21 @@ internal static class BenchmarkServiceFactory
             index.Add(record);
         }
 
+        var options = Options.Create(new MemorySmithOptions());
+        var diagnostics = new MemoryDiagnosticsService(
+            new TagPolicyService(options),
+            new VarResolver(new NoOpVarStore(), options),
+            store,
+            options);
+
         return new MemoryApplicationService(
             store,
             new NoOpEventStore(),
             index,
             new BackgroundServiceTelemetryTracker(),
             new NoOpPublisher(),
-            Options.Create(new MemorySmithOptions()));
+            options,
+            diagnostics: diagnostics);
     }
 
     private static string FindRepositoryRoot()
@@ -118,6 +134,15 @@ internal sealed class NoOpEventStore : IEventStore
     }
 
     public IEnumerable<MemoryEvent> GetEvents(string? memoryId = null, DateTime? since = null) => [];
+}
+
+internal sealed class NoOpVarStore : IVarStore
+{
+    public IReadOnlyDictionary<string, string> Load() => new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+    public void Save(IReadOnlyDictionary<string, string> vars)
+    {
+    }
 }
 
 internal sealed class NoOpPublisher : IMemoryChangePublisher

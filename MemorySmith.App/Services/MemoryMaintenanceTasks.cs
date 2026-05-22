@@ -8,8 +8,6 @@ namespace MemorySmith.App.Services;
 
 public class MemoryMaintenanceTasks
 {
-    private const double DeprecationRecommendationThreshold = 0.2;
-
     private readonly IMemoryStore _store;
     private readonly IEventStore _eventStore;
     private readonly MemoryIndex _index;
@@ -122,7 +120,7 @@ public class MemoryMaintenanceTasks
     {
         foreach (var record in records.Where(r => r.Status != MemoryStatus.Deprecated))
         {
-            if (MemoryScorer.Score(record) < 0.2)
+            if (MemoryScorer.Score(record) < MemoryStateMachine.DeprecationThreshold)
             {
                 record.Status = MemoryStatus.Deprecated;
                 _store.Save(record);
@@ -135,7 +133,8 @@ public class MemoryMaintenanceTasks
         foreach (var record in records.Where(r => r.Status != MemoryStatus.Deprecated))
         {
             var score = MemoryScorer.Score(record);
-            if (score >= DeprecationRecommendationThreshold)
+            if (score >= MemoryStateMachine.DeprecationThreshold ||
+                HasDeprecationRecommendation(record.Id))
             {
                 continue;
             }
@@ -149,6 +148,10 @@ public class MemoryMaintenanceTasks
             });
         }
     }
+
+    private bool HasDeprecationRecommendation(string memoryId) =>
+        _eventStore.GetEvents(memoryId)
+            .Any(memoryEvent => string.Equals(memoryEvent.Action, "DeprecationRecommended", StringComparison.OrdinalIgnoreCase));
 
     private static List<string> DistinctNormalized(IEnumerable<string> values) =>
         values

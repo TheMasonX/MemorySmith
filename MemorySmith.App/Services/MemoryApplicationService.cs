@@ -109,19 +109,33 @@ public partial class MemoryApplicationService
         RecordQueryEvent("lexical", query.Query);
 
         var limit = Clamp(query.Limit, 1, _options.Limits.MaxSearchLimit, 20);
-        var tagFilters = NormalizeFilterList(query.Tags);
         var lexicalTokens = AnalyzeLexicalText(query.Query ?? string.Empty);
+        var snapshot = CreateSearchSnapshot(query.Status, query.Tags);
 
-        var allRecords = _store.LoadAll().ToList();
-        var records = ApplyListFilters(allRecords, query.Status, tagFilters).ToList();
-        var recordsById = records.ToDictionary(record => record.Id, StringComparer.OrdinalIgnoreCase);
-
-        var results = RankLexicalResults(records, query.Query, lexicalTokens)
+        var results = RankLexicalResults(snapshot.FilteredRecords, query.Query, lexicalTokens)
             .Take(limit)
-            .Select(result => recordsById[result.Id])
+            .Select(result => snapshot.FilteredRecordsById[result.Id])
             .ToList();
 
         return Task.FromResult<IReadOnlyList<MemoryRecord>>(results);
+    }
+
+    public Task<IReadOnlyList<MemoryMetadata>> SearchMetadataAsync(MemorySearchQuery query, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        RecordQueryEvent("lexical", query.Query);
+
+        var limit = Clamp(query.Limit, 1, _options.Limits.MaxSearchLimit, 20);
+        var lexicalTokens = AnalyzeLexicalText(query.Query ?? string.Empty);
+        var snapshot = CreateSearchSnapshot(query.Status, query.Tags);
+
+        var results = RankLexicalResults(snapshot.FilteredRecords, query.Query, lexicalTokens)
+            .Take(limit)
+            .Select(result => ToMetadata(snapshot.FilteredRecordsById[result.Id], snapshot.AllRecordsById))
+            .ToList();
+
+        return Task.FromResult<IReadOnlyList<MemoryMetadata>>(results);
     }
 
     public Task<IReadOnlyList<MemorySearchResult>> SemanticSearchAsync(SemanticMemorySearchQuery query, CancellationToken cancellationToken)
@@ -131,16 +145,13 @@ public partial class MemoryApplicationService
         RecordQueryEvent("semantic", query.Query);
 
         var limit = Clamp(query.Limit, 1, _options.Limits.MaxSearchLimit, 20);
-        var tagFilters = NormalizeFilterList(query.Tags);
         var queryTokens = ExpandSearchTokens(TokenizeSearchText(query.Query ?? string.Empty));
-        var allRecords = _store.LoadAll().ToList();
-        var allRecordsById = allRecords.ToDictionary(record => record.Id, StringComparer.OrdinalIgnoreCase);
-        var records = ApplyListFilters(allRecords, query.Status, tagFilters).ToList();
+        var snapshot = CreateSearchSnapshot(query.Status, query.Tags);
 
-        var results = RankSemanticResults(records, query.Query, queryTokens)
+        var results = RankSemanticResults(snapshot.FilteredRecords, query.Query, queryTokens)
             .Take(limit)
-            .Select(result => records.FirstOrDefault(record => string.Equals(record.Id, result.Id, StringComparison.OrdinalIgnoreCase)) is { } record
-                ? result with { Diagnostics = GetDiagnostics(record, allRecordsById) }
+            .Select(result => snapshot.FilteredRecordsById.TryGetValue(result.Id, out var record)
+                ? result with { Diagnostics = GetDiagnostics(record, snapshot.AllRecordsById) }
                 : result)
             .ToList();
 
@@ -154,53 +165,8 @@ public partial class MemoryApplicationService
         RecordQueryEvent("hybrid", query.Query);
 
         var limit = Clamp(query.Limit, 1, _options.Limits.MaxSearchLimit, 20);
-        var tagFilters = NormalizeFilterList(query.Tags);
-        var allRecords = _store.LoadAll().ToList();
-        var allRecordsById = allRecords.ToDictionary(record => record.Id, StringComparer.OrdinalIgnoreCase);
-        var records = ApplyListFilters(allRecords, query.Status, tagFilters).ToList();
-        var semanticTokens = ExpandSearchTokens(TokenizeSearchText(query.Query ?? string.Empty));
-        var lexicalTokens = AnalyzeLexicalText(query.Query ?? string.Empty);
-
-        var lexicalResults = RankLexicalResults(records, query.Query, lexicalTokens);
-        var semanticResults = RankSemanticResults(records, query.Query, semanticTokens);
-        var lexicalRanks = ToRankMap(lexicalResults);
-        var semanticRanks = ToRankMap(semanticResults);
-        var lexicalById = lexicalResults.ToDictionary(result => result.Id, StringComparer.OrdinalIgnoreCase);
-        var semanticById = semanticResults.ToDictionary(result => result.Id, StringComparer.OrdinalIgnoreCase);
-        var recordsById = records.ToDictionary(record => record.Id, StringComparer.OrdinalIgnoreCase);
-        var candidateIds = lexicalRanks.Keys
-            .Union(semanticRanks.Keys, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        var results = candidateIds
-            .Select(id =>
-            {
-                var record = recordsById[id];
-                lexicalRanks.TryGetValue(id, out var lexicalRank);
-                semanticRanks.TryGetValue(id, out var semanticRank);
-                lexicalById.TryGetValue(id, out var lexicalResult);
-                semanticById.TryGetValue(id, out var semanticResult);
-
-                var score = ReciprocalRankScore(lexicalRank) + ReciprocalRankScore(semanticRank);
-                return new MemorySearchResult(
-                    record.Id,
-                    record.Title,
-                    record.Status,
-                    record.Confidence,
-                    Math.Round(score, 6),
-                    record.Tags,
-                    record.UsageCount,
-                    semanticResult?.Snippet ?? lexicalResult?.Snippet ?? BuildSnippet(record.Content, semanticTokens),
-                    BuildHybridMatchReason(lexicalRank, lexicalResult, semanticRank, semanticResult),
-                    record.LastUpdated)
-                {
-                    Diagnostics = GetDiagnostics(record, allRecordsById)
-                };
-            })
-            .OrderByDescending(result => result.Score)
-            .ThenByDescending(result => result.LastUpdated)
-            .ThenBy(result => result.Title, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(result => result.Id, StringComparer.OrdinalIgnoreCase)
+        var snapshot = CreateSearchSnapshot(query.Status, query.Tags);
+        var results = RankHybridResults(snapshot, query.Query)
             .Take(limit)
             .ToList();
 
@@ -218,12 +184,13 @@ public partial class MemoryApplicationService
         var maxContentChars = Clamp(query.MaxContentChars, 200, 6000, 1200);
         var maxRecords = Clamp(query.MaxRecords, 1, 100, 20);
         var warnings = new List<string>();
-        var allRecords = _store.LoadAll().ToList();
-        var recordsById = allRecords.ToDictionary(record => record.Id, StringComparer.OrdinalIgnoreCase);
+        var snapshot = CreateSearchSnapshot(query.Status, query.Tags);
+        var allRecords = snapshot.AllRecords;
+        var recordsById = snapshot.AllRecordsById;
         var explicitRootIds = NormalizeIdList(query.Ids, warnings);
         var roots = string.IsNullOrWhiteSpace(query.Query) && explicitRootIds.Count > 0
             ? []
-            : await HybridSearchAsync(new HybridMemorySearchQuery(query.Query, query.Status, query.Tags, limit), cancellationToken);
+            : RankHybridResults(snapshot, query.Query).Take(limit).ToList();
 
         var records = new List<MemoryContextPackRecord>();
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -297,8 +264,7 @@ public partial class MemoryApplicationService
             frontier = nextFrontier;
         }
 
-        var diagnosticWarnings = records
-            .SelectMany(record => record.Diagnostics.Select(diagnostic => $"{record.Id}: {diagnostic.Code} - {diagnostic.Message}"));
+        var diagnosticWarnings = MemoryDiagnosticFormatting.ToWarningSummaries(records);
 
         return new MemoryContextPack(
             query.Query,
@@ -818,6 +784,66 @@ public partial class MemoryApplicationService
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
+    private MemorySearchSnapshot CreateSearchSnapshot(MemoryStatus? status, string? tags)
+    {
+        var tagFilters = NormalizeFilterList(tags);
+        var allRecords = _store.LoadAll().ToList();
+        var filteredRecords = ApplyListFilters(allRecords, status, tagFilters).ToList();
+
+        return new MemorySearchSnapshot(
+            allRecords,
+            allRecords.ToDictionary(record => record.Id, StringComparer.OrdinalIgnoreCase),
+            filteredRecords,
+            filteredRecords.ToDictionary(record => record.Id, StringComparer.OrdinalIgnoreCase));
+    }
+
+    private IReadOnlyList<MemorySearchResult> RankHybridResults(MemorySearchSnapshot snapshot, string? query)
+    {
+        var semanticTokens = ExpandSearchTokens(TokenizeSearchText(query ?? string.Empty));
+        var lexicalTokens = AnalyzeLexicalText(query ?? string.Empty);
+
+        var lexicalResults = RankLexicalResults(snapshot.FilteredRecords, query, lexicalTokens);
+        var semanticResults = RankSemanticResults(snapshot.FilteredRecords, query, semanticTokens);
+        var lexicalRanks = ToRankMap(lexicalResults);
+        var semanticRanks = ToRankMap(semanticResults);
+        var lexicalById = lexicalResults.ToDictionary(result => result.Id, StringComparer.OrdinalIgnoreCase);
+        var semanticById = semanticResults.ToDictionary(result => result.Id, StringComparer.OrdinalIgnoreCase);
+        var candidateIds = lexicalRanks.Keys
+            .Union(semanticRanks.Keys, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return candidateIds
+            .Select(id =>
+            {
+                var record = snapshot.FilteredRecordsById[id];
+                lexicalRanks.TryGetValue(id, out var lexicalRank);
+                semanticRanks.TryGetValue(id, out var semanticRank);
+                lexicalById.TryGetValue(id, out var lexicalResult);
+                semanticById.TryGetValue(id, out var semanticResult);
+
+                var score = ReciprocalRankScore(lexicalRank) + ReciprocalRankScore(semanticRank);
+                return new MemorySearchResult(
+                    record.Id,
+                    record.Title,
+                    record.Status,
+                    record.Confidence,
+                    Math.Round(score, 6),
+                    record.Tags,
+                    record.UsageCount,
+                    semanticResult?.Snippet ?? lexicalResult?.Snippet ?? BuildSnippet(record.Content, semanticTokens),
+                    BuildHybridMatchReason(lexicalRank, lexicalResult, semanticRank, semanticResult),
+                    record.LastUpdated)
+                {
+                    Diagnostics = GetDiagnostics(record, snapshot.AllRecordsById)
+                };
+            })
+            .OrderByDescending(result => result.Score)
+            .ThenByDescending(result => result.LastUpdated)
+            .ThenBy(result => result.Title, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(result => result.Id, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
     private IReadOnlyList<MemorySearchResult> RankSemanticResults(
         List<MemoryRecord> records,
         string? query,
@@ -1145,4 +1171,10 @@ public partial class MemoryApplicationService
             Timestamp = DateTime.UtcNow
         });
     }
+
+    private sealed record MemorySearchSnapshot(
+        List<MemoryRecord> AllRecords,
+        IReadOnlyDictionary<string, MemoryRecord> AllRecordsById,
+        List<MemoryRecord> FilteredRecords,
+        IReadOnlyDictionary<string, MemoryRecord> FilteredRecordsById);
 }
