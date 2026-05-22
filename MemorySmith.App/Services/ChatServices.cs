@@ -92,7 +92,11 @@ public sealed record ChatRuntimeConfiguration(
     IReadOnlyList<ChatModelSummary> Models,
     IReadOnlyList<string> Providers,
     IReadOnlyDictionary<string, ChatProviderCapabilities>? ProviderCapabilities = null,
-    string? ModelsError = null);
+    string? ModelsError = null,
+    IReadOnlyList<ChatModelProfileView>? ModelProfiles = null,
+    string? DefaultModelProfileId = null,
+    bool ChatEnabled = true,
+    string? DisabledReason = null);
 
 public static class ChatErrorMessages
 {

@@ -1,6 +1,6 @@
 # Admin Models And Maintenance Agent Planning Notes
 
-Status: planning page, 2026-05-22
+Status: mixed implementation/planning page, 2026-05-22
 
 This page tracks a grouped set of user-facing configuration and agent-governance requests that need design before implementation. It is intentionally a page, not a structured memory record, because the items describe desired future behavior rather than existing system state.
 
@@ -14,19 +14,14 @@ This page tracks a grouped set of user-facing configuration and agent-governance
 
 ## Model Registry
 
-Admins need a first-class Models page for named model profiles. A model profile should include at least:
+Implemented baseline: `/admin` now includes a Models tab backed by `ChatModelProfileService`. Admins can define chat model profiles with name, provider, model id, optional context-window tokens, enabled state, default chat selection, role allowlist, and description. `/chat` now selects from enabled model profiles allowed for the current user role and disables send when no enabled default profile is available. Existing installs continue to get an implicit legacy default derived from the older Chat provider/model settings until explicit profiles are configured.
+
+Remaining design work: model profiles still need maintenance-agent/review-agent assignments and provider-safe chat settings beyond context-window metadata. Future profile fields should include at least:
 
 | Field | Purpose |
 | --- | --- |
-| Name | User-facing profile name, such as `Athena`. |
-| Provider | Runtime provider, such as `Ollama` or `GitHub`. |
-| Model | Provider model id, such as `gemma4:e4b`. |
-| Context window | Human/admin-friendly context budget, such as `32k`, normalized to tokens internally. |
 | Chat settings | Temperature, tool budget, context preload, compaction policy, or other provider-safe settings. |
-| Access | Roles or users allowed to select the profile. |
-| Assignments | Optional default for chat, maintenance agent, or specialized workflows. |
-
-Chat should not silently fall back to manual provider/model text values. If no default model profile is configured, chat should be disabled with a clear message telling an Admin to configure a default model. Once profiles exist, the Chat page should select from profile names rather than free-form provider/model editing.
+| Assignments | Optional default for maintenance agent, proposal review agent, or specialized workflows. |
 
 ## Maintenance Agent Tasks And Logs
 

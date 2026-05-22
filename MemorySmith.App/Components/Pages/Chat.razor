@@ -7,6 +7,7 @@
 @using Microsoft.Extensions.Options
 @inject IChatAgent ChatAgent
 @inject ChatToolCatalog ToolCatalog
+@inject ChatModelProfileService ModelProfiles
 @inject MemoryApplicationService Memories
 @inject IPageService Pages
 @inject IEnumerable<IChatProvider> ChatProviders
@@ -27,20 +28,10 @@
             </MudButtonGroup>
 
             <div class="chat-model-controls">
-                <MudSelect T="string" Value="_selectedProvider" ValueChanged="OnProviderChanged" Label="Provider" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="chat-provider-select">
-                    @foreach (var provider in _availableProviders)
+                <MudSelect T="string" Value="_selectedModelProfileId" ValueChanged="OnModelProfileChanged" Label="Model Profile" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="chat-model-profile-select" Disabled="@(!CanSelectModelProfile)">
+                    @foreach (var profile in _modelProfiles)
                     {
-                        <MudSelectItem T="string" Value="@provider">@provider</MudSelectItem>
-                    }
-                </MudSelect>
-                <MudSelect T="string" Value="_selectedModel" ValueChanged="OnModelChanged" Label="Model" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="chat-model-select">
-                    @if (_models.Count == 0 && !string.IsNullOrWhiteSpace(_selectedModel))
-                    {
-                        <MudSelectItem T="string" Value="@_selectedModel">@_selectedModel</MudSelectItem>
-                    }
-                    @foreach (var model in _models)
-                    {
-                        <MudSelectItem T="string" Value="@model.Name">@FormatModelLabel(model)</MudSelectItem>
+                        <MudSelectItem T="string" Value="@profile.Id">@FormatProfileLabel(profile)</MudSelectItem>
                     }
                 </MudSelect>
                 <MudSelect T="string" Value="_mermaidThemeMode" ValueChanged="SetMermaidThemeModeAsync" Label="Diagram" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="chat-mermaid-theme-select">
@@ -59,6 +50,10 @@
             @if (!string.IsNullOrWhiteSpace(_modelError))
             {
                 <span class="chat-status-error">@_modelError</span>
+            }
+            @if (!string.IsNullOrWhiteSpace(ModelSetupMessage))
+            {
+                <span class="chat-status-error">@ModelSetupMessage</span>
             }
             @if (_attachments.Count > 0)
             {
@@ -195,7 +190,7 @@
                     <MudTooltip Text="Stop generation">
                         <MudIconButton Icon="@Icons.Material.Filled.Stop" Size="Size.Small" Color="Color.Error" Class="chat-composer-icon" Disabled="@(!_isSending)" OnClick="StopGeneratingAsync" aria-label="Stop generation" />
                     </MudTooltip>
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Send" Disabled="@_isSending" OnClick="SendAsync">Send</MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Send" Disabled="@(!CanSendChat)" OnClick="SendAsync">Send</MudButton>
                 </div>
             </div>
         </div>
@@ -356,6 +351,7 @@
     };
     private readonly List<ChatSessionState> _sessions = [];
     private readonly List<ChatModelSummary> _models = [];
+    private readonly List<ChatModelProfileView> _modelProfiles = [];
     private readonly List<string> _availableProviders = [];
     private readonly List<ChatAttachment> _attachments = [];
     private DotNetObjectReference<Chat>? _dotNetRef;
@@ -365,6 +361,7 @@
     private MemoryChatMode _mode = MemoryChatMode.Chat;
     private string _activeSessionId = string.Empty;
     private string _draft = string.Empty;
+    private string _selectedModelProfileId = string.Empty;
     private string _selectedProvider = "Ollama";
     private string _selectedModel = string.Empty;
     private string _mermaidThemeMode = MermaidThemeAuto;
@@ -403,6 +400,12 @@
         ? $"chat-workbench is-sidebar-open {(_sidebarTab == ChatSidebarTab.Trace ? "is-trace-open" : "is-history-open")}"
         : "chat-workbench";
     private bool HasPendingDraft => !string.IsNullOrWhiteSpace(_draft) || _attachments.Count > 0;
+    private ChatModelProfileView? SelectedModelProfile => _modelProfiles.FirstOrDefault(profile => string.Equals(profile.Id, _selectedModelProfileId, StringComparison.OrdinalIgnoreCase));
+    private ChatModelProfileView? DefaultModelProfile => ModelProfiles.GetDefaultProfileForRoles(CurrentUser.Roles);
+    private bool HasDefaultModelProfile => DefaultModelProfile is not null;
+    private bool CanSelectModelProfile => HasDefaultModelProfile && _modelProfiles.Count > 0 && !_isSending;
+    private bool CanSendChat => !_isSending && HasDefaultModelProfile && SelectedModelProfile is not null && !string.IsNullOrWhiteSpace(_selectedModel);
+    private string? ModelSetupMessage => HasDefaultModelProfile ? null : "Chat is disabled until an Admin defines an enabled default model profile.";
     private ChatTurnState? SelectedTraceTurn =>
         ActiveSession.Turns.FirstOrDefault(turn => string.Equals(turn.Id, _selectedTraceTurnId, StringComparison.Ordinal))
         ?? ActiveSession.Turns.LastOrDefault(TurnHasInspectableState);
@@ -425,6 +428,7 @@
     protected override void OnInitialized()
     {
         var chatOptions = Options.CurrentValue.Chat;
+        LoadModelProfiles();
         _availableProviders.Clear();
         _availableProviders.AddRange(ChatProviders.Select(provider => provider.Name).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(provider => provider));
         if (_availableProviders.Count == 0)
@@ -432,8 +436,7 @@
             _availableProviders.Add(chatOptions.Provider);
         }
 
-        _selectedProvider = _availableProviders.FirstOrDefault(provider => ProviderMatches(provider, chatOptions.Provider)) ?? _availableProviders[0];
-        _selectedModel = DefaultModelForProvider(_selectedProvider);
+        ApplySelectedModelProfile(DefaultModelProfile ?? _modelProfiles.FirstOrDefault(), persistStatus: false);
         StartNewChat();
     }
 
@@ -471,14 +474,13 @@
             return;
         }
 
-        if (!string.IsNullOrWhiteSpace(preferences.Provider) && _availableProviders.Any(provider => ProviderMatches(provider, preferences.Provider)))
+        if (!string.IsNullOrWhiteSpace(preferences.ModelProfileId) && _modelProfiles.FirstOrDefault(profile => string.Equals(profile.Id, preferences.ModelProfileId, StringComparison.OrdinalIgnoreCase)) is { } preferredProfile && HasDefaultModelProfile)
         {
-            _selectedProvider = _availableProviders.First(provider => ProviderMatches(provider, preferences.Provider));
+            ApplySelectedModelProfile(preferredProfile, persistStatus: false);
         }
-
-        if (!string.IsNullOrWhiteSpace(preferences.Model))
+        else if (!string.IsNullOrWhiteSpace(preferences.Provider) && !string.IsNullOrWhiteSpace(preferences.Model) && _modelProfiles.FirstOrDefault(profile => ProviderMatches(profile.Provider, preferences.Provider) && string.Equals(profile.Model, preferences.Model, StringComparison.OrdinalIgnoreCase)) is { } legacyPreferredProfile && HasDefaultModelProfile)
         {
-            _selectedModel = preferences.Model;
+            ApplySelectedModelProfile(legacyPreferredProfile, persistStatus: false);
         }
 
         if (!string.IsNullOrWhiteSpace(preferences.Mode) && Enum.TryParse<MemoryChatMode>(preferences.Mode, ignoreCase: true, out var mode))
@@ -993,22 +995,47 @@
         _selectedTraceTurnId = session.Turns.LastOrDefault(TurnHasInspectableState)?.Id;
     }
 
-    private async Task OnProviderChanged(string provider)
+    private void LoadModelProfiles()
     {
-        _selectedProvider = provider;
-        _selectedModel = DefaultModelForProvider(provider);
+        _modelProfiles.Clear();
+        _modelProfiles.AddRange(ModelProfiles.ListEnabledProfilesForRoles(CurrentUser.Roles));
+    }
+
+    private async Task OnModelProfileChanged(string profileId)
+    {
+        if (_modelProfiles.FirstOrDefault(profile => string.Equals(profile.Id, profileId, StringComparison.OrdinalIgnoreCase)) is not { } profile)
+        {
+            return;
+        }
+
+        ApplySelectedModelProfile(profile, persistStatus: true);
         _currentUsage = null;
-        _agentStatus = $"Using {_selectedProvider} / {_selectedModel}";
         await SavePreferencesAsync();
         await RefreshModelsAsync(silent: true);
     }
 
-    private async Task OnModelChanged(string model)
+    private void ApplySelectedModelProfile(ChatModelProfileView? profile, bool persistStatus)
     {
-        _selectedModel = model;
-        _currentUsage = null;
-        _agentStatus = $"Using {_selectedProvider} / {_selectedModel}";
-        await SavePreferencesAsync();
+        if (profile is null)
+        {
+            _selectedModelProfileId = string.Empty;
+            _selectedProvider = string.Empty;
+            _selectedModel = string.Empty;
+            if (persistStatus)
+            {
+                _agentStatus = "No default model profile configured";
+            }
+
+            return;
+        }
+
+        _selectedModelProfileId = profile.Id;
+        _selectedProvider = profile.Provider;
+        _selectedModel = profile.Model;
+        if (persistStatus)
+        {
+            _agentStatus = $"Using {profile.DisplayName}";
+        }
     }
 
     private async Task SetMermaidThemeModeAsync(string mode)
@@ -1034,14 +1061,6 @@
             var models = await provider.ListModelsAsync(CancellationToken.None);
             _models.Clear();
             _models.AddRange(models);
-            if (_models.Count > 0 && !_models.Any(model => string.Equals(model.Name, _selectedModel, StringComparison.OrdinalIgnoreCase)))
-            {
-                var defaultModel = DefaultModelForProvider(_selectedProvider);
-                _selectedModel = _models.FirstOrDefault(model => string.Equals(model.Name, defaultModel, StringComparison.OrdinalIgnoreCase))?.Name
-                    ?? _models.FirstOrDefault(model => model.IsPreferred)?.Name
-                    ?? _models[0].Name;
-            }
-
             _agentStatus = $"{_models.Count} model(s) available";
             await SavePreferencesAsync();
         }
@@ -1099,6 +1118,18 @@
             return;
         }
 
+        if (!CanSendChat)
+        {
+            Snackbar.Add(ModelSetupMessage ?? "Choose an enabled model profile before sending.", Severity.Warning);
+            return;
+        }
+
+        var selectedProfile = SelectedModelProfile;
+        if (selectedProfile is null)
+        {
+            return;
+        }
+
         var session = ActiveSession;
         var attachments = _attachments.ToList();
         var displayAttachments = attachments.Select(ToDisplayAttachment).ToList();
@@ -1117,8 +1148,8 @@
         _streamedCharacters = 0;
         _agentStatus = _mode == MemoryChatMode.Agent ? "Agent thinking" : "Waiting for first token";
         _currentUsage = null;
-        var requestProvider = _selectedProvider;
-        var requestModel = _selectedModel;
+        var requestProvider = selectedProfile.Provider;
+        var requestModel = selectedProfile.Model;
         var pendingTurn = new ChatTurnState("assistant pending", "Waiting for first token...", DateTimeOffset.UtcNow, null, [], [], [], [])
         {
             ProviderName = requestProvider,
@@ -1746,6 +1777,7 @@
         {
             Provider = _selectedProvider,
             Model = _selectedModel,
+            ModelProfileId = _selectedModelProfileId,
             Mode = _mode.ToString(),
             MermaidThemeMode = _mermaidThemeMode,
             ActiveSessionId = _activeSessionId
@@ -1983,6 +2015,11 @@
 
     private ChatUsageSummary? SelectedModelUsage()
     {
+        if (SelectedModelProfile?.ContextWindowTokens is > 0)
+        {
+            return new ChatUsageSummary(0, 0, ContextWindowTokens: SelectedModelProfile.ContextWindowTokens);
+        }
+
         var model = _models.FirstOrDefault(item => string.Equals(item.Name, _selectedModel, StringComparison.OrdinalIgnoreCase));
         if (model is null || (model.ContextWindowTokens is null && string.IsNullOrWhiteSpace(model.RateLimit)))
         {
@@ -2097,21 +2134,16 @@
         return provider ?? ChatProviders.First();
     }
 
-    private string DefaultModelForProvider(string providerName)
-    {
-        var chatOptions = Options.CurrentValue.Chat;
-        return ProviderMatches(providerName, "GitHub") ? chatOptions.GitHubModel : chatOptions.OllamaModel;
-    }
-
     private static bool ProviderMatches(string left, string right) =>
         string.Equals(left, right, StringComparison.OrdinalIgnoreCase) ||
-        (string.Equals(left, "GitHub", StringComparison.OrdinalIgnoreCase) && string.Equals(right, "Copilot", StringComparison.OrdinalIgnoreCase));
+        (string.Equals(left, "GitHub", StringComparison.OrdinalIgnoreCase) && string.Equals(right, "Copilot", StringComparison.OrdinalIgnoreCase)) ||
+        (string.Equals(left, "GitHubCopilot", StringComparison.OrdinalIgnoreCase) && string.Equals(right, "GitHub", StringComparison.OrdinalIgnoreCase));
 
-    private static string FormatModelLabel(ChatModelSummary model)
+    private static string FormatProfileLabel(ChatModelProfileView profile)
     {
-        var preferred = model.IsPreferred ? " *" : string.Empty;
-        var multiplier = model.ChatMultiplier is null ? string.Empty : model.ChatMultiplier <= 0 ? " free" : $" x{model.ChatMultiplier:0.##}";
-        return $"{model.Name}{preferred}{multiplier}";
+        var defaultMarker = profile.IsDefault ? " default" : string.Empty;
+        var roles = profile.AllowedRoles.Count == 0 ? string.Empty : $" [{string.Join(", ", profile.AllowedRoles)}]";
+        return $"{profile.DisplayName}{defaultMarker}{roles}";
     }
 
     private static string NormalizeMermaidThemeMode(string? mode) =>
@@ -2224,6 +2256,7 @@
 
     private sealed class ChatPreferencesState
     {
+        public string ModelProfileId { get; set; } = string.Empty;
         public string Provider { get; set; } = string.Empty;
         public string Model { get; set; } = string.Empty;
         public string Mode { get; set; } = string.Empty;

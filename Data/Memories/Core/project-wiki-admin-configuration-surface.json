@@ -1,7 +1,7 @@
 {
   "Id": "project-wiki-admin-configuration-surface",
   "Title": "Admin Configuration Surface Current State",
-  "Content": "The /admin workbench is the authenticated Admin surface for users, OAuth sign-in provider enablement, configuration, audit, and history. Tag governance remains a separate Admin-only main navigation page at /tags rather than an Admin tab. Configuration rows come from AdminSettingsService.ListEditableSettings, persist through AdminSettingsService.UpdateAsync into appsettings.LocalDevelopment.json or MemorySmith:SettingsOverridePath, reload IConfigurationRoot, and record settings.updated audit entries. The Configuration tab covers broad MemorySmithOptions groups and each editable row exposes an info-circle tooltip sourced from AdminSettingItem.HelpText. Each row shows the friendly setting name plus info icon first and the configuration key on the following line. Sensitive values such as API keys, OAuth secrets, bootstrap token hashes, and database connection strings are write-only in the UI: the table reports Configured or Not configured but does not echo the stored value.",
+  "Content": "The /admin workbench is the authenticated Admin surface for users, OAuth sign-in provider enablement, chat model profiles, configuration, audit, and history. The Models tab uses ChatModelProfileService to manage MemorySmith:Chat:ModelProfiles and DefaultModelProfileId in appsettings.LocalDevelopment.json or MemorySmith:SettingsOverridePath; admins can define profile name, provider, model id, optional context-window tokens, enabled state, default chat profile, role allowlist, and description. Tag governance remains a separate Admin-only main navigation page at /tags rather than an Admin tab. Configuration rows come from AdminSettingsService.ListEditableSettings, persist through AdminSettingsService.UpdateAsync into the same override settings file, reload IConfigurationRoot, and record settings.updated audit entries. The Configuration tab covers broad MemorySmithOptions groups and each editable row exposes an info-circle tooltip sourced from AdminSettingItem.HelpText. Each row shows the friendly setting name plus info icon first and the configuration key on the following line. Sensitive values such as API keys, OAuth secrets, bootstrap token hashes, and database connection strings are write-only in the UI: the table reports Configured or Not configured but does not echo the stored value.",
   "Status": 2,
   "Confidence": 0.92,
   "Tags": [
@@ -28,6 +28,10 @@
       "Uri": "%MemorySmithRepo%MemorySmith.App/Components/Pages/Admin.razor"
     },
     {
+      "Label": "ChatModelProfileService.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/ChatModelProfileService.cs"
+    },
+    {
       "Label": "AdminSettingsService.cs",
       "Uri": "%MemorySmithRepo%MemorySmith.App/Services/AdminSettingsService.cs"
     },
@@ -41,5 +45,5 @@
     }
   ],
   "UsageCount": 0,
-  "LastUpdated": "2026-05-22T14:45:00Z"
+  "LastUpdated": "2026-05-22T16:35:00Z"
 }

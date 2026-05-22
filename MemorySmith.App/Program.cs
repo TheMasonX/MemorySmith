@@ -253,6 +253,7 @@ try
     builder.Services.AddSingleton<ICurrentUserContext, HttpCurrentUserContext>();
     builder.Services.AddSingleton<AuditLogService>();
     builder.Services.AddSingleton<AdminSettingsService>();
+    builder.Services.AddSingleton<ChatModelProfileService>();
     builder.Services.AddSingleton<VersionHistoryService>();
     builder.Services.AddScoped<MemorySmithLocalAuthService>();
 

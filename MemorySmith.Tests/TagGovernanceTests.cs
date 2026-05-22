@@ -151,11 +151,33 @@ public class TagGovernanceTests
         {
             Assert.That(markup, Does.Not.Contain("<MudTabPanel Text=\"Tags\""));
             Assert.That(markup, Does.Contain("<MudTabPanel Text=\"OAuth\""));
+            Assert.That(markup, Does.Contain("<MudTabPanel Text=\"Models\""));
+            Assert.That(markup, Does.Contain("ChatModelProfileService ModelProfiles"));
             Assert.That(markup, Does.Contain("admin-setting-key"));
             Assert.That(markup, Does.Contain("Icons.Material.Filled.Info"));
             Assert.That(markup, Does.Contain("@context.Item.HelpText"));
             Assert.That(navMarkup, Does.Contain("Href=\"/tags\""));
             Assert.That(navMarkup, Does.Contain("Tags"));
+        });
+    }
+
+    [Test]
+    public void ChatMarkup_UsesAdminDefinedModelProfilesForSelection()
+    {
+        var root = FindRepositoryRoot();
+        var markup = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "Components", "Pages", "Chat.razor"));
+        var css = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "wwwroot", "app.css"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(markup, Does.Contain("ChatModelProfileService ModelProfiles"));
+            Assert.That(markup, Does.Contain("chat-model-profile-select"));
+            Assert.That(markup, Does.Contain("ModelSetupMessage"));
+            Assert.That(markup, Does.Contain("CanSendChat"));
+            Assert.That(markup, Does.Contain("ModelProfileId"));
+            Assert.That(markup, Does.Not.Contain("chat-provider-select"));
+            Assert.That(markup, Does.Not.Contain("chat-model-select"));
+            Assert.That(css, Does.Contain(".chat-model-profile-select"));
         });
     }
 
