@@ -166,9 +166,7 @@ public partial class MemoryApplicationService
 
         var limit = Clamp(query.Limit, 1, _options.Limits.MaxSearchLimit, 20);
         var snapshot = CreateSearchSnapshot(query.Status, query.Tags);
-        var results = RankHybridResults(snapshot, query.Query)
-            .Take(limit)
-            .ToList();
+        var results = RankHybridResults(snapshot, query.Query, limit);
 
         return Task.FromResult<IReadOnlyList<MemorySearchResult>>(results);
     }
@@ -190,7 +188,7 @@ public partial class MemoryApplicationService
         var explicitRootIds = NormalizeIdList(query.Ids, warnings);
         var roots = string.IsNullOrWhiteSpace(query.Query) && explicitRootIds.Count > 0
             ? []
-            : RankHybridResults(snapshot, query.Query).Take(limit).ToList();
+            : RankHybridResults(snapshot, query.Query, limit).ToList();
 
         var records = new List<MemoryContextPackRecord>();
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -797,7 +795,7 @@ public partial class MemoryApplicationService
             filteredRecords.ToDictionary(record => record.Id, StringComparer.OrdinalIgnoreCase));
     }
 
-    private IReadOnlyList<MemorySearchResult> RankHybridResults(MemorySearchSnapshot snapshot, string? query)
+    private IReadOnlyList<MemorySearchResult> RankHybridResults(MemorySearchSnapshot snapshot, string? query, int? limit = null)
     {
         var semanticTokens = ExpandSearchTokens(TokenizeSearchText(query ?? string.Empty));
         var lexicalTokens = AnalyzeLexicalText(query ?? string.Empty);
@@ -812,7 +810,7 @@ public partial class MemoryApplicationService
             .Union(semanticRanks.Keys, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        return candidateIds
+        var orderedResults = candidateIds
             .Select(id =>
             {
                 var record = snapshot.FilteredRecordsById[id];
@@ -832,15 +830,19 @@ public partial class MemoryApplicationService
                     record.UsageCount,
                     semanticResult?.Snippet ?? lexicalResult?.Snippet ?? BuildSnippet(record.Content, semanticTokens),
                     BuildHybridMatchReason(lexicalRank, lexicalResult, semanticRank, semanticResult),
-                    record.LastUpdated)
-                {
-                    Diagnostics = GetDiagnostics(record, snapshot.AllRecordsById)
-                };
+                    record.LastUpdated);
             })
             .OrderByDescending(result => result.Score)
             .ThenByDescending(result => result.LastUpdated)
             .ThenBy(result => result.Title, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(result => result.Id, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(result => result.Id, StringComparer.OrdinalIgnoreCase);
+
+        var limitedResults = limit.HasValue ? orderedResults.Take(limit.Value) : orderedResults;
+
+        return limitedResults
+            .Select(result => snapshot.FilteredRecordsById.TryGetValue(result.Id, out var record)
+                ? result with { Diagnostics = GetDiagnostics(record, snapshot.AllRecordsById) }
+                : result)
             .ToList();
     }
 
