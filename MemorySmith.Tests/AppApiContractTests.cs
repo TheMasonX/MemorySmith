@@ -273,20 +273,34 @@ public class AppApiContractTests
             using var adminClient = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
             var setupResponse = await adminClient.PostAsJsonAsync("/api/admin/setup", new SetupAdminRequest("Admin User", "admin@example.test", "ThisIsAValidPassword123!"));
             setupResponse.EnsureSuccessStatusCode();
+            var settings = await adminClient.GetFromJsonAsync<IReadOnlyList<AdminSettingItem>>("/api/admin/settings") ?? [];
             var updateResponse = await adminClient.PutAsJsonAsync("/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:Chat:MaxToolIterations", "3"));
             var defaultVisibilityResponse = await adminClient.PutAsJsonAsync("/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:Pages:DefaultMinimumRole", PageAccessLevels.Authenticated));
+            var sourceRootsResponse = await adminClient.PutAsJsonAsync("/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:SourceLinks:AllowedFileRoots", $"{Path.Combine(tempDir, "allowed-one")}\n{Path.Combine(tempDir, "allowed-two")}"));
+            var nullableContextResponse = await adminClient.PutAsJsonAsync("/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:Chat:OllamaContextWindowTokens", string.Empty));
 
             Assert.Multiple(() =>
             {
                 Assert.That(IsAuthChallenge(anonymousResponse.StatusCode), Is.True);
+                Assert.That(settings, Is.Not.Empty);
+                Assert.That(settings.All(setting => !string.IsNullOrWhiteSpace(setting.HelpText) && setting.HelpText.Length > 40), Is.True);
+                Assert.That(settings.All(setting => !setting.HelpText.StartsWith("Controls MemorySmith:", StringComparison.Ordinal)), Is.True);
+                Assert.That(settings.Select(setting => setting.Key), Does.Contain("MemorySmith:Database:UseWal"));
+                Assert.That(settings.Select(setting => setting.Key), Does.Contain("MemorySmith:SourceLinks:AllowedFileRoots"));
+                Assert.That(settings.Select(setting => setting.Key), Does.Contain("MemorySmith:MaintenanceAgent:ResourceProbe:BusyProcessNames"));
+                Assert.That(settings.Single(setting => setting.Key == "MemorySmith:ApiKey").IsSensitive, Is.True);
                 Assert.That(updateResponse.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
                 Assert.That(defaultVisibilityResponse.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
+                Assert.That(sourceRootsResponse.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
+                Assert.That(nullableContextResponse.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
                 Assert.That(File.Exists(settingsPath), Is.True);
             });
 
             var json = await File.ReadAllTextAsync(settingsPath);
             Assert.That(json, Does.Contain("\"MaxToolIterations\": 3"));
             Assert.That(json, Does.Contain("\"DefaultMinimumRole\": \"Authenticated\""));
+            Assert.That(json, Does.Contain("\"AllowedFileRoots\": ["));
+            Assert.That(json, Does.Contain("\"OllamaContextWindowTokens\": null"));
         }
         finally
         {

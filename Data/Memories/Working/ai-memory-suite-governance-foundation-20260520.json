@@ -1,7 +1,7 @@
 {
   "Id": "ai-memory-suite-governance-foundation-20260520",
   "Title": "AI Memory Suite Governance Foundation",
-  "Content": "First implementation slice for the AI Memory Suite plan: maintenance is warning-first by default through MemorySmith:Maintenance:AutomaticDeprecationEnabled=false, so low-score records produce DeprecationRecommended events instead of silent Deprecated status moves. A file-backed tag policy now lives at Data/Policies/tag-policy.json, and MemoryDiagnosticsService reports tag, source-link, relationship, staleness, and maintenance warnings without changing ranking or persisted memory schema. Context-pack JSON preserves records/warnings while adding schemaVersion memorysmith.context-pack.v1 and per-record diagnostics. The /memories workbench shows diagnostic chips and a selected-record diagnostics panel. Ranking changes, temporal decay, schema promotion, page chunking/frontmatter, and stricter Agent write behavior remain gated behind future council review and tests.",
+  "Content": "The AI Memory Suite governance foundation is implemented as warning-first behavior rather than automatic destructive cleanup. MemorySmith:Maintenance:AutomaticDeprecationEnabled defaults false, so low-score records produce DeprecationRecommended events instead of silent Deprecated status moves. A file-backed tag policy lives at Data/Policies/tag-policy.json, and MemoryDiagnosticsService reports tag, source-link, relationship, staleness, and maintenance warnings without changing ranking or the persisted memory schema. Context-pack JSON preserves records/warnings while adding schemaVersion memorysmith.context-pack.v1 and per-record diagnostics. The /memories workbench shows diagnostic chips and a selected-record diagnostics panel. The /tags Tag Manager is the current user-facing policy editor for tag usage, namespaces, allow/block lists, aliases, and suggestions. Roadmap details and unimplemented proposals live in Data/Pages rather than this memory record.",
   "Status": 1,
   "Confidence": 0.82,
   "Tags": [
@@ -48,5 +48,5 @@
     }
   ],
   "UsageCount": 0,
-  "LastUpdated": "2026-05-20T23:40:00Z"
+  "LastUpdated": "2026-05-22T09:20:00Z"
 }

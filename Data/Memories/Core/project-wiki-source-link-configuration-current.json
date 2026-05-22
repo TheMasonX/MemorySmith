@@ -1,0 +1,40 @@
+{
+  "Id": "project-wiki-source-link-configuration-current",
+  "Title": "Source Link Configuration Current State",
+  "Content": "Source-link configuration lives under MemorySmith:SourceLinks and is visible from the admin Configuration tab. MaxReadBytes caps file content returned through source bundle/read paths. AllowOpenWithDefaultApp controls whether approved local file links may be opened through the operating system default application. AllowedFileRootVariables is a one-per-line list of variable names, such as MemorySmithRepo, whose resolved paths are allowed roots. AllowedFileRoots is a one-per-line list of explicit filesystem roots. VarResolver blocks reads and default-app opens outside the configured roots, reports missing variables and invalid line ranges as diagnostics, and keeps source-link content bounded for chat/MCP use.",
+  "Status": 2,
+  "Confidence": 0.93,
+  "Tags": [
+    "project-wiki",
+    "configuration",
+    "source-links",
+    "security",
+    "current-state",
+    "kind:fact",
+    "audience:admin",
+    "audience:chat",
+    "scope:configuration"
+  ],
+  "References": [
+    "project-wiki-configuration-settings-current",
+    "project-wiki-source-link-security-boundaries",
+    "project-wiki-source-links-feature"
+  ],
+  "Conflicts": [],
+  "SourceLinks": [
+    {
+      "Label": "SourceLinkOptions",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/MemorySmithOptions.cs"
+    },
+    {
+      "Label": "VarResolver",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/VarResolver.cs"
+    },
+    {
+      "Label": "SecurityAndSourceLinkTests.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.Tests/SecurityAndSourceLinkTests.cs"
+    }
+  ],
+  "UsageCount": 0,
+  "LastUpdated": "2026-05-22T09:00:00Z"
+}

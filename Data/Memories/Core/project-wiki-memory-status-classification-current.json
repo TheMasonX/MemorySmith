@@ -1,0 +1,43 @@
+{
+  "Id": "project-wiki-memory-status-classification-current",
+  "Title": "Memory Status Classification Current State",
+  "Content": "MemoryRecord.Status is the lifecycle classification for actual knowledge, not a planning bucket. Numeric file values map to 0 Unconsolidated, 1 Working, 2 Core, and 3 Deprecated. Unconsolidated is the inbox for raw or newly captured facts. Working is the reviewed-but-not-yet-core tier for useful current knowledge that still needs stronger evidence, relationships, or confidence before becoming canonical. Core is authoritative current project knowledge that agents should prefer when it matches the question. Deprecated remains searchable but marks knowledge that is obsolete, superseded, or unsafe to rely on without newer evidence. Future plans, task lists, roadmaps, and council proposals belong in Data/Pages wiki pages, not as memory records unless the memory only summarizes the current status of an implemented feature or a historical decision source.",
+  "Status": 2,
+  "Confidence": 0.95,
+  "Tags": [
+    "project-wiki",
+    "memory-system",
+    "governance",
+    "current-state",
+    "kind:rule",
+    "audience:agent",
+    "audience:human",
+    "scope:memory-governance"
+  ],
+  "References": [
+    "project-wiki-data-folder-policy",
+    "project-wiki-tag-governance-current",
+    "ai-memory-suite-governance-foundation-20260520"
+  ],
+  "Conflicts": [],
+  "SourceLinks": [
+    {
+      "Label": "MemoryRecord.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.Core/Models/MemoryRecord.cs"
+    },
+    {
+      "Label": "MemoryStateMachine.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.Core/StateMachine/MemoryStateMachine.cs"
+    },
+    {
+      "Label": "memory.schema.json",
+      "Uri": "%MemorySmithRepo%Schemas/memory.schema.json"
+    },
+    {
+      "Label": "Memory Governance Guide",
+      "Uri": "%MemorySmithRepo%Data/Pages/memory-governance-guide.md"
+    }
+  ],
+  "UsageCount": 0,
+  "LastUpdated": "2026-05-22T09:00:00Z"
+}

@@ -53,7 +53,7 @@
   ],
   "plainTags": {
     "mode": "allowWithSuggestions",
-    "allowlist": [ "project-wiki", "search", "semantic-search", "hybrid-search", "chat", "mcp", "pages", "ui", "storage", "tests", "security", "docs", "current-state" ],
+    "allowlist": [ "project-wiki", "configuration", "settings", "admin", "search", "semantic-search", "hybrid-search", "chat", "mcp", "pages", "ui", "storage", "tests", "security", "source-links", "tag-governance", "governance", "memory-system", "maintenance", "diagnostics", "staleness", "architecture", "docs", "current-state" ],
     "blocklist": [ "misc", "general", "important", "stuff", "todo", "notes", "old", "new", "core", "working", "deprecated", "unconsolidated" ],
     "aliases": {
       "retrieval": "search",

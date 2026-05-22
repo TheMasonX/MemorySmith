@@ -1,7 +1,7 @@
 {
   "Id": "project-wiki-search-roadmap",
-  "Title": "Search Tools Roadmap",
-  "Content": "Search is central to MemorySmith's usefulness. Lexical search is now the default baseline and uses Lucene.NET StandardAnalyzer tokenization with weighted title/tag/reference/content scoring; semantic search has an optional ONNX embedding ranker with local token-scoring fallback; hybrid search combines Lucene.NET lexical analysis with the active semantic signal using reciprocal rank fusion (RRF). MCP context packs turn hybrid roots plus references/conflicts/backlinks into bounded agent-ready bundles for larger KB workflows. Next search roadmap items are durable/cached vector indexing, page embeddings, structured JSON output for search MCP tools, graph validation, model asset validation, and performance thresholds while preserving the existing lexical, semantic, hybrid, and context-pack API shapes.",
+  "Title": "Search Tools Current State",
+  "Content": "Search is central to MemorySmith's usefulness and currently has four main memory retrieval modes. Lexical search is the default baseline and uses Lucene.NET StandardAnalyzer tokenization with weighted title/tag/reference/content scoring. Semantic search uses an optional ONNX embedding ranker when model and vocabulary assets are available, otherwise it reports local token-scoring fallback metadata. Hybrid search combines Lucene.NET lexical analysis with the active semantic signal using reciprocal rank fusion. Context packs use hybrid roots plus references, conflicts, and optional backlinks to build bounded agent-ready bundles. Retrieval warning propagation is additive: stale, tag, relationship, and source diagnostics remain visible in search/tool outputs without changing ranking or hiding records.",
   "Status": 2,
   "Confidence": 0.92,
   "Tags": [
@@ -12,7 +12,7 @@
     "context-pack",
     "bounded-output",
     "rrf",
-    "roadmap",
+    "current-state",
     "tooling"
   ],
   "References": [
@@ -38,5 +38,5 @@
       "Uri": "%MemorySmithRepo%MemorySmith.App/Services/MemoryQueries.cs"
     }
   ],
-  "LastUpdated": "2026-05-17T12:00:00.0000000Z"
+  "LastUpdated": "2026-05-22T09:00:00Z"
 }

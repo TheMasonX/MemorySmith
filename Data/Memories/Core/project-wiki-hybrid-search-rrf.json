@@ -1,7 +1,7 @@
 {
   "Id": "project-wiki-hybrid-search-rrf",
   "Title": "Hybrid Search With RRF",
-  "Content": "MemorySmith.App has a hybrid search path for project-wiki records. The hybrid path uses Lucene.NET StandardAnalyzer tokenization for lexical ranking, takes the active semantic ranker from MemoryApplicationService, and fuses both ranked lists with reciprocal rank fusion (RRF). The semantic ranker is optional ONNX embedding cosine search when SemanticSearch model and WordPiece vocabulary assets are available, otherwise the local token/tag/title/reference/alias scorer. This is exposed through POST /api/memories/search/hybrid, the memorysmith_hybrid_search MCP tool, the memorysmith_context_pack MCP tool, and the /memories Hybrid mode. The API shape stays stable for a future FAISS/HNSW or durable vector index.",
+  "Content": "MemorySmith.App has a hybrid search path for project-wiki records. The hybrid path uses Lucene.NET StandardAnalyzer tokenization for lexical ranking, takes the active semantic ranker from MemoryApplicationService, and fuses both ranked lists with reciprocal rank fusion. The semantic ranker is optional ONNX embedding cosine search when SemanticSearch model and WordPiece vocabulary assets are available; otherwise MemorySmith reports the local token/tag/title/reference/alias scorer as the active fallback. Hybrid retrieval is exposed through POST /api/memories/search/hybrid, memorysmith_hybrid_search, memorysmith_context_pack root discovery, /api/chat tool interception, and the /memories Hybrid mode. Retrieval diagnostics are additive and do not change the RRF formula.",
   "Status": 2,
   "Confidence": 0.9,
   "Tags": [
@@ -31,5 +31,5 @@
     { "Label": "HybridSearchTests.cs", "Uri": "%MemorySmithRepo%MemorySmith.Tests/McpAndSemanticSearchTests.cs" }
   ],
   "UsageCount": 1,
-  "LastUpdated": "2026-05-17T03:55:00.0000000Z"
+  "LastUpdated": "2026-05-22T09:00:00Z"
 }

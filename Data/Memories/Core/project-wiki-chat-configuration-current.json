@@ -1,0 +1,41 @@
+{
+  "Id": "project-wiki-chat-configuration-current",
+  "Title": "Chat Configuration Current State",
+  "Content": "MemorySmith chat configuration lives under MemorySmith:Chat. Provider selects Ollama or GitHubCopilot by default; OllamaEndpoint/OllamaModel and GitHubModel/GitHubTokenEnvironmentVariable configure the provider defaults. SystemPromptPath points to the wiki chat/agent prompt. RequestTimeoutSeconds bounds provider calls. MaxContextRecords, MaxContextPages, PreloadContextEnabled, MaxPreloadedContextRecords, MaxPreloadedContextPages, MaxContextItemCharacters, and MaxHistoryMessages shape the context planner and token budget. MaxAttachmentCharacters and MaxAttachmentBytes bound user attachments. ToolCallsEnabled, MaxToolIterations, MaxToolCallsPerTurn, and MaxToolResultCharacters bound the app-intercepted MemorySmith wiki tool protocol. AgentWritesEnabled only allows Agent write application when the caller role and approval flow also permit it; Chat mode remains read-only.",
+  "Status": 2,
+  "Confidence": 0.92,
+  "Tags": [
+    "project-wiki",
+    "configuration",
+    "chat",
+    "settings",
+    "current-state",
+    "kind:fact",
+    "audience:chat",
+    "audience:admin",
+    "scope:configuration"
+  ],
+  "References": [
+    "project-wiki-configuration-settings-current",
+    "project-wiki-chat-agent-provider",
+    "project-wiki-mcp-search-tools-current",
+    "project-wiki-admin-configuration-surface"
+  ],
+  "Conflicts": [],
+  "SourceLinks": [
+    {
+      "Label": "Chat options",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/MemorySmithOptions.cs"
+    },
+    {
+      "Label": "MemoryChatAgent",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/ChatServices.cs"
+    },
+    {
+      "Label": "Chat context planner",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/ChatContextPlanner.cs"
+    }
+  ],
+  "UsageCount": 0,
+  "LastUpdated": "2026-05-22T09:00:00Z"
+}

@@ -1,13 +1,13 @@
 {
   "Id": "ai-memory-suite-implementation-plan-20260520",
-  "Content": "A full six-seat, ten-round council review produced a phased implementation plan for turning MemorySmith into a governed AI memory suite. The first feature slice now implements warning-first maintenance, a file-backed tag policy, tag/source/relation/staleness/maintenance diagnostics, additive context-pack diagnostic metadata, /memories diagnostics display, and focused NUnit coverage. Later ranking changes, persisted schema promotion, page chunking/frontmatter, and stricter Agent write behavior remain gated behind future council review, probes, and rollback notes.",
-  "Title": "AI Memory Suite Implementation Plan",
+  "Content": "The AI Memory Suite planning material now lives in Data/Pages as a council-reviewed page. Current implemented state from that work includes warning-first maintenance, file-backed tag policy governance, tag/source/relation/staleness diagnostics, /memories diagnostic chips and pre-save warnings, the /tags Tag Manager, retrieval-warning propagation through search/tool outputs, chat reference warning chips, ChatContextPlanner preload decisions, provider capability metadata, and shared chat/MCP tool catalog execution for common wiki search tools. Memories should describe this implemented status and link to planning pages for roadmap details rather than carrying future work as memory content.",
+  "Title": "AI Memory Suite Current Implementation Status",
   "Status": 2,
   "Confidence": 0.86,
   "Tags": [
     "project-wiki",
     "memory-system",
-    "implementation-plan",
+    "implementation-status",
     "council-review",
     "agent-memory",
     "tag-governance",
@@ -55,5 +55,5 @@
     }
   ],
   "UsageCount": 0,
-  "LastUpdated": "2026-05-21T02:07:23.9374268Z"
+  "LastUpdated": "2026-05-22T09:00:00Z"
 }
