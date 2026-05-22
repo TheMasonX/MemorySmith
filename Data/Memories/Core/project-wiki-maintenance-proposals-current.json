@@ -1,0 +1,38 @@
+{
+  "Id": "project-wiki-maintenance-proposals-current",
+  "Title": "Maintenance Proposals Current State",
+  "Content": "The /proposals workbench is the authenticated approval surface for maintenance-agent write proposals. MaintenanceProposalWorkflow persists proposal JSON through FileMaintenanceProposalStore, records open/respond/approve/reject/revision history, applies approved file changes only after current file content still matches the proposal before-text, and blocks closed proposal changes. The Proposals UI lists proposals, shows diff/evidence/comments/topic-map tabs, can run maintenance tasks, and has a Request Agent Review button that records an agent_review_requested history entry plus an optional reviewer comment without changing the proposal status. Actual LLM proposal review feedback and review-generated revised proposals remain future work tracked in Data/Pages.",
+  "Status": 2,
+  "Confidence": 0.88,
+  "Tags": [
+    "project-wiki",
+    "maintenance-agent",
+    "proposals",
+    "agent-review",
+    "current-state",
+    "kind:fact",
+    "audience:admin",
+    "scope:governance"
+  ],
+  "References": [
+    "project-wiki-chat-agent-provider",
+    "project-wiki-admin-configuration-surface"
+  ],
+  "Conflicts": [],
+  "SourceLinks": [
+    {
+      "Label": "Proposals.razor",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Components/Pages/Proposals.razor"
+    },
+    {
+      "Label": "MaintenanceAgentServices.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/MaintenanceAgentServices.cs"
+    },
+    {
+      "Label": "MaintenanceAgentWorkflowTests.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.Tests/MaintenanceAgentWorkflowTests.cs"
+    }
+  ],
+  "UsageCount": 0,
+  "LastUpdated": "2026-05-22T17:05:00Z"
+}

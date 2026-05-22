@@ -98,6 +98,25 @@ public class MaintenanceAgentWorkflowTests
     }
 
     [Test]
+    public async Task RequestAgentReview_PreservesStatusAndRecordsReviewRequest()
+    {
+        var targetPath = Path.Combine(_tempDir, "Pages", "review-note.md");
+        Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
+        await File.WriteAllTextAsync(targetPath, "before");
+        var submitted = await _workflow.SubmitAsync(CreateProposal(targetPath, "before", "after"), CancellationToken.None);
+
+        var requested = await _workflow.RequestAgentReviewAsync(submitted.ProposalId, "Double-check the evidence bundle.", CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(requested.Status, Is.EqualTo(MaintenanceProposalStatuses.Open));
+            Assert.That(requested.History.Select(item => item.Action), Does.Contain("agent_review_requested"));
+            Assert.That(requested.Comments.Single().Comment, Is.EqualTo("Double-check the evidence bundle."));
+            Assert.That(requested.UpdatedAtUtc, Is.GreaterThanOrEqualTo(submitted.UpdatedAtUtc));
+        });
+    }
+
+    [Test]
     public async Task ApproveRejectsWhenCurrentFileNoLongerMatchesBeforeText()
     {
         var targetPath = Path.Combine(_tempDir, "Pages", "changed-note.md");
