@@ -163,6 +163,8 @@ public class TagGovernanceTests
                 Assert.That(markup, Does.Contain("MaintenanceAgentService Agent"));
                 Assert.That(markup, Does.Contain("SendMaintenanceMessageAsync"));
                 Assert.That(markup, Does.Contain("admin-maintenance-layout"));
+                Assert.That(markup, Does.Contain("Search transcripts"));
+                Assert.That(markup, Does.Contain("_maintenanceTranscriptSearch"));
             Assert.That(navMarkup, Does.Contain("Href=\"/tags\""));
             Assert.That(navMarkup, Does.Contain("Tags"));
         });

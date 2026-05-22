@@ -25,12 +25,11 @@ Remaining design work: model profiles still need provider-safe chat settings bey
 
 ## Maintenance Agent Tasks And Logs
 
-Implemented baseline: maintenance runs now append compact JSONL summaries to `MemorySmith:MaintenanceAgent:Storage:ActivityLogPath` and the Proposals page shows a `Recent task activity` panel with recent completed/skipped task runs, timestamps, finding/proposal counts, proposal-id drilldown buttons, and the first warning. `LastRunPath` remains the single latest-run state file for scheduler/operational checks. `/admin` now includes a Maintenance tab where admins can send non-mutating maintenance-agent messages and review recent transcript entries persisted to `MemorySmith:MaintenanceAgent:Storage:TranscriptLogPath`.
+Implemented baseline: maintenance runs now append compact JSONL summaries to `MemorySmith:MaintenanceAgent:Storage:ActivityLogPath` and the Proposals page shows a `Recent task activity` panel with recent completed/skipped task runs, timestamps, finding/proposal counts, proposal-id drilldown buttons, and the first warning. `LastRunPath` remains the single latest-run state file for scheduler/operational checks. `/admin` now includes a Maintenance tab where admins can send non-mutating maintenance-agent messages and review/search recent transcript entries persisted to `MemorySmith:MaintenanceAgent:Storage:TranscriptLogPath`. Transcript persistence trims older entries according to `TranscriptRetentionEntries` and redacts common token/secret/password patterns when `TranscriptRedactionEnabled` is true.
 
 Remaining design work: admins still need deeper visibility into maintenance-agent work while it is running and after it completes. A later implementation should consider:
 
 - active task state;
-- transcript retention/search/redaction controls;
 - optional tool-enabled maintenance chat once proposal governance covers generated writes.
 
 ## Proposal Review Agent

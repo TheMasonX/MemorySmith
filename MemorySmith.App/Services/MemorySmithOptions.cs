@@ -307,4 +307,8 @@ public class MaintenanceAgentStorageOptions
 
     [JsonPropertyName("transcript_log_path")]
     public string TranscriptLogPath { get; set; } = Path.Combine("..", "Data", "Events", "maintenance-agent-transcript.jsonl");
+
+    public int TranscriptRetentionEntries { get; set; } = 200;
+
+    public bool TranscriptRedactionEnabled { get; set; } = true;
 }
