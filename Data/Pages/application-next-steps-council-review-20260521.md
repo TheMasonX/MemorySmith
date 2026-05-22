@@ -132,6 +132,7 @@ Implementation result, 2026-05-22:
 - Preserved approval-only cleanup: suggestions do not rewrite memory records or tag policy automatically.
 - Added authoring and warning guidance in `Data/Pages/tag-governance-workbench-20260522.md`.
 - Local validation passed: `TagGovernanceTests` 7/7, `dotnet build MemorySmith.App/MemorySmith.App.csproj -v minimal`, `dotnet build MemorySmith.slnx -v minimal`, full suite 241/241, and benchmark smoke across lexical metadata diagnostics, semantic, hybrid, chat-context, and context-pack paths.
+- Council review approved merge in `Data/Pages/phase2-governance-workbench-council-review-20260522.md`, with non-blocking follow-ups for blockUnknown remediation and Phase 3 diagnostics envelope size.
 
 ### Phase 3: Retrieval Warning Propagation
 
