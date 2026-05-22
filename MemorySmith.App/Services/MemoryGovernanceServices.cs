@@ -63,7 +63,11 @@ public sealed class PlainTagPolicy
 public sealed class TagPolicyService
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
+    private readonly object _cacheLock = new();
     private readonly MemorySmithOptions _options;
+    private string? _cachedPath;
+    private DateTime? _cachedLastWriteUtc;
+    private TagPolicy? _cachedPolicy;
 
     public TagPolicyService(IOptions<MemorySmithOptions> options)
     {
@@ -75,6 +79,45 @@ public sealed class TagPolicyService
     public TagPolicy GetPolicy()
     {
         var path = GetPolicyPath();
+        var lastWriteUtc = File.Exists(path) ? File.GetLastWriteTimeUtc(path) : (DateTime?)null;
+
+        lock (_cacheLock)
+        {
+            if (_cachedPolicy is not null &&
+                string.Equals(_cachedPath, path, StringComparison.OrdinalIgnoreCase) &&
+                _cachedLastWriteUtc == lastWriteUtc)
+            {
+                return _cachedPolicy;
+            }
+        }
+
+        var policy = LoadPolicy(path);
+        lock (_cacheLock)
+        {
+            _cachedPath = path;
+            _cachedLastWriteUtc = lastWriteUtc;
+            _cachedPolicy = policy;
+        }
+
+        return policy;
+    }
+
+    public void SavePolicy(TagPolicy policy)
+    {
+        var path = GetPolicyPath();
+        Directory.CreateDirectory(Path.GetDirectoryName(path) ?? ".");
+        File.WriteAllText(path, JsonSerializer.Serialize(policy, JsonOptions) + Environment.NewLine);
+
+        lock (_cacheLock)
+        {
+            _cachedPath = path;
+            _cachedLastWriteUtc = File.GetLastWriteTimeUtc(path);
+            _cachedPolicy = policy;
+        }
+    }
+
+    private static TagPolicy LoadPolicy(string path)
+    {
         if (!File.Exists(path))
         {
             return TagPolicy.CreateDefault();
@@ -89,13 +132,6 @@ public sealed class TagPolicyService
         {
             return TagPolicy.CreateDefault();
         }
-    }
-
-    public void SavePolicy(TagPolicy policy)
-    {
-        var path = GetPolicyPath();
-        Directory.CreateDirectory(Path.GetDirectoryName(path) ?? ".");
-        File.WriteAllText(path, JsonSerializer.Serialize(policy, JsonOptions) + Environment.NewLine);
     }
 }
 
@@ -120,7 +156,7 @@ public sealed partial class MemoryDiagnosticsService
 
     public IReadOnlyList<MemoryDiagnostic> Analyze(MemoryRecord record)
     {
-        var recordsById = _store.LoadAll().ToDictionary(item => item.Id, StringComparer.OrdinalIgnoreCase);
+        var recordsById = MemoryRecordLookup.ToRecordMap(_store.LoadAll());
         return Analyze(record, recordsById);
     }
 
@@ -140,9 +176,8 @@ public sealed partial class MemoryDiagnosticsService
 
     public IReadOnlyDictionary<string, IReadOnlyList<MemoryDiagnostic>> AnalyzeAll(IEnumerable<MemoryRecord> records)
     {
-        var recordList = records.ToList();
-        var recordsById = recordList.ToDictionary(record => record.Id, StringComparer.OrdinalIgnoreCase);
-        return recordList.ToDictionary(record => record.Id, record => Analyze(record, recordsById), StringComparer.OrdinalIgnoreCase);
+        var recordsById = MemoryRecordLookup.ToRecordMap(records);
+        return recordsById.Values.ToDictionary(record => record.Id, record => Analyze(record, recordsById), StringComparer.OrdinalIgnoreCase);
     }
 
     private static IEnumerable<MemoryDiagnostic> AnalyzeTags(
@@ -150,7 +185,21 @@ public sealed partial class MemoryDiagnosticsService
         IReadOnlyDictionary<string, MemoryRecord> recordsById,
         TagPolicy policy)
     {
-        var namespacePolicies = policy.Namespaces.ToDictionary(item => item.Name, StringComparer.OrdinalIgnoreCase);
+        var namespacePolicies = new Dictionary<string, TagNamespacePolicy>(StringComparer.OrdinalIgnoreCase);
+        var duplicateNamespaces = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var namespacePolicy in policy.Namespaces.Where(item => !string.IsNullOrWhiteSpace(item.Name)))
+        {
+            if (!namespacePolicies.TryAdd(namespacePolicy.Name, namespacePolicy))
+            {
+                duplicateNamespaces.Add(namespacePolicy.Name);
+            }
+        }
+
+        foreach (var duplicateNamespace in duplicateNamespaces.OrderBy(value => value, StringComparer.OrdinalIgnoreCase))
+        {
+            yield return Warning("tag.policy_duplicate_namespace", "tag", $"Tag policy namespace '{duplicateNamespace}' is defined more than once; first definition is used.", duplicateNamespace);
+        }
+
         var namespaceCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var tag in record.Tags)

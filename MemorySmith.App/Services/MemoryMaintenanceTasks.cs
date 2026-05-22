@@ -130,11 +130,17 @@ public class MemoryMaintenanceTasks
 
     private void RecommendObsoleteRecords(IEnumerable<MemoryRecord> records)
     {
+        var existingRecommendations = _eventStore.GetEvents()
+            .Where(memoryEvent => string.Equals(memoryEvent.Action, "DeprecationRecommended", StringComparison.OrdinalIgnoreCase))
+            .Select(memoryEvent => memoryEvent.MemoryId)
+            .Where(memoryId => !string.IsNullOrWhiteSpace(memoryId))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
         foreach (var record in records.Where(r => r.Status != MemoryStatus.Deprecated))
         {
             var score = MemoryScorer.Score(record);
             if (score >= MemoryStateMachine.DeprecationThreshold ||
-                HasDeprecationRecommendation(record.Id))
+                existingRecommendations.Contains(record.Id))
             {
                 continue;
             }
@@ -146,12 +152,9 @@ public class MemoryMaintenanceTasks
                 Details = $"Low score {score:F3}; automatic deprecation is disabled.",
                 Timestamp = DateTime.UtcNow
             });
+            existingRecommendations.Add(record.Id);
         }
     }
-
-    private bool HasDeprecationRecommendation(string memoryId) =>
-        _eventStore.GetEvents(memoryId)
-            .Any(memoryEvent => string.Equals(memoryEvent.Action, "DeprecationRecommended", StringComparison.OrdinalIgnoreCase));
 
     private static List<string> DistinctNormalized(IEnumerable<string> values) =>
         values

@@ -74,6 +74,98 @@ public class MemoryDiagnosticsTests
     }
 
     [Test]
+    public void Analyze_ToleratesDuplicateIdsInStore()
+    {
+        var record = new MemoryRecord
+        {
+            Id = "duplicate-id",
+            Title = "Duplicate",
+            Content = "Duplicate content",
+            References = ["missing-reference"]
+        };
+        var duplicateStore = new DuplicateMemoryStore(
+        [
+            record,
+            new MemoryRecord
+            {
+                Id = "DUPLICATE-ID",
+                Title = "Newer Duplicate",
+                Content = "Newer duplicate content",
+                LastUpdated = DateTime.UtcNow.AddMinutes(1)
+            }
+        ]);
+        var options = CreateOptions();
+        var diagnostics = new MemoryDiagnosticsService(new TagPolicyService(options), new VarResolver(_vars, options), duplicateStore, options);
+
+        var codes = diagnostics.Analyze(record).Select(diagnostic => diagnostic.Code).ToList();
+
+        Assert.That(codes, Does.Contain("relationship.missing_reference"));
+    }
+
+    [Test]
+    public void Analyze_WarnsForDuplicatePolicyNamespacesWithoutThrowing()
+    {
+        var policyPath = Path.Combine(_tempRoot, "Policies", "tag-policy.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(policyPath)!);
+        File.WriteAllText(policyPath, """
+            {
+              "schemaVersion": 1,
+              "mode": "warn",
+              "namespaces": [
+                { "name": "kind", "cardinality": "single", "valueKind": "tag" },
+                { "name": "kind", "cardinality": "many", "valueKind": "tag" }
+              ],
+              "plainTags": { "mode": "allowWithSuggestions", "allowlist": [], "blocklist": [], "aliases": {} }
+            }
+            """);
+        var record = new MemoryRecord
+        {
+            Id = "policy-duplicate",
+            Title = "Policy Duplicate",
+            Content = "Policy duplicate content",
+            Tags = ["kind:rule"]
+        };
+        _store.Save(record);
+
+        var codes = _diagnostics.Analyze(record).Select(diagnostic => diagnostic.Code).ToList();
+
+        Assert.That(codes, Does.Contain("tag.policy_duplicate_namespace"));
+    }
+
+    [Test]
+    public void TagPolicyService_CachesPolicyUntilFileChanges()
+    {
+        var options = CreateOptions();
+        var service = new TagPolicyService(options);
+        service.SavePolicy(new TagPolicy
+        {
+            Namespaces = [new TagNamespacePolicy { Name = "kind" }]
+        });
+
+        var first = service.GetPolicy();
+        var second = service.GetPolicy();
+        var policyPath = service.GetPolicyPath();
+        File.WriteAllText(policyPath, """
+            {
+              "schemaVersion": 1,
+              "mode": "warn",
+              "namespaces": [ { "name": "custom", "cardinality": "many", "valueKind": "tag" } ],
+              "plainTags": { "mode": "allowWithSuggestions", "allowlist": [], "blocklist": [], "aliases": {} }
+            }
+            """);
+        File.SetLastWriteTimeUtc(policyPath, DateTime.UtcNow.AddMinutes(1));
+
+        var updated = service.GetPolicy();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(ReferenceEquals(first, second), Is.True);
+            Assert.That(ReferenceEquals(first, updated), Is.False);
+            Assert.That(updated.Namespaces.Select(namespacePolicy => namespacePolicy.Name), Does.Contain("custom"));
+        });
+    }
+
+    [Test]
     public void Analyze_FlagsDanglingRelationshipsAndSupersessionTargets()
     {
         var record = new MemoryRecord
@@ -153,6 +245,22 @@ public class MemoryDiagnosticsTests
             Assert.That(record.Status, Is.EqualTo(MemoryStatus.Unconsolidated));
         });
     }
+
+    private IOptions<MemorySmithOptions> CreateOptions() => Options.Create(new MemorySmithOptions
+    {
+        Governance = new GovernanceOptions
+        {
+            TagPolicyPath = Path.Combine(_tempRoot, "Policies", "tag-policy.json")
+        },
+        SourceLinks = new SourceLinkOptions
+        {
+            AllowedFileRootVariables = ["AllowedRoot"]
+        },
+        Maintenance = new MaintenanceOptions
+        {
+            AutomaticDeprecationEnabled = false
+        }
+    });
 
     private sealed class TestVarStore : IVarStore
     {

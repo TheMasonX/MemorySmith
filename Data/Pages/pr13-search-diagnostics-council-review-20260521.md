@@ -60,6 +60,21 @@ Stage 1, search and formatter plumbing: implemented in `591f2bb Tighten search d
 
 Stage 2, PR review closure: current source evidence shows lexical N+1 diagnostics, semantic linear-scan enrichment, warning bloat, deprecation event spam, duplicated deprecation thresholds, and Markdown formatter drift have been addressed. The only remaining source-grounded cleanup was removing blocklisted status-like `working` tags from memory records because `Status` already carries that state. This is a policy-conformance edit, not a new retrieval or schema decision, so a fresh full council was not required. Validation gate: no `"working"` tags remain under `Data/Memories/**/*.json`, and focused governance/search tests pass. Confidence: 0.89.
 
+Stage 3, second Copilot review round: the latest Copilot PR responses raised six source-grounded hardening concerns: duplicate memory ids can throw in metadata/search/diagnostics maps, duplicate tag-policy namespaces can throw in user-editable policy parsing, tag policy reads happen on every diagnostics pass, and deprecation recommendation idempotence still scans events per record. Council classification: high impact for reliability and hot-path performance, but not a ranking/schema change. Acceptance gates before resolving: duplicate-id fixtures must not throw; duplicate namespace policy must produce a warning rather than fail diagnostics; tag policy reads must be cached with file-write invalidation; consolidation recommendation must scan existing recommendation events once; full tests, search benchmarks, and GitHub CI must pass. Confidence before implementation: 0.86.
+
+### Stage 3 Seat Review
+
+| Seat | Recommendation | Confidence | Blocking concern |
+| --- | --- | ---: | --- |
+| Source-Grounded Archivist | Treat all six comments as valid because they point at concrete current code paths, not speculative style concerns. | 0.90 | Do not resolve threads until tests cover duplicate ids, duplicate namespaces, cache invalidation, and event scan behavior. |
+| Data Model Architect | Keep duplicate-id handling runtime-tolerant in this PR; do not promote a new persisted duplicate/conflict schema yet. | 0.84 | Silently choosing a duplicate without deterministic rules would make diagnostics hard to trust. |
+| Retrieval Specialist | Harden search snapshots and metadata maps with one shared duplicate-tolerant map helper so search cannot be taken down by one bad record. | 0.89 | Any helper must preserve deterministic ordering and avoid changing ranking formulas. |
+| Human Learning Advocate | Surface bad user-editable policy configuration as diagnostics instead of crashes; warn-first governance must apply to governance itself. | 0.87 | Hiding policy errors would make the tool feel flaky rather than teachable. |
+| Skeptical Reviewer | Cache tag policy carefully: last-write invalidation is acceptable, but tests must prove edits are picked up. | 0.82 | Caching stale governance policy would be worse than the current slow-but-fresh behavior. |
+| Synthesizer | Patch resilience and performance now, defer persisted duplicate-id records/events and richer policy validation dashboards. | 0.88 | Validation must include both focused unit tests and the full suite before pushing. |
+
+Stage 3 implementation result: accepted and implemented. Current patch adds a shared duplicate-tolerant memory record lookup, applies it to memory metadata, diagnostics, and search snapshots, converts hybrid result lookup maps to non-throwing `TryAdd` behavior, caches `TagPolicyService.GetPolicy()` with last-write invalidation, emits `tag.policy_duplicate_namespace` instead of throwing on duplicate namespace policy entries, and scans existing `DeprecationRecommended` events once per consolidation run. Validation passed with focused tests at 62/62, `dotnet build MemorySmith.slnx -v minimal`, full tests at 231/231, and benchmark smoke returning results across lexical metadata diagnostics, semantic, hybrid, chat-context, and context-pack paths. Confidence after implementation: 0.93.
+
 ## Open Questions
 
 - Should future search quality gates compute MRR/NDCG over the project wiki rather than only top-hit and must-contain probes?
