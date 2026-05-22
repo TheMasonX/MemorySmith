@@ -1115,6 +1115,8 @@ public sealed class MaintenanceTopicMapService
 
 public sealed class MaintenanceAgentService
 {
+    private static readonly Regex TranscriptBearerPattern = new(@"\bBearer\s+[A-Za-z0-9._\-]+", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex TranscriptSecretPattern = new(@"\b(api[_-]?key|token|secret|password|authorization)\b\s*[:=]\s*[^\s,;]+", RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static readonly JsonSerializerOptions AgentJsonOptions = new(JsonSerializerDefaults.Web)
     {
         PropertyNameCaseInsensitive = true,
@@ -1177,7 +1179,7 @@ public sealed class MaintenanceAgentService
             .ToList();
     }
 
-    public async Task<IReadOnlyList<MaintenanceAdminTranscriptEntry>> ListRecentTranscriptsAsync(int maxEntries, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<MaintenanceAdminTranscriptEntry>> ListRecentTranscriptsAsync(int maxEntries, CancellationToken cancellationToken, string? search = null)
     {
         var config = _config.GetCurrent();
         var path = _config.ResolvePath(config.Storage.TranscriptLogPath);
@@ -1192,6 +1194,7 @@ public sealed class MaintenanceAgentService
             .Select(TryParseTranscript)
             .Where(entry => entry is not null)
             .Cast<MaintenanceAdminTranscriptEntry>()
+            .Where(entry => TranscriptMatches(entry, search))
             .Take(Math.Clamp(maxEntries, 1, 100))
             .ToList();
     }
@@ -1210,7 +1213,7 @@ public sealed class MaintenanceAgentService
         if (!config.UseLlm)
         {
             warnings.Add("Maintenance agent admin chat is disabled because LLM review is disabled for the maintenance agent.");
-            entry = CreateTranscriptEntry(prompt, warnings[0], null, null, warnings);
+            entry = CreateTranscriptEntry(config, prompt, warnings[0], null, null, warnings);
             await AppendTranscriptAsync(config, entry, cancellationToken);
             return entry;
         }
@@ -1219,7 +1222,7 @@ public sealed class MaintenanceAgentService
         if (provider is null)
         {
             warnings.Add($"Maintenance agent admin chat is disabled because provider '{config.Provider}' is not registered.");
-            entry = CreateTranscriptEntry(prompt, warnings[0], null, null, warnings);
+            entry = CreateTranscriptEntry(config, prompt, warnings[0], null, null, warnings);
             await AppendTranscriptAsync(config, entry, cancellationToken);
             return entry;
         }
@@ -1231,12 +1234,12 @@ public sealed class MaintenanceAgentService
                 new ChatMessage("system", BuildAdminChatSystemPrompt(config)),
                 new ChatMessage("user", prompt)
             ], MemoryChatMode.Agent, config.Model, Provider: config.Provider), cancellationToken);
-            entry = CreateTranscriptEntry(prompt, response.Content.Trim(), response.ProviderName, response.Model, warnings);
+            entry = CreateTranscriptEntry(config, prompt, response.Content.Trim(), response.ProviderName, response.Model, warnings);
         }
         catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or TaskCanceledException)
         {
             warnings.Add($"Maintenance agent admin chat failed: {ex.Message}");
-            entry = CreateTranscriptEntry(prompt, warnings[0], provider.Name, config.Model, warnings);
+            entry = CreateTranscriptEntry(config, prompt, warnings[0], provider.Name, config.Model, warnings);
         }
 
         await AppendTranscriptAsync(config, entry, cancellationToken);
@@ -1746,6 +1749,19 @@ public sealed class MaintenanceAgentService
         var path = _config.ResolvePath(config.Storage.TranscriptLogPath);
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         await File.AppendAllTextAsync(path, JsonSerializer.Serialize(entry, ActivityJsonOptions) + Environment.NewLine, cancellationToken);
+        await TrimTranscriptLogAsync(config, path, cancellationToken);
+    }
+
+    private static async Task TrimTranscriptLogAsync(MaintenanceAgentOptions config, string path, CancellationToken cancellationToken)
+    {
+        var retention = Math.Clamp(config.Storage.TranscriptRetentionEntries, 1, 10000);
+        var lines = await File.ReadAllLinesAsync(path, cancellationToken);
+        if (lines.Length <= retention)
+        {
+            return;
+        }
+
+        await File.WriteAllLinesAsync(path, lines.Skip(lines.Length - retention), cancellationToken);
     }
 
     private static MaintenanceRunActivity ToActivity(MaintenanceRunResult run) =>
@@ -1785,17 +1801,47 @@ public sealed class MaintenanceAgentService
         }
     }
 
-    private static MaintenanceAdminTranscriptEntry CreateTranscriptEntry(string userMessage, string assistantMessage, string? provider, string? model, IReadOnlyList<string> warnings)
+    private static MaintenanceAdminTranscriptEntry CreateTranscriptEntry(MaintenanceAgentOptions config, string userMessage, string assistantMessage, string? provider, string? model, IReadOnlyList<string> warnings)
     {
         var now = DateTimeOffset.UtcNow;
         return new MaintenanceAdminTranscriptEntry(
             $"maintenance-chat-{now:yyyyMMddHHmmssfff}-{Guid.NewGuid():N}",
             now,
-            userMessage,
-            string.IsNullOrWhiteSpace(assistantMessage) ? "The maintenance agent returned an empty response." : assistantMessage,
+            RedactTranscriptText(config, userMessage),
+            RedactTranscriptText(config, string.IsNullOrWhiteSpace(assistantMessage) ? "The maintenance agent returned an empty response." : assistantMessage),
             provider,
             model,
-            warnings);
+            warnings.Select(warning => RedactTranscriptText(config, warning)).ToList());
+    }
+
+    private static bool TranscriptMatches(MaintenanceAdminTranscriptEntry entry, string? search)
+    {
+        if (string.IsNullOrWhiteSpace(search))
+        {
+            return true;
+        }
+
+        var value = search.Trim();
+        return entry.UserMessage.Contains(value, StringComparison.OrdinalIgnoreCase)
+            || entry.AssistantMessage.Contains(value, StringComparison.OrdinalIgnoreCase)
+            || (entry.Provider?.Contains(value, StringComparison.OrdinalIgnoreCase) ?? false)
+            || (entry.Model?.Contains(value, StringComparison.OrdinalIgnoreCase) ?? false)
+            || entry.Warnings.Any(warning => warning.Contains(value, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static string RedactTranscriptText(MaintenanceAgentOptions config, string value)
+    {
+        if (!config.Storage.TranscriptRedactionEnabled || string.IsNullOrWhiteSpace(value))
+        {
+            return value;
+        }
+
+        var redacted = TranscriptBearerPattern.Replace(value, "Bearer [redacted]");
+        return TranscriptSecretPattern.Replace(redacted, match =>
+        {
+            var key = match.Groups[1].Value;
+            return $"{key}=[redacted]";
+        });
     }
 
     private static MaintenanceAdminTranscriptEntry? TryParseTranscript(string line)

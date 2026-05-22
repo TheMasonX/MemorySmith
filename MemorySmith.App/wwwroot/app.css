@@ -2066,6 +2066,13 @@ body {
     gap: 10px;
 }
 
+.admin-maintenance-transcript-search {
+    display: grid;
+    grid-template-columns: minmax(180px, 1fr) max-content;
+    gap: 8px;
+    align-items: end;
+}
+
 .admin-maintenance-actions,
 .admin-maintenance-transcript header {
     display: flex;

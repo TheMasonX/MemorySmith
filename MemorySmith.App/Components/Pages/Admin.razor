@@ -194,6 +194,10 @@
                         <strong>Recent transcripts</strong>
                         <span class="wiki-muted">@_maintenanceTranscripts.Count logged</span>
                     </div>
+                    <div class="admin-maintenance-transcript-search">
+                        <MudTextField T="string" Value="@_maintenanceTranscriptSearch" ValueChanged="@((string value) => _maintenanceTranscriptSearch = value)" Immediate="true" Label="Search transcripts" Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Disabled="@_isBusy" />
+                        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Search" Disabled="@_isBusy" OnClick="LoadMaintenanceTranscriptsAsync">Search</MudButton>
+                    </div>
                     @if (_maintenanceTranscripts.Count == 0)
                     {
                         <div class="wiki-empty-state">No maintenance-agent transcript entries have been logged yet.</div>
@@ -376,6 +380,7 @@
     private IReadOnlyList<MaintenanceAdminTranscriptEntry> _maintenanceTranscripts = [];
     private Dictionary<string, int> _providerLinkCounts = new(StringComparer.OrdinalIgnoreCase);
     private string _maintenancePrompt = string.Empty;
+    private string _maintenanceTranscriptSearch = string.Empty;
     private string _settingsSearch = string.Empty;
     private string _settingsCategory = AllFilterValue;
     private HashSet<string> _expandedSettingGroups = new(StringComparer.OrdinalIgnoreCase);
@@ -446,7 +451,7 @@
         _userRows = rows;
         _providers = await Database.ProviderLinks.ListProvidersAsync(CancellationToken.None);
         _modelProfiles = ModelProfiles.ListProfiles();
-        _maintenanceTranscripts = await Agent.ListRecentTranscriptsAsync(12, CancellationToken.None);
+        _maintenanceTranscripts = await Agent.ListRecentTranscriptsAsync(12, CancellationToken.None, _maintenanceTranscriptSearch);
         _audit = (await Database.AuditLogs.QueryAsync(new AuditLogQuery(PageSize: 100), CancellationToken.None)).Data;
         _recentVersions = await LoadRecentVersionsAsync();
         _editableSettings = Settings.ListEditableSettings().Select(item => new EditableConfigurationRow(item)).ToList();
@@ -521,7 +526,7 @@
         _isBusy = true;
         try
         {
-            _maintenanceTranscripts = await Agent.ListRecentTranscriptsAsync(12, CancellationToken.None);
+            _maintenanceTranscripts = await Agent.ListRecentTranscriptsAsync(12, CancellationToken.None, _maintenanceTranscriptSearch);
             Snackbar.Add("Maintenance transcripts refreshed.", Severity.Success);
         }
         catch (Exception ex)
@@ -547,7 +552,7 @@
         {
             var entry = await Agent.SendAdminMessageAsync(_maintenancePrompt, CancellationToken.None);
             _maintenancePrompt = string.Empty;
-            _maintenanceTranscripts = await Agent.ListRecentTranscriptsAsync(12, CancellationToken.None);
+            _maintenanceTranscripts = await Agent.ListRecentTranscriptsAsync(12, CancellationToken.None, _maintenanceTranscriptSearch);
             Snackbar.Add(entry.Warnings.Count > 0 ? entry.Warnings[0] : "Maintenance agent response logged.", entry.Warnings.Count > 0 ? Severity.Warning : Severity.Success);
         }
         catch (Exception ex)

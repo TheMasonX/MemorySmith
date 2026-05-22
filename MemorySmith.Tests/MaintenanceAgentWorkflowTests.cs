@@ -487,6 +487,32 @@ public class MaintenanceAgentWorkflowTests
     }
 
     [Test]
+    public async Task AdminChat_RedactsSearchesAndRetainsTranscriptEntries()
+    {
+        var provider = new FakeChatProvider("Agent response token=agent-secret");
+        var agent = CreateReviewAgent(provider, options =>
+        {
+            options.Storage.TranscriptRetentionEntries = 1;
+            options.Storage.TranscriptRedactionEnabled = true;
+        });
+
+        await agent.SendAdminMessageAsync("first password=one", CancellationToken.None);
+        await agent.SendAdminMessageAsync("second api_key=user-secret", CancellationToken.None);
+        var transcripts = await agent.ListRecentTranscriptsAsync(10, CancellationToken.None);
+        var filtered = await agent.ListRecentTranscriptsAsync(10, CancellationToken.None, "second");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(transcripts, Has.Count.EqualTo(1));
+            Assert.That(transcripts.Single().UserMessage, Does.Contain("api_key=[redacted]"));
+            Assert.That(transcripts.Single().UserMessage, Does.Not.Contain("user-secret"));
+            Assert.That(transcripts.Single().AssistantMessage, Does.Contain("token=[redacted]"));
+            Assert.That(transcripts.Single().AssistantMessage, Does.Not.Contain("agent-secret"));
+            Assert.That(filtered.Single().Id, Is.EqualTo(transcripts.Single().Id));
+        });
+    }
+
+    [Test]
     public async Task AgentReview_AddsProviderFeedbackWithoutChangingProposalStatus()
     {
         var targetPath = Path.Combine(_tempDir, "Pages", "agent-review-note.md");
@@ -620,26 +646,28 @@ public class MaintenanceAgentWorkflowTests
             Metadata = new MaintenanceProposalMetadata("staleness_scan", 0.9, MaintenanceProposalRiskLevels.Low, ["test-memory"], [], [], "test-agent")
         };
 
-    private MaintenanceAgentService CreateReviewAgent(FakeChatProvider provider)
+    private MaintenanceAgentService CreateReviewAgent(FakeChatProvider provider, Action<MaintenanceAgentOptions>? configure = null)
     {
+        var maintenanceOptions = new MaintenanceAgentOptions
+        {
+            Read = [Path.Combine(_tempDir, "Memories"), Path.Combine(_tempDir, "Pages")],
+            Write = [Path.Combine(_tempDir, "Memories", "Working"), Path.Combine(_tempDir, "Pages")],
+            UseLlm = true,
+            Provider = provider.Name,
+            Model = "review-model",
+            Storage = new MaintenanceAgentStorageOptions
+            {
+                ProposalsPath = Path.Combine(_tempDir, "Proposals"),
+                TopicMapCachePath = Path.Combine(_tempDir, "Graph", "topic-map-cache.json"),
+                LastRunPath = Path.Combine(_tempDir, "Events", "maintenance-agent-last-run.json"),
+                ActivityLogPath = Path.Combine(_tempDir, "Events", "maintenance-agent-runs.jsonl"),
+                TranscriptLogPath = Path.Combine(_tempDir, "Events", "maintenance-agent-transcript.jsonl")
+            }
+        };
+        configure?.Invoke(maintenanceOptions);
         var config = new MaintenanceAgentConfigService(new StaticOptionsMonitor<MemorySmithOptions>(new MemorySmithOptions
         {
-            MaintenanceAgent = new MaintenanceAgentOptions
-            {
-                Read = [Path.Combine(_tempDir, "Memories"), Path.Combine(_tempDir, "Pages")],
-                Write = [Path.Combine(_tempDir, "Memories", "Working"), Path.Combine(_tempDir, "Pages")],
-                UseLlm = true,
-                Provider = provider.Name,
-                Model = "review-model",
-                Storage = new MaintenanceAgentStorageOptions
-                {
-                    ProposalsPath = Path.Combine(_tempDir, "Proposals"),
-                    TopicMapCachePath = Path.Combine(_tempDir, "Graph", "topic-map-cache.json"),
-                    LastRunPath = Path.Combine(_tempDir, "Events", "maintenance-agent-last-run.json"),
-                    ActivityLogPath = Path.Combine(_tempDir, "Events", "maintenance-agent-runs.jsonl"),
-                    TranscriptLogPath = Path.Combine(_tempDir, "Events", "maintenance-agent-transcript.jsonl")
-                }
-            }
+            MaintenanceAgent = maintenanceOptions
         }));
         return new MaintenanceAgentService(
             config,
