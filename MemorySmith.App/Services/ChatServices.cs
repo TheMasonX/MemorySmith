@@ -2173,7 +2173,11 @@ public sealed partial class MemoryChatAgent : IChatAgent
         if (!string.IsNullOrWhiteSpace(configuredPrompt))
         {
             var extraPrompt = new StringBuilder();
-            if (!configuredPrompt.Contains("toolCalls", StringComparison.OrdinalIgnoreCase))
+            if (configuredPrompt.Contains("toolCalls", StringComparison.OrdinalIgnoreCase))
+            {
+                extraPrompt.Append(BuildToolRecommendationPrompt(contextPlan));
+            }
+            else
             {
                 extraPrompt.Append(BuildToolProtocolPrompt(mode, providerCapabilities, contextPlan));
             }
@@ -2192,6 +2196,19 @@ public sealed partial class MemoryChatAgent : IChatAgent
         return prompt + BuildToolProtocolPrompt(mode, providerCapabilities, contextPlan) + BuildOutputCapabilityPrompt(mode);
     }
 
+    private string BuildToolRecommendationPrompt(ChatContextPlan contextPlan)
+    {
+        if (!_options.Value.Chat.ToolCallsEnabled)
+        {
+            return string.Empty;
+        }
+
+        var toolCallExample = BuildToolCallExample(contextPlan.RecommendedToolName);
+        return "\n\nFor this turn, the context planner recommends " + contextPlan.RecommendedToolName +
+            " when additional MemorySmith wiki evidence is needed. Use this shape for the next tool request if you need more evidence: " +
+            toolCallExample + ".";
+    }
+
     private string BuildToolProtocolPrompt(MemoryChatMode mode, ChatProviderCapabilities providerCapabilities, ChatContextPlan contextPlan)
     {
         if (!_options.Value.Chat.ToolCallsEnabled)
@@ -2205,14 +2222,27 @@ public sealed partial class MemoryChatAgent : IChatAgent
         var nativeToolStatus = providerCapabilities.SupportsNativeToolCalls
             ? "The selected provider reports native tool calls, but MemorySmith still keeps the application-intercepted JSON protocol as a deterministic fallback."
             : "The selected provider does not expose native MemorySmith tool registration here, so use the application-intercepted JSON protocol.";
+        var toolCallExample = BuildToolCallExample(contextPlan.RecommendedToolName);
         return "\n\nLocal wiki tools are available through an application-intercepted MCP-compatible protocol. " +
             nativeToolStatus + " " +
             $"The context planner recommends {contextPlan.RecommendedToolName} when additional evidence is needed. " +
             "When you need more MemorySmith wiki evidence than the preloaded context provides, respond with only one JSON object and no prose: " +
-            "{\"toolCalls\":[{\"name\":\"memorysmith_unified_search\",\"arguments\":{\"query\":\"search text\"}}]}. " +
+            toolCallExample + ". " +
             "Available read-only tools: memorysmith_unified_search (recommended for broad questions; searches memories AND pages), memorysmith_search, memorysmith_semantic_search, memorysmith_hybrid_search, memorysmith_context_pack, memorysmith_get, memorysmith_page_search, memorysmith_page_get. " +
             "The application will run the call locally and send results back in the same conversation turn. " +
             finalInstruction;
+    }
+
+    private static string BuildToolCallExample(string toolName)
+    {
+        var arguments = toolName switch
+        {
+            "memorysmith_get" => "{\"id\":\"record-id\"}",
+            "memorysmith_page_get" => "{\"slug\":\"page-slug\"}",
+            _ => "{\"query\":\"search text\"}"
+        };
+
+        return $"{{\"toolCalls\":[{{\"name\":\"{toolName}\",\"arguments\":{arguments}}}]}}";
     }
 
     private static bool HasMarkdownOutputGuidance(string prompt) =>

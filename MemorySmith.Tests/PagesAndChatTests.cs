@@ -834,6 +834,7 @@ public class PagesAndChatTests
 
         var response = await agent.SendAsync(new MemoryChatRequest("What does the wiki page say about deployment docs?", MemoryChatMode.Chat), CancellationToken.None);
         var capabilityMessage = provider.LastRequest!.Messages.Single(message => message.Content.StartsWith("Current MemorySmith capabilities", StringComparison.Ordinal));
+        var systemPrompt = provider.LastRequest!.Messages.First(message => message.Role == "system");
 
         Assert.Multiple(() =>
         {
@@ -841,6 +842,38 @@ public class PagesAndChatTests
             Assert.That(response.Context.Single().Id, Is.EqualTo("deployment-docs"));
             Assert.That(capabilityMessage.Content, Does.Contain("Context planner"));
             Assert.That(capabilityMessage.Content, Does.Contain("memorysmith_page_search"));
+            Assert.That(systemPrompt.Content, Does.Contain("{\"toolCalls\":[{\"name\":\"memorysmith_page_search\""));
+        });
+    }
+
+    [Test]
+    public async Task MemoryChatAgent_ToolRecommendationPromptUsesRequiredArgumentsForGetIntents()
+    {
+        var memoryStore = new InMemoryMemoryStore();
+        var eventStore = new RecordingEventStore();
+        var publisher = new RecordingMemoryChangePublisher();
+        var memories = TestServiceFactory.CreateMemoryApplicationService(memoryStore, eventStore, publisher);
+        memoryStore.Save(new MemoryRecord
+        {
+            Id = "prompt-example-record",
+            Title = "Prompt Example Record",
+            Status = MemoryStatus.Core,
+            Content = "Record lookup prompt example evidence."
+        });
+        var pages = new FilePageService(_tempDir);
+        await pages.SaveAsync(new PageSaveRequest("prompt-example-page", "Prompt Example Page", "Page lookup prompt example evidence."), CancellationToken.None);
+        var provider = new FakeChatProvider("Done.");
+        var agent = new MemoryChatAgent([provider], memories, pages, Options.Create(new MemorySmithOptions()));
+
+        await agent.SendAsync(new MemoryChatRequest("get memory prompt-example-record", MemoryChatMode.Chat), CancellationToken.None);
+        var memoryPrompt = provider.LastRequest!.Messages.First(message => message.Role == "system").Content;
+        await agent.SendAsync(new MemoryChatRequest("open page prompt-example-page", MemoryChatMode.Chat), CancellationToken.None);
+        var pagePrompt = provider.LastRequest!.Messages.First(message => message.Role == "system").Content;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(memoryPrompt, Does.Contain("{\"toolCalls\":[{\"name\":\"memorysmith_get\",\"arguments\":{\"id\":\"record-id\"}}]}"));
+            Assert.That(pagePrompt, Does.Contain("{\"toolCalls\":[{\"name\":\"memorysmith_page_get\",\"arguments\":{\"slug\":\"page-slug\"}}]}"));
         });
     }
 
