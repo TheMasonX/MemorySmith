@@ -20,7 +20,7 @@ This page tracks user-facing work in plain language. Completed items stay here a
 - [ ] Extend model profiles with maintenance-agent/review-agent assignments and any provider-safe chat settings beyond context-window metadata.
 - [ ] Add durable admin-visible maintenance-agent task state, logs, and an admin conversation surface for the maintenance worker.
 - [x] Add a Request Agent Review button on proposals that records a durable review request in proposal history/comments without changing proposal status.
-- [ ] Run the requested proposal review through an agent so it can comment and optionally create a revised proposal while preserving the original diff.
+- [x] Run the requested proposal review through an agent so it can comment and optionally create a revised proposal while preserving the original diff.
 - [ ] Route standard chat-agent edits through the proposal workflow so agent writes share diff review, history, and approval semantics.
 - [ ] Design a chat compaction mode that preserves auditability while reducing long-session context load.
 

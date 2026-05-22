@@ -38,14 +38,14 @@ The current Proposals page can show page-local activity while a run is started f
 
 ## Proposal Review Agent
 
-Implemented baseline: the Proposals page now exposes a Request Agent Review action for actionable proposals. The button records an `agent_review_requested` history event plus the optional human comment through `MaintenanceProposalWorkflow.RequestAgentReviewAsync`; it does not approve, reject, or rewrite the proposal.
+Implemented baseline: the Proposals page now exposes a Request Agent Review action for actionable proposals. The button calls `MaintenanceAgentService.ReviewProposalAsync`, records an `agent_review_requested` history event plus the optional human comment, runs the configured maintenance-agent LLM provider when enabled, records `agent_review_completed` feedback, and can save a validated revised proposal through `SubmitAgentRevisionAsync` while preserving the original proposal and diff.
 
-Remaining design work: the review agent should evaluate the selected proposal as if performing a PR review, write feedback into the proposal history/comments, and when it recommends changes, create a revised proposal while preserving the original proposal and diff. Users must be able to disagree with the review and keep the original proposal path.
+Remaining design work: proposal review still needs a dedicated model-profile assignment, richer review verdict metadata, durable task logs, and optional fresh wiki-context retrieval. Users can currently disagree with the review by keeping the original proposal path open and ignoring or rejecting the revised proposal.
 
 Open design questions:
 
 - Which model profile should perform proposal reviews by default?
-- Should review-generated revisions require the same approval path as normal maintenance proposals?
+- Should review verdicts become filterable proposal metadata?
 - How should conflicting human and agent comments be represented in proposal history?
 - Should review agents be allowed to inspect only proposal evidence, or also pull fresh wiki context?
 
