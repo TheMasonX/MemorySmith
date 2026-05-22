@@ -25,22 +25,20 @@ Remaining design work: model profiles still need maintenance-agent/review-agent 
 
 ## Maintenance Agent Tasks And Logs
 
-Admins need visibility into maintenance-agent work while it is running and after it completes. A later implementation should consider a durable maintenance activity store with:
+Implemented baseline: maintenance runs now append compact JSONL summaries to `MemorySmith:MaintenanceAgent:Storage:ActivityLogPath` and the Proposals page shows a `Recent task activity` panel with recent completed/skipped task runs, timestamps, finding/proposal counts, and the first warning. `LastRunPath` remains the single latest-run state file for scheduler/operational checks.
+
+Remaining design work: admins still need deeper visibility into maintenance-agent work while it is running and after it completes. A later implementation should consider:
 
 - active task state;
-- task start/end timestamps;
-- task trigger and selected task type;
-- warnings, proposal ids, and output summaries;
+- proposal ids per task run;
 - admin-only transcript-style logs;
 - optional admin conversation with the maintenance agent using the same model registry and role rules as chat.
-
-The current Proposals page can show page-local activity while a run is started from that page, but durable task history belongs in the later activity/log design.
 
 ## Proposal Review Agent
 
 Implemented baseline: the Proposals page now exposes a Request Agent Review action for actionable proposals. The button calls `MaintenanceAgentService.ReviewProposalAsync`, records an `agent_review_requested` history event plus the optional human comment, runs the configured maintenance-agent LLM provider when enabled, records `agent_review_completed` feedback, and can save a validated revised proposal through `SubmitAgentRevisionAsync` while preserving the original proposal and diff.
 
-Remaining design work: proposal review still needs a dedicated model-profile assignment, richer review verdict metadata, durable task logs, and optional fresh wiki-context retrieval. Users can currently disagree with the review by keeping the original proposal path open and ignoring or rejecting the revised proposal.
+Remaining design work: proposal review still needs a dedicated model-profile assignment, richer review verdict metadata, detailed transcript logs, and optional fresh wiki-context retrieval. Users can currently disagree with the review by keeping the original proposal path open and ignoring or rejecting the revised proposal.
 
 Open design questions:
 

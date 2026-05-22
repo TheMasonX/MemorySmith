@@ -2404,6 +2404,51 @@ body {
     font-size: 0.78rem;
 }
 
+.maintenance-activity-panel {
+    display: grid;
+    gap: 8px;
+    padding: 10px;
+    border-bottom: 1px solid var(--vscode-border-soft);
+    background: var(--vscode-panel-soft);
+    font-size: 0.8rem;
+}
+
+.maintenance-activity-panel header,
+.maintenance-activity-main {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    min-width: 0;
+}
+
+.maintenance-activity-panel header span,
+.maintenance-activity-row small,
+.maintenance-activity-row > span:last-of-type {
+    color: var(--vscode-text-muted);
+}
+
+.maintenance-activity-list {
+    display: grid;
+    gap: 6px;
+}
+
+.maintenance-activity-row {
+    display: grid;
+    gap: 3px;
+    padding: 8px;
+    border: 1px solid var(--vscode-border-soft);
+    background: var(--vscode-panel);
+}
+
+.maintenance-activity-row.is-skipped {
+    border-color: var(--vscode-yellow);
+}
+
+.maintenance-activity-warning {
+    color: var(--vscode-yellow) !important;
+    overflow-wrap: anywhere;
+}
+
 .topic-map-visualization {
     display: flex;
     flex-direction: column;

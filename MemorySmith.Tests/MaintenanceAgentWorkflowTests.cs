@@ -36,7 +36,8 @@ public class MaintenanceAgentWorkflowTests
                 {
                     ProposalsPath = Path.Combine(_tempDir, "Proposals"),
                     TopicMapCachePath = Path.Combine(_tempDir, "Graph", "topic-map-cache.json"),
-                    LastRunPath = Path.Combine(_tempDir, "Events", "maintenance-agent-last-run.json")
+                    LastRunPath = Path.Combine(_tempDir, "Events", "maintenance-agent-last-run.json"),
+                    ActivityLogPath = Path.Combine(_tempDir, "Events", "maintenance-agent-runs.jsonl")
                 }
             }
         };
@@ -335,6 +336,40 @@ public class MaintenanceAgentWorkflowTests
             Assert.That(proposal.Changes.Single().Path, Does.Contain(Path.Combine("Pages", "maintenance-agent")));
             Assert.That(proposal.Changes.Single().After, Does.Contain("expired-record"));
             Assert.That(File.Exists(proposal.Changes.Single().Path), Is.True);
+        });
+    }
+
+    [Test]
+    public async Task AgentRun_AppendsReadableMaintenanceActivity()
+    {
+        _memoryStore.Save(new MemoryRecord
+        {
+            Id = "expired-record",
+            Title = "Expired Record",
+            Content = "Old guidance.",
+            Tags = ["project-wiki", "expires:2000-01"],
+            LastUpdated = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+        });
+        var topicMap = new MaintenanceTopicMapService(_memoryStore, _pages, _config);
+        var agent = new MaintenanceAgentService(
+            _config,
+            new MaintenanceResourceProbe(),
+            topicMap,
+            _workflow,
+            [],
+            NullLogger<MaintenanceAgentService>.Instance);
+
+        await agent.RunMaintenanceOnDemandAsync("staleness_scan", CancellationToken.None);
+        var activity = await agent.ListRecentActivityAsync(10, CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(activity, Has.Count.EqualTo(1));
+            Assert.That(activity.Single().Trigger, Is.EqualTo("run_maintenance_on_demand"));
+            Assert.That(activity.Single().Tasks, Is.EqualTo(new[] { "staleness_scan" }));
+            Assert.That(activity.Single().FindingCount, Is.EqualTo(1));
+            Assert.That(activity.Single().ProposalCount, Is.EqualTo(1));
+            Assert.That(File.Exists(Path.Combine(_tempDir, "Events", "maintenance-agent-runs.jsonl")), Is.True);
         });
     }
 

@@ -17,6 +17,16 @@ public sealed record MaintenanceRunResult(
     IReadOnlyList<string> Warnings,
     bool Skipped = false);
 
+public sealed record MaintenanceRunActivity(
+    string Trigger,
+    DateTimeOffset StartedAtUtc,
+    DateTimeOffset FinishedAtUtc,
+    IReadOnlyList<string> Tasks,
+    int FindingCount,
+    int ProposalCount,
+    IReadOnlyList<string> Warnings,
+    bool Skipped = false);
+
 public sealed record MaintenanceProposalReviewRunResult(
     MaintenanceWriteProposal Proposal,
     MaintenanceWriteProposal? RevisedProposal,
@@ -1062,6 +1072,11 @@ public sealed class MaintenanceAgentService
         WriteIndented = true
     };
 
+    private static readonly JsonSerializerOptions ActivityJsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        PropertyNameCaseInsensitive = true
+    };
+
     private readonly MaintenanceAgentConfigService _config;
     private readonly MaintenanceResourceProbe _resourceProbe;
     private readonly MaintenanceTopicMapService _topicMap;
@@ -1093,6 +1108,25 @@ public sealed class MaintenanceAgentService
 
     public Task<MaintenanceRunResult> RunMaintenanceOnDemandAsync(string task, CancellationToken cancellationToken) =>
         RunAsync("run_maintenance_on_demand", cancellationToken, task);
+
+    public async Task<IReadOnlyList<MaintenanceRunActivity>> ListRecentActivityAsync(int maxEntries, CancellationToken cancellationToken)
+    {
+        var config = _config.GetCurrent();
+        var path = _config.ResolvePath(config.Storage.ActivityLogPath);
+        if (!File.Exists(path))
+        {
+            return [];
+        }
+
+        var lines = await File.ReadAllLinesAsync(path, cancellationToken);
+        return lines
+            .Reverse()
+            .Select(TryParseActivity)
+            .Where(activity => activity is not null)
+            .Cast<MaintenanceRunActivity>()
+            .Take(Math.Clamp(maxEntries, 1, 100))
+            .ToList();
+    }
 
     public async Task<MaintenanceProposalReviewRunResult> ReviewProposalAsync(string proposalId, string? requesterComment, CancellationToken cancellationToken)
     {
@@ -1161,7 +1195,9 @@ public sealed class MaintenanceAgentService
         {
             warnings.Add(resource.Reason ?? "Resource probe reported a busy session.");
             warnings.AddRange(resource.MatchingProcesses.Select(name => $"Busy process: {name}"));
-            return new MaintenanceRunResult(trigger, started, DateTimeOffset.UtcNow, [], warnings, Skipped: true);
+            var skipped = new MaintenanceRunResult(trigger, started, DateTimeOffset.UtcNow, [], warnings, Skipped: true);
+            await SaveRunStateAsync(config, skipped, cancellationToken);
+            return skipped;
         }
 
         var topicMap = await _topicMap.BuildAsync(cancellationToken);
@@ -1185,8 +1221,9 @@ public sealed class MaintenanceAgentService
             }
         }
 
-        await SaveLastRunAsync(config, trigger, started, outputs, warnings, cancellationToken);
-        return new MaintenanceRunResult(trigger, started, DateTimeOffset.UtcNow, outputs, warnings);
+        var result = new MaintenanceRunResult(trigger, started, DateTimeOffset.UtcNow, outputs, warnings);
+        await SaveRunStateAsync(config, result, cancellationToken);
+        return result;
     }
 
     private static IEnumerable<string> EnabledTasks(MaintenanceAgentOptions config, string? taskFilter)
@@ -1565,19 +1602,56 @@ public sealed class MaintenanceAgentService
         };
     }
 
-    private async Task SaveLastRunAsync(MaintenanceAgentOptions config, string trigger, DateTimeOffset started, IReadOnlyList<MaintenanceTaskOutput> outputs, IReadOnlyList<string> warnings, CancellationToken cancellationToken)
+    private async Task SaveRunStateAsync(MaintenanceAgentOptions config, MaintenanceRunResult run, CancellationToken cancellationToken)
     {
         var path = _config.ResolvePath(config.Storage.LastRunPath);
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         var payload = new
         {
-            trigger,
-            startedAtUtc = started,
-            finishedAtUtc = DateTimeOffset.UtcNow,
-            warnings,
-            outputs
+            run.Trigger,
+            run.StartedAtUtc,
+            run.FinishedAtUtc,
+            run.Warnings,
+            run.Outputs,
+            run.Skipped
         };
         await File.WriteAllTextAsync(path, JsonSerializer.Serialize(payload, new JsonSerializerOptions(JsonSerializerDefaults.Web) { WriteIndented = true }) + Environment.NewLine, cancellationToken);
+        await AppendActivityAsync(config, ToActivity(run), cancellationToken);
+    }
+
+    private async Task AppendActivityAsync(MaintenanceAgentOptions config, MaintenanceRunActivity activity, CancellationToken cancellationToken)
+    {
+        var path = _config.ResolvePath(config.Storage.ActivityLogPath);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        await File.AppendAllTextAsync(path, JsonSerializer.Serialize(activity, ActivityJsonOptions) + Environment.NewLine, cancellationToken);
+    }
+
+    private static MaintenanceRunActivity ToActivity(MaintenanceRunResult run) =>
+        new(
+            run.Trigger,
+            run.StartedAtUtc,
+            run.FinishedAtUtc,
+            run.Outputs.Select(output => output.Task).Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+            run.Outputs.Sum(output => output.Findings.Count),
+            run.Outputs.Sum(output => output.Proposals.Count),
+            run.Warnings,
+            run.Skipped);
+
+    private static MaintenanceRunActivity? TryParseActivity(string line)
+    {
+        if (string.IsNullOrWhiteSpace(line))
+        {
+            return null;
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<MaintenanceRunActivity>(line, ActivityJsonOptions);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 }
 
