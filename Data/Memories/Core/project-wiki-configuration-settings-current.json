@@ -1,0 +1,45 @@
+{
+  "Id": "project-wiki-configuration-settings-current",
+  "Title": "Configuration Settings Current State",
+  "Content": "MemorySmith configuration is rooted under the MemorySmith section and bound to MemorySmithOptions plus DatabaseOptions. The web admin editor exposes current operational settings for core data paths, remote API/API key posture, SQLite metadata storage, authentication and OAuth providers, audit JSONL/history behavior, page visibility/raw HTML, semantic search assets and limits, tag policy path, maintenance intervals, validation limits, source-link roots, chat providers/context/tool budgets, and maintenance-agent scheduling/storage. Edits are allowlisted descriptors rather than arbitrary JSON writes, so SettingsOverridePath itself and complex GitHubModels entries remain file-managed. List settings such as source-link roots and maintenance-agent read/write roots are edited one value per line. Nullable integers such as OllamaContextWindowTokens accept a blank value to clear the override.",
+  "Status": 2,
+  "Confidence": 0.9,
+  "Tags": [
+    "project-wiki",
+    "configuration",
+    "settings",
+    "admin",
+    "current-state",
+    "kind:fact",
+    "audience:admin",
+    "audience:chat",
+    "scope:configuration"
+  ],
+  "References": [
+    "project-wiki-admin-configuration-surface",
+    "project-wiki-chat-configuration-current",
+    "project-wiki-source-link-configuration-current",
+    "project-wiki-admin-auth-hardening"
+  ],
+  "Conflicts": [],
+  "SourceLinks": [
+    {
+      "Label": "MemorySmithOptions.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/MemorySmithOptions.cs"
+    },
+    {
+      "Label": "DatabaseOptions.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.Storage/DatabaseOptions.cs"
+    },
+    {
+      "Label": "appsettings.json",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/appsettings.json"
+    },
+    {
+      "Label": "AdminSettingsService.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/AdminSettingsService.cs"
+    }
+  ],
+  "UsageCount": 0,
+  "LastUpdated": "2026-05-22T09:00:00Z"
+}

@@ -484,8 +484,8 @@ public class McpAndSemanticSearchTests
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
 
         var text = await ExtractFirstToolTextAsync(response);
-        Assert.That(text, Does.Contain("Search Tools Roadmap"));
-        Assert.That(text, Does.Contain("semantic search"));
+        Assert.That(text, Does.Contain("Search Tools Current State"));
+        Assert.That(text, Does.Contain("Semantic search"), "The search current-state record should describe semantic search behavior.");
     }
 
     private WebApplicationFactory<Program> CreateFactory(string memoryPath) =>

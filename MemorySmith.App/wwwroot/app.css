@@ -2033,6 +2033,35 @@ body {
     color: #ffffff;
 }
 
+.admin-tags-panel {
+    max-width: 920px;
+}
+
+.admin-setting-heading {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.admin-help-icon {
+    display: inline-flex;
+    align-items: center;
+    color: var(--vscode-text-muted);
+    cursor: help;
+}
+
+.admin-help-icon:hover,
+.admin-help-icon:focus-visible {
+    color: #ffffff;
+    outline: none;
+}
+
+.admin-sensitive-hint {
+    display: block;
+    margin-top: 0.25rem;
+    color: var(--vscode-text-muted);
+}
+
 .profile-workbench {
     height: auto;
     min-height: 100%;

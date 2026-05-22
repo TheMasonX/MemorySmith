@@ -1,7 +1,7 @@
 {
   "Id": "project-wiki-data-folder-policy",
   "Title": "Data Folder Project Wiki Policy",
-  "Content": "The repository Data/Memories folder is the project memory wiki for MemorySmith itself. Application defaults should continue pointing MemorySmith:DataPath to ../Data/Memories. Tests that need real project memory data should copy this folder into a temp directory and exercise the copy, so the source wiki remains stable while still acting as the application testbase. Purpose-built records tagged test-fixture provide deterministic search and context-pack graph cases without relying only on incidental product documentation.",
+  "Content": "The repository Data/Memories folder is the structured project memory wiki for MemorySmith itself. Application defaults should continue pointing MemorySmith:DataPath to ../Data/Memories. Data/Pages is the markdown wiki for longer notes, design docs, roadmaps, future tasks, and council reviews. Memories should describe actual current state, durable facts, rules, and implemented behavior; future plans belong in pages rather than memory records. Tests that need real project memory data should copy Data/Memories into a temp directory and exercise the copy, so the source wiki remains stable while still acting as the application testbase. Purpose-built records tagged test-fixture provide deterministic search and context-pack graph cases without relying only on incidental product documentation.",
   "Status": 2,
   "Confidence": 0.98,
   "Tags": [
@@ -14,11 +14,12 @@
   "References": [
     "project-wiki-active-architecture",
     "project-wiki-validation-command",
-    "project-wiki-test-fixture-overview"
+    "project-wiki-test-fixture-overview",
+    "project-wiki-memory-status-classification-current"
   ],
   "Conflicts": [],
   "UsageCount": 4,
-  "LastUpdated": "2026-05-12T00:00:00Z",
+  "LastUpdated": "2026-05-22T09:00:00Z",
   "SourceLinks": [
     {
       "Label": "Data/Memories/",

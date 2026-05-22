@@ -141,6 +141,21 @@ public class TagGovernanceTests
         });
     }
 
+    [Test]
+    public void AdminMarkup_ExposesTagManagerAndSettingHelpTooltips()
+    {
+        var markup = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "Components", "Pages", "Admin.razor"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(markup, Does.Contain("<MudTabPanel Text=\"Tags\""));
+            Assert.That(markup, Does.Contain("Href=\"/tags\""));
+            Assert.That(markup, Does.Contain("Open Tag Manager"));
+            Assert.That(markup, Does.Contain("Icons.Material.Filled.Info"));
+            Assert.That(markup, Does.Contain("@context.Item.HelpText"));
+        });
+    }
+
     private TagGovernanceService CreateTagGovernanceService(IMemoryStore store, TagPolicy policy)
     {
         var diagnostics = CreateDiagnosticsService(store, policy, out var policyService);

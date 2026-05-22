@@ -1,0 +1,45 @@
+{
+  "Id": "project-wiki-admin-configuration-surface",
+  "Title": "Admin Configuration Surface Current State",
+  "Content": "The /admin workbench is the authenticated Admin surface for users, providers, Tag Manager access, configuration, audit, and history. Configuration rows come from AdminSettingsService.ListEditableSettings, persist through AdminSettingsService.UpdateAsync into appsettings.LocalDevelopment.json or MemorySmith:SettingsOverridePath, reload IConfigurationRoot, and record settings.updated audit entries. The Configuration tab now covers broad MemorySmithOptions groups and each editable row exposes an info-circle tooltip sourced from AdminSettingItem.HelpText. Sensitive values such as API keys, OAuth secrets, bootstrap token hashes, and database connection strings are write-only in the UI: the table reports Configured or Not configured but does not echo the stored value. The Admin Tags tab links directly to /tags so tag governance is visible from the same operator workbench.",
+  "Status": 2,
+  "Confidence": 0.92,
+  "Tags": [
+    "project-wiki",
+    "configuration",
+    "admin",
+    "ui",
+    "security",
+    "current-state",
+    "kind:fact",
+    "audience:admin",
+    "scope:configuration"
+  ],
+  "References": [
+    "project-wiki-configuration-settings-current",
+    "project-wiki-tag-governance-current",
+    "project-wiki-admin-auth-hardening",
+    "project-wiki-operational-diagnostics-dashboard"
+  ],
+  "Conflicts": [],
+  "SourceLinks": [
+    {
+      "Label": "Admin.razor",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Components/Pages/Admin.razor"
+    },
+    {
+      "Label": "AdminSettingsService.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/AdminSettingsService.cs"
+    },
+    {
+      "Label": "AdminController.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Controllers/AdminController.cs"
+    },
+    {
+      "Label": "App API contract tests",
+      "Uri": "%MemorySmithRepo%MemorySmith.Tests/AppApiContractTests.cs"
+    }
+  ],
+  "UsageCount": 0,
+  "LastUpdated": "2026-05-22T09:00:00Z"
+}

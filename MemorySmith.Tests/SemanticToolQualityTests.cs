@@ -22,7 +22,7 @@ public class SemanticToolQualityTests
         new("model context protocol tool calling", "project-wiki-mcp-integration", 6),
         new("context pack agent readiness knowledge base", "project-wiki-mcp-context-pack", 3),
         new("vector embeddings semantic gap local scoring", "project-wiki-semantic-search-gap", 3),
-        new("source links file references path variables", "project-wiki-source-links-feature", 3),
+        new("source links file references path variables", "project-wiki-source-link-configuration-current", 3),
         new("blazor server UI single host deployment", "project-wiki-active-architecture", 5)
     ];
 

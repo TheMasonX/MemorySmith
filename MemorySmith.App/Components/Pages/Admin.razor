@@ -94,6 +94,15 @@
                 </RowTemplate>
             </MudTable>
         </MudTabPanel>
+        <MudTabPanel Text="Tags" Icon="@Icons.Material.Filled.LocalOffer">
+            <section class="admin-form-panel admin-tags-panel" aria-label="Tag manager access">
+                <div class="wiki-pane-header">
+                    <MudText Typo="Typo.subtitle2">Tag Manager</MudText>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.LocalOffer" Href="/tags">Open Tag Manager</MudButton>
+                </div>
+                <MudText Typo="Typo.body2">Review observed tags, edit the tag policy, tune namespaces, maintain allowlists and blocklists, and inspect approval-only cleanup suggestions.</MudText>
+            </section>
+        </MudTabPanel>
         <MudTabPanel Text="Configuration" Icon="@Icons.Material.Filled.Tune">
             <div class="admin-filter-bar" aria-label="Editable settings filters">
                 <MudTextField T="string" Value="@_settingsSearch" ValueChanged="@((string value) => _settingsSearch = value)" Immediate="true" Label="Search settings" Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Class="admin-filter-input" />
@@ -122,8 +131,19 @@
                             </HeaderContent>
                             <RowTemplate>
                                 <MudTd>
-                                    <strong>@context.Item.Label</strong><br />
+                                    <div class="admin-setting-heading">
+                                        <strong>@context.Item.Label</strong>
+                                        <MudTooltip Text="@context.Item.HelpText" Placement="Placement.Right">
+                                            <span class="admin-help-icon" title="@context.Item.HelpText" aria-label="Help for @context.Item.Label" tabindex="0">
+                                                <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" />
+                                            </span>
+                                        </MudTooltip>
+                                    </div>
                                     <small>@context.Item.Key</small>
+                                    @if (context.Item.IsSensitive)
+                                    {
+                                        <small class="admin-sensitive-hint">@context.Item.DisplayValue; enter a replacement value only when configuring or rotating it.</small>
+                                    }
                                 </MudTd>
                                 <MudTd>@SettingEditor(context)</MudTd>
                                 <MudTd>
@@ -404,14 +424,26 @@
                 }));
                 builder.CloseComponent();
                 break;
-            default:
+            case nameof(AdminSettingValueKind.StringList):
                 builder.OpenComponent<MudTextField<string>>(20);
                 builder.AddAttribute(21, "Value", row.PendingValue);
                 builder.AddAttribute(22, "ValueChanged", EventCallback.Factory.Create<string>(this, value => SetPendingValue(row, value)));
                 builder.AddAttribute(23, "Dense", true);
                 builder.AddAttribute(24, "Variant", Variant.Outlined);
                 builder.AddAttribute(25, "Margin", Margin.Dense);
-                builder.AddAttribute(26, "Disabled", _isBusy);
+                builder.AddAttribute(26, "Lines", 3);
+                builder.AddAttribute(27, "Disabled", _isBusy);
+                builder.CloseComponent();
+                break;
+            default:
+                builder.OpenComponent<MudTextField<string>>(30);
+                builder.AddAttribute(31, "Value", row.PendingValue);
+                builder.AddAttribute(32, "ValueChanged", EventCallback.Factory.Create<string>(this, value => SetPendingValue(row, value)));
+                builder.AddAttribute(33, "Dense", true);
+                builder.AddAttribute(34, "Variant", Variant.Outlined);
+                builder.AddAttribute(35, "Margin", Margin.Dense);
+                builder.AddAttribute(36, "Disabled", _isBusy);
+                builder.AddAttribute(37, "InputType", row.Item.IsSensitive ? InputType.Password : InputType.Text);
                 builder.CloseComponent();
                 break;
         }
@@ -480,7 +512,7 @@
             return false;
         }
 
-        return IsSearchMatch(_settingsSearch, row.Item.Category, row.Item.Label, row.Item.Key, row.Item.ValueKind, row.PendingValue);
+        return IsSearchMatch(_settingsSearch, row.Item.Category, row.Item.Label, row.Item.Key, row.Item.ValueKind, row.Item.HelpText, row.PendingValue);
     }
 
     private bool MatchesAuditFilter(AuditLogEntry entry)
