@@ -17,7 +17,7 @@
     <section class="wiki-commandbar" aria-label="Admin">
         <div class="wiki-title-block">
             <MudText Typo="Typo.h5">Admin</MudText>
-            <span class="wiki-count">Users, providers, settings, audit, history</span>
+            <span class="wiki-count">Users, OAuth, settings, audit, history</span>
         </div>
         <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync">Refresh</MudButton>
     </section>
@@ -62,7 +62,7 @@
                 </RowTemplate>
             </MudTable>
         </MudTabPanel>
-        <MudTabPanel Text="Providers" Icon="@Icons.Material.Filled.Link">
+        <MudTabPanel Text="OAuth" Icon="@Icons.Material.Filled.Link">
             <MudTable Items="@_providers" Dense="true" Class="health-table">
                 <HeaderContent>
                     <MudTh>Provider</MudTh>
@@ -93,15 +93,6 @@
                     </MudTd>
                 </RowTemplate>
             </MudTable>
-        </MudTabPanel>
-        <MudTabPanel Text="Tags" Icon="@Icons.Material.Filled.LocalOffer">
-            <section class="admin-form-panel admin-tags-panel" aria-label="Tag manager access">
-                <div class="wiki-pane-header">
-                    <MudText Typo="Typo.subtitle2">Tag Manager</MudText>
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.LocalOffer" Href="/tags">Open Tag Manager</MudButton>
-                </div>
-                <MudText Typo="Typo.body2">Review observed tags, edit the tag policy, tune namespaces, maintain allowlists and blocklists, and inspect approval-only cleanup suggestions.</MudText>
-            </section>
         </MudTabPanel>
         <MudTabPanel Text="Configuration" Icon="@Icons.Material.Filled.Tune">
             <div class="admin-filter-bar" aria-label="Editable settings filters">
@@ -139,7 +130,7 @@
                                             </span>
                                         </MudTooltip>
                                     </div>
-                                    <small>@context.Item.Key</small>
+                                    <small class="admin-setting-key">@context.Item.Key</small>
                                     @if (context.Item.IsSensitive)
                                     {
                                         <small class="admin-sensitive-hint">@context.Item.DisplayValue; enter a replacement value only when configuring or rotating it.</small>

@@ -142,17 +142,39 @@ public class TagGovernanceTests
     }
 
     [Test]
-    public void AdminMarkup_ExposesTagManagerAndSettingHelpTooltips()
+    public void AdminMarkup_LeavesTagManagerInMainNavAndExposesSettingHelpTooltips()
     {
         var markup = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "Components", "Pages", "Admin.razor"));
+        var navMarkup = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "Components", "Layout", "NavMenu.razor"));
 
         Assert.Multiple(() =>
         {
-            Assert.That(markup, Does.Contain("<MudTabPanel Text=\"Tags\""));
-            Assert.That(markup, Does.Contain("Href=\"/tags\""));
-            Assert.That(markup, Does.Contain("Open Tag Manager"));
+            Assert.That(markup, Does.Not.Contain("<MudTabPanel Text=\"Tags\""));
+            Assert.That(markup, Does.Contain("<MudTabPanel Text=\"OAuth\""));
+            Assert.That(markup, Does.Contain("admin-setting-key"));
             Assert.That(markup, Does.Contain("Icons.Material.Filled.Info"));
             Assert.That(markup, Does.Contain("@context.Item.HelpText"));
+            Assert.That(navMarkup, Does.Contain("Href=\"/tags\""));
+            Assert.That(navMarkup, Does.Contain("Tags"));
+        });
+    }
+
+    [Test]
+    public void ProposalsMarkup_ShowsActiveRunAndKeepsActionBarHorizontalAtDesktopScale()
+    {
+        var root = FindRepositoryRoot();
+        var markup = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "Components", "Pages", "Proposals.razor"));
+        var css = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "wwwroot", "app.css"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(markup, Does.Contain("proposal-active-run"));
+            Assert.That(markup, Does.Contain("BeginRunAsync"));
+            Assert.That(markup, Does.Contain("Task.Yield"));
+            Assert.That(css, Does.Contain(".proposal-active-run"));
+            Assert.That(css, Does.Contain("grid-template-columns: minmax(260px, 31%) minmax(0, 1fr);"));
+            Assert.That(css, Does.Contain("grid-template-columns: minmax(220px, 1fr) repeat(3, minmax(92px, max-content));"));
+            Assert.That(css, Does.Contain("@media (max-width: 700px)"));
         });
     }
 
