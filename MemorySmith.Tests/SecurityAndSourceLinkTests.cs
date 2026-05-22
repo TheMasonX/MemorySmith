@@ -254,6 +254,7 @@ public class SecurityAndSourceLinkTests
             if (OperatingSystem.IsWindows())
             {
                 Assert.That(startInfo.FileName, Is.EqualTo("powershell.exe"));
+                Assert.That(startInfo.ArgumentList, Does.Contain("-NonInteractive"));
                 Assert.That(startInfo.ArgumentList, Does.Contain("-EncodedCommand"));
                 Assert.That(decodedWindowsCommand, Is.EqualTo($"Invoke-Item -LiteralPath '{sourceFile}'"));
             }

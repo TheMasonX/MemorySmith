@@ -170,8 +170,7 @@ public partial class VarResolver
                 CreateNoWindow = true
             };
             startInfo.ArgumentList.Add("-NoProfile");
-            startInfo.ArgumentList.Add("-ExecutionPolicy");
-            startInfo.ArgumentList.Add("Bypass");
+            startInfo.ArgumentList.Add("-NonInteractive");
             startInfo.ArgumentList.Add("-EncodedCommand");
             startInfo.ArgumentList.Add(EncodePowerShellCommand($"Invoke-Item -LiteralPath {QuotePowerShellString(fullPath)}"));
             return startInfo;
