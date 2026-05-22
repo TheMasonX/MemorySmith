@@ -238,12 +238,33 @@ public sealed partial class MemoryDiagnosticsService
 
             if (policy.PlainTags.Blocklist.Any(blocked => string.Equals(blocked, tag, StringComparison.OrdinalIgnoreCase)))
             {
-                yield return Warning("tag.blocked", "tag", $"Plain tag '{tag}' is blocklisted by the active tag policy.", tag);
+                yield return TagGovernanceService.ShouldBlockInvalidPlainTags(policy)
+                    ? Error("tag.blocked", "tag", $"Plain tag '{tag}' is blocklisted by the active tag policy.", tag)
+                    : Warning("tag.blocked", "tag", $"Plain tag '{tag}' is blocklisted by the active tag policy.", tag);
             }
 
             if (policy.PlainTags.Aliases.TryGetValue(tag, out var canonical))
             {
                 yield return Info("tag.alias", "tag", $"Tag '{tag}' has canonical alias '{canonical}'.", tag);
+            }
+
+            if (policy.PlainTags.Allowlist.Count > 0 &&
+                !policy.PlainTags.Allowlist.Any(allowed => string.Equals(allowed, tag, StringComparison.OrdinalIgnoreCase)) &&
+                !policy.PlainTags.Aliases.ContainsKey(tag) &&
+                !policy.PlainTags.Blocklist.Any(blocked => string.Equals(blocked, tag, StringComparison.OrdinalIgnoreCase)))
+            {
+                if (TagGovernanceService.ShouldBlockInvalidPlainTags(policy))
+                {
+                    yield return Error("tag.unknown_plain", "tag", $"Plain tag '{tag}' is not in the active allowlist.", tag);
+                }
+                else if (TagGovernanceService.ShouldWarnUnknownPlainTags(policy))
+                {
+                    yield return Warning("tag.unknown_plain", "tag", $"Plain tag '{tag}' is not in the active allowlist.", tag);
+                }
+                else if (TagGovernanceService.ShouldObserveUnknownPlainTags(policy))
+                {
+                    yield return Info("tag.unknown_plain", "tag", $"Plain tag '{tag}' is observed outside the active allowlist.", tag);
+                }
             }
         }
 
@@ -484,6 +505,9 @@ public sealed partial class MemoryDiagnosticsService
 
     private static MemoryDiagnostic Warning(string code, string category, string message, string? target = null) =>
         new(code, "Warning", category, message, target);
+
+    private static MemoryDiagnostic Error(string code, string category, string message, string? target = null) =>
+        new(code, "Error", category, message, target);
 
     private static MemoryDiagnostic Info(string code, string category, string message, string? target = null) =>
         new(code, "Info", category, message, target);

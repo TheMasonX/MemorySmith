@@ -294,6 +294,7 @@ try
     builder.Services.AddSingleton<IMemoryChangePublisher, MemoryChangePublisher>();
     builder.Services.AddSingleton<TagPolicyService>();
     builder.Services.AddSingleton<MemoryDiagnosticsService>();
+    builder.Services.AddSingleton<TagGovernanceService>();
     builder.Services.AddSingleton<MeasurementBaselineService>();
     builder.Services.AddSingleton<MemoryApplicationService>();
     builder.Services.AddSingleton<MemoryMaintenanceTasks>();

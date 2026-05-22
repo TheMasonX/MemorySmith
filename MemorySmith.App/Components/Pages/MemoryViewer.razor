@@ -1,6 +1,7 @@
 @page "/memories"
 @rendermode InteractiveServer
 @inject MemoryApplicationService Memories
+@inject TagGovernanceService TagGovernance
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
 @inject VarResolver VarResolver
@@ -143,6 +144,7 @@
                             <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Save" OnClick="SaveAsync">Save</MudButton>
                         </Authorized>
                     </AuthorizeView>
+                    <MudButton Variant="Variant.Outlined" Size="Size.Small" StartIcon="@Icons.Material.Filled.Rule" Disabled="@_checkingDiagnostics" OnClick="RefreshDraftDiagnosticsAsync">Check</MudButton>
                     <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="CancelEdit">Cancel</MudButton>
                 </div>
 
@@ -159,7 +161,37 @@
                         <MudSlider @bind-Value="_editRecord.Confidence" Min="0" Max="1" Step="0.05" Color="Color.Info" />
                         <span>@_editRecord.Confidence.ToString("P0")</span>
                     </div>
-                    <MudTextField @bind-Value="_editTags" Label="Tags" Placeholder="tag1, tag2" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    <div class="wiki-tag-editor" aria-label="Memory tags">
+                        <label>Tags</label>
+                        <div class="wiki-tag-editor-surface">
+                            @foreach (var tag in _editTagList)
+                            {
+                                <button type="button" class="wiki-tag-edit-chip" @onclick="@(() => RemoveEditTagAsync(tag))" title="Remove tag">
+                                    <span>@tag</span>
+                                    <MudIcon Icon="@Icons.Material.Filled.Close" Size="Size.Small" />
+                                </button>
+                            }
+                            <MudTextField T="string"
+                                          Value="@_tagDraft"
+                                          ValueChanged="OnTagDraftChanged"
+                                          Placeholder="Add tag"
+                                          Variant="Variant.Text"
+                                          Margin="Margin.Dense"
+                                          Immediate="true"
+                                          OnKeyUp="OnTagDraftKeyUp"
+                                          Class="wiki-tag-input" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" OnClick="AddTagDraftAsync" aria-label="Add tag" />
+                        </div>
+                        @if (_tagSuggestions.Count > 0)
+                        {
+                            <div class="wiki-tag-suggestions" aria-label="Tag suggestions">
+                                @foreach (var suggestion in _tagSuggestions)
+                                {
+                                    <button type="button" class="wiki-tag-suggestion" @onclick="@(() => AddSuggestedTagAsync(suggestion))">@suggestion</button>
+                                }
+                            </div>
+                        }
+                    </div>
                     <MudTextField @bind-Value="_editReferences" Label="References" Placeholder="id1, id2" Variant="Variant.Outlined" Margin="Margin.Dense" />
                     <MudTextField @bind-Value="_editConflicts" Label="Conflicts" Placeholder="id1, id2" Variant="Variant.Outlined" Margin="Margin.Dense" />
                     <MudTextField @bind-Value="_editSourceLinks"
@@ -170,6 +202,20 @@
                                   Margin="Margin.Dense"
                                   HelperText="One per line: Label | URI [| StartLine[-EndLine]]  — %VarName% tokens expand from /variables" />
                 </div>
+
+                @if (_editDiagnostics.Count > 0)
+                {
+                    <div class="wiki-diagnostics-panel wiki-edit-diagnostics">
+                        <div class="wiki-section-title">Draft Diagnostics</div>
+                        @foreach (var diagnostic in _editDiagnostics)
+                        {
+                            <div class="wiki-diagnostic-row @DiagnosticClass(diagnostic)">
+                                <strong>@diagnostic.Code</strong>
+                                <span>@diagnostic.Message</span>
+                            </div>
+                        }
+                    </div>
+                }
 
                 <MudTextField @bind-Value="_editRecord.Content"
                               Label="Content"
@@ -262,9 +308,12 @@
     private MemoryRecord? _selectedRecord;
     private MemorySearchResult? _selectedSemanticMatch;
     private List<MemoryDiagnostic> _selectedDiagnostics = [];
+    private List<MemoryDiagnostic> _editDiagnostics = [];
     private ElementReference _memoryContentPane;
     private MemoryRecord _editRecord = new();
-    private string _editTags = string.Empty;
+    private List<string> _editTagList = [];
+    private List<string> _tagSuggestions = [];
+    private string _tagDraft = string.Empty;
     private string _editReferences = string.Empty;
     private string _editConflicts = string.Empty;
     private string _editSourceLinks = string.Empty;
@@ -281,7 +330,10 @@
     private bool _editingExisting;
     private bool _isSemanticSearchMode;
     private bool _isEditing;
+    private bool _checkingDiagnostics;
     private bool _memoryContentEnhancementsPending;
+
+    private bool HasBlockingEditDiagnostics => _editDiagnostics.Any(diagnostic => string.Equals(diagnostic.Severity, "Error", StringComparison.OrdinalIgnoreCase));
 
     private int TotalPages => Math.Max(1, (int)Math.Ceiling((double)_totalCount / _pageSize));
     private string SearchModeLabel => _searchMode.ToString();
@@ -426,7 +478,7 @@
         PopulateEditor(record, editingExisting: true);
     }
 
-    private void EditSelected()
+    private async Task EditSelected()
     {
         if (_selectedRecord is null)
         {
@@ -435,15 +487,17 @@
 
         PopulateEditor(_selectedRecord, editingExisting: true);
         _isEditing = true;
+        await RefreshDraftDiagnosticsAsync();
     }
 
-    private void NewRecord()
+    private async Task NewRecord()
     {
         _selectedRecord = null;
         _selectedSemanticMatch = null;
         _selectedDiagnostics = [];
         PopulateEditor(new MemoryRecord(), editingExisting: false);
         _isEditing = true;
+        await RefreshDraftDiagnosticsAsync();
     }
 
     private void CancelEdit()
@@ -460,10 +514,13 @@
     {
         try
         {
-            _editRecord.Tags = SplitValues(_editTags);
-            _editRecord.References = SplitValues(_editReferences);
-            _editRecord.Conflicts = SplitValues(_editConflicts);
-            _editRecord.SourceLinks = ParseSourceLinks(_editSourceLinks);
+            ApplyEditorFields();
+            await RefreshDraftDiagnosticsAsync();
+            if (HasBlockingEditDiagnostics)
+            {
+                Snackbar.Add("Resolve blocking tag-policy diagnostics before saving.", Severity.Error);
+                return;
+            }
 
             MemoryRecord? saved;
             if (_editingExisting)
@@ -561,7 +618,10 @@
             UsageCount = record.UsageCount,
             LastUpdated = record.LastUpdated
         };
-        _editTags = string.Join(", ", record.Tags);
+        _editTagList = record.Tags.ToList();
+        _tagDraft = string.Empty;
+        _tagSuggestions = [];
+        _editDiagnostics = [];
         _editReferences = string.Join(", ", record.References);
         _editConflicts = string.Join(", ", record.Conflicts);
         _editSourceLinks = string.Join("\n", record.SourceLinks.Select(sl =>
@@ -574,6 +634,81 @@
             return string.Join(" | ", parts);
         }));
         _editingExisting = editingExisting;
+    }
+
+    private async Task OnTagDraftChanged(string value)
+    {
+        _tagDraft = value;
+        await RefreshTagSuggestionsAsync();
+    }
+
+    private async Task OnTagDraftKeyUp(KeyboardEventArgs args)
+    {
+        if (args.Key is "Enter" or ",")
+        {
+            await AddTagDraftAsync();
+        }
+    }
+
+    private async Task AddTagDraftAsync()
+    {
+        var tag = _tagDraft.Trim().Trim(',');
+        if (string.IsNullOrWhiteSpace(tag))
+        {
+            return;
+        }
+
+        if (!_editTagList.Any(existing => string.Equals(existing, tag, StringComparison.OrdinalIgnoreCase)))
+        {
+            _editTagList.Add(tag);
+        }
+
+        _tagDraft = string.Empty;
+        _tagSuggestions = [];
+        await RefreshDraftDiagnosticsAsync();
+    }
+
+    private async Task AddSuggestedTagAsync(string tag)
+    {
+        _tagDraft = tag;
+        await AddTagDraftAsync();
+    }
+
+    private async Task RemoveEditTagAsync(string tag)
+    {
+        _editTagList.RemoveAll(existing => string.Equals(existing, tag, StringComparison.OrdinalIgnoreCase));
+        await RefreshDraftDiagnosticsAsync();
+    }
+
+    private Task RefreshTagSuggestionsAsync()
+    {
+        _tagSuggestions = TagGovernance.GetTagCompletions(_tagDraft, 8)
+            .Where(tag => !_editTagList.Any(existing => string.Equals(existing, tag, StringComparison.OrdinalIgnoreCase)))
+            .ToList();
+        return Task.CompletedTask;
+    }
+
+    private Task RefreshDraftDiagnosticsAsync()
+    {
+        _checkingDiagnostics = true;
+        ApplyEditorFields();
+        _editDiagnostics = TagGovernance.AnalyzeDraft(_editRecord)
+            .Where(diagnostic => diagnostic.Category is "tag" or "source" or "relationship" or "staleness")
+            .ToList();
+        _checkingDiagnostics = false;
+        return Task.CompletedTask;
+    }
+
+    private void ApplyEditorFields()
+    {
+        _editRecord.Tags = _editTagList
+            .Where(tag => !string.IsNullOrWhiteSpace(tag))
+            .Select(tag => tag.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        _editRecord.References = SplitValues(_editReferences);
+        _editRecord.Conflicts = SplitValues(_editConflicts);
+        _editRecord.SourceLinks = ParseSourceLinks(_editSourceLinks);
     }
 
     private RenderFragment RenderSourceLinks(IReadOnlyList<SourceLink> links) => builder =>

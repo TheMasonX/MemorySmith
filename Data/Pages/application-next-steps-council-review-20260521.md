@@ -124,6 +124,15 @@ Acceptance gates:
 - UI tests or component-level coverage verify chips, diagnostics, and policy edits.
 - Docs explain how humans should author tags and interpret warnings.
 
+Implementation result, 2026-05-22:
+
+- Added `TagGovernanceService` and `/api/governance/*` endpoints for tag policy snapshots, suggestions, draft diagnostics, and admin policy saves.
+- Replaced memory editor comma-only tags with keyboard-addable chips, autocomplete suggestions, and a pre-save draft diagnostics panel for tag/source/relation/staleness checks.
+- Added `/tags` Tag Manager for namespace, allowlist, blocklist, alias, usage, policy mode, and read-only suggestion review.
+- Preserved approval-only cleanup: suggestions do not rewrite memory records or tag policy automatically.
+- Added authoring and warning guidance in `Data/Pages/tag-governance-workbench-20260522.md`.
+- Local validation passed: `TagGovernanceTests` 7/7, `dotnet build MemorySmith.App/MemorySmith.App.csproj -v minimal`, `dotnet build MemorySmith.slnx -v minimal`, full suite 241/241, and benchmark smoke across lexical metadata diagnostics, semantic, hybrid, chat-context, and context-pack paths.
+
 ### Phase 3: Retrieval Warning Propagation
 
 Goal: carry diagnostics and provenance through every retrieval surface without changing ranking.
