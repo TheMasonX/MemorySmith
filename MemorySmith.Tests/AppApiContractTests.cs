@@ -331,6 +331,27 @@ public class AppApiContractTests
     }
 
     [Test]
+    public async Task DiagnosticsMeasurementBaseline_ReturnsSearchGovernanceAndPageMetrics()
+    {
+        var setupResponse = await _client.PostAsJsonAsync("/api/admin/setup", new SetupAdminRequest("Admin User", "admin@example.test", "ThisIsAValidPassword123!"));
+        setupResponse.EnsureSuccessStatusCode();
+
+        var response = await _client.GetAsync("/api/diagnostics/measurement-baseline");
+        response.EnsureSuccessStatusCode();
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(body, Does.Contain("search"));
+            Assert.That(body, Does.Contain("semanticSearchMode"));
+            Assert.That(body, Does.Contain("pages"));
+            Assert.That(body, Does.Contain("tags"));
+            Assert.That(body, Does.Contain("sourceLinks"));
+            Assert.That(body, Does.Contain("thresholds"));
+        });
+    }
+
+    [Test]
     public async Task PagesApi_SavesSearchesRendersAndDeletesMarkdownPages()
     {
         var createResponse = await _client.PostAsJsonAsync("/api/pages", new PageSaveRequest(

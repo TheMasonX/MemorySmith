@@ -10,15 +10,23 @@ namespace MemorySmith.App.Controllers;
 public class DiagnosticsController : ControllerBase
 {
     private readonly OperationalDiagnosticsService _diagnostics;
+    private readonly MeasurementBaselineService _measurementBaseline;
 
-    public DiagnosticsController(OperationalDiagnosticsService diagnostics)
+    public DiagnosticsController(OperationalDiagnosticsService diagnostics, MeasurementBaselineService measurementBaseline)
     {
         _diagnostics = diagnostics;
+        _measurementBaseline = measurementBaseline;
     }
 
     [HttpGet]
     public ActionResult<OperationalDiagnosticsSnapshot> Get()
     {
         return Ok(_diagnostics.GetSnapshot());
+    }
+
+    [HttpGet("measurement-baseline")]
+    public async Task<ActionResult<MeasurementBaselineSnapshot>> GetMeasurementBaseline(CancellationToken cancellationToken)
+    {
+        return Ok(await _measurementBaseline.GetSnapshotAsync(cancellationToken));
     }
 }
