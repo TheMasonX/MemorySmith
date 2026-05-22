@@ -139,7 +139,13 @@
                                 <div class="chat-context-list">
                                     @foreach (var item in turn.Context)
                                     {
-                                        <a class="@ContextResourceClass(item)" href="@ContextHref(item)" target="_blank" rel="noopener noreferrer" title="@item.Snippet">@item.Kind:@item.Title</a>
+                                        <span class="chat-context-reference">
+                                            <a class="@ContextResourceClass(item)" href="@ContextHref(item)" target="_blank" rel="noopener noreferrer" title="@item.Snippet">@item.Kind:@item.Title</a>
+                                            @foreach (var diagnostic in WarningDiagnostics(item).Take(2))
+                                            {
+                                                <span class="wiki-diagnostic-chip @DiagnosticClass(diagnostic)" title="@diagnostic.Message">@diagnostic.Code</span>
+                                            }
+                                        </span>
                                     }
                                     @foreach (var id in turn.WrittenMemories)
                                     {
@@ -2065,6 +2071,16 @@
         string.Equals(item.Origin, ChatContextOrigins.Tool, StringComparison.OrdinalIgnoreCase)
             ? "wiki-tag chat-resource chat-resource-tool"
             : "wiki-tag chat-resource";
+
+    private static IEnumerable<MemoryDiagnostic> WarningDiagnostics(ChatContextItem item) =>
+        item.Diagnostics?.Where(diagnostic => diagnostic.Severity is "Warning" or "Error") ?? [];
+
+    private static string DiagnosticClass(MemoryDiagnostic diagnostic) => diagnostic.Severity switch
+    {
+        "Warning" => "is-warning",
+        "Error" => "is-error",
+        _ => "is-info"
+    };
 
     private static int TurnReferenceCount(ChatTurnState turn) =>
         turn.Context.Count + turn.WrittenMemories.Count + turn.WrittenPages.Count;

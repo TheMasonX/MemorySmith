@@ -112,6 +112,52 @@ public class ChatToolCatalogAndInterceptTests
     }
 
     [Test]
+    public async Task SearchTool_WithJsonFormat_ReturnsEnvelopeAndContextDiagnostics()
+    {
+        var store = new InMemoryMemoryStore();
+        var options = Options.Create(new MemorySmithOptions());
+        var diagnostics = new MemoryDiagnosticsService(
+            new TagPolicyService(options),
+            new VarResolver(new EmptyVarStore(), options),
+            store,
+            options);
+        var memories = TestServiceFactory.CreateMemoryApplicationService(
+            store,
+            new RecordingEventStore(),
+            new RecordingMemoryChangePublisher(),
+            diagnostics: diagnostics);
+        store.Save(new MemoryRecord
+        {
+            Id = "tool-warning-record",
+            Title = "Tool Warning Record",
+            Content = "tool retrieval warning propagation",
+            Status = MemoryStatus.Core,
+            Tags = ["project-wiki"],
+            Confidence = 1,
+            SourceLinks = [new SourceLink { Uri = "%MissingVariable%MemorySmith.App/Program.cs" }]
+        });
+
+        var catalog = new ChatToolCatalog();
+        Assert.That(catalog.TryGet("memorysmith_search", out var tool), Is.True);
+        var args = new JsonObject { ["query"] = "tool retrieval warning", ["format"] = "json" };
+        Assert.That(ChatToolCatalog.ReadString(args, "format"), Is.EqualTo("json"));
+        var result = await tool.Execute(
+            args,
+            new ChatToolExecutionContext(memories, new FilePageService(_tempDir), "test"),
+            CancellationToken.None);
+
+        var json = JsonNode.Parse(result.Text)!.AsObject();
+        Assert.Multiple(() =>
+        {
+            Assert.That(json["schemaVersion"]!.GetValue<string>(), Is.EqualTo("memorysmith.retrieval-results.v1"));
+            Assert.That(json["provider"]!["kind"]!.GetValue<string>(), Is.EqualTo("lexical"));
+            Assert.That(json["warnings"]!.AsArray().Select(node => node!.GetValue<string>()), Has.Some.Contains("source.missing_variable"));
+            Assert.That(result.Structured, Is.Not.Null);
+            Assert.That(result.ContextItems!.Single().Diagnostics!.Select(diagnostic => diagnostic.Code), Does.Contain("source.missing_variable"));
+        });
+    }
+
+    [Test]
     public async Task PageSearchAndUnifiedSearchTools_ReturnVisibleMatchesBeyondFirstTwoHundredHiddenResults()
     {
         var pages = new FilePageService(_tempDir);

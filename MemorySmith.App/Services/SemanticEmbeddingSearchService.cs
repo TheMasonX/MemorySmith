@@ -35,6 +35,20 @@ public sealed class SemanticEmbeddingSearchService
         _options = options.Value.SemanticSearch;
     }
 
+    public RetrievalProviderMetadata GetProviderMetadata()
+    {
+        var status = _embeddingProvider.GetStatus();
+        var mode = _options.EmbeddingsEnabled && status.Available ? "onnx-embedding" : "token-fallback";
+        return new RetrievalProviderMetadata(
+            "semantic",
+            mode,
+            status.Available,
+            status.Reason,
+            status.ModelPath,
+            status.VocabularyPath,
+            status.Dimension);
+    }
+
     public bool TryRank(
         IReadOnlyList<MemoryRecord> records,
         string? query,

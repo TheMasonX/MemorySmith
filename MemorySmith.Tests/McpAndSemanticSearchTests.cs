@@ -387,6 +387,48 @@ public class McpAndSemanticSearchTests
     }
 
     [Test]
+    public async Task McpSearchTool_WithJsonFormat_ReturnsRetrievalEnvelope()
+    {
+        var dataPath = ProjectWikiFixture.CopyToTemp(_tempRoot);
+        await using var factory = CreateFactory(dataPath);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/mcp", new
+        {
+            JsonRpc = "2.0",
+            Id = "lexical-search-json",
+            Method = "tools/call",
+            Params = new
+            {
+                Name = "memorysmith_search",
+                Arguments = new
+                {
+                    Query = "model context protocol search integration",
+                    Tags = "project-wiki",
+                    Limit = 5,
+                    Format = "json"
+                }
+            }
+        }, JsonSerializerOptions.Web);
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+
+        var text = await ExtractFirstToolTextAsync(response);
+        using var document = JsonDocument.Parse(text);
+        var results = document.RootElement.GetProperty("results").EnumerateArray().ToList();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(document.RootElement.GetProperty("schemaVersion").GetString(), Is.EqualTo("memorysmith.retrieval-results.v1"));
+            Assert.That(document.RootElement.GetProperty("mode").GetString(), Is.EqualTo("lexical"));
+            Assert.That(document.RootElement.GetProperty("provider").GetProperty("kind").GetString(), Is.EqualTo("lexical"));
+            Assert.That(results, Is.Not.Empty);
+            Assert.That(results[0].TryGetProperty("diagnostics", out _), Is.True);
+            Assert.That(document.RootElement.TryGetProperty("warnings", out _), Is.True);
+        });
+    }
+
+    [Test]
     public async Task McpSemanticSearchTool_ReturnsProjectWikiRecord()
     {
         var dataPath = ProjectWikiFixture.CopyToTemp(_tempRoot);

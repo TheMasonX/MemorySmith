@@ -130,9 +130,24 @@ public class McpController : ControllerBase
 
         return toolName switch
         {
-            "memorysmith_search" => ToolText(FormatLexicalResults(await _memories.SearchAsync(ReadLexicalQuery(argumentsElement), cancellationToken))),
-            "memorysmith_semantic_search" => ToolText(FormatSemanticResults(await _memories.SemanticSearchAsync(ReadSemanticQuery(argumentsElement), cancellationToken))),
-            "memorysmith_hybrid_search" => ToolText(FormatHybridResults(await _memories.HybridSearchAsync(ReadHybridQuery(argumentsElement), cancellationToken))),
+            "memorysmith_search" => ToolText(FormatRetrievalEnvelope(
+                "lexical",
+                MemoryApplicationService.GetLexicalProviderMetadata(),
+                await _memories.LexicalSearchAsync(ReadLexicalQuery(argumentsElement), cancellationToken),
+                GetString(argumentsElement, "format"),
+                FormatLexicalResults)),
+            "memorysmith_semantic_search" => ToolText(FormatRetrievalEnvelope(
+                "semantic",
+                _memories.GetSemanticProviderMetadata(),
+                await _memories.SemanticSearchAsync(ReadSemanticQuery(argumentsElement), cancellationToken),
+                GetString(argumentsElement, "format"),
+                FormatSemanticResults)),
+            "memorysmith_hybrid_search" => ToolText(FormatRetrievalEnvelope(
+                "hybrid",
+                _memories.GetSemanticProviderMetadata(),
+                await _memories.HybridSearchAsync(ReadHybridQuery(argumentsElement), cancellationToken),
+                GetString(argumentsElement, "format"),
+                FormatHybridResults)),
             "memorysmith_context_pack" => ToolText(FormatContextPack(
                 await _memories.BuildContextPackAsync(ReadContextPackQuery(argumentsElement), cancellationToken),
                 GetString(argumentsElement, "format"))),
@@ -321,15 +336,30 @@ public class McpController : ControllerBase
         Ids: GetString(argumentsElement, "ids"),
         IncludeBacklinks: GetBool(argumentsElement, "includeBacklinks", false));
 
-    private static string FormatLexicalResults(IReadOnlyList<MemoryRecord> records)
+    private string FormatRetrievalEnvelope(
+        string mode,
+        RetrievalProviderMetadata provider,
+        IReadOnlyList<MemorySearchResult> results,
+        string? format,
+        Func<IReadOnlyList<MemorySearchResult>, string> markdownFormatter)
     {
-        if (records.Count == 0)
+        if (!IsStructuredFormat(format))
+        {
+            return markdownFormatter(results);
+        }
+
+        return JsonSerializer.Serialize(_memories.BuildRetrievalEnvelope(mode, provider, results), ToolJsonOptions);
+    }
+
+    private static string FormatLexicalResults(IReadOnlyList<MemorySearchResult> results)
+    {
+        if (results.Count == 0)
         {
             return "No lexical search results.";
         }
 
-        return string.Join(Environment.NewLine + Environment.NewLine, records.Select(record =>
-            $"- {record.Id}: {record.Title}{Environment.NewLine}  Tags: {string.Join(", ", record.Tags)}{Environment.NewLine}  {Truncate(record.Content, 260)}"));
+        return string.Join(Environment.NewLine + Environment.NewLine, results.Select(result =>
+            $"- {result.Id}: {result.Title}{Environment.NewLine}  Score: {result.Score:0.###}{Environment.NewLine}  Match: {result.MatchReason}{Environment.NewLine}  Tags: {string.Join(", ", result.Tags)}{Environment.NewLine}{FormatInlineDiagnostics(result.Diagnostics)}  {result.Snippet}"));
     }
 
     private static string FormatSemanticResults(IReadOnlyList<MemorySearchResult> results)
@@ -340,7 +370,7 @@ public class McpController : ControllerBase
         }
 
         return string.Join(Environment.NewLine + Environment.NewLine, results.Select(result =>
-            $"- {result.Id}: {result.Title}{Environment.NewLine}  Score: {result.Score:0.###}{Environment.NewLine}  Match: {result.MatchReason}{Environment.NewLine}  Tags: {string.Join(", ", result.Tags)}{Environment.NewLine}  {result.Snippet}"));
+            $"- {result.Id}: {result.Title}{Environment.NewLine}  Score: {result.Score:0.###}{Environment.NewLine}  Match: {result.MatchReason}{Environment.NewLine}  Tags: {string.Join(", ", result.Tags)}{Environment.NewLine}{FormatInlineDiagnostics(result.Diagnostics)}  {result.Snippet}"));
     }
 
     private static string FormatHybridResults(IReadOnlyList<MemorySearchResult> results)
@@ -351,11 +381,21 @@ public class McpController : ControllerBase
         }
 
         return string.Join(Environment.NewLine + Environment.NewLine, results.Select(result =>
-            $"- {result.Id}: {result.Title}{Environment.NewLine}  RRF Score: {result.Score:0.######}{Environment.NewLine}  Match: {result.MatchReason}{Environment.NewLine}  Tags: {string.Join(", ", result.Tags)}{Environment.NewLine}  {result.Snippet}"));
+            $"- {result.Id}: {result.Title}{Environment.NewLine}  RRF Score: {result.Score:0.######}{Environment.NewLine}  Match: {result.MatchReason}{Environment.NewLine}  Tags: {string.Join(", ", result.Tags)}{Environment.NewLine}{FormatInlineDiagnostics(result.Diagnostics)}  {result.Snippet}"));
     }
 
     private string FormatContextPack(MemoryContextPack pack, string? format) =>
         MemoryContextPackFormatter.Format(pack, format, _vars.Resolve, includeSourceLinksInMarkdown: true);
+
+    private static string FormatInlineDiagnostics(IReadOnlyList<MemoryDiagnostic> diagnostics) =>
+        diagnostics.Count == 0
+            ? string.Empty
+            : $"  Diagnostics: {string.Join("; ", diagnostics.Take(3).Select(diagnostic => $"{diagnostic.Code}: {diagnostic.Message}"))}{Environment.NewLine}";
+
+    private static bool IsStructuredFormat(string? format) =>
+        string.Equals(format, "json", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(format, "envelope", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(format, "json-v2", StringComparison.OrdinalIgnoreCase);
 
     private static JsonObject BuildInitializeResult() => new()
     {
@@ -462,6 +502,12 @@ public class McpController : ControllerBase
             {
                 ["type"] = "integer",
                 ["description"] = "Maximum number of results."
+            },
+            ["format"] = new JsonObject
+            {
+                ["type"] = "string",
+                ["description"] = "Output format. Defaults to markdown; use json or envelope for structured agent parsing.",
+                ["enum"] = new JsonArray { "markdown", "json", "envelope" }
             }
         }
     };

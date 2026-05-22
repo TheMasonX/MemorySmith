@@ -16,6 +16,15 @@ internal static class MemoryDiagnosticFormatting
             .Take(MaxContextPackWarnings)
             .ToList();
 
+    public static IReadOnlyList<string> ToWarningSummaries(IEnumerable<MemorySearchResult> results) =>
+        results
+            .SelectMany(result => result.Diagnostics
+                .Where(IsWarningOrError)
+                .Select(diagnostic => $"{result.Id}: {diagnostic.Code} - {diagnostic.Message}"))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Take(MaxContextPackWarnings)
+            .ToList();
+
     public static string FormatMarkdownSection(IReadOnlyList<MemoryDiagnostic> diagnostics)
     {
         var warnings = diagnostics
