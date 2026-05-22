@@ -258,6 +258,84 @@ public class MemoryApplicationServiceTests
     }
 
     [Test]
+    public async Task GetMemoriesAsync_ToleratesDuplicateIdsAndUsesLatestRecord()
+    {
+        var store = new DuplicateMemoryStore(
+        [
+            new MemoryRecord
+            {
+                Id = "duplicate-id",
+                Title = "Older Duplicate",
+                Content = "older duplicate",
+                LastUpdated = new DateTime(2026, 05, 01, 0, 0, 0, DateTimeKind.Utc)
+            },
+            new MemoryRecord
+            {
+                Id = "DUPLICATE-ID",
+                Title = "Newer Duplicate",
+                Content = "newer duplicate",
+                LastUpdated = new DateTime(2026, 05, 02, 0, 0, 0, DateTimeKind.Utc)
+            },
+            new MemoryRecord
+            {
+                Id = "unique-id",
+                Title = "Unique",
+                Content = "unique",
+                LastUpdated = new DateTime(2026, 05, 03, 0, 0, 0, DateTimeKind.Utc)
+            }
+        ]);
+        var service = TestServiceFactory.CreateMemoryApplicationService(store, _events, _publisher);
+
+        var result = await service.GetMemoriesAsync(new MemoryListQuery(PageSize: 10), CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Data, Has.Count.EqualTo(2));
+            Assert.That(result.Data.Select(metadata => metadata.Id), Is.Unique.IgnoreCase);
+            Assert.That(result.Data.Single(metadata => string.Equals(metadata.Id, "DUPLICATE-ID", StringComparison.OrdinalIgnoreCase)).Title, Is.EqualTo("Newer Duplicate"));
+        });
+    }
+
+    [Test]
+    public async Task SearchMetadataAsync_ToleratesDuplicateIdsInSearchSnapshot()
+    {
+        var store = new DuplicateMemoryStore(
+        [
+            new MemoryRecord
+            {
+                Id = "duplicate-id",
+                Title = "Older Needle",
+                Content = "needle older duplicate",
+                LastUpdated = new DateTime(2026, 05, 01, 0, 0, 0, DateTimeKind.Utc)
+            },
+            new MemoryRecord
+            {
+                Id = "DUPLICATE-ID",
+                Title = "Newer Needle",
+                Content = "needle newer duplicate",
+                LastUpdated = new DateTime(2026, 05, 02, 0, 0, 0, DateTimeKind.Utc)
+            },
+            new MemoryRecord
+            {
+                Id = "unique-id",
+                Title = "Unique Needle",
+                Content = "needle unique",
+                LastUpdated = new DateTime(2026, 05, 03, 0, 0, 0, DateTimeKind.Utc)
+            }
+        ]);
+        var service = TestServiceFactory.CreateMemoryApplicationService(store, _events, _publisher);
+
+        var results = await service.SearchMetadataAsync(new MemorySearchQuery("needle", Limit: 10), CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(results, Has.Count.EqualTo(2));
+            Assert.That(results.Select(metadata => metadata.Id), Is.Unique.IgnoreCase);
+            Assert.That(results.Single(metadata => string.Equals(metadata.Id, "DUPLICATE-ID", StringComparison.OrdinalIgnoreCase)).Title, Is.EqualTo("Newer Needle"));
+        });
+    }
+
+    [Test]
     public async Task HybridSearchAsync_AttachesDiagnosticsAfterApplyingLimit()
     {
         var store = new CountingMemoryStore();
@@ -675,6 +753,31 @@ internal sealed class CountingMemoryStore : IMemoryStore
     }
 }
 
+internal sealed class DuplicateMemoryStore : IMemoryStore
+{
+    private readonly List<MemoryRecord> _records;
+
+    public DuplicateMemoryStore(IEnumerable<MemoryRecord> records)
+    {
+        _records = records.ToList();
+    }
+
+    public MemoryRecord? Load(string id) =>
+        _records.FirstOrDefault(record => string.Equals(record.Id, id, StringComparison.OrdinalIgnoreCase));
+
+    public void Save(MemoryRecord record)
+    {
+        Delete(record.Id);
+        _records.Add(record);
+    }
+
+    public void Delete(string id) =>
+        _records.RemoveAll(record => string.Equals(record.Id, id, StringComparison.OrdinalIgnoreCase));
+
+    public IEnumerable<MemoryRecord> LoadAll() =>
+        _records.ToList();
+}
+
 internal sealed class EmptyVarStore : IVarStore
 {
     public IReadOnlyDictionary<string, string> Load() => new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -717,12 +820,17 @@ internal sealed class RecordingEventStore : IEventStore
 {
     public List<MemoryEvent> Events { get; } = [];
 
+    public int GetEventsCallCount { get; private set; }
+
     public void AppendEvent(MemoryEvent @event) => Events.Add(@event);
 
-    public IEnumerable<MemoryEvent> GetEvents(string? memoryId = null, DateTime? since = null) =>
-        Events.Where(e =>
+    public IEnumerable<MemoryEvent> GetEvents(string? memoryId = null, DateTime? since = null)
+    {
+        GetEventsCallCount++;
+        return Events.Where(e =>
             (memoryId is null || e.MemoryId == memoryId) &&
             (!since.HasValue || e.Timestamp >= since.Value));
+    }
 }
 
 internal sealed class RecordingMemoryChangePublisher : IMemoryChangePublisher

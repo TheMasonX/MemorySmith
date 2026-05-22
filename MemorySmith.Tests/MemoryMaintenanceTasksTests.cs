@@ -117,6 +117,31 @@ public class MemoryMaintenanceTasksTests
     }
 
     [Test]
+    public async Task RunConsolidationAsync_ScansExistingRecommendationsOnce()
+    {
+        for (var index = 0; index < 20; index++)
+        {
+            _store.Save(new MemoryRecord
+            {
+                Id = $"deprecate-{index:D2}",
+                Title = $"Deprecate {index:D2}",
+                Content = "Old low value",
+                Status = MemoryStatus.Unconsolidated,
+                Confidence = 0,
+                LastUpdated = DateTime.UtcNow.AddDays(-200 - index)
+            });
+        }
+
+        await _tasks.RunConsolidationAsync(CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(_events.GetEventsCallCount, Is.EqualTo(1));
+            Assert.That(_events.Events.Count(memoryEvent => memoryEvent.Action == "DeprecationRecommended"), Is.EqualTo(20));
+        });
+    }
+
+    [Test]
     public async Task RunConsolidationAsync_DeprecatesLowScoreRecordsWhenExplicitlyEnabled()
     {
         var tasks = new MemoryMaintenanceTasks(

@@ -79,8 +79,8 @@ public partial class MemoryApplicationService
         var pageSize = Clamp(query.PageSize, 1, _options.Limits.MaxPageSize, 20);
         var tagFilters = NormalizeFilterList(query.Tags);
 
-        var allRecords = _store.LoadAll().ToList();
-        var allRecordsById = allRecords.ToDictionary(record => record.Id, StringComparer.OrdinalIgnoreCase);
+        var allRecordsById = MemoryRecordLookup.ToRecordMap(_store.LoadAll());
+        var allRecords = allRecordsById.Values.ToList();
         var records = ApplyListFilters(allRecords, query.Status, tagFilters)
             .OrderByDescending(r => r.LastUpdated)
             .ThenBy(r => r.Title, StringComparer.OrdinalIgnoreCase)
@@ -357,7 +357,7 @@ public partial class MemoryApplicationService
             return Task.FromResult<IReadOnlyList<MemoryDiagnostic>>([]);
         }
 
-        var recordsById = _store.LoadAll().ToDictionary(item => item.Id, StringComparer.OrdinalIgnoreCase);
+        var recordsById = MemoryRecordLookup.ToRecordMap(_store.LoadAll());
         return Task.FromResult(GetDiagnostics(record, recordsById));
     }
 
@@ -785,14 +785,15 @@ public partial class MemoryApplicationService
     private MemorySearchSnapshot CreateSearchSnapshot(MemoryStatus? status, string? tags)
     {
         var tagFilters = NormalizeFilterList(tags);
-        var allRecords = _store.LoadAll().ToList();
+        var allRecordsById = MemoryRecordLookup.ToRecordMap(_store.LoadAll());
+        var allRecords = allRecordsById.Values.ToList();
         var filteredRecords = ApplyListFilters(allRecords, status, tagFilters).ToList();
 
         return new MemorySearchSnapshot(
             allRecords,
-            allRecords.ToDictionary(record => record.Id, StringComparer.OrdinalIgnoreCase),
+            allRecordsById,
             filteredRecords,
-            filteredRecords.ToDictionary(record => record.Id, StringComparer.OrdinalIgnoreCase));
+            MemoryRecordLookup.ToRecordMap(filteredRecords));
     }
 
     private IReadOnlyList<MemorySearchResult> RankHybridResults(MemorySearchSnapshot snapshot, string? query, int? limit = null)
@@ -804,8 +805,8 @@ public partial class MemoryApplicationService
         var semanticResults = RankSemanticResults(snapshot.FilteredRecords, query, semanticTokens);
         var lexicalRanks = ToRankMap(lexicalResults);
         var semanticRanks = ToRankMap(semanticResults);
-        var lexicalById = lexicalResults.ToDictionary(result => result.Id, StringComparer.OrdinalIgnoreCase);
-        var semanticById = semanticResults.ToDictionary(result => result.Id, StringComparer.OrdinalIgnoreCase);
+        var lexicalById = ToResultMap(lexicalResults);
+        var semanticById = ToResultMap(semanticResults);
         var candidateIds = lexicalRanks.Keys
             .Union(semanticRanks.Keys, StringComparer.OrdinalIgnoreCase)
             .ToList();
@@ -889,6 +890,17 @@ public partial class MemoryApplicationService
         }
 
         return ranks;
+    }
+
+    private static Dictionary<string, MemorySearchResult> ToResultMap(IReadOnlyList<MemorySearchResult> results)
+    {
+        var resultsById = new Dictionary<string, MemorySearchResult>(StringComparer.OrdinalIgnoreCase);
+        foreach (var result in results)
+        {
+            resultsById.TryAdd(result.Id, result);
+        }
+
+        return resultsById;
     }
 
     private static double ReciprocalRankScore(int rank) =>
