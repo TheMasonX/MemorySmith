@@ -29,14 +29,17 @@ public class ChatController : ControllerBase
         var model = DefaultModelForProvider(selectedProvider.Name, chatOptions);
         var endpoint = EndpointForProvider(selectedProvider.Name, chatOptions);
         var providerNames = _providers.Select(item => item.Name).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(item => item).ToList();
+        var providerCapabilities = _providers
+            .GroupBy(item => item.Name, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.First().Capabilities, StringComparer.OrdinalIgnoreCase);
         try
         {
             var models = await selectedProvider.ListModelsAsync(cancellationToken);
-            return Ok(new ChatRuntimeConfiguration(selectedProvider.Name, endpoint, model, models, providerNames));
+            return Ok(new ChatRuntimeConfiguration(selectedProvider.Name, endpoint, model, models, providerNames, providerCapabilities));
         }
         catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or TaskCanceledException)
         {
-            return Ok(new ChatRuntimeConfiguration(selectedProvider.Name, endpoint, model, [], providerNames, ex.Message));
+            return Ok(new ChatRuntimeConfiguration(selectedProvider.Name, endpoint, model, [], providerNames, providerCapabilities, ex.Message));
         }
     }
 
