@@ -38,7 +38,9 @@ The current Proposals page can show page-local activity while a run is started f
 
 ## Proposal Review Agent
 
-The Proposals page should gain a Request Agent Review action. The review agent should evaluate the selected proposal as if performing a PR review, write feedback into the proposal history/comments, and when it recommends changes, create a revised proposal while preserving the original proposal and diff. Users must be able to disagree with the review and keep the original proposal path.
+Implemented baseline: the Proposals page now exposes a Request Agent Review action for actionable proposals. The button records an `agent_review_requested` history event plus the optional human comment through `MaintenanceProposalWorkflow.RequestAgentReviewAsync`; it does not approve, reject, or rewrite the proposal.
+
+Remaining design work: the review agent should evaluate the selected proposal as if performing a PR review, write feedback into the proposal history/comments, and when it recommends changes, create a revised proposal while preserving the original proposal and diff. Users must be able to disagree with the review and keep the original proposal path.
 
 Open design questions:
 

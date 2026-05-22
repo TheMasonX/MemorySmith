@@ -152,6 +152,7 @@
 
                 <div class="proposal-actions">
                     <MudTextField T="string" Value="@_comment" ValueChanged="@((string value) => _comment = value)" Placeholder="Comment for respond/reject/approve history" Variant="Variant.Outlined" Margin="Margin.Dense" Lines="2" Class="proposal-comment-input" />
+                    <MudButton Variant="Variant.Outlined" Color="Color.Info" StartIcon="@Icons.Material.Filled.RateReview" Disabled="@(_isBusy || IsClosed(_selectedProposal))" OnClick="RequestAgentReviewAsync">Request Agent Review</MudButton>
                     <MudButton Variant="Variant.Filled" Color="Color.Success" StartIcon="@Icons.Material.Filled.Check" Disabled="@(_isBusy || !IsOpen(_selectedProposal))" OnClick="ApproveAsync">Approve</MudButton>
                     <MudButton Variant="Variant.Outlined" Color="Color.Warning" StartIcon="@Icons.Material.Filled.Reply" Disabled="@(_isBusy || !IsOpen(_selectedProposal))" OnClick="RespondAsync">Respond</MudButton>
                     <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.Close" Disabled="@(_isBusy || IsClosed(_selectedProposal))" OnClick="RejectAsync">Reject</MudButton>
@@ -308,6 +309,16 @@
         }
 
         await ActAsync(() => ProposalWorkflow.RespondAsync(_selectedProposal.ProposalId, _comment, CancellationToken.None), "Proposal marked as needing revision.");
+    }
+
+    private async Task RequestAgentReviewAsync()
+    {
+        if (_selectedProposal is null)
+        {
+            return;
+        }
+
+        await ActAsync(() => ProposalWorkflow.RequestAgentReviewAsync(_selectedProposal.ProposalId, _comment, CancellationToken.None), "Agent review requested.");
     }
 
     private async Task RejectAsync()

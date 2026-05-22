@@ -2383,7 +2383,7 @@ body {
 
 .proposal-actions {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) max-content max-content max-content;
+    grid-template-columns: minmax(0, 1fr) repeat(4, max-content);
     gap: 8px;
     align-items: end;
     padding: 10px;
@@ -2517,7 +2517,7 @@ body {
     }
 
     .proposal-actions {
-        grid-template-columns: minmax(220px, 1fr) repeat(3, minmax(92px, max-content));
+        grid-template-columns: minmax(220px, 1fr) repeat(4, minmax(92px, max-content));
     }
 
     .admin-panel-grid:not(.profile-panel-grid) {

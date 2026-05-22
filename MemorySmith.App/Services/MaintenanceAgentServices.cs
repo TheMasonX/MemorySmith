@@ -576,6 +576,20 @@ public sealed class MaintenanceProposalWorkflow
         return saved;
     }
 
+    public async Task<MaintenanceWriteProposal> RequestAgentReviewAsync(string proposalId, string? comment, CancellationToken cancellationToken)
+    {
+        var proposal = await LoadRequiredAsync(proposalId, cancellationToken);
+        EnsureActionable(proposal);
+
+        var requestComment = string.IsNullOrWhiteSpace(comment) ? "Agent review requested." : comment.Trim();
+        var comments = proposal.Comments.ToList();
+        comments.Add(new MaintenanceProposalComment(Actor(), DateTimeOffset.UtcNow, requestComment));
+        var updated = AppendHistory(proposal with { Comments = comments }, proposal.Status, "agent_review_requested", null);
+        var saved = await _store.SaveAsync(updated, cancellationToken);
+        await RecordAuditAsync("maintenance.proposal.agent_review_requested", saved, cancellationToken);
+        return saved;
+    }
+
     public async Task<MaintenanceWriteProposal> RejectAsync(string proposalId, string? comment, CancellationToken cancellationToken)
     {
         var proposal = await LoadRequiredAsync(proposalId, cancellationToken);
