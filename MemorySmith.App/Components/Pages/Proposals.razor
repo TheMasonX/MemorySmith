@@ -32,11 +32,12 @@
             <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Psychology" Disabled="@_isBusy" OnClick="RunNowAsync">Run Now</MudButton>
             <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PlayArrow" Disabled="@_isBusy" OnClick="RunTaskAsync">Run Task</MudButton>
             <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.AccountTree" Disabled="@_isBusy" OnClick="RefreshTopicMapAsync">Topic Map</MudButton>
-            @if (_activeRunLabel is not null)
+            @if (CurrentActiveRun is not null)
             {
                 <div class="proposal-active-run" role="status" aria-live="polite">
                     <MudIcon Icon="@Icons.Material.Filled.HourglassTop" Size="Size.Small" />
-                    <span>@_activeRunLabel started @_activeRunStartedAt?.ToLocalTime().ToString("t")</span>
+                    <span>@ActiveRunLabel(CurrentActiveRun) started @CurrentActiveRun.StartedAtUtc.ToLocalTime().ToString("t")</span>
+                    <small>@ActiveRunDetail(CurrentActiveRun)</small>
                 </div>
             }
         </div>
@@ -217,8 +218,10 @@
     private string _selectedTask = "staleness_scan";
     private string _comment = string.Empty;
     private bool _isBusy;
-    private string? _activeRunLabel;
-    private DateTimeOffset? _activeRunStartedAt;
+    private MaintenanceActiveRunSnapshot? _activeRun;
+    private MaintenanceActiveRunSnapshot? _localActiveRun;
+
+    private MaintenanceActiveRunSnapshot? CurrentActiveRun => _activeRun ?? _localActiveRun;
 
     private IReadOnlyList<MaintenanceWriteProposal> FilteredProposals => _proposals
         .Where(proposal => _statusFilter == AllFilterValue || string.Equals(proposal.Status, _statusFilter, StringComparison.OrdinalIgnoreCase))
@@ -238,6 +241,7 @@
         {
             _proposals = await ProposalWorkflow.ListAsync(CancellationToken.None);
             _activity = await Agent.ListRecentActivityAsync(20, CancellationToken.None);
+            _activeRun = Agent.GetActiveRun();
             if (_selectedProposal is not null)
             {
                 _selectedProposal = _proposals.FirstOrDefault(item => item.ProposalId == _selectedProposal.ProposalId);
@@ -275,7 +279,7 @@
 
     private async Task RunNowAsync()
     {
-        await BeginRunAsync("Maintenance review");
+        await BeginRunAsync("run_maintenance_now", null);
         try
         {
             _lastRun = await Agent.RunMaintenanceNowAsync(CancellationToken.None);
@@ -295,7 +299,7 @@
 
     private async Task RunTaskAsync()
     {
-        await BeginRunAsync(TaskLabel(_selectedTask));
+        await BeginRunAsync("run_maintenance_on_demand", _selectedTask);
         try
         {
             _lastRun = await Agent.RunMaintenanceOnDemandAsync(_selectedTask, CancellationToken.None);
@@ -313,11 +317,11 @@
         }
     }
 
-    private async Task BeginRunAsync(string label)
+    private async Task BeginRunAsync(string trigger, string? task)
     {
         _isBusy = true;
-        _activeRunLabel = label;
-        _activeRunStartedAt = DateTimeOffset.UtcNow;
+        _localActiveRun = new MaintenanceActiveRunSnapshot(Guid.NewGuid().ToString("N"), trigger, task, DateTimeOffset.UtcNow);
+        _activeRun = Agent.GetActiveRun();
         await InvokeAsync(StateHasChanged);
         await Task.Yield();
     }
@@ -325,8 +329,8 @@
     private void EndRun()
     {
         _isBusy = false;
-        _activeRunLabel = null;
-        _activeRunStartedAt = null;
+        _localActiveRun = null;
+        _activeRun = Agent.GetActiveRun();
     }
 
     private async Task RefreshTopicMapAsync()
@@ -456,6 +460,29 @@
         var status = activity.Skipped ? "Skipped" : "Completed";
         var tasks = activity.Tasks.Count == 0 ? "No tasks" : string.Join(", ", activity.Tasks.Select(TaskLabel));
         return $"{status}: {tasks}";
+    }
+
+    private static string ActiveRunLabel(MaintenanceActiveRunSnapshot activeRun) => activeRun.Trigger switch
+    {
+        "run_maintenance_now" => "Maintenance review",
+        "run_maintenance_weekly" => "Weekly maintenance review",
+        "run_maintenance_on_demand" when !string.IsNullOrWhiteSpace(activeRun.Task) => TaskLabel(activeRun.Task),
+        _ => activeRun.Trigger
+    };
+
+    private static string ActiveRunDetail(MaintenanceActiveRunSnapshot activeRun)
+    {
+        var trigger = activeRun.Trigger switch
+        {
+            "run_maintenance_now" => "manual run",
+            "run_maintenance_weekly" => "scheduled run",
+            "run_maintenance_on_demand" => "single task",
+            _ => activeRun.Trigger
+        };
+
+        return string.IsNullOrWhiteSpace(activeRun.Task)
+            ? $"{trigger} in progress"
+            : $"{trigger}: {TaskLabel(activeRun.Task)}";
     }
 
     private static string RunSummary(MaintenanceRunResult run) =>
