@@ -153,6 +153,9 @@ public class TagGovernanceTests
             Assert.That(markup, Does.Contain("<MudTabPanel Text=\"OAuth\""));
             Assert.That(markup, Does.Contain("<MudTabPanel Text=\"Models\""));
             Assert.That(markup, Does.Contain("ChatModelProfileService ModelProfiles"));
+            Assert.That(markup, Does.Contain("Maintenance runs"));
+            Assert.That(markup, Does.Contain("Proposal reviews"));
+            Assert.That(markup, Does.Contain("Admin maintenance chat"));
             Assert.That(markup, Does.Contain("admin-setting-key"));
             Assert.That(markup, Does.Contain("Icons.Material.Filled.Info"));
             Assert.That(markup, Does.Contain("@context.Item.HelpText"));
