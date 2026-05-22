@@ -189,7 +189,10 @@ public sealed record AgentMemoryWriteProposal(
 
 public sealed record AgentPageWriteProposal(string Slug, string Title, string Markdown);
 
-public sealed record AgentWriteApplyResult(IReadOnlyList<string> WrittenMemories, IReadOnlyList<string> WrittenPages);
+public sealed record AgentWriteApplyResult(
+    IReadOnlyList<string> WrittenMemories,
+    IReadOnlyList<string> WrittenPages,
+    IReadOnlyList<string>? SubmittedProposalIds = null);
 
 public sealed record MemoryChatResponse(
     string Reply,
@@ -1073,6 +1076,10 @@ public sealed partial class MemoryChatAgent : IChatAgent
     {
         WriteIndented = true
     };
+    private static readonly JsonSerializerOptions MemoryJsonOptions = new()
+    {
+        WriteIndented = true
+    };
     private readonly List<IChatProvider> _providers;
     private readonly MemoryApplicationService _memories;
     private readonly IPageService _pages;
@@ -1080,6 +1087,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
     private readonly ICurrentUserContext? _currentUser;
     private readonly ChatToolCatalog _toolCatalog;
     private readonly ChatIntentInterceptor _intentInterceptor;
+    private readonly MaintenanceProposalWorkflow? _proposalWorkflow;
 
     public MemoryChatAgent(
         IEnumerable<IChatProvider> providers,
@@ -1088,7 +1096,8 @@ public sealed partial class MemoryChatAgent : IChatAgent
         IOptions<MemorySmithOptions> options,
         ICurrentUserContext? currentUser = null,
         ChatToolCatalog? toolCatalog = null,
-        ChatIntentInterceptor? intentInterceptor = null)
+        ChatIntentInterceptor? intentInterceptor = null,
+        MaintenanceProposalWorkflow? proposalWorkflow = null)
     {
         _providers = providers.ToList();
         if (_providers.Count == 0)
@@ -1102,6 +1111,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
         _toolCatalog = toolCatalog ?? new ChatToolCatalog();
         _intentInterceptor = intentInterceptor ?? new ChatIntentInterceptor();
         _currentUser = currentUser;
+        _proposalWorkflow = proposalWorkflow;
     }
 
     public async Task<MemoryChatResponse> SendAsync(MemoryChatRequest request, CancellationToken cancellationToken)
@@ -1425,6 +1435,11 @@ public sealed partial class MemoryChatAgent : IChatAgent
             throw new InvalidOperationException("Your current MemorySmith role cannot approve agent writes; no memories or pages were changed.");
         }
 
+        if (_proposalWorkflow is not null)
+        {
+            return await SubmitAgentWriteProposalsAsync(memoryWrites, pageWrites, cancellationToken);
+        }
+
         var writtenMemories = new List<string>();
         foreach (var proposal in memoryWrites)
         {
@@ -1446,6 +1461,127 @@ public sealed partial class MemoryChatAgent : IChatAgent
         }
 
         return new AgentWriteApplyResult(writtenMemories, writtenPages);
+    }
+
+    private async Task<AgentWriteApplyResult> SubmitAgentWriteProposalsAsync(
+        IReadOnlyList<AgentMemoryWriteProposal> memoryWrites,
+        IReadOnlyList<AgentPageWriteProposal> pageWrites,
+        CancellationToken cancellationToken)
+    {
+        var changes = new List<MaintenanceProposalChange>();
+        var relatedRecords = new List<string>();
+        var confidences = new List<double>();
+
+        foreach (var proposal in memoryWrites)
+        {
+            var change = await BuildMemoryProposalChangeAsync(proposal, cancellationToken);
+            if (change is not null)
+            {
+                changes.Add(change.Value.Change);
+                relatedRecords.Add(change.Value.RecordId);
+                confidences.Add(proposal.Confidence);
+            }
+        }
+
+        foreach (var proposal in pageWrites)
+        {
+            var change = await BuildPageProposalChangeAsync(proposal, cancellationToken);
+            if (change is not null)
+            {
+                changes.Add(change);
+                confidences.Add(0.7);
+            }
+        }
+
+        if (changes.Count == 0)
+        {
+            return new AgentWriteApplyResult([], [], []);
+        }
+
+        var confidence = confidences.Count == 0 ? 0.7 : confidences.Average();
+        var submitted = await _proposalWorkflow!.SubmitAsync(new MaintenanceWriteProposal
+        {
+            ProposalId = $"chat-agent-{DateTimeOffset.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid():N}"[..54],
+            Changes = changes,
+            Evidence =
+            [
+                new MaintenanceEvidenceItem(
+                    "chat-agent",
+                    "Approved chat-agent write proposal",
+                    Excerpt: "A chat Agent response proposed memory/page writes. The user approved submission to the maintenance proposal workflow; no file changes are applied until this proposal is approved.")
+            ],
+            RelatedRecords = relatedRecords.Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+            RiskLevel = changes.Count > 1 ? MaintenanceProposalRiskLevels.Medium : MaintenanceProposalRiskLevels.Low,
+            Confidence = confidence,
+            Metadata = new MaintenanceProposalMetadata(
+                "chat-agent-write-proposal",
+                confidence,
+                changes.Count > 1 ? MaintenanceProposalRiskLevels.Medium : MaintenanceProposalRiskLevels.Low,
+                relatedRecords.Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+                [],
+                [],
+                "chat-agent.proposal-gated.v1")
+        }, cancellationToken);
+
+        return new AgentWriteApplyResult([], [], [submitted.ProposalId]);
+    }
+
+    private async Task<(MaintenanceProposalChange Change, string RecordId)?> BuildMemoryProposalChangeAsync(AgentMemoryWriteProposal proposal, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(proposal.Content))
+        {
+            return null;
+        }
+
+        var id = NormalizeMemoryId(string.IsNullOrWhiteSpace(proposal.Id) ? proposal.Title : proposal.Id);
+        var existing = await _memories.GetAsync(id, cancellationToken);
+        var record = new MemoryRecord
+        {
+            Id = id,
+            Title = string.IsNullOrWhiteSpace(proposal.Title) ? existing?.Title ?? id : proposal.Title,
+            Content = proposal.Content,
+            Status = MemoryStatus.Working,
+            Confidence = proposal.Confidence,
+            Tags = proposal.Tags.Count == 0 ? ["agent", "chat"] : proposal.Tags.ToList(),
+            References = existing?.References.ToList() ?? [],
+            Conflicts = existing?.Conflicts.ToList() ?? [],
+            SourceLinks = existing?.SourceLinks.ToList() ?? [],
+            UsageCount = existing?.UsageCount ?? 0,
+            LastUpdated = DateTime.UtcNow
+        };
+
+        var before = existing is { Status: MemoryStatus.Working }
+            ? JsonSerializer.Serialize(existing, MemoryJsonOptions) + Environment.NewLine
+            : string.Empty;
+        var after = JsonSerializer.Serialize(record, MemoryJsonOptions) + Environment.NewLine;
+        if (string.Equals(before, after, StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        var path = Path.Combine(Path.GetFullPath(_options.Value.DataPath), MemoryStatus.Working.ToString(), $"{id}.json");
+        return (new MaintenanceProposalChange(path, before, after), id);
+    }
+
+    private async Task<MaintenanceProposalChange?> BuildPageProposalChangeAsync(AgentPageWriteProposal proposal, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(proposal.Markdown))
+        {
+            return null;
+        }
+
+        var slug = FilePageService.NormalizeSlug(string.IsNullOrWhiteSpace(proposal.Slug) ? proposal.Title : proposal.Slug);
+        var existing = await _pages.GetAsync(slug, cancellationToken);
+        var before = existing?.Markdown ?? string.Empty;
+        var after = proposal.Markdown.EndsWith(Environment.NewLine, StringComparison.Ordinal) ? proposal.Markdown : proposal.Markdown + Environment.NewLine;
+        if (string.Equals(before, after, StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        var relative = slug.Replace('/', Path.DirectorySeparatorChar) + ".md";
+        var path = Path.Combine(Path.GetFullPath(_options.Value.PagesPath), relative);
+        return new MaintenanceProposalChange(path, before, after);
     }
 
     private IChatProvider ResolveProvider(string? providerName)

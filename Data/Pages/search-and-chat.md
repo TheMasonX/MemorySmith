@@ -73,7 +73,7 @@ Process note: for chat quality work, test both a no-context prompt such as `Repl
 
 ## Agent Mode
 
-Agent mode asks the provider for structured actions. It can write memories and pages only when agent writes are explicitly enabled; the default is disabled. The chat UI requires explicit approval before applying proposed Agent memory/page writes, and each proposed write can be approved or rejected from the Trace side panel. Read-only tool calls are bounded by configured limits for iterations, tool calls per turn, and returned characters.
+Agent mode asks the provider for structured actions. It can propose memories and pages only when agent writes are explicitly enabled; the default is disabled. The chat UI requires explicit approval before proposed Agent memory/page writes leave the chat turn. Approval submits a maintenance proposal with file diffs, stores the submitted proposal id on the chat turn, and leaves `/proposals` as the only production path that applies the underlying file changes. Each pending write can still be submitted or rejected from the Trace side panel. Read-only tool calls are bounded by configured limits for iterations, tool calls per turn, and returned characters.
 
 During generation, the icon Stop control cancels immediately. The icon Finish Step control requests a softer stop: the current provider/tool step is allowed to finish, then MemorySmith stops before continuing the tool loop.
 

@@ -127,7 +127,7 @@
                             </div>
                         }
 
-                        @if (turn.Context.Count > 0 || turn.WrittenMemories.Count > 0 || turn.WrittenPages.Count > 0)
+                        @if (turn.Context.Count > 0 || turn.WrittenMemories.Count > 0 || turn.WrittenPages.Count > 0 || turn.SubmittedProposalIds.Count > 0)
                         {
                             <details class="chat-context-drawer">
                                 <summary>References (@TurnReferenceCount(turn))</summary>
@@ -149,6 +149,10 @@
                                     @foreach (var slug in turn.WrittenPages)
                                     {
                                         <a class="wiki-status is-core chat-resource" href="@PageHref(slug)" target="_blank" rel="noopener noreferrer">page:@slug</a>
+                                    }
+                                    @foreach (var proposalId in turn.SubmittedProposalIds)
+                                    {
+                                        <a class="wiki-status is-working chat-resource" href="/proposals" target="_blank" rel="noopener noreferrer">proposal:@proposalId</a>
                                     }
                                 </div>
                             </details>
@@ -655,6 +659,7 @@
             ProposedPageWrites = ReadJsonObjects(item, "proposedPageWrites").Select(ParseStoredPageWriteProposal).Where(proposal => proposal is not null).Select(proposal => proposal!).ToList(),
             WrittenMemories = ReadJsonStrings(item, "writtenMemories"),
             WrittenPages = ReadJsonStrings(item, "writtenPages"),
+            SubmittedProposalIds = ReadJsonStrings(item, "submittedProposalIds"),
             Attachments = ReadJsonObjects(item, "attachments").Select(ParseStoredAttachment).Where(attachment => attachment is not null).Select(attachment => attachment!).ToList(),
             ProviderName = ReadJsonString(item, "providerName"),
             Model = ReadJsonString(item, "model"),
@@ -854,6 +859,7 @@
         turn.ProposedPageWrites.Count > 0 ||
         turn.WrittenMemories.Count > 0 ||
         turn.WrittenPages.Count > 0 ||
+        turn.SubmittedProposalIds.Count > 0 ||
         turn.Usage is not null;
 
     private IEnumerable<ChatTraceEntryState> FilteredTraceEntries(ChatTurnState turn) =>
@@ -1426,12 +1432,23 @@
         try
         {
             var result = await ChatAgent.ApplyAgentWritesAsync(memories, pages, CancellationToken.None);
-            turn.WrittenMemories.AddRange(result.WrittenMemories.Where(id => !turn.WrittenMemories.Contains(id, StringComparer.OrdinalIgnoreCase)));
-            turn.WrittenPages.AddRange(result.WrittenPages.Where(slug => !turn.WrittenPages.Contains(slug, StringComparer.OrdinalIgnoreCase)));
-            turn.ProposedMemoryWrites.RemoveAll(proposal => result.WrittenMemories.Contains(proposal.Id, StringComparer.OrdinalIgnoreCase));
-            turn.ProposedPageWrites.RemoveAll(proposal => result.WrittenPages.Contains(proposal.Slug, StringComparer.OrdinalIgnoreCase));
-            AddTraceEntry(turn, ChatTraceKinds.Write, "Agent writes approved", FormatAppliedWriteSummary(result), IsError: false);
-            _agentStatus = $"Applied {result.WrittenMemories.Count + result.WrittenPages.Count} approved write(s)";
+            if (result.SubmittedProposalIds?.Count > 0)
+            {
+                turn.SubmittedProposalIds.AddRange(result.SubmittedProposalIds.Where(id => !turn.SubmittedProposalIds.Contains(id, StringComparer.OrdinalIgnoreCase)));
+                turn.ProposedMemoryWrites.RemoveAll(proposal => memories.Any(memory => string.Equals(memory.Id, proposal.Id, StringComparison.OrdinalIgnoreCase)));
+                turn.ProposedPageWrites.RemoveAll(proposal => pages.Any(page => string.Equals(page.Slug, proposal.Slug, StringComparison.OrdinalIgnoreCase)));
+                AddTraceEntry(turn, ChatTraceKinds.Write, "Agent writes submitted for proposal review", FormatSubmittedProposalSummary(result), IsError: false);
+                _agentStatus = $"Submitted {result.SubmittedProposalIds.Count} proposal(s) for review";
+            }
+            else
+            {
+                turn.WrittenMemories.AddRange(result.WrittenMemories.Where(id => !turn.WrittenMemories.Contains(id, StringComparer.OrdinalIgnoreCase)));
+                turn.WrittenPages.AddRange(result.WrittenPages.Where(slug => !turn.WrittenPages.Contains(slug, StringComparer.OrdinalIgnoreCase)));
+                turn.ProposedMemoryWrites.RemoveAll(proposal => result.WrittenMemories.Contains(proposal.Id, StringComparer.OrdinalIgnoreCase));
+                turn.ProposedPageWrites.RemoveAll(proposal => result.WrittenPages.Contains(proposal.Slug, StringComparer.OrdinalIgnoreCase));
+                AddTraceEntry(turn, ChatTraceKinds.Write, "Agent writes approved", FormatAppliedWriteSummary(result), IsError: false);
+                _agentStatus = $"Applied {result.WrittenMemories.Count + result.WrittenPages.Count} approved write(s)";
+            }
             ActiveSession.UpdatedUtc = DateTimeOffset.UtcNow;
             await SaveSessionsAsync();
         }
@@ -1738,6 +1755,7 @@
             TraceDrawerOpen = false,
             WrittenMemories = turn.WrittenMemories.ToList(),
             WrittenPages = turn.WrittenPages.ToList(),
+            SubmittedProposalIds = turn.SubmittedProposalIds.ToList(),
             Attachments = includeAttachments ? turn.Attachments.Select(TrimAttachmentForStorage).ToList() : [],
             ProviderName = turn.ProviderName,
             Model = turn.Model,
@@ -1943,6 +1961,12 @@
         return lines.Count == 0 ? "No writes were applied." : string.Join(Environment.NewLine, lines);
     }
 
+    private static string FormatSubmittedProposalSummary(AgentWriteApplyResult result)
+    {
+        var lines = result.SubmittedProposalIds?.Select(id => $"- proposal:{id}").ToList() ?? [];
+        return lines.Count == 0 ? "No proposals were submitted." : string.Join(Environment.NewLine, lines);
+    }
+
     private static int EstimateTraceTokens(string? value) =>
         string.IsNullOrWhiteSpace(value) ? 0 : Math.Max(1, (int)Math.Ceiling(value.Length / 4.0));
 
@@ -2120,7 +2144,7 @@
     };
 
     private static int TurnReferenceCount(ChatTurnState turn) =>
-        turn.Context.Count + turn.WrittenMemories.Count + turn.WrittenPages.Count;
+        turn.Context.Count + turn.WrittenMemories.Count + turn.WrittenPages.Count + turn.SubmittedProposalIds.Count;
 
     private static string PageHref(string slug) =>
         "/pages/" + string.Join('/', slug.Split('/', StringSplitOptions.RemoveEmptyEntries).Select(Uri.EscapeDataString));
@@ -2320,6 +2344,7 @@
         public bool TraceDrawerOpen { get; set; }
         public List<string> WrittenMemories { get; set; } = [];
         public List<string> WrittenPages { get; set; } = [];
+        public List<string> SubmittedProposalIds { get; set; } = [];
         public List<ChatAttachment> Attachments { get; set; } = [];
         public string? ProviderName { get; set; }
         public string? Model { get; set; }

@@ -46,14 +46,13 @@ Open design questions:
 
 ## Chat Agent Writes Through Proposals
 
-Standard chat-agent edits should likely use the proposal workflow instead of a separate trace-only approval path. This would unify audit, diff review, revision, approval, rejection, and history behavior for all agent writes.
+Implemented current state: standard chat-agent memory/page write approval now submits a maintenance proposal instead of applying writes directly in production DI. The chat turn stores the submitted proposal id in its References drawer, and `/proposals` remains the review/approval surface that applies file changes after before-text validation. The legacy direct-apply path remains available only when a host constructs `MemoryChatAgent` without `MaintenanceProposalWorkflow`.
 
 Open design questions:
 
-- How much of the current chat trace approval UI remains after writes become proposals?
-- Should chat users see proposal ids inline with the assistant response?
 - Should viewers/editors be able to draft proposals without approve permission?
 - How should proposal history connect back to the chat turn that created it?
+- Should chat-submitted proposal links deep-link into a selected proposal once `/proposals` supports query-string selection?
 
 ## Chat Compaction Mode
 
