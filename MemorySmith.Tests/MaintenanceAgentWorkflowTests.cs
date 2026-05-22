@@ -423,6 +423,7 @@ public class MaintenanceAgentWorkflowTests
 
         await agent.RunMaintenanceOnDemandAsync("staleness_scan", CancellationToken.None);
         var activity = await agent.ListRecentActivityAsync(10, CancellationToken.None);
+        var proposal = (await _workflow.ListAsync(CancellationToken.None)).Single();
 
         Assert.Multiple(() =>
         {
@@ -431,6 +432,7 @@ public class MaintenanceAgentWorkflowTests
             Assert.That(activity.Single().Tasks, Is.EqualTo(new[] { "staleness_scan" }));
             Assert.That(activity.Single().FindingCount, Is.EqualTo(1));
             Assert.That(activity.Single().ProposalCount, Is.EqualTo(1));
+            Assert.That(activity.Single().ProposalIds, Is.EqualTo(new[] { proposal.ProposalId }));
             Assert.That(File.Exists(Path.Combine(_tempDir, "Events", "maintenance-agent-runs.jsonl")), Is.True);
         });
     }

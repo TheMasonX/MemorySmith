@@ -80,6 +80,19 @@
                                     <small>@activity.FinishedAtUtc.ToLocalTime().ToString("g")</small>
                                 </span>
                                 <span>@activity.FindingCount finding(s) - @activity.ProposalCount proposal(s)</span>
+                                @if (activity.ProposalIds.Count > 0)
+                                {
+                                    <div class="maintenance-activity-proposals" aria-label="Maintenance proposals from this run">
+                                        @foreach (var proposalId in activity.ProposalIds.Take(5))
+                                        {
+                                            <button type="button" @onclick="@(() => SelectProposalByIdAsync(proposalId))">@proposalId</button>
+                                        }
+                                        @if (activity.ProposalIds.Count > 5)
+                                        {
+                                            <small>+@(activity.ProposalIds.Count - 5) more</small>
+                                        }
+                                    </div>
+                                }
                                 @if (activity.Warnings.Count > 0)
                                 {
                                     <small class="maintenance-activity-warning">@activity.Warnings.First()</small>
@@ -240,6 +253,24 @@
     {
         _selectedProposal = proposal;
         _comment = string.Empty;
+    }
+
+    private async Task SelectProposalByIdAsync(string proposalId)
+    {
+        var proposal = _proposals.FirstOrDefault(item => string.Equals(item.ProposalId, proposalId, StringComparison.OrdinalIgnoreCase));
+        if (proposal is null)
+        {
+            await LoadAsync();
+            proposal = _proposals.FirstOrDefault(item => string.Equals(item.ProposalId, proposalId, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (proposal is null)
+        {
+            Snackbar.Add($"Proposal {proposalId} is no longer available.", Severity.Warning);
+            return;
+        }
+
+        SelectProposal(proposal);
     }
 
     private async Task RunNowAsync()
