@@ -54,6 +54,12 @@ The Retrieval Specialist would prefer broader ranking quality probes immediately
 - Benchmark smoke command passes: `dotnet run -c Release --project MemorySmith.Benchmarks -- --smoke`.
 - No ranking formula or persisted memory schema changes are introduced.
 
+## Post-Implementation Checkpoints
+
+Stage 1, search and formatter plumbing: implemented in `591f2bb Tighten search diagnostics follow-up`. The follow-up added a shared `MemoryContextPackFormatter`, routed direct MCP and chat context-pack output through it, and applied hybrid search limits before diagnostics enrichment. Validation passed with `dotnet build MemorySmith.slnx -v minimal`, affected tests at 80/80, full tests at 225/225, and benchmark smoke returning results for lexical metadata diagnostics, semantic, hybrid, chat-context, and context-pack paths. Council conclusion: acceptance criteria met without ranking or schema changes. Confidence: 0.91.
+
+Stage 2, PR review closure: current source evidence shows lexical N+1 diagnostics, semantic linear-scan enrichment, warning bloat, deprecation event spam, duplicated deprecation thresholds, and Markdown formatter drift have been addressed. The only remaining source-grounded cleanup was removing blocklisted status-like `working` tags from memory records because `Status` already carries that state. This is a policy-conformance edit, not a new retrieval or schema decision, so a fresh full council was not required. Validation gate: no `"working"` tags remain under `Data/Memories/**/*.json`, and focused governance/search tests pass. Confidence: 0.89.
+
 ## Open Questions
 
 - Should future search quality gates compute MRR/NDCG over the project wiki rather than only top-hit and must-contain probes?

@@ -12,8 +12,7 @@
     "agent-memory",
     "search",
     "chat",
-    "pages",
-    "working"
+    "pages"
   ],
   "References": [
     "project-wiki-search-roadmap",
