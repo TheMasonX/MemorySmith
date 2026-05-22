@@ -348,25 +348,9 @@
         }
         else
         {
-            var results = await Memories.SearchAsync(new MemorySearchQuery(_searchQuery, _statusFilter, _tagsFilter, 100), CancellationToken.None);
+            var results = await Memories.SearchMetadataAsync(new MemorySearchQuery(_searchQuery, _statusFilter, _tagsFilter, 100), CancellationToken.None);
             _semanticMatches.Clear();
-            var lexicalMetadata = new List<MemoryMetadata>();
-            foreach (var record in results)
-            {
-                lexicalMetadata.Add(new MemoryMetadata
-                {
-                    Id = record.Id,
-                    Title = record.Title,
-                    Status = record.Status,
-                    Confidence = record.Confidence,
-                    Tags = record.Tags,
-                    Diagnostics = (await Memories.GetDiagnosticsAsync(record.Id, CancellationToken.None)).ToList(),
-                    UsageCount = record.UsageCount,
-                    LastUpdated = record.LastUpdated
-                });
-            }
-
-            _memories = lexicalMetadata;
+            _memories = results.ToList();
         }
 
         _totalCount = _memories.Count;

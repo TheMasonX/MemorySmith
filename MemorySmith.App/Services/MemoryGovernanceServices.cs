@@ -101,8 +101,6 @@ public sealed class TagPolicyService
 
 public sealed partial class MemoryDiagnosticsService
 {
-    private const double DeprecationRecommendationThreshold = 0.2;
-
     private readonly TagPolicyService _tagPolicyService;
     private readonly VarResolver _vars;
     private readonly IMemoryStore _store;
@@ -389,7 +387,7 @@ public sealed partial class MemoryDiagnosticsService
         }
 
         var score = MemoryScorer.Score(record);
-        if (score < DeprecationRecommendationThreshold)
+        if (score < MemoryStateMachine.DeprecationThreshold)
         {
             yield return Warning("maintenance.low_score_deprecation_recommended", "maintenance", $"Memory score {score:0.###} is below the deprecation threshold, but automatic deprecation is disabled.", nameof(MemoryRecord.Status));
         }

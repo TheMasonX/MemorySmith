@@ -98,6 +98,25 @@ public class MemoryMaintenanceTasksTests
     }
 
     [Test]
+    public async Task RunConsolidationAsync_DoesNotRepeatExistingDeprecationRecommendation()
+    {
+        _store.Save(new MemoryRecord
+        {
+            Id = "deprecate",
+            Title = "Deprecate",
+            Content = "Old low value",
+            Status = MemoryStatus.Unconsolidated,
+            Confidence = 0,
+            LastUpdated = DateTime.UtcNow.AddDays(-200)
+        });
+
+        await _tasks.RunConsolidationAsync(CancellationToken.None);
+        await _tasks.RunConsolidationAsync(CancellationToken.None);
+
+        Assert.That(_events.Events.Count(memoryEvent => memoryEvent.Action == "DeprecationRecommended"), Is.EqualTo(1));
+    }
+
+    [Test]
     public async Task RunConsolidationAsync_DeprecatesLowScoreRecordsWhenExplicitlyEnabled()
     {
         var tasks = new MemoryMaintenanceTasks(

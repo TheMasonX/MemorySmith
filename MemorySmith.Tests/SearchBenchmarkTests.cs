@@ -160,6 +160,32 @@ public class SearchBenchmarkTests
         TestContext.Out.WriteLine($"20 hybrid queries: {sw.ElapsedMilliseconds} ms ({sw.ElapsedMilliseconds / queries.Length} ms avg)");
     }
 
+    [Test]
+    public async Task LexicalMetadataDiagnostics_ThroughputBaseline_20QueriesUnder2s()
+    {
+        var queries = new[]
+        {
+            "data folder", "validation command", "hybrid search", "project wiki",
+            "windows service", "mcp context pack", "semantic scoring", "source links",
+            "chat provider", "image attachments", "scope boundaries", "storage lifecycle",
+            "agent instructions", "api contract", "search quality", "test fixture",
+            "event store", "page assets", "governance diagnostics", "maintenance"
+        };
+
+        var sw = Stopwatch.StartNew();
+        foreach (var query in queries)
+        {
+            await _service.SearchMetadataAsync(
+                new MemorySearchQuery(query, Status: null, Tags: "project-wiki", Limit: 10),
+                CancellationToken.None);
+        }
+        sw.Stop();
+
+        Assert.That(sw.ElapsedMilliseconds, Is.LessThan(2000),
+            $"20 lexical metadata queries with diagnostics took {sw.ElapsedMilliseconds} ms; expected under 2 000 ms.");
+        TestContext.Out.WriteLine($"20 lexical metadata queries: {sw.ElapsedMilliseconds} ms ({sw.ElapsedMilliseconds / queries.Length} ms avg)");
+    }
+
     // ── Source link tools ─────────────────────────────────────────────────────
 
     [Test]
@@ -343,7 +369,12 @@ internal static class ServiceFactory
         var options = Microsoft.Extensions.Options.Options.Create(new MemorySmithOptions());
         var telemetry = new BackgroundServiceTelemetryTracker();
         var publisher = new NoOpPublisher();
-        return new MemoryApplicationService(store, eventStore, index, telemetry, publisher, options);
+        var diagnostics = new MemoryDiagnosticsService(
+            new TagPolicyService(options),
+            new VarResolver(new EmptyVarStore(), options),
+            store,
+            options);
+        return new MemoryApplicationService(store, eventStore, index, telemetry, publisher, options, diagnostics: diagnostics);
     }
 }
 

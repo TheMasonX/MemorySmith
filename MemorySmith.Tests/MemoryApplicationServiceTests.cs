@@ -215,6 +215,49 @@ public class MemoryApplicationServiceTests
     }
 
     [Test]
+    public async Task SearchMetadataAsync_AttachesDiagnosticsFromSingleStorageSnapshot()
+    {
+        var store = new CountingMemoryStore();
+        var options = Options.Create(new MemorySmithOptions());
+        var diagnostics = new MemoryDiagnosticsService(
+            new TagPolicyService(options),
+            new VarResolver(new EmptyVarStore(), options),
+            store,
+            options);
+        var service = new MemoryApplicationService(
+            store,
+            _events,
+            new MemorySmith.Core.Indexing.MemoryIndex(),
+            new BackgroundServiceTelemetryTracker(),
+            _publisher,
+            options,
+            diagnostics: diagnostics);
+
+        for (var i = 0; i < 25; i++)
+        {
+            store.Save(new MemoryRecord
+            {
+                Id = $"diagnostic-hit-{i:D2}",
+                Title = $"Needle {i:D2}",
+                Content = "needle content",
+                Tags = ["working"],
+                Confidence = 1,
+                LastUpdated = DateTime.UtcNow
+            });
+        }
+
+        var results = await service.SearchMetadataAsync(new MemorySearchQuery("needle", Limit: 10), CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(results, Has.Count.EqualTo(10));
+            Assert.That(results, Has.All.Matches<MemoryMetadata>(metadata =>
+                metadata.Diagnostics.Any(diagnostic => diagnostic.Code == "tag.blocked")));
+            Assert.That(store.LoadAllCallCount, Is.EqualTo(1));
+        });
+    }
+
+    [Test]
     public async Task SemanticSearchAsync_ReturnsMetadataScoreAndMatchReason()
     {
         _store.Save(new MemoryRecord
@@ -489,6 +532,46 @@ public class MemoryApplicationServiceTests
     }
 
     [Test]
+    public async Task BuildContextPackAsync_AddsOnlyWarningDiagnosticsToWarningSummaries()
+    {
+        var options = Options.Create(new MemorySmithOptions());
+        var diagnostics = new MemoryDiagnosticsService(
+            new TagPolicyService(options),
+            new VarResolver(new EmptyVarStore(), options),
+            _store,
+            options);
+        var service = new MemoryApplicationService(
+            _store,
+            _events,
+            new MemorySmith.Core.Indexing.MemoryIndex(),
+            new BackgroundServiceTelemetryTracker(),
+            _publisher,
+            options,
+            diagnostics: diagnostics);
+        _store.Save(new MemoryRecord
+        {
+            Id = "diagnostic-root",
+            Title = "Diagnostic Root",
+            Content = "Context pack diagnostics should keep warning signal without alias noise.",
+            Status = MemoryStatus.Core,
+            Tags = ["retrieval", "working"],
+            Confidence = 1,
+            LastUpdated = DateTime.UtcNow
+        });
+
+        var pack = await service.BuildContextPackAsync(
+            new MemoryContextPackQuery(Ids: "diagnostic-root", ReferenceDepth: 0),
+            CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(pack.Records.Single().Diagnostics.Select(diagnostic => diagnostic.Code), Does.Contain("tag.alias"));
+            Assert.That(pack.Warnings, Has.Some.Contains("tag.blocked"));
+            Assert.That(pack.Warnings, Has.None.Contains("tag.alias"));
+        });
+    }
+
+    [Test]
     public async Task IncrementUsageAsync_UpdatesRecordAuditsAndPublishesStats()
     {
         _store.Save(new MemoryRecord { Id = "usage", Title = "Usage", Content = "Track me", UsageCount = 2 });
@@ -513,7 +596,8 @@ internal static class TestServiceFactory
         IMemoryStore store,
         IEventStore eventStore,
         IMemoryChangePublisher publisher,
-        SemanticEmbeddingSearchService? semanticEmbeddings = null)
+        SemanticEmbeddingSearchService? semanticEmbeddings = null,
+        MemoryDiagnosticsService? diagnostics = null)
     {
         return new MemoryApplicationService(
             store,
@@ -522,7 +606,39 @@ internal static class TestServiceFactory
             new BackgroundServiceTelemetryTracker(),
             publisher,
             Options.Create(new MemorySmithOptions()),
-            semanticEmbeddings);
+            semanticEmbeddings,
+            diagnostics: diagnostics);
+    }
+}
+
+internal sealed class CountingMemoryStore : IMemoryStore
+{
+    private readonly Dictionary<string, MemoryRecord> _records = new(StringComparer.OrdinalIgnoreCase);
+
+    public int LoadAllCallCount { get; private set; }
+
+    public MemoryRecord? Load(string id) =>
+        _records.TryGetValue(id, out var record) ? record : null;
+
+    public void Save(MemoryRecord record) =>
+        _records[record.Id] = record;
+
+    public void Delete(string id) =>
+        _records.Remove(id);
+
+    public IEnumerable<MemoryRecord> LoadAll()
+    {
+        LoadAllCallCount++;
+        return _records.Values.ToList();
+    }
+}
+
+internal sealed class EmptyVarStore : IVarStore
+{
+    public IReadOnlyDictionary<string, string> Load() => new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+    public void Save(IReadOnlyDictionary<string, string> vars)
+    {
     }
 }
 
