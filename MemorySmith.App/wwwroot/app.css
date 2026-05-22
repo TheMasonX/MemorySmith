@@ -2051,6 +2051,50 @@ body {
     min-width: 150px;
 }
 
+.admin-maintenance-layout {
+    display: grid;
+    grid-template-columns: minmax(280px, 36%) minmax(0, 1fr);
+    gap: 10px;
+    min-height: 0;
+}
+
+.admin-maintenance-chat,
+.admin-maintenance-transcripts,
+.admin-maintenance-transcript-list,
+.admin-maintenance-transcript {
+    display: grid;
+    gap: 10px;
+}
+
+.admin-maintenance-actions,
+.admin-maintenance-transcript header {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+}
+
+.admin-maintenance-transcript {
+    padding: 10px;
+    border: 1px solid var(--vscode-border-soft);
+    background: var(--vscode-panel-soft);
+}
+
+.admin-maintenance-transcript p {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.admin-maintenance-transcript header span {
+    color: var(--vscode-text-muted);
+}
+
+.admin-maintenance-warning {
+    color: var(--vscode-yellow);
+    overflow-wrap: anywhere;
+}
+
 .admin-provider-cell {
     display: inline-flex;
     align-items: center;
@@ -2570,6 +2614,7 @@ body {
     }
 
     .admin-models-layout,
+    .admin-maintenance-layout,
     .admin-model-editor-grid {
         grid-template-columns: 1fr;
     }

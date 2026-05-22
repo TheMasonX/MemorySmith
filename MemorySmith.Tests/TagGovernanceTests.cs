@@ -156,6 +156,10 @@ public class TagGovernanceTests
             Assert.That(markup, Does.Contain("admin-setting-key"));
             Assert.That(markup, Does.Contain("Icons.Material.Filled.Info"));
             Assert.That(markup, Does.Contain("@context.Item.HelpText"));
+                Assert.That(markup, Does.Contain("<MudTabPanel Text=\"Maintenance\""));
+                Assert.That(markup, Does.Contain("MaintenanceAgentService Agent"));
+                Assert.That(markup, Does.Contain("SendMaintenanceMessageAsync"));
+                Assert.That(markup, Does.Contain("admin-maintenance-layout"));
             Assert.That(navMarkup, Does.Contain("Href=\"/tags\""));
             Assert.That(navMarkup, Does.Contain("Tags"));
         });
