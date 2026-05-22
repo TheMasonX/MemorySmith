@@ -371,11 +371,6 @@ try
         }
 
         var normalizedAssetPath = NormalizePageAssetRequestPath(assetPath);
-        if (normalizedAssetPath is null)
-        {
-            return Results.BadRequest();
-        }
-
         var canView = await CanViewPageAssetAsync(pages, normalizedAssetPath, httpContext.User, options.CurrentValue.Auth, authorization, cancellationToken);
         if (!canView)
         {
@@ -410,6 +405,11 @@ public partial class Program
 
     private static string? ResolvePageAssetPath(string pageAssetsPath, string assetPath)
     {
+        if (!HasValidPercentEncoding(assetPath))
+        {
+            return null;
+        }
+
         var normalizedAssetPath = NormalizePageAssetRequestPath(assetPath);
         if (string.IsNullOrWhiteSpace(normalizedAssetPath) || normalizedAssetPath.Split('/').Any(segment => segment is ".." or "."))
         {
@@ -421,28 +421,8 @@ public partial class Program
         return resolvedPath.StartsWith(normalizedRoot, StringComparison.OrdinalIgnoreCase) ? resolvedPath : null;
     }
 
-    private static string? NormalizePageAssetRequestPath(string assetPath)
-    {
-        var normalizedAssetPath = (assetPath ?? string.Empty).Replace('\\', '/').TrimStart('/');
-        if (!HasValidPercentEncoding(normalizedAssetPath))
-        {
-            return null;
-        }
-
-        try
-        {
-            normalizedAssetPath = Uri.UnescapeDataString(normalizedAssetPath);
-        }
-        catch (UriFormatException)
-        {
-            return null;
-        }
-
-        var terminatorIndex = normalizedAssetPath.IndexOfAny(['?', '#']);
-        return terminatorIndex >= 0
-            ? normalizedAssetPath[..terminatorIndex]
-            : normalizedAssetPath;
-    }
+    private static string NormalizePageAssetRequestPath(string assetPath) =>
+        Uri.UnescapeDataString((assetPath ?? string.Empty).Replace('\\', '/').TrimStart('/'));
 
     private static async Task<bool> CanViewPageAssetAsync(
         FilePageService pages,
@@ -458,8 +438,7 @@ public partial class Program
             return PageAccessLevels.CanView(accessInfo.MinimumRole, user, auth);
         }
 
-        return
-            (await authorization.AuthorizeAsync(user, null, MemorySmithPolicies.CanEditMemorySmith)).Succeeded;
+        return (await authorization.AuthorizeAsync(user, null, MemorySmithPolicies.CanEditMemorySmith)).Succeeded;
     }
 
     private static bool HasValidPercentEncoding(string value)
@@ -475,8 +454,6 @@ public partial class Program
             {
                 return false;
             }
-
-            index += 2;
         }
 
         return true;
