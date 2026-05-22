@@ -575,84 +575,8 @@ public sealed class ChatToolCatalog
             $"- {result.Id}: {result.Title}{Environment.NewLine}  RRF Score: {result.Score:0.######}{Environment.NewLine}  Match: {result.MatchReason}{Environment.NewLine}  Tags: {string.Join(", ", result.Tags)}{Environment.NewLine}  {result.Snippet}"));
     }
 
-    public static string FormatContextPack(MemoryContextPack pack, string? format)
-    {
-        if (string.Equals(format, "json", StringComparison.OrdinalIgnoreCase))
-        {
-            var projected = new
-            {
-                schemaVersion = pack.SchemaVersion,
-                query = pack.Query,
-                generatedAt = pack.GeneratedAt,
-                warnings = pack.Warnings,
-                diagnostics = pack.Diagnostics.Select(diagnostic => new
-                {
-                    code = diagnostic.Code,
-                    severity = diagnostic.Severity.ToString(),
-                    message = diagnostic.Message
-                }),
-                records = pack.Records.Select(record => new
-                {
-                    id = record.Id,
-                    title = record.Title,
-                    status = record.Status,
-                    confidence = record.Confidence,
-                    tags = record.Tags,
-                    references = record.References,
-                    conflicts = record.Conflicts,
-                    diagnostics = record.Diagnostics.Select(diagnostic => new
-                    {
-                        code = diagnostic.Code,
-                        severity = diagnostic.Severity.ToString(),
-                        message = diagnostic.Message
-                    }),
-                    sourceLinks = record.SourceLinks.Select(sourceLink => new
-                    {
-                        label = sourceLink.Label,
-                        uri = sourceLink.Uri,
-                        startLine = sourceLink.StartLine,
-                        endLine = sourceLink.EndLine
-                    }),
-                    usageCount = record.UsageCount,
-                    lastUpdated = record.LastUpdated,
-                    relationship = record.Relationship,
-                    score = record.Score,
-                    matchReason = record.MatchReason,
-                    content = record.Content
-                })
-            };
-
-            return JsonSerializer.Serialize(projected, ToolJsonOptions);
-        }
-        var warnings = pack.Warnings.Count == 0
-            ? string.Empty
-            : $"{Environment.NewLine}Warnings:{Environment.NewLine}" + string.Join(Environment.NewLine, pack.Warnings.Select(warning => $"- {warning}")) + Environment.NewLine;
-        if (pack.Records.Count == 0)
-        {
-            return $"# Context Pack{Environment.NewLine}Query: {pack.Query ?? string.Empty}{Environment.NewLine}Generated: {pack.GeneratedAt:O}{warnings}{Environment.NewLine}No context pack records.";
-        }
-        var sections = pack.Records.Select(record =>
-        {
-            var scoreLine = record.Score.HasValue ? $"Score: {record.Score:0.######}" : "Score: linked context";
-            var matchLine = string.IsNullOrWhiteSpace(record.MatchReason) ? string.Empty : $"Match: {record.MatchReason}{Environment.NewLine}";
-            var diagnostics = MemoryDiagnosticFormatting.FormatMarkdownSection(record.Diagnostics);
-            return $"## {record.Id}: {record.Title}{Environment.NewLine}" +
-                   $"Relationship: {record.Relationship}{Environment.NewLine}" +
-                   $"Status: {record.Status}; Confidence: {record.Confidence:P0}; Uses: {record.UsageCount}{Environment.NewLine}" +
-                   $"Tags: {string.Join(", ", record.Tags)}{Environment.NewLine}" +
-                   $"References: {FormatLinks(record.References)}{Environment.NewLine}" +
-                   $"Conflicts: {FormatLinks(record.Conflicts)}{Environment.NewLine}" +
-                   $"{scoreLine}{Environment.NewLine}" +
-                   matchLine +
-                   diagnostics +
-                   record.Content;
-        });
-        return $"# Context Pack{Environment.NewLine}Query: {pack.Query ?? string.Empty}{Environment.NewLine}Generated: {pack.GeneratedAt:O}{warnings}{Environment.NewLine}" +
-            string.Join(Environment.NewLine + Environment.NewLine, sections);
-    }
-
-    private static string FormatLinks(IReadOnlyList<string> values) =>
-        values.Count == 0 ? "none" : string.Join(", ", values);
+    public static string FormatContextPack(MemoryContextPack pack, string? format) =>
+        MemoryContextPackFormatter.Format(pack, format);
 
     public static string Truncate(string? value, int maxCharacters)
     {

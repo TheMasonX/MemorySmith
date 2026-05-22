@@ -258,6 +258,48 @@ public class MemoryApplicationServiceTests
     }
 
     [Test]
+    public async Task HybridSearchAsync_AttachesDiagnosticsAfterApplyingLimit()
+    {
+        var store = new CountingMemoryStore();
+        var varStore = new CountingVarStore();
+        var options = Options.Create(new MemorySmithOptions());
+        var diagnostics = new MemoryDiagnosticsService(
+            new TagPolicyService(options),
+            new VarResolver(varStore, options),
+            store,
+            options);
+        var service = new MemoryApplicationService(
+            store,
+            _events,
+            new MemorySmith.Core.Indexing.MemoryIndex(),
+            new BackgroundServiceTelemetryTracker(),
+            _publisher,
+            options,
+            diagnostics: diagnostics);
+
+        for (var i = 0; i < 20; i++)
+        {
+            store.Save(new MemoryRecord
+            {
+                Id = $"hybrid-diagnostic-hit-{i:D2}",
+                Title = $"Hybrid Needle {i:D2}",
+                Content = "hybrid needle content",
+                Tags = ["project-wiki"],
+                Confidence = 1,
+                LastUpdated = DateTime.UtcNow.AddMinutes(-i)
+            });
+        }
+
+        var results = await service.HybridSearchAsync(new HybridMemorySearchQuery("hybrid needle", Limit: 3), CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(results, Has.Count.EqualTo(3));
+            Assert.That(varStore.LoadCallCount, Is.EqualTo(3));
+        });
+    }
+
+    [Test]
     public async Task SemanticSearchAsync_ReturnsMetadataScoreAndMatchReason()
     {
         _store.Save(new MemoryRecord
@@ -636,6 +678,21 @@ internal sealed class CountingMemoryStore : IMemoryStore
 internal sealed class EmptyVarStore : IVarStore
 {
     public IReadOnlyDictionary<string, string> Load() => new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+    public void Save(IReadOnlyDictionary<string, string> vars)
+    {
+    }
+}
+
+internal sealed class CountingVarStore : IVarStore
+{
+    public int LoadCallCount { get; private set; }
+
+    public IReadOnlyDictionary<string, string> Load()
+    {
+        LoadCallCount++;
+        return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+    }
 
     public void Save(IReadOnlyDictionary<string, string> vars)
     {
