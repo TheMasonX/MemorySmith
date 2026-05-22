@@ -19,7 +19,8 @@ This page tracks user-facing work in plain language. Completed items stay here a
 - [x] Disable Chat until an Admin has configured an enabled default model profile, then make Chat select from model profiles instead of free-form provider/model editing.
 - [ ] Extend model profiles with maintenance-agent/review-agent assignments and any provider-safe chat settings beyond context-window metadata.
 - [x] Add durable admin-visible maintenance-agent task activity history for completed/skipped runs on the Proposals page.
-- [ ] Add fuller maintenance-agent active task state, transcript logs, proposal-id drilldown, and an admin conversation surface for the maintenance worker.
+- [x] Add an admin-only non-mutating maintenance-agent conversation surface with durable transcript entries.
+- [ ] Add fuller maintenance-agent active task state, transcript retention/search/redaction, proposal-id drilldown, and tool-enabled maintenance chat once proposal governance covers generated writes.
 - [x] Add a Request Agent Review button on proposals that records a durable review request in proposal history/comments without changing proposal status.
 - [x] Run the requested proposal review through an agent so it can comment and optionally create a revised proposal while preserving the original diff.
 - [ ] Route standard chat-agent edits through the proposal workflow so agent writes share diff review, history, and approval semantics.

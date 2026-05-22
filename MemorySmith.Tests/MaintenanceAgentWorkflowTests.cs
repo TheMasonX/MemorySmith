@@ -37,7 +37,8 @@ public class MaintenanceAgentWorkflowTests
                     ProposalsPath = Path.Combine(_tempDir, "Proposals"),
                     TopicMapCachePath = Path.Combine(_tempDir, "Graph", "topic-map-cache.json"),
                     LastRunPath = Path.Combine(_tempDir, "Events", "maintenance-agent-last-run.json"),
-                    ActivityLogPath = Path.Combine(_tempDir, "Events", "maintenance-agent-runs.jsonl")
+                    ActivityLogPath = Path.Combine(_tempDir, "Events", "maintenance-agent-runs.jsonl"),
+                    TranscriptLogPath = Path.Combine(_tempDir, "Events", "maintenance-agent-transcript.jsonl")
                 }
             }
         };
@@ -374,6 +375,55 @@ public class MaintenanceAgentWorkflowTests
     }
 
     [Test]
+    public async Task AdminChat_WithProvider_AppendsReadableTranscript()
+    {
+        var provider = new FakeChatProvider("The last maintenance run found stale records.");
+        var agent = CreateReviewAgent(provider);
+
+        var entry = await agent.SendAdminMessageAsync("What did maintenance find?", CancellationToken.None);
+        var transcripts = await agent.ListRecentTranscriptsAsync(10, CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(entry.UserMessage, Is.EqualTo("What did maintenance find?"));
+            Assert.That(entry.AssistantMessage, Is.EqualTo("The last maintenance run found stale records."));
+            Assert.That(entry.Provider, Is.EqualTo(provider.Name));
+            Assert.That(entry.Model, Is.EqualTo("review-model"));
+            Assert.That(provider.LastRequest?.Messages.First().Content, Does.Contain("non-mutating maintenance agent"));
+            Assert.That(provider.LastRequest?.Messages.Last().Content, Is.EqualTo("What did maintenance find?"));
+            Assert.That(transcripts, Has.Count.EqualTo(1));
+            Assert.That(transcripts.Single().Id, Is.EqualTo(entry.Id));
+            Assert.That(File.Exists(Path.Combine(_tempDir, "Events", "maintenance-agent-transcript.jsonl")), Is.True);
+        });
+    }
+
+    [Test]
+    public async Task AdminChat_WithDisabledLlm_RecordsWarningTranscript()
+    {
+        var topicMap = new MaintenanceTopicMapService(_memoryStore, _pages, _config);
+        var agent = new MaintenanceAgentService(
+            _config,
+            new MaintenanceResourceProbe(),
+            topicMap,
+            _workflow,
+            [],
+            NullLogger<MaintenanceAgentService>.Instance);
+
+        var entry = await agent.SendAdminMessageAsync("Can you review the wiki?", CancellationToken.None);
+        var transcripts = await agent.ListRecentTranscriptsAsync(10, CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(entry.Warnings.Single(), Does.Contain("disabled"));
+            Assert.That(entry.AssistantMessage, Does.Contain("disabled"));
+            Assert.That(entry.Provider, Is.Null);
+            Assert.That(entry.Model, Is.Null);
+            Assert.That(transcripts, Has.Count.EqualTo(1));
+            Assert.That(transcripts.Single().Warnings, Is.EqualTo(entry.Warnings));
+        });
+    }
+
+    [Test]
     public async Task AgentReview_AddsProviderFeedbackWithoutChangingProposalStatus()
     {
         var targetPath = Path.Combine(_tempDir, "Pages", "agent-review-note.md");
@@ -522,7 +572,9 @@ public class MaintenanceAgentWorkflowTests
                 {
                     ProposalsPath = Path.Combine(_tempDir, "Proposals"),
                     TopicMapCachePath = Path.Combine(_tempDir, "Graph", "topic-map-cache.json"),
-                    LastRunPath = Path.Combine(_tempDir, "Events", "maintenance-agent-last-run.json")
+                    LastRunPath = Path.Combine(_tempDir, "Events", "maintenance-agent-last-run.json"),
+                    ActivityLogPath = Path.Combine(_tempDir, "Events", "maintenance-agent-runs.jsonl"),
+                    TranscriptLogPath = Path.Combine(_tempDir, "Events", "maintenance-agent-transcript.jsonl")
                 }
             }
         }));

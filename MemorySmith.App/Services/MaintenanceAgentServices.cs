@@ -27,6 +27,15 @@ public sealed record MaintenanceRunActivity(
     IReadOnlyList<string> Warnings,
     bool Skipped = false);
 
+public sealed record MaintenanceAdminTranscriptEntry(
+    string Id,
+    DateTimeOffset CreatedAtUtc,
+    string UserMessage,
+    string AssistantMessage,
+    string? Provider,
+    string? Model,
+    IReadOnlyList<string> Warnings);
+
 public sealed record MaintenanceProposalReviewRunResult(
     MaintenanceWriteProposal Proposal,
     MaintenanceWriteProposal? RevisedProposal,
@@ -1128,6 +1137,72 @@ public sealed class MaintenanceAgentService
             .ToList();
     }
 
+    public async Task<IReadOnlyList<MaintenanceAdminTranscriptEntry>> ListRecentTranscriptsAsync(int maxEntries, CancellationToken cancellationToken)
+    {
+        var config = _config.GetCurrent();
+        var path = _config.ResolvePath(config.Storage.TranscriptLogPath);
+        if (!File.Exists(path))
+        {
+            return [];
+        }
+
+        var lines = await File.ReadAllLinesAsync(path, cancellationToken);
+        return lines
+            .Reverse()
+            .Select(TryParseTranscript)
+            .Where(entry => entry is not null)
+            .Cast<MaintenanceAdminTranscriptEntry>()
+            .Take(Math.Clamp(maxEntries, 1, 100))
+            .ToList();
+    }
+
+    public async Task<MaintenanceAdminTranscriptEntry> SendAdminMessageAsync(string message, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(message))
+        {
+            throw new InvalidOperationException("Maintenance agent messages cannot be empty.");
+        }
+
+        var config = _config.GetCurrent();
+        var prompt = message.Trim();
+        var warnings = new List<string>();
+        MaintenanceAdminTranscriptEntry entry;
+        if (!config.UseLlm)
+        {
+            warnings.Add("Maintenance agent admin chat is disabled because LLM review is disabled for the maintenance agent.");
+            entry = CreateTranscriptEntry(prompt, warnings[0], null, null, warnings);
+            await AppendTranscriptAsync(config, entry, cancellationToken);
+            return entry;
+        }
+
+        var provider = _providers.FirstOrDefault(candidate => string.Equals(candidate.Name, config.Provider, StringComparison.OrdinalIgnoreCase));
+        if (provider is null)
+        {
+            warnings.Add($"Maintenance agent admin chat is disabled because provider '{config.Provider}' is not registered.");
+            entry = CreateTranscriptEntry(prompt, warnings[0], null, null, warnings);
+            await AppendTranscriptAsync(config, entry, cancellationToken);
+            return entry;
+        }
+
+        try
+        {
+            var response = await provider.CompleteAsync(new ChatProviderRequest(
+            [
+                new ChatMessage("system", BuildAdminChatSystemPrompt(config)),
+                new ChatMessage("user", prompt)
+            ], MemoryChatMode.Agent, config.Model, Provider: config.Provider), cancellationToken);
+            entry = CreateTranscriptEntry(prompt, response.Content.Trim(), response.ProviderName, response.Model, warnings);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or TaskCanceledException)
+        {
+            warnings.Add($"Maintenance agent admin chat failed: {ex.Message}");
+            entry = CreateTranscriptEntry(prompt, warnings[0], provider.Name, config.Model, warnings);
+        }
+
+        await AppendTranscriptAsync(config, entry, cancellationToken);
+        return entry;
+    }
+
     public async Task<MaintenanceProposalReviewRunResult> ReviewProposalAsync(string proposalId, string? requesterComment, CancellationToken cancellationToken)
     {
         var warnings = new List<string>();
@@ -1626,6 +1701,13 @@ public sealed class MaintenanceAgentService
         await File.AppendAllTextAsync(path, JsonSerializer.Serialize(activity, ActivityJsonOptions) + Environment.NewLine, cancellationToken);
     }
 
+    private async Task AppendTranscriptAsync(MaintenanceAgentOptions config, MaintenanceAdminTranscriptEntry entry, CancellationToken cancellationToken)
+    {
+        var path = _config.ResolvePath(config.Storage.TranscriptLogPath);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        await File.AppendAllTextAsync(path, JsonSerializer.Serialize(entry, ActivityJsonOptions) + Environment.NewLine, cancellationToken);
+    }
+
     private static MaintenanceRunActivity ToActivity(MaintenanceRunResult run) =>
         new(
             run.Trigger,
@@ -1653,6 +1735,45 @@ public sealed class MaintenanceAgentService
             return null;
         }
     }
+
+    private static MaintenanceAdminTranscriptEntry CreateTranscriptEntry(string userMessage, string assistantMessage, string? provider, string? model, IReadOnlyList<string> warnings)
+    {
+        var now = DateTimeOffset.UtcNow;
+        return new MaintenanceAdminTranscriptEntry(
+            $"maintenance-chat-{now:yyyyMMddHHmmssfff}-{Guid.NewGuid():N}",
+            now,
+            userMessage,
+            string.IsNullOrWhiteSpace(assistantMessage) ? "The maintenance agent returned an empty response." : assistantMessage,
+            provider,
+            model,
+            warnings);
+    }
+
+    private static MaintenanceAdminTranscriptEntry? TryParseTranscript(string line)
+    {
+        if (string.IsNullOrWhiteSpace(line))
+        {
+            return null;
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<MaintenanceAdminTranscriptEntry>(line, ActivityJsonOptions);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    private static string BuildAdminChatSystemPrompt(MaintenanceAgentOptions config) =>
+        $$"""
+        You are MemorySmith's non-mutating maintenance agent for admin operations.
+        Answer questions about maintenance tasks, proposal review, wiki health, and operational status.
+        Do not claim that you wrote files, approved proposals, changed settings, or mutated memories/pages.
+        If a change is needed, tell the admin it must go through the proposal workflow or a future approved maintenance task.
+        Current agent version: {{config.AgentVersion}}.
+        """;
 }
 
 public sealed class MaintenanceAgentSchedulerService : BackgroundService
