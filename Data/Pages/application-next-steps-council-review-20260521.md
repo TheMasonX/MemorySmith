@@ -153,6 +153,17 @@ Acceptance gates:
 - Search relevance probes do not regress.
 - No ranking, RRF, temporal decay, or schema behavior changes occur in this phase.
 
+Implementation result, 2026-05-22:
+
+- Added versioned retrieval envelopes with provider metadata for lexical, semantic, hybrid, page, and tool retrieval outputs.
+- Added diagnostic-aware lexical search while preserving existing ranking behavior and exposing diagnostics through search results instead of filtering warning-bearing records.
+- Added semantic provider metadata for ONNX embedding mode, token fallback mode, model availability, vocabulary availability, and embedding dimension state.
+- Kept default memory/page API list responses compatible while adding opt-in `format=envelope`/`format=json-v2` structured responses.
+- Added diagnostic/provider fields to unified search result objects and opt-in structured JSON envelopes for chat and MCP search tools.
+- Rendered compact diagnostic chips in chat reference drawers so stale/source/tag/relation warnings are visible at use time.
+- Local validation passed: focused Phase 3 tests 58/58, MCP/search tests 13/13 after MCP envelope coverage, `dotnet build MemorySmith.slnx -v minimal`, full NUnit suite 245/245, and benchmark smoke across lexical, lexical diagnostics, semantic, hybrid, chat-context, and context-pack paths.
+- Council review approved delivery in `Data/Pages/phase3-retrieval-warning-propagation-council-review-20260522.md`, with non-blocking follow-ups for envelope-size caps and Phase 4 shared tool registry extraction.
+
 ### Phase 4: Chat Context Planner And Native Tool Spike
 
 Goal: reduce context bloat and make tool use more reliable.

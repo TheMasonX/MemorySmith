@@ -654,6 +654,13 @@ body {
     text-decoration: none;
 }
 
+.chat-context-reference {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
 .tag-manager-body {
     display: grid;
     grid-template-columns: minmax(360px, 38%) minmax(520px, 1fr);

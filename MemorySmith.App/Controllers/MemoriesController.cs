@@ -73,21 +73,33 @@ public class MemoriesController : ControllerBase
     }
 
     [HttpPost("search")]
-    public async Task<ActionResult<IReadOnlyList<MemoryRecord>>> Search([FromBody] MemorySearchQuery request, CancellationToken cancellationToken)
+    public async Task<IActionResult> Search([FromBody] MemorySearchQuery request, [FromQuery] string? format = null, CancellationToken cancellationToken = default)
     {
+        if (IsEnvelopeFormat(format))
+        {
+            var results = await _memories.LexicalSearchAsync(request, cancellationToken);
+            return Ok(_memories.BuildRetrievalEnvelope("lexical", MemoryApplicationService.GetLexicalProviderMetadata(), results));
+        }
+
         return Ok(await _memories.SearchAsync(request, cancellationToken));
     }
 
     [HttpPost("search/semantic")]
-    public async Task<ActionResult<IReadOnlyList<MemorySearchResult>>> SemanticSearch([FromBody] SemanticMemorySearchQuery request, CancellationToken cancellationToken)
+    public async Task<IActionResult> SemanticSearch([FromBody] SemanticMemorySearchQuery request, [FromQuery] string? format = null, CancellationToken cancellationToken = default)
     {
-        return Ok(await _memories.SemanticSearchAsync(request, cancellationToken));
+        var results = await _memories.SemanticSearchAsync(request, cancellationToken);
+        return IsEnvelopeFormat(format)
+            ? Ok(_memories.BuildRetrievalEnvelope("semantic", _memories.GetSemanticProviderMetadata(), results))
+            : Ok(results);
     }
 
     [HttpPost("search/hybrid")]
-    public async Task<ActionResult<IReadOnlyList<MemorySearchResult>>> HybridSearch([FromBody] HybridMemorySearchQuery request, CancellationToken cancellationToken)
+    public async Task<IActionResult> HybridSearch([FromBody] HybridMemorySearchQuery request, [FromQuery] string? format = null, CancellationToken cancellationToken = default)
     {
-        return Ok(await _memories.HybridSearchAsync(request, cancellationToken));
+        var results = await _memories.HybridSearchAsync(request, cancellationToken);
+        return IsEnvelopeFormat(format)
+            ? Ok(_memories.BuildRetrievalEnvelope("hybrid", _memories.GetSemanticProviderMetadata(), results))
+            : Ok(results);
     }
 
     [HttpPost("{id}/usage")]
@@ -110,4 +122,8 @@ public class MemoriesController : ControllerBase
 
         return ValidationProblem(ModelState);
     }
+
+    private static bool IsEnvelopeFormat(string? format) =>
+        string.Equals(format, "envelope", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(format, "json-v2", StringComparison.OrdinalIgnoreCase);
 }

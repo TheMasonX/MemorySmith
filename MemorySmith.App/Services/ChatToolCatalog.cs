@@ -106,7 +106,14 @@ public sealed class ChatToolCatalog
             AvailableInMcp: true,
             Execute: async (args, ctx, ct) =>
             {
-                var results = await ctx.Memories.SearchAsync(ReadLexicalQuery(args), ct);
+                var structuredFormat = IsStructuredFormat(ReadString(args, "format"));
+                var results = await ctx.Memories.LexicalSearchAsync(ReadLexicalQuery(args), ct);
+                var envelope = ctx.Memories.BuildRetrievalEnvelope("lexical", MemoryApplicationService.GetLexicalProviderMetadata(), results);
+                if (structuredFormat)
+                {
+                    return BuildRetrievalToolResult(envelope);
+                }
+
                 return new ChatToolExecutionResult(FormatLexicalResults(results), ContextItems: results.Select(ToMemoryContextItem).ToList());
             });
 
@@ -119,7 +126,14 @@ public sealed class ChatToolCatalog
             AvailableInMcp: true,
             Execute: async (args, ctx, ct) =>
             {
+                var structuredFormat = IsStructuredFormat(ReadString(args, "format"));
                 var results = await ctx.Memories.SemanticSearchAsync(ReadSemanticQuery(args), ct);
+                var envelope = ctx.Memories.BuildRetrievalEnvelope("semantic", ctx.Memories.GetSemanticProviderMetadata(), results);
+                if (structuredFormat)
+                {
+                    return BuildRetrievalToolResult(envelope);
+                }
+
                 return new ChatToolExecutionResult(FormatSemanticResults(results), ContextItems: results.Select(ToMemoryContextItem).ToList());
             });
 
@@ -132,7 +146,14 @@ public sealed class ChatToolCatalog
             AvailableInMcp: true,
             Execute: async (args, ctx, ct) =>
             {
+                var structuredFormat = IsStructuredFormat(ReadString(args, "format"));
                 var results = await ctx.Memories.HybridSearchAsync(ReadHybridQuery(args), ct);
+                var envelope = ctx.Memories.BuildRetrievalEnvelope("hybrid", ctx.Memories.GetSemanticProviderMetadata(), results);
+                if (structuredFormat)
+                {
+                    return BuildRetrievalToolResult(envelope);
+                }
+
                 return new ChatToolExecutionResult(FormatHybridResults(results), ContextItems: results.Select(ToMemoryContextItem).ToList());
             });
 
@@ -276,7 +297,13 @@ public sealed class ChatToolCatalog
                     ["memoryLimit"] = new JsonObject { ["type"] = "integer", ["description"] = "Max memory results. Clamped 0-20, default 5." },
                     ["pageLimit"] = new JsonObject { ["type"] = "integer", ["description"] = "Max page results. Clamped 0-20, default 5." },
                     ["tags"] = new JsonObject { ["type"] = "string", ["description"] = "Optional comma-separated tag filter (memories only)." },
-                    ["status"] = new JsonObject { ["type"] = "string", ["description"] = "Optional memory status name." }
+                    ["status"] = new JsonObject { ["type"] = "string", ["description"] = "Optional memory status name." },
+                    ["format"] = new JsonObject
+                    {
+                        ["type"] = "string",
+                        ["description"] = "Output format. Defaults to markdown; use json or envelope for structured agent parsing.",
+                        ["enum"] = new JsonArray { "markdown", "json", "envelope" }
+                    }
                 },
                 ["required"] = new JsonArray { "query" }
             },
@@ -315,6 +342,10 @@ public sealed class ChatToolCatalog
                     {
                         sb.Append("- ").Append(memory.Id).Append(": ").AppendLine(memory.Title);
                         sb.Append("  Score: ").Append(memory.Score.ToString("0.######")).Append("  Tags: ").AppendLine(string.Join(", ", memory.Tags));
+                        if (memory.Diagnostics.Count > 0)
+                        {
+                            sb.Append("  Diagnostics: ").AppendLine(string.Join("; ", memory.Diagnostics.Take(3).Select(diagnostic => $"{diagnostic.Code}: {diagnostic.Message}")));
+                        }
                         sb.Append("  ").AppendLine(memory.Snippet);
                     }
                 }
@@ -336,6 +367,21 @@ public sealed class ChatToolCatalog
                 var contextItems = memoryResults.Select(ToMemoryContextItem)
                     .Concat(pageResults.Select(ToPageContextItem))
                     .ToList();
+                if (IsStructuredFormat(ReadString(args, "format")))
+                {
+                    var payload = new
+                    {
+                        SchemaVersion = "memorysmith.unified-search.v1",
+                        Query = query,
+                        MemoryProvider = ctx.Memories.GetSemanticProviderMetadata(),
+                        PageProvider = new RetrievalProviderMetadata("page", "markdown-lexical", true, "Markdown page metadata and body search."),
+                        Memories = memoryResults,
+                        Pages = pageResults,
+                        Warnings = MemoryDiagnosticFormatting.ToWarningSummaries(memoryResults)
+                    };
+                    var node = JsonSerializer.SerializeToNode(payload, ToolJsonOptions);
+                    return new ChatToolExecutionResult(node!.ToJsonString(ToolJsonOptions), ContextItems: contextItems, Structured: node);
+                }
                 return new ChatToolExecutionResult(sb.ToString().TrimEnd(), ContextItems: contextItems);
             });
 
@@ -447,7 +493,13 @@ public sealed class ChatToolCatalog
             ["query"] = new JsonObject { ["type"] = "string", ["description"] = "Search text." },
             ["tags"] = new JsonObject { ["type"] = "string", ["description"] = "Optional comma-separated tag filter." },
             ["status"] = new JsonObject { ["type"] = "string", ["description"] = "Optional memory status name." },
-            ["limit"] = new JsonObject { ["type"] = "integer", ["description"] = "Maximum number of results." }
+            ["limit"] = new JsonObject { ["type"] = "integer", ["description"] = "Maximum number of results." },
+            ["format"] = new JsonObject
+            {
+                ["type"] = "string",
+                ["description"] = "Output format. Defaults to markdown; use json or envelope for structured agent parsing.",
+                ["enum"] = new JsonArray { "markdown", "json", "envelope" }
+            }
         }
     };
 
@@ -505,8 +557,16 @@ public sealed class ChatToolCatalog
         Ids: ReadString(arguments, "ids"),
         IncludeBacklinks: ReadBool(arguments, "includeBacklinks", false));
 
-    public static string? ReadString(JsonObject item, string name) =>
-        GetProperty(item, name) is JsonValue value && value.TryGetValue<string>(out var text) ? text : null;
+    public static string? ReadString(JsonObject item, string name)
+    {
+        var node = GetProperty(item, name);
+        if (node is JsonValue value && value.TryGetValue<string>(out var text))
+        {
+            return text;
+        }
+
+        return node?.ToString();
+    }
 
     public static int ReadInt(JsonObject item, string name, int fallback)
     {
@@ -543,10 +603,10 @@ public sealed class ChatToolCatalog
         new("memory", record.Id, record.Title, Truncate(record.Content, 320), ChatContextOrigins.Tool);
 
     private static ChatContextItem ToMemoryContextItem(MemorySearchResult result) =>
-        new("memory", result.Id, result.Title, Truncate(result.Snippet, 320), ChatContextOrigins.Tool);
+        new("memory", result.Id, result.Title, Truncate(result.Snippet, 320), ChatContextOrigins.Tool, result.Diagnostics);
 
     private static ChatContextItem ToMemoryContextItem(MemoryContextPackRecord record) =>
-        new("memory", record.Id, record.Title, Truncate(record.Content, 320), ChatContextOrigins.Tool);
+        new("memory", record.Id, record.Title, Truncate(record.Content, 320), ChatContextOrigins.Tool, record.Diagnostics);
 
     private static ChatContextItem ToPageContextItem(PageSummary page) =>
         new("page", page.Slug, page.Title, Truncate(page.Snippet, 320), ChatContextOrigins.Tool);
@@ -554,29 +614,46 @@ public sealed class ChatToolCatalog
     private static ChatContextItem ToPageContextItem(PageDocument page, string markdown) =>
         new("page", page.Slug, page.Title, Truncate(markdown, 320), ChatContextOrigins.Tool);
 
-    public static string FormatLexicalResults(IReadOnlyList<MemoryRecord> records)
+    private static ChatToolExecutionResult BuildRetrievalToolResult(RetrievalResultEnvelope<MemorySearchResult> envelope)
     {
-        if (records.Count == 0) return "No lexical search results.";
-        return string.Join(Environment.NewLine + Environment.NewLine, records.Select(record =>
-            $"- {record.Id}: {record.Title}{Environment.NewLine}  Tags: {string.Join(", ", record.Tags)}{Environment.NewLine}  {Truncate(record.Content, 320)}"));
+        var contextItems = envelope.Results.Select(ToMemoryContextItem).ToList();
+        var structured = JsonSerializer.SerializeToNode(envelope, ToolJsonOptions);
+        return new ChatToolExecutionResult(structured!.ToJsonString(ToolJsonOptions), ContextItems: contextItems, Structured: structured);
+    }
+
+    public static string FormatLexicalResults(IReadOnlyList<MemorySearchResult> results)
+    {
+        if (results.Count == 0) return "No lexical search results.";
+        return string.Join(Environment.NewLine + Environment.NewLine, results.Select(result =>
+            $"- {result.Id}: {result.Title}{Environment.NewLine}  Score: {result.Score:0.###}{Environment.NewLine}  Match: {result.MatchReason}{Environment.NewLine}  Tags: {string.Join(", ", result.Tags)}{Environment.NewLine}{FormatInlineDiagnostics(result.Diagnostics)}  {result.Snippet}"));
     }
 
     public static string FormatSemanticResults(IReadOnlyList<MemorySearchResult> results)
     {
         if (results.Count == 0) return "No semantic search results.";
         return string.Join(Environment.NewLine + Environment.NewLine, results.Select(result =>
-            $"- {result.Id}: {result.Title}{Environment.NewLine}  Score: {result.Score:0.###}{Environment.NewLine}  Match: {result.MatchReason}{Environment.NewLine}  Tags: {string.Join(", ", result.Tags)}{Environment.NewLine}  {result.Snippet}"));
+            $"- {result.Id}: {result.Title}{Environment.NewLine}  Score: {result.Score:0.###}{Environment.NewLine}  Match: {result.MatchReason}{Environment.NewLine}  Tags: {string.Join(", ", result.Tags)}{Environment.NewLine}{FormatInlineDiagnostics(result.Diagnostics)}  {result.Snippet}"));
     }
 
     public static string FormatHybridResults(IReadOnlyList<MemorySearchResult> results)
     {
         if (results.Count == 0) return "No hybrid search results.";
         return string.Join(Environment.NewLine + Environment.NewLine, results.Select(result =>
-            $"- {result.Id}: {result.Title}{Environment.NewLine}  RRF Score: {result.Score:0.######}{Environment.NewLine}  Match: {result.MatchReason}{Environment.NewLine}  Tags: {string.Join(", ", result.Tags)}{Environment.NewLine}  {result.Snippet}"));
+            $"- {result.Id}: {result.Title}{Environment.NewLine}  RRF Score: {result.Score:0.######}{Environment.NewLine}  Match: {result.MatchReason}{Environment.NewLine}  Tags: {string.Join(", ", result.Tags)}{Environment.NewLine}{FormatInlineDiagnostics(result.Diagnostics)}  {result.Snippet}"));
     }
 
     public static string FormatContextPack(MemoryContextPack pack, string? format) =>
         MemoryContextPackFormatter.Format(pack, format);
+
+    private static string FormatInlineDiagnostics(IReadOnlyList<MemoryDiagnostic> diagnostics) =>
+        diagnostics.Count == 0
+            ? string.Empty
+            : $"  Diagnostics: {string.Join("; ", diagnostics.Take(3).Select(diagnostic => $"{diagnostic.Code}: {diagnostic.Message}"))}{Environment.NewLine}";
+
+    private static bool IsStructuredFormat(string? format) =>
+        string.Equals(format, "json", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(format, "envelope", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(format, "json-v2", StringComparison.OrdinalIgnoreCase);
 
     public static string Truncate(string? value, int maxCharacters)
     {

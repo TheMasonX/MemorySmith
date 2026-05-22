@@ -158,7 +158,13 @@ public sealed record ChatTraceEvent(
     long? DurationMilliseconds = null,
     int? EstimatedTokens = null);
 
-public sealed record ChatContextItem(string Kind, string Id, string Title, string Snippet, string Origin = ChatContextOrigins.Preloaded);
+public sealed record ChatContextItem(
+    string Kind,
+    string Id,
+    string Title,
+    string Snippet,
+    string Origin = ChatContextOrigins.Preloaded,
+    IReadOnlyList<MemoryDiagnostic>? Diagnostics = null);
 
 public sealed record AgentMemoryWriteProposal(
     string Id,

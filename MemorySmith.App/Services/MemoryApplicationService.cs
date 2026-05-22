@@ -138,6 +138,26 @@ public partial class MemoryApplicationService
         return Task.FromResult<IReadOnlyList<MemoryMetadata>>(results);
     }
 
+    public Task<IReadOnlyList<MemorySearchResult>> LexicalSearchAsync(MemorySearchQuery query, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        RecordQueryEvent("lexical", query.Query);
+
+        var limit = Clamp(query.Limit, 1, _options.Limits.MaxSearchLimit, 20);
+        var lexicalTokens = AnalyzeLexicalText(query.Query ?? string.Empty);
+        var snapshot = CreateSearchSnapshot(query.Status, query.Tags);
+
+        var results = RankLexicalResults(snapshot.FilteredRecords, query.Query, lexicalTokens)
+            .Take(limit)
+            .Select(result => snapshot.FilteredRecordsById.TryGetValue(result.Id, out var record)
+                ? result with { Diagnostics = GetDiagnostics(record, snapshot.AllRecordsById) }
+                : result)
+            .ToList();
+
+        return Task.FromResult<IReadOnlyList<MemorySearchResult>>(results);
+    }
+
     public Task<IReadOnlyList<MemorySearchResult>> SemanticSearchAsync(SemanticMemorySearchQuery query, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -170,6 +190,27 @@ public partial class MemoryApplicationService
 
         return Task.FromResult<IReadOnlyList<MemorySearchResult>>(results);
     }
+
+    public RetrievalProviderMetadata GetSemanticProviderMetadata() =>
+        _semanticEmbeddings?.GetProviderMetadata() ?? new RetrievalProviderMetadata(
+            "semantic",
+            "token-fallback",
+            false,
+            "Semantic embedding service is not configured; token fallback is active.");
+
+    public static RetrievalProviderMetadata GetLexicalProviderMetadata() =>
+        new("lexical", "lucene-standard-analyzer", true, "Lucene.NET StandardAnalyzer lexical ranking.");
+
+    public RetrievalResultEnvelope<MemorySearchResult> BuildRetrievalEnvelope(
+        string mode,
+        RetrievalProviderMetadata provider,
+        IReadOnlyList<MemorySearchResult> results) =>
+        new(
+            "memorysmith.retrieval-results.v1",
+            mode,
+            provider,
+            results,
+            MemoryDiagnosticFormatting.ToWarningSummaries(results));
 
     public async Task<MemoryContextPack> BuildContextPackAsync(MemoryContextPackQuery query, CancellationToken cancellationToken)
     {

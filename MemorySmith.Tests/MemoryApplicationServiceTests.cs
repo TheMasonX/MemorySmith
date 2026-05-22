@@ -258,6 +258,40 @@ public class MemoryApplicationServiceTests
     }
 
     [Test]
+    public async Task LexicalSearchAsync_KeepsWarningRecordsRetrievableAndBuildsEnvelopeWarnings()
+    {
+        var options = Options.Create(new MemorySmithOptions());
+        var diagnostics = new MemoryDiagnosticsService(
+            new TagPolicyService(options),
+            new VarResolver(new EmptyVarStore(), options),
+            _store,
+            options);
+        var service = TestServiceFactory.CreateMemoryApplicationService(_store, _events, _publisher, diagnostics: diagnostics);
+        _store.Save(new MemoryRecord
+        {
+            Id = "lexical-warning-record",
+            Title = "Lexical Warning Record",
+            Content = "retrieval warning propagation token",
+            Status = MemoryStatus.Core,
+            Tags = ["project-wiki"],
+            Confidence = 1,
+            SourceLinks = [new SourceLink { Uri = "%MissingVariable%MemorySmith.App/Program.cs" }]
+        });
+
+        var results = await service.LexicalSearchAsync(new MemorySearchQuery("retrieval warning propagation", Limit: 5), CancellationToken.None);
+        var envelope = service.BuildRetrievalEnvelope("lexical", MemoryApplicationService.GetLexicalProviderMetadata(), results);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(results.Single().Id, Is.EqualTo("lexical-warning-record"));
+            Assert.That(results.Single().Diagnostics.Select(diagnostic => diagnostic.Code), Does.Contain("source.missing_variable"));
+            Assert.That(envelope.SchemaVersion, Is.EqualTo("memorysmith.retrieval-results.v1"));
+            Assert.That(envelope.Provider.Kind, Is.EqualTo("lexical"));
+            Assert.That(envelope.Warnings, Has.Some.Contains("source.missing_variable"));
+        });
+    }
+
+    [Test]
     public async Task GetMemoriesAsync_ToleratesDuplicateIdsAndUsesLatestRecord()
     {
         var store = new DuplicateMemoryStore(

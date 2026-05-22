@@ -362,6 +362,7 @@ public class AppApiContractTests
 
         var created = await createResponse.Content.ReadFromJsonAsync<PageDocument>();
         var search = await _client.GetFromJsonAsync<PageSummary[]>("/api/pages?query=contract");
+        var searchEnvelope = await _client.GetFromJsonAsync<RetrievalResultEnvelope<PageSummary>>("/api/pages?query=contract&format=envelope");
         var html = await _client.GetStringAsync("/api/pages/contract-page/html");
         var deleteResponse = await _client.DeleteAsync("/api/pages/contract-page");
 
@@ -370,6 +371,9 @@ public class AppApiContractTests
             Assert.That(created, Is.Not.Null);
             Assert.That(created!.Slug, Is.EqualTo("contract-page"));
             Assert.That(search!.Select(page => page.Slug), Does.Contain("contract-page"));
+            Assert.That(searchEnvelope!.SchemaVersion, Is.EqualTo("memorysmith.page-results.v1"));
+            Assert.That(searchEnvelope.Provider.Kind, Is.EqualTo("page"));
+            Assert.That(searchEnvelope.Results.Select(page => page.Slug), Does.Contain("contract-page"));
             Assert.That(html, Does.Contain(">Contract Page</h1>"));
             Assert.That(html, Does.Contain("/page-assets/example.png"));
             Assert.That(deleteResponse.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
@@ -504,7 +508,8 @@ public class AppApiContractTests
             Id = "combined-memory",
             Title = "Combined Search Memory",
             Content = "shared discovery phrase",
-            Tags = ["combined"]
+            Tags = ["combined"],
+            SourceLinks = [new SourceLink { Uri = "%MissingVariable%MemorySmith.App/Program.cs" }]
         });
         await _client.PostAsJsonAsync("/api/pages", new PageSaveRequest(
             "combined-page",
@@ -520,6 +525,43 @@ public class AppApiContractTests
             Assert.That(nonNullResults.Select(result => result.Kind), Does.Contain("memory"));
             Assert.That(nonNullResults.Select(result => result.Kind), Does.Contain("page"));
             Assert.That(nonNullResults.Single(result => result.Id == "combined-page").Url, Is.EqualTo("/pages/combined-page"));
+            Assert.That(nonNullResults.Single(result => result.Id == "combined-memory").Diagnostics.Select(diagnostic => diagnostic.Code), Does.Contain("source.missing_variable"));
+            Assert.That(nonNullResults.Single(result => result.Id == "combined-memory").Provider.Kind, Is.EqualTo("semantic"));
+            Assert.That(nonNullResults.Single(result => result.Id == "combined-page").Provider.Kind, Is.EqualTo("page"));
+        });
+    }
+
+    [Test]
+    public async Task MemorySearchApi_DefaultListRemainsCompatibleAndEnvelopeIsOptIn()
+    {
+        var createResponse = await _client.PostAsJsonAsync("/api/memories", new MemoryRecord
+        {
+            Id = "api-warning-memory",
+            Title = "API Warning Memory",
+            Content = "api retrieval warning propagation",
+            Status = MemoryStatus.Core,
+            Tags = ["project-wiki"],
+            Confidence = 1,
+            SourceLinks = [new SourceLink { Uri = "%MissingVariable%MemorySmith.App/Program.cs" }]
+        });
+        createResponse.EnsureSuccessStatusCode();
+
+        var defaultResponse = await _client.PostAsJsonAsync("/api/memories/search", new MemorySearchQuery("api retrieval warning", Limit: 5));
+        defaultResponse.EnsureSuccessStatusCode();
+        var defaultBody = await defaultResponse.Content.ReadAsStringAsync();
+        var defaultResults = await defaultResponse.Content.ReadFromJsonAsync<MemoryRecord[]>();
+        var envelopeResponse = await _client.PostAsJsonAsync("/api/memories/search?format=envelope", new MemorySearchQuery("api retrieval warning", Limit: 5));
+        envelopeResponse.EnsureSuccessStatusCode();
+        var envelope = await envelopeResponse.Content.ReadFromJsonAsync<RetrievalResultEnvelope<MemorySearchResult>>();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(defaultResults!.Single().Id, Is.EqualTo("api-warning-memory"));
+            Assert.That(defaultBody, Does.Not.Contain("schemaVersion"));
+            Assert.That(envelope!.SchemaVersion, Is.EqualTo("memorysmith.retrieval-results.v1"));
+            Assert.That(envelope.Provider.Kind, Is.EqualTo("lexical"));
+            Assert.That(envelope.Results.Single().Diagnostics.Select(diagnostic => diagnostic.Code), Does.Contain("source.missing_variable"));
+            Assert.That(envelope.Warnings, Has.Some.Contains("source.missing_variable"));
         });
     }
 

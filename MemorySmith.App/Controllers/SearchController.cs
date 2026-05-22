@@ -1,4 +1,5 @@
 using MemorySmith.App.Services;
+using MemorySmith.Core.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
@@ -41,7 +42,9 @@ public class SearchController : ControllerBase
                 memory.Snippet,
                 "/memories",
                 memory.Score,
-                memory.LastUpdated))
+                memory.LastUpdated,
+                memory.Diagnostics,
+                _memories.GetSemanticProviderMetadata()))
             .Concat(pageResults.Select(page => new UnifiedSearchResult(
                 "page",
                 page.Slug,
@@ -49,7 +52,9 @@ public class SearchController : ControllerBase
                 page.Snippet,
                 ToPageUrl(page.Slug),
                 null,
-                page.LastUpdatedUtc)))
+                page.LastUpdatedUtc,
+                [],
+                new RetrievalProviderMetadata("page", "markdown-lexical", true, "Markdown page lexical search."))))
             .OrderByDescending(result => result.Score ?? 0)
             .ThenByDescending(result => result.LastUpdatedUtc)
             .ThenBy(result => result.Title, StringComparer.OrdinalIgnoreCase)
@@ -71,4 +76,6 @@ public sealed record UnifiedSearchResult(
     string Snippet,
     string Url,
     double? Score,
-    DateTime LastUpdatedUtc);
+    DateTime LastUpdatedUtc,
+    IReadOnlyList<MemoryDiagnostic> Diagnostics,
+    RetrievalProviderMetadata Provider);
