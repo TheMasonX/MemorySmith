@@ -19,21 +19,10 @@ public class McpController : ControllerBase
     };
 
     private static readonly JsonSerializerOptions CompactJsonOptions = new(JsonSerializerDefaults.Web);
-    private static readonly string[] ToolNames =
-    {
-        "memorysmith_search",
-        "memorysmith_semantic_search",
-        "memorysmith_hybrid_search",
-        "memorysmith_context_pack",
-        "memorysmith_get",
-        "memorysmith_page_search",
-        "memorysmith_page_get",
-        "memorysmith_unified_search",
-        "memorysmith_page_save",
-        "memorysmith_page_delete",
-        "memorysmith_source_bundle",
-        "memorysmith_find_by_source"
-    };
+    private string[] ToolNames => _toolCatalog.McpTools
+        .Select(tool => tool.Name)
+        .Concat(["memorysmith_source_bundle", "memorysmith_find_by_source"])
+        .ToArray();
 
     private readonly MemoryApplicationService _memories;
     private readonly VarResolver _vars;
@@ -128,39 +117,19 @@ public class McpController : ControllerBase
         TryGetProperty(paramsElement, "arguments", out var argumentsElement);
         var toolName = nameElement.GetString();
 
-        return toolName switch
+        if (toolName is "memorysmith_source_bundle")
         {
-            "memorysmith_search" => ToolText(FormatRetrievalEnvelope(
-                "lexical",
-                MemoryApplicationService.GetLexicalProviderMetadata(),
-                await _memories.LexicalSearchAsync(ReadLexicalQuery(argumentsElement), cancellationToken),
-                GetString(argumentsElement, "format"),
-                FormatLexicalResults)),
-            "memorysmith_semantic_search" => ToolText(FormatRetrievalEnvelope(
-                "semantic",
-                _memories.GetSemanticProviderMetadata(),
-                await _memories.SemanticSearchAsync(ReadSemanticQuery(argumentsElement), cancellationToken),
-                GetString(argumentsElement, "format"),
-                FormatSemanticResults)),
-            "memorysmith_hybrid_search" => ToolText(FormatRetrievalEnvelope(
-                "hybrid",
-                _memories.GetSemanticProviderMetadata(),
-                await _memories.HybridSearchAsync(ReadHybridQuery(argumentsElement), cancellationToken),
-                GetString(argumentsElement, "format"),
-                FormatHybridResults)),
-            "memorysmith_context_pack" => ToolText(FormatContextPack(
-                await _memories.BuildContextPackAsync(ReadContextPackQuery(argumentsElement), cancellationToken),
-                GetString(argumentsElement, "format"))),
-            "memorysmith_get" => ToolText(await FormatRecordAsync(argumentsElement, cancellationToken)),
-            "memorysmith_source_bundle" => await CanReadSourceBundleAsync()
+            return await CanReadSourceBundleAsync()
                 ? ToolText(await FormatSourceBundleAsync(argumentsElement, cancellationToken))
-                : ToolText("The caller is not authorized to read source bundles.", isError: true),
-            "memorysmith_find_by_source" => ToolText(await FormatFindBySourceAsync(argumentsElement, cancellationToken)),
-            "memorysmith_page_search" or "memorysmith_page_get" or "memorysmith_unified_search"
-            or "memorysmith_page_save" or "memorysmith_page_delete"
-                => await DelegateToCatalogAsync(toolName, argumentsElement, cancellationToken),
-            _ => ToolText($"Unknown MemorySmith tool '{toolName}'.", isError: true)
-        };
+                : ToolText("The caller is not authorized to read source bundles.", isError: true);
+        }
+
+        if (toolName is "memorysmith_find_by_source")
+        {
+            return ToolText(await FormatFindBySourceAsync(argumentsElement, cancellationToken));
+        }
+
+        return await DelegateToCatalogAsync(toolName ?? string.Empty, argumentsElement, cancellationToken);
     }
 
     private async Task<JsonObject> DelegateToCatalogAsync(string toolName, JsonElement argumentsElement, CancellationToken cancellationToken)
@@ -293,110 +262,6 @@ public class McpController : ControllerBase
         return JsonSerializer.Serialize(result, ToolJsonOptions);
     }
 
-    private async Task<string> FormatRecordAsync(JsonElement argumentsElement, CancellationToken cancellationToken)
-    {
-        var id = GetString(argumentsElement, "id");
-        if (string.IsNullOrWhiteSpace(id))
-        {
-            return "The memorysmith_get tool requires an id argument.";
-        }
-
-        var record = await _memories.GetAsync(id, cancellationToken);
-        return record is null
-            ? $"No memory record found for id '{id}'."
-            : JsonSerializer.Serialize(record, ToolJsonOptions);
-    }
-
-    private static MemorySearchQuery ReadLexicalQuery(JsonElement argumentsElement) => new(
-        Query: GetString(argumentsElement, "query"),
-        Status: GetStatus(argumentsElement),
-        Tags: GetString(argumentsElement, "tags"),
-        Limit: GetInt(argumentsElement, "limit", 20));
-
-    private static SemanticMemorySearchQuery ReadSemanticQuery(JsonElement argumentsElement) => new(
-        Query: GetString(argumentsElement, "query"),
-        Status: GetStatus(argumentsElement),
-        Tags: GetString(argumentsElement, "tags"),
-        Limit: GetInt(argumentsElement, "limit", 20));
-
-    private static HybridMemorySearchQuery ReadHybridQuery(JsonElement argumentsElement) => new(
-        Query: GetString(argumentsElement, "query"),
-        Status: GetStatus(argumentsElement),
-        Tags: GetString(argumentsElement, "tags"),
-        Limit: GetInt(argumentsElement, "limit", 20));
-
-    private static MemoryContextPackQuery ReadContextPackQuery(JsonElement argumentsElement) => new(
-        Query: GetString(argumentsElement, "query"),
-        Status: GetStatus(argumentsElement),
-        Tags: GetString(argumentsElement, "tags"),
-        Limit: GetInt(argumentsElement, "limit", 5),
-        ReferenceDepth: GetInt(argumentsElement, "referenceDepth", 1),
-        MaxContentChars: GetInt(argumentsElement, "maxContentChars", 1200),
-        MaxRecords: GetInt(argumentsElement, "maxRecords", 20),
-        Ids: GetString(argumentsElement, "ids"),
-        IncludeBacklinks: GetBool(argumentsElement, "includeBacklinks", false));
-
-    private string FormatRetrievalEnvelope(
-        string mode,
-        RetrievalProviderMetadata provider,
-        IReadOnlyList<MemorySearchResult> results,
-        string? format,
-        Func<IReadOnlyList<MemorySearchResult>, string> markdownFormatter)
-    {
-        if (!IsStructuredFormat(format))
-        {
-            return markdownFormatter(results);
-        }
-
-        return JsonSerializer.Serialize(_memories.BuildRetrievalEnvelope(mode, provider, results), ToolJsonOptions);
-    }
-
-    private static string FormatLexicalResults(IReadOnlyList<MemorySearchResult> results)
-    {
-        if (results.Count == 0)
-        {
-            return "No lexical search results.";
-        }
-
-        return string.Join(Environment.NewLine + Environment.NewLine, results.Select(result =>
-            $"- {result.Id}: {result.Title}{Environment.NewLine}  Score: {result.Score:0.###}{Environment.NewLine}  Match: {result.MatchReason}{Environment.NewLine}  Tags: {string.Join(", ", result.Tags)}{Environment.NewLine}{FormatInlineDiagnostics(result.Diagnostics)}  {result.Snippet}"));
-    }
-
-    private static string FormatSemanticResults(IReadOnlyList<MemorySearchResult> results)
-    {
-        if (results.Count == 0)
-        {
-            return "No semantic search results.";
-        }
-
-        return string.Join(Environment.NewLine + Environment.NewLine, results.Select(result =>
-            $"- {result.Id}: {result.Title}{Environment.NewLine}  Score: {result.Score:0.###}{Environment.NewLine}  Match: {result.MatchReason}{Environment.NewLine}  Tags: {string.Join(", ", result.Tags)}{Environment.NewLine}{FormatInlineDiagnostics(result.Diagnostics)}  {result.Snippet}"));
-    }
-
-    private static string FormatHybridResults(IReadOnlyList<MemorySearchResult> results)
-    {
-        if (results.Count == 0)
-        {
-            return "No hybrid search results.";
-        }
-
-        return string.Join(Environment.NewLine + Environment.NewLine, results.Select(result =>
-            $"- {result.Id}: {result.Title}{Environment.NewLine}  RRF Score: {result.Score:0.######}{Environment.NewLine}  Match: {result.MatchReason}{Environment.NewLine}  Tags: {string.Join(", ", result.Tags)}{Environment.NewLine}{FormatInlineDiagnostics(result.Diagnostics)}  {result.Snippet}"));
-    }
-
-    private string FormatContextPack(MemoryContextPack pack, string? format) =>
-        MemoryContextPackFormatter.Format(pack, format, _vars.Resolve, includeSourceLinksInMarkdown: true);
-
-    private static string FormatInlineDiagnostics(IReadOnlyList<MemoryDiagnostic> diagnostics) =>
-        diagnostics.Count == 0
-            ? string.Empty
-            : $"  Diagnostics: {string.Join("; ", diagnostics.Take(3).Select(diagnostic => $"{diagnostic.Code}: {diagnostic.Message}"))}{Environment.NewLine}";
-
-    private static bool IsStructuredFormat(string? format) =>
-        string.Equals(format, "json", StringComparison.OrdinalIgnoreCase) ||
-        string.Equals(format, "envelope", StringComparison.OrdinalIgnoreCase) ||
-        string.Equals(format, "json-v2", StringComparison.OrdinalIgnoreCase);
-
     private static JsonObject BuildInitializeResult() => new()
     {
         ["protocolVersion"] = "2025-06-18",
@@ -413,61 +278,22 @@ public class McpController : ControllerBase
 
     private JsonObject BuildToolsListResult()
     {
-        var array = new JsonArray
+        var array = new JsonArray();
+        foreach (var tool in _toolCatalog.McpTools)
         {
-            BuildTool(
-                "memorysmith_search",
-                "Search MemorySmith wiki records with Lucene-style lexical ranking plus optional tag and status filters.",
-                BuildSearchSchema()),
-            BuildTool(
-                "memorysmith_semantic_search",
-                "Search MemorySmith wiki records with ONNX embeddings when configured, falling back to local semantic token scoring with match explanations.",
-                BuildSearchSchema()),
-            BuildTool(
-                "memorysmith_hybrid_search",
-                "Search MemorySmith wiki records by fusing Lucene-style lexical rank and the active semantic ranker with reciprocal rank fusion.",
-                BuildSearchSchema()),
-            BuildTool(
-                "memorysmith_context_pack",
-                "Build an agent-ready context pack from hybrid search results plus linked references, conflicts, and optional backlinks.",
-                BuildContextPackSchema()),
-            BuildTool(
-                "memorysmith_get",
-                "Fetch a single MemorySmith wiki record by id.",
-                new JsonObject
-                {
-                    ["type"] = "object",
-                    ["properties"] = new JsonObject
-                    {
-                        ["id"] = new JsonObject
-                        {
-                            ["type"] = "string",
-                            ["description"] = "Memory record id."
-                        }
-                    },
-                    ["required"] = new JsonArray { "id" }
-                }),
-            BuildTool(
-                "memorysmith_source_bundle",
-                "Read the source file content for all source links attached to the specified memory records. Useful for fetching the exact code or document sections that KB entries reference. Returns URL references as-is (unfetchable server-side). Use format=jsonl for streaming-friendly large bundles.",
-                BuildSourceBundleSchema()),
-            BuildTool(
-                "memorysmith_find_by_source",
-                "Back-map a source path or URL fragment to every KB entry that references it. Matches against both raw and resolved (variable-expanded) URIs.",
-                BuildFindBySourceSchema())
-        };
-
-        // Add the page/unified/write tools that live in the shared ChatToolCatalog so MCP and chat stay in sync.
-        var sharedToolNames = new[] { "memorysmith_page_search", "memorysmith_page_get", "memorysmith_unified_search", "memorysmith_page_save", "memorysmith_page_delete" };
-        foreach (var name in sharedToolNames)
-        {
-            if (_toolCatalog.TryGet(name, out var tool))
-            {
-                // Clone the schema; JsonNodes cannot have two parents and BuildToolsListResult may run repeatedly.
-                var clonedSchema = JsonNode.Parse(tool.InputSchema.ToJsonString()) as JsonObject ?? new JsonObject();
-                array.Add(BuildTool(tool.Name, tool.Description, clonedSchema));
-            }
+            var clonedSchema = JsonNode.Parse(tool.InputSchema.ToJsonString()) as JsonObject ?? new JsonObject();
+            array.Add(BuildTool(tool.Name, tool.Description, clonedSchema));
         }
+
+        array.Add(BuildTool(
+            "memorysmith_source_bundle",
+            "Read the source file content for all source links attached to the specified memory records. Useful for fetching the exact code or document sections that KB entries reference. Returns URL references as-is (unfetchable server-side). Use format=jsonl for streaming-friendly large bundles.",
+            BuildSourceBundleSchema()));
+        array.Add(BuildTool(
+            "memorysmith_find_by_source",
+            "Back-map a source path or URL fragment to every KB entry that references it. Matches against both raw and resolved (variable-expanded) URIs.",
+            BuildFindBySourceSchema()));
+
         return new JsonObject { ["tools"] = array };
     }
 
@@ -476,40 +302,6 @@ public class McpController : ControllerBase
         ["name"] = name,
         ["description"] = description,
         ["inputSchema"] = inputSchema
-    };
-
-    private static JsonObject BuildSearchSchema() => new()
-    {
-        ["type"] = "object",
-        ["properties"] = new JsonObject
-        {
-            ["query"] = new JsonObject
-            {
-                ["type"] = "string",
-                ["description"] = "Search text."
-            },
-            ["tags"] = new JsonObject
-            {
-                ["type"] = "string",
-                ["description"] = "Optional comma-separated tag filter."
-            },
-            ["status"] = new JsonObject
-            {
-                ["type"] = "string",
-                ["description"] = "Optional memory status name."
-            },
-            ["limit"] = new JsonObject
-            {
-                ["type"] = "integer",
-                ["description"] = "Maximum number of results."
-            },
-            ["format"] = new JsonObject
-            {
-                ["type"] = "string",
-                ["description"] = "Output format. Defaults to markdown; use json or envelope for structured agent parsing.",
-                ["enum"] = new JsonArray { "markdown", "json", "envelope" }
-            }
-        }
     };
 
     private static JsonObject BuildSourceBundleSchema() => new()
@@ -540,66 +332,6 @@ public class McpController : ControllerBase
         },
         ["required"] = new JsonArray { "pattern" }
     };
-
-    private static JsonObject BuildContextPackSchema() => new()
-    {
-        ["type"] = "object",
-        ["properties"] = new JsonObject
-        {
-            ["query"] = new JsonObject
-            {
-                ["type"] = "string",
-                ["description"] = "Search text used to seed the context pack with hybrid search."
-            },
-            ["ids"] = new JsonObject
-            {
-                ["type"] = "string",
-                ["description"] = "Optional comma-separated root memory ids to include before search results."
-            },
-            ["tags"] = new JsonObject
-            {
-                ["type"] = "string",
-                ["description"] = "Optional comma-separated tag filter."
-            },
-            ["status"] = new JsonObject
-            {
-                ["type"] = "string",
-                ["description"] = "Optional memory status name."
-            },
-            ["limit"] = new JsonObject
-            {
-                ["type"] = "integer",
-                ["description"] = "Maximum number of hybrid root results."
-            },
-            ["referenceDepth"] = new JsonObject
-            {
-                ["type"] = "integer",
-                ["description"] = "How many levels of references/conflicts to include. Clamped to 0-2."
-            },
-            ["maxContentChars"] = new JsonObject
-            {
-                ["type"] = "integer",
-                ["description"] = "Maximum content characters per record. Clamped to 200-6000."
-            },
-            ["maxRecords"] = new JsonObject
-            {
-                ["type"] = "integer",
-                ["description"] = "Maximum total records in the context pack. Clamped to 1-100."
-            },
-            ["includeBacklinks"] = new JsonObject
-            {
-                ["type"] = "boolean",
-                ["description"] = "Include records that reference or conflict with packed records."
-            },
-            ["format"] = new JsonObject
-            {
-                ["type"] = "string",
-                ["description"] = "Output format. Use json for structured agent parsing; defaults to markdown.",
-                ["enum"] = new JsonArray { "markdown", "json" }
-            }
-        }
-    };
-
     private static JsonObject ToolText(string text, bool isError = false) => new()
     {
         ["content"] = new JsonArray

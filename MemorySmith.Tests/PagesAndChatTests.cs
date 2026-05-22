@@ -781,6 +781,115 @@ public class PagesAndChatTests
     }
 
     [Test]
+    public void ChatContextPlanner_PageIntent_UsesOnlyPageBudgetAndPageSearchFallback()
+    {
+        var plan = ChatContextPlanner.Plan(
+            new MemoryChatRequest("What does the wiki page say about deployment docs?", MemoryChatMode.Chat),
+            new ChatOptions
+            {
+                MaxContextRecords = 5,
+                MaxPreloadedContextRecords = 2,
+                MaxContextPages = 5,
+                MaxPreloadedContextPages = 2
+            },
+            new ChatIntentInterceptor());
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(plan.ShouldPreload, Is.True);
+            Assert.That(plan.MemoryLimit, Is.EqualTo(0));
+            Assert.That(plan.PageLimit, Is.EqualTo(2));
+            Assert.That(plan.RecommendedToolName, Is.EqualTo("memorysmith_page_search"));
+        });
+    }
+
+    [Test]
+    public async Task MemoryChatAgent_ContextPlannerSkipsMemoryPreloadForPageOnlyPrompt()
+    {
+        var memoryStore = new InMemoryMemoryStore();
+        var eventStore = new RecordingEventStore();
+        var publisher = new RecordingMemoryChangePublisher();
+        var memories = TestServiceFactory.CreateMemoryApplicationService(memoryStore, eventStore, publisher);
+        memoryStore.Save(new MemoryRecord
+        {
+            Id = "page-only-noise",
+            Title = "Deployment Docs Noise",
+            Status = MemoryStatus.Core,
+            Content = "This memory record should not be preloaded for a page-only planner prompt."
+        });
+        var pages = new FilePageService(_tempDir);
+        await pages.SaveAsync(new PageSaveRequest("deployment-docs", "Deployment Docs", "Page-only planner evidence."), CancellationToken.None);
+
+        var provider = new FakeChatProvider("Done.");
+        var agent = new MemoryChatAgent([provider], memories, pages, Options.Create(new MemorySmithOptions
+        {
+            Chat = new ChatOptions
+            {
+                MaxContextRecords = 5,
+                MaxPreloadedContextRecords = 2,
+                MaxContextPages = 5,
+                MaxPreloadedContextPages = 1
+            }
+        }));
+
+        var response = await agent.SendAsync(new MemoryChatRequest("What does the wiki page say about deployment docs?", MemoryChatMode.Chat), CancellationToken.None);
+        var capabilityMessage = provider.LastRequest!.Messages.Single(message => message.Content.StartsWith("Current MemorySmith capabilities", StringComparison.Ordinal));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(response.Context.Select(item => item.Kind), Is.EquivalentTo(new[] { "page" }));
+            Assert.That(response.Context.Single().Id, Is.EqualTo("deployment-docs"));
+            Assert.That(capabilityMessage.Content, Does.Contain("Context planner"));
+            Assert.That(capabilityMessage.Content, Does.Contain("memorysmith_page_search"));
+        });
+    }
+
+    [Test]
+    public async Task MemoryChatAgent_StreamTraceShowsContextPlannerSkipReason()
+    {
+        var memoryStore = new InMemoryMemoryStore();
+        var eventStore = new RecordingEventStore();
+        var publisher = new RecordingMemoryChangePublisher();
+        var memories = TestServiceFactory.CreateMemoryApplicationService(memoryStore, eventStore, publisher);
+        var pages = new FilePageService(_tempDir);
+        var provider = new FakeChatProvider("DIRECT_OK");
+        var agent = new MemoryChatAgent([provider], memories, pages, Options.Create(new MemorySmithOptions()));
+
+        var traceEvents = new List<ChatTraceEvent>();
+        await foreach (var update in agent.StreamAsync(new MemoryChatRequest("Reply exactly: DIRECT_OK", MemoryChatMode.Chat), CancellationToken.None))
+        {
+            if (update.TraceEvents is not null)
+            {
+                traceEvents.AddRange(update.TraceEvents);
+            }
+        }
+
+        var plannerTrace = traceEvents.Single(trace => trace.Title == "Context planner");
+        Assert.Multiple(() =>
+        {
+            Assert.That(plannerTrace.Content, Does.Contain("direct/simple reply"));
+            Assert.That(plannerTrace.Content, Does.Contain("Recommended tool: memorysmith_unified_search"));
+        });
+    }
+
+    [Test]
+    public void ChatProviders_ReportCapabilityMetadata()
+    {
+        var options = new StaticOptionsMonitor<MemorySmithOptions>(new MemorySmithOptions());
+        var ollama = new OllamaChatProvider(new HttpClient(new CapturingHandler()), options);
+        var github = new GitHubCopilotChatProvider(options);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(ollama.Capabilities.SupportsStreaming, Is.True);
+            Assert.That(ollama.Capabilities.SupportsImageInput, Is.True);
+            Assert.That(ollama.Capabilities.SupportsNativeToolCalls, Is.False);
+            Assert.That(github.Capabilities.ReportsContextWindowUsage, Is.True);
+            Assert.That(github.Capabilities.NativeToolCallStatus, Does.Contain("SDK"));
+        });
+    }
+
+    [Test]
     public async Task MemoryChatAgent_PreloadsVisiblePagesBeyondFirstTwoHundredHiddenResults()
     {
         var memoryStore = new InMemoryMemoryStore();

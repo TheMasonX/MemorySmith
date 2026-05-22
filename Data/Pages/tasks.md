@@ -14,6 +14,7 @@ This page tracks user-facing work in plain language. Completed items stay here a
 - [ ] Grid panels like the markdown/preview plane and the pages/edit columns should be resizable to a degree, like a classic gridsplitter
 - [ ] admin/ page should allow the user to edit settings and not just view them (as appropriate)
 - [ ] Delete page/chat confirmation
+- [ ] Decide whether MCP-only source bridge tools (`memorysmith_source_bundle`, `memorysmith_find_by_source`) should move into the shared tool catalog with a richer risk model.
 
 ## Pages
 - [x] Page preview mode - live update or at least periodic refresh (toggleable) and a manual refresh button

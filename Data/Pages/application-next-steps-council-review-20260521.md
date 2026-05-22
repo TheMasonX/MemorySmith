@@ -184,6 +184,16 @@ Acceptance gates:
 - Tool loops remain bounded by configured limits.
 - Provider-specific native tool support has tests or documented non-support.
 
+Implementation result, 2026-05-22:
+
+- Added `ChatContextPlanner` to choose no preload, memory preload, page preload, or mixed preload based on user intent and configured budgets.
+- Added context-planner trace events for streaming chat so preload/skip reasons are visible, including deterministic intercept and direct-prompt skip cases.
+- Added provider capability metadata for streaming, image input, structured response support, context-window reporting, and native tool-call availability; `/api/chat/config` now returns this metadata per provider.
+- Documented the GitHub Copilot native-tool spike result in code/council notes: current SDK integration supports streaming, image attachments, model listing, and usage metadata, but no stable app-supplied native tool registration hook is exposed here, so JSON-text tool calls remain the supported fallback.
+- Routed shared MCP tools through `ChatToolCatalog`; only `memorysmith_source_bundle` and `memorysmith_find_by_source` remain MCP-controller-local because they are source-link bridge tools with distinct authorization needs.
+- Local validation passed: focused chat/MCP/tool tests 73/73, `dotnet build MemorySmith.slnx -v minimal`, full NUnit suite 249/249, and benchmark smoke across lexical, lexical diagnostics, semantic, hybrid, chat-context, and context-pack paths.
+- Council review approved delivery in `Data/Pages/phase4-chat-context-planner-native-tool-council-review-20260522.md`, with non-blocking follow-ups for non-stream planner metadata and possible source bridge risk modeling.
+
 ### Phase 5: Agent Write Governance
 
 Goal: make Agent proposals auditable before expanding write power.
