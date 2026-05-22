@@ -24,7 +24,7 @@ This page tracks user-facing work in plain language. Completed items stay here a
 - [x] Add proposal-id drilldown from recent maintenance task activity into the proposal detail view.
 - [x] Add retention, search, and redaction controls for Admin Maintenance transcript entries.
 - [x] Add fuller maintenance-agent active task state in the Proposals page via service-level active run state.
-- [ ] Add tool-enabled maintenance chat once proposal governance covers generated writes.
+- [x] Add tool-enabled maintenance chat once proposal governance covers generated writes.
 - [x] Add a Request Agent Review button on proposals that records a durable review request in proposal history/comments without changing proposal status.
 - [x] Run the requested proposal review through an agent so it can comment and optionally create a revised proposal while preserving the original diff.
 - [x] Route standard chat-agent edits through the proposal workflow so agent writes share diff review, history, and approval semantics.

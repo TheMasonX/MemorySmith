@@ -484,6 +484,38 @@ public class MaintenanceAgentWorkflowTests
     }
 
     [Test]
+    public async Task AdminChat_WithChatAgent_UsesToolBackedChatPipeline()
+    {
+        var provider = new FakeChatProvider("raw provider response");
+        var chatAgent = new FakeMaintenanceChatAgent(new MemoryChatResponse(
+            "Tool-backed maintenance answer.",
+            provider.Name,
+            "review-model",
+            null,
+            [new ChatContextItem("page", "tasks", "Tasks", "Pending maintenance work", ChatContextOrigins.Tool)],
+            [],
+            []));
+        var agent = CreateReviewAgent(provider, chatAgent: chatAgent);
+
+        var entry = await agent.SendAdminMessageAsync("What wiki tasks are pending?", CancellationToken.None);
+        var transcripts = await agent.ListRecentTranscriptsAsync(10, CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(entry.AssistantMessage, Is.EqualTo("Tool-backed maintenance answer."));
+            Assert.That(entry.Provider, Is.EqualTo(provider.Name));
+            Assert.That(entry.Model, Is.EqualTo("review-model"));
+            Assert.That(chatAgent.LastRequest?.Mode, Is.EqualTo(MemoryChatMode.Chat));
+            Assert.That(chatAgent.LastRequest?.Provider, Is.EqualTo(provider.Name));
+            Assert.That(chatAgent.LastRequest?.Model, Is.EqualTo("review-model"));
+            Assert.That(chatAgent.LastRequest?.History?.Single().Role, Is.EqualTo("system"));
+            Assert.That(chatAgent.LastRequest?.History?.Single().Content, Does.Contain("non-mutating maintenance agent"));
+            Assert.That(provider.LastRequest, Is.Null);
+            Assert.That(transcripts.Single().Id, Is.EqualTo(entry.Id));
+        });
+    }
+
+    [Test]
     public async Task AdminChat_WithDisabledLlm_RecordsWarningTranscript()
     {
         var topicMap = new MaintenanceTopicMapService(_memoryStore, _pages, _config);
@@ -669,7 +701,7 @@ public class MaintenanceAgentWorkflowTests
             Metadata = new MaintenanceProposalMetadata("staleness_scan", 0.9, MaintenanceProposalRiskLevels.Low, ["test-memory"], [], [], "test-agent")
         };
 
-    private MaintenanceAgentService CreateReviewAgent(FakeChatProvider provider, Action<MaintenanceAgentOptions>? configure = null)
+    private MaintenanceAgentService CreateReviewAgent(FakeChatProvider provider, Action<MaintenanceAgentOptions>? configure = null, IChatAgent? chatAgent = null)
     {
         var maintenanceOptions = new MaintenanceAgentOptions
         {
@@ -698,7 +730,31 @@ public class MaintenanceAgentWorkflowTests
             new MaintenanceTopicMapService(_memoryStore, _pages, config),
             _workflow,
             [provider],
-            NullLogger<MaintenanceAgentService>.Instance);
+            NullLogger<MaintenanceAgentService>.Instance,
+            chatAgent: chatAgent);
+    }
+
+    private sealed class FakeMaintenanceChatAgent(MemoryChatResponse response) : IChatAgent
+    {
+        public MemoryChatRequest? LastRequest { get; private set; }
+
+        public Task<MemoryChatResponse> SendAsync(MemoryChatRequest request, CancellationToken cancellationToken)
+        {
+            LastRequest = request;
+            return Task.FromResult(response);
+        }
+
+        public async IAsyncEnumerable<MemoryChatStreamUpdate> StreamAsync(MemoryChatRequest request, [EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            await Task.CompletedTask;
+            yield break;
+        }
+
+        public Task<AgentWriteApplyResult> ApplyAgentWritesAsync(
+            IReadOnlyList<AgentMemoryWriteProposal> memoryWrites,
+            IReadOnlyList<AgentPageWriteProposal> pageWrites,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(new AgentWriteApplyResult([], [], []));
     }
 
     private sealed class FakeChatProvider(string response) : IChatProvider

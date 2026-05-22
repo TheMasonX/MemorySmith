@@ -186,7 +186,7 @@
                         <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Send" Disabled="@(_isBusy || string.IsNullOrWhiteSpace(_maintenancePrompt))" OnClick="SendMaintenanceMessageAsync">Send</MudButton>
                         <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" Disabled="@_isBusy" OnClick="LoadMaintenanceTranscriptsAsync">Refresh transcripts</MudButton>
                     </div>
-                    <small class="admin-setting-key">This conversation is non-mutating. Any file, memory, page, or proposal change still needs the proposal workflow.</small>
+                    <small class="admin-setting-key">This conversation can use the same read-only wiki tools as Chat, but it is non-mutating. Any file, memory, page, or proposal change still needs the proposal workflow.</small>
                 </section>
 
                 <section class="admin-maintenance-transcripts" aria-label="Maintenance agent transcripts">
