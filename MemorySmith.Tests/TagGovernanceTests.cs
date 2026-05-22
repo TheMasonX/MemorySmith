@@ -165,6 +165,7 @@ public class TagGovernanceTests
                 Assert.That(markup, Does.Contain("admin-maintenance-layout"));
                 Assert.That(markup, Does.Contain("Search transcripts"));
                 Assert.That(markup, Does.Contain("_maintenanceTranscriptSearch"));
+                Assert.That(markup, Does.Contain("same read-only wiki tools as Chat"));
             Assert.That(navMarkup, Does.Contain("Href=\"/tags\""));
             Assert.That(navMarkup, Does.Contain("Tags"));
         });

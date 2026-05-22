@@ -25,11 +25,11 @@ Remaining design work: model profiles still need provider-safe chat settings bey
 
 ## Maintenance Agent Tasks And Logs
 
-Implemented baseline: maintenance runs now publish process-local active run state through `MaintenanceActiveRunStore`, append compact JSONL summaries to `MemorySmith:MaintenanceAgent:Storage:ActivityLogPath`, and the Proposals page shows active trigger/task/start time plus a `Recent task activity` panel with recent completed/skipped task runs, timestamps, finding/proposal counts, proposal-id drilldown buttons, and the first warning. `LastRunPath` remains the single latest-run state file for scheduler/operational checks. `/admin` now includes a Maintenance tab where admins can send non-mutating maintenance-agent messages and review/search recent transcript entries persisted to `MemorySmith:MaintenanceAgent:Storage:TranscriptLogPath`. Transcript persistence trims older entries according to `TranscriptRetentionEntries` and redacts common token/secret/password patterns when `TranscriptRedactionEnabled` is true.
+Implemented baseline: maintenance runs now publish process-local active run state through `MaintenanceActiveRunStore`, append compact JSONL summaries to `MemorySmith:MaintenanceAgent:Storage:ActivityLogPath`, and the Proposals page shows active trigger/task/start time plus a `Recent task activity` panel with recent completed/skipped task runs, timestamps, finding/proposal counts, proposal-id drilldown buttons, and the first warning. `LastRunPath` remains the single latest-run state file for scheduler/operational checks. `/admin` now includes a Maintenance tab where admins can send non-mutating maintenance-agent messages and review/search recent transcript entries persisted to `MemorySmith:MaintenanceAgent:Storage:TranscriptLogPath`. In production DI, that Admin Maintenance chat delegates to `MemoryChatAgent`, so it can use the same read-only wiki tool pipeline as Chat while remaining non-mutating. Transcript persistence trims older entries according to `TranscriptRetentionEntries` and redacts common token/secret/password patterns when `TranscriptRedactionEnabled` is true.
 
 Remaining design work: admins still need deeper visibility into maintenance-agent work while it is running and after it completes. A later implementation should consider:
 
-- optional tool-enabled maintenance chat once proposal governance covers generated writes.
+- deeper run inspection and richer task drilldown beyond the current active-run snapshot and completed activity rows.
 
 ## Proposal Review Agent
 

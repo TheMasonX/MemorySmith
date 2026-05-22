@@ -1177,6 +1177,7 @@ public sealed class MaintenanceAgentService
     private readonly IEnumerable<IChatProvider> _providers;
     private readonly ILogger<MaintenanceAgentService> _logger;
     private readonly MaintenanceActiveRunStore _activeRuns;
+    private readonly IChatAgent? _chatAgent;
 
     public MaintenanceAgentService(
         MaintenanceAgentConfigService config,
@@ -1185,7 +1186,8 @@ public sealed class MaintenanceAgentService
         MaintenanceProposalWorkflow proposalWorkflow,
         IEnumerable<IChatProvider> providers,
         ILogger<MaintenanceAgentService> logger,
-        MaintenanceActiveRunStore? activeRuns = null)
+        MaintenanceActiveRunStore? activeRuns = null,
+        IChatAgent? chatAgent = null)
     {
         _config = config;
         _resourceProbe = resourceProbe;
@@ -1194,6 +1196,7 @@ public sealed class MaintenanceAgentService
         _providers = providers;
         _logger = logger;
         _activeRuns = activeRuns ?? new MaintenanceActiveRunStore();
+        _chatAgent = chatAgent;
     }
 
     public Task<MaintenanceRunResult> RunMaintenanceNowAsync(CancellationToken cancellationToken) =>
@@ -1276,12 +1279,25 @@ public sealed class MaintenanceAgentService
 
         try
         {
-            var response = await provider.CompleteAsync(new ChatProviderRequest(
-            [
-                new ChatMessage("system", BuildAdminChatSystemPrompt(config)),
-                new ChatMessage("user", prompt)
-            ], MemoryChatMode.Agent, config.Model, Provider: config.Provider), cancellationToken);
-            entry = CreateTranscriptEntry(config, prompt, response.Content.Trim(), response.ProviderName, response.Model, warnings);
+            if (_chatAgent is not null)
+            {
+                var response = await _chatAgent.SendAsync(new MemoryChatRequest(
+                    prompt,
+                    MemoryChatMode.Chat,
+                    History: [new ChatMessage("system", BuildAdminChatSystemPrompt(config))],
+                    Model: config.Model,
+                    Provider: config.Provider), cancellationToken);
+                entry = CreateTranscriptEntry(config, prompt, response.Reply.Trim(), response.ProviderName, response.Model, warnings);
+            }
+            else
+            {
+                var response = await provider.CompleteAsync(new ChatProviderRequest(
+                [
+                    new ChatMessage("system", BuildAdminChatSystemPrompt(config)),
+                    new ChatMessage("user", prompt)
+                ], MemoryChatMode.Agent, config.Model, Provider: config.Provider), cancellationToken);
+                entry = CreateTranscriptEntry(config, prompt, response.Content.Trim(), response.ProviderName, response.Model, warnings);
+            }
         }
         catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or TaskCanceledException)
         {
