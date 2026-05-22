@@ -1,5 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Diagnostics;
+using System.Text;
 using System.Text.Json;
 using MemorySmith.App.Services;
 using MemorySmith.Core.Models;
@@ -215,6 +217,55 @@ public class SecurityAndSourceLinkTests
     }
 
     [Test]
+    public async Task VarResolver_OpenWithDefaultApp_UsesPlatformDefaultAppCommand()
+    {
+        var allowedRoot = Path.Combine(_tempRoot, "allowed");
+        Directory.CreateDirectory(allowedRoot);
+        var sourceFile = Path.Combine(allowedRoot, "source file.cs");
+        await File.WriteAllTextAsync(sourceFile, "Console.WriteLine();");
+
+        var varsPath = Path.Combine(_tempRoot, "vars.json");
+        new FileVarStore(varsPath).Save(new Dictionary<string, string> { ["AllowedRoot"] = allowedRoot + Path.DirectorySeparatorChar });
+        var resolver = new CapturingVarResolver(
+            new FileVarStore(varsPath),
+            Options.Create(new MemorySmithOptions
+            {
+                SourceLinks = new SourceLinkOptions
+                {
+                    AllowOpenWithDefaultApp = true,
+                    AllowedFileRootVariables = ["AllowedRoot"]
+                }
+            }));
+
+        var result = await resolver.OpenWithDefaultAppAsync(new SourceLink { Uri = "%AllowedRoot%source file.cs" });
+        var startInfo = resolver.CapturedStartInfo;
+        var encodedCommandIndex = startInfo?.ArgumentList.IndexOf("-EncodedCommand") ?? -1;
+        var decodedWindowsCommand = encodedCommandIndex >= 0
+            ? Encoding.Unicode.GetString(Convert.FromBase64String(startInfo!.ArgumentList[encodedCommandIndex + 1]))
+            : string.Empty;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Opened, Is.True);
+            Assert.That(startInfo, Is.Not.Null);
+            Assert.That(startInfo!.FileName, Is.Not.EqualTo(sourceFile));
+            Assert.That(startInfo.UseShellExecute, Is.False);
+
+            if (OperatingSystem.IsWindows())
+            {
+                Assert.That(startInfo.FileName, Is.EqualTo("powershell.exe"));
+                Assert.That(startInfo.ArgumentList, Does.Contain("-EncodedCommand"));
+                Assert.That(decodedWindowsCommand, Is.EqualTo($"Invoke-Item -LiteralPath '{sourceFile}'"));
+            }
+            else
+            {
+                Assert.That(startInfo.FileName, Is.EqualTo(OperatingSystem.IsMacOS() ? "open" : "xdg-open"));
+                Assert.That(startInfo.ArgumentList, Does.Contain(sourceFile));
+            }
+        });
+    }
+
+    [Test]
     public void FileVarStore_Load_RecordsDiagnosticsForCorruptVarsFile()
     {
         var varsPath = Path.Combine(_tempRoot, "vars.json");
@@ -269,5 +320,21 @@ public class SecurityAndSourceLinkTests
             .GetProperty("content")[0]
             .GetProperty("text")
             .GetString() ?? string.Empty;
+    }
+
+    private sealed class CapturingVarResolver : VarResolver
+    {
+        public CapturingVarResolver(IVarStore varStore, IOptions<MemorySmithOptions> options)
+            : base(varStore, options)
+        {
+        }
+
+        public ProcessStartInfo? CapturedStartInfo { get; private set; }
+
+        protected override Process? StartDefaultAppProcess(ProcessStartInfo startInfo)
+        {
+            CapturedStartInfo = startInfo;
+            return null;
+        }
     }
 }

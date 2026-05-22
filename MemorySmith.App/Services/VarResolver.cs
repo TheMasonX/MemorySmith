@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using System.Diagnostics;
+using System.Text;
 using MemorySmith.Core.Models;
 using MemorySmith.Storage;
 using Microsoft.Extensions.Options;
@@ -105,11 +106,7 @@ public partial class VarResolver
 
         try
         {
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = fullPath,
-                UseShellExecute = true
-            });
+            StartDefaultAppProcess(CreateDefaultAppStartInfo(fullPath));
 
             return Task.FromResult(new SourceOpenResult(true, fullPath, "Opened source link."));
         }
@@ -158,6 +155,44 @@ public partial class VarResolver
 
         return true;
     }
+
+    protected virtual Process? StartDefaultAppProcess(ProcessStartInfo startInfo) =>
+        Process.Start(startInfo);
+
+    private static ProcessStartInfo CreateDefaultAppStartInfo(string fullPath)
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = "powershell.exe",
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            startInfo.ArgumentList.Add("-NoProfile");
+            startInfo.ArgumentList.Add("-ExecutionPolicy");
+            startInfo.ArgumentList.Add("Bypass");
+            startInfo.ArgumentList.Add("-EncodedCommand");
+            startInfo.ArgumentList.Add(EncodePowerShellCommand($"Invoke-Item -LiteralPath {QuotePowerShellString(fullPath)}"));
+            return startInfo;
+        }
+
+        var command = OperatingSystem.IsMacOS() ? "open" : "xdg-open";
+        var processStartInfo = new ProcessStartInfo
+        {
+            FileName = command,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+        processStartInfo.ArgumentList.Add(fullPath);
+        return processStartInfo;
+    }
+
+    private static string EncodePowerShellCommand(string command) =>
+        Convert.ToBase64String(Encoding.Unicode.GetBytes(command));
+
+    private static string QuotePowerShellString(string value) =>
+        $"'{value.Replace("'", "''", StringComparison.Ordinal)}'";
 
     /// <summary>Returns all currently defined variables.</summary>
     public IReadOnlyDictionary<string, string> GetVars() => _varStore.Load();
