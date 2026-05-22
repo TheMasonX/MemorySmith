@@ -201,6 +201,8 @@ public class TagGovernanceTests
         {
             Assert.That(markup, Does.Contain("proposal-active-run"));
             Assert.That(markup, Does.Contain("BeginRunAsync"));
+            Assert.That(markup, Does.Contain("GetActiveRun"));
+            Assert.That(markup, Does.Contain("ActiveRunDetail"));
             Assert.That(markup, Does.Contain("Task.Yield"));
             Assert.That(markup, Does.Contain("Request Agent Review"));
             Assert.That(markup, Does.Contain("RequestAgentReviewAsync"));

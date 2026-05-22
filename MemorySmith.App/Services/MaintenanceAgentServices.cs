@@ -28,6 +28,48 @@ public sealed record MaintenanceRunActivity(
     IReadOnlyList<string> Warnings,
     bool Skipped = false);
 
+public sealed record MaintenanceActiveRunSnapshot(
+    string RunId,
+    string Trigger,
+    string? Task,
+    DateTimeOffset StartedAtUtc);
+
+public sealed class MaintenanceActiveRunStore
+{
+    private readonly object _lock = new();
+    private MaintenanceActiveRunSnapshot? _current;
+
+    public MaintenanceActiveRunSnapshot? GetCurrent()
+    {
+        lock (_lock)
+        {
+            return _current;
+        }
+    }
+
+    public MaintenanceActiveRunSnapshot Begin(string trigger, string? task, DateTimeOffset startedAtUtc)
+    {
+        var snapshot = new MaintenanceActiveRunSnapshot(Guid.NewGuid().ToString("N"), trigger, task, startedAtUtc);
+        lock (_lock)
+        {
+            _current = snapshot;
+        }
+
+        return snapshot;
+    }
+
+    public void End(string runId)
+    {
+        lock (_lock)
+        {
+            if (string.Equals(_current?.RunId, runId, StringComparison.Ordinal))
+            {
+                _current = null;
+            }
+        }
+    }
+}
+
 public sealed record MaintenanceAdminTranscriptEntry(
     string Id,
     DateTimeOffset CreatedAtUtc,
@@ -1134,6 +1176,7 @@ public sealed class MaintenanceAgentService
     private readonly MaintenanceProposalWorkflow _proposalWorkflow;
     private readonly IEnumerable<IChatProvider> _providers;
     private readonly ILogger<MaintenanceAgentService> _logger;
+    private readonly MaintenanceActiveRunStore _activeRuns;
 
     public MaintenanceAgentService(
         MaintenanceAgentConfigService config,
@@ -1141,7 +1184,8 @@ public sealed class MaintenanceAgentService
         MaintenanceTopicMapService topicMap,
         MaintenanceProposalWorkflow proposalWorkflow,
         IEnumerable<IChatProvider> providers,
-        ILogger<MaintenanceAgentService> logger)
+        ILogger<MaintenanceAgentService> logger,
+        MaintenanceActiveRunStore? activeRuns = null)
     {
         _config = config;
         _resourceProbe = resourceProbe;
@@ -1149,6 +1193,7 @@ public sealed class MaintenanceAgentService
         _proposalWorkflow = proposalWorkflow;
         _providers = providers;
         _logger = logger;
+        _activeRuns = activeRuns ?? new MaintenanceActiveRunStore();
     }
 
     public Task<MaintenanceRunResult> RunMaintenanceNowAsync(CancellationToken cancellationToken) =>
@@ -1159,6 +1204,8 @@ public sealed class MaintenanceAgentService
 
     public Task<MaintenanceRunResult> RunMaintenanceOnDemandAsync(string task, CancellationToken cancellationToken) =>
         RunAsync("run_maintenance_on_demand", cancellationToken, task);
+
+    public MaintenanceActiveRunSnapshot? GetActiveRun() => _activeRuns.GetCurrent();
 
     public async Task<IReadOnlyList<MaintenanceRunActivity>> ListRecentActivityAsync(int maxEntries, CancellationToken cancellationToken)
     {
@@ -1306,42 +1353,50 @@ public sealed class MaintenanceAgentService
     private async Task<MaintenanceRunResult> RunAsync(string trigger, CancellationToken cancellationToken, string? taskFilter = null)
     {
         var started = DateTimeOffset.UtcNow;
+        var activeRun = _activeRuns.Begin(trigger, taskFilter, started);
         var config = _config.GetCurrent();
         var warnings = new List<string>();
-        var resource = await _resourceProbe.ProbeAsync(config, cancellationToken);
-        if (resource.IsBusy && trigger == "run_maintenance_weekly")
+        try
         {
-            warnings.Add(resource.Reason ?? "Resource probe reported a busy session.");
-            warnings.AddRange(resource.MatchingProcesses.Select(name => $"Busy process: {name}"));
-            var skipped = new MaintenanceRunResult(trigger, started, DateTimeOffset.UtcNow, [], warnings, Skipped: true);
-            await SaveRunStateAsync(config, skipped, cancellationToken);
-            return skipped;
-        }
-
-        var topicMap = await _topicMap.BuildAsync(cancellationToken);
-        var outputs = new List<MaintenanceTaskOutput>();
-        foreach (var task in EnabledTasks(config, taskFilter))
-        {
-            var output = BuildDeterministicOutput(task, topicMap, config, started);
-            outputs.Add(await SubmitOutputProposalsAsync(output, warnings, cancellationToken));
-        }
-
-        if (config.UseLlm)
-        {
-            var llmOutput = await TryRunLlmReviewAsync(config, outputs, warnings, cancellationToken);
-            if (llmOutput is not null)
+            var resource = await _resourceProbe.ProbeAsync(config, cancellationToken);
+            if (resource.IsBusy && trigger == "run_maintenance_weekly")
             {
-                outputs.Add(await SubmitOutputProposalsAsync(llmOutput, warnings, cancellationToken));
+                warnings.Add(resource.Reason ?? "Resource probe reported a busy session.");
+                warnings.AddRange(resource.MatchingProcesses.Select(name => $"Busy process: {name}"));
+                var skipped = new MaintenanceRunResult(trigger, started, DateTimeOffset.UtcNow, [], warnings, Skipped: true);
+                await SaveRunStateAsync(config, skipped, cancellationToken);
+                return skipped;
             }
-            else
-            {
-                warnings.Add("LLM review was skipped or unavailable; deterministic maintenance outputs were returned.");
-            }
-        }
 
-        var result = new MaintenanceRunResult(trigger, started, DateTimeOffset.UtcNow, outputs, warnings);
-        await SaveRunStateAsync(config, result, cancellationToken);
-        return result;
+            var topicMap = await _topicMap.BuildAsync(cancellationToken);
+            var outputs = new List<MaintenanceTaskOutput>();
+            foreach (var task in EnabledTasks(config, taskFilter))
+            {
+                var output = BuildDeterministicOutput(task, topicMap, config, started);
+                outputs.Add(await SubmitOutputProposalsAsync(output, warnings, cancellationToken));
+            }
+
+            if (config.UseLlm)
+            {
+                var llmOutput = await TryRunLlmReviewAsync(config, outputs, warnings, cancellationToken);
+                if (llmOutput is not null)
+                {
+                    outputs.Add(await SubmitOutputProposalsAsync(llmOutput, warnings, cancellationToken));
+                }
+                else
+                {
+                    warnings.Add("LLM review was skipped or unavailable; deterministic maintenance outputs were returned.");
+                }
+            }
+
+            var result = new MaintenanceRunResult(trigger, started, DateTimeOffset.UtcNow, outputs, warnings);
+            await SaveRunStateAsync(config, result, cancellationToken);
+            return result;
+        }
+        finally
+        {
+            _activeRuns.End(activeRun.RunId);
+        }
     }
 
     private static IEnumerable<string> EnabledTasks(MaintenanceAgentOptions config, string? taskFilter)

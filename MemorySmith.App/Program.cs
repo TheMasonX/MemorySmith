@@ -300,6 +300,7 @@ try
     builder.Services.AddSingleton<MemoryApplicationService>();
     builder.Services.AddSingleton<MemoryMaintenanceTasks>();
     builder.Services.AddSingleton<MaintenanceAgentConfigService>();
+    builder.Services.AddSingleton<MaintenanceActiveRunStore>();
     builder.Services.AddSingleton<MaintenanceResourceProbe>();
     builder.Services.AddSingleton<MaintenanceDiffService>();
     builder.Services.AddSingleton<MaintenanceWritePermissionService>();

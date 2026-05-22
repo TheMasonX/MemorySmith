@@ -59,6 +59,29 @@ public class MaintenanceAgentWorkflowTests
     }
 
     [Test]
+    public void ActiveRunStore_TracksCurrentRunUntilEnded()
+    {
+        var store = new MaintenanceActiveRunStore();
+        var started = DateTimeOffset.UtcNow;
+
+        var active = store.Begin("run_maintenance_on_demand", "staleness_scan", started);
+        var current = store.GetCurrent();
+        store.End("not-the-current-run");
+        var stillCurrent = store.GetCurrent();
+        store.End(active.RunId);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(current, Is.Not.Null);
+            Assert.That(current!.Trigger, Is.EqualTo("run_maintenance_on_demand"));
+            Assert.That(current.Task, Is.EqualTo("staleness_scan"));
+            Assert.That(current.StartedAtUtc, Is.EqualTo(started));
+            Assert.That(stillCurrent, Is.Not.Null);
+            Assert.That(store.GetCurrent(), Is.Null);
+        });
+    }
+
+    [Test]
     public void DiffService_EmitsRemovedAndAddedLines()
     {
         var diff = _diff.BuildUnifiedDiff("note.md", "# Title\nold line", "# Title\nnew line");
