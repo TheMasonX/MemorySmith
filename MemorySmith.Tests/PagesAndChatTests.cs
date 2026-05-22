@@ -546,6 +546,67 @@ public class PagesAndChatTests
     }
 
     [Test]
+    public async Task MemoryChatAgent_SubmitsApprovedWritesAsMaintenanceProposalWhenWorkflowIsAvailable()
+    {
+        var memoryStore = new InMemoryMemoryStore();
+        var eventStore = new RecordingEventStore();
+        var publisher = new RecordingMemoryChangePublisher();
+        var memories = TestServiceFactory.CreateMemoryApplicationService(memoryStore, eventStore, publisher);
+        var dataPath = Path.Combine(_tempDir, "Memories");
+        var pagesPath = Path.Combine(_tempDir, "Pages");
+        var pages = new FilePageService(pagesPath);
+        var options = new MemorySmithOptions
+        {
+            DataPath = dataPath,
+            PagesPath = pagesPath,
+            Chat = new ChatOptions { AgentWritesEnabled = true },
+            MaintenanceAgent = new MaintenanceAgentOptions
+            {
+                Read = [dataPath, pagesPath],
+                Write = [Path.Combine(dataPath, "Working"), pagesPath],
+                Storage = new MaintenanceAgentStorageOptions
+                {
+                    ProposalsPath = Path.Combine(_tempDir, "Proposals")
+                }
+            }
+        };
+        var config = new MaintenanceAgentConfigService(new StaticOptionsMonitor<MemorySmithOptions>(options));
+        var workflow = new MaintenanceProposalWorkflow(
+            new FileMaintenanceProposalStore(config, new MaintenanceWritePermissionService(config), new MaintenanceDiffService()),
+            new FakeCurrentUserContext("editor-1", "Editor User", [MemorySmithRoles.Editor]));
+        var provider = new FakeChatProvider("""
+        {
+            "reply": "Ready to record.",
+            "memoryWrites": [
+                { "id": "agent-proposal-note", "title": "Agent Proposal Note", "content": "Submit this through proposals.", "tags": ["agent"], "status": "Core", "confidence": 0.9 }
+            ],
+            "pageWrites": [
+                { "slug": "agent-proposal-page", "title": "Agent Proposal Page", "markdown": "Proposal page body." }
+            ]
+        }
+        """);
+        var agent = new MemoryChatAgent([provider], memories, pages, Options.Create(options), new FakeCurrentUserContext("editor-1", "Editor User", [MemorySmithRoles.Editor]), proposalWorkflow: workflow);
+
+        var response = await agent.SendAsync(new MemoryChatRequest("Capture this", MemoryChatMode.Agent, RequireAgentWriteApproval: true), CancellationToken.None);
+        var result = await agent.ApplyAgentWritesAsync(response.ProposedMemoryWrites!, response.ProposedPageWrites!, CancellationToken.None);
+        var proposals = await workflow.ListAsync(CancellationToken.None);
+        var missingPageAfterSubmission = await pages.GetAsync("agent-proposal-page", CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.WrittenMemories, Is.Empty);
+            Assert.That(result.WrittenPages, Is.Empty);
+            Assert.That(result.SubmittedProposalIds, Has.Count.EqualTo(1));
+            Assert.That(proposals, Has.Count.EqualTo(1));
+            Assert.That(proposals[0].Changes, Has.Count.EqualTo(2));
+            Assert.That(proposals[0].Metadata.AgentVersion, Is.EqualTo("chat-agent.proposal-gated.v1"));
+            Assert.That(proposals[0].RelatedRecords, Does.Contain("agent-proposal-note"));
+            Assert.That(memoryStore.Load("agent-proposal-note"), Is.Null);
+            Assert.That(missingPageAfterSubmission, Is.Null);
+        });
+    }
+
+    [Test]
     public async Task MemoryChatAgent_AgentModeApprovalReplyDoesNotClaimWritesWereApplied()
     {
         var memoryStore = new InMemoryMemoryStore();
