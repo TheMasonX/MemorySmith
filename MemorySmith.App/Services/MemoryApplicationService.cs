@@ -649,6 +649,15 @@ public partial class MemoryApplicationService
             errors[nameof(MemoryRecord.SourceLinks)] = sourceLinkErrors.ToArray();
         }
 
+        var governanceErrors = GetDiagnostics(record, MemoryRecordLookup.ToRecordMap(_store.LoadAll().Append(record)))
+            .Where(diagnostic => string.Equals(diagnostic.Severity, "Error", StringComparison.OrdinalIgnoreCase))
+            .Select(diagnostic => diagnostic.Message)
+            .ToArray();
+        if (governanceErrors.Length > 0)
+        {
+            errors[nameof(MemoryRecord.Tags)] = governanceErrors;
+        }
+
         if (errors.Count > 0)
         {
             throw new MemoryValidationException(errors);

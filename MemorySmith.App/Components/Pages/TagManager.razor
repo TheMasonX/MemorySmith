@@ -1,0 +1,137 @@
+@page "/tags"
+@attribute [Authorize(Policy = MemorySmithPolicies.CanAdminMemorySmith)]
+
+<PageTitle>Tags</PageTitle>
+
+<div class="wiki-workbench tag-manager-workbench">
+    <section class="wiki-commandbar" aria-label="Tag manager">
+        <div class="wiki-title-block">
+            <MudText Typo="Typo.h5">Tags</MudText>
+            <span class="wiki-count">@_tagUsage.Count observed tags</span>
+        </div>
+        <div class="wiki-search-strip">
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" Disabled="@_isBusy" OnClick="LoadAsync">Refresh</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save" Disabled="@_isBusy" OnClick="SaveAsync">Save Policy</MudButton>
+        </div>
+    </section>
+
+    <section class="tag-manager-body">
+        <aside class="wiki-results-pane tag-policy-pane" aria-label="Tag policy editor">
+            <div class="wiki-pane-header">
+                <MudText Typo="Typo.subtitle2">Policy</MudText>
+                <span class="wiki-mode-label">@_policyMode</span>
+            </div>
+            <div class="tag-policy-editor">
+                <MudSelect T="string" @bind-Value="_policyMode" Label="Overall Mode" Variant="Variant.Outlined" Margin="Margin.Dense">
+                    @foreach (var mode in _policyModes)
+                    {
+                        <MudSelectItem Value="@mode">@mode</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudSelect T="string" @bind-Value="_plainMode" Label="Plain Tag Mode" Variant="Variant.Outlined" Margin="Margin.Dense">
+                    @foreach (var mode in _plainTagModes)
+                    {
+                        <MudSelectItem Value="@mode">@mode</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudTextField @bind-Value="_allowlistText" Label="Allowlist" Lines="5" Variant="Variant.Outlined" Margin="Margin.Dense" HelperText="One plain tag per line." />
+                <MudTextField @bind-Value="_blocklistText" Label="Blocklist" Lines="5" Variant="Variant.Outlined" Margin="Margin.Dense" HelperText="One blocked plain tag per line." />
+                <MudTextField @bind-Value="_aliasesText" Label="Aliases" Lines="5" Variant="Variant.Outlined" Margin="Margin.Dense" HelperText="One alias per line: source = canonical." />
+
+                <div class="tag-policy-subheader">
+                    <span>Namespaces</span>
+                    <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" OnClick="AddNamespace" aria-label="Add namespace" />
+                </div>
+                @foreach (var namespaceRow in _namespaceRows)
+                {
+                    <div class="tag-namespace-row">
+                        <MudTextField @bind-Value="namespaceRow.Name" Label="Name" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        <MudSelect T="string" @bind-Value="namespaceRow.Cardinality" Label="Cardinality" Variant="Variant.Outlined" Margin="Margin.Dense">
+                            <MudSelectItem Value="@("single")">single</MudSelectItem>
+                            <MudSelectItem Value="@("many")">many</MudSelectItem>
+                        </MudSelect>
+                        <MudSelect T="string" @bind-Value="namespaceRow.ValueKind" Label="Value Kind" Variant="Variant.Outlined" Margin="Margin.Dense">
+                            <MudSelectItem Value="@("tag")">tag</MudSelectItem>
+                            <MudSelectItem Value="@("enum")">enum</MudSelectItem>
+                            <MudSelectItem Value="@("year-month")">year-month</MudSelectItem>
+                            <MudSelectItem Value="@("memory-id")">memory-id</MudSelectItem>
+                        </MudSelect>
+                        <MudTextField @bind-Value="namespaceRow.AllowedValuesText" Label="Allowed Values" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => RemoveNamespace(namespaceRow))" aria-label="Remove namespace" />
+                    </div>
+                }
+            </div>
+        </aside>
+
+        <main class="wiki-detail-pane tag-insights-pane" aria-label="Tag insights">
+            <div class="wiki-pane-header">
+                <MudText Typo="Typo.subtitle2">Policy Feedback</MudText>
+            </div>
+            @if (_policyDiagnostics.Count > 0)
+            {
+                <div class="wiki-diagnostics-panel tag-policy-diagnostics">
+                    @foreach (var diagnostic in _policyDiagnostics)
+                    {
+                        <div class="wiki-diagnostic-row @DiagnosticClass(diagnostic)">
+                            <strong>@diagnostic.Code</strong>
+                            <span>@diagnostic.Message</span>
+                        </div>
+                    }
+                </div>
+            }
+
+            <MudTabs Rounded="false" Elevation="0" Class="admin-tabs">
+                <MudTabPanel Text="Usage" Icon="@Icons.Material.Filled.LocalOffer">
+                    <div class="tag-table-wrap">
+                        <table class="health-table tag-manager-table">
+                            <thead>
+                                <tr>
+                                    <th>Tag</th>
+                                    <th>Count</th>
+                                    <th>Ratio</th>
+                                    <th>Policy</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var tag in _tagUsage)
+                                {
+                                    <tr>
+                                        <td><span class="wiki-tag">@tag.Tag</span></td>
+                                        <td>@tag.Count</td>
+                                        <td>@tag.RecordRatio.ToString("P0")</td>
+                                        <td>@PolicyLabel(tag)</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </MudTabPanel>
+                <MudTabPanel Text="Suggestions" Icon="@Icons.Material.Filled.TipsAndUpdates">
+                    <div class="tag-table-wrap">
+                        <table class="health-table tag-manager-table">
+                            <thead>
+                                <tr>
+                                    <th>Kind</th>
+                                    <th>Tag</th>
+                                    <th>Suggested Value</th>
+                                    <th>Reason</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var suggestion in _suggestions)
+                                {
+                                    <tr>
+                                        <td>@suggestion.Kind</td>
+                                        <td><span class="wiki-tag">@suggestion.Tag</span></td>
+                                        <td>@(suggestion.SuggestedValue ?? "-")</td>
+                                        <td>@suggestion.Reason</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </MudTabPanel>
+            </MudTabs>
+        </main>
+    </section>
+</div>

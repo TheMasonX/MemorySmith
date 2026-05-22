@@ -558,6 +558,71 @@ body {
     gap: 8px;
 }
 
+.wiki-tag-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.wiki-tag-editor > label {
+    color: var(--vscode-text-muted);
+    font-size: 0.74rem;
+}
+
+.wiki-tag-editor-surface {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 5px;
+    min-height: 42px;
+    padding: 4px 6px;
+    border: 1px solid var(--vscode-border);
+    background: var(--vscode-panel-soft);
+}
+
+.wiki-tag-edit-chip,
+.wiki-tag-suggestion {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 24px;
+    border: 1px solid var(--vscode-border);
+    border-radius: 3px;
+    background: var(--vscode-bg);
+    color: var(--vscode-text);
+    font-size: 0.74rem;
+    padding: 2px 7px;
+    cursor: pointer;
+}
+
+.wiki-tag-edit-chip:hover,
+.wiki-tag-suggestion:hover,
+.wiki-tag-edit-chip:focus-visible,
+.wiki-tag-suggestion:focus-visible {
+    border-color: var(--vscode-accent);
+    color: #9cdcfe;
+}
+
+.wiki-tag-input {
+    flex: 1 1 140px;
+    min-width: 120px;
+}
+
+.wiki-tag-input .mud-input-root {
+    margin-top: 0;
+}
+
+.wiki-tag-suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.wiki-edit-diagnostics {
+    margin-top: 8px;
+}
+
 .wiki-editor-textarea {
     margin: 10px 12px 12px;
 }
@@ -587,6 +652,78 @@ body {
 .wiki-source-link:hover {
     background: var(--vscode-accent-hover);
     text-decoration: none;
+}
+
+.tag-manager-body {
+    display: grid;
+    grid-template-columns: minmax(360px, 38%) minmax(520px, 1fr);
+    gap: 8px;
+    min-height: 0;
+    flex: 1;
+}
+
+.tag-policy-pane,
+.tag-insights-pane {
+    min-height: 0;
+}
+
+.tag-policy-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 12px 14px;
+    overflow: auto;
+}
+
+.tag-policy-subheader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: var(--vscode-text-muted);
+    font-size: 0.76rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.tag-namespace-row {
+    display: grid;
+    grid-template-columns: minmax(95px, 1fr) 112px 120px minmax(120px, 1fr) 32px;
+    align-items: center;
+    gap: 6px;
+    padding: 6px;
+    border: 1px solid var(--vscode-border-soft);
+    background: var(--vscode-panel-soft);
+}
+
+.tag-policy-diagnostics {
+    margin-bottom: 8px;
+}
+
+.tag-table-wrap {
+    overflow: auto;
+    max-height: calc(100vh - 220px);
+}
+
+.tag-manager-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.tag-manager-table th,
+.tag-manager-table td {
+    border-bottom: 1px solid var(--vscode-border-soft);
+    padding: 7px 9px;
+    color: var(--vscode-text);
+    font-size: 0.8rem;
+    text-align: left;
+    vertical-align: top;
+}
+
+.tag-manager-table th {
+    color: var(--vscode-text-muted);
+    background: var(--vscode-panel-strong);
+    font-size: 0.72rem;
+    text-transform: uppercase;
 }
 
 .pages-workbench,
