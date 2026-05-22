@@ -204,8 +204,11 @@ public class TagGovernanceTests
             Assert.That(markup, Does.Contain("RequestAgentReviewAsync"));
             Assert.That(markup, Does.Contain("Recent task activity"));
             Assert.That(markup, Does.Contain("ListRecentActivityAsync"));
+            Assert.That(markup, Does.Contain("SelectProposalByIdAsync"));
+            Assert.That(markup, Does.Contain("maintenance-activity-proposals"));
             Assert.That(css, Does.Contain(".proposal-active-run"));
             Assert.That(css, Does.Contain(".maintenance-activity-panel"));
+            Assert.That(css, Does.Contain(".maintenance-activity-proposals"));
             Assert.That(css, Does.Contain("grid-template-columns: minmax(260px, 31%) minmax(0, 1fr);"));
             Assert.That(css, Does.Contain("grid-template-columns: minmax(220px, 1fr) repeat(4, minmax(92px, max-content));"));
             Assert.That(css, Does.Contain("@media (max-width: 700px)"));

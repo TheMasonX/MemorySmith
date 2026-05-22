@@ -24,6 +24,7 @@ public sealed record MaintenanceRunActivity(
     IReadOnlyList<string> Tasks,
     int FindingCount,
     int ProposalCount,
+    IReadOnlyList<string> ProposalIds,
     IReadOnlyList<string> Warnings,
     bool Skipped = false);
 
@@ -1755,6 +1756,7 @@ public sealed class MaintenanceAgentService
             run.Outputs.Select(output => output.Task).Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
             run.Outputs.Sum(output => output.Findings.Count),
             run.Outputs.Sum(output => output.Proposals.Count),
+            run.Outputs.SelectMany(output => output.Proposals.Select(proposal => proposal.ProposalId)).Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
             run.Warnings,
             run.Skipped);
 
@@ -1767,7 +1769,15 @@ public sealed class MaintenanceAgentService
 
         try
         {
-            return JsonSerializer.Deserialize<MaintenanceRunActivity>(line, ActivityJsonOptions);
+            var activity = JsonSerializer.Deserialize<MaintenanceRunActivity>(line, ActivityJsonOptions);
+            return activity is null
+                ? null
+                : activity with
+                {
+                    Tasks = activity.Tasks ?? [],
+                    ProposalIds = activity.ProposalIds ?? [],
+                    Warnings = activity.Warnings ?? []
+                };
         }
         catch (JsonException)
         {

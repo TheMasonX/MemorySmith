@@ -2488,6 +2488,30 @@ body {
     border-color: var(--vscode-yellow);
 }
 
+.maintenance-activity-proposals {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+}
+
+.maintenance-activity-proposals button {
+    max-width: 100%;
+    padding: 2px 6px;
+    border: 1px solid var(--vscode-border-soft);
+    border-radius: 4px;
+    background: var(--vscode-button-secondary-bg);
+    color: var(--vscode-text);
+    font: inherit;
+    font-size: 0.72rem;
+    overflow-wrap: anywhere;
+    cursor: pointer;
+}
+
+.maintenance-activity-proposals button:hover {
+    border-color: var(--vscode-accent);
+}
+
 .maintenance-activity-warning {
     color: var(--vscode-yellow) !important;
     overflow-wrap: anywhere;
