@@ -187,7 +187,7 @@ public class AppApiContractTests
             Assert.Multiple(() =>
             {
                 Assert.That(pageResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK).Or.EqualTo(HttpStatusCode.Redirect).Or.EqualTo(HttpStatusCode.Unauthorized).Or.EqualTo(HttpStatusCode.Forbidden));
-                Assert.That(body, Does.Not.Contain("Users, providers, settings, audit, history"));
+                Assert.That(body, Does.Not.Contain("Users, OAuth, settings, audit, history"));
                 if (pageResponse.StatusCode == HttpStatusCode.OK)
                 {
                     Assert.That(body, Does.Contain("Sign In"));

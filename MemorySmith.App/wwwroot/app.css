@@ -2033,14 +2033,17 @@ body {
     color: #ffffff;
 }
 
-.admin-tags-panel {
-    max-width: 920px;
-}
-
 .admin-setting-heading {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     gap: 0.35rem;
+}
+
+.admin-setting-key {
+    display: block;
+    margin-top: 0.18rem;
+    color: var(--vscode-text-muted);
+    overflow-wrap: anywhere;
 }
 
 .admin-help-icon {
@@ -2141,10 +2144,23 @@ body {
 
 .proposals-body {
     display: grid;
-    grid-template-columns: minmax(340px, 34%) minmax(520px, 1fr);
+    grid-template-columns: minmax(260px, 31%) minmax(0, 1fr);
     gap: 8px;
     min-height: 0;
     flex: 1;
+}
+
+.proposal-active-run {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 36px;
+    padding: 0 10px;
+    border: 1px solid var(--vscode-accent);
+    border-radius: 4px;
+    color: #8ccfff;
+    background: var(--vscode-accent-soft);
+    font-size: 0.82rem;
 }
 
 .proposal-row {
@@ -2455,10 +2471,12 @@ body {
     .health-charts-row,
     .health-lower-grid,
     .health-operations-grid,
-    .chat-composer,
-    .proposals-body,
-    .proposal-actions {
+    .chat-composer {
         grid-template-columns: 1fr;
+    }
+
+    .proposal-actions {
+        grid-template-columns: minmax(220px, 1fr) repeat(3, minmax(92px, max-content));
     }
 
     .admin-panel-grid:not(.profile-panel-grid) {
@@ -2482,6 +2500,13 @@ body {
     .chat-composer-side {
         max-width: none;
         width: 100%;
+    }
+}
+
+@media (max-width: 700px) {
+    .proposals-body,
+    .proposal-actions {
+        grid-template-columns: 1fr;
     }
 }
 
