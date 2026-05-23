@@ -1,7 +1,7 @@
 {
   "Id": "project-wiki-tag-governance-current",
   "Title": "Tag Governance Current State",
-  "Content": "MemorySmith tag governance is active and user-facing. TagPolicyService reads and writes Data/Policies/tag-policy.json by default. TagGovernanceService computes observed tag usage, policy diagnostics, completions, and approval-only suggestions for casing variants, near duplicates, broad tags, namespace candidates, blocklist candidates, and allowlist candidates. The /memories editor uses tag chips, autocomplete, and draft diagnostics before save. The /tags Tag Manager is exposed as an Admin-only main navigation item and lets Admin users edit policy mode, plain-tag mode, allowlist, blocklist, aliases, namespaces, namespace cardinality, value kinds, and allowed values while reviewing usage and suggestions. Suggestions are informational until a user edits policy or records; no automatic tag rewrite runs from the suggestion list.",
+  "Content": "MemorySmith tag governance is active and user-facing. TagPolicyService reads and writes Data/Policies/tag-policy.json by default. TagGovernanceService computes observed tag usage, policy diagnostics, completions, and approval-only suggestions for casing variants, near duplicates, broad tags, namespace candidates, blocklist candidates, and allowlist candidates. The /memories editor uses tag chips, autocomplete, and draft diagnostics before save. The /tags Tag Manager is exposed as an Admin-only main navigation item and lets Admin users edit policy mode, plain-tag mode, allowlist, blocklist, aliases, namespaces, namespace cardinality, value kinds, and allowed values while reviewing usage and suggestions. Suggestion rows expose Approve and Reject actions: Approve adds the suggested/canonical value to the allowlist and removes it from the blocklist, while Reject adds the observed tag to the blocklist and removes it from the allowlist. Suggestion decisions save the tag policy but do not rewrite memory records automatically.",
   "Status": 2,
   "Confidence": 0.94,
   "Tags": [
@@ -31,6 +31,10 @@
       "Uri": "%MemorySmithRepo%MemorySmith.App/Components/Pages/TagManager.razor"
     },
     {
+      "Label": "TagManager.razor.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Components/Pages/TagManager.razor.cs"
+    },
+    {
       "Label": "TagGovernanceService.cs",
       "Uri": "%MemorySmithRepo%MemorySmith.App/Services/TagGovernanceService.cs"
     },
@@ -44,5 +48,5 @@
     }
   ],
   "UsageCount": 0,
-  "LastUpdated": "2026-05-22T14:45:00Z"
+  "LastUpdated": "2026-05-23T00:25:00Z"
 }

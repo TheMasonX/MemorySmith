@@ -1675,9 +1675,10 @@ public sealed class MaintenanceAgentService
 
     private static MaintenanceTaskOutput ParseTaskOutput(string json)
     {
+        var payload = ExtractJsonObjectPayload(json);
         try
         {
-            var deserialized = JsonSerializer.Deserialize<MaintenanceTaskOutput>(json, AgentJsonOptions);
+            var deserialized = JsonSerializer.Deserialize<MaintenanceTaskOutput>(payload, AgentJsonOptions);
             if (deserialized is not null)
             {
                 return NormalizeTaskOutput(deserialized);
@@ -1687,7 +1688,7 @@ public sealed class MaintenanceAgentService
         {
         }
 
-        using var document = JsonDocument.Parse(json);
+        using var document = JsonDocument.Parse(payload);
         var root = document.RootElement;
         return new MaintenanceTaskOutput(
             root.TryGetProperty("task", out var task) ? task.GetString() ?? "llm_review" : "llm_review",
@@ -1726,9 +1727,10 @@ public sealed class MaintenanceAgentService
 
     private static MaintenanceProposalReviewEnvelope ParseProposalReview(string content)
     {
+        var payload = ExtractJsonObjectPayload(content);
         try
         {
-            var parsed = JsonSerializer.Deserialize<MaintenanceProposalReviewEnvelope>(content, AgentJsonOptions);
+            var parsed = JsonSerializer.Deserialize<MaintenanceProposalReviewEnvelope>(payload, AgentJsonOptions);
             if (parsed is not null)
             {
                 return parsed with
@@ -1743,6 +1745,29 @@ public sealed class MaintenanceAgentService
         }
 
         return new MaintenanceProposalReviewEnvelope("reviewed", [string.IsNullOrWhiteSpace(content) ? "Agent review returned no text." : content.Trim()], null);
+    }
+
+    private static string ExtractJsonObjectPayload(string content)
+    {
+        var trimmed = (content ?? string.Empty).Trim();
+        if (trimmed.StartsWith("```", StringComparison.Ordinal))
+        {
+            var firstLineEnd = trimmed.IndexOf('\n');
+            if (firstLineEnd >= 0)
+            {
+                trimmed = trimmed[(firstLineEnd + 1)..].Trim();
+                if (trimmed.EndsWith("```", StringComparison.Ordinal))
+                {
+                    trimmed = trimmed[..^3].Trim();
+                }
+            }
+        }
+
+        var firstObjectBrace = trimmed.IndexOf('{');
+        var lastObjectBrace = trimmed.LastIndexOf('}');
+        return firstObjectBrace >= 0 && lastObjectBrace >= firstObjectBrace
+            ? trimmed[firstObjectBrace..(lastObjectBrace + 1)]
+            : trimmed;
     }
 
     private static string FormatProposalReviewComment(MaintenanceProposalReviewEnvelope review, ChatProviderResponse response)

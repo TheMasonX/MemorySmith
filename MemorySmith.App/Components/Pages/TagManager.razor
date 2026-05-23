@@ -115,6 +115,7 @@
                                     <th>Tag</th>
                                     <th>Suggested Value</th>
                                     <th>Reason</th>
+                                    <th>Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -125,6 +126,12 @@
                                         <td><span class="wiki-tag">@suggestion.Tag</span></td>
                                         <td>@(suggestion.SuggestedValue ?? "-")</td>
                                         <td>@suggestion.Reason</td>
+                                        <td>
+                                            <div class="tag-suggestion-actions">
+                                                <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Success" StartIcon="@Icons.Material.Filled.Check" Disabled="@_isBusy" OnClick="@(() => ApproveSuggestionAsync(suggestion))">Approve</MudButton>
+                                                <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.Close" Disabled="@_isBusy" OnClick="@(() => RejectSuggestionAsync(suggestion))">Reject</MudButton>
+                                            </div>
+                                        </td>
                                     </tr>
                                 }
                             </tbody>

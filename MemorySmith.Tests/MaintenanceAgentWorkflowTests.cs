@@ -568,18 +568,45 @@ public class MaintenanceAgentWorkflowTests
     }
 
     [Test]
+    public async Task AgentRun_AcceptsFencedLlmReviewJson()
+    {
+        var provider = new FakeChatProvider("""
+        ```json
+        {
+          "task": "llm_review",
+          "findings": [],
+          "proposals": [],
+          "warnings": [],
+          "confidence": 0.66,
+          "metadata": { "source": "test" }
+        }
+        ```
+        """);
+        var agent = CreateReviewAgent(provider);
+
+        var result = await agent.RunMaintenanceOnDemandAsync("staleness_scan", CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Warnings, Has.None.Contains("LLM review skipped"));
+            Assert.That(result.Outputs.Select(output => output.Task), Does.Contain("llm_review"));
+            Assert.That(result.Outputs.Single(output => output.Task == "llm_review").Confidence, Is.EqualTo(0.66));
+        });
+    }
+
+    [Test]
     public async Task AgentReview_AddsProviderFeedbackWithoutChangingProposalStatus()
     {
         var targetPath = Path.Combine(_tempDir, "Pages", "agent-review-note.md");
         Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
         await File.WriteAllTextAsync(targetPath, "before");
         var submitted = await _workflow.SubmitAsync(CreateProposal(targetPath, "before", "after"), CancellationToken.None);
-        var provider = new FakeChatProvider(JsonSerializer.Serialize(new
+        var provider = new FakeChatProvider("```json" + Environment.NewLine + JsonSerializer.Serialize(new
         {
             recommendation = "approve",
             comments = new[] { "The evidence and diff are consistent." },
             confidence = 0.84
-        }));
+        }) + Environment.NewLine + "```");
         var agent = CreateReviewAgent(provider);
 
         var result = await agent.ReviewProposalAsync(submitted.ProposalId, "Please review before approval.", CancellationToken.None);
