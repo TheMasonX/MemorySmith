@@ -1,6 +1,8 @@
 @page "/chat"
 @rendermode InteractiveServer
 @implements IAsyncDisposable
+@using System.Net
+@using System.Text.RegularExpressions
 @using System.Text.Json
 @using System.Text.Json.Nodes
 @using MemorySmith.Core.Models
@@ -115,7 +117,7 @@
                                 </div>
                             </details>
                         }
-                        <div class="chat-message-body chat-message-markdown">@((MarkupString)ChatMarkdownRenderer.RenderHtml(turn.Content))</div>
+                        <div class="chat-message-body chat-message-markdown">@RenderTurnContent(turn)</div>
 
                         @if (turn.Attachments.Count > 0)
                         {
@@ -1966,6 +1968,122 @@
         var lines = result.SubmittedProposalIds?.Select(id => $"- proposal:{id}").ToList() ?? [];
         return lines.Count == 0 ? "No proposals were submitted." : string.Join(Environment.NewLine, lines);
     }
+
+    private static MarkupString RenderTurnContent(ChatTurnState turn)
+    {
+        var html = ChatMarkdownRenderer.RenderHtml(turn.Content);
+        return new MarkupString(ApplyInlinePageReferenceFallback(html, turn));
+    }
+
+    private static string ApplyInlinePageReferenceFallback(string html, ChatTurnState turn)
+    {
+        if (string.IsNullOrWhiteSpace(html))
+        {
+            return html;
+        }
+
+        var aliases = BuildPageAliasMap(turn);
+        if (aliases.Count == 0)
+        {
+            return html;
+        }
+
+        return InlinePageCodeRegex.Replace(html, match =>
+        {
+            var raw = WebUtility.HtmlDecode(match.Groups["value"].Value).Trim();
+            if (!TryResolvePageSlug(raw, aliases, out var slug))
+            {
+                return match.Value;
+            }
+
+            var href = PageHref(slug);
+            return $"<a class=\"wiki-tag chat-resource chat-inline-ref\" href=\"{href}\" target=\"_blank\" rel=\"noopener noreferrer\">{WebUtility.HtmlEncode(raw)}</a>";
+        });
+    }
+
+    private static Dictionary<string, string> BuildPageAliasMap(ChatTurnState turn)
+    {
+        var aliases = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var item in turn.Context.Where(item => string.Equals(item.Kind, "page", StringComparison.OrdinalIgnoreCase)))
+        {
+            AddPageAliases(item.Id, aliases);
+        }
+
+        foreach (var slug in turn.WrittenPages)
+        {
+            AddPageAliases(slug, aliases);
+        }
+
+        return aliases;
+    }
+
+    private static void AddPageAliases(string value, IDictionary<string, string> aliases)
+    {
+        if (!TryNormalizePageSlug(value, out var slug))
+        {
+            return;
+        }
+
+        aliases[slug] = slug;
+        aliases[$"{slug}.md"] = slug;
+        aliases[$"page:{slug}"] = slug;
+        aliases[$"page:{slug}.md"] = slug;
+    }
+
+    private static bool TryResolvePageSlug(string raw, IReadOnlyDictionary<string, string> aliases, out string slug)
+    {
+        slug = string.Empty;
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return false;
+        }
+
+        var candidate = raw.Trim();
+        if (aliases.TryGetValue(candidate, out slug))
+        {
+            return true;
+        }
+
+        return TryNormalizePageSlug(candidate, out var normalized) && aliases.TryGetValue(normalized, out slug);
+    }
+
+    private static bool TryNormalizePageSlug(string value, out string slug)
+    {
+        slug = string.Empty;
+        var candidate = value.Trim();
+        if (string.IsNullOrWhiteSpace(candidate))
+        {
+            return false;
+        }
+
+        if (candidate.StartsWith("page:", StringComparison.OrdinalIgnoreCase))
+        {
+            candidate = candidate[5..];
+        }
+
+        candidate = candidate.TrimStart('/');
+        if (candidate.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
+        {
+            candidate = candidate[..^3];
+        }
+
+        if (string.IsNullOrWhiteSpace(candidate) || candidate.Contains('\\') || candidate.Contains(':'))
+        {
+            return false;
+        }
+
+        if (!PageSlugPattern.IsMatch(candidate))
+        {
+            return false;
+        }
+
+        slug = candidate.ToLowerInvariant();
+        return true;
+    }
+
+    private static readonly Regex InlinePageCodeRegex = new("<code>(?<value>[^<]+)</code>", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
+    private static readonly Regex PageSlugPattern = new("^[a-z0-9][a-z0-9/_-]*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
     private static int EstimateTraceTokens(string? value) =>
         string.IsNullOrWhiteSpace(value) ? 0 : Math.Max(1, (int)Math.Ceiling(value.Length / 4.0));
