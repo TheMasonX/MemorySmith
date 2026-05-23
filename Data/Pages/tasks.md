@@ -4,6 +4,7 @@ This page tracks user-facing work in plain language. Completed items stay here a
 
 ## Current Priorities
 
+- [ ] Vars.json should not be a loose file
 - [x] Lock down Admin page/API access so signed-out or non-admin users cannot view the Admin workbench or change roles, even when anonymous/auth-disabled configuration is permissive. Regression coverage: `AdminPage_WithAnonymousAdminConfig_DoesNotRenderAdminWorkbenchForSignedOutUser`, `AdminRoleApi_WithAnonymousAdminConfig_RejectsSignedOutRoleChanges`, and `AdminApi_WithAuthDisabled_StillRejectsSignedOutAdminAccess`.
 - [ ] Add browser-level smoke coverage for the main app routes: `/memories`, `/pages`, `/chat`, and `/health`.
 - [ ] Add schema or fixture validation for the live `Data/Memories` wiki so bad records are caught before runtime.

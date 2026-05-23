@@ -1,0 +1,11 @@
+name: MemorySmith MCP
+version: 0.0.1
+schema: v1
+mcpServers:
+  - name: MemorySmith MCP
+    command: npx
+    args:
+      - -y
+      - mcp-remote
+      - http://localhost:5089/mcp
+    env: {}

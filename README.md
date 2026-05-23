@@ -383,6 +383,20 @@ Rebuild the GitHub Pages wiki site locally, open the generated site, or trigger 
 .\Scripts\Publish-WikiSite.ps1 -Deploy
 ```
 
+Validate local markdown page links (relative .md links and existing targets under `Data/Pages`):
+
+```powershell
+.\Scripts\Test-PageLinks.ps1
+```
+
+Enable the same check on every commit with the repo-managed pre-commit hook:
+
+```powershell
+git config core.hooksPath .githooks
+```
+
+After setting `core.hooksPath`, `git commit` runs the page-link validator automatically.
+
 The script creates or reuses a local Python virtual environment under `artifacts/tools/docs-site-venv`, installs the `markdown` package used by CI, rebuilds `docs/output/wiki`, and with `-Deploy` dispatches `.github/workflows/docs-pages.yml` through GitHub CLI. `-Deploy` requires `gh auth login` and only runs from `main` or `master`.
 
 Run BenchmarkDotNet search benchmarks:

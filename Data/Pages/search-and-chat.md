@@ -102,6 +102,8 @@ For agent workflows:
 | Human explanation | Page search/get plus relevant memories | Answer with page context first, then cite memory facts as evidence. |
 | Review of a major decision | [Council Workflow](llm-council.md) | Run separate architecture, retrieval, UX, and skeptical passes. |
 
+Treat `memorysmith_context_pack` as a bounded view rather than a complete census. If it reports omitted records or other truncation warnings, broaden the query or follow up with `memorysmith_source_bundle` instead of assuming the pack is exhaustive.
+
 Prefer JSON output for agent parsing when a tool offers it. Prefer Markdown output when a human is reading the result directly. Context-pack JSON includes `schemaVersion: memorysmith.context-pack.v1`, preserves the existing `records` and `warnings` fields, and can include per-record diagnostics for stale, broken-source, relationship, tag-policy, and maintenance warnings.
 
 ## Search Quality And Long-Term Memory
