@@ -21,17 +21,13 @@
   ],
   "Conflicts": [],
   "UsageCount": 2,
-  "LastUpdated": "2026-05-17T03:55:00.0000000Z",
+  "LastUpdated": "2026-05-17T03:55:00Z",
   "SourceLinks": [
     {
       "Label": "MemoryApplicationService.cs (SemanticSearchAsync)",
       "Uri": "%MemorySmithRepo%MemorySmith.App/Services/MemoryApplicationService.cs",
       "StartLine": 120,
       "EndLine": 145
-    },
-    {
-      "Label": "SemanticEmbeddingSearchService.cs",
-      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/SemanticEmbeddingSearchService.cs"
     },
     {
       "Label": "ScoringTests.cs",

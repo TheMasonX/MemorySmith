@@ -1,6 +1,7 @@
 @page "/chat"
 @rendermode InteractiveServer
 @implements IAsyncDisposable
+@using System.Text.RegularExpressions
 @using System.Text.Json
 @using System.Text.Json.Nodes
 @using MemorySmith.Core.Models
@@ -115,7 +116,7 @@
                                 </div>
                             </details>
                         }
-                        <div class="chat-message-body chat-message-markdown">@((MarkupString)ChatMarkdownRenderer.RenderHtml(turn.Content))</div>
+                        <div class="chat-message-body chat-message-markdown">@RenderTurnContent(turn)</div>
 
                         @if (turn.Attachments.Count > 0)
                         {
@@ -1966,6 +1967,110 @@
         var lines = result.SubmittedProposalIds?.Select(id => $"- proposal:{id}").ToList() ?? [];
         return lines.Count == 0 ? "No proposals were submitted." : string.Join(Environment.NewLine, lines);
     }
+
+    private static MarkupString RenderTurnContent(ChatTurnState turn)
+    {
+        var html = ChatMarkdownRenderer.RenderHtml(turn.Content);
+        var allowedPages = BuildPageAliasMap(turn).Values
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var allowedMemories = BuildAllowedMemoryIds(turn);
+
+        html = ChatReferenceLinkPolicy.LinkifyInlineCodeReferences(html, allowedPages, allowedMemories);
+        html = ChatReferenceLinkPolicy.FilterToAllowedTargets(html, allowedPages, allowedMemories);
+
+        return new MarkupString(html);
+    }
+
+    private static Dictionary<string, string> BuildPageAliasMap(ChatTurnState turn)
+    {
+        var aliases = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var item in turn.Context.Where(item => string.Equals(item.Kind, "page", StringComparison.OrdinalIgnoreCase)))
+        {
+            AddPageAliases(item.Id, aliases);
+        }
+
+        foreach (var slug in turn.WrittenPages)
+        {
+            AddPageAliases(slug, aliases);
+        }
+
+        return aliases;
+    }
+
+    private static IReadOnlyCollection<string> BuildAllowedMemoryIds(ChatTurnState turn)
+    {
+        var ids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var item in turn.Context.Where(item => string.Equals(item.Kind, "memory", StringComparison.OrdinalIgnoreCase)))
+        {
+            var id = item.Id?.Trim();
+            if (!string.IsNullOrWhiteSpace(id))
+            {
+                ids.Add(id);
+            }
+        }
+
+        foreach (var id in turn.WrittenMemories)
+        {
+            if (!string.IsNullOrWhiteSpace(id))
+            {
+                ids.Add(id.Trim());
+            }
+        }
+
+        return ids;
+    }
+
+    private static void AddPageAliases(string value, IDictionary<string, string> aliases)
+    {
+        if (!TryNormalizePageSlug(value, out var slug))
+        {
+            return;
+        }
+
+        aliases[slug] = slug;
+        aliases[$"{slug}.md"] = slug;
+        aliases[$"page:{slug}"] = slug;
+        aliases[$"page:{slug}.md"] = slug;
+    }
+
+    private static bool TryNormalizePageSlug(string value, out string slug)
+    {
+        slug = string.Empty;
+        var candidate = value.Trim();
+        if (string.IsNullOrWhiteSpace(candidate))
+        {
+            return false;
+        }
+
+        if (candidate.StartsWith("page:", StringComparison.OrdinalIgnoreCase))
+        {
+            candidate = candidate[5..];
+        }
+
+        candidate = candidate.TrimStart('/');
+        if (candidate.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
+        {
+            candidate = candidate[..^3];
+        }
+
+        if (string.IsNullOrWhiteSpace(candidate) || candidate.Contains('\\') || candidate.Contains(':'))
+        {
+            return false;
+        }
+
+        if (!PageSlugPattern.IsMatch(candidate))
+        {
+            return false;
+        }
+
+        slug = candidate.ToLowerInvariant();
+        return true;
+    }
+
+    private static readonly Regex PageSlugPattern = new("^[a-z0-9][a-z0-9/_-]*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
     private static int EstimateTraceTokens(string? value) =>
         string.IsNullOrWhiteSpace(value) ? 0 : Math.Max(1, (int)Math.Ceiling(value.Length / 4.0));

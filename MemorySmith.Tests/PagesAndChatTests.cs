@@ -366,6 +366,106 @@ public class PagesAndChatTests
     }
 
     [Test]
+    public void ChatMarkdownRenderer_NormalizesWikiPageLinksToPagesRoute()
+    {
+        var html = ChatMarkdownRenderer.RenderHtml("""
+        [Council](llm-council.md)
+        [Council Root](/llm-council)
+        [Search Relative](./search-and-chat.md)
+        [Keep Chat Route](/chat)
+        """);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(html, Does.Contain("href=\"/pages/llm-council\""));
+            Assert.That(html, Does.Contain("href=\"/pages/search-and-chat\""));
+            Assert.That(html, Does.Contain("href=\"/chat\""));
+        });
+    }
+
+    [Test]
+    public void ChatMarkdownRenderer_NormalizesStructuredMemoryAndPageReferenceTargets()
+    {
+        var html = ChatMarkdownRenderer.RenderHtml("""
+        [Council Memory](memory-system-rfc-council-review-20260520)
+        [Explicit Memory](memory:ai-memory-suite-governance-foundation-20260520)
+        [Explicit Page](page:llm-council.md)
+        """);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(html, Does.Contain("href=\"/api/memories/memory-system-rfc-council-review-20260520\""));
+            Assert.That(html, Does.Contain("href=\"/api/memories/ai-memory-suite-governance-foundation-20260520\""));
+            Assert.That(html, Does.Contain("href=\"/pages/llm-council\""));
+        });
+    }
+
+    [Test]
+    public void ChatReferenceLinkPolicy_BlocksUnresolvableTargets()
+    {
+        const string html = "<p><a href=\"/pages/missing-page\">missing</a> <a href=\"/api/memories/unknown-id\">unknown</a></p>";
+
+        var filtered = ChatReferenceLinkPolicy.FilterToAllowedTargets(
+            html,
+            allowedPageSlugs: ["llm-council"],
+            allowedMemoryIds: ["memory-system-rfc-council-review-20260520"]);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(filtered, Does.Contain("href=\"#\">missing"));
+            Assert.That(filtered, Does.Contain("href=\"#\">unknown"));
+        });
+    }
+
+    [Test]
+    public void ChatReferenceLinkPolicy_AllowsOnlyTurnVisibleTargets()
+    {
+        const string html = "<p><a href=\"page:llm-council.md\">council</a> <a href=\"memory:memory-system-rfc-council-review-20260520\">review</a></p>";
+
+        var filtered = ChatReferenceLinkPolicy.FilterToAllowedTargets(
+            html,
+            allowedPageSlugs: ["llm-council"],
+            allowedMemoryIds: ["memory-system-rfc-council-review-20260520"]);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(filtered, Does.Contain("href=\"/pages/llm-council\">council"));
+            Assert.That(filtered, Does.Contain("href=\"/api/memories/memory-system-rfc-council-review-20260520\">review"));
+        });
+    }
+
+    [Test]
+    public void ChatReferenceLinkPolicy_LinkifiesInlineCodeSourceReferences()
+    {
+        const string html = "<ul><li><code>memory:project-wiki-maintenance-proposals-current - Maintenance Proposals Current State</code></li><li><code>page:chat-harness-capability-council-review-20260522 - Chat Harness Capability Uplift</code></li></ul>";
+
+        var linked = ChatReferenceLinkPolicy.LinkifyInlineCodeReferences(
+            html,
+            allowedPageSlugs: ["chat-harness-capability-council-review-20260522"],
+            allowedMemoryIds: ["project-wiki-maintenance-proposals-current"]);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(linked, Does.Contain("href=\"/api/memories/project-wiki-maintenance-proposals-current\""));
+            Assert.That(linked, Does.Contain("href=\"/pages/chat-harness-capability-council-review-20260522\""));
+            Assert.That(linked, Does.Contain("chat-inline-ref"));
+        });
+    }
+
+    [Test]
+    public void ChatReferenceLinkPolicy_DoesNotLinkifyInlineCodeWhenTargetNotVisible()
+    {
+        const string html = "<p><code>memory:project-wiki-maintenance-proposals-current - Maintenance Proposals Current State</code></p>";
+
+        var linked = ChatReferenceLinkPolicy.LinkifyInlineCodeReferences(
+            html,
+            allowedPageSlugs: [],
+            allowedMemoryIds: []);
+
+        Assert.That(linked, Does.Contain("<code>memory:project-wiki-maintenance-proposals-current - Maintenance Proposals Current State</code>"));
+    }
+
+    [Test]
     public void ChatMarkdownRenderer_KeepsUnclosedMermaidFenceAsCode()
     {
         var html = ChatMarkdownRenderer.RenderHtml("""

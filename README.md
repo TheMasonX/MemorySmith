@@ -314,6 +314,12 @@ Override via `appsettings.Development.json` or environment variables (`MemorySmi
 
 ## Windows Service
 
+Easy local redeploy from an elevated PowerShell session:
+
+```powershell
+.\Scripts\Redeploy-MemorySmithService.ps1
+```
+
 Publish the app, then from an elevated PowerShell session:
 
 ```powershell
@@ -368,6 +374,16 @@ Generate the Doxygen wiki locally when Doxygen and Graphviz are installed:
 ```powershell
 doxygen docs/Doxyfile
 ```
+
+Rebuild the GitHub Pages wiki site locally, open the generated site, or trigger a deployment with the helper script:
+
+```powershell
+.\Scripts\Publish-WikiSite.ps1
+.\Scripts\Publish-WikiSite.ps1 -OpenSite
+.\Scripts\Publish-WikiSite.ps1 -Deploy
+```
+
+The script creates or reuses a local Python virtual environment under `artifacts/tools/docs-site-venv`, installs the `markdown` package used by CI, rebuilds `docs/output/wiki`, and with `-Deploy` dispatches `.github/workflows/docs-pages.yml` through GitHub CLI. `-Deploy` requires `gh auth login` and only runs from `main` or `master`.
 
 Run BenchmarkDotNet search benchmarks:
 

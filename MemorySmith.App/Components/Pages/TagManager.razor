@@ -128,8 +128,12 @@
                                         <td>@suggestion.Reason</td>
                                         <td>
                                             <div class="tag-suggestion-actions">
-                                                <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Success" StartIcon="@Icons.Material.Filled.Check" Disabled="@_isBusy" OnClick="@(() => ApproveSuggestionAsync(suggestion))">Approve</MudButton>
-                                                <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.Close" Disabled="@_isBusy" OnClick="@(() => RejectSuggestionAsync(suggestion))">Reject</MudButton>
+                                                <MudTooltip Text="@SuggestionDecisionTooltip(suggestion, approve: true)" Placement="Placement.Top">
+                                                    <MudIconButton Icon="@Icons.Material.Filled.Check" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Success" Disabled="@_isBusy" OnClick="@(() => ApproveSuggestionAsync(suggestion))" aria-label="@SuggestionDecisionTooltip(suggestion, approve: true)" />
+                                                </MudTooltip>
+                                                <MudTooltip Text="@SuggestionDecisionTooltip(suggestion, approve: false)" Placement="Placement.Top">
+                                                    <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error" Disabled="@_isBusy" OnClick="@(() => RejectSuggestionAsync(suggestion))" aria-label="@SuggestionDecisionTooltip(suggestion, approve: false)" />
+                                                </MudTooltip>
                                             </div>
                                         </td>
                                     </tr>

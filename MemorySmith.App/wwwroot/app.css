@@ -2075,6 +2075,13 @@ body {
     min-width: 150px;
 }
 
+.admin-row-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: nowrap;
+}
+
 .admin-maintenance-layout {
     display: grid;
     grid-template-columns: minmax(280px, 36%) minmax(0, 1fr);
