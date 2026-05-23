@@ -733,6 +733,12 @@ body {
     text-transform: uppercase;
 }
 
+.tag-suggestion-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
 .pages-workbench,
 .chat-workbench {
     height: 100%;
@@ -2041,6 +2047,24 @@ body {
     margin-top: 10px;
 }
 
+.admin-model-select-field {
+    min-width: 0;
+}
+
+.admin-model-select-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    color: var(--vscode-text-muted);
+    font-size: 0.76rem;
+}
+
+.admin-model-select-meta small {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
 .admin-model-switches,
 .admin-model-editor-actions {
     justify-content: flex-start;
@@ -2100,6 +2124,77 @@ body {
 .admin-maintenance-warning {
     color: var(--vscode-yellow);
     overflow-wrap: anywhere;
+}
+
+.maintenance-workbench {
+    gap: 8px;
+}
+
+.maintenance-active-run {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border: 1px solid var(--vscode-yellow);
+    background: rgba(204, 167, 0, 0.10);
+}
+
+.maintenance-active-run span,
+.maintenance-active-run small {
+    color: var(--vscode-text-muted);
+}
+
+.maintenance-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 34%);
+    gap: 10px;
+    min-height: 0;
+    flex: 1;
+}
+
+.maintenance-primary-pane,
+.maintenance-secondary-pane,
+.maintenance-panel,
+.maintenance-action-list {
+    display: grid;
+    gap: 10px;
+    min-height: 0;
+}
+
+.maintenance-panel {
+    border: 1px solid var(--vscode-border-soft);
+    background: var(--vscode-panel);
+    overflow: auto;
+}
+
+.maintenance-page-activity-list,
+.maintenance-action-list {
+    padding: 10px;
+}
+
+.maintenance-action-row {
+    display: grid;
+    gap: 4px;
+    padding: 8px 10px;
+    border: 1px solid var(--vscode-border-soft);
+    background: var(--vscode-panel-soft);
+}
+
+.maintenance-action-row header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.maintenance-action-row p {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.maintenance-action-row small,
+.maintenance-action-row a {
+    color: var(--vscode-text-muted);
 }
 
 .admin-provider-cell {
@@ -2355,6 +2450,35 @@ body {
     border: 1px solid var(--vscode-border-soft);
 }
 
+.proposal-human-summary {
+    display: grid;
+    gap: 6px;
+    margin-bottom: 10px;
+    padding: 10px;
+    border: 1px solid var(--vscode-accent-soft);
+    background: rgba(82, 156, 255, 0.08);
+}
+
+.proposal-human-summary p {
+    margin: 0;
+    color: var(--vscode-text);
+    overflow-wrap: anywhere;
+}
+
+.proposal-human-summary div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.proposal-human-summary span {
+    padding: 2px 7px;
+    border: 1px solid var(--vscode-border-soft);
+    border-radius: 4px;
+    color: var(--vscode-text-muted);
+    font-size: 0.75rem;
+}
+
 .proposal-metadata-grid span {
     color: var(--vscode-text-muted);
 }
@@ -2434,12 +2558,21 @@ body {
 
 .proposal-actions {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) repeat(4, max-content);
     gap: 8px;
-    align-items: end;
     padding: 10px;
     border-top: 1px solid var(--vscode-border);
     background: var(--vscode-panel-strong);
+}
+
+.proposal-comment-row {
+    min-width: 0;
+}
+
+.proposal-action-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-end;
 }
 
 .proposal-comment-input {
@@ -2636,16 +2769,13 @@ body {
         grid-template-columns: 1fr;
     }
 
-    .proposal-actions {
-        grid-template-columns: minmax(220px, 1fr) repeat(4, minmax(92px, max-content));
-    }
-
     .admin-panel-grid:not(.profile-panel-grid) {
         grid-template-columns: 1fr;
     }
 
     .admin-models-layout,
     .admin-maintenance-layout,
+    .maintenance-body,
     .admin-model-editor-grid {
         grid-template-columns: 1fr;
     }
@@ -2671,9 +2801,12 @@ body {
 }
 
 @media (max-width: 700px) {
-    .proposals-body,
-    .proposal-actions {
+    .proposals-body {
         grid-template-columns: 1fr;
+    }
+
+    .proposal-action-row {
+        justify-content: stretch;
     }
 }
 

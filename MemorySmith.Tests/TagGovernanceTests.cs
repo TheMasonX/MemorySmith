@@ -138,6 +138,9 @@ public class TagGovernanceTests
             Assert.That(markup, Does.Contain("Namespaces"));
             Assert.That(markup, Does.Contain("Usage"));
             Assert.That(markup, Does.Contain("Suggestions"));
+            Assert.That(markup, Does.Contain("ApproveSuggestionAsync"));
+            Assert.That(markup, Does.Contain("RejectSuggestionAsync"));
+            Assert.That(markup, Does.Contain("tag-suggestion-actions"));
         });
     }
 
@@ -153,6 +156,10 @@ public class TagGovernanceTests
             Assert.That(markup, Does.Contain("<MudTabPanel Text=\"OAuth\""));
             Assert.That(markup, Does.Contain("<MudTabPanel Text=\"Models\""));
             Assert.That(markup, Does.Contain("ChatModelProfileService ModelProfiles"));
+            Assert.That(markup, Does.Contain("IEnumerable<IChatProvider> ChatProviders"));
+            Assert.That(markup, Does.Contain("OnModelProfileProviderChangedAsync"));
+            Assert.That(markup, Does.Contain("_modelProfileModelOptions"));
+            Assert.That(markup, Does.Contain("admin-model-select-field"));
             Assert.That(markup, Does.Contain("Maintenance runs"));
             Assert.That(markup, Does.Contain("Proposal reviews"));
             Assert.That(markup, Does.Contain("Admin maintenance chat"));
@@ -168,6 +175,31 @@ public class TagGovernanceTests
                 Assert.That(markup, Does.Contain("same read-only wiki tools as Chat"));
             Assert.That(navMarkup, Does.Contain("Href=\"/tags\""));
             Assert.That(navMarkup, Does.Contain("Tags"));
+            Assert.That(navMarkup, Does.Contain("Href=\"/maintenance\""));
+            Assert.That(navMarkup, Does.Contain("Maintenance"));
+        });
+    }
+
+    [Test]
+    public void MaintenanceMarkup_ExposesStandaloneTraceChatAndActionHistoryPage()
+    {
+        var root = FindRepositoryRoot();
+        var markup = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "Components", "Pages", "Maintenance.razor"));
+        var css = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "wwwroot", "app.css"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(markup, Does.Contain("@page \"/maintenance\""));
+            Assert.That(markup, Does.Contain("Task trace history"));
+            Assert.That(markup, Does.Contain("Maintenance agent chat"));
+            Assert.That(markup, Does.Contain("Chat history"));
+            Assert.That(markup, Does.Contain("Proposal action history"));
+            Assert.That(markup, Does.Contain("ListRecentActivityAsync(50"));
+            Assert.That(markup, Does.Contain("ListRecentTranscriptsAsync(50"));
+            Assert.That(markup, Does.Contain("ProposalActionRows"));
+            Assert.That(css, Does.Contain(".maintenance-body"));
+            Assert.That(css, Does.Contain(".maintenance-action-row"));
+            Assert.That(css, Does.Contain(".maintenance-active-run"));
         });
     }
 
@@ -207,15 +239,20 @@ public class TagGovernanceTests
             Assert.That(markup, Does.Contain("Task.Yield"));
             Assert.That(markup, Does.Contain("Request Agent Review"));
             Assert.That(markup, Does.Contain("RequestAgentReviewAsync"));
+            Assert.That(markup, Does.Contain("Quick summary"));
+            Assert.That(markup, Does.Contain("ProposalQuickSummary"));
+            Assert.That(markup, Does.Contain("proposal-comment-row"));
+            Assert.That(markup, Does.Contain("proposal-action-row"));
             Assert.That(markup, Does.Contain("Recent task activity"));
             Assert.That(markup, Does.Contain("ListRecentActivityAsync"));
             Assert.That(markup, Does.Contain("SelectProposalByIdAsync"));
             Assert.That(markup, Does.Contain("maintenance-activity-proposals"));
             Assert.That(css, Does.Contain(".proposal-active-run"));
+            Assert.That(css, Does.Contain(".proposal-human-summary"));
+            Assert.That(css, Does.Contain(".proposal-action-row"));
             Assert.That(css, Does.Contain(".maintenance-activity-panel"));
             Assert.That(css, Does.Contain(".maintenance-activity-proposals"));
             Assert.That(css, Does.Contain("grid-template-columns: minmax(260px, 31%) minmax(0, 1fr);"));
-            Assert.That(css, Does.Contain("grid-template-columns: minmax(220px, 1fr) repeat(4, minmax(92px, max-content));"));
             Assert.That(css, Does.Contain("@media (max-width: 700px)"));
         });
     }

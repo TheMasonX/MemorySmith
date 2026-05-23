@@ -25,12 +25,17 @@ This page tracks user-facing work in plain language. Completed items stay here a
 - [x] Add retention, search, and redaction controls for Admin Maintenance transcript entries.
 - [x] Add fuller maintenance-agent active task state in the Proposals page via service-level active run state.
 - [x] Add tool-enabled maintenance chat once proposal governance covers generated writes.
+- [x] Promote Maintenance into a first-class Admin page with task trace history, proposal action history, maintenance chat, and transcript search.
 - [x] Add a Request Agent Review button on proposals that records a durable review request in proposal history/comments without changing proposal status.
 - [x] Run the requested proposal review through an agent so it can comment and optionally create a revised proposal while preserving the original diff.
+- [x] Add quick human summaries to proposals and place the review comment box above the review/approve/respond/reject buttons.
+- [x] Make maintenance LLM review parsing tolerate fenced JSON responses.
 - [x] Route standard chat-agent edits through the proposal workflow so agent writes share diff review, history, and approval semantics.
+- [x] Add approve/reject controls to Tag Manager suggestions so admins can send suggested tags to the allowlist or blocklist.
 - [ ] Design a chat compaction mode that preserves auditability while reducing long-session context load.
 
 ## Pages
+
 - [x] Page preview mode - live update or at least periodic refresh (toggleable) and a manual refresh button
 - [x] Editor tools bar to create a table, link, add checkboxes (`- [ ]`), make bold, italics, etc.
 - [x] Monaco editor? Reviewed; retained the local fill-height markdown editor to avoid a remote editor dependency while adding toolbar, preview, and dirty-state support.
@@ -41,6 +46,7 @@ This page tracks user-facing work in plain language. Completed items stay here a
 - [x] Render Mermaid diagrams and Prism-highlightable code blocks in page preview/rendered pages
 
 ## Chat
+
 - [x] Chat model configuration (provider + model name) - would be nice if you can query the provider for which models are available
 - [x] Enter to send with Shift+Enter to add a new line - a toggle button next to send `Send on Enter` to disable this.
 - [x] Autoscroll to the bottom of chat
@@ -73,6 +79,7 @@ This page tracks user-facing work in plain language. Completed items stay here a
 - [x] Make Mermaid diagram theme mode configurable with readable light/dark backgrounds
 
 ## Health
+
 - [x] Make the health page scrollable inside the fixed app shell
 - [x] Show semantic search provider status clearly enough to catch missing local ONNX assets
 

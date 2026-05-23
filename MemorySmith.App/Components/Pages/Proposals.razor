@@ -141,6 +141,16 @@
                 </div>
 
                 <div class="proposal-detail-scroll">
+                    <section class="proposal-human-summary" aria-label="Proposal summary for human review">
+                        <strong>Quick summary</strong>
+                        <p>@ProposalQuickSummary(_selectedProposal)</p>
+                        <div>
+                            <span>@_selectedProposal.Changes.Count change(s)</span>
+                            <span>@_selectedProposal.Evidence.Count evidence item(s)</span>
+                            <span>@StatusLabel(_selectedProposal.Status)</span>
+                        </div>
+                    </section>
+
                     <div class="proposal-metadata-grid">
                         <span>Confidence</span><strong>@_selectedProposal.Confidence.ToString("P0")</strong>
                         <span>Related</span><strong>@(_selectedProposal.RelatedRecords.Count == 0 ? "-" : string.Join(", ", _selectedProposal.RelatedRecords))</strong>
@@ -194,11 +204,15 @@
                 </div>
 
                 <div class="proposal-actions">
-                    <MudTextField T="string" Value="@_comment" ValueChanged="@((string value) => _comment = value)" Placeholder="Comment for respond/reject/approve history" Variant="Variant.Outlined" Margin="Margin.Dense" Lines="2" Class="proposal-comment-input" />
-                    <MudButton Variant="Variant.Outlined" Color="Color.Info" StartIcon="@Icons.Material.Filled.RateReview" Disabled="@(_isBusy || IsClosed(_selectedProposal))" OnClick="RequestAgentReviewAsync">Request Agent Review</MudButton>
-                    <MudButton Variant="Variant.Filled" Color="Color.Success" StartIcon="@Icons.Material.Filled.Check" Disabled="@(_isBusy || !IsOpen(_selectedProposal))" OnClick="ApproveAsync">Approve</MudButton>
-                    <MudButton Variant="Variant.Outlined" Color="Color.Warning" StartIcon="@Icons.Material.Filled.Reply" Disabled="@(_isBusy || !IsOpen(_selectedProposal))" OnClick="RespondAsync">Respond</MudButton>
-                    <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.Close" Disabled="@(_isBusy || IsClosed(_selectedProposal))" OnClick="RejectAsync">Reject</MudButton>
+                    <div class="proposal-comment-row">
+                        <MudTextField T="string" Value="@_comment" ValueChanged="@((string value) => _comment = value)" Placeholder="Comment for respond/reject/approve history" Variant="Variant.Outlined" Margin="Margin.Dense" Lines="2" Class="proposal-comment-input" />
+                    </div>
+                    <div class="proposal-action-row">
+                        <MudButton Variant="Variant.Outlined" Color="Color.Info" StartIcon="@Icons.Material.Filled.RateReview" Disabled="@(_isBusy || IsClosed(_selectedProposal))" OnClick="RequestAgentReviewAsync">Request Agent Review</MudButton>
+                        <MudButton Variant="Variant.Filled" Color="Color.Success" StartIcon="@Icons.Material.Filled.Check" Disabled="@(_isBusy || !IsOpen(_selectedProposal))" OnClick="ApproveAsync">Approve</MudButton>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Warning" StartIcon="@Icons.Material.Filled.Reply" Disabled="@(_isBusy || !IsOpen(_selectedProposal))" OnClick="RespondAsync">Respond</MudButton>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.Close" Disabled="@(_isBusy || IsClosed(_selectedProposal))" OnClick="RejectAsync">Reject</MudButton>
+                    </div>
                 </div>
             }
         </div>
@@ -455,6 +469,29 @@
     private static string TaskLabel(string task) => task.Replace('_', ' ');
     private static string StatusClass(string status) => "is-" + status.Replace('_', '-');
     private static string RiskClass(string risk) => "is-" + risk.ToLowerInvariant();
+    private static string ProposalQuickSummary(MaintenanceWriteProposal proposal)
+    {
+        var paths = proposal.Changes
+            .Select(change => string.IsNullOrWhiteSpace(change.Path) ? "unknown path" : change.Path)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Take(3)
+            .ToList();
+        var pathText = paths.Count switch
+        {
+            0 => "no file paths",
+            1 => paths[0],
+            _ => string.Join(", ", paths)
+        };
+        var remaining = proposal.Changes.Select(change => change.Path).Distinct(StringComparer.OrdinalIgnoreCase).Count() - paths.Count;
+        if (remaining > 0)
+        {
+            pathText += $" and {remaining} more";
+        }
+
+        var changeText = proposal.Changes.Count == 1 ? "1 proposed change" : $"{proposal.Changes.Count} proposed changes";
+        return $"{TaskLabel(proposal.Metadata.Task)} created {changeText} for {pathText}. Approval applies the diff to disk; use Respond when the direction is right but the patch needs revision.";
+    }
+
     private static string ActivitySummary(MaintenanceRunActivity activity)
     {
         var status = activity.Skipped ? "Skipped" : "Completed";

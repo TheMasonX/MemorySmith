@@ -90,11 +90,62 @@ public partial class TagManager
         _namespaceRows.Remove(namespaceRow);
     }
 
+    private Task ApproveSuggestionAsync(TagGovernanceSuggestion suggestion) =>
+        ApplySuggestionDecisionAsync(suggestion, approve: true);
+
+    private Task RejectSuggestionAsync(TagGovernanceSuggestion suggestion) =>
+        ApplySuggestionDecisionAsync(suggestion, approve: false);
+
+    private Task ApplySuggestionDecisionAsync(TagGovernanceSuggestion suggestion, bool approve)
+    {
+        var value = approve
+            ? (string.IsNullOrWhiteSpace(suggestion.SuggestedValue) ? suggestion.Tag : suggestion.SuggestedValue)
+            : suggestion.Tag;
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            Snackbar.Add("Suggestion did not include a tag value.", Severity.Warning);
+            return Task.CompletedTask;
+        }
+
+        _isBusy = true;
+        var allowlist = SplitLines(_allowlistText);
+        var blocklist = SplitLines(_blocklistText);
+        if (approve)
+        {
+            AddDistinct(allowlist, value);
+            blocklist.RemoveAll(item => string.Equals(item, value, StringComparison.OrdinalIgnoreCase));
+        }
+        else
+        {
+            AddDistinct(blocklist, value);
+            allowlist.RemoveAll(item => string.Equals(item, value, StringComparison.OrdinalIgnoreCase));
+        }
+
+        _allowlistText = string.Join(Environment.NewLine, allowlist.OrderBy(item => item, StringComparer.OrdinalIgnoreCase));
+        _blocklistText = string.Join(Environment.NewLine, blocklist.OrderBy(item => item, StringComparer.OrdinalIgnoreCase));
+        var policy = BuildPolicyFromEditor(out var inputDiagnostics);
+        var snapshot = TagGovernance.SavePolicy(policy);
+        PopulateEditor(snapshot);
+        _policyDiagnostics = inputDiagnostics.Concat(_policyDiagnostics).ToList();
+        _isBusy = false;
+        Snackbar.Add(approve ? $"Approved '{value}' for the allowlist." : $"Rejected '{value}' to the blocklist.", inputDiagnostics.Count == 0 ? Severity.Success : Severity.Warning);
+        return Task.CompletedTask;
+    }
+
     private static List<string> SplitLines(string text) =>
         text.Split(['\r', '\n', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Where(value => !string.IsNullOrWhiteSpace(value))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
+
+    private static void AddDistinct(List<string> values, string value)
+    {
+        var trimmed = value.Trim();
+        if (trimmed.Length > 0 && values.All(item => !string.Equals(item, trimmed, StringComparison.OrdinalIgnoreCase)))
+        {
+            values.Add(trimmed);
+        }
+    }
 
     private static Dictionary<string, string> ParseAliases(string text, List<MemoryDiagnostic> diagnostics)
     {

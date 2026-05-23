@@ -7,6 +7,7 @@
 @inject AuditLogService Audit
 @inject AdminSettingsService Settings
 @inject ChatModelProfileService ModelProfiles
+@inject IEnumerable<IChatProvider> ChatProviders
 @inject MaintenanceAgentService Agent
 @inject ISnackbar Snackbar
 @using Microsoft.Extensions.Options
@@ -151,13 +152,24 @@
                     </div>
                     <div class="admin-model-editor-grid">
                         <MudTextField T="string" Value="@_modelProfileEditor.Name" ValueChanged="@((string value) => _modelProfileEditor.Name = value)" Label="Name" Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="@_isBusy" />
-                        <MudSelect T="string" Value="@_modelProfileEditor.Provider" ValueChanged="@((string value) => _modelProfileEditor.Provider = value)" Label="Provider" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Disabled="@_isBusy">
+                        <MudSelect T="string" Value="@_modelProfileEditor.Provider" ValueChanged="OnModelProfileProviderChangedAsync" Label="Provider" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Disabled="@(_isBusy || _isLoadingModelOptions)">
                             @foreach (var provider in ModelProfiles.ProviderOptions)
                             {
                                 <MudSelectItem T="string" Value="@provider">@provider</MudSelectItem>
                             }
                         </MudSelect>
-                        <MudTextField T="string" Value="@_modelProfileEditor.Model" ValueChanged="@((string value) => _modelProfileEditor.Model = value)" Label="Model id" Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="@_isBusy" />
+                        <div class="admin-model-select-field">
+                            <MudSelect T="string" Value="@_modelProfileEditor.Model" ValueChanged="OnModelProfileModelChanged" Label="Model" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Disabled="@(_isBusy || _isLoadingModelOptions || _modelProfileModelOptions.Count == 0)">
+                                @foreach (var model in _modelProfileModelOptions)
+                                {
+                                    <MudSelectItem T="string" Value="@model.Name">@FormatModelOption(model)</MudSelectItem>
+                                }
+                            </MudSelect>
+                            <div class="admin-model-select-meta">
+                                <small>@ModelDiscoveryStatus</small>
+                                <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Small" Color="Color.Primary" Disabled="@(_isBusy || _isLoadingModelOptions)" OnClick="RefreshModelOptionsAsync" aria-label="Refresh provider models" />
+                            </div>
+                        </div>
                         <MudNumericField T="int?" Value="@_modelProfileEditor.ContextWindowTokens" ValueChanged="@((int? value) => _modelProfileEditor.ContextWindowTokens = value)" Label="Context tokens" Variant="Variant.Outlined" Margin="Margin.Dense" Min="512" Max="262144" Disabled="@_isBusy" />
                         <MudTextField T="string" Value="@_modelProfileEditor.AllowedRolesText" ValueChanged="@((string value) => _modelProfileEditor.AllowedRolesText = value)" Label="Allowed roles" Variant="Variant.Outlined" Margin="Margin.Dense" Placeholder="Viewer, Editor, Admin" Disabled="@_isBusy" />
                         <MudTextField T="string" Value="@_modelProfileEditor.Description" ValueChanged="@((string value) => _modelProfileEditor.Description = value)" Label="Description" Variant="Variant.Outlined" Margin="Margin.Dense" Lines="2" Disabled="@_isBusy" />
@@ -378,6 +390,7 @@
     private IReadOnlyList<EditableConfigurationRow> _editableSettings = [];
     private IReadOnlyList<ConfigurationItem> _configurationItems = [];
     private IReadOnlyList<MaintenanceAdminTranscriptEntry> _maintenanceTranscripts = [];
+    private IReadOnlyList<ChatModelSummary> _modelProfileModelOptions = [];
     private Dictionary<string, int> _providerLinkCounts = new(StringComparer.OrdinalIgnoreCase);
     private string _maintenancePrompt = string.Empty;
     private string _maintenanceTranscriptSearch = string.Empty;
@@ -392,8 +405,10 @@
     private string _historySearch = string.Empty;
     private string _historyTargetKindFilter = AllFilterValue;
     private string _historyFormatFilter = AllFilterValue;
+    private string? _modelProfileModelError;
     private ModelProfileEditor _modelProfileEditor = ModelProfileEditor.New();
     private bool _isBusy;
+    private bool _isLoadingModelOptions;
 
     private IReadOnlyList<string> SettingCategories => _editableSettings
         .Select(row => row.Item.Category)
@@ -417,6 +432,14 @@
     private IReadOnlyList<string> AuditTargetKindOptions => DistinctSorted(_audit.Select(entry => entry.TargetKind));
     private IReadOnlyList<string> HistoryTargetKindOptions => DistinctSorted(_recentVersions.Select(entry => entry.TargetKind));
     private IReadOnlyList<string> HistoryFormatOptions => DistinctSorted(_recentVersions.Select(entry => entry.Format));
+
+    private string ModelDiscoveryStatus => _isLoadingModelOptions
+        ? "Loading provider models..."
+        : !string.IsNullOrWhiteSpace(_modelProfileModelError)
+            ? $"Model discovery failed: {_modelProfileModelError}"
+            : _modelProfileModelOptions.Count == 0
+                ? "No models were returned by this provider."
+                : $"{_modelProfileModelOptions.Count} provider model(s) available.";
 
     private IReadOnlyList<AuditLogEntry> FilteredAudit => _audit
         .Where(MatchesAuditFilter)
@@ -463,6 +486,7 @@
             }
         }
         _configurationItems = BuildConfigurationItems();
+        await LoadModelOptionsAsync(_modelProfileEditor.Provider, _modelProfileEditor.Model, silent: true);
     }
 
     private async Task ChangeUserRoleAsync(UserAdminRow row, string roleName)
@@ -565,14 +589,74 @@
         }
     }
 
-    private void EditModelProfile(ChatModelProfileView profile)
+    private async Task EditModelProfile(ChatModelProfileView profile)
     {
         _modelProfileEditor = ModelProfileEditor.From(profile);
+        await LoadModelOptionsAsync(_modelProfileEditor.Provider, _modelProfileEditor.Model, silent: true);
     }
 
-    private void StartNewModelProfile()
+    private async Task StartNewModelProfile()
     {
         _modelProfileEditor = ModelProfileEditor.New();
+        await LoadModelOptionsAsync(_modelProfileEditor.Provider, _modelProfileEditor.Model, silent: true);
+    }
+
+    private async Task OnModelProfileProviderChangedAsync(string provider)
+    {
+        _modelProfileEditor.Provider = provider;
+        _modelProfileEditor.Model = string.Empty;
+        _modelProfileEditor.ContextWindowTokens = null;
+        await LoadModelOptionsAsync(provider, null, silent: false);
+    }
+
+    private void OnModelProfileModelChanged(string model)
+    {
+        _modelProfileEditor.Model = model;
+        ApplySelectedModelMetadata(model);
+    }
+
+    private Task RefreshModelOptionsAsync() =>
+        LoadModelOptionsAsync(_modelProfileEditor.Provider, _modelProfileEditor.Model, silent: false);
+
+    private async Task LoadModelOptionsAsync(string providerName, string? currentModel, bool silent)
+    {
+        _isLoadingModelOptions = true;
+        _modelProfileModelError = null;
+        try
+        {
+            var provider = ResolveChatProvider(providerName);
+            if (provider is null)
+            {
+                throw new InvalidOperationException($"Provider '{providerName}' is not registered.");
+            }
+
+            var discovered = await provider.ListModelsAsync(CancellationToken.None);
+            _modelProfileModelOptions = MergeCurrentModel(discovered, currentModel, providerName);
+            if (string.IsNullOrWhiteSpace(_modelProfileEditor.Model) && _modelProfileModelOptions.FirstOrDefault() is { } firstModel)
+            {
+                _modelProfileEditor.Model = firstModel.Name;
+                ApplySelectedModelMetadata(firstModel.Name);
+            }
+            else
+            {
+                ApplySelectedModelMetadata(_modelProfileEditor.Model);
+            }
+        }
+        catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or TaskCanceledException or JsonException)
+        {
+            _modelProfileModelError = ex.Message;
+            _modelProfileModelOptions = string.IsNullOrWhiteSpace(currentModel)
+                ? []
+                : [new ChatModelSummary(currentModel.Trim(), Provider: providerName, Description: "Currently configured; provider discovery did not return this model.")];
+            if (!silent)
+            {
+                Snackbar.Add(ex.Message, Severity.Warning);
+            }
+        }
+        finally
+        {
+            _isLoadingModelOptions = false;
+        }
     }
 
     private async Task SaveModelProfileAsync()
@@ -620,7 +704,7 @@
         if (result.Succeeded)
         {
             Snackbar.Add("Model profile deleted.", Severity.Success);
-            StartNewModelProfile();
+            await StartNewModelProfile();
             await LoadAsync();
         }
         else
@@ -712,6 +796,51 @@
     private int ProviderLinkCount(string providerName) => _providerLinkCounts.TryGetValue(providerName, out var count) ? count : 0;
 
     private static string FormatContextWindow(int? tokens) => tokens is null ? "Provider default" : $"{tokens.Value:n0}";
+
+    private static string FormatModelOption(ChatModelSummary model)
+    {
+        var details = new List<string>();
+        if (model.ContextWindowTokens is > 0) details.Add($"{model.ContextWindowTokens.Value:n0} context");
+        if (!string.IsNullOrWhiteSpace(model.Description)) details.Add(model.Description);
+        return details.Count == 0 ? model.Name : $"{model.Name} ({string.Join(" - ", details)})";
+    }
+
+    private void ApplySelectedModelMetadata(string? modelName)
+    {
+        if (string.IsNullOrWhiteSpace(modelName))
+        {
+            return;
+        }
+
+        var model = _modelProfileModelOptions.FirstOrDefault(item => string.Equals(item.Name, modelName, StringComparison.OrdinalIgnoreCase));
+        if (_modelProfileEditor.ContextWindowTokens is null && model?.ContextWindowTokens is > 0)
+        {
+            _modelProfileEditor.ContextWindowTokens = model.ContextWindowTokens;
+        }
+    }
+
+    private IChatProvider? ResolveChatProvider(string providerName) =>
+        ChatProviders.FirstOrDefault(candidate => ProviderMatches(candidate.Name, providerName));
+
+    private static IReadOnlyList<ChatModelSummary> MergeCurrentModel(IReadOnlyList<ChatModelSummary> discovered, string? currentModel, string providerName)
+    {
+        var models = discovered
+            .Where(model => !string.IsNullOrWhiteSpace(model.Name))
+            .OrderByDescending(model => model.IsPreferred)
+            .ThenBy(model => model.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (!string.IsNullOrWhiteSpace(currentModel) && models.All(model => !string.Equals(model.Name, currentModel.Trim(), StringComparison.OrdinalIgnoreCase)))
+        {
+            models.Insert(0, new ChatModelSummary(currentModel.Trim(), Provider: providerName, Description: "Currently configured; not returned by provider discovery."));
+        }
+
+        return models;
+    }
+
+    private static bool ProviderMatches(string left, string right) =>
+        string.Equals(left, right, StringComparison.OrdinalIgnoreCase) ||
+        (string.Equals(left, "GitHub", StringComparison.OrdinalIgnoreCase) && string.Equals(right, "Copilot", StringComparison.OrdinalIgnoreCase)) ||
+        (string.Equals(left, "GitHubCopilot", StringComparison.OrdinalIgnoreCase) && string.Equals(right, "GitHub", StringComparison.OrdinalIgnoreCase));
 
     private static string TranscriptProviderLabel(MaintenanceAdminTranscriptEntry entry) =>
         string.IsNullOrWhiteSpace(entry.Provider) ? "No provider" : $"{entry.Provider} / {entry.Model ?? "default model"}";
