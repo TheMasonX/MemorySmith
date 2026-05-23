@@ -384,6 +384,25 @@ public class PagesAndChatTests
     }
 
     [Test]
+    public void ChatMarkdownRenderer_NormalizesStructuredMemoryAndPageReferenceTargets()
+    {
+        var html = ChatMarkdownRenderer.RenderHtml("""
+        [Council Memory](memory-system-rfc-council-review-20260520: Memory System RFC Council Review)
+        [Explicit Memory](memory:ai-memory-suite-governance-foundation-20260520)
+        [Explicit Page](page:llm-council.md)
+        [Labeled Page](page:search-and-chat: Search and Chat)
+        """);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(html, Does.Contain("href=\"/api/memories/memory-system-rfc-council-review-20260520\""));
+            Assert.That(html, Does.Contain("href=\"/api/memories/ai-memory-suite-governance-foundation-20260520\""));
+            Assert.That(html, Does.Contain("href=\"/pages/llm-council\""));
+            Assert.That(html, Does.Contain("href=\"/pages/search-and-chat\""));
+        });
+    }
+
+    [Test]
     public void ChatMarkdownRenderer_KeepsUnclosedMermaidFenceAsCode()
     {
         var html = ChatMarkdownRenderer.RenderHtml("""

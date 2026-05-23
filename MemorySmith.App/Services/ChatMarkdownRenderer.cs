@@ -68,7 +68,186 @@ public static partial class ChatMarkdownRenderer
             return value;
         }
 
+        if (TryNormalizeStructuredReference(value, out var structured))
+        {
+            return structured;
+        }
+
         return TryNormalizePageLink(value, out var normalized) ? normalized : value;
+    }
+
+    private static bool TryNormalizeStructuredReference(string value, out string normalized)
+    {
+        normalized = value;
+        var trimmed = value.Trim();
+        if (string.IsNullOrWhiteSpace(trimmed) || trimmed.Contains("://", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        if (TryNormalizeMemoryReference(trimmed, out normalized))
+        {
+            return true;
+        }
+
+        if (TryNormalizePrefixedPageReference(trimmed, out normalized))
+        {
+            return true;
+        }
+
+        if (!TryExtractReferenceToken(trimmed, out var token))
+        {
+            return false;
+        }
+
+        if (TryNormalizeMemoryReference(token, out normalized))
+        {
+            return true;
+        }
+
+        return TryNormalizePrefixedPageReference(token, out normalized);
+    }
+
+    private static bool TryNormalizeMemoryReference(string value, out string normalized)
+    {
+        normalized = value;
+        var candidate = value.Trim();
+        if (candidate.StartsWith("memory:", StringComparison.OrdinalIgnoreCase))
+        {
+            candidate = candidate[7..];
+        }
+
+        if (!TryNormalizeMemoryId(candidate, out var memoryId))
+        {
+            return false;
+        }
+
+        normalized = "/api/memories/" + Uri.EscapeDataString(memoryId);
+        return true;
+    }
+
+    private static bool TryNormalizePrefixedPageReference(string value, out string normalized)
+    {
+        normalized = value;
+        var candidate = value.Trim();
+        if (!candidate.StartsWith("page:", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        candidate = candidate[5..];
+        if (!TryNormalizePageSlug(candidate, out var slug))
+        {
+            return false;
+        }
+
+        normalized = "/pages/" + string.Join('/', slug.Split('/', StringSplitOptions.RemoveEmptyEntries).Select(Uri.EscapeDataString));
+        return true;
+    }
+
+    private static bool TryNormalizeMemoryId(string value, out string id)
+    {
+        id = string.Empty;
+        var candidate = value.Trim();
+        if (string.IsNullOrWhiteSpace(candidate))
+        {
+            return false;
+        }
+
+        if (TryExtractReferenceToken(candidate, out var token))
+        {
+            candidate = token;
+        }
+
+        if (candidate.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (!MemoryIdPattern.IsMatch(candidate))
+        {
+            return false;
+        }
+
+        if (!LooksLikeWikiIdentifier(candidate))
+        {
+            return false;
+        }
+
+        id = candidate;
+        return true;
+    }
+
+    private static bool TryNormalizePageSlug(string value, out string slug)
+    {
+        slug = string.Empty;
+        var candidate = value.Trim();
+        if (string.IsNullOrWhiteSpace(candidate))
+        {
+            return false;
+        }
+
+        if (TryExtractReferenceToken(candidate, out var token))
+        {
+            candidate = token;
+        }
+
+        candidate = candidate.TrimStart('/');
+        if (candidate.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
+        {
+            candidate = candidate[..^3];
+        }
+
+        if (!PageSlugPattern.IsMatch(candidate))
+        {
+            return false;
+        }
+
+        slug = candidate.ToLowerInvariant();
+        return true;
+    }
+
+    private static bool TryExtractReferenceToken(string value, out string token)
+    {
+        token = string.Empty;
+        foreach (var delimiter in ReferenceLabelDelimiters)
+        {
+            var index = value.IndexOf(delimiter, StringComparison.Ordinal);
+            if (index <= 0)
+            {
+                continue;
+            }
+
+            var head = value[..index].Trim();
+            var tail = value[(index + delimiter.Length)..].Trim();
+            if (string.IsNullOrWhiteSpace(head) || string.IsNullOrWhiteSpace(tail))
+            {
+                continue;
+            }
+
+            if (!LooksLikeWikiIdentifier(head) &&
+                !head.StartsWith("memory:", StringComparison.OrdinalIgnoreCase) &&
+                !head.StartsWith("page:", StringComparison.OrdinalIgnoreCase) &&
+                !head.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            token = head;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool LooksLikeWikiIdentifier(string value)
+    {
+        if (value.Length < 6)
+        {
+            return false;
+        }
+
+        return value.IndexOfAny(['-', '_', '/', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9']) >= 0;
     }
 
     private static bool TryNormalizePageLink(string value, out string normalized)
@@ -171,4 +350,8 @@ public static partial class ChatMarkdownRenderer
 
     [GeneratedRegex("\\b(?<name>href|src)=\"(?<value>[^\"]*)\"", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex LinkAttributeRegex();
+
+    private static readonly string[] ReferenceLabelDelimiters = [": ", " - "];
+    private static readonly Regex PageSlugPattern = new("^[a-z0-9][a-z0-9/_-]*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
+    private static readonly Regex MemoryIdPattern = new("^[a-z0-9][a-z0-9._/-]*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
 }
