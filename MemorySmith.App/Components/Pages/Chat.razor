@@ -1,7 +1,6 @@
 @page "/chat"
 @rendermode InteractiveServer
 @implements IAsyncDisposable
-@using System.Net
 @using System.Text.RegularExpressions
 @using System.Text.Json
 @using System.Text.Json.Nodes
@@ -1972,41 +1971,15 @@
     private static MarkupString RenderTurnContent(ChatTurnState turn)
     {
         var html = ChatMarkdownRenderer.RenderHtml(turn.Content);
-        html = ApplyInlinePageReferenceFallback(html, turn);
-
         var allowedPages = BuildPageAliasMap(turn).Values
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
         var allowedMemories = BuildAllowedMemoryIds(turn);
+
+        html = ChatReferenceLinkPolicy.LinkifyInlineCodeReferences(html, allowedPages, allowedMemories);
         html = ChatReferenceLinkPolicy.FilterToAllowedTargets(html, allowedPages, allowedMemories);
 
         return new MarkupString(html);
-    }
-
-    private static string ApplyInlinePageReferenceFallback(string html, ChatTurnState turn)
-    {
-        if (string.IsNullOrWhiteSpace(html))
-        {
-            return html;
-        }
-
-        var aliases = BuildPageAliasMap(turn);
-        if (aliases.Count == 0)
-        {
-            return html;
-        }
-
-        return InlinePageCodeRegex.Replace(html, match =>
-        {
-            var raw = WebUtility.HtmlDecode(match.Groups["value"].Value).Trim();
-            if (!TryResolvePageSlug(raw, aliases, out var slug))
-            {
-                return match.Value;
-            }
-
-            var href = PageHref(slug);
-            return $"<a class=\"wiki-tag chat-resource chat-inline-ref\" href=\"{href}\" target=\"_blank\" rel=\"noopener noreferrer\">{WebUtility.HtmlEncode(raw)}</a>";
-        });
     }
 
     private static Dictionary<string, string> BuildPageAliasMap(ChatTurnState turn)
@@ -2063,23 +2036,6 @@
         aliases[$"page:{slug}.md"] = slug;
     }
 
-    private static bool TryResolvePageSlug(string raw, IReadOnlyDictionary<string, string> aliases, out string slug)
-    {
-        slug = string.Empty;
-        if (string.IsNullOrWhiteSpace(raw))
-        {
-            return false;
-        }
-
-        var candidate = raw.Trim();
-        if (aliases.TryGetValue(candidate, out slug))
-        {
-            return true;
-        }
-
-        return TryNormalizePageSlug(candidate, out var normalized) && aliases.TryGetValue(normalized, out slug);
-    }
-
     private static bool TryNormalizePageSlug(string value, out string slug)
     {
         slug = string.Empty;
@@ -2114,7 +2070,6 @@
         return true;
     }
 
-    private static readonly Regex InlinePageCodeRegex = new("<code>(?<value>[^<]+)</code>", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
     private static readonly Regex PageSlugPattern = new("^[a-z0-9][a-z0-9/_-]*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
     private static int EstimateTraceTokens(string? value) =>

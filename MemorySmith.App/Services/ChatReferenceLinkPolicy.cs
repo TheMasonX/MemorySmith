@@ -6,8 +6,45 @@ namespace MemorySmith.App.Services;
 public static partial class ChatReferenceLinkPolicy
 {
     private static readonly Regex AnchorHrefRegex = new("<a\\b(?<before>[^>]*?)\\bhref=\"(?<href>[^\"]*)\"(?<after>[^>]*)>", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
+    private static readonly Regex InlineCodeRegex = new("<code>(?<value>[^<]+)</code>", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
     private static readonly Regex PageSlugPattern = new("^[a-z0-9][a-z0-9/_-]*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
     private static readonly Regex MemoryIdPattern = new("^[a-z0-9][a-z0-9._/-]*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
+
+    public static string LinkifyInlineCodeReferences(
+        string html,
+        IEnumerable<string> allowedPageSlugs,
+        IEnumerable<string> allowedMemoryIds)
+    {
+        if (string.IsNullOrWhiteSpace(html))
+        {
+            return html;
+        }
+
+        var pageSet = BuildNormalizedPageSet(allowedPageSlugs);
+        var memorySet = BuildNormalizedMemorySet(allowedMemoryIds);
+        if (pageSet.Count == 0 && memorySet.Count == 0)
+        {
+            return html;
+        }
+
+        return InlineCodeRegex.Replace(html, match =>
+        {
+            var raw = WebUtility.HtmlDecode(match.Groups["value"].Value).Trim();
+            if (TryResolveInlineMemoryId(raw, memorySet, out var memoryId))
+            {
+                var href = MemoryHref(memoryId);
+                return $"<a class=\"wiki-tag chat-resource chat-inline-ref\" href=\"{href}\" target=\"_blank\" rel=\"noopener noreferrer\">{WebUtility.HtmlEncode(raw)}</a>";
+            }
+
+            if (TryResolveInlinePageSlug(raw, pageSet, out var slug))
+            {
+                var href = PageHref(slug);
+                return $"<a class=\"wiki-tag chat-resource chat-inline-ref\" href=\"{href}\" target=\"_blank\" rel=\"noopener noreferrer\">{WebUtility.HtmlEncode(raw)}</a>";
+            }
+
+            return match.Value;
+        });
+    }
 
     public static string FilterToAllowedTargets(
         string html,
@@ -19,15 +56,8 @@ public static partial class ChatReferenceLinkPolicy
             return html;
         }
 
-        var pageSet = allowedPageSlugs
-            .Where(static slug => !string.IsNullOrWhiteSpace(slug))
-            .Select(static slug => slug.Trim())
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-        var memorySet = allowedMemoryIds
-            .Where(static id => !string.IsNullOrWhiteSpace(id))
-            .Select(static id => id.Trim())
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var pageSet = BuildNormalizedPageSet(allowedPageSlugs);
+        var memorySet = BuildNormalizedMemorySet(allowedMemoryIds);
 
         return AnchorHrefRegex.Replace(html, match =>
         {
@@ -82,6 +112,35 @@ public static partial class ChatReferenceLinkPolicy
         return true;
     }
 
+    private static bool TryResolveInlinePageSlug(string value, IReadOnlySet<string> allowedPageSlugs, out string slug)
+    {
+        slug = string.Empty;
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        var candidate = NormalizeLabeledReference(value.Trim());
+        if (TryGetPageSlug(candidate, out var hrefSlug) && allowedPageSlugs.Contains(hrefSlug))
+        {
+            slug = hrefSlug;
+            return true;
+        }
+
+        if (candidate.StartsWith("page:", StringComparison.OrdinalIgnoreCase))
+        {
+            candidate = candidate[5..];
+        }
+
+        if (TryNormalizePageSlug(candidate, out var normalized) && allowedPageSlugs.Contains(normalized))
+        {
+            slug = normalized;
+            return true;
+        }
+
+        return false;
+    }
+
     private static bool TryGetMemoryId(string href, out string memoryId)
     {
         memoryId = string.Empty;
@@ -113,6 +172,36 @@ public static partial class ChatReferenceLinkPolicy
 
         memoryId = candidate;
         return true;
+    }
+
+    private static bool TryResolveInlineMemoryId(string value, IReadOnlySet<string> allowedMemoryIds, out string memoryId)
+    {
+        memoryId = string.Empty;
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        var candidate = NormalizeLabeledReference(value.Trim());
+        if (TryGetMemoryId(candidate, out var hrefMemoryId) && allowedMemoryIds.Contains(hrefMemoryId))
+        {
+            memoryId = hrefMemoryId;
+            return true;
+        }
+
+        if (candidate.StartsWith("memory:", StringComparison.OrdinalIgnoreCase))
+        {
+            candidate = candidate[7..];
+        }
+
+        candidate = Uri.UnescapeDataString(candidate);
+        if (MemoryIdPattern.IsMatch(candidate) && allowedMemoryIds.Contains(candidate))
+        {
+            memoryId = candidate;
+            return true;
+        }
+
+        return false;
     }
 
     private static bool TryNormalizePageSlug(string value, out string slug)
@@ -157,6 +246,39 @@ public static partial class ChatReferenceLinkPolicy
             : queryIndex;
         return split >= 0 ? value[..split] : value;
     }
+
+    private static string NormalizeLabeledReference(string value)
+    {
+        var candidate = value.Trim();
+        var dashIndex = candidate.IndexOf(" - ", StringComparison.Ordinal);
+        if (dashIndex > 0)
+        {
+            return candidate[..dashIndex].Trim();
+        }
+
+        var labeledColonIndex = candidate.IndexOf(": ", StringComparison.Ordinal);
+        if (labeledColonIndex > 0)
+        {
+            return candidate[..labeledColonIndex].Trim();
+        }
+
+        return candidate;
+    }
+
+    private static HashSet<string> BuildNormalizedPageSet(IEnumerable<string> allowedPageSlugs) =>
+        allowedPageSlugs
+            .Where(static slug => !string.IsNullOrWhiteSpace(slug))
+            .Select(static slug => slug.Trim())
+            .Select(static slug => TryNormalizePageSlug(slug, out var normalized) ? normalized : string.Empty)
+            .Where(static slug => !string.IsNullOrWhiteSpace(slug))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+    private static HashSet<string> BuildNormalizedMemorySet(IEnumerable<string> allowedMemoryIds) =>
+        allowedMemoryIds
+            .Where(static id => !string.IsNullOrWhiteSpace(id))
+            .Select(static id => Uri.UnescapeDataString(id.Trim()))
+            .Where(static id => MemoryIdPattern.IsMatch(id))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
     private static string PageHref(string slug) =>
         "/pages/" + string.Join('/', slug.Split('/', StringSplitOptions.RemoveEmptyEntries).Select(Uri.EscapeDataString));
