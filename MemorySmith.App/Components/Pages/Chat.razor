@@ -260,12 +260,22 @@
                             </MudSelect>
                         </div>
 
-                        <div class="chat-trace-filters">
-                            <MudCheckBox T="bool" Value="_traceShowReasoning" ValueChanged="@(value => _traceShowReasoning = value)" Label="Reasoning" Size="Size.Small" />
-                            <MudCheckBox T="bool" Value="_traceShowTools" ValueChanged="@(value => _traceShowTools = value)" Label="Tools" Size="Size.Small" />
-                            <MudCheckBox T="bool" Value="_traceShowAssistant" ValueChanged="@(value => _traceShowAssistant = value)" Label="Answer" Size="Size.Small" />
-                            <MudCheckBox T="bool" Value="_traceShowSystem" ValueChanged="@(value => _traceShowSystem = value)" Label="System" Size="Size.Small" />
-                            <MudCheckBox T="bool" Value="_traceErrorsOnly" ValueChanged="@(value => _traceErrorsOnly = value)" Label="Errors" Size="Size.Small" />
+                        <div class="chat-trace-filters" aria-label="Trace filters">
+                            <MudTooltip Text="@TraceFilterTooltipText("Reasoning", _traceShowReasoning)">
+                                <MudIconButton Icon="@Icons.Material.Filled.Psychology" Size="Size.Small" Variant="Variant.Outlined" Color="@TraceFilterColor(_traceShowReasoning)" Class="chat-trace-filter-button" OnClick="ToggleTraceReasoning" aria-label="Toggle reasoning filter" />
+                            </MudTooltip>
+                            <MudTooltip Text="@TraceFilterTooltipText("Tools", _traceShowTools)">
+                                <MudIconButton Icon="@Icons.Material.Filled.Build" Size="Size.Small" Variant="Variant.Outlined" Color="@TraceFilterColor(_traceShowTools)" Class="chat-trace-filter-button" OnClick="ToggleTraceTools" aria-label="Toggle tools filter" />
+                            </MudTooltip>
+                            <MudTooltip Text="@TraceFilterTooltipText("Answer", _traceShowAssistant)">
+                                <MudIconButton Icon="@Icons.Material.Filled.QuestionAnswer" Size="Size.Small" Variant="Variant.Outlined" Color="@TraceFilterColor(_traceShowAssistant)" Class="chat-trace-filter-button" OnClick="ToggleTraceAssistant" aria-label="Toggle answer filter" />
+                            </MudTooltip>
+                            <MudTooltip Text="@TraceFilterTooltipText("System", _traceShowSystem)">
+                                <MudIconButton Icon="@Icons.Material.Filled.Settings" Size="Size.Small" Variant="Variant.Outlined" Color="@TraceFilterColor(_traceShowSystem)" Class="chat-trace-filter-button" OnClick="ToggleTraceSystem" aria-label="Toggle system filter" />
+                            </MudTooltip>
+                            <MudTooltip Text="@TraceFilterTooltipText("Errors", _traceErrorsOnly)">
+                                <MudIconButton Icon="@Icons.Material.Filled.Error" Size="Size.Small" Variant="Variant.Outlined" Color="@TraceFilterColor(_traceErrorsOnly, Color.Error)" Class="chat-trace-filter-button" OnClick="ToggleTraceErrors" aria-label="Toggle errors-only filter" />
+                            </MudTooltip>
                         </div>
 
                         <div class="chat-trace-graph" aria-label="Turn graph">
@@ -280,7 +290,7 @@
                             <section class="chat-approval-panel">
                                 <header>
                                     <span>Pending writes</span>
-                                    <button type="button" @onclick="@(() => ApproveAllWritesAsync(selectedTurn.Id))">Approve all</button>
+                                    <button type="button" disabled="@_isApprovingWrites" @onclick="@(() => ApproveAllWritesAsync(selectedTurn.Id))">Approve all</button>
                                 </header>
                                 @foreach (var proposal in selectedTurn.ProposedMemoryWrites)
                                 {
@@ -388,6 +398,7 @@
     private bool _traceShowAssistant = true;
     private bool _traceShowSystem = true;
     private bool _traceErrorsOnly;
+    private bool _isApprovingWrites;
     private bool _isRerunningTool;
     private string? _selectedTraceTurnId;
     private CancellationTokenSource? _responseTimerCts;
@@ -1392,12 +1403,43 @@
 
     private async Task ApproveAllWritesAsync(string turnId)
     {
-        if (FindTurn(turnId) is not { } turn)
+        if (_isApprovingWrites || FindTurn(turnId) is not { } turn)
         {
             return;
         }
 
-        await ApplyApprovedWritesAsync(turn, turn.ProposedMemoryWrites.ToList(), turn.ProposedPageWrites.ToList());
+        _isApprovingWrites = true;
+        try
+        {
+            var results = new List<string>();
+            foreach (var proposal in turn.ProposedMemoryWrites.ToList())
+            {
+                results.Add(await ApproveProposalWithOutcomeAsync(turn, [proposal], [], $"memory:{proposal.Id}"));
+            }
+
+            foreach (var proposal in turn.ProposedPageWrites.ToList())
+            {
+                results.Add(await ApproveProposalWithOutcomeAsync(turn, [], [proposal], $"page:{proposal.Slug}"));
+            }
+
+            UpdatePendingWriteStatus(turn);
+            if (results.Count > 0)
+            {
+                AddTraceEntry(
+                    turn,
+                    ChatTraceKinds.Write,
+                    "Approve all results",
+                    string.Join(Environment.NewLine, results.Select(result => $"- {result}")),
+                    IsError: results.Any(result => result.Contains("blocked", StringComparison.OrdinalIgnoreCase) || result.Contains("failed", StringComparison.OrdinalIgnoreCase)));
+            }
+
+            ActiveSession.UpdatedUtc = DateTimeOffset.UtcNow;
+            await SaveSessionsAsync();
+        }
+        finally
+        {
+            _isApprovingWrites = false;
+        }
     }
 
     private async Task ApproveMemoryWriteAsync(string turnId, string memoryId)
@@ -1410,7 +1452,10 @@
         var proposal = turn.ProposedMemoryWrites.FirstOrDefault(item => string.Equals(item.Id, memoryId, StringComparison.OrdinalIgnoreCase));
         if (proposal is not null)
         {
-            await ApplyApprovedWritesAsync(turn, [proposal], []);
+            _ = await ApproveProposalWithOutcomeAsync(turn, [proposal], [], $"memory:{proposal.Id}");
+            UpdatePendingWriteStatus(turn);
+            ActiveSession.UpdatedUtc = DateTimeOffset.UtcNow;
+            await SaveSessionsAsync();
         }
     }
 
@@ -1424,11 +1469,14 @@
         var proposal = turn.ProposedPageWrites.FirstOrDefault(item => string.Equals(item.Slug, slug, StringComparison.OrdinalIgnoreCase));
         if (proposal is not null)
         {
-            await ApplyApprovedWritesAsync(turn, [], [proposal]);
+            _ = await ApproveProposalWithOutcomeAsync(turn, [], [proposal], $"page:{proposal.Slug}");
+            UpdatePendingWriteStatus(turn);
+            ActiveSession.UpdatedUtc = DateTimeOffset.UtcNow;
+            await SaveSessionsAsync();
         }
     }
 
-    private async Task ApplyApprovedWritesAsync(ChatTurnState turn, IReadOnlyList<AgentMemoryWriteProposal> memories, IReadOnlyList<AgentPageWriteProposal> pages)
+    private async Task<string> ApproveProposalWithOutcomeAsync(ChatTurnState turn, IReadOnlyList<AgentMemoryWriteProposal> memories, IReadOnlyList<AgentPageWriteProposal> pages, string proposalKey)
     {
         try
         {
@@ -1440,25 +1488,52 @@
                 turn.ProposedPageWrites.RemoveAll(proposal => pages.Any(page => string.Equals(page.Slug, proposal.Slug, StringComparison.OrdinalIgnoreCase)));
                 AddTraceEntry(turn, ChatTraceKinds.Write, "Agent writes submitted for proposal review", FormatSubmittedProposalSummary(result), IsError: false);
                 _agentStatus = $"Submitted {result.SubmittedProposalIds.Count} proposal(s) for review";
+                return $"{proposalKey} -> submitted ({string.Join(", ", result.SubmittedProposalIds)})";
             }
-            else
-            {
-                turn.WrittenMemories.AddRange(result.WrittenMemories.Where(id => !turn.WrittenMemories.Contains(id, StringComparer.OrdinalIgnoreCase)));
-                turn.WrittenPages.AddRange(result.WrittenPages.Where(slug => !turn.WrittenPages.Contains(slug, StringComparer.OrdinalIgnoreCase)));
-                turn.ProposedMemoryWrites.RemoveAll(proposal => result.WrittenMemories.Contains(proposal.Id, StringComparer.OrdinalIgnoreCase));
-                turn.ProposedPageWrites.RemoveAll(proposal => result.WrittenPages.Contains(proposal.Slug, StringComparer.OrdinalIgnoreCase));
-                AddTraceEntry(turn, ChatTraceKinds.Write, "Agent writes approved", FormatAppliedWriteSummary(result), IsError: false);
-                _agentStatus = $"Applied {result.WrittenMemories.Count + result.WrittenPages.Count} approved write(s)";
-            }
-            ActiveSession.UpdatedUtc = DateTimeOffset.UtcNow;
-            await SaveSessionsAsync();
+
+            turn.WrittenMemories.AddRange(result.WrittenMemories.Where(id => !turn.WrittenMemories.Contains(id, StringComparer.OrdinalIgnoreCase)));
+            turn.WrittenPages.AddRange(result.WrittenPages.Where(slug => !turn.WrittenPages.Contains(slug, StringComparer.OrdinalIgnoreCase)));
+            turn.ProposedMemoryWrites.RemoveAll(proposal => result.WrittenMemories.Contains(proposal.Id, StringComparer.OrdinalIgnoreCase));
+            turn.ProposedPageWrites.RemoveAll(proposal => result.WrittenPages.Contains(proposal.Slug, StringComparer.OrdinalIgnoreCase));
+            AddTraceEntry(turn, ChatTraceKinds.Write, "Agent writes approved", FormatAppliedWriteSummary(result), IsError: false);
+            _agentStatus = $"Applied {result.WrittenMemories.Count + result.WrittenPages.Count} approved write(s)";
+            return $"{proposalKey} -> approved";
         }
         catch (Exception ex)
         {
-            AddTraceEntry(turn, ChatTraceKinds.Write, "Agent write approval failed", ex.Message, IsError: true);
+            // Blocked/failed approvals are terminal for this attempt; remove pending item and retain auditable trace.
+            turn.ProposedMemoryWrites.RemoveAll(proposal => memories.Any(memory => string.Equals(memory.Id, proposal.Id, StringComparison.OrdinalIgnoreCase)));
+            turn.ProposedPageWrites.RemoveAll(proposal => pages.Any(page => string.Equals(page.Slug, proposal.Slug, StringComparison.OrdinalIgnoreCase)));
+            AddTraceEntry(turn, ChatTraceKinds.Write, "Agent write blocked", $"{proposalKey} blocked: {ex.Message}", IsError: true);
             Snackbar.Add(ex.Message, Severity.Error);
+            return $"{proposalKey} -> blocked ({ex.Message})";
         }
     }
+
+    private void UpdatePendingWriteStatus(ChatTurnState turn)
+    {
+        var pendingCount = turn.ProposedMemoryWrites.Count + turn.ProposedPageWrites.Count;
+        _agentStatus = pendingCount > 0
+            ? $"{pendingCount} write approval(s) pending"
+            : "No pending write approvals";
+    }
+
+    private static Color TraceFilterColor(bool enabled, Color accent = Color.Primary) => enabled ? accent : Color.Default;
+
+    private static string TraceFilterTooltipText(string label, bool enabled) =>
+        enabled
+            ? $"{label} filter is on. Click to hide {label.ToLowerInvariant()} events."
+            : $"{label} filter is off. Click to show {label.ToLowerInvariant()} events.";
+
+    private void ToggleTraceReasoning() => _traceShowReasoning = !_traceShowReasoning;
+
+    private void ToggleTraceTools() => _traceShowTools = !_traceShowTools;
+
+    private void ToggleTraceAssistant() => _traceShowAssistant = !_traceShowAssistant;
+
+    private void ToggleTraceSystem() => _traceShowSystem = !_traceShowSystem;
+
+    private void ToggleTraceErrors() => _traceErrorsOnly = !_traceErrorsOnly;
 
     private async Task RejectMemoryWriteAsync(string turnId, string memoryId)
     {
@@ -1469,6 +1544,7 @@
 
         turn.ProposedMemoryWrites.RemoveAll(item => string.Equals(item.Id, memoryId, StringComparison.OrdinalIgnoreCase));
         AddTraceEntry(turn, ChatTraceKinds.Write, "Agent memory write rejected", $"Rejected memory:{memoryId}.");
+        UpdatePendingWriteStatus(turn);
         await SaveSessionsAsync();
     }
 
@@ -1481,6 +1557,7 @@
 
         turn.ProposedPageWrites.RemoveAll(item => string.Equals(item.Slug, slug, StringComparison.OrdinalIgnoreCase));
         AddTraceEntry(turn, ChatTraceKinds.Write, "Agent page write rejected", $"Rejected page:{slug}.");
+        UpdatePendingWriteStatus(turn);
         await SaveSessionsAsync();
     }
 
