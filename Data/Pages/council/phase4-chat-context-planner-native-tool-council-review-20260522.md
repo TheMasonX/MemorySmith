@@ -6,7 +6,7 @@ Ship Phase 4 as a deterministic chat context planner plus provider capability me
 
 ## Evidence Reviewed
 
-- `Data/Pages/application-next-steps-council-review-20260521.md` Phase 4 goals and acceptance gates.
+- `Data/Pages/council/application-next-steps-council-review-20260521.md` Phase 4 goals and acceptance gates.
 - `MemorySmith.App/Services/ChatContextPlanner.cs` for preload/tool planning.
 - `MemorySmith.App/Services/ChatServices.cs` for provider capability metadata, prompt guidance, tool loop fallback, and trace events.
 - `MemorySmith.App/Services/ChatToolCatalog.cs` for shared executable tool definitions.

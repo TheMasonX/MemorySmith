@@ -6,7 +6,7 @@ Implement proposal review execution through the existing maintenance-agent provi
 
 ## Evidence Reviewed
 
-- `Data/Pages/admin-models-maintenance-agent-plan-20260522.md`: records the Request Agent Review baseline and remaining review-agent goals.
+- `Data/Pages/plans/admin-models-maintenance-agent-plan-20260522.md`: records the Request Agent Review baseline and remaining review-agent goals.
 - `Data/Memories/Core/project-wiki-maintenance-proposals-current.json`: current proposal workflow behavior and the durable review request marker.
 - `MemorySmith.App/Services/MaintenanceAgentServices.cs`: `MaintenanceProposalWorkflow`, proposal storage/apply validation, and existing maintenance LLM provider hook.
 - `MemorySmith.App/Components/Pages/Proposals.razor`: user-facing proposal action surface.

@@ -456,7 +456,7 @@ public sealed partial class FilePageService : IPageService
             markdown,
             RenderHtml(markdown),
             File.GetLastWriteTimeUtc(path),
-            Path.GetRelativePath(_rootPath, path),
+            Path.GetRelativePath(_rootPath, path).Replace(Path.DirectorySeparatorChar, '/').Replace(Path.AltDirectorySeparatorChar, '/'),
             ReadMinimumRole(path));
     }
 

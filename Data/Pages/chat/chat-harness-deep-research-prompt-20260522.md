@@ -36,9 +36,9 @@ Use confidence percentages for each major recommendation.
 Keep dissent explicit when trade-offs are unresolved.
 
 ## Evidence You Must Use First (source-grounded)
-- Data/Pages/search-and-chat.md
-- Data/Pages/llm-council.md
-- Data/Pages/phase4-chat-context-planner-native-tool-council-review-20260522.md
+- Data/Pages/guides/search-and-chat.md
+- Data/Pages/council/llm-council.md
+- Data/Pages/council/phase4-chat-context-planner-native-tool-council-review-20260522.md
 - Data/Pages/chat-harness-capability-council-review-20260522.md
 - Data/Memories/Core/project-wiki-chat-configuration-current.json
 - Data/Memories/Core/project-wiki-chat-agent-provider.json

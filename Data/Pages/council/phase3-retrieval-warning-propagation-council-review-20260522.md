@@ -6,7 +6,7 @@ Ship Phase 3 as a warning/provenance propagation layer that adds diagnostics and
 
 ## Evidence Reviewed
 
-- `Data/Pages/application-next-steps-council-review-20260521.md` Phase 3 scope and acceptance gates.
+- `Data/Pages/council/application-next-steps-council-review-20260521.md` Phase 3 scope and acceptance gates.
 - `MemorySmith.App/Services/MemoryApplicationService.cs` for lexical diagnostic search and retrieval envelope construction.
 - `MemorySmith.App/Services/SemanticEmbeddingSearchService.cs` for semantic provider metadata.
 - `MemorySmith.App/Services/RetrievalEnvelopes.cs` for versioned retrieval envelope records.

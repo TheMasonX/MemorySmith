@@ -19,9 +19,9 @@ How should MemorySmith improve /pages navigation and readability as the page cor
 - Tests proving nested slug behavior and page retrieval constraints:
   - `MemorySmith.Tests/ChatToolCatalogAndInterceptTests.cs`
 - Existing council/governance methodology and retrieval conventions:
-  - `Data/Pages/llm-council.md`
-  - `Data/Pages/search-and-chat.md`
-  - `Data/Pages/temp-plan.md`
+  - `Data/Pages/council/llm-council.md`
+  - `Data/Pages/guides/search-and-chat.md`
+  - `Data/Pages/plans/temp-plan.md`
 - Core memory records used as architecture and governance context:
   - `Data/Memories/Core/project-wiki-ui-architecture.json`
   - `Data/Memories/Core/project-wiki-tag-governance-current.json`
