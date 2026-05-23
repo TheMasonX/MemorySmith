@@ -471,25 +471,90 @@
     private static string RiskClass(string risk) => "is-" + risk.ToLowerInvariant();
     private static string ProposalQuickSummary(MaintenanceWriteProposal proposal)
     {
-        var paths = proposal.Changes
+        var distinctPaths = proposal.Changes
             .Select(change => string.IsNullOrWhiteSpace(change.Path) ? "unknown path" : change.Path)
             .Distinct(StringComparer.OrdinalIgnoreCase)
-            .Take(3)
             .ToList();
-        var pathText = paths.Count switch
+        var leadingPaths = distinctPaths.Take(3).ToList();
+        var pathText = leadingPaths.Count switch
         {
             0 => "no file paths",
-            1 => paths[0],
-            _ => string.Join(", ", paths)
+            1 => leadingPaths[0],
+            _ => string.Join(", ", leadingPaths)
         };
-        var remaining = proposal.Changes.Select(change => change.Path).Distinct(StringComparer.OrdinalIgnoreCase).Count() - paths.Count;
+        var remaining = distinctPaths.Count - leadingPaths.Count;
         if (remaining > 0)
         {
             pathText += $" and {remaining} more";
         }
 
-        var changeText = proposal.Changes.Count == 1 ? "1 proposed change" : $"{proposal.Changes.Count} proposed changes";
-        return $"{TaskLabel(proposal.Metadata.Task)} created {changeText} for {pathText}. Approval applies the diff to disk; use Respond when the direction is right but the patch needs revision.";
+        var leadChange = proposal.Changes.FirstOrDefault();
+        var leadSummary = SummarizeChange(leadChange);
+        var additionalChanges = proposal.Changes.Count - 1;
+        var additionalText = additionalChanges > 0
+            ? $" plus {additionalChanges} more change{(additionalChanges == 1 ? string.Empty : "s")}" 
+            : string.Empty;
+        return $"{TaskLabel(proposal.Metadata.Task)} proposes {leadSummary}{additionalText} at {pathText}.";
+    }
+
+    private static string SummarizeChange(MaintenanceProposalChange? change)
+    {
+        if (change is null)
+        {
+            return "content updates";
+        }
+
+        var hasBefore = !string.IsNullOrWhiteSpace(change.Before);
+        var hasAfter = !string.IsNullOrWhiteSpace(change.After);
+        var heading = ExtractHeading(change.After);
+
+        if (!hasBefore && hasAfter)
+        {
+            return heading is null ? "a new file" : $"a new page titled '{heading}'";
+        }
+
+        if (hasBefore && !hasAfter)
+        {
+            return "a file removal";
+        }
+
+        if (!string.IsNullOrWhiteSpace(change.Diff))
+        {
+            var lines = change.Diff.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            var added = lines.Count(line => line.StartsWith('+') && !line.StartsWith("+++", StringComparison.Ordinal));
+            var removed = lines.Count(line => line.StartsWith('-') && !line.StartsWith("---", StringComparison.Ordinal));
+            if (added > 0 || removed > 0)
+            {
+                return $"content edits (+{added}/-{removed} lines)";
+            }
+        }
+
+        return heading is null ? "file updates" : $"updates to '{heading}'";
+    }
+
+    private static string? ExtractHeading(string? markdown)
+    {
+        if (string.IsNullOrWhiteSpace(markdown))
+        {
+            return null;
+        }
+
+        foreach (var rawLine in markdown.Split('\n'))
+        {
+            var line = rawLine.Trim();
+            if (!line.StartsWith("#", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var heading = line.TrimStart('#').Trim();
+            if (!string.IsNullOrWhiteSpace(heading))
+            {
+                return heading;
+            }
+        }
+
+        return null;
     }
 
     private static string ActivitySummary(MaintenanceRunActivity activity)

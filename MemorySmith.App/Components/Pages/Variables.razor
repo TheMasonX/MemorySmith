@@ -1,95 +1,12 @@
 @page "/variables"
 @rendermode InteractiveServer
-@inject VarResolver VarResolver
-@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
 
-<PageTitle>Path Variables</PageTitle>
-
-<div class="wiki-workbench">
-    <section class="wiki-commandbar" aria-label="Path variable management">
-        <div class="wiki-title-block">
-            <MudText Typo="Typo.h5">Variables</MudText>
-            <span class="wiki-count">%VarName% tokens</span>
-        </div>
-        <div class="wiki-search-strip">
-            <MudText Typo="Typo.body2" Style="color: var(--vscode-text-muted); flex: 1;">
-                Define path variables used in Source Links as <strong>%VariableName%</strong> tokens,
-                e.g. <code>%MemorySmithRepo%MemorySmith.App/Program.cs</code>.
-            </MudText>
-            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
-                       StartIcon="@Icons.Material.Filled.Add" OnClick="AddRow">Add Variable</MudButton>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
-                       StartIcon="@Icons.Material.Filled.Save" OnClick="SaveAsync">Save</MudButton>
-        </div>
-    </section>
-
-    <section class="wiki-body" style="display: block; padding: 8px 10px; overflow-y: auto;">
-        @if (_rows.Count == 0)
-        {
-            <div class="wiki-empty-state">No variables defined. Click Add Variable to create one.</div>
-        }
-        else
-        {
-            <div class="vars-table">
-                @foreach (var (row, index) in _rows.Select((row, i) => (row, i)))
-                {
-                    <div class="vars-row" @key="index">
-                        <MudTextField @bind-Value="row.Name"
-                                      Label="Variable Name"
-                                      Placeholder="MemorySmithRepo"
-                                      Variant="Variant.Outlined"
-                                      Margin="Margin.Dense"
-                                      Class="vars-name-field" />
-                        <MudTextField @bind-Value="row.Value"
-                                      Label="Value"
-                                      Placeholder="C:\path\to\folder\"
-                                      Variant="Variant.Outlined"
-                                      Margin="Margin.Dense"
-                                      Class="vars-value-field" />
-                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                       Color="Color.Error"
-                                       Size="Size.Small"
-                                       OnClick="@(() => RemoveRow(index))"
-                                       aria-label="Remove" />
-                    </div>
-                }
-            </div>
-        }
-    </section>
-</div>
+<PageTitle>Variables</PageTitle>
 
 @code {
-    private List<VarRow> _rows = [];
-
     protected override void OnInitialized()
     {
-        var vars = VarResolver.GetVars();
-        _rows = vars
-            .OrderBy(kvp => kvp.Key, StringComparer.OrdinalIgnoreCase)
-            .Select(kvp => new VarRow { Name = kvp.Key, Value = kvp.Value })
-            .ToList();
-    }
-
-    private void AddRow() => _rows.Add(new VarRow());
-
-    private void RemoveRow(int index) => _rows.RemoveAt(index);
-
-    private void SaveAsync()
-    {
-        var vars = _rows
-            .Where(row => !string.IsNullOrWhiteSpace(row.Name))
-            .ToDictionary(
-                row => row.Name.Trim(),
-                row => row.Value.Trim(),
-                StringComparer.OrdinalIgnoreCase);
-
-        VarResolver.SaveVars(vars);
-        Snackbar.Add("Variables saved", Severity.Success);
-    }
-
-    private class VarRow
-    {
-        public string Name { get; set; } = string.Empty;
-        public string Value { get; set; } = string.Empty;
+        Navigation.NavigateTo("/admin", forceLoad: false);
     }
 }

@@ -150,7 +150,7 @@ public class TagGovernanceTests
     }
 
     [Test]
-    public void AdminMarkup_LeavesTagManagerInMainNavAndExposesSettingHelpTooltips()
+    public void AdminMarkup_LeavesTagManagerInMainNav_UsesIconActions_AndMovesVariablesIntoAdmin()
     {
         var markup = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "Components", "Pages", "Admin.razor"));
         var navMarkup = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "Components", "Layout", "NavMenu.razor"));
@@ -165,12 +165,19 @@ public class TagGovernanceTests
             Assert.That(markup, Does.Contain("OnModelProfileProviderChangedAsync"));
             Assert.That(markup, Does.Contain("_modelProfileModelOptions"));
             Assert.That(markup, Does.Contain("admin-model-select-field"));
+            Assert.That(markup, Does.Contain("admin-row-actions"));
+            Assert.That(markup, Does.Contain("DuplicateModelProfileAsync"));
+            Assert.That(markup, Does.Contain("Icons.Material.Filled.ContentCopy"));
+            Assert.That(markup, Does.Contain("Icons.Material.Filled.Edit"));
+            Assert.That(markup, Does.Contain("Icons.Material.Filled.Delete"));
             Assert.That(markup, Does.Contain("Maintenance runs"));
             Assert.That(markup, Does.Contain("Proposal reviews"));
             Assert.That(markup, Does.Contain("Admin maintenance chat"));
             Assert.That(markup, Does.Contain("admin-setting-key"));
             Assert.That(markup, Does.Contain("Icons.Material.Filled.Info"));
             Assert.That(markup, Does.Contain("@context.Item.HelpText"));
+            Assert.That(markup, Does.Contain("<MudTabPanel Text=\"Variables\""));
+            Assert.That(markup, Does.Contain("SaveVariablesAsync"));
             Assert.That(markup, Does.Not.Contain("<MudTabPanel Text=\"Maintenance\""));
             Assert.That(markup, Does.Not.Contain("MaintenanceAgentService Agent"));
             Assert.That(markup, Does.Not.Contain("SendMaintenanceMessageAsync"));
@@ -182,6 +189,7 @@ public class TagGovernanceTests
             Assert.That(navMarkup, Does.Contain("Tags"));
             Assert.That(navMarkup, Does.Contain("Href=\"/maintenance\""));
             Assert.That(navMarkup, Does.Contain("Maintenance"));
+            Assert.That(navMarkup, Does.Not.Contain("Href=\"/variables\""));
         });
     }
 
@@ -246,6 +254,8 @@ public class TagGovernanceTests
             Assert.That(markup, Does.Contain("RequestAgentReviewAsync"));
             Assert.That(markup, Does.Contain("Quick summary"));
             Assert.That(markup, Does.Contain("ProposalQuickSummary"));
+            Assert.That(markup, Does.Contain("SummarizeChange"));
+            Assert.That(markup, Does.Not.Contain("Approval applies the diff to disk; use Respond"));
             Assert.That(markup, Does.Contain("proposal-comment-row"));
             Assert.That(markup, Does.Contain("proposal-action-row"));
             Assert.That(markup, Does.Contain("Recent task activity"));

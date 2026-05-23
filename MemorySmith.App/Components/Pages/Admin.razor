@@ -8,6 +8,7 @@
 @inject AdminSettingsService Settings
 @inject ChatModelProfileService ModelProfiles
 @inject IEnumerable<IChatProvider> ChatProviders
+@inject VarResolver VarResolver
 @inject ISnackbar Snackbar
 @using Microsoft.Extensions.Options
 @using System.Text.Json
@@ -137,8 +138,17 @@
                             <MudTd>@FormatProfileAssignments(context)</MudTd>
                             <MudTd>@(context.Enabled ? "Enabled" : "Disabled")</MudTd>
                             <MudTd>
-                                <MudButton Size="Size.Small" Variant="Variant.Outlined" Disabled="@_isBusy" OnClick="@(() => EditModelProfile(context))">@(context.IsImplicit ? "Make explicit" : "Edit")</MudButton>
-                                <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error" Disabled="@(_isBusy || context.IsImplicit)" OnClick="@(() => DeleteModelProfileAsync(context))">Delete</MudButton>
+                                <div class="admin-row-actions">
+                                    <MudTooltip Text="@DuplicateModelTooltip(context)">
+                                        <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Color="Color.Primary" Size="Size.Small" Disabled="@_isBusy" OnClick="@(() => DuplicateModelProfileAsync(context))" aria-label="Duplicate model profile" />
+                                    </MudTooltip>
+                                    <MudTooltip Text="@EditModelTooltip(context)">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" Disabled="@_isBusy" OnClick="@(() => EditModelProfile(context))" aria-label="Edit model profile" />
+                                    </MudTooltip>
+                                    <MudTooltip Text="@DeleteModelTooltip(context)">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" Disabled="@(_isBusy || context.IsImplicit)" OnClick="@(() => DeleteModelProfileAsync(context))" aria-label="Delete model profile" />
+                                    </MudTooltip>
+                                </div>
                             </MudTd>
                         </RowTemplate>
                     </MudTable>
@@ -255,6 +265,59 @@
                 </RowTemplate>
             </MudTable>
         </MudTabPanel>
+        <MudTabPanel Text="Variables" Icon="@Icons.Material.Filled.DataObject">
+            <div class="admin-filter-bar" aria-label="Path variable tools">
+                <MudText Typo="Typo.body2" Style="color: var(--vscode-text-muted); flex: 1;">
+                    Define Source Link path variables using <strong>%VariableName%</strong> tokens,
+                    for example <code>%MemorySmithRepo%MemorySmith.App/Program.cs</code>.
+                </MudText>
+                <MudTooltip Text="Add a new path variable row.">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                               StartIcon="@Icons.Material.Filled.Add" Disabled="@_isBusy" OnClick="AddVariableRow">Add Variable</MudButton>
+                </MudTooltip>
+                <MudTooltip Text="Save all variable changes to the configured vars file.">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                               StartIcon="@Icons.Material.Filled.Save" Disabled="@_isBusy" OnClick="SaveVariablesAsync">Save Variables</MudButton>
+                </MudTooltip>
+            </div>
+
+            @if (_variableRows.Count == 0)
+            {
+                <div class="wiki-empty-state">No variables defined. Click Add Variable to create one.</div>
+            }
+            else
+            {
+                <div class="vars-table" style="margin-top: 8px;">
+                    @foreach (var (row, index) in _variableRows.Select((row, i) => (row, i)))
+                    {
+                        <div class="vars-row" @key="index">
+                            <MudTextField @bind-Value="row.Name"
+                                          Label="Variable Name"
+                                          Placeholder="MemorySmithRepo"
+                                          Variant="Variant.Outlined"
+                                          Margin="Margin.Dense"
+                                          Class="vars-name-field"
+                                          Disabled="@_isBusy" />
+                            <MudTextField @bind-Value="row.Value"
+                                          Label="Value"
+                                          Placeholder="C:\path\to\folder\"
+                                          Variant="Variant.Outlined"
+                                          Margin="Margin.Dense"
+                                          Class="vars-value-field"
+                                          Disabled="@_isBusy" />
+                            <MudTooltip Text="Remove this variable row.">
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                               Color="Color.Error"
+                                               Size="Size.Small"
+                                               Disabled="@_isBusy"
+                                               OnClick="@(() => RemoveVariableRow(index))"
+                                               aria-label="Remove variable" />
+                            </MudTooltip>
+                        </div>
+                    }
+                </div>
+            }
+        </MudTabPanel>
         <MudTabPanel Text="Audit" Icon="@Icons.Material.Filled.FactCheck">
             <div class="admin-filter-bar" aria-label="Audit filters">
                 <MudTextField T="string" Value="@_auditSearch" ValueChanged="@((string value) => _auditSearch = value)" Immediate="true" Label="Search audit" Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Class="admin-filter-input" />
@@ -355,6 +418,7 @@
     private string _historyFormatFilter = AllFilterValue;
     private string? _modelProfileModelError;
     private ModelProfileEditor _modelProfileEditor = ModelProfileEditor.New();
+    private List<VarRow> _variableRows = [];
     private bool _isBusy;
     private bool _isLoadingModelOptions;
 
@@ -433,6 +497,7 @@
             }
         }
         _configurationItems = BuildConfigurationItems();
+        LoadVariables();
         await LoadModelOptionsAsync(_modelProfileEditor.Provider, _modelProfileEditor.Model, silent: true);
     }
 
@@ -496,6 +561,15 @@
     {
         _modelProfileEditor = ModelProfileEditor.From(profile);
         await LoadModelOptionsAsync(_modelProfileEditor.Provider, _modelProfileEditor.Model, silent: true);
+    }
+
+    private async Task DuplicateModelProfileAsync(ChatModelProfileView profile)
+    {
+        _modelProfileEditor = ModelProfileEditor.From(profile);
+        _modelProfileEditor.Id = null;
+        _modelProfileEditor.Name = string.IsNullOrWhiteSpace(profile.Name) ? "New profile" : $"{profile.Name} Copy";
+        await LoadModelOptionsAsync(_modelProfileEditor.Provider, _modelProfileEditor.Model, silent: true);
+        Snackbar.Add("Profile duplicated into the editor. Save to create a new profile.", Severity.Info);
     }
 
     private async Task StartNewModelProfile()
@@ -756,6 +830,56 @@
         return assignments.Count == 0 ? "None" : string.Join(", ", assignments);
     }
 
+    private static string DuplicateModelTooltip(ChatModelProfileView profile) =>
+        profile.IsImplicit
+            ? "Duplicate this derived profile into a new explicit profile draft."
+            : "Duplicate this profile into a new draft.";
+
+    private static string EditModelTooltip(ChatModelProfileView profile) =>
+        profile.IsImplicit
+            ? "Make this derived profile explicit so you can customize it."
+            : "Edit this model profile.";
+
+    private static string DeleteModelTooltip(ChatModelProfileView profile) =>
+        profile.IsImplicit
+            ? "Derived profiles cannot be deleted; update settings or create explicit profiles instead."
+            : "Delete this explicit model profile.";
+
+    private void LoadVariables()
+    {
+        _variableRows = VarResolver.GetVars()
+            .OrderBy(kvp => kvp.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(kvp => new VarRow { Name = kvp.Key, Value = kvp.Value })
+            .ToList();
+    }
+
+    private void AddVariableRow() => _variableRows.Add(new VarRow());
+
+    private void RemoveVariableRow(int index)
+    {
+        if (index < 0 || index >= _variableRows.Count)
+        {
+            return;
+        }
+
+        _variableRows.RemoveAt(index);
+    }
+
+    private Task SaveVariablesAsync()
+    {
+        var vars = _variableRows
+            .Where(row => !string.IsNullOrWhiteSpace(row.Name))
+            .ToDictionary(
+                row => row.Name.Trim(),
+                row => row.Value.Trim(),
+                StringComparer.OrdinalIgnoreCase);
+
+        VarResolver.SaveVars(vars);
+        Snackbar.Add("Variables saved.", Severity.Success);
+        LoadVariables();
+        return Task.CompletedTask;
+    }
+
     private static IReadOnlyList<string> ParseRoleText(string value) => value
         .Replace("\r", string.Empty)
         .Split([',', ';', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
@@ -998,5 +1122,11 @@
             AllowedRolesText = string.Join(", ", profile.AllowedRoles),
             Description = profile.Description
         };
+    }
+
+    private sealed class VarRow
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Value { get; set; } = string.Empty;
     }
 }
