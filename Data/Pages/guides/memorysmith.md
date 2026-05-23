@@ -7,15 +7,15 @@ This folder is the human-readable side of the project wiki. Pages here are meant
 ## Start Here
 
 - [Architecture](architecture.md) explains the single-host app shape and where each project fits.
-- [Operations](operations.md) covers running, validating, publishing, and the important data paths.
+- [Operations](../ops/operations.md) covers running, validating, publishing, and the important data paths.
 - [Search and Chat](search-and-chat.md) explains lexical, semantic, hybrid, MCP, chat, and agent behavior.
-- [Core Memory System Improvements RFC](temp-plan.md) reviews long-term options for making memories, search, pages, and chat more useful for AI agents and humans.
-- [AI Memory Suite Implementation Plan](ai-memory-suite-implementation-plan.md) records the full 10-round council synthesis and phased plan for tag policy, staleness, retrieval, Agent writes, schema promotion, and page chunking.
+- [Core Memory System Improvements RFC](../plans/temp-plan.md) reviews long-term options for making memories, search, pages, and chat more useful for AI agents and humans.
+- [AI Memory Suite Implementation Plan](../plans/ai-memory-suite-implementation-plan.md) records the full 10-round council synthesis and phased plan for tag policy, staleness, retrieval, Agent writes, schema promotion, and page chunking.
 - [Memory Governance Guide](memory-governance-guide.md) documents the first warning-first governance slice: tag policy, diagnostics, maintenance recommendations, and context-pack warning metadata.
-- [Council Workflow](llm-council.md) describes the multi-perspective review method for major MemorySmith decisions.
-- [Deep Research Prompt](memory-system-deep-research-prompt.md) turns the RFC's externally researchable questions into a prompt for Microsoft Copilot or ChatGPT Deep Research.
-- [Deep Research Intake Notes](deep-research-intake-20260520.md) distills the latest external-research response into decision-ready guidance and unresolved local questions.
-- [Future Tasks](tasks.md) tracks product work in a checklist format.
+- [Council Workflow](../council/llm-council.md) describes the multi-perspective review method for major MemorySmith decisions.
+- [Deep Research Prompt](../research/memory-system-deep-research-prompt.md) turns the RFC's externally researchable questions into a prompt for Microsoft Copilot or ChatGPT Deep Research.
+- [Deep Research Intake Notes](../research/deep-research-intake-20260520.md) distills the latest external-research response into decision-ready guidance and unresolved local questions.
+- [Future Tasks](../workbench/tasks.md) tracks product work in a checklist format.
 
 ## What Lives Where
 

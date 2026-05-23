@@ -1,7 +1,7 @@
 # Council Workflow for MemorySmith Decisions
 
 Status: Draft operating method  
-Use with: [Core Memory System Improvements RFC](temp-plan.md), [Search and Chat](search-and-chat.md)
+Use with: [Core Memory System Improvements RFC](../plans/temp-plan.md), [Search and Chat](../guides/search-and-chat.md)
 
 ## Purpose
 

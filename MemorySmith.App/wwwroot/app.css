@@ -745,6 +745,73 @@ body {
     min-height: 0;
 }
 
+.pages-body {
+    grid-template-columns: minmax(300px, 34%) minmax(0, 1fr);
+}
+
+.pages-body.is-nav-hidden {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.pages-navigation-pane {
+    overflow: hidden;
+}
+
+.pages-tree-list {
+    overflow: auto;
+    min-height: 0;
+    padding: 6px;
+}
+
+.pages-tree-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 36px;
+    padding: 6px 10px 6px calc(10px + (var(--tree-depth, 0) * 18px));
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--vscode-text);
+    text-align: left;
+    cursor: pointer;
+}
+
+.pages-tree-row:hover,
+.pages-tree-row.is-selected {
+    background: var(--vscode-accent-hover);
+}
+
+.pages-tree-row.is-selected {
+    box-shadow: inset 3px 0 0 var(--vscode-accent);
+}
+
+.pages-tree-folder {
+    font-weight: 600;
+}
+
+.pages-tree-page {
+    font-size: 0.9rem;
+}
+
+.pages-tree-icon {
+    flex: 0 0 auto;
+}
+
+.pages-tree-label {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.page-detail-pane.is-focus-mode .page-rendered,
+.page-detail-pane.is-focus-mode .page-editor-shell {
+    width: 100%;
+}
+
 .page-rendered {
     flex: 1 1 auto;
     min-height: 0;
@@ -2742,6 +2809,10 @@ body {
         grid-template-columns: minmax(250px, 38%) minmax(0, 1fr);
     }
 
+    .pages-body {
+        grid-template-columns: minmax(260px, 32%) minmax(0, 1fr);
+    }
+
     .wiki-result-row {
         grid-template-columns: 1fr;
     }
@@ -2846,6 +2917,12 @@ body {
         display: grid;
         grid-template-columns: 1fr;
         grid-template-rows: minmax(90px, 30%) minmax(0, 1fr);
+    }
+
+    .pages-body,
+    .pages-body.is-nav-hidden {
+        grid-template-columns: 1fr;
+        grid-template-rows: minmax(90px, 32%) minmax(0, 1fr);
     }
 
     .wiki-search-box {

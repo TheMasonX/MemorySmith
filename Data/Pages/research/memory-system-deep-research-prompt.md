@@ -1,6 +1,6 @@
 # Deep Research Prompt: Agent Memory, Search, and Wiki Architecture
 
-Use this prompt in Microsoft Copilot, ChatGPT Deep Research, or a comparable research mode. The goal is to answer externally researchable questions from the [Core Memory System Improvements RFC](temp-plan.md). Do not use this prompt to decide local-only MemorySmith policy by fiat; use it to gather evidence, patterns, trade-offs, and examples that can inform a later council review.
+Use this prompt in Microsoft Copilot, ChatGPT Deep Research, or a comparable research mode. The goal is to answer externally researchable questions from the [Core Memory System Improvements RFC](../plans/temp-plan.md). Do not use this prompt to decide local-only MemorySmith policy by fiat; use it to gather evidence, patterns, trade-offs, and examples that can inform a later council review.
 
 ## Prompt
 
@@ -93,7 +93,7 @@ These require local product judgment or code review more than external research:
 
 ## How To Use The Results
 
-After research returns, run a [Council Workflow](llm-council.md) review before changing code or schema. The council should separate:
+After research returns, run a [Council Workflow](../council/llm-council.md) review before changing code or schema. The council should separate:
 
 - findings that update the RFC immediately;
 - findings that justify a prototype;

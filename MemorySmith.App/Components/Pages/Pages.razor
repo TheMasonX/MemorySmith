@@ -1,6 +1,7 @@
 @page "/pages"
 @page "/pages/{*Slug}"
 @rendermode InteractiveServer
+@using System.Text.Json
 @using Microsoft.Extensions.Options
 @inject IPageService PageService
 @inject NavigationManager Navigation
@@ -29,8 +30,18 @@
                           AdornmentIcon="@Icons.Material.Filled.Search"
                           OnKeyUp="OnSearchKeyUp"
                           Class="wiki-search-box" />
+            <MudButtonGroup Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" Class="wiki-mode-toggle">
+                <MudButton Variant="@NavigationModeVariant(TreeMode)" OnClick="@(() => SetNavigationModeAsync(TreeMode))">Tree</MudButton>
+                <MudButton Variant="@NavigationModeVariant(FlatMode)" OnClick="@(() => SetNavigationModeAsync(FlatMode))">Flat</MudButton>
+            </MudButtonGroup>
             <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Search" OnClick="SearchAsync">Search</MudButton>
             <MudIconButton Icon="@Icons.Material.Filled.Clear" Size="Size.Small" OnClick="ClearAsync" aria-label="Clear" />
+            <MudTooltip Text="@(_isNavigationVisible ? "Hide navigation" : "Show navigation")">
+                <MudIconButton Icon="@(_isNavigationVisible ? Icons.Material.Filled.MenuOpen : Icons.Material.Filled.Menu)"
+                               Size="Size.Small"
+                               OnClick="ToggleNavigationVisibilityAsync"
+                               aria-label="Toggle navigation" />
+            </MudTooltip>
             <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
                 <Authorized>
                     <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" Color="Color.Success" OnClick="NewPageAsync" aria-label="New" />
@@ -39,10 +50,12 @@
         </div>
     </section>
 
-    <section class="wiki-body pages-body">
-        <aside class="wiki-results-pane" aria-label="Pages">
+    <section class="@PagesBodyClass">
+        @if (_isNavigationVisible)
+        {
+        <aside class="wiki-results-pane pages-navigation-pane" aria-label="Pages">
             <div class="wiki-pane-header">
-                <MudText Typo="Typo.subtitle2">Pages</MudText>
+                <MudText Typo="Typo.subtitle2">@(_navigationMode == TreeMode ? "Tree" : "Flat list")</MudText>
             </div>
 
             @if (_isLoading)
@@ -52,6 +65,37 @@
             else if (_pages.Count == 0)
             {
                 <div class="wiki-empty-state">No pages found.</div>
+            }
+            else if (_navigationMode == TreeMode)
+            {
+                <div class="pages-tree-list">
+                    @foreach (var row in TreeRows)
+                    {
+                        if (row.Node.IsFolder)
+                        {
+                            <button type="button"
+                                    class="pages-tree-row pages-tree-folder"
+                                    style="@TreeIndentStyle(row.Depth)"
+                                    @onclick="@(() => ToggleFolderAsync(row.Node.Key))"
+                                    aria-label="Toggle folder @row.Node.Label">
+                                <MudIcon Icon="@(row.IsExpanded ? Icons.Material.Filled.ExpandMore : Icons.Material.Filled.ChevronRight)" Size="Size.Small" Class="pages-tree-icon" />
+                                <span class="pages-tree-label">@row.Node.Label</span>
+                                <span class="wiki-count">@row.Node.PageCount page@(row.Node.PageCount == 1 ? string.Empty : "s")</span>
+                            </button>
+                        }
+                        else if (row.Node.Slug is not null)
+                        {
+                            <button type="button"
+                                    class="@TreePageRowClass(row.Node)"
+                                    style="@TreeIndentStyle(row.Depth)"
+                                    @onclick="@(() => SelectAsync(row.Node.Slug, navigate: true))"
+                                    aria-label="Open @row.Node.Label">
+                                <MudIcon Icon="@Icons.Material.Filled.Description" Size="Size.Small" Class="pages-tree-icon" />
+                                <span class="pages-tree-label">@row.Node.Label</span>
+                            </button>
+                        }
+                    }
+                </div>
             }
             else
             {
@@ -73,8 +117,9 @@
                 </div>
             }
         </aside>
+        }
 
-        <main class="wiki-detail-pane" aria-label="Selected page">
+        <main class="@DetailPaneClass" aria-label="Selected page">
             @if (_isEditing)
             {
                 <div class="wiki-pane-header page-editor-header">
@@ -86,6 +131,13 @@
                         }
                     </div>
                     <MudSpacer />
+                    <MudTooltip Text="@(_isFocusMode ? "Exit focus reading" : "Focus reading")">
+                        <MudIconButton Icon="@(_isFocusMode ? Icons.Material.Filled.FullscreenExit : Icons.Material.Filled.Fullscreen)"
+                                       Size="Size.Small"
+                                       Color="Color.Primary"
+                                       OnClick="ToggleFocusModeAsync"
+                                       aria-label="Toggle focus reading" />
+                    </MudTooltip>
                     <MudCheckBox T="bool" Value="_livePreview" ValueChanged="SetLivePreviewAsync" Label="Live preview" Size="Size.Small" />
                     <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Small" Color="Color.Primary" OnClick="RefreshPreview" aria-label="Refresh preview" />
                     <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
@@ -117,7 +169,10 @@
                         <MudTooltip Text="Italic">
                             <MudIconButton Icon="@Icons.Material.Filled.FormatItalic" Size="Size.Small" OnClick="@(() => InsertMarkdownAsync("*", "*", "italic text"))" aria-label="Italic" />
                         </MudTooltip>
-                        <MudTooltip Text="Link">
+                        <MudTooltip Text="Page link">
+                            <MudIconButton Icon="@Icons.Material.Filled.Description" Size="Size.Small" OnClick='@(() => InsertMarkdownAsync("[", "](../relative/path.md)", "Page"))' aria-label="Page link" />
+                        </MudTooltip>
+                        <MudTooltip Text="Web link">
                             <MudIconButton Icon="@Icons.Material.Filled.Link" Size="Size.Small" OnClick="@(() => InsertMarkdownAsync("[", "](https://)", "link text"))" aria-label="Link" />
                         </MudTooltip>
                         <MudTooltip Text="Checkbox">
@@ -172,6 +227,13 @@
                         </div>
                     </div>
                     <MudSpacer />
+                    <MudTooltip Text="@(_isFocusMode ? "Exit focus reading" : "Focus reading")">
+                        <MudIconButton Icon="@(_isFocusMode ? Icons.Material.Filled.FullscreenExit : Icons.Material.Filled.Fullscreen)"
+                                       Size="Size.Small"
+                                       Color="Color.Primary"
+                                       OnClick="ToggleFocusModeAsync"
+                                       aria-label="Toggle focus reading" />
+                    </MudTooltip>
                     <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
                         <Authorized>
                             <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="EditSelected" aria-label="Edit" />
@@ -186,9 +248,14 @@
 </div>
 
 @code {
+    private const string TreeMode = "tree";
+    private const string FlatMode = "flat";
+    private const string PagesUiStateStorageKey = "memorysmith.pages.preferences.v1";
+
     [Parameter] public string? Slug { get; set; }
 
     private List<PageSummary> _pages = [];
+    private IReadOnlyList<PageNavigationNode> _treeNodes = [];
     private PageDocument? _selectedPage;
     private ElementReference _markdownEditor;
     private ElementReference _previewPane;
@@ -209,6 +276,11 @@
     private bool _livePreview = true;
     private bool _previewEnhancementsPending;
     private bool _renderedPageEnhancementsPending;
+    private bool _isNavigationVisible = true;
+    private bool _isFocusMode;
+    private bool _uiStateLoaded;
+    private string _navigationMode = TreeMode;
+    private readonly HashSet<string> _expandedTreeKeys = new(StringComparer.OrdinalIgnoreCase);
 
     private bool HasUnsavedChanges => _isEditing &&
         (!string.Equals(_editSlug, _originalSlug, StringComparison.Ordinal) ||
@@ -217,6 +289,9 @@
          !string.Equals(_editMinimumRole, _originalMinimumRole, StringComparison.Ordinal));
 
     private IReadOnlyList<string> EditableMinimumRoleOptions => PageAccessLevels.EditableOptions(CurrentUser, Options.CurrentValue.Auth);
+    private IReadOnlyList<PageNavigationTreeRow> TreeRows => PageNavigationTreeBuilder.Flatten(_treeNodes, _expandedTreeKeys);
+    private string PagesBodyClass => _isNavigationVisible && !_isFocusMode ? "wiki-body pages-body" : "wiki-body pages-body is-nav-hidden";
+    private string DetailPaneClass => _isFocusMode ? "wiki-detail-pane page-detail-pane is-focus-mode" : "wiki-detail-pane page-detail-pane";
 
     protected override async Task OnParametersSetAsync()
     {
@@ -225,6 +300,14 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (firstRender && !_uiStateLoaded)
+        {
+            _uiStateLoaded = true;
+            await RestoreUiStateAsync();
+            StateHasChanged();
+            return;
+        }
+
         if (_isEditing && _previewEnhancementsPending)
         {
             _previewEnhancementsPending = false;
@@ -255,6 +338,8 @@
                     CancellationToken.None))
                 .ToList();
         }
+
+        RebuildTree();
         _isLoading = false;
 
         if (!string.IsNullOrWhiteSpace(selectedSlug))
@@ -316,6 +401,8 @@
         _isEditing = false;
         _renderedPageEnhancementsPending = true;
         PopulateEditor(page, editingExisting: true);
+        ExpandAncestorsForSelectedPage();
+        await PersistUiStateAsync();
         if (navigate)
         {
             Navigation.NavigateTo($"/pages/{EncodePageSlug(page.Slug)}");
@@ -485,6 +572,145 @@
             ? "wiki-result-row is-selected"
             : "wiki-result-row";
 
+    private string TreePageRowClass(PageNavigationNode node) =>
+        string.Equals(_selectedPage?.Slug, node.Slug, StringComparison.OrdinalIgnoreCase)
+            ? "pages-tree-row pages-tree-page is-selected"
+            : "pages-tree-row pages-tree-page";
+
+    private static string TreeIndentStyle(int depth) => $"--tree-depth:{depth};";
+
+    private Variant NavigationModeVariant(string mode) =>
+        string.Equals(_navigationMode, mode, StringComparison.OrdinalIgnoreCase) ? Variant.Filled : Variant.Outlined;
+
+    private async Task SetNavigationModeAsync(string mode)
+    {
+        _navigationMode = string.Equals(mode, FlatMode, StringComparison.OrdinalIgnoreCase) ? FlatMode : TreeMode;
+        await PersistUiStateAsync();
+    }
+
+    private async Task ToggleNavigationVisibilityAsync()
+    {
+        _isNavigationVisible = !_isNavigationVisible;
+        if (_isNavigationVisible)
+        {
+            _isFocusMode = false;
+        }
+
+        await PersistUiStateAsync();
+    }
+
+    private async Task ToggleFocusModeAsync()
+    {
+        _isFocusMode = !_isFocusMode;
+        _isNavigationVisible = !_isFocusMode;
+        await PersistUiStateAsync();
+    }
+
+    private async Task ToggleFolderAsync(string key)
+    {
+        if (_expandedTreeKeys.Contains(key))
+        {
+            _expandedTreeKeys.Remove(key);
+        }
+        else
+        {
+            _expandedTreeKeys.Add(key);
+        }
+
+        await PersistUiStateAsync();
+    }
+
+    private void RebuildTree()
+    {
+        _treeNodes = PageNavigationTreeBuilder.Build(_pages);
+        var validKeys = new HashSet<string>(CollectFolderKeys(_treeNodes), StringComparer.OrdinalIgnoreCase);
+        _expandedTreeKeys.RemoveWhere(key => !validKeys.Contains(key));
+        if (_expandedTreeKeys.Count == 0)
+        {
+            foreach (var key in _treeNodes.Where(node => node.IsFolder).Select(node => node.Key))
+            {
+                _expandedTreeKeys.Add(key);
+            }
+        }
+
+        ExpandAncestorsForSelectedPage();
+    }
+
+    private void ExpandAncestorsForSelectedPage()
+    {
+        foreach (var key in PageNavigationTreeBuilder.AncestorKeysForSlug(_treeNodes, _selectedPage?.Slug))
+        {
+            _expandedTreeKeys.Add(key);
+        }
+    }
+
+    private static IEnumerable<string> CollectFolderKeys(IReadOnlyList<PageNavigationNode> nodes)
+    {
+        foreach (var node in nodes.Where(node => node.IsFolder))
+        {
+            yield return node.Key;
+            foreach (var child in CollectFolderKeys(node.Children))
+            {
+                yield return child;
+            }
+        }
+    }
+
+    private async Task RestoreUiStateAsync()
+    {
+        var json = await JS.InvokeAsync<string?>("memorySmith.storage.getJsonString", PagesUiStateStorageKey);
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return;
+        }
+
+        try
+        {
+            var state = JsonSerializer.Deserialize<PagesUiState>(json);
+            if (state is null)
+            {
+                return;
+            }
+
+            _navigationMode = string.Equals(state.NavigationMode, FlatMode, StringComparison.OrdinalIgnoreCase) ? FlatMode : TreeMode;
+            _isNavigationVisible = state.NavigationVisible;
+            _isFocusMode = state.FocusMode;
+            _expandedTreeKeys.Clear();
+            foreach (var key in state.ExpandedKeys ?? [])
+            {
+                if (!string.IsNullOrWhiteSpace(key))
+                {
+                    _expandedTreeKeys.Add(key);
+                }
+            }
+
+            if (_isFocusMode)
+            {
+                _isNavigationVisible = false;
+            }
+
+            RebuildTree();
+        }
+        catch (JsonException)
+        {
+        }
+    }
+
+    private async Task PersistUiStateAsync()
+    {
+        if (!_uiStateLoaded)
+        {
+            return;
+        }
+
+        await JS.InvokeAsync<bool>(
+            "memorySmith.storage.setJson",
+            PagesUiStateStorageKey,
+            new PagesUiState(_navigationMode, _isNavigationVisible, _isFocusMode, [.. _expandedTreeKeys]));
+    }
+
     private static string EncodePageSlug(string slug) =>
         string.Join('/', slug.Split('/', StringSplitOptions.RemoveEmptyEntries).Select(Uri.EscapeDataString));
+
+    private sealed record PagesUiState(string NavigationMode, bool NavigationVisible, bool FocusMode, string[] ExpandedKeys);
 }

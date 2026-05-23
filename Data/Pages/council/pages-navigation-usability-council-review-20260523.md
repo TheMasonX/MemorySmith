@@ -61,7 +61,7 @@ What changes now (design direction):
 - Add a sidebar visibility toggle (show/hide nav) and Focus Reading mode to maximize page content width.
 - Keep current page storage/API contracts unchanged in initial phases.
 - Use directory structure as the single navigation source of truth in this design slice.
-- Adopt relative markdown links for page-to-page references, for example [File](../relative/path.md), to improve interoperability with tools such as Obsidian and other markdown viewers.
+- Adopt relative markdown links for page-to-page references, for example `[File](../relative/path.md)`, to improve interoperability with tools such as Obsidian and other markdown viewers.
 - Keep MCP/API/page tools returning flattened page lists to preserve agent and integration behavior.
 
 What is deferred:
@@ -109,7 +109,7 @@ flowchart LR
 - This remains the primary agent-facing and tools-facing representation.
 
 3. Link convention
-- Prefer page-to-page markdown links as relative paths, for example [File](../relative/path.md).
+- Prefer page-to-page markdown links as relative paths, for example `[File](../relative/path.md)`.
 - Keep links markdown-native so the same wiki content remains navigable in external markdown tools and viewers.
 
 ### 2. Pane Behavior And Readability

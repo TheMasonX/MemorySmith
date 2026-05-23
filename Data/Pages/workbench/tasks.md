@@ -34,6 +34,18 @@ This page tracks user-facing work in plain language. Completed items stay here a
 - [x] Route standard chat-agent edits through the proposal workflow so agent writes share diff review, history, and approval semantics.
 - [x] Add approve/reject controls to Tag Manager suggestions so admins can send suggested tags to the allowlist or blocklist.
 - [ ] Design a chat compaction mode that preserves auditability while reducing long-session context load.
+- [ ] Add an explicit Agent write approval mode setting with default `manual` and an optional `auto_accept` mode for trusted environments.
+- [ ] Expand chat mutation controls from Approve/Reject to Accept/Reject/Respond so users can request revisions without leaving chat.
+- [ ] Fix chat agent page-write approval path validation so approved proposals targeting `Data/Pages/*.md` do not fail with "outside configured maintenance write directories".
+- [ ] Ensure chat status counters and pending-write badges update immediately after reject/approve outcomes (no stale "1 approval pending" state).
+- [ ] Fix `Approve all` batch semantics to be per-item (for example 3/5 valid applies 3), report itemized outcomes (`approved`/`rejected`/`blocked`/`failed`), and clear/refresh pending cards and counters deterministically.
+- [ ] Enforce that every chat mutation uses the existing server-backed proposal system (no direct write path), with regression coverage proving no page/memory mutation occurs before approval.
+- [ ] Add explicit proposal linkage metadata for related batches and resubmissions using `batchId` + `parentProposalId` + `attempt`, and surface these references in chat/proposal history for automated auditing.
+- [ ] Reject unsafe page/memory proposal identifiers at proposal time (for example path traversal like `../`) instead of waiting for apply-time failures.
+- [ ] Add separate chat-agent write root settings (distinct from maintenance-agent write roots) so chat approvals are not blocked by maintenance directory constraints.
+- [ ] Add startup/admin guardrails for secure remote mode: when `AllowRemoteApi=true`, require an API key and enforce HTTPS/auth hardening settings.
+- [ ] Add a security profile preset system (`local-dev`, `secure-local`, `remote-hardened`) to make safe user-spec configuration easier than hand-editing many flags.
+- [ ] Add explicit configuration for agent mutation action UX (`accept/reject/respond` visibility, default action policy, and revision-required policy) so behavior matches operator governance intent.
 
 ## Pages
 
