@@ -1,0 +1,40 @@
+{
+  "Id": "tsk-0012-extend-model-profiles-with-provider-safe-chat-settings-beyond-context-window-metadata",
+  "Key": "TSK-0012",
+  "Title": "Extend model profiles with provider-safe chat settings beyond context-window metadata.",
+  "Description": "Imported from Data/Pages/workbench/tasks.md",
+  "Type": "Task",
+  "Status": "Backlog",
+  "Priority": "Medium",
+  "AssigneeMode": "Custom",
+  "AssigneeDirectoryId": null,
+  "AssigneeCustomText": "Copilot",
+  "Reporter": "tracker-import",
+  "Labels": [
+    "tracker-import",
+    "workbench",
+    "future"
+  ],
+  "Attachments": [],
+  "ExternalLinks": [],
+  "LinkedPages": [
+    "workbench/tasks"
+  ],
+  "Comments": [
+    {
+      "Id": "c-a0d08b87f3fe43389c5c7b3d248801a1",
+      "Author": "tracker-import",
+      "Body": "Add notes on which settings are safe to surface per provider.",
+      "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z"
+    }
+  ],
+  "EpicId": null,
+  "ParentId": null,
+  "DueDateUtc": null,
+  "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z",
+  "UpdatedAtUtc": "2026-05-23T23:36:10.0439283Z",
+  "CompletedAtUtc": null,
+  "Revision": 1,
+  "IsArchived": false
+}
+

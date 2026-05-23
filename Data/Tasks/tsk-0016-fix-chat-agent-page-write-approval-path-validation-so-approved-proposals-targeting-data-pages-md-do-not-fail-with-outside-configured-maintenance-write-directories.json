@@ -1,0 +1,40 @@
+{
+  "Id": "tsk-0016-fix-chat-agent-page-write-approval-path-validation-so-approved-proposals-targeting-data-pages-md-do-not-fail-with-outside-configured-maintenance-write-directories",
+  "Key": "TSK-0016",
+  "Title": "Fix chat agent page-write approval path validation so approved proposals targeting `Data/Pages/*.md` do not fail with \"outside configured maintenance write directories\".",
+  "Description": "Imported from Data/Pages/workbench/tasks.md",
+  "Type": "Task",
+  "Status": "Backlog",
+  "Priority": "Medium",
+  "AssigneeMode": "Custom",
+  "AssigneeDirectoryId": null,
+  "AssigneeCustomText": "Copilot",
+  "Reporter": "tracker-import",
+  "Labels": [
+    "tracker-import",
+    "workbench",
+    "future"
+  ],
+  "Attachments": [],
+  "ExternalLinks": [],
+  "LinkedPages": [
+    "workbench/tasks"
+  ],
+  "Comments": [
+    {
+      "Id": "c-81f51fcb638a41c1a8aa0056ab059fda",
+      "Author": "tracker-import",
+      "Body": "Add a screenshot or log excerpt once the path check is fixed.",
+      "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z"
+    }
+  ],
+  "EpicId": null,
+  "ParentId": null,
+  "DueDateUtc": null,
+  "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z",
+  "UpdatedAtUtc": "2026-05-23T23:36:10.0439283Z",
+  "CompletedAtUtc": null,
+  "Revision": 1,
+  "IsArchived": false
+}
+

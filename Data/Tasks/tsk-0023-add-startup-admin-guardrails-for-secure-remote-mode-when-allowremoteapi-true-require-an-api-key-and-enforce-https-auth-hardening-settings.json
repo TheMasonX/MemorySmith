@@ -1,0 +1,40 @@
+{
+  "Id": "tsk-0023-add-startup-admin-guardrails-for-secure-remote-mode-when-allowremoteapi-true-require-an-api-key-and-enforce-https-auth-hardening-settings",
+  "Key": "TSK-0023",
+  "Title": "Add startup/admin guardrails for secure remote mode: when `AllowRemoteApi=true`, require an API key and enforce HTTPS/auth hardening settings.",
+  "Description": "Imported from Data/Pages/workbench/tasks.md",
+  "Type": "Task",
+  "Status": "Backlog",
+  "Priority": "Medium",
+  "AssigneeMode": "Custom",
+  "AssigneeDirectoryId": null,
+  "AssigneeCustomText": "Copilot",
+  "Reporter": "tracker-import",
+  "Labels": [
+    "tracker-import",
+    "workbench",
+    "future"
+  ],
+  "Attachments": [],
+  "ExternalLinks": [],
+  "LinkedPages": [
+    "workbench/tasks"
+  ],
+  "Comments": [
+    {
+      "Id": "c-9dd222aee56b4454b2e93211e7a8bef5",
+      "Author": "tracker-import",
+      "Body": "This needs a visible safety note.",
+      "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z"
+    }
+  ],
+  "EpicId": null,
+  "ParentId": null,
+  "DueDateUtc": null,
+  "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z",
+  "UpdatedAtUtc": "2026-05-23T23:36:10.0439283Z",
+  "CompletedAtUtc": null,
+  "Revision": 1,
+  "IsArchived": false
+}
+

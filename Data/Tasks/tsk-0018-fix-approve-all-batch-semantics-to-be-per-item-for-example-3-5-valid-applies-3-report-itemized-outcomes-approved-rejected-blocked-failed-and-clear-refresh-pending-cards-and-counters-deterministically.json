@@ -1,0 +1,40 @@
+{
+  "Id": "tsk-0018-fix-approve-all-batch-semantics-to-be-per-item-for-example-3-5-valid-applies-3-report-itemized-outcomes-approved-rejected-blocked-failed-and-clear-refresh-pending-cards-and-counters-deterministically",
+  "Key": "TSK-0018",
+  "Title": "Fix `Approve all` batch semantics to be per-item (for example 3/5 valid applies 3), report itemized outcomes (`approved`/`rejected`/`blocked`/`failed`), and clear/refresh pending cards and counters deterministically.",
+  "Description": "Imported from Data/Pages/workbench/tasks.md",
+  "Type": "Task",
+  "Status": "Backlog",
+  "Priority": "Medium",
+  "AssigneeMode": "Custom",
+  "AssigneeDirectoryId": null,
+  "AssigneeCustomText": "Copilot",
+  "Reporter": "tracker-import",
+  "Labels": [
+    "tracker-import",
+    "workbench",
+    "future"
+  ],
+  "Attachments": [],
+  "ExternalLinks": [],
+  "LinkedPages": [
+    "workbench/tasks"
+  ],
+  "Comments": [
+    {
+      "Id": "c-c98b18d1af7341cb964487f343d06704",
+      "Author": "tracker-import",
+      "Body": "Keep a note of the batch result breakdown.",
+      "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z"
+    }
+  ],
+  "EpicId": null,
+  "ParentId": null,
+  "DueDateUtc": null,
+  "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z",
+  "UpdatedAtUtc": "2026-05-23T23:36:10.0439283Z",
+  "CompletedAtUtc": null,
+  "Revision": 1,
+  "IsArchived": false
+}
+

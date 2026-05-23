@@ -1,0 +1,40 @@
+{
+  "Id": "tsk-0006-improve-static-pages-publishing-with-richer-navigation-once-the-first-github-pages-workflow-is-proven-in-ci",
+  "Key": "TSK-0006",
+  "Title": "Improve static Pages publishing with richer navigation once the first GitHub Pages workflow is proven in CI.",
+  "Description": "Imported from Data/Pages/workbench/tasks.md",
+  "Type": "Task",
+  "Status": "Backlog",
+  "Priority": "Medium",
+  "AssigneeMode": "Custom",
+  "AssigneeDirectoryId": null,
+  "AssigneeCustomText": "Copilot",
+  "Reporter": "tracker-import",
+  "Labels": [
+    "tracker-import",
+    "workbench",
+    "future"
+  ],
+  "Attachments": [],
+  "ExternalLinks": [],
+  "LinkedPages": [
+    "workbench/tasks"
+  ],
+  "Comments": [
+    {
+      "Id": "c-e77b216ca9c34c9cbbc44f2d53200d2e",
+      "Author": "tracker-import",
+      "Body": "Track a before/after render note for the generated site navigation.",
+      "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z"
+    }
+  ],
+  "EpicId": null,
+  "ParentId": null,
+  "DueDateUtc": null,
+  "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z",
+  "UpdatedAtUtc": "2026-05-23T23:36:10.0439283Z",
+  "CompletedAtUtc": null,
+  "Revision": 1,
+  "IsArchived": false
+}
+

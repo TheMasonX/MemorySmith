@@ -277,6 +277,7 @@ try
         var pagesPath = configuration["MemorySmith:PagesPath"] ?? Path.Combine("..", "Data", "Pages");
         return new FilePageService(pagesPath, options.Pages);
     });
+    builder.Services.AddSingleton<ITaskService, FileTaskService>();
     builder.Services.AddSingleton<IPageService>(sp => new AuditedPageService(
         sp.GetRequiredService<FilePageService>(),
         sp.GetRequiredService<AuditLogService>(),

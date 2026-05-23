@@ -1,0 +1,40 @@
+{
+  "Id": "tsk-0020-add-explicit-proposal-linkage-metadata-for-related-batches-and-resubmissions-using-batchid-parentproposalid-attempt-and-surface-these-references-in-chat-proposal-history-for-automated-auditing",
+  "Key": "TSK-0020",
+  "Title": "Add explicit proposal linkage metadata for related batches and resubmissions using `batchId` + `parentProposalId` + `attempt`, and surface these references in chat/proposal history for automated auditing.",
+  "Description": "Imported from Data/Pages/workbench/tasks.md",
+  "Type": "Task",
+  "Status": "Backlog",
+  "Priority": "Medium",
+  "AssigneeMode": "Custom",
+  "AssigneeDirectoryId": null,
+  "AssigneeCustomText": "Copilot",
+  "Reporter": "tracker-import",
+  "Labels": [
+    "tracker-import",
+    "workbench",
+    "future"
+  ],
+  "Attachments": [],
+  "ExternalLinks": [],
+  "LinkedPages": [
+    "workbench/tasks"
+  ],
+  "Comments": [
+    {
+      "Id": "c-21db42355d6043f79e80b6bbafb6c6e2",
+      "Author": "tracker-import",
+      "Body": "Notes should include the lineage chain.",
+      "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z"
+    }
+  ],
+  "EpicId": null,
+  "ParentId": null,
+  "DueDateUtc": null,
+  "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z",
+  "UpdatedAtUtc": "2026-05-23T23:36:10.0439283Z",
+  "CompletedAtUtc": null,
+  "Revision": 1,
+  "IsArchived": false
+}
+

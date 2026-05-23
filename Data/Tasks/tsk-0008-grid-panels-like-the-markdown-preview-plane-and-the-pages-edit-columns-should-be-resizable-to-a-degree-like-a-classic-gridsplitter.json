@@ -1,0 +1,40 @@
+{
+  "Id": "tsk-0008-grid-panels-like-the-markdown-preview-plane-and-the-pages-edit-columns-should-be-resizable-to-a-degree-like-a-classic-gridsplitter",
+  "Key": "TSK-0008",
+  "Title": "Grid panels like the markdown/preview plane and the pages/edit columns should be resizable to a degree, like a classic gridsplitter",
+  "Description": "Imported from Data/Pages/workbench/tasks.md",
+  "Type": "Task",
+  "Status": "Backlog",
+  "Priority": "Medium",
+  "AssigneeMode": "Custom",
+  "AssigneeDirectoryId": null,
+  "AssigneeCustomText": "Copilot",
+  "Reporter": "tracker-import",
+  "Labels": [
+    "tracker-import",
+    "workbench",
+    "future"
+  ],
+  "Attachments": [],
+  "ExternalLinks": [],
+  "LinkedPages": [
+    "workbench/tasks"
+  ],
+  "Comments": [
+    {
+      "Id": "c-44a75e9277064cb591d5e9a91dd0693b",
+      "Author": "tracker-import",
+      "Body": "Add a screenshot once the split behavior feels usable at narrow widths.",
+      "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z"
+    }
+  ],
+  "EpicId": null,
+  "ParentId": null,
+  "DueDateUtc": null,
+  "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z",
+  "UpdatedAtUtc": "2026-05-23T23:36:10.0439283Z",
+  "CompletedAtUtc": null,
+  "Revision": 1,
+  "IsArchived": false
+}
+

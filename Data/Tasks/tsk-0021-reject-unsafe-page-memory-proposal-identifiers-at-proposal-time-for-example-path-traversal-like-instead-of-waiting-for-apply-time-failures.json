@@ -1,0 +1,40 @@
+{
+  "Id": "tsk-0021-reject-unsafe-page-memory-proposal-identifiers-at-proposal-time-for-example-path-traversal-like-instead-of-waiting-for-apply-time-failures",
+  "Key": "TSK-0021",
+  "Title": "Reject unsafe page/memory proposal identifiers at proposal time (for example path traversal like `../`) instead of waiting for apply-time failures.",
+  "Description": "Imported from Data/Pages/workbench/tasks.md",
+  "Type": "Task",
+  "Status": "Backlog",
+  "Priority": "Medium",
+  "AssigneeMode": "Custom",
+  "AssigneeDirectoryId": null,
+  "AssigneeCustomText": "Copilot",
+  "Reporter": "tracker-import",
+  "Labels": [
+    "tracker-import",
+    "workbench",
+    "future"
+  ],
+  "Attachments": [],
+  "ExternalLinks": [],
+  "LinkedPages": [
+    "workbench/tasks"
+  ],
+  "Comments": [
+    {
+      "Id": "c-b098e63921c549f29357418ef867c55b",
+      "Author": "tracker-import",
+      "Body": "Add a red/green example when implemented.",
+      "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z"
+    }
+  ],
+  "EpicId": null,
+  "ParentId": null,
+  "DueDateUtc": null,
+  "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z",
+  "UpdatedAtUtc": "2026-05-23T23:36:10.0439283Z",
+  "CompletedAtUtc": null,
+  "Revision": 1,
+  "IsArchived": false
+}
+

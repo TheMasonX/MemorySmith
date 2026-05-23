@@ -54,6 +54,106 @@ public class AppApiContractTests
     }
 
     [Test]
+    public async Task TasksPageRoute_ReturnsSuccessAndContainsTasksHeading()
+    {
+        var response = await _client.GetAsync("/tasks");
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+            Assert.That(body, Does.Contain("Tasks"));
+        });
+    }
+
+    [Test]
+    public async Task TasksApi_FullWorkflow_SupportsCrudHistoryAndRelatedArtifacts()
+    {
+        var invalidCreate = await _client.PostAsJsonAsync("/api/tasks", new TaskCreateRequest(
+            Title: "Invalid task",
+            Description: "Invalid assignee payload",
+            Type: "Task",
+            Status: TaskStatuses.Backlog,
+            Priority: TaskPriorities.Medium,
+            AssigneeMode: TaskAssigneeModes.Directory,
+            AssigneeDirectoryId: null,
+            AssigneeCustomText: null,
+            Reporter: "copilot",
+            Labels: ["invalid"],
+            DueDateUtc: null,
+            EpicId: null,
+            ParentId: null));
+
+        var createResponse = await _client.PostAsJsonAsync("/api/tasks", new TaskCreateRequest(
+            Title: "Implement task backend",
+            Description: "Track full backend delivery",
+            Type: "Feature",
+            Status: TaskStatuses.Backlog,
+            Priority: TaskPriorities.High,
+            AssigneeMode: TaskAssigneeModes.Custom,
+            AssigneeDirectoryId: null,
+            AssigneeCustomText: "Copilot",
+            Reporter: "copilot",
+            Labels: ["tasks", "backend"],
+            DueDateUtc: null,
+            EpicId: null,
+            ParentId: null));
+
+        createResponse.EnsureSuccessStatusCode();
+        var created = await createResponse.Content.ReadFromJsonAsync<TaskItem>();
+        Assert.That(created, Is.Not.Null);
+
+        var statusResponse = await _client.PostAsJsonAsync($"/api/tasks/{created!.Id}/status", new TaskStatusUpdateRequest(TaskStatuses.InProgress, "starting implementation"));
+        statusResponse.EnsureSuccessStatusCode();
+
+        var commentResponse = await _client.PostAsJsonAsync($"/api/tasks/{created.Id}/comments", new TaskCommentRequest("Progress update"));
+        commentResponse.EnsureSuccessStatusCode();
+
+        var pageLinkResponse = await _client.PostAsJsonAsync($"/api/tasks/{created.Id}/links/pages", new TaskPageLinkRequest("plans/tasks-page-feature-design-20260523"));
+        pageLinkResponse.EnsureSuccessStatusCode();
+
+        var invalidPageLinkResponse = await _client.PostAsJsonAsync($"/api/tasks/{created.Id}/links/pages", new TaskPageLinkRequest("does/not/exist"));
+        invalidPageLinkResponse.EnsureSuccessStatusCode();
+
+        var externalLinkResponse = await _client.PostAsJsonAsync($"/api/tasks/{created.Id}/links/external", new TaskExternalLinkRequest("Spec", "https://example.test/spec"));
+        externalLinkResponse.EnsureSuccessStatusCode();
+
+        var attachmentResponse = await _client.PostAsJsonAsync($"/api/tasks/{created.Id}/attachments", new TaskAttachmentRequest("Screenshot", "image", "artifacts/browser-validation/tasks.png"));
+        attachmentResponse.EnsureSuccessStatusCode();
+        var withAttachment = await attachmentResponse.Content.ReadFromJsonAsync<TaskItem>();
+
+        var history = await _client.GetFromJsonAsync<List<TaskActivityEntry>>($"/api/tasks/{created.Id}/history");
+        var list = await _client.GetFromJsonAsync<List<TaskSummary>>("/api/tasks?query=backend");
+        var loaded = await _client.GetFromJsonAsync<TaskItem>($"/api/tasks/{created.Id}");
+        var removeAttachmentResponse = await _client.DeleteAsync($"/api/tasks/{created.Id}/attachments/{withAttachment!.Attachments[0].Id}");
+        var softDeleteResponse = await _client.DeleteAsync($"/api/tasks/{created.Id}");
+        var archived = await _client.GetFromJsonAsync<TaskItem>($"/api/tasks/{created.Id}");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(invalidCreate.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+            Assert.That(createResponse.StatusCode, Is.EqualTo(HttpStatusCode.Created));
+            Assert.That(list, Is.Not.Null);
+            Assert.That(list!.Any(item => item.Id == created.Id), Is.True);
+            Assert.That(loaded, Is.Not.Null);
+            Assert.That(loaded!.Comments.Count, Is.EqualTo(1));
+            Assert.That(loaded.ExternalLinks.Count, Is.EqualTo(1));
+            Assert.That(loaded.LinkedPages.Count, Is.EqualTo(2));
+            Assert.That(loaded.LinkedPages, Does.Contain("plans/tasks-page-feature-design-20260523"));
+            Assert.That(loaded.LinkedPages, Does.Contain("does/not/exist"));
+            Assert.That(history, Is.Not.Null);
+            Assert.That(history!.Any(item => item.Action == "created"), Is.True);
+            Assert.That(history.Any(item => item.Action == "page_link_warning" && item.Note!.Contains("does/not/exist", StringComparison.OrdinalIgnoreCase)), Is.True);
+            Assert.That(removeAttachmentResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+            Assert.That(softDeleteResponse.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
+            Assert.That(archived, Is.Not.Null);
+            Assert.That(archived!.Status, Is.EqualTo(TaskStatuses.Archived));
+            Assert.That(Directory.EnumerateFiles(Path.Combine(_tempDir, "Tasks"), "*.json", SearchOption.TopDirectoryOnly).Any(), Is.True);
+            Assert.That(File.Exists(Path.Combine(_tempDir, "Events", "tasks.activity.jsonl")), Is.True);
+        });
+    }
+
+    [Test]
     public async Task GetMemories_ClampsPageSizeAndKeepsRouteContract()
     {
         var response = await _client.GetFromJsonAsync<PagedResult<MemoryMetadata>>("/api/memories?page=-5&pageSize=500");

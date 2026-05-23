@@ -1,0 +1,40 @@
+{
+  "Id": "tsk-0017-ensure-chat-status-counters-and-pending-write-badges-update-immediately-after-reject-approve-outcomes-no-stale-1-approval-pending-state",
+  "Key": "TSK-0017",
+  "Title": "Ensure chat status counters and pending-write badges update immediately after reject/approve outcomes (no stale \"1 approval pending\" state).",
+  "Description": "Imported from Data/Pages/workbench/tasks.md",
+  "Type": "Task",
+  "Status": "Backlog",
+  "Priority": "Medium",
+  "AssigneeMode": "Custom",
+  "AssigneeDirectoryId": null,
+  "AssigneeCustomText": "Copilot",
+  "Reporter": "tracker-import",
+  "Labels": [
+    "tracker-import",
+    "workbench",
+    "future"
+  ],
+  "Attachments": [],
+  "ExternalLinks": [],
+  "LinkedPages": [
+    "workbench/tasks"
+  ],
+  "Comments": [
+    {
+      "Id": "c-3eab2db95597460daa2f4a00f233e90d",
+      "Author": "tracker-import",
+      "Body": "This should be verified with a quick visual check.",
+      "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z"
+    }
+  ],
+  "EpicId": null,
+  "ParentId": null,
+  "DueDateUtc": null,
+  "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z",
+  "UpdatedAtUtc": "2026-05-23T23:36:10.0439283Z",
+  "CompletedAtUtc": null,
+  "Revision": 1,
+  "IsArchived": false
+}
+

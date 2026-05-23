@@ -1,0 +1,50 @@
+{
+  "Id": "task-tracking-feature-20260523",
+  "Title": "Task Tracking Feature V1 Implementation",
+  "Content": "MemorySmith now has a file-backed task domain at Data/Tasks with a site-level /tasks workbench and api/tasks endpoints for CRUD, status updates, comments, links, attachments, history, and soft/hard delete. Assignee handling is dictionary-first with Directory mode and optional Custom text mode. Linked page checks are warning-only: missing pages do not block linking and produce page_link_warning activity entries. Finite state transition enforcement is intentionally deferred as an optional future feature. Open items from Data/Pages/workbench/tasks.md have been imported into backend task records with tracker-import metadata and durable activity events.",
+  "Status": 1,
+  "Confidence": 0.86,
+  "Tags": [
+    "project-wiki",
+    "tasks",
+    "task-domain",
+    "backend",
+    "pages",
+    "api",
+    "history",
+    "import"
+  ],
+  "References": [
+    "task-tracking-feature-page",
+    "tasks-page-feature-design-20260523"
+  ],
+  "Conflicts": [],
+  "SourceLinks": [
+    {
+      "Label": "Tasks service",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/TaskDomainService.cs"
+    },
+    {
+      "Label": "Tasks controller",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Controllers/TasksController.cs"
+    },
+    {
+      "Label": "Tasks page",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Components/Pages/Tasks.razor"
+    },
+    {
+      "Label": "Task API contract tests",
+      "Uri": "%MemorySmithRepo%MemorySmith.Tests/AppApiContractTests.cs"
+    },
+    {
+      "Label": "Feature wiki page",
+      "Uri": "%MemorySmithRepo%Data/Pages/features/task-tracking.md"
+    },
+    {
+      "Label": "Import script",
+      "Uri": "%MemorySmithRepo%Scripts/Import-OpenTasksFromWorkbench.ps1"
+    }
+  ],
+  "UsageCount": 0,
+  "LastUpdated": "2026-05-23T00:00:00Z"
+}

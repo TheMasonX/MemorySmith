@@ -2,50 +2,68 @@
 
 This page tracks user-facing work in plain language. Completed items stay here as a lightweight product history; open items should describe the outcome a person would notice, not only the internal implementation detail.
 
+## How To Use This Page
+
+- Keep the visible owner on each future task so dogfood is obvious.
+- Use `Copilot` for tasks that should be handed to the agent first.
+- Put notes in the Notes column instead of hiding them in the task text.
+- Add screenshot links or page assets in the Screenshot column when a visual check matters.
+
+```mermaid
+flowchart LR
+    Idea[Future task] --> Owner[Assign owner]
+    Owner --> Notes[Add notes]
+    Notes --> Shot[Attach screenshot if helpful]
+    Shot --> Review[Review result]
+    Review --> Done[Mark done]
+```
+
 ## Current Priorities
 
-- [ ] Vars.json should not be a loose file
-- [x] Lock down Admin page/API access so signed-out or non-admin users cannot view the Admin workbench or change roles, even when anonymous/auth-disabled configuration is permissive. Regression coverage: `AdminPage_WithAnonymousAdminConfig_DoesNotRenderAdminWorkbenchForSignedOutUser`, `AdminRoleApi_WithAnonymousAdminConfig_RejectsSignedOutRoleChanges`, and `AdminApi_WithAuthDisabled_StillRejectsSignedOutAdminAccess`.
-- [ ] Add browser-level smoke coverage for the main app routes: `/memories`, `/pages`, `/chat`, and `/health`.
-- [ ] Add schema or fixture validation for the live `Data/Memories` wiki so bad records are caught before runtime.
-- [ ] Keep reducing large UI/service files where extraction makes behavior easier to review.
-- [ ] Add a short release checklist for Windows Service deployment and local model asset verification.
-- [ ] Improve static Pages publishing with richer navigation once the first GitHub Pages workflow is proven in CI.
-- [ ] Agent driven page generation - combined feature with chat that leverages chat interface and adds a preview pane
-- [ ] Grid panels like the markdown/preview plane and the pages/edit columns should be resizable to a degree, like a classic gridsplitter
-- [ ] admin/ page should allow the user to edit settings and not just view them (as appropriate)
-- [ ] Delete page/chat confirmation
-- [ ] Decide whether MCP-only source bridge tools (`memorysmith_source_bundle`, `memorysmith_find_by_source`) should move into the shared tool catalog with a richer risk model.
-- [x] Add an Admin Models tab for named chat model profiles with provider, model id, context window, role-based access, and default chat profile selection.
-- [x] Disable Chat until an Admin has configured an enabled default model profile, then make Chat select from model profiles instead of free-form provider/model editing.
-- [x] Extend model profiles with maintenance-agent/review-agent assignments.
-- [ ] Extend model profiles with provider-safe chat settings beyond context-window metadata.
-- [x] Add durable admin-visible maintenance-agent task activity history for completed/skipped runs on the Proposals page.
-- [x] Add an admin-only non-mutating maintenance-agent conversation surface with durable transcript entries.
-- [x] Add proposal-id drilldown from recent maintenance task activity into the proposal detail view.
-- [x] Add retention, search, and redaction controls for Admin Maintenance transcript entries.
-- [x] Add fuller maintenance-agent active task state in the Proposals page via service-level active run state.
-- [x] Add tool-enabled maintenance chat once proposal governance covers generated writes.
-- [x] Promote Maintenance into a first-class Admin page with task trace history, proposal action history, maintenance chat, and transcript search.
-- [x] Add a Request Agent Review button on proposals that records a durable review request in proposal history/comments without changing proposal status.
-- [x] Run the requested proposal review through an agent so it can comment and optionally create a revised proposal while preserving the original diff.
-- [x] Add quick human summaries to proposals and place the review comment box above the review/approve/respond/reject buttons.
-- [x] Make maintenance LLM review parsing tolerate fenced JSON responses.
-- [x] Route standard chat-agent edits through the proposal workflow so agent writes share diff review, history, and approval semantics.
-- [x] Add approve/reject controls to Tag Manager suggestions so admins can send suggested tags to the allowlist or blocklist.
-- [ ] Design a chat compaction mode that preserves auditability while reducing long-session context load.
-- [ ] Add an explicit Agent write approval mode setting with default `manual` and an optional `auto_accept` mode for trusted environments.
-- [ ] Expand chat mutation controls from Approve/Reject to Accept/Reject/Respond so users can request revisions without leaving chat.
-- [ ] Fix chat agent page-write approval path validation so approved proposals targeting `Data/Pages/*.md` do not fail with "outside configured maintenance write directories".
-- [ ] Ensure chat status counters and pending-write badges update immediately after reject/approve outcomes (no stale "1 approval pending" state).
-- [ ] Fix `Approve all` batch semantics to be per-item (for example 3/5 valid applies 3), report itemized outcomes (`approved`/`rejected`/`blocked`/`failed`), and clear/refresh pending cards and counters deterministically.
-- [ ] Enforce that every chat mutation uses the existing server-backed proposal system (no direct write path), with regression coverage proving no page/memory mutation occurs before approval.
-- [ ] Add explicit proposal linkage metadata for related batches and resubmissions using `batchId` + `parentProposalId` + `attempt`, and surface these references in chat/proposal history for automated auditing.
-- [ ] Reject unsafe page/memory proposal identifiers at proposal time (for example path traversal like `../`) instead of waiting for apply-time failures.
-- [ ] Add separate chat-agent write root settings (distinct from maintenance-agent write roots) so chat approvals are not blocked by maintenance directory constraints.
-- [ ] Add startup/admin guardrails for secure remote mode: when `AllowRemoteApi=true`, require an API key and enforce HTTPS/auth hardening settings.
-- [ ] Add a security profile preset system (`local-dev`, `secure-local`, `remote-hardened`) to make safe user-spec configuration easier than hand-editing many flags.
-- [ ] Add explicit configuration for agent mutation action UX (`accept/reject/respond` visibility, default action policy, and revision-required policy) so behavior matches operator governance intent.
+| Status | Owner | Task | Notes | Screenshot |
+| --- | --- | --- | --- | --- |
+| Open | Copilot | Vars.json should not be a loose file | Add validation so the variable store behaves like a managed config surface, not an ad hoc file. | Pending |
+| Done | Copilot | Lock down Admin page/API access so signed-out or non-admin users cannot view the Admin workbench or change roles, even when anonymous/auth-disabled configuration is permissive. | Regression coverage: `AdminPage_WithAnonymousAdminConfig_DoesNotRenderAdminWorkbenchForSignedOutUser`, `AdminRoleApi_WithAnonymousAdminConfig_RejectsSignedOutRoleChanges`, and `AdminApi_WithAuthDisabled_StillRejectsSignedOutAdminAccess`. | Pending |
+| Open | Copilot | Add browser-level smoke coverage for the main app routes: `/memories`, `/pages`, `/chat`, and `/health`. | Capture a simple pass/fail screenshot set after the smoke run so the route baseline is easy to review. | Pending |
+| Open | Copilot | Add schema or fixture validation for the live `Data/Memories` wiki so bad records are caught before runtime. | Keep the validation output short and link the failing record id. | Pending |
+| Open | Copilot | Keep reducing large UI/service files where extraction makes behavior easier to review. | Prefer a slice that also improves testability. | Pending |
+| Open | Copilot | Add a short release checklist for Windows Service deployment and local model asset verification. | Include the screenshots or console output that prove the post-deploy checks succeeded. | Pending |
+| Open | Copilot | Improve static Pages publishing with richer navigation once the first GitHub Pages workflow is proven in CI. | Track a before/after render note for the generated site navigation. | Pending |
+| Open | Copilot | Agent driven page generation - combined feature with chat that leverages chat interface and adds a preview pane | Treat this as a visible dogfood target for future agent/page composition work. | Pending |
+| Open | Copilot | Grid panels like the markdown/preview plane and the pages/edit columns should be resizable to a degree, like a classic gridsplitter | Add a screenshot once the split behavior feels usable at narrow widths. | Pending |
+| Open | Copilot | admin/ page should allow the user to edit settings and not just view them (as appropriate) | Capture the current settings flow and note where edits are still blocked. | Pending |
+| Open | Copilot | Delete page/chat confirmation | Keep notes on the exact confirmation copy and whether the action feels recoverable. | Pending |
+| Open | Copilot | Decide whether MCP-only source bridge tools (`memorysmith_source_bundle`, `memorysmith_find_by_source`) should move into the shared tool catalog with a richer risk model. | This needs a design note before code. | Pending |
+| Done | Copilot | Add an Admin Models tab for named chat model profiles with provider, model id, context window, role-based access, and default chat profile selection. | Existing implementation already supports the model registry flow. | Pending |
+| Done | Copilot | Disable Chat until an Admin has configured an enabled default model profile, then make Chat select from model profiles instead of free-form provider/model editing. | Keep this as a baseline control. | Pending |
+| Done | Copilot | Extend model profiles with maintenance-agent/review-agent assignments. | This is part of the current model-profile flow. | Pending |
+| Open | Copilot | Extend model profiles with provider-safe chat settings beyond context-window metadata. | Add notes on which settings are safe to surface per provider. | Pending |
+| Done | Copilot | Add durable admin-visible maintenance-agent task activity history for completed/skipped runs on the Proposals page. | Already visible on the Proposals surface. | Pending |
+| Done | Copilot | Add an admin-only non-mutating maintenance-agent conversation surface with durable transcript entries. | Keep transcript notes short and searchable. | Pending |
+| Done | Copilot | Add proposal-id drilldown from recent maintenance task activity into the proposal detail view. | Useful for audit triage. | Pending |
+| Done | Copilot | Add retention, search, and redaction controls for Admin Maintenance transcript entries. | Redaction and retention behavior should stay visible in future checks. | Pending |
+| Done | Copilot | Add fuller maintenance-agent active task state in the Proposals page via service-level active run state. | This helps the page show live work rather than stale state. | Pending |
+| Done | Copilot | Add tool-enabled maintenance chat once proposal governance covers generated writes. | Existing governance path is now the source of truth. | Pending |
+| Done | Copilot | Promote Maintenance into a first-class Admin page with task trace history, proposal action history, maintenance chat, and transcript search. | Keep this surface aligned with the admin workflow. | Pending |
+| Done | Copilot | Add a Request Agent Review button on proposals that records a durable review request in proposal history/comments without changing proposal status. | This is the current review-request workflow. | Pending |
+| Done | Copilot | Run the requested proposal review through an agent so it can comment and optionally create a revised proposal while preserving the original diff. | Preserve the original diff in review history. | Pending |
+| Done | Copilot | Add quick human summaries to proposals and place the review comment box above the review/approve/respond/reject buttons. | Keep the summary concise and readable. | Pending |
+| Done | Copilot | Make maintenance LLM review parsing tolerate fenced JSON responses. | Avoid backtick parse failures. | Pending |
+| Done | Copilot | Route standard chat-agent edits through the proposal workflow so agent writes share diff review, history, and approval semantics. | This keeps agent writes auditable. | Pending |
+| Done | Copilot | Add approve/reject controls to Tag Manager suggestions so admins can send suggested tags to the allowlist or blocklist. | Keep tag-governance feedback visible. | Pending |
+| Open | Copilot | Design a chat compaction mode that preserves auditability while reducing long-session context load. | Compaction should not hide evidence. | Pending |
+| Open | Copilot | Add an explicit Agent write approval mode setting with default `manual` and an optional `auto_accept` mode for trusted environments. | Document the safe default clearly. | Pending |
+| Open | Copilot | Expand chat mutation controls from Approve/Reject to Accept/Reject/Respond so users can request revisions without leaving chat. | Add notes on how revision requests are summarized. | Pending |
+| Open | Copilot | Fix chat agent page-write approval path validation so approved proposals targeting `Data/Pages/*.md` do not fail with "outside configured maintenance write directories". | Add a screenshot or log excerpt once the path check is fixed. | Pending |
+| Open | Copilot | Ensure chat status counters and pending-write badges update immediately after reject/approve outcomes (no stale "1 approval pending" state). | This should be verified with a quick visual check. | Pending |
+| Open | Copilot | Fix `Approve all` batch semantics to be per-item (for example 3/5 valid applies 3), report itemized outcomes (`approved`/`rejected`/`blocked`/`failed`), and clear/refresh pending cards and counters deterministically. | Keep a note of the batch result breakdown. | Pending |
+| Open | Copilot | Enforce that every chat mutation uses the existing server-backed proposal system (no direct write path), with regression coverage proving no page/memory mutation occurs before approval. | This is the key governance rule for future work. | Pending |
+| Open | Copilot | Add explicit proposal linkage metadata for related batches and resubmissions using `batchId` + `parentProposalId` + `attempt`, and surface these references in chat/proposal history for automated auditing. | Notes should include the lineage chain. | Pending |
+| Open | Copilot | Reject unsafe page/memory proposal identifiers at proposal time (for example path traversal like `../`) instead of waiting for apply-time failures. | Add a red/green example when implemented. | Pending |
+| Open | Copilot | Add separate chat-agent write root settings (distinct from maintenance-agent write roots) so chat approvals are not blocked by maintenance directory constraints. | Keep this scoped and well documented. | Pending |
+| Open | Copilot | Add startup/admin guardrails for secure remote mode: when `AllowRemoteApi=true`, require an API key and enforce HTTPS/auth hardening settings. | This needs a visible safety note. | Pending |
+| Open | Copilot | Add a security profile preset system (`local-dev`, `secure-local`, `remote-hardened`) to make safe user-spec configuration easier than hand-editing many flags. | Document which preset is the recommended default for dogfood. | Pending |
+| Open | Copilot | Add explicit configuration for agent mutation action UX (`accept/reject/respond` visibility, default action policy, and revision-required policy) so behavior matches operator governance intent. | Track the exact action labels in the screenshot notes. | Pending |
 
 ## Pages
 

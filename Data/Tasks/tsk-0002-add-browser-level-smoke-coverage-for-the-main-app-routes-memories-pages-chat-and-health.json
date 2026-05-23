@@ -1,0 +1,40 @@
+{
+  "Id": "tsk-0002-add-browser-level-smoke-coverage-for-the-main-app-routes-memories-pages-chat-and-health",
+  "Key": "TSK-0002",
+  "Title": "Add browser-level smoke coverage for the main app routes: `/memories`, `/pages`, `/chat`, and `/health`.",
+  "Description": "Imported from Data/Pages/workbench/tasks.md",
+  "Type": "Task",
+  "Status": "Backlog",
+  "Priority": "Medium",
+  "AssigneeMode": "Custom",
+  "AssigneeDirectoryId": null,
+  "AssigneeCustomText": "Copilot",
+  "Reporter": "tracker-import",
+  "Labels": [
+    "tracker-import",
+    "workbench",
+    "future"
+  ],
+  "Attachments": [],
+  "ExternalLinks": [],
+  "LinkedPages": [
+    "workbench/tasks"
+  ],
+  "Comments": [
+    {
+      "Id": "c-2f21b884bed746228f3a9fda175cf02a",
+      "Author": "tracker-import",
+      "Body": "Capture a simple pass/fail screenshot set after the smoke run so the route baseline is easy to review.",
+      "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z"
+    }
+  ],
+  "EpicId": null,
+  "ParentId": null,
+  "DueDateUtc": null,
+  "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z",
+  "UpdatedAtUtc": "2026-05-23T23:36:10.0439283Z",
+  "CompletedAtUtc": null,
+  "Revision": 1,
+  "IsArchived": false
+}
+

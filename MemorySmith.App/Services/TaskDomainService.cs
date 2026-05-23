@@ -1,0 +1,792 @@
+using System.Text;
+using System.Text.Json;
+using System.Text.RegularExpressions;
+using Microsoft.Extensions.Options;
+
+namespace MemorySmith.App.Services;
+
+public static class TaskAssigneeModes
+{
+    public const string Directory = "Directory";
+    public const string Custom = "Custom";
+}
+
+public static class TaskStatuses
+{
+    public const string Backlog = "Backlog";
+    public const string Ready = "Ready";
+    public const string InProgress = "InProgress";
+    public const string Blocked = "Blocked";
+    public const string Done = "Done";
+    public const string Archived = "Archived";
+}
+
+public static class TaskPriorities
+{
+    public const string Critical = "Critical";
+    public const string High = "High";
+    public const string Medium = "Medium";
+    public const string Low = "Low";
+}
+
+public sealed record TaskAttachment(
+    string Id,
+    string Name,
+    string Kind,
+    string Uri,
+    DateTime AddedAtUtc);
+
+public sealed record TaskExternalLink(
+    string Id,
+    string Label,
+    string Url,
+    DateTime AddedAtUtc);
+
+public sealed record TaskComment(
+    string Id,
+    string Author,
+    string Body,
+    DateTime CreatedAtUtc);
+
+public sealed record TaskActivityEntry(
+    string TaskId,
+    string Action,
+    string Actor,
+    string? Note,
+    DateTime OccurredAtUtc);
+
+public sealed record TaskItem(
+    string Id,
+    string Key,
+    string Title,
+    string Description,
+    string Type,
+    string Status,
+    string Priority,
+    string AssigneeMode,
+    string? AssigneeDirectoryId,
+    string? AssigneeCustomText,
+    string? Reporter,
+    IReadOnlyList<string> Labels,
+    IReadOnlyList<TaskAttachment> Attachments,
+    IReadOnlyList<TaskExternalLink> ExternalLinks,
+    IReadOnlyList<string> LinkedPages,
+    IReadOnlyList<TaskComment> Comments,
+    string? EpicId,
+    string? ParentId,
+    DateTime? DueDateUtc,
+    DateTime CreatedAtUtc,
+    DateTime UpdatedAtUtc,
+    DateTime? CompletedAtUtc,
+    int Revision,
+    bool IsArchived = false);
+
+public sealed record TaskSummary(
+    string Id,
+    string Key,
+    string Title,
+    string Status,
+    string Priority,
+    string? Assignee,
+    DateTime UpdatedAtUtc,
+    int AttachmentCount,
+    int LinkCount,
+    int CommentCount);
+
+public sealed record TaskCreateRequest(
+    string Title,
+    string Description,
+    string Type,
+    string Status,
+    string Priority,
+    string AssigneeMode,
+    string? AssigneeDirectoryId,
+    string? AssigneeCustomText,
+    string? Reporter,
+    IReadOnlyList<string>? Labels,
+    DateTime? DueDateUtc,
+    string? EpicId,
+    string? ParentId);
+
+public sealed record TaskUpdateRequest(
+    string? Title,
+    string? Description,
+    string? Type,
+    string? Priority,
+    string? AssigneeMode,
+    string? AssigneeDirectoryId,
+    string? AssigneeCustomText,
+    string? Reporter,
+    IReadOnlyList<string>? Labels,
+    DateTime? DueDateUtc,
+    string? EpicId,
+    string? ParentId);
+
+public sealed record TaskStatusUpdateRequest(string Status, string? Note = null);
+public sealed record TaskCommentRequest(string Body);
+public sealed record TaskPageLinkRequest(string Slug);
+public sealed record TaskExternalLinkRequest(string Label, string Url);
+public sealed record TaskAttachmentRequest(string Name, string Kind, string Uri);
+
+public interface ITaskService
+{
+    Task<IReadOnlyList<TaskSummary>> ListAsync(string? query, string? status, string? assignee, int limit, CancellationToken cancellationToken);
+    Task<TaskItem?> GetAsync(string idOrKey, CancellationToken cancellationToken);
+    Task<IReadOnlyList<TaskActivityEntry>> GetHistoryAsync(string idOrKey, int limit, CancellationToken cancellationToken);
+    Task<TaskItem> CreateAsync(TaskCreateRequest request, string actor, CancellationToken cancellationToken);
+    Task<TaskItem?> UpdateAsync(string idOrKey, TaskUpdateRequest request, string actor, CancellationToken cancellationToken);
+    Task<TaskItem?> SetStatusAsync(string idOrKey, TaskStatusUpdateRequest request, string actor, CancellationToken cancellationToken);
+    Task<TaskItem?> AddCommentAsync(string idOrKey, TaskCommentRequest request, string actor, CancellationToken cancellationToken);
+    Task<TaskItem?> AddLinkedPageAsync(string idOrKey, TaskPageLinkRequest request, string actor, CancellationToken cancellationToken);
+    Task<TaskItem?> AddExternalLinkAsync(string idOrKey, TaskExternalLinkRequest request, string actor, CancellationToken cancellationToken);
+    Task<TaskItem?> AddAttachmentAsync(string idOrKey, TaskAttachmentRequest request, string actor, CancellationToken cancellationToken);
+    Task<TaskItem?> RemoveAttachmentAsync(string idOrKey, string attachmentId, string actor, CancellationToken cancellationToken);
+    Task<bool> DeleteAsync(string idOrKey, bool hardDelete, string actor, CancellationToken cancellationToken);
+}
+
+public sealed class FileTaskService : ITaskService
+{
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        WriteIndented = true
+    };
+    private static readonly JsonSerializerOptions JsonlOptions = new(JsonSerializerDefaults.Web)
+    {
+        WriteIndented = false
+    };
+
+    private readonly IOptionsMonitor<MemorySmithOptions> _options;
+    private readonly object _gate = new();
+
+    public FileTaskService(IOptionsMonitor<MemorySmithOptions> options)
+    {
+        _options = options;
+    }
+
+    public Task<IReadOnlyList<TaskSummary>> ListAsync(string? query, string? status, string? assignee, int limit, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (_gate)
+        {
+            var normalizedQuery = (query ?? string.Empty).Trim();
+            var normalizedStatus = Normalize(status);
+            var normalizedAssignee = Normalize(assignee);
+            var cappedLimit = Math.Clamp(limit <= 0 ? 100 : limit, 1, 500);
+
+            var items = LoadAll(cancellationToken)
+                .Where(item => string.IsNullOrWhiteSpace(normalizedStatus) || string.Equals(item.Status, normalizedStatus, StringComparison.OrdinalIgnoreCase))
+                .Where(item => string.IsNullOrWhiteSpace(normalizedAssignee) || string.Equals(ResolveAssignee(item), normalizedAssignee, StringComparison.OrdinalIgnoreCase))
+                .Where(item => string.IsNullOrWhiteSpace(normalizedQuery) || MatchesQuery(item, normalizedQuery))
+                .OrderByDescending(item => item.UpdatedAtUtc)
+                .ThenBy(item => item.Key, StringComparer.OrdinalIgnoreCase)
+                .Take(cappedLimit)
+                .Select(ToSummary)
+                .ToList();
+
+            return Task.FromResult<IReadOnlyList<TaskSummary>>(items);
+        }
+    }
+
+    public Task<TaskItem?> GetAsync(string idOrKey, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (_gate)
+        {
+            return Task.FromResult(FindByIdOrKey(idOrKey, cancellationToken));
+        }
+    }
+
+    public Task<IReadOnlyList<TaskActivityEntry>> GetHistoryAsync(string idOrKey, int limit, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (_gate)
+        {
+            var item = FindByIdOrKey(idOrKey, cancellationToken);
+            if (item is null)
+            {
+                return Task.FromResult<IReadOnlyList<TaskActivityEntry>>([]);
+            }
+
+            var path = ResolveActivityLogPath();
+            if (!File.Exists(path))
+            {
+                return Task.FromResult<IReadOnlyList<TaskActivityEntry>>([]);
+            }
+
+            var cappedLimit = Math.Clamp(limit <= 0 ? 100 : limit, 1, 500);
+            var entries = File.ReadLines(path)
+                .Select(TryParseActivity)
+                .Where(entry => entry is not null && string.Equals(entry.TaskId, item.Id, StringComparison.OrdinalIgnoreCase))
+                .Cast<TaskActivityEntry>()
+                .OrderByDescending(entry => entry.OccurredAtUtc)
+                .Take(cappedLimit)
+                .ToList();
+
+            return Task.FromResult<IReadOnlyList<TaskActivityEntry>>(entries);
+        }
+    }
+
+    public Task<TaskItem> CreateAsync(TaskCreateRequest request, string actor, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (_gate)
+        {
+            ValidateCreate(request);
+            var now = DateTime.UtcNow;
+            var all = LoadAll(cancellationToken);
+            var key = NextKey(all);
+            var id = BuildId(key, request.Title);
+            var item = new TaskItem(
+                Id: id,
+                Key: key,
+                Title: request.Title.Trim(),
+                Description: (request.Description ?? string.Empty).Trim(),
+                Type: NormalizeOrDefault(request.Type, "Task"),
+                Status: NormalizeOrDefault(request.Status, TaskStatuses.Backlog),
+                Priority: NormalizeOrDefault(request.Priority, TaskPriorities.Medium),
+                AssigneeMode: NormalizeAssigneeMode(request.AssigneeMode),
+                AssigneeDirectoryId: NormalizeNullable(request.AssigneeDirectoryId),
+                AssigneeCustomText: NormalizeNullable(request.AssigneeCustomText),
+                Reporter: NormalizeNullable(request.Reporter),
+                Labels: NormalizeLabels(request.Labels),
+                Attachments: [],
+                ExternalLinks: [],
+                LinkedPages: [],
+                Comments: [],
+                EpicId: NormalizeNullable(request.EpicId),
+                ParentId: NormalizeNullable(request.ParentId),
+                DueDateUtc: request.DueDateUtc,
+                CreatedAtUtc: now,
+                UpdatedAtUtc: now,
+                CompletedAtUtc: NormalizeOrDefault(request.Status, TaskStatuses.Backlog).Equals(TaskStatuses.Done, StringComparison.OrdinalIgnoreCase) ? now : null,
+                Revision: 1,
+                IsArchived: false);
+
+            ValidateAssignee(item.AssigneeMode, item.AssigneeDirectoryId, item.AssigneeCustomText);
+            Save(item);
+            AppendActivity(new TaskActivityEntry(item.Id, "created", SafeActor(actor), null, now));
+            return Task.FromResult(item);
+        }
+    }
+
+    public Task<TaskItem?> UpdateAsync(string idOrKey, TaskUpdateRequest request, string actor, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (_gate)
+        {
+            var item = FindByIdOrKey(idOrKey, cancellationToken);
+            if (item is null)
+            {
+                return Task.FromResult<TaskItem?>(null);
+            }
+
+            var updated = item with
+            {
+                Title = string.IsNullOrWhiteSpace(request.Title) ? item.Title : request.Title.Trim(),
+                Description = request.Description is null ? item.Description : request.Description.Trim(),
+                Type = string.IsNullOrWhiteSpace(request.Type) ? item.Type : request.Type.Trim(),
+                Priority = string.IsNullOrWhiteSpace(request.Priority) ? item.Priority : request.Priority.Trim(),
+                AssigneeMode = string.IsNullOrWhiteSpace(request.AssigneeMode) ? item.AssigneeMode : NormalizeAssigneeMode(request.AssigneeMode),
+                AssigneeDirectoryId = request.AssigneeDirectoryId is null ? item.AssigneeDirectoryId : NormalizeNullable(request.AssigneeDirectoryId),
+                AssigneeCustomText = request.AssigneeCustomText is null ? item.AssigneeCustomText : NormalizeNullable(request.AssigneeCustomText),
+                Reporter = request.Reporter is null ? item.Reporter : NormalizeNullable(request.Reporter),
+                Labels = request.Labels is null ? item.Labels : NormalizeLabels(request.Labels),
+                DueDateUtc = request.DueDateUtc,
+                EpicId = request.EpicId is null ? item.EpicId : NormalizeNullable(request.EpicId),
+                ParentId = request.ParentId is null ? item.ParentId : NormalizeNullable(request.ParentId),
+                UpdatedAtUtc = DateTime.UtcNow,
+                Revision = item.Revision + 1
+            };
+
+            ValidateAssignee(updated.AssigneeMode, updated.AssigneeDirectoryId, updated.AssigneeCustomText);
+            ValidateTitle(updated.Title);
+            Save(updated);
+            AppendActivity(new TaskActivityEntry(updated.Id, "updated", SafeActor(actor), null, updated.UpdatedAtUtc));
+            return Task.FromResult<TaskItem?>(updated);
+        }
+    }
+
+    public Task<TaskItem?> SetStatusAsync(string idOrKey, TaskStatusUpdateRequest request, string actor, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (_gate)
+        {
+            var item = FindByIdOrKey(idOrKey, cancellationToken);
+            if (item is null)
+            {
+                return Task.FromResult<TaskItem?>(null);
+            }
+
+            var now = DateTime.UtcNow;
+            var status = NormalizeOrDefault(request.Status, item.Status);
+            var updated = item with
+            {
+                Status = status,
+                IsArchived = string.Equals(status, TaskStatuses.Archived, StringComparison.OrdinalIgnoreCase),
+                CompletedAtUtc = string.Equals(status, TaskStatuses.Done, StringComparison.OrdinalIgnoreCase) ? now : item.CompletedAtUtc,
+                UpdatedAtUtc = now,
+                Revision = item.Revision + 1
+            };
+
+            Save(updated);
+            AppendActivity(new TaskActivityEntry(updated.Id, "status_changed", SafeActor(actor), NormalizeNullable(request.Note) ?? status, now));
+            return Task.FromResult<TaskItem?>(updated);
+        }
+    }
+
+    public Task<TaskItem?> AddCommentAsync(string idOrKey, TaskCommentRequest request, string actor, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (_gate)
+        {
+            var item = FindByIdOrKey(idOrKey, cancellationToken);
+            if (item is null)
+            {
+                return Task.FromResult<TaskItem?>(null);
+            }
+
+            var body = NormalizeNullable(request.Body);
+            if (string.IsNullOrWhiteSpace(body))
+            {
+                throw new ArgumentException("Comment body is required.");
+            }
+
+            var now = DateTime.UtcNow;
+            var comment = new TaskComment($"c-{Guid.NewGuid():N}", SafeActor(actor), body, now);
+            var updated = item with
+            {
+                Comments = item.Comments.Append(comment).ToList(),
+                UpdatedAtUtc = now,
+                Revision = item.Revision + 1
+            };
+
+            Save(updated);
+            AppendActivity(new TaskActivityEntry(updated.Id, "comment_added", SafeActor(actor), Truncate(body, 280), now));
+            return Task.FromResult<TaskItem?>(updated);
+        }
+    }
+
+    public Task<TaskItem?> AddLinkedPageAsync(string idOrKey, TaskPageLinkRequest request, string actor, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (_gate)
+        {
+            var item = FindByIdOrKey(idOrKey, cancellationToken);
+            if (item is null)
+            {
+                return Task.FromResult<TaskItem?>(null);
+            }
+
+            var slug = NormalizeNullable(request.Slug);
+            if (string.IsNullOrWhiteSpace(slug))
+            {
+                throw new ArgumentException("Page slug is required.");
+            }
+
+            var canonicalSlug = CanonicalizePageSlug(slug);
+            var pageExists = LinkedPageExists(canonicalSlug);
+
+            var updated = item with
+            {
+                LinkedPages = item.LinkedPages.Contains(canonicalSlug, StringComparer.OrdinalIgnoreCase)
+                    ? item.LinkedPages
+                    : item.LinkedPages.Append(canonicalSlug).ToList(),
+                UpdatedAtUtc = DateTime.UtcNow,
+                Revision = item.Revision + 1
+            };
+
+            Save(updated);
+            AppendActivity(new TaskActivityEntry(updated.Id, "page_link_added", SafeActor(actor), canonicalSlug, updated.UpdatedAtUtc));
+            if (!pageExists)
+            {
+                AppendActivity(new TaskActivityEntry(updated.Id, "page_link_warning", SafeActor(actor), $"Linked page not found: {canonicalSlug}", updated.UpdatedAtUtc));
+            }
+
+            return Task.FromResult<TaskItem?>(updated);
+        }
+    }
+
+    public Task<TaskItem?> AddExternalLinkAsync(string idOrKey, TaskExternalLinkRequest request, string actor, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (_gate)
+        {
+            var item = FindByIdOrKey(idOrKey, cancellationToken);
+            if (item is null)
+            {
+                return Task.FromResult<TaskItem?>(null);
+            }
+
+            var label = NormalizeNullable(request.Label);
+            var url = NormalizeNullable(request.Url);
+            if (string.IsNullOrWhiteSpace(label) || string.IsNullOrWhiteSpace(url))
+            {
+                throw new ArgumentException("External link label and url are required.");
+            }
+
+            if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+            {
+                throw new ArgumentException("External link url must be an absolute http or https url.");
+            }
+
+            var now = DateTime.UtcNow;
+            var link = new TaskExternalLink($"l-{Guid.NewGuid():N}", label, url, now);
+            var updated = item with
+            {
+                ExternalLinks = item.ExternalLinks.Append(link).ToList(),
+                UpdatedAtUtc = now,
+                Revision = item.Revision + 1
+            };
+
+            Save(updated);
+            AppendActivity(new TaskActivityEntry(updated.Id, "external_link_added", SafeActor(actor), url, now));
+            return Task.FromResult<TaskItem?>(updated);
+        }
+    }
+
+    public Task<TaskItem?> AddAttachmentAsync(string idOrKey, TaskAttachmentRequest request, string actor, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (_gate)
+        {
+            var item = FindByIdOrKey(idOrKey, cancellationToken);
+            if (item is null)
+            {
+                return Task.FromResult<TaskItem?>(null);
+            }
+
+            var name = NormalizeNullable(request.Name);
+            var kind = NormalizeNullable(request.Kind) ?? "file";
+            var uri = NormalizeNullable(request.Uri);
+            if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(uri))
+            {
+                throw new ArgumentException("Attachment name and uri are required.");
+            }
+
+            if (uri.Contains("..", StringComparison.Ordinal))
+            {
+                throw new ArgumentException("Attachment uri cannot contain traversal segments.");
+            }
+
+            var now = DateTime.UtcNow;
+            var attachment = new TaskAttachment($"a-{Guid.NewGuid():N}", name, kind, uri, now);
+            var updated = item with
+            {
+                Attachments = item.Attachments.Append(attachment).ToList(),
+                UpdatedAtUtc = now,
+                Revision = item.Revision + 1
+            };
+
+            Save(updated);
+            AppendActivity(new TaskActivityEntry(updated.Id, "attachment_added", SafeActor(actor), name, now));
+            return Task.FromResult<TaskItem?>(updated);
+        }
+    }
+
+    public Task<TaskItem?> RemoveAttachmentAsync(string idOrKey, string attachmentId, string actor, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (_gate)
+        {
+            var item = FindByIdOrKey(idOrKey, cancellationToken);
+            if (item is null)
+            {
+                return Task.FromResult<TaskItem?>(null);
+            }
+
+            var updatedAttachments = item.Attachments.Where(attachment => !string.Equals(attachment.Id, attachmentId, StringComparison.OrdinalIgnoreCase)).ToList();
+            if (updatedAttachments.Count == item.Attachments.Count)
+            {
+                return Task.FromResult<TaskItem?>(item);
+            }
+
+            var now = DateTime.UtcNow;
+            var updated = item with
+            {
+                Attachments = updatedAttachments,
+                UpdatedAtUtc = now,
+                Revision = item.Revision + 1
+            };
+
+            Save(updated);
+            AppendActivity(new TaskActivityEntry(updated.Id, "attachment_removed", SafeActor(actor), attachmentId, now));
+            return Task.FromResult<TaskItem?>(updated);
+        }
+    }
+
+    public Task<bool> DeleteAsync(string idOrKey, bool hardDelete, string actor, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (_gate)
+        {
+            var item = FindByIdOrKey(idOrKey, cancellationToken);
+            if (item is null)
+            {
+                return Task.FromResult(false);
+            }
+
+            if (hardDelete)
+            {
+                File.Delete(GetTaskPath(item.Id));
+                AppendActivity(new TaskActivityEntry(item.Id, "deleted", SafeActor(actor), "hard", DateTime.UtcNow));
+                return Task.FromResult(true);
+            }
+
+            var now = DateTime.UtcNow;
+            var updated = item with
+            {
+                Status = TaskStatuses.Archived,
+                IsArchived = true,
+                UpdatedAtUtc = now,
+                Revision = item.Revision + 1
+            };
+
+            Save(updated);
+            AppendActivity(new TaskActivityEntry(updated.Id, "deleted", SafeActor(actor), "soft", now));
+            return Task.FromResult(true);
+        }
+    }
+
+    private List<TaskItem> LoadAll(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var root = ResolveTasksRoot();
+        Directory.CreateDirectory(root);
+        var files = Directory.EnumerateFiles(root, "*.json", SearchOption.TopDirectoryOnly);
+        var results = new List<TaskItem>();
+        foreach (var file in files)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var json = File.ReadAllText(file);
+            var item = JsonSerializer.Deserialize<TaskItem>(json, JsonOptions);
+            if (item is not null)
+            {
+                results.Add(item);
+            }
+        }
+
+        return results;
+    }
+
+    private TaskItem? FindByIdOrKey(string idOrKey, CancellationToken cancellationToken)
+    {
+        var token = Normalize(idOrKey);
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            return null;
+        }
+
+        return LoadAll(cancellationToken).FirstOrDefault(item =>
+            string.Equals(item.Id, token, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(item.Key, token, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private void Save(TaskItem item)
+    {
+        var path = GetTaskPath(item.Id);
+        var tempPath = path + ".tmp";
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(tempPath, JsonSerializer.Serialize(item, JsonOptions) + Environment.NewLine, Encoding.UTF8);
+        File.Move(tempPath, path, true);
+    }
+
+    private void AppendActivity(TaskActivityEntry entry)
+    {
+        var path = ResolveActivityLogPath();
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.AppendAllText(path, JsonSerializer.Serialize(entry, JsonlOptions) + Environment.NewLine, Encoding.UTF8);
+    }
+
+    private static TaskActivityEntry? TryParseActivity(string line)
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<TaskActivityEntry>(line, JsonlOptions);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    private string ResolveTasksRoot()
+    {
+        var dataPath = Path.GetFullPath(_options.CurrentValue.DataPath);
+        var dataRoot = Directory.GetParent(dataPath)?.FullName ?? Path.GetFullPath(Path.Combine(dataPath, ".."));
+        return Path.Combine(dataRoot, "Tasks");
+    }
+
+    private string ResolvePagesRoot()
+    {
+        return Path.GetFullPath(_options.CurrentValue.PagesPath);
+    }
+
+    private string ResolveActivityLogPath()
+    {
+        var eventLogPath = Path.GetFullPath(_options.CurrentValue.EventLogPath);
+        var eventsDir = Path.GetDirectoryName(eventLogPath) ?? Path.Combine(ResolveTasksRoot(), "..", "Events");
+        return Path.Combine(eventsDir, "tasks.activity.jsonl");
+    }
+
+    private string GetTaskPath(string id) => Path.Combine(ResolveTasksRoot(), $"{id}.json");
+
+    private static string NextKey(IReadOnlyCollection<TaskItem> all)
+    {
+        var next = all
+            .Select(item => Regex.Match(item.Key ?? string.Empty, @"^TSK-(\d{4,})$", RegexOptions.IgnoreCase))
+            .Where(match => match.Success)
+            .Select(match => int.TryParse(match.Groups[1].Value, out var value) ? value : 0)
+            .DefaultIfEmpty(0)
+            .Max() + 1;
+        return $"TSK-{next:0000}";
+    }
+
+    private static string BuildId(string key, string title)
+    {
+        var token = Regex.Replace((title ?? string.Empty).Trim().ToLowerInvariant(), "[^a-z0-9]+", "-").Trim('-');
+        token = string.IsNullOrWhiteSpace(token) ? "task" : token;
+        return $"{key.ToLowerInvariant()}-{token}";
+    }
+
+    private bool LinkedPageExists(string slug)
+    {
+        if (string.IsNullOrWhiteSpace(slug))
+        {
+            return false;
+        }
+
+        var pagesRoot = ResolvePagesRoot();
+        var relativePath = slug.Replace('/', Path.DirectorySeparatorChar);
+        var markdownPath = Path.Combine(pagesRoot, relativePath + ".md");
+        return File.Exists(markdownPath);
+    }
+
+    private static string CanonicalizePageSlug(string slug)
+    {
+        var normalized = slug.Trim().Replace('\\', '/').Trim('/');
+        if (normalized.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
+        {
+            normalized = normalized[..^3];
+        }
+
+        if (normalized.StartsWith("pages/", StringComparison.OrdinalIgnoreCase))
+        {
+            normalized = normalized["pages/".Length..];
+        }
+
+        return normalized;
+    }
+
+    private static TaskSummary ToSummary(TaskItem item) =>
+        new(
+            item.Id,
+            item.Key,
+            item.Title,
+            item.Status,
+            item.Priority,
+            ResolveAssignee(item),
+            item.UpdatedAtUtc,
+            item.Attachments.Count,
+            item.ExternalLinks.Count + item.LinkedPages.Count,
+            item.Comments.Count);
+
+    private static string? ResolveAssignee(TaskItem item)
+    {
+        if (string.Equals(item.AssigneeMode, TaskAssigneeModes.Directory, StringComparison.OrdinalIgnoreCase))
+        {
+            return item.AssigneeDirectoryId;
+        }
+
+        return item.AssigneeCustomText;
+    }
+
+    private static bool MatchesQuery(TaskItem item, string query)
+    {
+        return (item.Title?.Contains(query, StringComparison.OrdinalIgnoreCase) ?? false)
+               || (item.Description?.Contains(query, StringComparison.OrdinalIgnoreCase) ?? false)
+               || item.Labels.Any(label => label.Contains(query, StringComparison.OrdinalIgnoreCase))
+               || item.Key.Contains(query, StringComparison.OrdinalIgnoreCase)
+               || item.Id.Contains(query, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static IReadOnlyList<string> NormalizeLabels(IReadOnlyList<string>? labels) =>
+        (labels ?? [])
+            .Select(label => label?.Trim() ?? string.Empty)
+            .Where(label => !string.IsNullOrWhiteSpace(label))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+    private static string Normalize(string? value) => (value ?? string.Empty).Trim();
+    private static string? NormalizeNullable(string? value)
+    {
+        var normalized = Normalize(value);
+        return string.IsNullOrWhiteSpace(normalized) ? null : normalized;
+    }
+
+    private static string NormalizeOrDefault(string? value, string fallback)
+    {
+        var normalized = NormalizeNullable(value);
+        return normalized ?? fallback;
+    }
+
+    private static string NormalizeAssigneeMode(string? mode)
+    {
+        var normalized = NormalizeNullable(mode);
+        return string.Equals(normalized, TaskAssigneeModes.Custom, StringComparison.OrdinalIgnoreCase)
+            ? TaskAssigneeModes.Custom
+            : TaskAssigneeModes.Directory;
+    }
+
+    private static void ValidateCreate(TaskCreateRequest request)
+    {
+        ValidateTitle(request.Title);
+        ValidateAssignee(NormalizeAssigneeMode(request.AssigneeMode), NormalizeNullable(request.AssigneeDirectoryId), NormalizeNullable(request.AssigneeCustomText));
+    }
+
+    private static void ValidateTitle(string title)
+    {
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            throw new ArgumentException("Title is required.");
+        }
+
+        if (title.Trim().Length > 200)
+        {
+            throw new ArgumentException("Title must be 200 characters or fewer.");
+        }
+    }
+
+    private static void ValidateAssignee(string mode, string? directoryId, string? customText)
+    {
+        if (string.Equals(mode, TaskAssigneeModes.Directory, StringComparison.OrdinalIgnoreCase))
+        {
+            if (string.IsNullOrWhiteSpace(directoryId) || !string.IsNullOrWhiteSpace(customText))
+            {
+                throw new ArgumentException("Directory assignee mode requires assigneeDirectoryId and no assigneeCustomText.");
+            }
+
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(customText) || !string.IsNullOrWhiteSpace(directoryId))
+        {
+            throw new ArgumentException("Custom assignee mode requires assigneeCustomText and no assigneeDirectoryId.");
+        }
+    }
+
+    private static string SafeActor(string actor)
+    {
+        var normalized = NormalizeNullable(actor);
+        return normalized ?? "system";
+    }
+
+    private static string Truncate(string value, int max)
+    {
+        if (value.Length <= max)
+        {
+            return value;
+        }
+
+        return value[..max] + "...";
+    }
+}

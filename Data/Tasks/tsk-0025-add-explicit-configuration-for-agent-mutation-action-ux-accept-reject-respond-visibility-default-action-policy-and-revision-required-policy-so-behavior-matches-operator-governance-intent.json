@@ -1,0 +1,40 @@
+{
+  "Id": "tsk-0025-add-explicit-configuration-for-agent-mutation-action-ux-accept-reject-respond-visibility-default-action-policy-and-revision-required-policy-so-behavior-matches-operator-governance-intent",
+  "Key": "TSK-0025",
+  "Title": "Add explicit configuration for agent mutation action UX (`accept/reject/respond` visibility, default action policy, and revision-required policy) so behavior matches operator governance intent.",
+  "Description": "Imported from Data/Pages/workbench/tasks.md",
+  "Type": "Task",
+  "Status": "Backlog",
+  "Priority": "Medium",
+  "AssigneeMode": "Custom",
+  "AssigneeDirectoryId": null,
+  "AssigneeCustomText": "Copilot",
+  "Reporter": "tracker-import",
+  "Labels": [
+    "tracker-import",
+    "workbench",
+    "future"
+  ],
+  "Attachments": [],
+  "ExternalLinks": [],
+  "LinkedPages": [
+    "workbench/tasks"
+  ],
+  "Comments": [
+    {
+      "Id": "c-15f48e8ceac74e57b1254259c055cac7",
+      "Author": "tracker-import",
+      "Body": "Track the exact action labels in the screenshot notes.",
+      "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z"
+    }
+  ],
+  "EpicId": null,
+  "ParentId": null,
+  "DueDateUtc": null,
+  "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z",
+  "UpdatedAtUtc": "2026-05-23T23:36:10.0439283Z",
+  "CompletedAtUtc": null,
+  "Revision": 1,
+  "IsArchived": false
+}
+

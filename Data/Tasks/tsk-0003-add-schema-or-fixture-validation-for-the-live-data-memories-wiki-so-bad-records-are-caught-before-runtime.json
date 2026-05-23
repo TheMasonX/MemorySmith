@@ -1,0 +1,40 @@
+{
+  "Id": "tsk-0003-add-schema-or-fixture-validation-for-the-live-data-memories-wiki-so-bad-records-are-caught-before-runtime",
+  "Key": "TSK-0003",
+  "Title": "Add schema or fixture validation for the live `Data/Memories` wiki so bad records are caught before runtime.",
+  "Description": "Imported from Data/Pages/workbench/tasks.md",
+  "Type": "Task",
+  "Status": "Backlog",
+  "Priority": "Medium",
+  "AssigneeMode": "Custom",
+  "AssigneeDirectoryId": null,
+  "AssigneeCustomText": "Copilot",
+  "Reporter": "tracker-import",
+  "Labels": [
+    "tracker-import",
+    "workbench",
+    "future"
+  ],
+  "Attachments": [],
+  "ExternalLinks": [],
+  "LinkedPages": [
+    "workbench/tasks"
+  ],
+  "Comments": [
+    {
+      "Id": "c-dcfc180a05ff431db55eab4edb6c0442",
+      "Author": "tracker-import",
+      "Body": "Keep the validation output short and link the failing record id.",
+      "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z"
+    }
+  ],
+  "EpicId": null,
+  "ParentId": null,
+  "DueDateUtc": null,
+  "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z",
+  "UpdatedAtUtc": "2026-05-23T23:36:10.0439283Z",
+  "CompletedAtUtc": null,
+  "Revision": 1,
+  "IsArchived": false
+}
+

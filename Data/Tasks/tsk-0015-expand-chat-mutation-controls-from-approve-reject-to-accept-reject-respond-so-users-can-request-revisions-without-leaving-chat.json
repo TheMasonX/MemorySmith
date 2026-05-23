@@ -1,0 +1,40 @@
+{
+  "Id": "tsk-0015-expand-chat-mutation-controls-from-approve-reject-to-accept-reject-respond-so-users-can-request-revisions-without-leaving-chat",
+  "Key": "TSK-0015",
+  "Title": "Expand chat mutation controls from Approve/Reject to Accept/Reject/Respond so users can request revisions without leaving chat.",
+  "Description": "Imported from Data/Pages/workbench/tasks.md",
+  "Type": "Task",
+  "Status": "Backlog",
+  "Priority": "Medium",
+  "AssigneeMode": "Custom",
+  "AssigneeDirectoryId": null,
+  "AssigneeCustomText": "Copilot",
+  "Reporter": "tracker-import",
+  "Labels": [
+    "tracker-import",
+    "workbench",
+    "future"
+  ],
+  "Attachments": [],
+  "ExternalLinks": [],
+  "LinkedPages": [
+    "workbench/tasks"
+  ],
+  "Comments": [
+    {
+      "Id": "c-ca811908d3474ca0951cc3fc309401d3",
+      "Author": "tracker-import",
+      "Body": "Add notes on how revision requests are summarized.",
+      "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z"
+    }
+  ],
+  "EpicId": null,
+  "ParentId": null,
+  "DueDateUtc": null,
+  "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z",
+  "UpdatedAtUtc": "2026-05-23T23:36:10.0439283Z",
+  "CompletedAtUtc": null,
+  "Revision": 1,
+  "IsArchived": false
+}
+

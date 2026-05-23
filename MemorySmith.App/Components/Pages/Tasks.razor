@@ -1,0 +1,431 @@
+@page "/tasks"
+@rendermode InteractiveServer
+@inject ITaskService TaskService
+@inject ICurrentUserContext CurrentUser
+@inject ISnackbar Snackbar
+
+<PageTitle>Tasks</PageTitle>
+
+<div class="wiki-workbench tasks-workbench">
+    <section class="wiki-commandbar" aria-label="Tasks workbench">
+        <div class="wiki-title-block">
+            <MudText Typo="Typo.h5">Tasks</MudText>
+            <span class="wiki-count">@_tasks.Count task(s)</span>
+        </div>
+        <div class="wiki-search-strip">
+            <MudTextField @bind-Value="_query"
+                          Label="Search tasks"
+                          Placeholder="Title, id, key, labels"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          OnKeyUp="OnSearchKeyUp"
+                          Class="wiki-search-box" />
+            <MudSelect T="string" Value="@_statusFilter" ValueChanged="OnStatusChanged" Label="Status" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="wiki-filter">
+                @foreach (var option in StatusOptions)
+                {
+                    <MudSelectItem Value="@option">@option</MudSelectItem>
+                }
+            </MudSelect>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Search" OnClick="LoadAsync">Search</MudButton>
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync">Refresh</MudButton>
+            <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
+                <Authorized>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Success" StartIcon="@Icons.Material.Filled.Add" OnClick="CreateQuickTaskAsync">Quick Add</MudButton>
+                </Authorized>
+            </AuthorizeView>
+        </div>
+    </section>
+
+    <section class="wiki-body">
+        <aside class="wiki-results-pane" aria-label="Task list">
+            @if (_isLoading)
+            {
+                <MudProgressLinear Indeterminate="true" />
+            }
+            else if (_tasks.Count == 0)
+            {
+                <div class="wiki-empty-state">No tasks found.</div>
+            }
+            else
+            {
+                <div class="wiki-results-list">
+                    @foreach (var task in _tasks)
+                    {
+                        <article class="@(task.Id == _selectedTask?.Id ? "proposal-row is-selected" : "proposal-row")" @onclick="@(() => SelectAsync(task.Id))">
+                            <div class="wiki-result-main">
+                                <div class="wiki-result-title">@task.Key - @task.Title</div>
+                                <div class="wiki-result-meta">
+                                    <span class="wiki-status">@task.Status</span>
+                                    <span class="wiki-status">@task.Priority</span>
+                                    <span>@(task.Assignee ?? "unassigned")</span>
+                                    <span>@task.UpdatedAtUtc.ToLocalTime().ToString("g")</span>
+                                </div>
+                            </div>
+                        </article>
+                    }
+                </div>
+            }
+        </aside>
+
+        <main class="wiki-detail-pane" aria-label="Task detail">
+            @if (_selectedTask is null)
+            {
+                <div class="wiki-empty-state">Select a task to inspect.</div>
+            }
+            else
+            {
+                <div class="wiki-pane-header wiki-detail-header">
+                    <div>
+                        <MudText Typo="Typo.h6">@_selectedTask.Key - @_selectedTask.Title</MudText>
+                        <div class="wiki-result-meta">
+                            <span class="wiki-status">@_selectedTask.Status</span>
+                            <span class="wiki-status">@_selectedTask.Priority</span>
+                            <span>@(_selectedTask.AssigneeCustomText ?? _selectedTask.AssigneeDirectoryId ?? "unassigned")</span>
+                            <span>@_selectedTask.UpdatedAtUtc.ToLocalTime().ToString("g")</span>
+                        </div>
+                    </div>
+                    <MudSpacer />
+                    <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
+                        <Authorized>
+                            <MudButtonGroup Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small">
+                                <MudButton OnClick="@(() => SetStatusAsync(TaskStatuses.Ready))">Ready</MudButton>
+                                <MudButton OnClick="@(() => SetStatusAsync(TaskStatuses.InProgress))">In Progress</MudButton>
+                                <MudButton OnClick="@(() => SetStatusAsync(TaskStatuses.Done))">Done</MudButton>
+                            </MudButtonGroup>
+                        </Authorized>
+                    </AuthorizeView>
+                </div>
+
+                <div class="wiki-editor-grid">
+                    <MudTextField T="string" Value="@_selectedTask.Type" Label="Type" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    <MudTextField T="string" Value="@_selectedTask.Reporter" Label="Reporter" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    <MudTextField T="string" Value="@_selectedTask.Description" Label="Description" Lines="4" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                </div>
+
+                <MudTabs Rounded="false" Elevation="0" Class="proposal-tabs">
+                    <MudTabPanel Text="Comments" Icon="@Icons.Material.Filled.Forum">
+                        <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
+                            <Authorized>
+                                <MudTextField T="string" Value="@_commentDraft" ValueChanged="OnCommentDraftChanged" Placeholder="Add a comment" Variant="Variant.Outlined" Margin="Margin.Dense" Lines="2" />
+                                <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Send" OnClick="AddCommentAsync">Add Comment</MudButton>
+                            </Authorized>
+                        </AuthorizeView>
+                        @if (_selectedTask.Comments.Count == 0)
+                        {
+                            <div class="wiki-empty-state">No comments yet.</div>
+                        }
+                        else
+                        {
+                            <div class="proposal-evidence-list">
+                                @foreach (var comment in _selectedTask.Comments.OrderByDescending(item => item.CreatedAtUtc))
+                                {
+                                    <div class="proposal-evidence-item">
+                                        <strong>@comment.Author</strong>
+                                        <span>@comment.CreatedAtUtc.ToLocalTime().ToString("g")</span>
+                                        <p>@comment.Body</p>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </MudTabPanel>
+                    <MudTabPanel Text="Links" Icon="@Icons.Material.Filled.Link">
+                        <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
+                            <Authorized>
+                                <div class="wiki-editor-grid">
+                                    <MudTextField T="string" Value="@_pageLinkDraft" ValueChanged="OnPageLinkDraftChanged" Label="Page slug" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                                    <MudButton Variant="Variant.Outlined" OnClick="AddPageLinkAsync">Add Page Link</MudButton>
+                                    <MudTextField T="string" Value="@_externalLinkLabel" ValueChanged="OnExternalLabelChanged" Label="External label" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                                    <MudTextField T="string" Value="@_externalLinkUrl" ValueChanged="OnExternalUrlChanged" Label="External url" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                                    <MudButton Variant="Variant.Outlined" OnClick="AddExternalLinkAsync">Add External Link</MudButton>
+                                </div>
+                            </Authorized>
+                        </AuthorizeView>
+                        <div class="proposal-evidence-list">
+                            @foreach (var slug in _selectedTask.LinkedPages)
+                            {
+                                <div class="proposal-evidence-item">
+                                    <strong>Page</strong>
+                                    <span>@slug</span>
+                                </div>
+                            }
+                            @foreach (var link in _selectedTask.ExternalLinks)
+                            {
+                                <div class="proposal-evidence-item">
+                                    <strong>@link.Label</strong>
+                                    <a href="@link.Url" target="_blank" rel="noopener noreferrer">@link.Url</a>
+                                </div>
+                            }
+                        </div>
+                    </MudTabPanel>
+                    <MudTabPanel Text="Attachments" Icon="@Icons.Material.Filled.Attachment">
+                        <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
+                            <Authorized>
+                                <div class="wiki-editor-grid">
+                                    <MudTextField T="string" Value="@_attachmentName" ValueChanged="OnAttachmentNameChanged" Label="Attachment name" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                                    <MudTextField T="string" Value="@_attachmentUri" ValueChanged="OnAttachmentUriChanged" Label="Attachment uri" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                                    <MudButton Variant="Variant.Outlined" OnClick="AddAttachmentAsync">Add Attachment</MudButton>
+                                </div>
+                            </Authorized>
+                        </AuthorizeView>
+                        <div class="proposal-evidence-list">
+                            @foreach (var attachment in _selectedTask.Attachments)
+                            {
+                                <div class="proposal-evidence-item">
+                                    <strong>@attachment.Name</strong>
+                                    <span>@attachment.Uri</span>
+                                    <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
+                                        <Authorized>
+                                            <MudButton Variant="Variant.Text" Color="Color.Error" Size="Size.Small" OnClick="@(() => RemoveAttachmentAsync(attachment.Id))">Remove</MudButton>
+                                        </Authorized>
+                                    </AuthorizeView>
+                                </div>
+                            }
+                        </div>
+                    </MudTabPanel>
+                    <MudTabPanel Text="History" Icon="@Icons.Material.Filled.History">
+                        @if (_history.Count == 0)
+                        {
+                            <div class="wiki-empty-state">No history entries found.</div>
+                        }
+                        else
+                        {
+                            <div class="proposal-evidence-list">
+                                @foreach (var entry in _history)
+                                {
+                                    <div class="proposal-evidence-item">
+                                        <strong>@entry.Action</strong>
+                                        <span>@entry.Actor • @entry.OccurredAtUtc.ToLocalTime().ToString("g")</span>
+                                        @if (!string.IsNullOrWhiteSpace(entry.Note))
+                                        {
+                                            <p>@entry.Note</p>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </MudTabPanel>
+                </MudTabs>
+            }
+        </main>
+    </section>
+</div>
+
+@code {
+    private static readonly IReadOnlyList<string> StatusOptions = ["All", TaskStatuses.Backlog, TaskStatuses.Ready, TaskStatuses.InProgress, TaskStatuses.Blocked, TaskStatuses.Done, TaskStatuses.Archived];
+    private IReadOnlyList<TaskSummary> _tasks = [];
+    private TaskItem? _selectedTask;
+    private IReadOnlyList<TaskActivityEntry> _history = [];
+    private string _query = string.Empty;
+    private string _statusFilter = "All";
+    private string _commentDraft = string.Empty;
+    private string _pageLinkDraft = string.Empty;
+    private string _externalLinkLabel = string.Empty;
+    private string _externalLinkUrl = string.Empty;
+    private string _attachmentName = string.Empty;
+    private string _attachmentUri = string.Empty;
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        var status = _statusFilter == "All" ? null : _statusFilter;
+        _tasks = await TaskService.ListAsync(_query, status, null, 200, CancellationToken.None);
+        _isLoading = false;
+
+        if (_selectedTask is not null)
+        {
+            await SelectAsync(_selectedTask.Id);
+        }
+    }
+
+    private async Task SelectAsync(string id)
+    {
+        _selectedTask = await TaskService.GetAsync(id, CancellationToken.None);
+        _history = _selectedTask is null
+            ? []
+            : await TaskService.GetHistoryAsync(_selectedTask.Id, 100, CancellationToken.None);
+    }
+
+    private async Task CreateQuickTaskAsync()
+    {
+        try
+        {
+            var created = await TaskService.CreateAsync(
+                new TaskCreateRequest(
+                    Title: "New task",
+                    Description: "Quick-created from /tasks",
+                    Type: "Task",
+                    Status: TaskStatuses.Backlog,
+                    Priority: TaskPriorities.Medium,
+                    AssigneeMode: CurrentUser.IsAuthenticated ? TaskAssigneeModes.Directory : TaskAssigneeModes.Custom,
+                    AssigneeDirectoryId: CurrentUser.IsAuthenticated ? CurrentUser.UserId : null,
+                    AssigneeCustomText: CurrentUser.IsAuthenticated ? null : "Copilot",
+                    Reporter: CurrentUser.DisplayName,
+                    Labels: ["future"],
+                    DueDateUtc: null,
+                    EpicId: null,
+                    ParentId: null),
+                CurrentUser.DisplayName,
+                CancellationToken.None);
+
+            await LoadAsync();
+            await SelectAsync(created.Id);
+            Snackbar.Add($"Created {created.Key}.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task SetStatusAsync(string status)
+    {
+        if (_selectedTask is null)
+        {
+            return;
+        }
+
+        await TaskService.SetStatusAsync(_selectedTask.Id, new TaskStatusUpdateRequest(status), CurrentUser.DisplayName, CancellationToken.None);
+        await LoadAsync();
+        await SelectAsync(_selectedTask.Id);
+    }
+
+    private async Task AddCommentAsync()
+    {
+        if (_selectedTask is null || string.IsNullOrWhiteSpace(_commentDraft))
+        {
+            return;
+        }
+
+        await TaskService.AddCommentAsync(_selectedTask.Id, new TaskCommentRequest(_commentDraft), CurrentUser.DisplayName, CancellationToken.None);
+        _commentDraft = string.Empty;
+        await LoadAsync();
+        await SelectAsync(_selectedTask.Id);
+    }
+
+    private async Task AddPageLinkAsync()
+    {
+        if (_selectedTask is null || string.IsNullOrWhiteSpace(_pageLinkDraft))
+        {
+            return;
+        }
+
+        await TaskService.AddLinkedPageAsync(_selectedTask.Id, new TaskPageLinkRequest(_pageLinkDraft), CurrentUser.DisplayName, CancellationToken.None);
+        _pageLinkDraft = string.Empty;
+        await LoadAsync();
+        await SelectAsync(_selectedTask.Id);
+    }
+
+    private async Task AddExternalLinkAsync()
+    {
+        if (_selectedTask is null || string.IsNullOrWhiteSpace(_externalLinkLabel) || string.IsNullOrWhiteSpace(_externalLinkUrl))
+        {
+            return;
+        }
+
+        try
+        {
+            await TaskService.AddExternalLinkAsync(_selectedTask.Id, new TaskExternalLinkRequest(_externalLinkLabel, _externalLinkUrl), CurrentUser.DisplayName, CancellationToken.None);
+            _externalLinkLabel = string.Empty;
+            _externalLinkUrl = string.Empty;
+            await LoadAsync();
+            await SelectAsync(_selectedTask.Id);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task AddAttachmentAsync()
+    {
+        if (_selectedTask is null || string.IsNullOrWhiteSpace(_attachmentName) || string.IsNullOrWhiteSpace(_attachmentUri))
+        {
+            return;
+        }
+
+        try
+        {
+            await TaskService.AddAttachmentAsync(_selectedTask.Id, new TaskAttachmentRequest(_attachmentName, "file", _attachmentUri), CurrentUser.DisplayName, CancellationToken.None);
+            _attachmentName = string.Empty;
+            _attachmentUri = string.Empty;
+            await LoadAsync();
+            await SelectAsync(_selectedTask.Id);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task RemoveAttachmentAsync(string attachmentId)
+    {
+        if (_selectedTask is null)
+        {
+            return;
+        }
+
+        await TaskService.RemoveAttachmentAsync(_selectedTask.Id, attachmentId, CurrentUser.DisplayName, CancellationToken.None);
+        await LoadAsync();
+        await SelectAsync(_selectedTask.Id);
+    }
+
+    private Task OnSearchKeyUp(KeyboardEventArgs eventArgs)
+    {
+        if (eventArgs.Key == "Enter")
+        {
+            return LoadAsync();
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Task OnStatusChanged(string value)
+    {
+        _statusFilter = value;
+        return LoadAsync();
+    }
+
+    private Task OnCommentDraftChanged(string value)
+    {
+        _commentDraft = value;
+        return Task.CompletedTask;
+    }
+
+    private Task OnPageLinkDraftChanged(string value)
+    {
+        _pageLinkDraft = value;
+        return Task.CompletedTask;
+    }
+
+    private Task OnExternalLabelChanged(string value)
+    {
+        _externalLinkLabel = value;
+        return Task.CompletedTask;
+    }
+
+    private Task OnExternalUrlChanged(string value)
+    {
+        _externalLinkUrl = value;
+        return Task.CompletedTask;
+    }
+
+    private Task OnAttachmentNameChanged(string value)
+    {
+        _attachmentName = value;
+        return Task.CompletedTask;
+    }
+
+    private Task OnAttachmentUriChanged(string value)
+    {
+        _attachmentUri = value;
+        return Task.CompletedTask;
+    }
+}

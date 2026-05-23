@@ -1,0 +1,40 @@
+{
+  "Id": "tsk-0007-agent-driven-page-generation-combined-feature-with-chat-that-leverages-chat-interface-and-adds-a-preview-pane",
+  "Key": "TSK-0007",
+  "Title": "Agent driven page generation - combined feature with chat that leverages chat interface and adds a preview pane",
+  "Description": "Imported from Data/Pages/workbench/tasks.md",
+  "Type": "Task",
+  "Status": "Backlog",
+  "Priority": "Medium",
+  "AssigneeMode": "Custom",
+  "AssigneeDirectoryId": null,
+  "AssigneeCustomText": "Copilot",
+  "Reporter": "tracker-import",
+  "Labels": [
+    "tracker-import",
+    "workbench",
+    "future"
+  ],
+  "Attachments": [],
+  "ExternalLinks": [],
+  "LinkedPages": [
+    "workbench/tasks"
+  ],
+  "Comments": [
+    {
+      "Id": "c-81e90b99531e4cae939958c2f20f5e21",
+      "Author": "tracker-import",
+      "Body": "Treat this as a visible dogfood target for future agent/page composition work.",
+      "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z"
+    }
+  ],
+  "EpicId": null,
+  "ParentId": null,
+  "DueDateUtc": null,
+  "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z",
+  "UpdatedAtUtc": "2026-05-23T23:36:10.0439283Z",
+  "CompletedAtUtc": null,
+  "Revision": 1,
+  "IsArchived": false
+}
+
