@@ -30,10 +30,6 @@
       "Uri": "%MemorySmithRepo%MemorySmith.App/Services/MemoryApplicationService.cs"
     },
     {
-      "Label": "SemanticEmbeddingSearchService.cs",
-      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/SemanticEmbeddingSearchService.cs"
-    },
-    {
       "Label": "MemoryQueries.cs",
       "Uri": "%MemorySmithRepo%MemorySmith.App/Services/MemoryQueries.cs"
     }

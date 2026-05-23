@@ -96,6 +96,20 @@ public partial class TagManager
     private Task RejectSuggestionAsync(TagGovernanceSuggestion suggestion) =>
         ApplySuggestionDecisionAsync(suggestion, approve: false);
 
+    private static string SuggestionDecisionTooltip(TagGovernanceSuggestion suggestion, bool approve)
+    {
+        var value = approve
+            ? (string.IsNullOrWhiteSpace(suggestion.SuggestedValue) ? suggestion.Tag : suggestion.SuggestedValue)
+            : suggestion.Tag;
+        var action = approve
+            ? $"Approve suggestion and add '{value}' to the allowlist."
+            : $"Reject suggestion and add '{value}' to the blocklist.";
+
+        return string.IsNullOrWhiteSpace(suggestion.Reason)
+            ? action
+            : $"{action} {suggestion.Reason}";
+    }
+
     private Task ApplySuggestionDecisionAsync(TagGovernanceSuggestion suggestion, bool approve)
     {
         var value = approve

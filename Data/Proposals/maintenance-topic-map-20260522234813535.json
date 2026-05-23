@@ -1,0 +1,72 @@
+{
+  "proposal_id": "maintenance-topic-map-20260522234813535",
+  "changes": [
+    {
+      "path": "C:\\Users\\norrt\\source\\repos\\MemorySmith\\Data\\Pages\\maintenance-agent\\20260522-234813535-topic-map.md",
+      "before": "",
+      "after": "# Maintenance Review: topic map\r\n\r\nGenerated: 2026-05-22T23:48:13.5357338\u002B00:00\r\nAgent version: maintenance-agent.v1\r\n\r\n## Findings\r\n\r\n### page:admin-models-maintenance-agent-plan-20260522\r\n\r\n- Id: \u0060page:admin-models-maintenance-agent-plan-20260522\u0060\r\n- Severity: \u0060low\u0060\r\n- Related records: \u0060page:admin-models-maintenance-agent-plan-20260522\u0060\r\n\r\nNode has no incoming or outgoing topic-map edges.\r\n\r\n### page:phase2-governance-workbench-council-review-20260522\r\n\r\n- Id: \u0060page:phase2-governance-workbench-council-review-20260522\u0060\r\n- Severity: \u0060low\u0060\r\n- Related records: \u0060page:phase2-governance-workbench-council-review-20260522\u0060\r\n\r\nNode has no incoming or outgoing topic-map edges.\r\n\r\n### page:phase3-retrieval-warning-propagation-council-review-20260522\r\n\r\n- Id: \u0060page:phase3-retrieval-warning-propagation-council-review-20260522\u0060\r\n- Severity: \u0060low\u0060\r\n- Related records: \u0060page:phase3-retrieval-warning-propagation-council-review-20260522\u0060\r\n\r\nNode has no incoming or outgoing topic-map edges.\r\n\r\n### page:phase4-chat-context-planner-native-tool-council-review-20260522\r\n\r\n- Id: \u0060page:phase4-chat-context-planner-native-tool-council-review-20260522\u0060\r\n- Severity: \u0060low\u0060\r\n- Related records: \u0060page:phase4-chat-context-planner-native-tool-council-review-20260522\u0060\r\n\r\nNode has no incoming or outgoing topic-map edges.\r\n\r\n### page:tag-governance-workbench-20260522\r\n\r\n- Id: \u0060page:tag-governance-workbench-20260522\u0060\r\n- Severity: \u0060low\u0060\r\n- Related records: \u0060page:tag-governance-workbench-20260522\u0060\r\n\r\nNode has no incoming or outgoing topic-map edges.\r\n",
+      "diff": "--- C:\\Users\\norrt\\source\\repos\\MemorySmith\\Data\\Pages\\maintenance-agent\\20260522-234813535-topic-map.md\r\n\u002B\u002B\u002B C:\\Users\\norrt\\source\\repos\\MemorySmith\\Data\\Pages\\maintenance-agent\\20260522-234813535-topic-map.md\r\n\u002B# Maintenance Review: topic map\r\n\u002B\r\n\u002BGenerated: 2026-05-22T23:48:13.5357338\u002B00:00\r\n\u002BAgent version: maintenance-agent.v1\r\n\u002B\r\n\u002B## Findings\r\n\u002B\r\n\u002B### page:admin-models-maintenance-agent-plan-20260522\r\n\u002B\r\n\u002B- Id: \u0060page:admin-models-maintenance-agent-plan-20260522\u0060\r\n\u002B- Severity: \u0060low\u0060\r\n\u002B- Related records: \u0060page:admin-models-maintenance-agent-plan-20260522\u0060\r\n\u002B\r\n\u002BNode has no incoming or outgoing topic-map edges.\r\n\u002B\r\n\u002B### page:phase2-governance-workbench-council-review-20260522\r\n\u002B\r\n\u002B- Id: \u0060page:phase2-governance-workbench-council-review-20260522\u0060\r\n\u002B- Severity: \u0060low\u0060\r\n\u002B- Related records: \u0060page:phase2-governance-workbench-council-review-20260522\u0060\r\n\u002B\r\n\u002BNode has no incoming or outgoing topic-map edges.\r\n\u002B\r\n\u002B### page:phase3-retrieval-warning-propagation-council-review-20260522\r\n\u002B\r\n\u002B- Id: \u0060page:phase3-retrieval-warning-propagation-council-review-20260522\u0060\r\n\u002B- Severity: \u0060low\u0060\r\n\u002B- Related records: \u0060page:phase3-retrieval-warning-propagation-council-review-20260522\u0060\r\n\u002B\r\n\u002BNode has no incoming or outgoing topic-map edges.\r\n\u002B\r\n\u002B### page:phase4-chat-context-planner-native-tool-council-review-20260522\r\n\u002B\r\n\u002B- Id: \u0060page:phase4-chat-context-planner-native-tool-council-review-20260522\u0060\r\n\u002B- Severity: \u0060low\u0060\r\n\u002B- Related records: \u0060page:phase4-chat-context-planner-native-tool-council-review-20260522\u0060\r\n\u002B\r\n\u002BNode has no incoming or outgoing topic-map edges.\r\n\u002B\r\n\u002B### page:tag-governance-workbench-20260522\r\n\u002B\r\n\u002B- Id: \u0060page:tag-governance-workbench-20260522\u0060\r\n\u002B- Severity: \u0060low\u0060\r\n\u002B- Related records: \u0060page:tag-governance-workbench-20260522\u0060\r\n\u002B\r\n\u002BNode has no incoming or outgoing topic-map edges.\r\n "
+    }
+  ],
+  "evidence": [
+    {
+      "kind": "finding",
+      "citation": "page:admin-models-maintenance-agent-plan-20260522",
+      "sourceLink": null,
+      "reference": null,
+      "excerpt": "Node has no incoming or outgoing topic-map edges."
+    },
+    {
+      "kind": "finding",
+      "citation": "page:phase2-governance-workbench-council-review-20260522",
+      "sourceLink": null,
+      "reference": null,
+      "excerpt": "Node has no incoming or outgoing topic-map edges."
+    },
+    {
+      "kind": "finding",
+      "citation": "page:phase3-retrieval-warning-propagation-council-review-20260522",
+      "sourceLink": null,
+      "reference": null,
+      "excerpt": "Node has no incoming or outgoing topic-map edges."
+    },
+    {
+      "kind": "finding",
+      "citation": "page:phase4-chat-context-planner-native-tool-council-review-20260522",
+      "sourceLink": null,
+      "reference": null,
+      "excerpt": "Node has no incoming or outgoing topic-map edges."
+    },
+    {
+      "kind": "finding",
+      "citation": "page:tag-governance-workbench-20260522",
+      "sourceLink": null,
+      "reference": null,
+      "excerpt": "Node has no incoming or outgoing topic-map edges."
+    }
+  ],
+  "related_records": [],
+  "risk_level": "low",
+  "confidence": 0.78,
+  "status": "open",
+  "history": [
+    {
+      "action": "open",
+      "user": "Themasonx",
+      "timestamp": "2026-05-22T23:48:13.7128528+00:00",
+      "comment": "Proposal submitted."
+    }
+  ],
+  "metadata": {
+    "task": "topic_map",
+    "confidence": 0.78,
+    "risk_level": "low",
+    "related_records": [],
+    "supersedes": [],
+    "superseded_by": [],
+    "agent_version": "maintenance-agent.v1"
+  },
+  "comments": [],
+  "created_at_utc": "2026-05-22T23:48:13.7122605+00:00",
+  "updated_at_utc": "2026-05-22T23:48:13.7146254+00:00"
+}

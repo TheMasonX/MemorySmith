@@ -1,0 +1,3190 @@
+{
+  "generatedAtUtc": "2026-05-22T23:53:39.6270688+00:00",
+  "nodes": [
+    {
+      "id": "ai-memory-suite-governance-foundation-20260520",
+      "kind": "memory",
+      "title": "AI Memory Suite Governance Foundation",
+      "path": null,
+      "tags": [
+        "project-wiki",
+        "memory-system",
+        "implementation-status",
+        "tag-governance",
+        "staleness",
+        "maintenance",
+        "context-pack",
+        "diagnostics"
+      ],
+      "headings": [],
+      "lastUpdatedUtc": "2026-05-22T09:20:00+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "ai-memory-suite-implementation-plan-20260520",
+      "kind": "memory",
+      "title": "AI Memory Suite Current Implementation Status",
+      "path": null,
+      "tags": [
+        "project-wiki",
+        "memory-system",
+        "implementation-status",
+        "council-review",
+        "agent-memory",
+        "tag-governance",
+        "staleness",
+        "search",
+        "chat",
+        "pages"
+      ],
+      "headings": [],
+      "lastUpdatedUtc": "2026-05-22T09:00:00+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "memory-system-rfc-council-review-20260520",
+      "kind": "memory",
+      "title": "Memory System RFC Council Review",
+      "path": null,
+      "tags": [
+        "project-wiki",
+        "memory-system",
+        "rfc",
+        "council-review",
+        "agent-memory",
+        "search",
+        "chat",
+        "pages"
+      ],
+      "headings": [],
+      "lastUpdatedUtc": "2026-05-22T09:20:00+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "project-wiki-active-architecture",
+      "kind": "memory",
+      "title": "Active Architecture Boundary",
+      "path": null,
+      "tags": [
+        "project-wiki",
+        "architecture",
+        "single-host",
+        "memorysmith-app"
+      ],
+      "headings": [],
+      "lastUpdatedUtc": "2026-05-12T00:00:00+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "project-wiki-admin-auth-hardening",
+      "kind": "memory",
+      "title": "Admin Auth Hardening Current State",
+      "path": null,
+      "tags": [
+        "project-wiki",
+        "security",
+        "auth",
+        "admin",
+        "configuration"
+      ],
+      "headings": [],
+      "lastUpdatedUtc": "2026-05-22T09:00:00+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "project-wiki-admin-configuration-surface",
+      "kind": "memory",
+      "title": "Admin Configuration Surface Current State",
+      "path": null,
+      "tags": [
+        "project-wiki",
+        "configuration",
+        "admin",
+        "ui",
+        "security",
+        "current-state",
+        "kind:fact",
+        "audience:admin",
+        "scope:configuration"
+      ],
+      "headings": [],
+      "lastUpdatedUtc": "2026-05-22T19:05:00+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "project-wiki-agent-instructions-source-of-truth",
+      "kind": "memory",
+      "title": "Agent Instructions Source of Truth",
+      "path": null,
+      "tags": [
+        "project-wiki",
+        "agent-instructions",
+        "documentation",
+        "current-state"
+      ],
+      "headings": [],
+      "lastUpdatedUtc": "2026-05-17T18:02:31+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "project-wiki-benchmarkdotnet-suite",
+      "kind": "memory",
+      "title": "BenchmarkDotNet search benchmark suite",
+      "path": null,
+      "tags": [
+        "project-wiki",
+        "benchmarks",
+        "benchmarkdotnet",
+        "validation",
+        "search"
+      ],
+      "headings": [],
+      "lastUpdatedUtc": "2026-05-17T17:00:00+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "project-wiki-chat-agent-provider",
+      "kind": "memory",
+      "title": "Chat Agent Provider Architecture",
+      "path": null,
+      "tags": [
+        "project-wiki",
+        "chat",
+        "agent",
+        "ollama",
+        "github",
+        "provider",
+        "streaming",
+        "architecture",
+        "current-state"
+      ],
+      "headings": [],
+      "lastUpdatedUtc": "2026-05-22T20:25:00+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "project-wiki-chat-configuration-current",
+      "kind": "memory",
+      "title": "Chat Configuration Current State",
+      "path": null,
+      "tags": [
+        "project-wiki",
+        "configuration",
+        "chat",
+        "settings",
+        "current-state",
+        "kind:fact",
+        "audience:chat",
+        "audience:admin",
+        "scope:configuration"
+      ],
+      "headings": [],
+      "lastUpdatedUtc": "2026-05-22T20:25:00+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "project-wiki-chat-image-attachments",
+      "kind": "memory",
+      "title": "Chat Image Attachment Pipeline",
+      "path": null,
+      "tags": [
+        "project-wiki",
+        "chat",
+        "attachments",
+        "images",
+        "clipboard",
+        "ollama",
+        "github",
+        "current-state"
+      ],
+      "headings": [],
+      "lastUpdatedUtc": "2026-05-17T15:00:00+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "project-wiki-chat-local-storage-persistence",
+      "kind": "memory",
+      "title": "Chat Local Storage Persistence",
+      "path": null,
+      "tags": [
+        "project-wiki",
+        "chat",
+        "localstorage",
+        "persistence",
+        "ui",
+        "current-state"
+      ],
+      "headings": [],
+      "lastUpdatedUtc": "2026-05-22T16:35:00+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "project-wiki-chat-streaming-thinking",
+      "kind": "memory",
+      "title": "Chat Streaming and Thinking Blocks",
+      "path": null,
+      "tags": [
+        "project-wiki",
+        "chat",
+        "streaming",
+        "thinking",
+        "ollama",
+        "github",
+        "ui",
+        "current-state"
+      ],
+      "headings": [],
+      "lastUpdatedUtc": "2026-05-17T13:00:00+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "project-wiki-configuration-settings-current",
+      "kind": "memory",
+      "title": "Configuration Settings Current State",
+      "path": null,
+      "tags": [
+        "project-wiki",
+        "configuration",
+        "settings",
+        "admin",
+        "current-state",
+        "kind:fact",
+        "audience:admin",
+        "audience:chat",
+        "scope:configuration"
+      ],
+      "headings": [],
+      "lastUpdatedUtc": "2026-05-22T19:35:00+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "project-wiki-current-validation-146-tests",
+      "kind": "memory",
+      "title": "Current validation baseline",
+      "path": null,
+      "tags": [
+        "project-wiki",
+        "validation",
+        "tests",
+        "benchmarks",
+        "current-state"
+      ],
+      "headings": [],
+      "lastUpdatedUtc": "2026-05-22T21:30:00+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "project-wiki-data-folder-policy",
+      "kind": "memory",
+      "title": "Data Folder Project Wiki Policy",
+      "path": null,
+      "tags": [
+        "project-wiki",
+        "data-folder",
+        "fixture",
+        "testbase",
+        "test-fixture"
+      ],
+      "headings": [],
+      "lastUpdatedUtc": "2026-05-22T09:00:00+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "project-wiki-event-store",
+      "kind": "memory",
+      "title": "Event Store and Activity Tracking",
+      "path": null,
+      "tags": [
+        "project-wiki",
+        "events",
+        "storage",
+        "architecture"
+      ],
+      "headings": [],
+      "lastUpdatedUtc": "2026-05-17T12:00:00+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "project-wiki-github-actions-artifacts",
+      "kind": "memory",
+      "title": "GitHub Actions Coverage and Docs Artifacts",
+      "path": null,
+      "tags": [
+        "project-wiki",
+        "github-actions",
+        "ci",
+        "coverage",
+        "cobertura",
+        "doxygen",
+        "docs",
+        "current-state"
+      ],
+      "headings": [],
+      "lastUpdatedUtc": "2026-05-17T17:00:00+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "project-wiki-hybrid-search-rrf",
+      "kind": "memory",
+      "title": "Hybrid Search With RRF",
+      "path": null,
+      "tags": [
+        "project-wiki",
+        "search",
+        "hybrid-search",
+        "context-pack",
+        "lucene",
+        "rrf",
+        "semantic-search",
+        "vector-search",
+        "current-state",
+        "dogfooding"
+      ],
+      "headings": [],
+      "lastUpdatedUtc": "2026-05-22T09:00:00+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "project-wiki-maintenance-observability-refinements",
+      "kind": "memory",
+      "title": "Maintenance and Observability Refinements",
+      "path": null,
+      "tags": [
+        "project-wiki",
+        "maintenance",
+        "stats",
+        "ui",
+        "reliability"
+      ],
+      "headings": [],
+      "lastUpdatedUtc": "2026-05-17T03:25:00+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "project-wiki-maintenance-proposals-current",
+      "kind": "memory",
+      "title": "Maintenance Proposals Current State",
+      "path": null,
+      "tags": [
+        "project-wiki",
+        "maintenance-agent",
+        "proposals",
+        "agent-review",
+        "current-state",
+        "kind:fact",
+        "audience:admin",
+        "scope:governance"
+      ],
+      "headings": [],
+      "lastUpdatedUtc": "2026-05-22T21:25:00+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "project-wiki-markdown-pages",
+      "kind": "memory",
+      "title": "Markdown Pages Current State",
+      "path": null,
+      "tags": [
+        "project-wiki",
+        "pages",
+        "markdown",
+        "data-folder",
+        "ui",
+        "api",
+        "current-state"
+      ],
+      "headings": [],
+      "lastUpdatedUtc": "2026-05-20T00:00:00+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "project-wiki-mcp-context-pack",
+      "kind": "memory",
+      "title": "MCP Context Pack Tool",
+      "path": null,
+      "tags": [
+        "project-wiki",
+        "mcp",
+        "context-pack",
+        "explicit-ids",
+        "backlinks",
+        "warnings",
+        "max-records",
+        "bounded-output",
+        "structured-output",
+        "format-json",
+        "markdown",
+        "search",
+        "hybrid-search",
+        "larger-kb",
+        "agent-workflow",
+        "current-state",
+        "dogfooding"
+      ],
+      "headings": [],
+      "lastUpdatedUtc": "2026-05-17T04:05:00+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "project-wiki-mcp-integration",
+      "kind": "memory",
+      "title": "MCP Integration Friction",
+      "path": null,
+      "tags": [
+        "project-wiki",
+        "mcp",
+        "tooling",
+        "friction",
+        "integration"
+      ],
+      "headings": [],
+      "lastUpdatedUtc": "2026-05-17T12:00:00+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "project-wiki-mcp-search-tools-current",
+      "kind": "memory",
+      "title": "MCP Search Tools Current State",
+      "path": null,
+      "tags": [
+        "project-wiki",
+        "mcp",
+        "search",
+        "semantic-search",
+        "hybrid-search",
+        "context-pack",
+        "backlinks",
+        "warnings",
+        "bounded-output",
+        "structured-output",
+        "rrf",
+        "current-state",
+        "tooling"
+      ],
+      "headings": [],
+      "lastUpdatedUtc": "2026-05-19T00:45:00+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "project-wiki-memory-status-classification-current",
+      "kind": "memory",
+      "title": "Memory Status Classification Current State",
+      "path": null,
+      "tags": [
+        "project-wiki",
+        "memory-system",
+        "governance",
+        "current-state",
+        "kind:rule",
+        "audience:agent",
+        "audience:human",
+        "scope:memory-governance"
+      ],
+      "headings": [],
+      "lastUpdatedUtc": "2026-05-22T09:00:00+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "project-wiki-onnx-semantic-embeddings",
+      "kind": "memory",
+      "title": "ONNX Semantic Embeddings",
+      "path": null,
+      "tags": [
+        "project-wiki",
+        "semantic-search",
+        "embeddings",
+        "onnx",
+        "search",
+        "current-state"
+      ],
+      "headings": [],
+      "lastUpdatedUtc": "2026-05-17T03:55:00+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "project-wiki-operational-diagnostics-dashboard",
+      "kind": "memory",
+      "title": "Operational Diagnostics Dashboard",
+      "path": null,
+      "tags": [
+        "project-wiki",
+        "dashboard",
+        "diagnostics",
+        "operations",
+        "api",
+        "current-state"
+      ],
+      "headings": [],
+      "lastUpdatedUtc": "2026-05-19T00:00:00+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "project-wiki-request-guard-hardening",
+      "kind": "memory",
+      "title": "Request Guard and Optional API Key Enforcement",
+      "path": null,
+      "tags": [
+        "project-wiki",
+        "security",
+        "api",
+        "mcp",
+        "configuration"
+      ],
+      "headings": [],
+      "lastUpdatedUtc": "2026-05-19T00:00:00+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "project-wiki-scope-boundaries",
+      "kind": "memory",
+      "title": "Current Refactor Scope Boundaries",
+      "path": null,
+      "tags": [
+        "project-wiki",
+        "scope",
+        "storage",
+        "search"
+      ],
+      "headings": [],
+      "lastUpdatedUtc": "2026-05-17T12:00:00+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "project-wiki-search-roadmap",
+      "kind": "memory",
+      "title": "Search Tools Current State",
+      "path": null,
+      "tags": [
+        "project-wiki",
+        "search",
+        "semantic-search",
+        "hybrid-search",
+        "context-pack",
+        "bounded-output",
+        "rrf",
+        "current-state",
+        "tooling"
+      ],
+      "headings": [],
+      "lastUpdatedUtc": "2026-05-22T09:00:00+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "project-wiki-semantic-search-gap",
+      "kind": "memory",
+      "title": "Semantic Search Gap",
+      "path": null,
+      "tags": [
+        "project-wiki",
+        "semantic-search",
+        "hybrid-search",
+        "vector-search",
+        "missing-feature",
+        "generalization",
+        "search"
+      ],
+      "headings": [],
+      "lastUpdatedUtc": "2026-05-17T03:55:00+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "project-wiki-semantic-tool-quality-suite",
+      "kind": "memory",
+      "title": "Semantic and MCP tool quality tests",
+      "path": null,
+      "tags": [
+        "project-wiki",
+        "tests",
+        "semantic-search",
+        "mcp",
+        "quality"
+      ],
+      "headings": [],
+      "lastUpdatedUtc": "2026-05-17T03:55:00+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "project-wiki-semantic-ui-current",
+      "kind": "memory",
+      "title": "Memory Workbench UI Current State",
+      "path": null,
+      "tags": [
+        "project-wiki",
+        "search",
+        "semantic-search",
+        "hybrid-search",
+        "ui",
+        "workbench",
+        "dark-mode",
+        "vscode-style",
+        "current-state",
+        "dogfooding"
+      ],
+      "headings": [],
+      "lastUpdatedUtc": "2026-05-17T12:00:00+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "project-wiki-source-link-configuration-current",
+      "kind": "memory",
+      "title": "Source Link Configuration Current State",
+      "path": null,
+      "tags": [
+        "project-wiki",
+        "configuration",
+        "source-links",
+        "security",
+        "current-state",
+        "kind:fact",
+        "audience:admin",
+        "audience:chat",
+        "scope:configuration"
+      ],
+      "headings": [],
+      "lastUpdatedUtc": "2026-05-22T09:00:00+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "project-wiki-source-link-security-boundaries",
+      "kind": "memory",
+      "title": "Source Link Read Boundaries",
+      "path": null,
+      "tags": [
+        "project-wiki",
+        "source-links",
+        "security",
+        "mcp",
+        "configuration"
+      ],
+      "headings": [],
+      "lastUpdatedUtc": "2026-05-15T05:43:30.6038788+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "project-wiki-source-links-feature",
+      "kind": "memory",
+      "title": "Source Links Feature",
+      "path": null,
+      "tags": [
+        "project-wiki",
+        "source-links",
+        "mcp",
+        "architecture"
+      ],
+      "headings": [],
+      "lastUpdatedUtc": "2026-05-12T00:00:00+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "project-wiki-storage-rules",
+      "kind": "memory",
+      "title": "File Storage Rules",
+      "path": null,
+      "tags": [
+        "project-wiki",
+        "storage",
+        "schema",
+        "diagnostics"
+      ],
+      "headings": [],
+      "lastUpdatedUtc": "2026-05-12T00:00:00+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "project-wiki-tag-governance-current",
+      "kind": "memory",
+      "title": "Tag Governance Current State",
+      "path": null,
+      "tags": [
+        "project-wiki",
+        "tag-governance",
+        "configuration",
+        "ui",
+        "current-state",
+        "kind:fact",
+        "audience:admin",
+        "audience:human",
+        "scope:configuration"
+      ],
+      "headings": [],
+      "lastUpdatedUtc": "2026-05-22T14:45:00+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "project-wiki-test-architecture",
+      "kind": "memory",
+      "title": "Test Architecture and Benchmark Suite",
+      "path": null,
+      "tags": [
+        "project-wiki",
+        "testing",
+        "benchmarks",
+        "architecture"
+      ],
+      "headings": [],
+      "lastUpdatedUtc": "2026-05-17T17:00:00+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "project-wiki-test-fixture-backlink-source",
+      "kind": "memory",
+      "title": "Backlink Source Test Fixture",
+      "path": null,
+      "tags": [
+        "project-wiki",
+        "test-fixture",
+        "backlink",
+        "context-pack",
+        "graph-fixture",
+        "deterministic-test"
+      ],
+      "headings": [],
+      "lastUpdatedUtc": "2026-05-12T00:00:00+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "project-wiki-test-fixture-conflict-note",
+      "kind": "memory",
+      "title": "Conflict Test Fixture Note",
+      "path": null,
+      "tags": [
+        "project-wiki",
+        "test-fixture",
+        "conflict-fixture",
+        "context-pack",
+        "graph-fixture",
+        "deterministic-test"
+      ],
+      "headings": [],
+      "lastUpdatedUtc": "2026-05-12T00:00:00+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "project-wiki-test-fixture-context-root",
+      "kind": "memory",
+      "title": "Context Pack Test Fixture Root",
+      "path": null,
+      "tags": [
+        "project-wiki",
+        "test-fixture",
+        "context-pack",
+        "graph-fixture",
+        "quartzwave",
+        "search",
+        "mcp",
+        "structured-output",
+        "deterministic-test"
+      ],
+      "headings": [],
+      "lastUpdatedUtc": "2026-05-17T12:00:00+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "project-wiki-test-fixture-overview",
+      "kind": "memory",
+      "title": "Project Wiki Test Fixture Overview",
+      "path": null,
+      "tags": [
+        "project-wiki",
+        "test-fixture",
+        "fixture-overview",
+        "deterministic-test",
+        "context-pack",
+        "search",
+        "mcp",
+        "structured-output"
+      ],
+      "headings": [],
+      "lastUpdatedUtc": "2026-05-12T00:00:00+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "project-wiki-test-fixture-reference-child",
+      "kind": "memory",
+      "title": "Reference Child Test Fixture",
+      "path": null,
+      "tags": [
+        "project-wiki",
+        "test-fixture",
+        "reference-child",
+        "context-pack",
+        "nimbusvector",
+        "graph-fixture",
+        "deterministic-test"
+      ],
+      "headings": [],
+      "lastUpdatedUtc": "2026-05-12T00:00:00+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "project-wiki-ui-architecture",
+      "kind": "memory",
+      "title": "UI Architecture Current State",
+      "path": null,
+      "tags": [
+        "project-wiki",
+        "ui",
+        "blazor",
+        "architecture"
+      ],
+      "headings": [],
+      "lastUpdatedUtc": "2026-05-19T07:30:00+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "project-wiki-ui-layout-source-link-polish",
+      "kind": "memory",
+      "title": "UI Layout and Source Link Polish",
+      "path": null,
+      "tags": [
+        "project-wiki",
+        "ui",
+        "layout",
+        "source-links",
+        "navigation",
+        "current-state"
+      ],
+      "headings": [],
+      "lastUpdatedUtc": "2026-05-17T02:35:00+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "project-wiki-validation-command",
+      "kind": "memory",
+      "title": "Validation Command",
+      "path": null,
+      "tags": [
+        "project-wiki",
+        "testing",
+        "nunit",
+        "validation"
+      ],
+      "headings": [],
+      "lastUpdatedUtc": "2026-05-12T00:00:00+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "page:admin-model-profile-council-review-20260522",
+      "kind": "page",
+      "title": "Council Review: Admin Model Profiles",
+      "path": "admin-model-profile-council-review-20260522.md",
+      "tags": [],
+      "headings": [
+        "Council Review: Admin Model Profiles",
+        "Decision",
+        "Evidence Reviewed",
+        "Findings",
+        "Synthesis",
+        "Dissent",
+        "Acceptance Criteria",
+        "Open Questions"
+      ],
+      "lastUpdatedUtc": "2026-05-22T16:29:10.0736561+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "page:admin-models-maintenance-agent-plan-20260522",
+      "kind": "page",
+      "title": "Admin Models And Maintenance Agent Planning Notes",
+      "path": "admin-models-maintenance-agent-plan-20260522.md",
+      "tags": [],
+      "headings": [
+        "Admin Models And Maintenance Agent Planning Notes",
+        "Immediate UI Corrections",
+        "Model Registry",
+        "Maintenance Agent Tasks And Logs",
+        "Proposal Review Agent",
+        "Chat Agent Writes Through Proposals",
+        "Chat Compaction Mode",
+        "Incomplete Note"
+      ],
+      "lastUpdatedUtc": "2026-05-22T20:00:19.0813563+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "page:ai-memory-suite-implementation-plan",
+      "kind": "page",
+      "title": "Implementation Plan: AI Memory Suite",
+      "path": "ai-memory-suite-implementation-plan.md",
+      "tags": [],
+      "headings": [
+        "Implementation Plan: AI Memory Suite",
+        "Decision",
+        "Implementation Status",
+        "User Direction Incorporated",
+        "Evidence Reviewed",
+        "Council Findings",
+        "Ten Deliberation Rounds",
+        "Round 1: Scope And Freedom To Move",
+        "Round 2: Current Maintenance Contradiction",
+        "Round 3: Tag Schema",
+        "Round 4: Tag Policy, Allowlist, Blocklist, And Lexical Analysis",
+        "Round 5: Staleness, Expiration, And Supersession",
+        "Round 6: Schema Evolution And Relations",
+        "Round 7: Retrieval, Pages, And Chunking",
+        "Round 8: Tool Outputs, MCP, And Chat",
+        "Round 9: Agent Write Governance",
+        "Round 10: Validation, Rollout, And Governance",
+        "Final Architecture Target",
+        "Implementation Phases",
+        "Phase 0: Freeze Risky Assumptions And Measure Baseline",
+        "Phase 1: Policy And Diagnostics Foundation",
+        "Phase 2: Human Workbench And Tag Manager",
+        "Phase 3: Retrieval Output Safety",
+        "Phase 4: Agent Write Governance",
+        "Phase 5: Measurement And Promotion Gates",
+        "Phase 6: Optional Schema Promotion",
+        "Phase 7: Page Metadata, Chunking, And Page Embeddings",
+        "Phase 8: Advanced Council And Learning Flows",
+        "Phase 9: Sustained Operations",
+        "Test And Benchmark Plan",
+        "Risks And Mitigations",
+        "Open Questions",
+        "Immediate Next Planning Actions"
+      ],
+      "lastUpdatedUtc": "2026-05-22T04:42:27.0467055+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "page:application-next-steps-council-review-20260521",
+      "kind": "page",
+      "title": "Council Review: MemorySmith Application Next Steps",
+      "path": "application-next-steps-council-review-20260521.md",
+      "tags": [],
+      "headings": [
+        "Council Review: MemorySmith Application Next Steps",
+        "Decision",
+        "Evidence Reviewed",
+        "Round 1: Independent Seat Findings",
+        "Round 2: Adversarial Review And Dissent",
+        "Retrieval Versus Data Model",
+        "Chat Native Tools Versus Simplicity",
+        "Agent Governance Versus Human Workbench",
+        "Schema Ambition Versus Current Plan",
+        "Round 3: Recommended Roadmap",
+        "Phase 0: Close The PR 13 Baseline",
+        "Phase 1: Measurement Baseline Branch",
+        "Phase 2: Governance Workbench And Tag Manager",
+        "Phase 3: Retrieval Warning Propagation",
+        "Phase 4: Chat Context Planner And Native Tool Spike",
+        "Phase 5: Agent Write Governance",
+        "Phase 6: Page Metadata, Chunking, And Embeddings",
+        "Phase 7: Schema Promotion",
+        "Round 4: Implementation Order Recommendation",
+        "Phase 1 Implementation Result",
+        "Risks And Mitigations",
+        "Open Questions",
+        "Confidence"
+      ],
+      "lastUpdatedUtc": "2026-05-22T14:35:32.7969563+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "page:architecture",
+      "kind": "page",
+      "title": "Architecture",
+      "path": "architecture.md",
+      "tags": [],
+      "headings": [
+        "Architecture",
+        "Project Map",
+        "Runtime Flow",
+        "Data Model",
+        "Maintenance",
+        "Safety Boundaries",
+        "Design Preference"
+      ],
+      "lastUpdatedUtc": "2026-05-17T20:08:02.6890683+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "page:deep-research-intake-20260520",
+      "kind": "page",
+      "title": "Deep Research Intake Notes (2026-05-20)",
+      "path": "deep-research-intake-20260520.md",
+      "tags": [],
+      "headings": [
+        "Deep Research Intake Notes (2026-05-20)",
+        "What This Resolves",
+        "High-Value Findings (Most Actionable)",
+        "Evidence-Quality Caveat",
+        "Local Decision Questions Still Open",
+        "Recommended Next Council Packet",
+        "Suggested Acceptance Gates (Pre-Implementation)"
+      ],
+      "lastUpdatedUtc": "2026-05-20T05:28:48.1867229+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "page:llm-council",
+      "kind": "page",
+      "title": "Council Workflow for MemorySmith Decisions",
+      "path": "llm-council.md",
+      "tags": [],
+      "headings": [
+        "Council Workflow for MemorySmith Decisions",
+        "Purpose",
+        "When To Use It",
+        "Council Seats",
+        "Evidence Pack",
+        "Process",
+        "Output Template",
+        "Council Review: \u003CDecision\u003E",
+        "Decision",
+        "Evidence Reviewed",
+        "Findings",
+        "Synthesis",
+        "Dissent",
+        "Acceptance Criteria",
+        "Open Questions",
+        "Prompt Pattern",
+        "How It Fits MemorySmith Chat",
+        "Example: Memory System RFC Review",
+        "Quality Bar",
+        "Relationship to External LLM Council Ideas"
+      ],
+      "lastUpdatedUtc": "2026-05-20T03:53:25.5113625+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "page:maintenance-agent-admin-chat-council-20260522",
+      "kind": "page",
+      "title": "Council Review: Maintenance Agent Admin Chat And Transcripts",
+      "path": "maintenance-agent-admin-chat-council-20260522.md",
+      "tags": [],
+      "headings": [
+        "Council Review: Maintenance Agent Admin Chat And Transcripts",
+        "Decision",
+        "Evidence Reviewed",
+        "Findings",
+        "Synthesis",
+        "Dissent",
+        "Acceptance Criteria",
+        "Open Questions"
+      ],
+      "lastUpdatedUtc": "2026-05-22T18:39:04.9949641+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "page:memory-governance-guide",
+      "kind": "page",
+      "title": "Memory Governance Guide",
+      "path": "memory-governance-guide.md",
+      "tags": [],
+      "headings": [
+        "Memory Governance Guide",
+        "Purpose",
+        "Tag Policy",
+        "Diagnostics",
+        "Warning-First Maintenance",
+        "Tool Output",
+        "Gates Still Closed"
+      ],
+      "lastUpdatedUtc": "2026-05-22T04:42:27.0487103+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "page:memory-system-deep-research-prompt",
+      "kind": "page",
+      "title": "Deep Research Prompt: Agent Memory, Search, and Wiki Architecture",
+      "path": "memory-system-deep-research-prompt.md",
+      "tags": [],
+      "headings": [
+        "Deep Research Prompt: Agent Memory, Search, and Wiki Architecture",
+        "Prompt",
+        "Questions Excluded From External Research",
+        "How To Use The Results"
+      ],
+      "lastUpdatedUtc": "2026-05-20T05:28:48.1867229+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "page:memorysmith",
+      "kind": "page",
+      "title": "MemorySmith Pages",
+      "path": "memorysmith.md",
+      "tags": [],
+      "headings": [
+        "MemorySmith Pages",
+        "Start Here",
+        "What Lives Where",
+        "Current App Surfaces",
+        "How To Use These Pages"
+      ],
+      "lastUpdatedUtc": "2026-05-22T04:42:27.0487103+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "page:operations",
+      "kind": "page",
+      "title": "Operations",
+      "path": "operations.md",
+      "tags": [],
+      "headings": [
+        "Operations",
+        "Run Locally",
+        "Validate Changes",
+        "Data Deployment Folder",
+        "Windows Service Notes",
+        "Pages Publishing",
+        "When Something Looks Wrong"
+      ],
+      "lastUpdatedUtc": "2026-05-17T17:53:14.5232067+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "page:phase2-governance-workbench-council-review-20260522",
+      "kind": "page",
+      "title": "Council Review: Phase 2 Governance Workbench",
+      "path": "phase2-governance-workbench-council-review-20260522.md",
+      "tags": [],
+      "headings": [
+        "Council Review: Phase 2 Governance Workbench",
+        "Decision",
+        "Evidence Reviewed",
+        "Findings",
+        "Synthesis",
+        "Dissent",
+        "Acceptance Criteria",
+        "Open Questions"
+      ],
+      "lastUpdatedUtc": "2026-05-22T06:32:04.1981456+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "page:phase3-retrieval-warning-propagation-council-review-20260522",
+      "kind": "page",
+      "title": "Council Review: Phase 3 Retrieval Warning Propagation",
+      "path": "phase3-retrieval-warning-propagation-council-review-20260522.md",
+      "tags": [],
+      "headings": [
+        "Council Review: Phase 3 Retrieval Warning Propagation",
+        "Decision",
+        "Evidence Reviewed",
+        "Findings",
+        "Synthesis",
+        "Dissent",
+        "Acceptance Criteria",
+        "Open Questions"
+      ],
+      "lastUpdatedUtc": "2026-05-22T07:15:30.6689745+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "page:phase4-chat-context-planner-native-tool-council-review-20260522",
+      "kind": "page",
+      "title": "Council Review: Phase 4 Chat Context Planner And Native Tool Spike",
+      "path": "phase4-chat-context-planner-native-tool-council-review-20260522.md",
+      "tags": [],
+      "headings": [
+        "Council Review: Phase 4 Chat Context Planner And Native Tool Spike",
+        "Decision",
+        "Evidence Reviewed",
+        "Findings",
+        "Synthesis",
+        "Dissent",
+        "Acceptance Criteria",
+        "Open Questions"
+      ],
+      "lastUpdatedUtc": "2026-05-22T08:05:38.4752324+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "page:pr13-search-diagnostics-council-review-20260521",
+      "kind": "page",
+      "title": "Council Review: PR 13 Search Diagnostics Follow-Up",
+      "path": "pr13-search-diagnostics-council-review-20260521.md",
+      "tags": [],
+      "headings": [
+        "Council Review: PR 13 Search Diagnostics Follow-Up",
+        "Decision",
+        "Evidence Reviewed",
+        "Findings",
+        "Synthesis",
+        "Dissent",
+        "Acceptance Criteria",
+        "Post-Implementation Checkpoints",
+        "Stage 3 Seat Review",
+        "Open Questions"
+      ],
+      "lastUpdatedUtc": "2026-05-22T04:42:27.0502139+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "page:proposal-review-agent-execution-council-20260522",
+      "kind": "page",
+      "title": "Council Review: Proposal Review Agent Execution",
+      "path": "proposal-review-agent-execution-council-20260522.md",
+      "tags": [],
+      "headings": [
+        "Council Review: Proposal Review Agent Execution",
+        "Decision",
+        "Evidence Reviewed",
+        "Findings",
+        "Synthesis",
+        "Dissent",
+        "Acceptance Criteria",
+        "Open Questions"
+      ],
+      "lastUpdatedUtc": "2026-05-22T17:49:58.391569+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "page:search-and-chat",
+      "kind": "page",
+      "title": "Search and Chat",
+      "path": "search-and-chat.md",
+      "tags": [],
+      "headings": [
+        "Search and Chat",
+        "Search Modes",
+        "ONNX Embeddings",
+        "MCP Tools",
+        "Chat Mode",
+        "Chat Context Loading",
+        "Agent Mode",
+        "Good Search Habits",
+        "Agent Retrieval Patterns",
+        "Search Quality And Long-Term Memory",
+        "Council Review For Search Changes"
+      ],
+      "lastUpdatedUtc": "2026-05-22T19:34:50.1305151+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "page:tag-governance-workbench-20260522",
+      "kind": "page",
+      "title": "Tag Governance Workbench",
+      "path": "tag-governance-workbench-20260522.md",
+      "tags": [],
+      "headings": [
+        "Tag Governance Workbench",
+        "Authoring Tags",
+        "Interpreting Warnings",
+        "Policy Modes",
+        "Approval Model"
+      ],
+      "lastUpdatedUtc": "2026-05-22T06:32:04.1981456+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "page:tasks",
+      "kind": "page",
+      "title": "Future Tasks",
+      "path": "tasks.md",
+      "tags": [],
+      "headings": [
+        "Future Tasks",
+        "Current Priorities",
+        "Pages",
+        "Chat",
+        "Health",
+        "Notes For Future Edits"
+      ],
+      "lastUpdatedUtc": "2026-05-22T20:00:19.083777+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "page:temp-deep-research-response",
+      "kind": "page",
+      "title": "Executive Summary",
+      "path": "temp-deep-research-response.md",
+      "tags": [],
+      "headings": [
+        "Executive Summary",
+        "Recommendations by Research Question",
+        "Key Findings and Examples",
+        "Risks and Anti-Patterns",
+        "Decision Gates: Convention \u2192 UI \u2192 Schema",
+        "Evaluation Metrics and Test Probes",
+        "Convention vs Schema vs Page Prose"
+      ],
+      "lastUpdatedUtc": "2026-05-20T04:18:50.3617535+00:00",
+      "stalenessStatus": "current"
+    },
+    {
+      "id": "page:temp-plan",
+      "kind": "page",
+      "title": "RFC: Core Memory System Improvements for AI Agents",
+      "path": "temp-plan.md",
+      "tags": [],
+      "headings": [
+        "RFC: Core Memory System Improvements for AI Agents",
+        "1. Executive Summary",
+        "2. Intended Use Cases",
+        "3. Current Ground Truth",
+        "4. Design Principle: Conventions First, Schema When Proven",
+        "5. Recommended Memory Authoring Conventions",
+        "5.1 Tags",
+        "5.2 Strict Rules in Markdown Content",
+        "Rule",
+        "Context",
+        "Evidence",
+        "Review Notes",
+        "5.3 Relationships",
+        "6. Search and Retrieval Improvements",
+        "6.1 Baseline Strategy",
+        "6.2 Pages as First-Class Knowledge",
+        "6.3 Staleness Before Decay",
+        "7. Chat and Human Learning Improvements",
+        "8. Governance for Agent Writes",
+        "9. Phased Plan",
+        "Phase 0: Decision Cleanup",
+        "Phase 1: Documentation and Convention Pilot",
+        "Phase 2: Validation Without Behavior Change",
+        "Phase 3: Retrieval Output Quality",
+        "Phase 4: Schema Promotion Decision",
+        "Phase 5: Long-Term Capability Expansion",
+        "10. Acceptance Criteria Before Implementation",
+        "11. Open Questions",
+        "12. Council Review Summary"
+      ],
+      "lastUpdatedUtc": "2026-05-20T05:28:48.1867229+00:00",
+      "stalenessStatus": "current"
+    }
+  ],
+  "edges": [
+    {
+      "sourceId": "ai-memory-suite-governance-foundation-20260520",
+      "targetId": "ai-memory-suite-implementation-plan-20260520",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "ai-memory-suite-governance-foundation-20260520",
+      "targetId": "memory-system-rfc-council-review-20260520",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "ai-memory-suite-governance-foundation-20260520",
+      "targetId": "project-wiki-mcp-context-pack",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "ai-memory-suite-governance-foundation-20260520",
+      "targetId": "project-wiki-semantic-ui-current",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "ai-memory-suite-implementation-plan-20260520",
+      "targetId": "ai-memory-suite-governance-foundation-20260520",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "ai-memory-suite-implementation-plan-20260520",
+      "targetId": "memory-system-rfc-council-review-20260520",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "ai-memory-suite-implementation-plan-20260520",
+      "targetId": "project-wiki-chat-agent-provider",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "ai-memory-suite-implementation-plan-20260520",
+      "targetId": "project-wiki-current-validation-146-tests",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "ai-memory-suite-implementation-plan-20260520",
+      "targetId": "project-wiki-markdown-pages",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "ai-memory-suite-implementation-plan-20260520",
+      "targetId": "project-wiki-mcp-context-pack",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "ai-memory-suite-implementation-plan-20260520",
+      "targetId": "project-wiki-search-roadmap",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "ai-memory-suite-implementation-plan-20260520",
+      "targetId": "project-wiki-semantic-ui-current",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "ai-memory-suite-implementation-plan-20260520",
+      "targetId": "project-wiki-source-links-feature",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "memory-system-rfc-council-review-20260520",
+      "targetId": "project-wiki-chat-agent-provider",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "memory-system-rfc-council-review-20260520",
+      "targetId": "project-wiki-markdown-pages",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "memory-system-rfc-council-review-20260520",
+      "targetId": "project-wiki-mcp-context-pack",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "memory-system-rfc-council-review-20260520",
+      "targetId": "project-wiki-search-roadmap",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:admin-model-profile-council-review-20260522",
+      "targetId": "project-wiki-admin-configuration-surface",
+      "type": "Mentions",
+      "sourcePath": "admin-model-profile-council-review-20260522.md"
+    },
+    {
+      "sourceId": "page:admin-model-profile-council-review-20260522",
+      "targetId": "project-wiki-chat-agent-provider",
+      "type": "Mentions",
+      "sourcePath": "admin-model-profile-council-review-20260522.md"
+    },
+    {
+      "sourceId": "page:admin-model-profile-council-review-20260522",
+      "targetId": "project-wiki-chat-configuration-current",
+      "type": "Mentions",
+      "sourcePath": "admin-model-profile-council-review-20260522.md"
+    },
+    {
+      "sourceId": "page:admin-model-profile-council-review-20260522",
+      "targetId": "project-wiki-chat-local-storage-persistence",
+      "type": "Mentions",
+      "sourcePath": "admin-model-profile-council-review-20260522.md"
+    },
+    {
+      "sourceId": "page:admin-model-profile-council-review-20260522",
+      "targetId": "project-wiki-configuration-settings-current",
+      "type": "Mentions",
+      "sourcePath": "admin-model-profile-council-review-20260522.md"
+    },
+    {
+      "sourceId": "page:ai-memory-suite-implementation-plan",
+      "targetId": "page:deep-research-intake-20260520",
+      "type": "LinksTo",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:ai-memory-suite-implementation-plan",
+      "targetId": "page:deep-research-intake-20260520",
+      "type": "LinksTo",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:ai-memory-suite-implementation-plan",
+      "targetId": "page:llm-council",
+      "type": "LinksTo",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:ai-memory-suite-implementation-plan",
+      "targetId": "page:llm-council",
+      "type": "LinksTo",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:ai-memory-suite-implementation-plan",
+      "targetId": "page:search-and-chat",
+      "type": "LinksTo",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:ai-memory-suite-implementation-plan",
+      "targetId": "page:search-and-chat",
+      "type": "LinksTo",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:ai-memory-suite-implementation-plan",
+      "targetId": "page:temp-deep-research-response",
+      "type": "LinksTo",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:ai-memory-suite-implementation-plan",
+      "targetId": "page:temp-plan",
+      "type": "LinksTo",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:ai-memory-suite-implementation-plan",
+      "targetId": "page:temp-plan",
+      "type": "LinksTo",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:ai-memory-suite-implementation-plan",
+      "targetId": "memory-system-rfc-council-review-20260520",
+      "type": "Mentions",
+      "sourcePath": "ai-memory-suite-implementation-plan.md"
+    },
+    {
+      "sourceId": "page:application-next-steps-council-review-20260521",
+      "targetId": "page:-/-/readme",
+      "type": "LinksTo",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:application-next-steps-council-review-20260521",
+      "targetId": "page:ai-memory-suite-implementation-plan",
+      "type": "LinksTo",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:application-next-steps-council-review-20260521",
+      "targetId": "page:llm-council",
+      "type": "LinksTo",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:application-next-steps-council-review-20260521",
+      "targetId": "page:pr13-search-diagnostics-council-review-20260521",
+      "type": "LinksTo",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:application-next-steps-council-review-20260521",
+      "targetId": "page:search-and-chat",
+      "type": "LinksTo",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:application-next-steps-council-review-20260521",
+      "targetId": "page:temp-plan",
+      "type": "LinksTo",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:deep-research-intake-20260520",
+      "targetId": "page:ai-memory-suite-implementation-plan",
+      "type": "LinksTo",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:deep-research-intake-20260520",
+      "targetId": "page:llm-council",
+      "type": "LinksTo",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:deep-research-intake-20260520",
+      "targetId": "page:memory-system-deep-research-prompt",
+      "type": "LinksTo",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:deep-research-intake-20260520",
+      "targetId": "page:temp-deep-research-response",
+      "type": "LinksTo",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:deep-research-intake-20260520",
+      "targetId": "page:temp-deep-research-response",
+      "type": "LinksTo",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:deep-research-intake-20260520",
+      "targetId": "page:temp-plan",
+      "type": "LinksTo",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:llm-council",
+      "targetId": "page:search-and-chat",
+      "type": "LinksTo",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:llm-council",
+      "targetId": "page:temp-plan",
+      "type": "LinksTo",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:maintenance-agent-admin-chat-council-20260522",
+      "targetId": "project-wiki-maintenance-proposals-current",
+      "type": "Mentions",
+      "sourcePath": "maintenance-agent-admin-chat-council-20260522.md"
+    },
+    {
+      "sourceId": "page:memory-governance-guide",
+      "targetId": "page:ai-memory-suite-implementation-plan",
+      "type": "LinksTo",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:memory-governance-guide",
+      "targetId": "page:llm-council",
+      "type": "LinksTo",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:memory-governance-guide",
+      "targetId": "page:search-and-chat",
+      "type": "LinksTo",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:memory-system-deep-research-prompt",
+      "targetId": "page:deep-research-intake-20260520",
+      "type": "LinksTo",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:memory-system-deep-research-prompt",
+      "targetId": "page:llm-council",
+      "type": "LinksTo",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:memory-system-deep-research-prompt",
+      "targetId": "page:temp-plan",
+      "type": "LinksTo",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:memorysmith",
+      "targetId": "page:ai-memory-suite-implementation-plan",
+      "type": "LinksTo",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:memorysmith",
+      "targetId": "page:architecture",
+      "type": "LinksTo",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:memorysmith",
+      "targetId": "page:deep-research-intake-20260520",
+      "type": "LinksTo",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:memorysmith",
+      "targetId": "page:llm-council",
+      "type": "LinksTo",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:memorysmith",
+      "targetId": "page:memory-governance-guide",
+      "type": "LinksTo",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:memorysmith",
+      "targetId": "page:memory-system-deep-research-prompt",
+      "type": "LinksTo",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:memorysmith",
+      "targetId": "page:operations",
+      "type": "LinksTo",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:memorysmith",
+      "targetId": "page:search-and-chat",
+      "type": "LinksTo",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:memorysmith",
+      "targetId": "page:tasks",
+      "type": "LinksTo",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:memorysmith",
+      "targetId": "page:temp-plan",
+      "type": "LinksTo",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:pr13-search-diagnostics-council-review-20260521",
+      "targetId": "page:ai-memory-suite-implementation-plan",
+      "type": "LinksTo",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:pr13-search-diagnostics-council-review-20260521",
+      "targetId": "page:memory-governance-guide",
+      "type": "LinksTo",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:pr13-search-diagnostics-council-review-20260521",
+      "targetId": "ai-memory-suite-governance-foundation-20260520",
+      "type": "Mentions",
+      "sourcePath": "pr13-search-diagnostics-council-review-20260521.md"
+    },
+    {
+      "sourceId": "page:pr13-search-diagnostics-council-review-20260521",
+      "targetId": "project-wiki-mcp-context-pack",
+      "type": "Mentions",
+      "sourcePath": "pr13-search-diagnostics-council-review-20260521.md"
+    },
+    {
+      "sourceId": "page:pr13-search-diagnostics-council-review-20260521",
+      "targetId": "project-wiki-mcp-search-tools-current",
+      "type": "Mentions",
+      "sourcePath": "pr13-search-diagnostics-council-review-20260521.md"
+    },
+    {
+      "sourceId": "page:pr13-search-diagnostics-council-review-20260521",
+      "targetId": "project-wiki-search-roadmap",
+      "type": "Mentions",
+      "sourcePath": "pr13-search-diagnostics-council-review-20260521.md"
+    },
+    {
+      "sourceId": "page:proposal-review-agent-execution-council-20260522",
+      "targetId": "project-wiki-maintenance-proposals-current",
+      "type": "Mentions",
+      "sourcePath": "proposal-review-agent-execution-council-20260522.md"
+    },
+    {
+      "sourceId": "page:search-and-chat",
+      "targetId": "page:ai-memory-suite-implementation-plan",
+      "type": "LinksTo",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:search-and-chat",
+      "targetId": "page:llm-council",
+      "type": "LinksTo",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:search-and-chat",
+      "targetId": "page:temp-plan",
+      "type": "LinksTo",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:temp-plan",
+      "targetId": "page:ai-memory-suite-implementation-plan",
+      "type": "LinksTo",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:temp-plan",
+      "targetId": "page:llm-council",
+      "type": "LinksTo",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:temp-plan",
+      "targetId": "page:llm-council",
+      "type": "LinksTo",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:temp-plan",
+      "targetId": "page:memory-system-deep-research-prompt",
+      "type": "LinksTo",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:temp-plan",
+      "targetId": "page:memory-system-deep-research-prompt",
+      "type": "LinksTo",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:temp-plan",
+      "targetId": "page:search-and-chat",
+      "type": "LinksTo",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "page:temp-plan",
+      "targetId": "project-wiki-search-roadmap",
+      "type": "Mentions",
+      "sourcePath": "temp-plan.md"
+    },
+    {
+      "sourceId": "project-wiki-active-architecture",
+      "targetId": "project-wiki-data-folder-policy",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-active-architecture",
+      "targetId": "project-wiki-validation-command",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-admin-auth-hardening",
+      "targetId": "project-wiki-admin-configuration-surface",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-admin-auth-hardening",
+      "targetId": "project-wiki-configuration-settings-current",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-admin-auth-hardening",
+      "targetId": "project-wiki-operational-diagnostics-dashboard",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-admin-auth-hardening",
+      "targetId": "project-wiki-request-guard-hardening",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-admin-auth-hardening",
+      "targetId": "project-wiki-ui-architecture",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-admin-configuration-surface",
+      "targetId": "project-wiki-admin-auth-hardening",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-admin-configuration-surface",
+      "targetId": "project-wiki-configuration-settings-current",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-admin-configuration-surface",
+      "targetId": "project-wiki-operational-diagnostics-dashboard",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-admin-configuration-surface",
+      "targetId": "project-wiki-tag-governance-current",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-agent-instructions-source-of-truth",
+      "targetId": "project-wiki-active-architecture",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-agent-instructions-source-of-truth",
+      "targetId": "project-wiki-data-folder-policy",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-agent-instructions-source-of-truth",
+      "targetId": "project-wiki-validation-command",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-chat-agent-provider",
+      "targetId": "project-wiki-active-architecture",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-chat-agent-provider",
+      "targetId": "project-wiki-chat-image-attachments",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-chat-agent-provider",
+      "targetId": "project-wiki-chat-local-storage-persistence",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-chat-agent-provider",
+      "targetId": "project-wiki-chat-streaming-thinking",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-chat-agent-provider",
+      "targetId": "project-wiki-hybrid-search-rrf",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-chat-agent-provider",
+      "targetId": "project-wiki-maintenance-proposals-current",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-chat-agent-provider",
+      "targetId": "project-wiki-markdown-pages",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-chat-agent-provider",
+      "targetId": "project-wiki-mcp-search-tools-current",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-chat-configuration-current",
+      "targetId": "project-wiki-admin-configuration-surface",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-chat-configuration-current",
+      "targetId": "project-wiki-chat-agent-provider",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-chat-configuration-current",
+      "targetId": "project-wiki-configuration-settings-current",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-chat-configuration-current",
+      "targetId": "project-wiki-mcp-search-tools-current",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-chat-image-attachments",
+      "targetId": "project-wiki-chat-agent-provider",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-chat-image-attachments",
+      "targetId": "project-wiki-chat-local-storage-persistence",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-chat-local-storage-persistence",
+      "targetId": "project-wiki-chat-agent-provider",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-chat-local-storage-persistence",
+      "targetId": "project-wiki-chat-image-attachments",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-chat-streaming-thinking",
+      "targetId": "project-wiki-chat-agent-provider",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-chat-streaming-thinking",
+      "targetId": "project-wiki-ui-layout-source-link-polish",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-configuration-settings-current",
+      "targetId": "project-wiki-admin-auth-hardening",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-configuration-settings-current",
+      "targetId": "project-wiki-admin-configuration-surface",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-configuration-settings-current",
+      "targetId": "project-wiki-chat-configuration-current",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-configuration-settings-current",
+      "targetId": "project-wiki-source-link-configuration-current",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-current-validation-146-tests",
+      "targetId": "project-wiki-benchmarkdotnet-suite",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-current-validation-146-tests",
+      "targetId": "project-wiki-chat-agent-provider",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-current-validation-146-tests",
+      "targetId": "project-wiki-github-actions-artifacts",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-current-validation-146-tests",
+      "targetId": "project-wiki-maintenance-proposals-current",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-current-validation-146-tests",
+      "targetId": "project-wiki-markdown-pages",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-current-validation-146-tests",
+      "targetId": "project-wiki-validation-command",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-data-folder-policy",
+      "targetId": "project-wiki-active-architecture",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-data-folder-policy",
+      "targetId": "project-wiki-memory-status-classification-current",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-data-folder-policy",
+      "targetId": "project-wiki-test-fixture-overview",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-data-folder-policy",
+      "targetId": "project-wiki-validation-command",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-event-store",
+      "targetId": "project-wiki-active-architecture",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-event-store",
+      "targetId": "project-wiki-data-folder-policy",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-event-store",
+      "targetId": "project-wiki-ui-architecture",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-github-actions-artifacts",
+      "targetId": "project-wiki-active-architecture",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-github-actions-artifacts",
+      "targetId": "project-wiki-test-architecture",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-github-actions-artifacts",
+      "targetId": "project-wiki-validation-command",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-hybrid-search-rrf",
+      "targetId": "project-wiki-mcp-context-pack",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-hybrid-search-rrf",
+      "targetId": "project-wiki-mcp-search-tools-current",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-hybrid-search-rrf",
+      "targetId": "project-wiki-onnx-semantic-embeddings",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-hybrid-search-rrf",
+      "targetId": "project-wiki-search-roadmap",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-hybrid-search-rrf",
+      "targetId": "project-wiki-semantic-search-gap",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-hybrid-search-rrf",
+      "targetId": "project-wiki-semantic-ui-current",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-maintenance-observability-refinements",
+      "targetId": "project-wiki-event-store",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-maintenance-observability-refinements",
+      "targetId": "project-wiki-ui-architecture",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-maintenance-proposals-current",
+      "targetId": "project-wiki-admin-configuration-surface",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-maintenance-proposals-current",
+      "targetId": "project-wiki-chat-agent-provider",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-markdown-pages",
+      "targetId": "project-wiki-active-architecture",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-markdown-pages",
+      "targetId": "project-wiki-operational-diagnostics-dashboard",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-markdown-pages",
+      "targetId": "project-wiki-ui-architecture",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-mcp-context-pack",
+      "targetId": "project-wiki-data-folder-policy",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-mcp-context-pack",
+      "targetId": "project-wiki-hybrid-search-rrf",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-mcp-context-pack",
+      "targetId": "project-wiki-mcp-search-tools-current",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-mcp-context-pack",
+      "targetId": "project-wiki-search-roadmap",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-mcp-integration",
+      "targetId": "project-wiki-search-roadmap",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-mcp-integration",
+      "targetId": "project-wiki-validation-command",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-mcp-search-tools-current",
+      "targetId": "project-wiki-chat-agent-provider",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-mcp-search-tools-current",
+      "targetId": "project-wiki-data-folder-policy",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-mcp-search-tools-current",
+      "targetId": "project-wiki-hybrid-search-rrf",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-mcp-search-tools-current",
+      "targetId": "project-wiki-mcp-context-pack",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-mcp-search-tools-current",
+      "targetId": "project-wiki-mcp-integration",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-mcp-search-tools-current",
+      "targetId": "project-wiki-onnx-semantic-embeddings",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-mcp-search-tools-current",
+      "targetId": "project-wiki-search-roadmap",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-mcp-search-tools-current",
+      "targetId": "project-wiki-semantic-search-gap",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-mcp-search-tools-current",
+      "targetId": "project-wiki-test-fixture-overview",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-memory-status-classification-current",
+      "targetId": "ai-memory-suite-governance-foundation-20260520",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-memory-status-classification-current",
+      "targetId": "project-wiki-data-folder-policy",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-memory-status-classification-current",
+      "targetId": "project-wiki-tag-governance-current",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-onnx-semantic-embeddings",
+      "targetId": "project-wiki-hybrid-search-rrf",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-onnx-semantic-embeddings",
+      "targetId": "project-wiki-operational-diagnostics-dashboard",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-onnx-semantic-embeddings",
+      "targetId": "project-wiki-search-roadmap",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-onnx-semantic-embeddings",
+      "targetId": "project-wiki-semantic-search-gap",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-operational-diagnostics-dashboard",
+      "targetId": "project-wiki-active-architecture",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-operational-diagnostics-dashboard",
+      "targetId": "project-wiki-validation-command",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-operational-diagnostics-dashboard",
+      "targetId": "project-wiki-windows-service-operations",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-request-guard-hardening",
+      "targetId": "project-wiki-active-architecture",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-request-guard-hardening",
+      "targetId": "project-wiki-mcp-search-tools-current",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-scope-boundaries",
+      "targetId": "project-wiki-active-architecture",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-search-roadmap",
+      "targetId": "project-wiki-data-folder-policy",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-search-roadmap",
+      "targetId": "project-wiki-hybrid-search-rrf",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-search-roadmap",
+      "targetId": "project-wiki-mcp-context-pack",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-search-roadmap",
+      "targetId": "project-wiki-mcp-integration",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-search-roadmap",
+      "targetId": "project-wiki-onnx-semantic-embeddings",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-semantic-search-gap",
+      "targetId": "project-wiki-hybrid-search-rrf",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-semantic-search-gap",
+      "targetId": "project-wiki-onnx-semantic-embeddings",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-semantic-search-gap",
+      "targetId": "project-wiki-scope-boundaries",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-semantic-search-gap",
+      "targetId": "project-wiki-search-roadmap",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-semantic-tool-quality-suite",
+      "targetId": "project-wiki-onnx-semantic-embeddings",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-semantic-tool-quality-suite",
+      "targetId": "project-wiki-search-roadmap",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-semantic-ui-current",
+      "targetId": "project-wiki-hybrid-search-rrf",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-semantic-ui-current",
+      "targetId": "project-wiki-mcp-search-tools-current",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-semantic-ui-current",
+      "targetId": "project-wiki-search-roadmap",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-semantic-ui-current",
+      "targetId": "project-wiki-semantic-search-gap",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-source-link-configuration-current",
+      "targetId": "project-wiki-configuration-settings-current",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-source-link-configuration-current",
+      "targetId": "project-wiki-source-link-security-boundaries",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-source-link-configuration-current",
+      "targetId": "project-wiki-source-links-feature",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-source-link-security-boundaries",
+      "targetId": "project-wiki-data-folder-policy",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-source-link-security-boundaries",
+      "targetId": "project-wiki-source-links-feature",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-source-links-feature",
+      "targetId": "project-wiki-active-architecture",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-source-links-feature",
+      "targetId": "project-wiki-mcp-search-tools-current",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-source-links-feature",
+      "targetId": "project-wiki-semantic-ui-current",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-storage-rules",
+      "targetId": "project-wiki-data-folder-policy",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-storage-rules",
+      "targetId": "project-wiki-validation-command",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-tag-governance-current",
+      "targetId": "ai-memory-suite-governance-foundation-20260520",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-tag-governance-current",
+      "targetId": "project-wiki-admin-configuration-surface",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-tag-governance-current",
+      "targetId": "project-wiki-memory-status-classification-current",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-test-architecture",
+      "targetId": "project-wiki-hybrid-search-rrf",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-test-architecture",
+      "targetId": "project-wiki-semantic-search-gap",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-test-architecture",
+      "targetId": "project-wiki-validation-command",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-test-fixture-backlink-source",
+      "targetId": "project-wiki-test-fixture-context-root",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-test-fixture-conflict-note",
+      "targetId": "project-wiki-test-fixture-context-root",
+      "type": "ConflictsWith",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-test-fixture-context-root",
+      "targetId": "project-wiki-test-fixture-conflict-note",
+      "type": "ConflictsWith",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-test-fixture-context-root",
+      "targetId": "project-wiki-test-fixture-reference-child",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-test-fixture-overview",
+      "targetId": "project-wiki-data-folder-policy",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-test-fixture-overview",
+      "targetId": "project-wiki-test-fixture-backlink-source",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-test-fixture-overview",
+      "targetId": "project-wiki-test-fixture-conflict-note",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-test-fixture-overview",
+      "targetId": "project-wiki-test-fixture-context-root",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-test-fixture-overview",
+      "targetId": "project-wiki-test-fixture-reference-child",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-ui-architecture",
+      "targetId": "project-wiki-active-architecture",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-ui-architecture",
+      "targetId": "project-wiki-chat-agent-provider",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-ui-architecture",
+      "targetId": "project-wiki-markdown-pages",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-ui-architecture",
+      "targetId": "project-wiki-semantic-ui-current",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-ui-architecture",
+      "targetId": "project-wiki-source-links-feature",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-ui-layout-source-link-polish",
+      "targetId": "project-wiki-chat-image-attachments",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-ui-layout-source-link-polish",
+      "targetId": "project-wiki-chat-streaming-thinking",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-ui-layout-source-link-polish",
+      "targetId": "project-wiki-markdown-pages",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-ui-layout-source-link-polish",
+      "targetId": "project-wiki-source-links-feature",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-ui-layout-source-link-polish",
+      "targetId": "project-wiki-ui-architecture",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-validation-command",
+      "targetId": "project-wiki-active-architecture",
+      "type": "References",
+      "sourcePath": null
+    },
+    {
+      "sourceId": "project-wiki-validation-command",
+      "targetId": "project-wiki-data-folder-policy",
+      "type": "References",
+      "sourcePath": null
+    }
+  ],
+  "clusters": [
+    {
+      "key": "project-wiki",
+      "nodeIds": [
+        "ai-memory-suite-governance-foundation-20260520",
+        "ai-memory-suite-implementation-plan-20260520",
+        "memory-system-rfc-council-review-20260520",
+        "project-wiki-active-architecture",
+        "project-wiki-admin-auth-hardening",
+        "project-wiki-admin-configuration-surface",
+        "project-wiki-agent-instructions-source-of-truth",
+        "project-wiki-benchmarkdotnet-suite",
+        "project-wiki-chat-agent-provider",
+        "project-wiki-chat-configuration-current",
+        "project-wiki-chat-image-attachments",
+        "project-wiki-chat-local-storage-persistence",
+        "project-wiki-chat-streaming-thinking",
+        "project-wiki-configuration-settings-current",
+        "project-wiki-current-validation-146-tests",
+        "project-wiki-data-folder-policy",
+        "project-wiki-event-store",
+        "project-wiki-github-actions-artifacts",
+        "project-wiki-hybrid-search-rrf",
+        "project-wiki-maintenance-observability-refinements",
+        "project-wiki-maintenance-proposals-current",
+        "project-wiki-markdown-pages",
+        "project-wiki-mcp-context-pack",
+        "project-wiki-mcp-integration",
+        "project-wiki-mcp-search-tools-current",
+        "project-wiki-memory-status-classification-current",
+        "project-wiki-onnx-semantic-embeddings",
+        "project-wiki-operational-diagnostics-dashboard",
+        "project-wiki-request-guard-hardening",
+        "project-wiki-scope-boundaries",
+        "project-wiki-search-roadmap",
+        "project-wiki-semantic-search-gap",
+        "project-wiki-semantic-tool-quality-suite",
+        "project-wiki-semantic-ui-current",
+        "project-wiki-source-link-configuration-current",
+        "project-wiki-source-link-security-boundaries",
+        "project-wiki-source-links-feature",
+        "project-wiki-storage-rules",
+        "project-wiki-tag-governance-current",
+        "project-wiki-test-architecture",
+        "project-wiki-test-fixture-backlink-source",
+        "project-wiki-test-fixture-conflict-note",
+        "project-wiki-test-fixture-context-root",
+        "project-wiki-test-fixture-overview",
+        "project-wiki-test-fixture-reference-child",
+        "project-wiki-ui-architecture",
+        "project-wiki-ui-layout-source-link-polish",
+        "project-wiki-validation-command"
+      ]
+    },
+    {
+      "key": "current-state",
+      "nodeIds": [
+        "project-wiki-admin-configuration-surface",
+        "project-wiki-agent-instructions-source-of-truth",
+        "project-wiki-chat-agent-provider",
+        "project-wiki-chat-configuration-current",
+        "project-wiki-chat-image-attachments",
+        "project-wiki-chat-local-storage-persistence",
+        "project-wiki-chat-streaming-thinking",
+        "project-wiki-configuration-settings-current",
+        "project-wiki-current-validation-146-tests",
+        "project-wiki-github-actions-artifacts",
+        "project-wiki-hybrid-search-rrf",
+        "project-wiki-maintenance-proposals-current",
+        "project-wiki-markdown-pages",
+        "project-wiki-mcp-context-pack",
+        "project-wiki-mcp-search-tools-current",
+        "project-wiki-memory-status-classification-current",
+        "project-wiki-onnx-semantic-embeddings",
+        "project-wiki-operational-diagnostics-dashboard",
+        "project-wiki-search-roadmap",
+        "project-wiki-semantic-ui-current",
+        "project-wiki-source-link-configuration-current",
+        "project-wiki-tag-governance-current",
+        "project-wiki-ui-layout-source-link-polish"
+      ]
+    },
+    {
+      "key": "search",
+      "nodeIds": [
+        "ai-memory-suite-implementation-plan-20260520",
+        "memory-system-rfc-council-review-20260520",
+        "project-wiki-benchmarkdotnet-suite",
+        "project-wiki-hybrid-search-rrf",
+        "project-wiki-mcp-context-pack",
+        "project-wiki-mcp-search-tools-current",
+        "project-wiki-onnx-semantic-embeddings",
+        "project-wiki-scope-boundaries",
+        "project-wiki-search-roadmap",
+        "project-wiki-semantic-search-gap",
+        "project-wiki-semantic-ui-current",
+        "project-wiki-test-fixture-context-root",
+        "project-wiki-test-fixture-overview"
+      ]
+    },
+    {
+      "key": "context-pack",
+      "nodeIds": [
+        "ai-memory-suite-governance-foundation-20260520",
+        "project-wiki-hybrid-search-rrf",
+        "project-wiki-mcp-context-pack",
+        "project-wiki-mcp-search-tools-current",
+        "project-wiki-search-roadmap",
+        "project-wiki-test-fixture-backlink-source",
+        "project-wiki-test-fixture-conflict-note",
+        "project-wiki-test-fixture-context-root",
+        "project-wiki-test-fixture-overview",
+        "project-wiki-test-fixture-reference-child"
+      ]
+    },
+    {
+      "key": "mcp",
+      "nodeIds": [
+        "project-wiki-mcp-context-pack",
+        "project-wiki-mcp-integration",
+        "project-wiki-mcp-search-tools-current",
+        "project-wiki-request-guard-hardening",
+        "project-wiki-semantic-tool-quality-suite",
+        "project-wiki-source-link-security-boundaries",
+        "project-wiki-source-links-feature",
+        "project-wiki-test-fixture-context-root",
+        "project-wiki-test-fixture-overview"
+      ]
+    },
+    {
+      "key": "ui",
+      "nodeIds": [
+        "project-wiki-admin-configuration-surface",
+        "project-wiki-chat-local-storage-persistence",
+        "project-wiki-chat-streaming-thinking",
+        "project-wiki-maintenance-observability-refinements",
+        "project-wiki-markdown-pages",
+        "project-wiki-semantic-ui-current",
+        "project-wiki-tag-governance-current",
+        "project-wiki-ui-architecture",
+        "project-wiki-ui-layout-source-link-polish"
+      ]
+    },
+    {
+      "key": "configuration",
+      "nodeIds": [
+        "project-wiki-admin-auth-hardening",
+        "project-wiki-admin-configuration-surface",
+        "project-wiki-chat-configuration-current",
+        "project-wiki-configuration-settings-current",
+        "project-wiki-request-guard-hardening",
+        "project-wiki-source-link-configuration-current",
+        "project-wiki-source-link-security-boundaries",
+        "project-wiki-tag-governance-current"
+      ]
+    },
+    {
+      "key": "chat",
+      "nodeIds": [
+        "ai-memory-suite-implementation-plan-20260520",
+        "memory-system-rfc-council-review-20260520",
+        "project-wiki-chat-agent-provider",
+        "project-wiki-chat-configuration-current",
+        "project-wiki-chat-image-attachments",
+        "project-wiki-chat-local-storage-persistence",
+        "project-wiki-chat-streaming-thinking"
+      ]
+    },
+    {
+      "key": "semantic-search",
+      "nodeIds": [
+        "project-wiki-hybrid-search-rrf",
+        "project-wiki-mcp-search-tools-current",
+        "project-wiki-onnx-semantic-embeddings",
+        "project-wiki-search-roadmap",
+        "project-wiki-semantic-search-gap",
+        "project-wiki-semantic-tool-quality-suite",
+        "project-wiki-semantic-ui-current"
+      ]
+    },
+    {
+      "key": "architecture",
+      "nodeIds": [
+        "project-wiki-active-architecture",
+        "project-wiki-chat-agent-provider",
+        "project-wiki-event-store",
+        "project-wiki-source-links-feature",
+        "project-wiki-test-architecture",
+        "project-wiki-ui-architecture"
+      ]
+    },
+    {
+      "key": "hybrid-search",
+      "nodeIds": [
+        "project-wiki-hybrid-search-rrf",
+        "project-wiki-mcp-context-pack",
+        "project-wiki-mcp-search-tools-current",
+        "project-wiki-search-roadmap",
+        "project-wiki-semantic-search-gap",
+        "project-wiki-semantic-ui-current"
+      ]
+    },
+    {
+      "key": "test-fixture",
+      "nodeIds": [
+        "project-wiki-data-folder-policy",
+        "project-wiki-test-fixture-backlink-source",
+        "project-wiki-test-fixture-conflict-note",
+        "project-wiki-test-fixture-context-root",
+        "project-wiki-test-fixture-overview",
+        "project-wiki-test-fixture-reference-child"
+      ]
+    },
+    {
+      "key": "deterministic-test",
+      "nodeIds": [
+        "project-wiki-test-fixture-backlink-source",
+        "project-wiki-test-fixture-conflict-note",
+        "project-wiki-test-fixture-context-root",
+        "project-wiki-test-fixture-overview",
+        "project-wiki-test-fixture-reference-child"
+      ]
+    },
+    {
+      "key": "security",
+      "nodeIds": [
+        "project-wiki-admin-auth-hardening",
+        "project-wiki-admin-configuration-surface",
+        "project-wiki-request-guard-hardening",
+        "project-wiki-source-link-configuration-current",
+        "project-wiki-source-link-security-boundaries"
+      ]
+    },
+    {
+      "key": "graph-fixture",
+      "nodeIds": [
+        "project-wiki-test-fixture-backlink-source",
+        "project-wiki-test-fixture-conflict-note",
+        "project-wiki-test-fixture-context-root",
+        "project-wiki-test-fixture-reference-child"
+      ]
+    },
+    {
+      "key": "memory-system",
+      "nodeIds": [
+        "ai-memory-suite-governance-foundation-20260520",
+        "ai-memory-suite-implementation-plan-20260520",
+        "memory-system-rfc-council-review-20260520",
+        "project-wiki-memory-status-classification-current"
+      ]
+    },
+    {
+      "key": "source-links",
+      "nodeIds": [
+        "project-wiki-source-link-configuration-current",
+        "project-wiki-source-link-security-boundaries",
+        "project-wiki-source-links-feature",
+        "project-wiki-ui-layout-source-link-polish"
+      ]
+    },
+    {
+      "key": "structured-output",
+      "nodeIds": [
+        "project-wiki-mcp-context-pack",
+        "project-wiki-mcp-search-tools-current",
+        "project-wiki-test-fixture-context-root",
+        "project-wiki-test-fixture-overview"
+      ]
+    },
+    {
+      "key": "admin",
+      "nodeIds": [
+        "project-wiki-admin-auth-hardening",
+        "project-wiki-admin-configuration-surface",
+        "project-wiki-configuration-settings-current"
+      ]
+    },
+    {
+      "key": "api",
+      "nodeIds": [
+        "project-wiki-markdown-pages",
+        "project-wiki-operational-diagnostics-dashboard",
+        "project-wiki-request-guard-hardening"
+      ]
+    },
+    {
+      "key": "benchmarks",
+      "nodeIds": [
+        "project-wiki-benchmarkdotnet-suite",
+        "project-wiki-current-validation-146-tests",
+        "project-wiki-test-architecture"
+      ]
+    },
+    {
+      "key": "bounded-output",
+      "nodeIds": [
+        "project-wiki-mcp-context-pack",
+        "project-wiki-mcp-search-tools-current",
+        "project-wiki-search-roadmap"
+      ]
+    },
+    {
+      "key": "diagnostics",
+      "nodeIds": [
+        "ai-memory-suite-governance-foundation-20260520",
+        "project-wiki-operational-diagnostics-dashboard",
+        "project-wiki-storage-rules"
+      ]
+    },
+    {
+      "key": "dogfooding",
+      "nodeIds": [
+        "project-wiki-hybrid-search-rrf",
+        "project-wiki-mcp-context-pack",
+        "project-wiki-semantic-ui-current"
+      ]
+    },
+    {
+      "key": "github",
+      "nodeIds": [
+        "project-wiki-chat-agent-provider",
+        "project-wiki-chat-image-attachments",
+        "project-wiki-chat-streaming-thinking"
+      ]
+    },
+    {
+      "key": "ollama",
+      "nodeIds": [
+        "project-wiki-chat-agent-provider",
+        "project-wiki-chat-image-attachments",
+        "project-wiki-chat-streaming-thinking"
+      ]
+    },
+    {
+      "key": "pages",
+      "nodeIds": [
+        "ai-memory-suite-implementation-plan-20260520",
+        "memory-system-rfc-council-review-20260520",
+        "project-wiki-markdown-pages"
+      ]
+    },
+    {
+      "key": "rrf",
+      "nodeIds": [
+        "project-wiki-hybrid-search-rrf",
+        "project-wiki-mcp-search-tools-current",
+        "project-wiki-search-roadmap"
+      ]
+    },
+    {
+      "key": "storage",
+      "nodeIds": [
+        "project-wiki-event-store",
+        "project-wiki-scope-boundaries",
+        "project-wiki-storage-rules"
+      ]
+    },
+    {
+      "key": "tag-governance",
+      "nodeIds": [
+        "ai-memory-suite-governance-foundation-20260520",
+        "ai-memory-suite-implementation-plan-20260520",
+        "project-wiki-tag-governance-current"
+      ]
+    },
+    {
+      "key": "tooling",
+      "nodeIds": [
+        "project-wiki-mcp-integration",
+        "project-wiki-mcp-search-tools-current",
+        "project-wiki-search-roadmap"
+      ]
+    },
+    {
+      "key": "validation",
+      "nodeIds": [
+        "project-wiki-benchmarkdotnet-suite",
+        "project-wiki-current-validation-146-tests",
+        "project-wiki-validation-command"
+      ]
+    },
+    {
+      "key": "agent-memory",
+      "nodeIds": [
+        "ai-memory-suite-implementation-plan-20260520",
+        "memory-system-rfc-council-review-20260520"
+      ]
+    },
+    {
+      "key": "backlinks",
+      "nodeIds": [
+        "project-wiki-mcp-context-pack",
+        "project-wiki-mcp-search-tools-current"
+      ]
+    },
+    {
+      "key": "council-review",
+      "nodeIds": [
+        "ai-memory-suite-implementation-plan-20260520",
+        "memory-system-rfc-council-review-20260520"
+      ]
+    },
+    {
+      "key": "data-folder",
+      "nodeIds": [
+        "project-wiki-data-folder-policy",
+        "project-wiki-markdown-pages"
+      ]
+    },
+    {
+      "key": "implementation-status",
+      "nodeIds": [
+        "ai-memory-suite-governance-foundation-20260520",
+        "ai-memory-suite-implementation-plan-20260520"
+      ]
+    },
+    {
+      "key": "maintenance",
+      "nodeIds": [
+        "ai-memory-suite-governance-foundation-20260520",
+        "project-wiki-maintenance-observability-refinements"
+      ]
+    },
+    {
+      "key": "markdown",
+      "nodeIds": [
+        "project-wiki-markdown-pages",
+        "project-wiki-mcp-context-pack"
+      ]
+    },
+    {
+      "key": "settings",
+      "nodeIds": [
+        "project-wiki-chat-configuration-current",
+        "project-wiki-configuration-settings-current"
+      ]
+    },
+    {
+      "key": "staleness",
+      "nodeIds": [
+        "ai-memory-suite-governance-foundation-20260520",
+        "ai-memory-suite-implementation-plan-20260520"
+      ]
+    },
+    {
+      "key": "streaming",
+      "nodeIds": [
+        "project-wiki-chat-agent-provider",
+        "project-wiki-chat-streaming-thinking"
+      ]
+    },
+    {
+      "key": "testing",
+      "nodeIds": [
+        "project-wiki-test-architecture",
+        "project-wiki-validation-command"
+      ]
+    },
+    {
+      "key": "tests",
+      "nodeIds": [
+        "project-wiki-current-validation-146-tests",
+        "project-wiki-semantic-tool-quality-suite"
+      ]
+    },
+    {
+      "key": "vector-search",
+      "nodeIds": [
+        "project-wiki-hybrid-search-rrf",
+        "project-wiki-semantic-search-gap"
+      ]
+    },
+    {
+      "key": "warnings",
+      "nodeIds": [
+        "project-wiki-mcp-context-pack",
+        "project-wiki-mcp-search-tools-current"
+      ]
+    }
+  ],
+  "orphanedNodes": [
+    "page:admin-models-maintenance-agent-plan-20260522",
+    "page:phase2-governance-workbench-council-review-20260522",
+    "page:phase3-retrieval-warning-propagation-council-review-20260522",
+    "page:phase4-chat-context-planner-native-tool-council-review-20260522",
+    "page:tag-governance-workbench-20260522"
+  ],
+  "supersessionChains": [],
+  "dependencyCycles": [],
+  "stalenessHeatmap": {
+    "current": 70
+  }
+}

@@ -8,7 +8,6 @@
 @inject AdminSettingsService Settings
 @inject ChatModelProfileService ModelProfiles
 @inject IEnumerable<IChatProvider> ChatProviders
-@inject MaintenanceAgentService Agent
 @inject ISnackbar Snackbar
 @using Microsoft.Extensions.Options
 @using System.Text.Json
@@ -189,54 +188,6 @@
                 </section>
             </div>
         </MudTabPanel>
-        <MudTabPanel Text="Maintenance" Icon="@Icons.Material.Filled.Engineering">
-            <div class="admin-maintenance-layout">
-                <section class="admin-maintenance-chat" aria-label="Maintenance agent admin chat">
-                    <MudText Typo="Typo.subtitle1">Maintenance agent</MudText>
-                    <MudTextField T="string" Value="@_maintenancePrompt" ValueChanged="@((string value) => _maintenancePrompt = value)" Label="Ask the maintenance agent" Variant="Variant.Outlined" Margin="Margin.Dense" Lines="4" Disabled="@_isBusy" />
-                    <div class="admin-maintenance-actions">
-                        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Send" Disabled="@(_isBusy || string.IsNullOrWhiteSpace(_maintenancePrompt))" OnClick="SendMaintenanceMessageAsync">Send</MudButton>
-                        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" Disabled="@_isBusy" OnClick="LoadMaintenanceTranscriptsAsync">Refresh transcripts</MudButton>
-                    </div>
-                    <small class="admin-setting-key">This conversation can use the same read-only wiki tools as Chat, but it is non-mutating. Any file, memory, page, or proposal change still needs the proposal workflow.</small>
-                </section>
-
-                <section class="admin-maintenance-transcripts" aria-label="Maintenance agent transcripts">
-                    <div class="wiki-pane-header">
-                        <strong>Recent transcripts</strong>
-                        <span class="wiki-muted">@_maintenanceTranscripts.Count logged</span>
-                    </div>
-                    <div class="admin-maintenance-transcript-search">
-                        <MudTextField T="string" Value="@_maintenanceTranscriptSearch" ValueChanged="@((string value) => _maintenanceTranscriptSearch = value)" Immediate="true" Label="Search transcripts" Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Disabled="@_isBusy" />
-                        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Search" Disabled="@_isBusy" OnClick="LoadMaintenanceTranscriptsAsync">Search</MudButton>
-                    </div>
-                    @if (_maintenanceTranscripts.Count == 0)
-                    {
-                        <div class="wiki-empty-state">No maintenance-agent transcript entries have been logged yet.</div>
-                    }
-                    else
-                    {
-                        <div class="admin-maintenance-transcript-list">
-                            @foreach (var entry in _maintenanceTranscripts)
-                            {
-                                <article class="admin-maintenance-transcript">
-                                    <header>
-                                        <strong>@entry.CreatedAtUtc.ToLocalTime().ToString("g")</strong>
-                                        <span>@TranscriptProviderLabel(entry)</span>
-                                    </header>
-                                    <p><strong>Admin:</strong> @entry.UserMessage</p>
-                                    <p><strong>Agent:</strong> @entry.AssistantMessage</p>
-                                    @if (entry.Warnings.Count > 0)
-                                    {
-                                        <small class="admin-maintenance-warning">@entry.Warnings.First()</small>
-                                    }
-                                </article>
-                            }
-                        </div>
-                    }
-                </section>
-            </div>
-        </MudTabPanel>
         <MudTabPanel Text="Configuration" Icon="@Icons.Material.Filled.Tune">
             <div class="admin-filter-bar" aria-label="Editable settings filters">
                 <MudTextField T="string" Value="@_settingsSearch" ValueChanged="@((string value) => _settingsSearch = value)" Immediate="true" Label="Search settings" Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Class="admin-filter-input" />
@@ -268,7 +219,7 @@
                                     <div class="admin-setting-heading">
                                         <strong>@context.Item.Label</strong>
                                         <MudTooltip Text="@context.Item.HelpText" Placement="Placement.Right">
-                                            <span class="admin-help-icon" title="@context.Item.HelpText" aria-label="Help for @context.Item.Label" tabindex="0">
+                                            <span class="admin-help-icon" aria-label="Help for @context.Item.Label" tabindex="0">
                                                 <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" />
                                             </span>
                                         </MudTooltip>
@@ -389,11 +340,8 @@
     private IReadOnlyList<VersionHistoryEntry> _recentVersions = [];
     private IReadOnlyList<EditableConfigurationRow> _editableSettings = [];
     private IReadOnlyList<ConfigurationItem> _configurationItems = [];
-    private IReadOnlyList<MaintenanceAdminTranscriptEntry> _maintenanceTranscripts = [];
     private IReadOnlyList<ChatModelSummary> _modelProfileModelOptions = [];
     private Dictionary<string, int> _providerLinkCounts = new(StringComparer.OrdinalIgnoreCase);
-    private string _maintenancePrompt = string.Empty;
-    private string _maintenanceTranscriptSearch = string.Empty;
     private string _settingsSearch = string.Empty;
     private string _settingsCategory = AllFilterValue;
     private HashSet<string> _expandedSettingGroups = new(StringComparer.OrdinalIgnoreCase);
@@ -474,7 +422,6 @@
         _userRows = rows;
         _providers = await Database.ProviderLinks.ListProvidersAsync(CancellationToken.None);
         _modelProfiles = ModelProfiles.ListProfiles();
-        _maintenanceTranscripts = await Agent.ListRecentTranscriptsAsync(12, CancellationToken.None, _maintenanceTranscriptSearch);
         _audit = (await Database.AuditLogs.QueryAsync(new AuditLogQuery(PageSize: 100), CancellationToken.None)).Data;
         _recentVersions = await LoadRecentVersionsAsync();
         _editableSettings = Settings.ListEditableSettings().Select(item => new EditableConfigurationRow(item)).ToList();
@@ -543,50 +490,6 @@
         Snackbar.Add($"{provider.DisplayName} {(enabled ? "enabled" : "disabled")}.", Severity.Success);
         _isBusy = false;
         await LoadAsync();
-    }
-
-    private async Task LoadMaintenanceTranscriptsAsync()
-    {
-        _isBusy = true;
-        try
-        {
-            _maintenanceTranscripts = await Agent.ListRecentTranscriptsAsync(12, CancellationToken.None, _maintenanceTranscriptSearch);
-            Snackbar.Add("Maintenance transcripts refreshed.", Severity.Success);
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add(ex.Message, Severity.Error);
-        }
-        finally
-        {
-            _isBusy = false;
-        }
-    }
-
-    private async Task SendMaintenanceMessageAsync()
-    {
-        if (string.IsNullOrWhiteSpace(_maintenancePrompt))
-        {
-            Snackbar.Add("Enter a maintenance-agent message first.", Severity.Warning);
-            return;
-        }
-
-        _isBusy = true;
-        try
-        {
-            var entry = await Agent.SendAdminMessageAsync(_maintenancePrompt, CancellationToken.None);
-            _maintenancePrompt = string.Empty;
-            _maintenanceTranscripts = await Agent.ListRecentTranscriptsAsync(12, CancellationToken.None, _maintenanceTranscriptSearch);
-            Snackbar.Add(entry.Warnings.Count > 0 ? entry.Warnings[0] : "Maintenance agent response logged.", entry.Warnings.Count > 0 ? Severity.Warning : Severity.Success);
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add(ex.Message, Severity.Error);
-        }
-        finally
-        {
-            _isBusy = false;
-        }
     }
 
     private async Task EditModelProfile(ChatModelProfileView profile)
@@ -841,9 +744,6 @@
         string.Equals(left, right, StringComparison.OrdinalIgnoreCase) ||
         (string.Equals(left, "GitHub", StringComparison.OrdinalIgnoreCase) && string.Equals(right, "Copilot", StringComparison.OrdinalIgnoreCase)) ||
         (string.Equals(left, "GitHubCopilot", StringComparison.OrdinalIgnoreCase) && string.Equals(right, "GitHub", StringComparison.OrdinalIgnoreCase));
-
-    private static string TranscriptProviderLabel(MaintenanceAdminTranscriptEntry entry) =>
-        string.IsNullOrWhiteSpace(entry.Provider) ? "No provider" : $"{entry.Provider} / {entry.Model ?? "default model"}";
 
     private static string FormatProfileRoles(ChatModelProfileView profile) => profile.AllowedRoles.Count == 0 ? "All chat users" : string.Join(", ", profile.AllowedRoles);
 
