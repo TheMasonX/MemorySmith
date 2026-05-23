@@ -5,9 +5,11 @@ repo_root="$(git rev-parse --show-toplevel)"
 
 if command -v pwsh >/dev/null 2>&1; then
   pwsh -NoProfile -ExecutionPolicy Bypass -File "$repo_root/Scripts/Test-PageLinks.ps1"
+  pwsh -NoProfile -ExecutionPolicy Bypass -File "$repo_root/Scripts/Test-PagePathLiterals.ps1"
 elif command -v powershell >/dev/null 2>&1; then
   powershell -NoProfile -ExecutionPolicy Bypass -File "$repo_root/Scripts/Test-PageLinks.ps1"
+  powershell -NoProfile -ExecutionPolicy Bypass -File "$repo_root/Scripts/Test-PagePathLiterals.ps1"
 else
-  echo "pre-commit: PowerShell is required to run Scripts/Test-PageLinks.ps1" >&2
+  echo "pre-commit: PowerShell is required to run Scripts/Test-PageLinks.ps1 and Scripts/Test-PagePathLiterals.ps1" >&2
   exit 1
 fi

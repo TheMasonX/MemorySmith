@@ -24,6 +24,10 @@ jobs:
         shell: pwsh
         run: ./Scripts/Test-PageLinks.ps1
 
+      - name: Validate page path literals
+        shell: pwsh
+        run: ./Scripts/Test-PagePathLiterals.ps1
+
       - name: Build
         run: dotnet build --no-restore --configuration Release
 

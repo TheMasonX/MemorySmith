@@ -389,6 +389,12 @@ Validate local markdown page links (relative .md links and existing targets unde
 .\Scripts\Test-PageLinks.ps1
 ```
 
+Validate plain-text `Data/Pages/...` markdown path literals (for example in architecture notes and council pages) so moved pages do not leave stale references behind:
+
+```powershell
+.\Scripts\Test-PagePathLiterals.ps1
+```
+
 Enable the same check on every commit with the repo-managed pre-commit hook:
 
 ```powershell
@@ -396,6 +402,7 @@ git config core.hooksPath .githooks
 ```
 
 After setting `core.hooksPath`, `git commit` runs the page-link validator automatically.
+After setting `core.hooksPath`, `git commit` runs both validators automatically.
 
 The script creates or reuses a local Python virtual environment under `artifacts/tools/docs-site-venv`, installs the `markdown` package used by CI, rebuilds `docs/output/wiki`, and with `-Deploy` dispatches `.github/workflows/docs-pages.yml` through GitHub CLI. `-Deploy` requires `gh auth login` and only runs from `main` or `master`.
 
