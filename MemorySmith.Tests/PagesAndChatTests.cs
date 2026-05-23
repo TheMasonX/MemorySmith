@@ -366,6 +366,24 @@ public class PagesAndChatTests
     }
 
     [Test]
+    public void ChatMarkdownRenderer_NormalizesWikiPageLinksToPagesRoute()
+    {
+        var html = ChatMarkdownRenderer.RenderHtml("""
+        [Council](llm-council.md)
+        [Council Root](/llm-council)
+        [Search Relative](./search-and-chat.md)
+        [Keep Chat Route](/chat)
+        """);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(html, Does.Contain("href=\"/pages/llm-council\""));
+            Assert.That(html, Does.Contain("href=\"/pages/search-and-chat\""));
+            Assert.That(html, Does.Contain("href=\"/chat\""));
+        });
+    }
+
+    [Test]
     public void ChatMarkdownRenderer_KeepsUnclosedMermaidFenceAsCode()
     {
         var html = ChatMarkdownRenderer.RenderHtml("""

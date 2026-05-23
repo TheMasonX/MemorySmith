@@ -309,9 +309,11 @@ try
     builder.Services.AddSingleton<MaintenanceTopicMapService>();
     builder.Services.AddScoped<MaintenanceAgentService>();
     builder.Services.AddSingleton<OperationalDiagnosticsService>();
-    builder.Services.AddHttpClient<OllamaChatProvider>(client =>
+    builder.Services.AddHttpClient<OllamaChatProvider>((sp, client) =>
     {
-        client.Timeout = System.Threading.Timeout.InfiniteTimeSpan;
+        var options = sp.GetRequiredService<IOptions<MemorySmithOptions>>().Value;
+        var timeoutSeconds = Math.Clamp(options.Chat.RequestTimeoutSeconds, 10, 3600);
+        client.Timeout = TimeSpan.FromSeconds(timeoutSeconds);
     });
     builder.Services.AddScoped<GitHubCopilotChatProvider>();
     builder.Services.AddScoped<IChatProvider>(sp => sp.GetRequiredService<OllamaChatProvider>());
