@@ -100,7 +100,9 @@ For agent workflows:
 | Exact fact lookup | Lexical search or `memorysmith_get` | Check references/conflicts before treating the fact as current. |
 | Conceptual recall | Semantic or hybrid search | Confirm with lexical/source evidence before changing docs or code. |
 | Human explanation | Page search/get plus relevant memories | Answer with page context first, then cite memory facts as evidence. |
-| Review of a major decision | [Council Workflow](llm-council.md) | Run separate architecture, retrieval, UX, and skeptical passes. |
+| Review of a major decision | [Council Workflow](../council/llm-council.md) | Run separate architecture, retrieval, UX, and skeptical passes. |
+
+Treat `memorysmith_context_pack` as a bounded view rather than a complete census. If it reports omitted records or other truncation warnings, broaden the query or follow up with `memorysmith_source_bundle` instead of assuming the pack is exhaustive.
 
 Prefer JSON output for agent parsing when a tool offers it. Prefer Markdown output when a human is reading the result directly. Context-pack JSON includes `schemaVersion: memorysmith.context-pack.v1`, preserves the existing `records` and `warnings` fields, and can include per-record diagnostics for stale, broken-source, relationship, tag-policy, and maintenance warnings.
 
@@ -114,7 +116,7 @@ The long-term search goal is not only higher scores; it is better recall of the 
 - context packs should preserve relationships, warnings, and enough provenance for agents to reason safely;
 - source bundles should stay bounded and be used after search has narrowed the evidence set.
 
-The [Core Memory System Improvements RFC](temp-plan.md) recommends a convention-first approach with validation and schema-promotion gates. The [AI Memory Suite Implementation Plan](ai-memory-suite-implementation-plan.md) turns that direction into a phased plan covering tag policy, staleness warnings, maintenance audit, structured tool output, Agent write governance, and page retrieval. Namespaced tags and markdown alert blocks are useful planning conventions, but search ranking should not depend on them until validators, probes, and trace-visible warnings exist.
+The [Core Memory System Improvements RFC](../plans/temp-plan.md) recommends a convention-first approach with validation and schema-promotion gates. The [AI Memory Suite Implementation Plan](../plans/ai-memory-suite-implementation-plan.md) turns that direction into a phased plan covering tag policy, staleness warnings, maintenance audit, structured tool output, Agent write governance, and page retrieval. Namespaced tags and markdown alert blocks are useful planning conventions, but search ranking should not depend on them until validators, probes, and trace-visible warnings exist.
 
 Do not silently hide old Core records with temporal decay. The first governance slice disables automatic score-based deprecation by default, surfaces low-score records as `DeprecationRecommended` maintenance warnings, and keeps ranking unchanged while diagnostics and probes mature.
 

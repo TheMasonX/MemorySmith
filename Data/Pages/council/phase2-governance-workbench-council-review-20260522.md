@@ -6,8 +6,8 @@ PR #15 implements warning-first governance UI and policy save behavior without s
 
 ## Evidence Reviewed
 
-- `Data/Pages/application-next-steps-council-review-20260521.md` Phase 2 acceptance criteria.
-- `Data/Pages/tag-governance-workbench-20260522.md` human tag authoring and warning guidance.
+- `Data/Pages/council/application-next-steps-council-review-20260521.md` Phase 2 acceptance criteria.
+- `Data/Pages/workbench/tag-governance-workbench-20260522.md` human tag authoring and warning guidance.
 - `MemorySmith.App/Services/TagGovernanceService.cs` snapshot, suggestion, completion, and draft diagnostic service.
 - `MemorySmith.App/Services/MemoryGovernanceServices.cs` tag diagnostics and observe/warn/blockUnknown policy mode behavior.
 - `MemorySmith.App/Services/MemoryApplicationService.cs` save-time blocking only for `Error` diagnostics.

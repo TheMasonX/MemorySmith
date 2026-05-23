@@ -7,9 +7,9 @@ Adopt a staged capability plan: ship convention-first context compaction and per
 - Mixed impact: retrieval/search behavior, chat context planning, tool-loop behavior, prompt/runtime instruction quality, user-facing chat conventions, and optional schema evolution.
 
 ## Evidence Reviewed
-- [Data/Pages/search-and-chat.md](search-and-chat.md)
-- [Data/Pages/llm-council.md](llm-council.md)
-- [Data/Pages/phase4-chat-context-planner-native-tool-council-review-20260522.md](phase4-chat-context-planner-native-tool-council-review-20260522.md)
+- [Data/Pages/guides/search-and-chat.md](../guides/search-and-chat.md)
+- [Data/Pages/council/llm-council.md](llm-council.md)
+- [Data/Pages/council/phase4-chat-context-planner-native-tool-council-review-20260522.md](phase4-chat-context-planner-native-tool-council-review-20260522.md)
 - [Data/Memories/Core/project-wiki-chat-configuration-current.json](../Memories/Core/project-wiki-chat-configuration-current.json)
 - [Data/Memories/Core/project-wiki-chat-agent-provider.json](../Memories/Core/project-wiki-chat-agent-provider.json)
 - [Data/Memories/Core/project-wiki-chat-local-storage-persistence.json](../Memories/Core/project-wiki-chat-local-storage-persistence.json)

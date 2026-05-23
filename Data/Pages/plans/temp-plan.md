@@ -4,7 +4,7 @@ Status: Draft RFC, council-reviewed on 2026-05-20
 
 Scope: Wiki and memory-system planning only; no implementation is implied by this page
 
-Related: [Search and Chat](search-and-chat.md), [Council Workflow](llm-council.md), [Deep Research Prompt](memory-system-deep-research-prompt.md), [AI Memory Suite Implementation Plan](ai-memory-suite-implementation-plan.md), `MemorySmith.Core/Docs/Plans/MemorySystemSchemaImprovements_20260519.md`
+Related: [Search and Chat](../guides/search-and-chat.md), [Council Workflow](../council/llm-council.md), [Deep Research Prompt](../research/memory-system-deep-research-prompt.md), [AI Memory Suite Implementation Plan](ai-memory-suite-implementation-plan.md), `MemorySmith.Core/Docs/Plans/MemorySystemSchemaImprovements_20260519.md`
 
 ## 1. Executive Summary
 
@@ -210,7 +210,7 @@ Future UI/trace improvements may surface these checklist items directly in the A
 ### Phase 0: Decision Cleanup
 
 - Treat this page and `MemorySystemSchemaImprovements_20260519.md` as competing RFCs, not both accepted plans.
-- Use the [Council Workflow](llm-council.md) for any final decision that changes schema, search ranking, or chat write behavior.
+- Use the [Council Workflow](../council/llm-council.md) for any final decision that changes schema, search ranking, or chat write behavior.
 - Record the decision and dissent in a page or structured memory before implementation.
 
 ### Phase 1: Documentation and Convention Pilot
@@ -275,7 +275,7 @@ Do not implement ranking, schema, or write-behavior changes from this RFC until 
 - Should relationship typing live in schema, a graph store, or convention-backed content notes?
 - What role should be required to approve Agent writes that create Core memories or strict rules?
 
-Externally researchable parts of these questions have been converted into a reusable [Deep Research Prompt](memory-system-deep-research-prompt.md). Use the research results as evidence for a later council review; do not treat external recommendations as automatic MemorySmith decisions.
+Externally researchable parts of these questions have been converted into a reusable [Deep Research Prompt](../research/memory-system-deep-research-prompt.md). Use the research results as evidence for a later council review; do not treat external recommendations as automatic MemorySmith decisions.
 
 ## 12. Council Review Summary
 

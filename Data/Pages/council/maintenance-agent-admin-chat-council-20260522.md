@@ -6,8 +6,8 @@ Add a first admin-only maintenance-agent conversation surface as a non-mutating 
 
 ## Evidence Reviewed
 
-- `Data/Pages/admin-models-maintenance-agent-plan-20260522.md`: tracks remaining maintenance task/log visibility, admin transcript-style logs, and optional admin conversation.
-- `Data/Pages/proposal-review-agent-execution-council-20260522.md`: established that proposal review can use the existing maintenance-agent provider now, while model-profile assignment and detailed transcripts remain deferred.
+- `Data/Pages/plans/admin-models-maintenance-agent-plan-20260522.md`: tracks remaining maintenance task/log visibility, admin transcript-style logs, and optional admin conversation.
+- `Data/Pages/council/proposal-review-agent-execution-council-20260522.md`: established that proposal review can use the existing maintenance-agent provider now, while model-profile assignment and detailed transcripts remain deferred.
 - `Data/Memories/Core/project-wiki-maintenance-proposals-current.json`: current state for `/proposals`, recent task activity, proposal review execution, and approval-gated proposal writes.
 - `MemorySmith.App/Services/MaintenanceAgentServices.cs`: current run/review paths, `MaintenanceRunActivity`, provider invocation through `IChatProvider`, and existing storage paths.
 - `MemorySmith.App/Components/Pages/Chat.razor`: existing general chat has browser-local sessions and should not be copied wholesale for admin maintenance logs without a server-side transcript decision.

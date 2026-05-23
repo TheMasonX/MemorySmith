@@ -2,7 +2,7 @@
 
 Status: First implementation slice, 2026-05-20
 
-Related: [AI Memory Suite Implementation Plan](ai-memory-suite-implementation-plan.md), [Search and Chat](search-and-chat.md), [Council Workflow](llm-council.md)
+Related: [AI Memory Suite Implementation Plan](../plans/ai-memory-suite-implementation-plan.md), [Search and Chat](search-and-chat.md), [Council Workflow](../council/llm-council.md)
 
 ## Purpose
 

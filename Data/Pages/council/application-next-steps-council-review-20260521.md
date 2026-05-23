@@ -11,9 +11,9 @@ After PR #13, MemorySmith should prioritize measurement-backed governance UX and
 ## Evidence Reviewed
 
 - [README](../../README.md) for the current single-host app, route map, search modes, chat behavior, MCP tools, and configuration.
-- [AI Memory Suite Implementation Plan](ai-memory-suite-implementation-plan.md) for the phased governance roadmap and explicit still-gated work.
-- [Core Memory System Improvements RFC](temp-plan.md) for convention-first, validation-first schema discipline.
-- [Search and Chat](search-and-chat.md) for current search modes, chat tool behavior, retrieval habits, and council triggers.
+- [AI Memory Suite Implementation Plan](../plans/ai-memory-suite-implementation-plan.md) for the phased governance roadmap and explicit still-gated work.
+- [Core Memory System Improvements RFC](../plans/temp-plan.md) for convention-first, validation-first schema discipline.
+- [Search and Chat](../guides/search-and-chat.md) for current search modes, chat tool behavior, retrieval habits, and council triggers.
 - [Council Workflow](llm-council.md) and `.github/skills/llm-council-review/SKILL.md` for council method and completion checks.
 - [PR 13 Search Diagnostics Follow-Up](pr13-search-diagnostics-council-review-20260521.md) for the just-merged diagnostics, hot-path hardening, and no-ranking-change constraint.
 - `MemorySmith.Core/Docs/Plans/SemantingSearch.md` for ONNX/vector-search aspirations and current exact in-memory cosine implementation notes.
@@ -130,9 +130,9 @@ Implementation result, 2026-05-22:
 - Replaced memory editor comma-only tags with keyboard-addable chips, autocomplete suggestions, and a pre-save draft diagnostics panel for tag/source/relation/staleness checks.
 - Added `/tags` Tag Manager for namespace, allowlist, blocklist, alias, usage, policy mode, and read-only suggestion review.
 - Preserved approval-only cleanup: suggestions do not rewrite memory records or tag policy automatically.
-- Added authoring and warning guidance in `Data/Pages/tag-governance-workbench-20260522.md`.
+- Added authoring and warning guidance in `Data/Pages/workbench/tag-governance-workbench-20260522.md`.
 - Local validation passed: `TagGovernanceTests` 7/7, `dotnet build MemorySmith.App/MemorySmith.App.csproj -v minimal`, `dotnet build MemorySmith.slnx -v minimal`, full suite 241/241, and benchmark smoke across lexical metadata diagnostics, semantic, hybrid, chat-context, and context-pack paths.
-- Council review approved merge in `Data/Pages/phase2-governance-workbench-council-review-20260522.md`, with non-blocking follow-ups for blockUnknown remediation and Phase 3 diagnostics envelope size.
+- Council review approved merge in `Data/Pages/council/phase2-governance-workbench-council-review-20260522.md`, with non-blocking follow-ups for blockUnknown remediation and Phase 3 diagnostics envelope size.
 
 ### Phase 3: Retrieval Warning Propagation
 
@@ -162,7 +162,7 @@ Implementation result, 2026-05-22:
 - Added diagnostic/provider fields to unified search result objects and opt-in structured JSON envelopes for chat and MCP search tools.
 - Rendered compact diagnostic chips in chat reference drawers so stale/source/tag/relation warnings are visible at use time.
 - Local validation passed: focused Phase 3 tests 58/58, MCP/search tests 13/13 after MCP envelope coverage, `dotnet build MemorySmith.slnx -v minimal`, full NUnit suite 245/245, and benchmark smoke across lexical, lexical diagnostics, semantic, hybrid, chat-context, and context-pack paths.
-- Council review approved delivery in `Data/Pages/phase3-retrieval-warning-propagation-council-review-20260522.md`, with non-blocking follow-ups for envelope-size caps and Phase 4 shared tool registry extraction.
+- Council review approved delivery in `Data/Pages/council/phase3-retrieval-warning-propagation-council-review-20260522.md`, with non-blocking follow-ups for envelope-size caps and Phase 4 shared tool registry extraction.
 
 ### Phase 4: Chat Context Planner And Native Tool Spike
 
@@ -192,7 +192,7 @@ Implementation result, 2026-05-22:
 - Documented the GitHub Copilot native-tool spike result in code/council notes: current SDK integration supports streaming, image attachments, model listing, and usage metadata, but no stable app-supplied native tool registration hook is exposed here, so JSON-text tool calls remain the supported fallback.
 - Routed shared MCP tools through `ChatToolCatalog`; only `memorysmith_source_bundle` and `memorysmith_find_by_source` remain MCP-controller-local because they are source-link bridge tools with distinct authorization needs.
 - Local validation passed: focused chat/MCP/tool tests 73/73, `dotnet build MemorySmith.slnx -v minimal`, full NUnit suite 249/249, and benchmark smoke across lexical, lexical diagnostics, semantic, hybrid, chat-context, and context-pack paths.
-- Council review approved delivery in `Data/Pages/phase4-chat-context-planner-native-tool-council-review-20260522.md`, with non-blocking follow-ups for non-stream planner metadata and possible source bridge risk modeling.
+- Council review approved delivery in `Data/Pages/council/phase4-chat-context-planner-native-tool-council-review-20260522.md`, with non-blocking follow-ups for non-stream planner metadata and possible source bridge risk modeling.
 
 ### Phase 5: Agent Write Governance
 

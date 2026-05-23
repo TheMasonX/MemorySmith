@@ -9,8 +9,8 @@ Proceed with a narrow PR 13 follow-up that preserves the no-ranking-change desig
 - PR #13 comment from TheMasonX: search is critical; optimize speed, accuracy, signal-to-noise ratio, token bloat, tests, benchmarking, and centralization.
 - PR #13 Copilot review comments on lexical diagnostics N+1, semantic linear scans, context-pack warning noise, maintenance event spam, duplicated deprecation thresholds, status-like blocked tags, and Markdown formatter/doc drift.
 - Follow-up commit `52476a4 Centralize search diagnostics enrichment`.
-- [AI Memory Suite Implementation Plan](ai-memory-suite-implementation-plan.md), especially Phase 1 and Phase 3 retrieval output safety gates.
-- [Memory Governance Guide](memory-governance-guide.md), especially diagnostics-as-metadata and no-ranking-change constraints.
+- [AI Memory Suite Implementation Plan](../plans/ai-memory-suite-implementation-plan.md), especially Phase 1 and Phase 3 retrieval output safety gates.
+- [Memory Governance Guide](../guides/memory-governance-guide.md), especially diagnostics-as-metadata and no-ranking-change constraints.
 - MemorySmith context pack records: `project-wiki-search-roadmap`, `project-wiki-mcp-context-pack`, `project-wiki-mcp-search-tools-current`, and `ai-memory-suite-governance-foundation-20260520`.
 - Source evidence: [MemoryApplicationService.cs](../../MemorySmith.App/Services/MemoryApplicationService.cs), [MemoryDiagnosticFormatting.cs](../../MemorySmith.App/Services/MemoryDiagnosticFormatting.cs), [ChatToolCatalog.cs](../../MemorySmith.App/Services/ChatToolCatalog.cs), [McpController.cs](../../MemorySmith.App/Controllers/McpController.cs), [SearchBenchmarkTests.cs](../../MemorySmith.Tests/SearchBenchmarkTests.cs), [SearchBenchmarks.cs](../../MemorySmith.Benchmarks/SearchBenchmarks.cs).
 - Validation evidence before this follow-up: `dotnet build MemorySmith.slnx -v minimal` passed; PR #13 earlier validation reached 220/220 tests after the page-asset repair.

@@ -74,9 +74,9 @@ These remain MemorySmith-internal and should be settled by council review + loca
 
 Use this packet when running the next council review:
 
-- [Core Memory System Improvements RFC](temp-plan.md)
-- [AI Memory Suite Implementation Plan](ai-memory-suite-implementation-plan.md)
-- [Council Workflow](llm-council.md)
+- [Core Memory System Improvements RFC](../plans/temp-plan.md)
+- [AI Memory Suite Implementation Plan](../plans/ai-memory-suite-implementation-plan.md)
+- [Council Workflow](../council/llm-council.md)
 - [Deep Research Prompt](memory-system-deep-research-prompt.md)
 - [temp-deep-research-response](temp-deep-research-response.md)
 - This intake note
