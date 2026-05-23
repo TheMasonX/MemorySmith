@@ -1972,7 +1972,15 @@
     private static MarkupString RenderTurnContent(ChatTurnState turn)
     {
         var html = ChatMarkdownRenderer.RenderHtml(turn.Content);
-        return new MarkupString(ApplyInlinePageReferenceFallback(html, turn));
+        html = ApplyInlinePageReferenceFallback(html, turn);
+
+        var allowedPages = BuildPageAliasMap(turn).Values
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var allowedMemories = BuildAllowedMemoryIds(turn);
+        html = ChatReferenceLinkPolicy.FilterToAllowedTargets(html, allowedPages, allowedMemories);
+
+        return new MarkupString(html);
     }
 
     private static string ApplyInlinePageReferenceFallback(string html, ChatTurnState turn)
@@ -2016,6 +2024,30 @@
         }
 
         return aliases;
+    }
+
+    private static IReadOnlyCollection<string> BuildAllowedMemoryIds(ChatTurnState turn)
+    {
+        var ids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var item in turn.Context.Where(item => string.Equals(item.Kind, "memory", StringComparison.OrdinalIgnoreCase)))
+        {
+            var id = item.Id?.Trim();
+            if (!string.IsNullOrWhiteSpace(id))
+            {
+                ids.Add(id);
+            }
+        }
+
+        foreach (var id in turn.WrittenMemories)
+        {
+            if (!string.IsNullOrWhiteSpace(id))
+            {
+                ids.Add(id.Trim());
+            }
+        }
+
+        return ids;
     }
 
     private static void AddPageAliases(string value, IDictionary<string, string> aliases)

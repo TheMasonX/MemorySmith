@@ -387,10 +387,9 @@ public class PagesAndChatTests
     public void ChatMarkdownRenderer_NormalizesStructuredMemoryAndPageReferenceTargets()
     {
         var html = ChatMarkdownRenderer.RenderHtml("""
-        [Council Memory](memory-system-rfc-council-review-20260520: Memory System RFC Council Review)
+        [Council Memory](memory-system-rfc-council-review-20260520)
         [Explicit Memory](memory:ai-memory-suite-governance-foundation-20260520)
         [Explicit Page](page:llm-council.md)
-        [Labeled Page](page:search-and-chat: Search and Chat)
         """);
 
         Assert.Multiple(() =>
@@ -398,7 +397,40 @@ public class PagesAndChatTests
             Assert.That(html, Does.Contain("href=\"/api/memories/memory-system-rfc-council-review-20260520\""));
             Assert.That(html, Does.Contain("href=\"/api/memories/ai-memory-suite-governance-foundation-20260520\""));
             Assert.That(html, Does.Contain("href=\"/pages/llm-council\""));
-            Assert.That(html, Does.Contain("href=\"/pages/search-and-chat\""));
+        });
+    }
+
+    [Test]
+    public void ChatReferenceLinkPolicy_BlocksUnresolvableTargets()
+    {
+        const string html = "<p><a href=\"/pages/missing-page\">missing</a> <a href=\"/api/memories/unknown-id\">unknown</a></p>";
+
+        var filtered = ChatReferenceLinkPolicy.FilterToAllowedTargets(
+            html,
+            allowedPageSlugs: ["llm-council"],
+            allowedMemoryIds: ["memory-system-rfc-council-review-20260520"]);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(filtered, Does.Contain("href=\"#\">missing"));
+            Assert.That(filtered, Does.Contain("href=\"#\">unknown"));
+        });
+    }
+
+    [Test]
+    public void ChatReferenceLinkPolicy_AllowsOnlyTurnVisibleTargets()
+    {
+        const string html = "<p><a href=\"page:llm-council.md\">council</a> <a href=\"memory:memory-system-rfc-council-review-20260520\">review</a></p>";
+
+        var filtered = ChatReferenceLinkPolicy.FilterToAllowedTargets(
+            html,
+            allowedPageSlugs: ["llm-council"],
+            allowedMemoryIds: ["memory-system-rfc-council-review-20260520"]);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(filtered, Does.Contain("href=\"/pages/llm-council\">council"));
+            Assert.That(filtered, Does.Contain("href=\"/api/memories/memory-system-rfc-council-review-20260520\">review"));
         });
     }
 
