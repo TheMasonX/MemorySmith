@@ -1552,9 +1552,14 @@ body {
 .chat-trace-filters {
     display: flex;
     flex-wrap: wrap;
-    gap: 2px 8px;
+    align-items: center;
+    gap: 4px;
     padding: 6px 8px;
     border-bottom: 1px solid var(--vscode-border-soft);
+}
+
+.chat-trace-filter-button {
+    border-radius: 5px;
 }
 
 .chat-trace-graph {
