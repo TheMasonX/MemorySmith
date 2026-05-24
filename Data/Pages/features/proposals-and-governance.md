@@ -1,5 +1,7 @@
 # Proposals and Governance
 
+Visibility: this page is intentionally Admin-only.
+
 The Proposals surface at `/proposals` is the governance workspace for reviewing and applying maintenance or agent-generated changes.
 
 ## What It Does

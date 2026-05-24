@@ -15,6 +15,20 @@
   ],
   "References": [],
   "Conflicts": [],
+  "SourceLinks": [
+    {
+      "Label": "Reference relationship assertion in base tests",
+      "Uri": "%MemorySmithRepo%MemorySmith.Tests/ProjectWikiTestbaseTests.cs",
+      "StartLine": 104,
+      "EndLine": 107
+    },
+    {
+      "Label": "Reference relationship assertion in MCP tests",
+      "Uri": "%MemorySmithRepo%MemorySmith.Tests/McpAndSemanticSearchTests.cs",
+      "StartLine": 353,
+      "EndLine": 353
+    }
+  ],
   "UsageCount": 0,
-  "LastUpdated": "2026-05-12T00:00:00Z"
+  "LastUpdated": "2026-05-23T00:00:00Z"
 }

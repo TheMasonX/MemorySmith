@@ -6,15 +6,27 @@ Scope note: the Tasks feature is intentionally excluded from this section becaus
 
 ## Feature Pages
 
+- [Feature Guide By Persona](by-persona.md)
+- [Feature Route Map](route-map.md)
+
+## Core Experiences
+
 - [Memories Workbench](memories-workbench.md)
 - [Markdown Pages Wiki](markdown-pages-wiki.md)
 - [Search System](search-system.md)
 - [Chat and Agent](chat-and-agent.md)
-- [Proposals and Governance](proposals-and-governance.md)
-- [Admin and Authentication](admin-and-auth.md)
 - [Health and Diagnostics](health-and-diagnostics.md)
 - [Variables and Source Links](variables-and-source-links.md)
 - [API and MCP Integration](api-and-mcp.md)
+
+## Admin Features
+
+- [Proposals and Governance](proposals-and-governance.md) (Admin-only page visibility)
+- [Admin and Authentication](admin-and-auth.md) (Admin-only page visibility)
+
+## Implementation Notes
+
+- [Workbench Layout Hardening](workbench-layout-hardening.md)
 
 ## How To Use This Section
 

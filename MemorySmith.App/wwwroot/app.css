@@ -163,6 +163,14 @@ body {
     flex: 1;
 }
 
+.memory-body.is-nav-collapsed {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.memory-body.is-nav-collapsed .wiki-results-pane {
+    display: none;
+}
+
 .wiki-results-pane,
 .wiki-detail-pane {
     display: flex;
@@ -663,7 +671,7 @@ body {
 
 .tag-manager-body {
     display: grid;
-    grid-template-columns: minmax(360px, 38%) minmax(520px, 1fr);
+    grid-template-columns: minmax(300px, 40%) minmax(0, 1fr);
     gap: 8px;
     min-height: 0;
     flex: 1;
@@ -672,6 +680,7 @@ body {
 .tag-policy-pane,
 .tag-insights-pane {
     min-height: 0;
+    min-width: 0;
 }
 
 .tag-policy-editor {
@@ -694,7 +703,7 @@ body {
 
 .tag-namespace-row {
     display: grid;
-    grid-template-columns: minmax(95px, 1fr) 112px 120px minmax(120px, 1fr) 32px;
+    grid-template-columns: minmax(110px, 1.1fr) minmax(108px, 0.9fr) minmax(130px, 1fr) minmax(130px, 1.2fr) 32px;
     align-items: center;
     gap: 6px;
     padding: 6px;
@@ -709,6 +718,17 @@ body {
 .tag-table-wrap {
     overflow: auto;
     max-height: calc(100vh - 220px);
+}
+
+.tag-insights-pane .admin-tabs,
+.tag-insights-pane .mud-tabs,
+.tag-insights-pane .mud-tabs-panels,
+.tag-insights-pane .mud-tab-panel {
+    min-height: 0;
+}
+
+.tag-insights-pane .mud-tabs-panels {
+    overflow: auto;
 }
 
 .tag-manager-table {
@@ -2648,6 +2668,14 @@ body {
     flex: 1;
 }
 
+.proposals-body.is-list-collapsed {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.proposals-body.is-list-collapsed .proposals-list-pane {
+    display: none;
+}
+
 .proposal-active-run {
     display: inline-flex;
     align-items: center;
@@ -3132,6 +3160,10 @@ body {
         grid-template-columns: minmax(250px, 38%) minmax(0, 1fr);
     }
 
+    .memory-body.is-nav-collapsed {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
     .pages-body {
         grid-template-columns: minmax(260px, 32%) minmax(0, 1fr);
     }
@@ -3225,6 +3257,10 @@ body {
         min-width: 128px;
         max-width: 180px;
     }
+
+    .tag-manager-body {
+        grid-template-columns: minmax(260px, 44%) minmax(0, 1fr);
+    }
 }
 
 @media (max-width: 700px) {
@@ -3232,8 +3268,25 @@ body {
         grid-template-columns: 1fr;
     }
 
+    .proposals-body.is-list-collapsed {
+        grid-template-columns: 1fr;
+    }
+
     .proposal-action-row {
         justify-content: stretch;
+    }
+
+    .tag-manager-body {
+        grid-template-columns: 1fr;
+        grid-template-rows: minmax(200px, 42%) minmax(0, 1fr);
+    }
+
+    .tag-policy-pane {
+        max-height: 42vh;
+    }
+
+    .tag-namespace-row {
+        grid-template-columns: minmax(0, 1fr);
     }
 }
 

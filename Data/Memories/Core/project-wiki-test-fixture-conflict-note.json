@@ -16,6 +16,20 @@
   "Conflicts": [
     "project-wiki-test-fixture-context-root"
   ],
+  "SourceLinks": [
+    {
+      "Label": "Conflict assertion in base tests",
+      "Uri": "%MemorySmithRepo%MemorySmith.Tests/ProjectWikiTestbaseTests.cs",
+      "StartLine": 107,
+      "EndLine": 107
+    },
+    {
+      "Label": "Conflict assertion in MCP tests",
+      "Uri": "%MemorySmithRepo%MemorySmith.Tests/McpAndSemanticSearchTests.cs",
+      "StartLine": 354,
+      "EndLine": 354
+    }
+  ],
   "UsageCount": 0,
-  "LastUpdated": "2026-05-12T00:00:00Z"
+  "LastUpdated": "2026-05-23T00:00:00Z"
 }
