@@ -1,0 +1,43 @@
+{
+  "id": "tsk-0050-converge-maintenance-decomposition-with-governance-protections",
+  "key": "TSK-0050",
+  "title": "Converge maintenance decomposition with governance protections",
+  "description": "Problem: maintenance-agent architecture currently concentrates proposal workflow, scheduler, and governance-sensitive behavior in one large service file.\n\nDesired outcome: decompose maintenance architecture while preserving approval workflows, proposal integrity, and admin governance boundaries.\n\nScope:\n- In scope: split maintenance workflow/store/scheduler/topic-map concerns and enforce governance invariants from TSK-0048.\n- Out of scope: changing proposal semantics or governance policy intent.\n\nAcceptance criteria:\n- Maintenance services are decomposed into coherent bounded components.\n- Proposal approval/reject/respond and admin authorization behavior remains stable.\n- Regression tests cover proposal lifecycle and governance-sensitive paths.\n\nValidation:\n- Run maintenance workflow tests and security/admin policy tests affected by refactor.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "security",
+    "architecture",
+    "maintenance-agent",
+    "convergence"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "research/security-architecture-convergence-audit-20260523",
+    "tasks/sprints/security-architecture-convergence-sprint-20260523",
+    "research/security-codebase-audit-20260523",
+    "research/codebase-health-audit-20260523"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0050-20260523",
+      "author": "AgentSmith",
+      "body": "Convergence task created to keep governance trust boundaries intact during maintenance architecture decomposition.",
+      "createdAtUtc": "2026-05-23T19:38:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-23T19:38:00.0000000Z",
+  "updatedAtUtc": "2026-05-23T19:38:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false
+}

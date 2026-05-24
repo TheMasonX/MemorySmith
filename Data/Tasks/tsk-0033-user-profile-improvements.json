@@ -1,0 +1,28 @@
+﻿{
+  "id": "tsk-0033-user-profile-improvements",
+  "key": "TSK-0033",
+  "title": "User Profile Improvements",
+  "description": "Add account image, time zone (default to server local), optional name, phone number, bio (\u003C=500 chars)",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-24T02:22:38.7504444Z",
+  "updatedAtUtc": "2026-05-24T02:22:38.7504444Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false
+}

@@ -1,0 +1,41 @@
+{
+  "id": "tsk-0051-add-combined-security-architecture-drift-guardrails",
+  "key": "TSK-0051",
+  "title": "Add combined security and architecture drift guardrails",
+  "description": "Problem: complexity and security posture can drift independently unless guardrails monitor both dimensions together.\n\nDesired outcome: integrated checks that detect architectural monolith re-growth and security posture regressions early.\n\nScope:\n- In scope: drift checks/reports for hotspot growth, boundary violations, and key security posture signals.\n- Out of scope: heavyweight enterprise policy tooling.\n\nAcceptance criteria:\n- Guardrail output reports both architecture and security drift indicators.\n- Report is actionable and linked to owning tasks/sprints.\n- Initial mode can be warning-only with a clear path to enforcement.\n\nValidation:\n- Demonstrate guardrail output on current state and post-refactor state.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "security",
+    "architecture",
+    "quality-gate",
+    "convergence"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "research/security-architecture-convergence-audit-20260523",
+    "tasks/sprints/security-architecture-convergence-sprint-20260523"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0051-20260523",
+      "author": "AgentSmith",
+      "body": "Stretch convergence item created for sustained mixed-track governance.",
+      "createdAtUtc": "2026-05-23T19:40:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-23T19:40:00.0000000Z",
+  "updatedAtUtc": "2026-05-23T19:40:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false
+}

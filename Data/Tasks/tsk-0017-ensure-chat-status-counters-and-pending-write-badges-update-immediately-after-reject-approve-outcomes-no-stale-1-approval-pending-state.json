@@ -2,10 +2,10 @@
   "Id": "tsk-0017-ensure-chat-status-counters-and-pending-write-badges-update-immediately-after-reject-approve-outcomes-no-stale-1-approval-pending-state",
   "Key": "TSK-0017",
   "Title": "Ensure chat status counters and pending-write badges update immediately after reject/approve outcomes (no stale \"1 approval pending\" state).",
-  "Description": "This should be verified with a quick visual check.\r\n\r\nImported from Data/Pages/workbench/tasks.md",
+  "Description": "Problem: pending-write counts and badges can drift from reality after mixed approve/reject/block flows, leaving stale approval state in chat history and headers.\r\n\r\nDesired outcome:\r\n- Pending counters, badges, and actionable cards reconcile to the same truth after every outcome.\r\n- History reload and thread switching do not preserve stale pending state.\r\n\r\nAcceptance criteria:\r\n- Reject, approve, blocked, and mixed-batch outcomes all update header counts and pending panels deterministically.\r\n- Re-opening the affected thread shows the same reconciled state.\r\n- Tests cover mixed-outcome reconciliation, not only visual happy paths.\r\n\r\nValidation:\r\n- Reproduce the stale-pending scenario from the audit tracker and confirm it no longer occurs.\r\n- Add a deterministic test around pending-count reconciliation after mixed results and history reload.\r\n\r\nAudit note: vetted on 2026-05-24; still relevant even after batch-approval work, because stale pending state remains documented in recent chat-governance testing.",
   "Type": "Task",
   "Status": "Backlog",
-  "Priority": "Medium",
+  "Priority": "High",
   "AssigneeMode": "Custom",
   "AssigneeDirectoryId": null,
   "AssigneeCustomText": "Copilot",
@@ -13,12 +13,17 @@
   "Labels": [
     "tracker-import",
     "workbench",
-    "future"
+    "future",
+    "audit-vetted",
+    "chat",
+    "governance",
+    "state"
   ],
   "Attachments": [],
   "ExternalLinks": [],
   "LinkedPages": [
-    "workbench/tasks"
+    "workbench/tasks",
+    "research/codebase-audit-task-vetting-20260523"
   ],
   "Comments": [
     {
@@ -26,14 +31,26 @@
       "Author": "tracker-import",
       "Body": "This should be verified with a quick visual check.",
       "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z"
+    },
+    {
+      "Id": "c-audit-vet-0017",
+      "Author": "AgentSmith",
+      "Body": "Audit triage: still actionable. Recent chat-agent testing shows stale pending counts can survive mixed outcomes and history reload.",
+      "CreatedAtUtc": "2026-05-24T03:20:00.0000000Z"
+    },
+    {
+      "Id": "c-review-0017-20260524",
+      "Author": "AgentSmith",
+      "Body": "Review round: remains Backlog. Deterministic repro evidence still indicates stale pending counters/cards after mixed approve/reject flows and history reload.",
+      "CreatedAtUtc": "2026-05-24T04:43:00.0000000Z"
     }
   ],
   "EpicId": null,
   "ParentId": null,
   "DueDateUtc": null,
   "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z",
-  "UpdatedAtUtc": "2026-05-23T23:36:10.0439283Z",
+  "UpdatedAtUtc": "2026-05-24T04:43:00.0000000Z",
   "CompletedAtUtc": null,
-  "Revision": 1,
+  "Revision": 3,
   "IsArchived": false
 }

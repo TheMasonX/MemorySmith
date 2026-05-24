@@ -38,7 +38,8 @@ Collect or confirm before running:
 - Audit scope: full repo, subdomains, or critical paths
 - Timebox and depth: quick, medium, or full deep dive
 - Sprint horizon: number of sprints and sprint duration
-- Default sprint plan and task doc folder: Data/Pages/Tasks/Sprints
+- Primary planning surface: `/tasks` backed by `Data/Tasks`
+- Secondary documentation surface for narrative audit/sprint summaries: `Data/Pages/Tasks/Sprints`
 - Team assumptions: capacity, skills, constraints
 - Quality gates: tests, benchmarks, security, docs, release checks
 - Required output location and naming for audit and planning documents
@@ -92,6 +93,8 @@ Each seat must provide recommendation, key risks, assumptions, open questions, a
 
 7. Convert findings into backlog items.
 Translate each accepted finding into a normalized task candidate:
+- Prefer creating or updating first-class task records in the `/tasks` system (`Data/Tasks`, `/api/tasks`) over standalone markdown task docs.
+- Preserve traceability in each task by linking the relevant page slug, evidence note, or audit finding identifier.
 - Problem statement
 - Desired outcome
 - Scope and non-goals
@@ -110,10 +113,11 @@ For each sprint, define:
 - Stretch items
 - Capacity assumptions
 - Exit criteria and demo targets
-- Save sprint plan and task docs under Data/Pages/Tasks/Sprints by default unless the caller overrides the location.
+- Save the sprint narrative under `Data/Pages/Tasks/Sprints` by default unless the caller overrides the location.
+- Represent committed implementation work primarily as `/tasks` records and keep the sprint page as the summary/index into those task records.
 
 10. Generate task documents.
-Create one task document per committed item with:
+Create or update one `/tasks` record per committed item, and add markdown task pages only when longer-form design detail is needed, with:
 - Context and rationale
 - Implementation approach
 - Acceptance criteria
@@ -157,7 +161,7 @@ The workflow is complete only when all are true:
 - Findings include severity and confidence percentages
 - Backlog items are traceable to findings
 - Sprint plans include explicit capacity assumptions and exit criteria
-- Each committed item has a task document with acceptance criteria and validation
+- Each committed item has a task record in the `/tasks` system with acceptance criteria and validation; longer markdown task docs are optional supplements
 - Open questions and risks are listed with proposed owners or decision gates
 - For planning-only mode, each item includes deferred validation gates and execution prerequisites
 - High-impact decisions include council analysis output with confidence values and visible dissent
@@ -211,6 +215,9 @@ Use this structure for the final package.
 
 ## Demo Targets
 - <what is demonstrable>
+
+## Task Links
+- <task id / key and why it is in the sprint>
 ```
 
 ```markdown
@@ -247,13 +254,26 @@ Use this structure for the final package.
 - Delivery confidence: <percent>
 ```
 
+```json
+{
+	"id": "tsk-xxxx-example",
+	"title": "Example task title",
+	"description": "Problem statement, desired outcome, scope, dependencies, implementation plan, acceptance criteria, validation, rollback, and risks in one durable task record.",
+	"status": "Backlog",
+	"linkedPages": ["tasks/sprints/example-sprint"],
+	"labels": ["audit", "sprint-1"],
+	"attachments": [],
+	"comments": []
+}
+```
+
 ## Prompt Pattern
 
 Use prompts in this form:
 
 ```text
 Run a full deep-dive codebase audit for <scope>.
-Then convert findings into <N> sprint plans and implementation-ready task documents.
+Then convert findings into <N> sprint plans and implementation-ready `/tasks` records, using markdown sprint pages only for narrative summaries or longer design detail.
 Use severity, confidence percentages, explicit assumptions, and open questions.
 Require evidence links for all high-impact findings.
 Invoke llm-council-review for high-impact decisions; if unavailable, run a self-simulated critical council analysis.

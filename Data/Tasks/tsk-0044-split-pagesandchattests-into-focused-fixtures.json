@@ -1,0 +1,41 @@
+{
+  "id": "tsk-0044-split-pagesandchattests-into-focused-fixtures",
+  "key": "TSK-0044",
+  "title": "Split PagesAndChatTests into focused fixtures",
+  "description": "Problem: PagesAndChatTests.cs is a large mixed-domain test fixture that slows triage and increases change risk.\n\nDesired outcome: improve test maintainability and diagnosis speed by splitting into focused suites with shared builders/utilities.\n\nScope:\n- In scope: move page service tests, chat tests, and controller behavior tests into dedicated fixtures; add shared helpers for setup reuse.\n- Out of scope: changing asserted behavior.\n\nAcceptance criteria:\n- No single replacement fixture becomes a new monolith.\n- Coverage parity is maintained for migrated tests.\n- Test intent and ownership are clearer from fixture names and file layout.\n\nValidation:\n- Run migrated test suites and compare pass/fail parity with previous baseline.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "refactor",
+    "tests",
+    "maintainability",
+    "sprint-1"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "research/codebase-health-audit-20260523",
+    "tasks/sprints/codebase-health-refactor-sprints-20260523"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0044-20260523",
+      "author": "AgentSmith",
+      "body": "Created from F-003 as Sprint 1 committed test-maintainability work.",
+      "createdAtUtc": "2026-05-23T19:14:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-23T19:14:00.0000000Z",
+  "updatedAtUtc": "2026-05-23T19:14:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false
+}

@@ -1,0 +1,42 @@
+{
+  "id": "tsk-0042-decompose-chatservices-into-bounded-modules",
+  "key": "TSK-0042",
+  "title": "Decompose ChatServices into bounded modules",
+  "description": "Problem: ChatServices.cs combines contracts, provider implementations, orchestration, tool loops, and write proposal handling in one very large file.\n\nDesired outcome: reduce complexity and review blast radius by splitting chat concerns into clear modules while preserving behavior.\n\nScope:\n- In scope: extract contracts/models, provider adapters, orchestration/tool loop, and write-approval pipeline into focused files/services.\n- Out of scope: net-new chat features or provider capability changes.\n\nDependencies:\n- Characterization tests for chat critical flows.\n- Coordination with TSK-0044 for test fixture decomposition.\n\nAcceptance criteria:\n- ChatServices hotspot is materially reduced in size and concern count.\n- Existing chat API/UI behavior remains unchanged.\n- New structure has clear ownership boundaries and test coverage continuity.\n\nValidation:\n- Run focused chat tests and impacted API contract tests.\n- Verify chat send/stream/tool loop/write proposal paths remain green.\n\nRollback:\n- Revert extraction slices individually if regressions surface.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "refactor",
+    "chat",
+    "complexity",
+    "sprint-1"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "research/codebase-health-audit-20260523",
+    "council/codebase-health-refactor-council-20260523",
+    "tasks/sprints/codebase-health-refactor-sprints-20260523"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0042-20260523",
+      "author": "AgentSmith",
+      "body": "Created from F-001 as Sprint 1 committed decomposition work.",
+      "createdAtUtc": "2026-05-23T19:10:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-23T19:10:00.0000000Z",
+  "updatedAtUtc": "2026-05-23T19:10:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false
+}

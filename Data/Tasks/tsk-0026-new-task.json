@@ -4,7 +4,7 @@
   "title": "Enable task title/description editing and assignment from /tasks",
   "description": "Implement end-to-end task editing in the Tasks workbench so users can update title, description, and assignee after quick-create.\r\n\r\nImplementation plan:\r\n1. API contract and validation\r\n- Confirm `PUT /api/tasks/{idOrKey}` supports `title`, `description`, `assigneeMode`, `assigneeDirectoryId`, and `assigneeCustomText` updates in one request.\r\n- Enforce existing assignee invariants server-side (`Directory` requires directory id; `Custom` requires custom text).\r\n- Append clear activity events when assignment changes so history is auditable.\r\n\r\n2. Tasks UI editing workflow\r\n- Add an explicit `Edit` action in the detail pane that opens an edit form with current title/description values.\r\n- Add assignee controls in the same form: mode selector (`Directory` or `Custom`), directory picker for directory mode, free-text field for custom mode.\r\n- Add `Save` and `Cancel`; keep optimistic UI updates with server refresh on success.\r\n\r\n3. UX and error handling\r\n- Surface inline validation messages for invalid assignee combinations and empty required fields.\r\n- Show success/error toasts and keep detail/history panes synchronized after save.\r\n\r\n4. Tests and acceptance\r\n- API tests: verify successful edits for title/description/assignment and validation failures for invalid assignee payloads.\r\n- UI/integration tests: verify editing flow updates visible details and assignment chips without page reload.\r\n\r\nAcceptance criteria:\r\n- A quick-created task can be edited to update title and description.\r\n- Assignee can be set or changed in both directory and custom modes.\r\n- Task history shows the update and assignment change events.\r\n- Invalid assignment combinations are blocked with clear errors.",
   "type": "Task",
-  "status": "Backlog",
+  "status": "Done",
   "priority": "Medium",
   "assigneeMode": "Directory",
   "assigneeDirectoryId": "71d48bff32bb4490a89c36841b0937af",
@@ -22,14 +22,20 @@
       "author": "Themasonx",
       "body": "I guess the task here is that I need to be able to change the title and description of tasks",
       "createdAtUtc": "2026-05-24T01:56:31.8011505Z"
+    },
+    {
+      "id": "c-review-0026-20260524",
+      "author": "AgentSmith",
+      "body": "Review round: completed. Added task edit mode in /tasks for title, description, assignee mode/value, severity, and tags with validation and save/cancel flow.",
+      "createdAtUtc": "2026-05-24T04:24:00.0000000Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-24T01:55:23.3148277Z",
-  "updatedAtUtc": "2026-05-24T02:12:00.0000000Z",
-  "completedAtUtc": null,
-  "revision": 3,
+  "updatedAtUtc": "2026-05-24T04:24:00.0000000Z",
+  "completedAtUtc": "2026-05-24T04:24:00.0000000Z",
+  "revision": 4,
   "isArchived": false
 }

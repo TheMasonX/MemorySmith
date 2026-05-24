@@ -1,0 +1,42 @@
+{
+  "id": "tsk-0047-add-complexity-guardrails-and-architecture-conformance-checks",
+  "key": "TSK-0047",
+  "title": "Add complexity guardrails and architecture conformance checks",
+  "description": "Problem: complexity drift can re-accumulate after refactors without enforceable guardrails.\n\nDesired outcome: lightweight guardrails that flag oversized files and boundary drift early.\n\nScope:\n- In scope: automated checks or reports for file-size/cohesion hotspots and architecture-conformance notes tied to active simplification plan.\n- Out of scope: heavyweight governance process that slows routine delivery.\n\nAcceptance criteria:\n- Guardrail output is available in local/CI validation.\n- Drift signals are actionable and linked to owner-facing docs.\n- False positive rate is low enough for routine use.\n\nValidation:\n- Demonstrate guardrail output against current codebase and post-refactor state.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "refactor",
+    "quality-gate",
+    "architecture",
+    "sprint-2"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "research/codebase-health-audit-20260523",
+    "council/codebase-health-refactor-council-20260523",
+    "tasks/sprints/codebase-health-refactor-sprints-20260523"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0047-20260523",
+      "author": "AgentSmith",
+      "body": "Created from F-006 to keep simplification gains durable.",
+      "createdAtUtc": "2026-05-23T19:20:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-23T19:20:00.0000000Z",
+  "updatedAtUtc": "2026-05-23T19:20:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false
+}

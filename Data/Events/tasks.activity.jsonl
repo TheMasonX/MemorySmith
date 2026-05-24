@@ -56,3 +56,9 @@
 {"taskId":"tsk-0028-new-task","action":"comment_added","actor":"Themasonx","note":"This should be renamed later and the description fixed. Reorder the nav bar and add groupings","occurredAtUtc":"2026-05-24T01:59:29.0444132Z"}
 {"taskId":"tsk-0028-new-task","action":"status_changed","actor":"Themasonx","note":"Ready","occurredAtUtc":"2026-05-24T02:00:24.8785693Z"}
 {"taskId":"tsk-0028-new-task","action":"status_changed","actor":"Themasonx","note":"Backlog","occurredAtUtc":"2026-05-24T02:00:27.039123Z"}
+{"taskId":"tsk-0030-task-severity","action":"created","actor":"TheMasonX","note":null,"occurredAtUtc":"2026-05-24T02:18:44.8467184Z"}
+{"taskId":"tsk-0031-sort-tasks","action":"created","actor":"TheMasonX","note":null,"occurredAtUtc":"2026-05-24T02:19:08.724764Z"}
+{"taskId":"tsk-0032-task-tags","action":"created","actor":"TheMasonX","note":null,"occurredAtUtc":"2026-05-24T02:19:35.2143555Z"}
+{"taskId":"tsk-0033-user-profile-improvements","action":"created","actor":"TheMasonX","note":null,"occurredAtUtc":"2026-05-24T02:22:38.7504444Z"}
+{"taskId":"tsk-0031-sort-tasks","action":"comment_added","actor":"TheMasonX","note":"Looks like default is by string, which breaks on the TSK-#### format. sort by time (ascend/descend), id (asc/desc), severity, name (post TSK-### header)","occurredAtUtc":"2026-05-24T02:24:54.986121Z"}
+{"taskId":"tsk-0034-edit-task-description","action":"created","actor":"TheMasonX","note":null,"occurredAtUtc":"2026-05-24T02:25:42.3446466Z"}

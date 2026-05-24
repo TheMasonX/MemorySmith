@@ -1,0 +1,42 @@
+{
+  "id": "tsk-0041-publish-security-posture-runbook-and-admin-guidance",
+  "key": "TSK-0041",
+  "title": "Publish security posture runbook and admin guidance",
+  "description": "Problem: operators need explicit guidance on safe-by-default stance, opt-in exceptions, and deployment posture selection.\n\nDesired outcome: concise, actionable runbook linked from planning and admin surfaces so security posture is understandable and repeatable.\n\nScope:\n- In scope: documentation page and references describing default-safe posture, opt-in exceptions, compatibility overrides, and rollout checklist.\n- Out of scope: full security policy legal/compliance framework.\n\nAcceptance criteria:\n- Documentation clearly states safe-by-default and opt-in exceptions in practical terms.\n- Guidance includes local-first, secure-local, and remote-hardened deployment recommendations.\n- Sprint and task records link to this guidance for traceability.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "security",
+    "documentation",
+    "operations",
+    "safe-by-default"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "research/security-codebase-audit-20260523",
+    "council/security-safe-default-governance-council-20260523",
+    "tasks/sprints/security-hardening-safe-default-20260523"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0041-20260523",
+      "author": "AgentSmith",
+      "body": "Created to formalize security posture literature and keep the safe-by-default stance explicit for operators.",
+      "createdAtUtc": "2026-05-23T18:13:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-23T18:13:00.0000000Z",
+  "updatedAtUtc": "2026-05-23T18:13:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false
+}

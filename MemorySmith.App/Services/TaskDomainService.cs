@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace MemorySmith.App.Services;
@@ -79,7 +80,10 @@ public sealed record TaskItem(
     DateTime UpdatedAtUtc,
     DateTime? CompletedAtUtc,
     int Revision,
-    bool IsArchived = false);
+    bool IsArchived = false,
+    bool HasLoadError = false,
+    string? LoadError = null,
+    string? SourceFilePath = null);
 
 public sealed record TaskSummary(
     string Id,
@@ -91,7 +95,10 @@ public sealed record TaskSummary(
     DateTime UpdatedAtUtc,
     int AttachmentCount,
     int LinkCount,
-    int CommentCount);
+    int CommentCount,
+    bool HasLoadError = false,
+    string? LoadError = null,
+    string? SourceFilePath = null);
 
 public sealed record TaskCreateRequest(
     string Title,
@@ -106,7 +113,8 @@ public sealed record TaskCreateRequest(
     IReadOnlyList<string>? Labels,
     DateTime? DueDateUtc,
     string? EpicId,
-    string? ParentId);
+    string? ParentId,
+    string? Slug = null);
 
 public sealed record TaskUpdateRequest(
     string? Title,
@@ -156,11 +164,13 @@ public sealed class FileTaskService : ITaskService
     };
 
     private readonly IOptionsMonitor<MemorySmithOptions> _options;
+    private readonly ILogger<FileTaskService> _logger;
     private readonly object _gate = new();
 
-    public FileTaskService(IOptionsMonitor<MemorySmithOptions> options)
+    public FileTaskService(IOptionsMonitor<MemorySmithOptions> options, ILogger<FileTaskService> logger)
     {
         _options = options;
+        _logger = logger;
     }
 
     public Task<IReadOnlyList<TaskSummary>> ListAsync(string? query, string? status, string? assignee, int limit, CancellationToken cancellationToken)
@@ -235,7 +245,7 @@ public sealed class FileTaskService : ITaskService
             var now = DateTime.UtcNow;
             var all = LoadAll(cancellationToken);
             var key = NextKey(all);
-            var id = BuildId(key, request.Title);
+            var id = BuildId(key, request.Title, request.Slug);
             var item = new TaskItem(
                 Id: id,
                 Key: key,
@@ -298,6 +308,7 @@ public sealed class FileTaskService : ITaskService
                 Revision = item.Revision + 1
             };
 
+            EnsureTaskIsEditable(item);
             ValidateAssignee(updated.AssigneeMode, updated.AssigneeDirectoryId, updated.AssigneeCustomText);
             ValidateTitle(updated.Title);
             Save(updated);
@@ -319,6 +330,7 @@ public sealed class FileTaskService : ITaskService
 
             var now = DateTime.UtcNow;
             var status = NormalizeOrDefault(request.Status, item.Status);
+            EnsureTaskIsEditable(item);
             var updated = item with
             {
                 Status = status,
@@ -351,6 +363,7 @@ public sealed class FileTaskService : ITaskService
                 throw new ArgumentException("Comment body is required.");
             }
 
+            EnsureTaskIsEditable(item);
             var now = DateTime.UtcNow;
             var comment = new TaskComment($"c-{Guid.NewGuid():N}", SafeActor(actor), body, now);
             var updated = item with
@@ -385,6 +398,7 @@ public sealed class FileTaskService : ITaskService
 
             var canonicalSlug = CanonicalizePageSlug(slug);
             var pageExists = LinkedPageExists(canonicalSlug);
+            EnsureTaskIsEditable(item);
 
             var updated = item with
             {
@@ -429,6 +443,7 @@ public sealed class FileTaskService : ITaskService
                 throw new ArgumentException("External link url must be an absolute http or https url.");
             }
 
+            EnsureTaskIsEditable(item);
             var now = DateTime.UtcNow;
             var link = new TaskExternalLink($"l-{Guid.NewGuid():N}", label, url, now);
             var updated = item with
@@ -468,6 +483,7 @@ public sealed class FileTaskService : ITaskService
                 throw new ArgumentException("Attachment uri cannot contain traversal segments.");
             }
 
+            EnsureTaskIsEditable(item);
             var now = DateTime.UtcNow;
             var attachment = new TaskAttachment($"a-{Guid.NewGuid():N}", name, kind, uri, now);
             var updated = item with
@@ -500,6 +516,7 @@ public sealed class FileTaskService : ITaskService
                 return Task.FromResult<TaskItem?>(item);
             }
 
+            EnsureTaskIsEditable(item);
             var now = DateTime.UtcNow;
             var updated = item with
             {
@@ -524,6 +541,8 @@ public sealed class FileTaskService : ITaskService
             {
                 return Task.FromResult(false);
             }
+
+            EnsureTaskIsEditable(item);
 
             if (hardDelete)
             {
@@ -558,10 +577,18 @@ public sealed class FileTaskService : ITaskService
         {
             cancellationToken.ThrowIfCancellationRequested();
             var json = File.ReadAllText(file);
-            var item = JsonSerializer.Deserialize<TaskItem>(json, JsonOptions);
-            if (item is not null)
+            try
             {
-                results.Add(item);
+                var item = JsonSerializer.Deserialize<TaskItem>(json, JsonOptions);
+                if (item is not null)
+                {
+                    results.Add(item);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to parse task file {TaskFile}. Loading fallback record.", file);
+                results.Add(CreateMalformedTaskFallback(file, json, ex));
             }
         }
 
@@ -641,9 +668,10 @@ public sealed class FileTaskService : ITaskService
         return $"TSK-{next:0000}";
     }
 
-    private static string BuildId(string key, string title)
+    private static string BuildId(string key, string title, string? slug)
     {
-        var token = Regex.Replace((title ?? string.Empty).Trim().ToLowerInvariant(), "[^a-z0-9]+", "-").Trim('-');
+        var source = NormalizeNullable(slug) ?? title;
+        var token = Regex.Replace((source ?? string.Empty).Trim().ToLowerInvariant(), "[^a-z0-9]+", "-").Trim('-');
         token = string.IsNullOrWhiteSpace(token) ? "task" : token;
         return $"{key.ToLowerInvariant()}-{token}";
     }
@@ -688,7 +716,111 @@ public sealed class FileTaskService : ITaskService
             item.UpdatedAtUtc,
             item.Attachments.Count,
             item.ExternalLinks.Count + item.LinkedPages.Count,
-            item.Comments.Count);
+            item.Comments.Count,
+            item.HasLoadError,
+            item.LoadError,
+            item.SourceFilePath);
+
+    private static TaskItem CreateMalformedTaskFallback(string filePath, string rawJson, Exception ex)
+    {
+        var fileName = Path.GetFileName(filePath);
+        var fileToken = Path.GetFileNameWithoutExtension(filePath);
+        var extractedId = NormalizeNullable(TryExtractJsonStringProperty(rawJson, "id"));
+        var extractedKey = NormalizeNullable(TryExtractJsonStringProperty(rawJson, "key"));
+        var extractedTitle = NormalizeNullable(TryExtractJsonStringProperty(rawJson, "title"));
+        var extractedStatus = NormalizeNullable(TryExtractJsonStringProperty(rawJson, "status"));
+        var extractedPriority = NormalizeNullable(TryExtractJsonStringProperty(rawJson, "priority"));
+        var extractedType = NormalizeNullable(TryExtractJsonStringProperty(rawJson, "type"));
+        var extractedAssigneeMode = NormalizeNullable(TryExtractJsonStringProperty(rawJson, "assigneeMode"));
+        var extractedAssigneeDirectoryId = NormalizeNullable(TryExtractJsonStringProperty(rawJson, "assigneeDirectoryId"));
+        var extractedAssigneeCustomText = NormalizeNullable(TryExtractJsonStringProperty(rawJson, "assigneeCustomText"));
+        var extractedReporter = NormalizeNullable(TryExtractJsonStringProperty(rawJson, "reporter"));
+
+        var id = extractedId ?? fileToken;
+        var key = extractedKey ?? InferKeyFromToken(fileToken);
+        var title = extractedTitle ?? "Invalid task file";
+        var status = extractedStatus ?? TaskStatuses.Backlog;
+        var priority = extractedPriority ?? TaskPriorities.Medium;
+        var taskType = extractedType ?? "Task";
+        var assigneeMode = NormalizeAssigneeMode(extractedAssigneeMode);
+        var description = $"Task file '{fileName}' could not be fully parsed. Fix the JSON and refresh.\n\nParser error: {Truncate(ex.Message, 280)}";
+        var timestamp = File.Exists(filePath) ? File.GetLastWriteTimeUtc(filePath) : DateTime.UtcNow;
+        if (timestamp.Year < 2000)
+        {
+            timestamp = DateTime.UtcNow;
+        }
+
+        return new TaskItem(
+            Id: id,
+            Key: key,
+            Title: title,
+            Description: description,
+            Type: taskType,
+            Status: status,
+            Priority: priority,
+            AssigneeMode: assigneeMode,
+            AssigneeDirectoryId: assigneeMode == TaskAssigneeModes.Directory ? extractedAssigneeDirectoryId : null,
+            AssigneeCustomText: assigneeMode == TaskAssigneeModes.Custom ? extractedAssigneeCustomText : null,
+            Reporter: extractedReporter,
+            Labels: [],
+            Attachments: [],
+            ExternalLinks: [],
+            LinkedPages: [],
+            Comments: [],
+            EpicId: null,
+            ParentId: null,
+            DueDateUtc: null,
+            CreatedAtUtc: timestamp,
+            UpdatedAtUtc: timestamp,
+            CompletedAtUtc: null,
+            Revision: 0,
+            IsArchived: false,
+            HasLoadError: true,
+            LoadError: Truncate(ex.Message, 500),
+            SourceFilePath: fileName);
+    }
+
+    private static string InferKeyFromToken(string token)
+    {
+        var match = Regex.Match(token, @"tsk-(\d{4,})", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        return match.Success ? $"TSK-{match.Groups[1].Value}" : "TSK-0000";
+    }
+
+    private static string? TryExtractJsonStringProperty(string rawJson, string propertyName)
+    {
+        if (string.IsNullOrWhiteSpace(rawJson) || string.IsNullOrWhiteSpace(propertyName))
+        {
+            return null;
+        }
+
+        var pattern = $"\"{Regex.Escape(propertyName)}\"\\s*:\\s*\"((?:\\\\.|[^\"\\\\])*)\"";
+        var match = Regex.Match(rawJson, pattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        if (!match.Success)
+        {
+            return null;
+        }
+
+        var encoded = $"\"{match.Groups[1].Value}\"";
+        try
+        {
+            return JsonSerializer.Deserialize<string>(encoded, JsonlOptions);
+        }
+        catch
+        {
+            return match.Groups[1].Value;
+        }
+    }
+
+    private static void EnsureTaskIsEditable(TaskItem item)
+    {
+        if (!item.HasLoadError)
+        {
+            return;
+        }
+
+        var source = string.IsNullOrWhiteSpace(item.SourceFilePath) ? item.Id : item.SourceFilePath;
+        throw new ArgumentException($"Task '{source}' has malformed JSON and cannot be edited until fixed.");
+    }
 
     private static string? ResolveAssignee(TaskItem item)
     {
@@ -740,6 +872,7 @@ public sealed class FileTaskService : ITaskService
     private static void ValidateCreate(TaskCreateRequest request)
     {
         ValidateTitle(request.Title);
+        ValidateSlug(request.Slug);
         ValidateAssignee(NormalizeAssigneeMode(request.AssigneeMode), NormalizeNullable(request.AssigneeDirectoryId), NormalizeNullable(request.AssigneeCustomText));
     }
 
@@ -753,6 +886,25 @@ public sealed class FileTaskService : ITaskService
         if (title.Trim().Length > 200)
         {
             throw new ArgumentException("Title must be 200 characters or fewer.");
+        }
+    }
+
+    private static void ValidateSlug(string? slug)
+    {
+        var normalized = NormalizeNullable(slug);
+        if (normalized is null)
+        {
+            return;
+        }
+
+        if (normalized.Length > 120)
+        {
+            throw new ArgumentException("Slug must be 120 characters or fewer.");
+        }
+
+        if (!Regex.IsMatch(normalized, "^[a-zA-Z0-9][a-zA-Z0-9\\s_-]*$"))
+        {
+            throw new ArgumentException("Slug may only contain letters, numbers, spaces, underscores, and hyphens.");
         }
     }
 

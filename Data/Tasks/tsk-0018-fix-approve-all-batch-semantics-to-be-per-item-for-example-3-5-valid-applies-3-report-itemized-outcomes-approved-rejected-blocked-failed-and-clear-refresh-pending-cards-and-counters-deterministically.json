@@ -2,10 +2,10 @@
   "Id": "tsk-0018-fix-approve-all-batch-semantics-to-be-per-item-for-example-3-5-valid-applies-3-report-itemized-outcomes-approved-rejected-blocked-failed-and-clear-refresh-pending-cards-and-counters-deterministically",
   "Key": "TSK-0018",
   "Title": "Fix `Approve all` batch semantics to be per-item (for example 3/5 valid applies 3), report itemized outcomes (`approved`/`rejected`/`blocked`/`failed`), and clear/refresh pending cards and counters deterministically.",
-  "Description": "Keep a note of the batch result breakdown.\r\n\r\nImported from Data/Pages/workbench/tasks.md",
+  "Description": "Problem: the original batch approval flow was fail-fast and hard to audit. Recent work improved per-item handling, but deterministic pending-state cleanup and outcome coverage still need hardening.\r\n\r\nDesired outcome:\r\n- Batch approval applies valid items independently and records explicit per-item outcomes.\r\n- Remaining reconciliation logic leaves no orphaned pending cards or ambiguous counts.\r\n\r\nAcceptance criteria:\r\n- Mixed batches report `approved`, `rejected`, `blocked`, or `failed` per item.\r\n- Valid proposals in a mixed batch continue independently instead of being cancelled by one bad item.\r\n- Pending UI state is consistent after the batch completes.\r\n\r\nValidation:\r\n- Re-run the mixed-batch scenario from the chat-agent testing tracker.\r\n- Add focused test coverage for per-item outcomes and post-batch state reconciliation.\r\n\r\nAudit note: vetted on 2026-05-24; narrowed but not fully obsolete because logs show per-item behavior improved while state reconciliation remains incomplete.",
   "Type": "Task",
   "Status": "Backlog",
-  "Priority": "Medium",
+  "Priority": "High",
   "AssigneeMode": "Custom",
   "AssigneeDirectoryId": null,
   "AssigneeCustomText": "Copilot",
@@ -13,12 +13,17 @@
   "Labels": [
     "tracker-import",
     "workbench",
-    "future"
+    "future",
+    "audit-vetted",
+    "chat",
+    "governance",
+    "state"
   ],
   "Attachments": [],
   "ExternalLinks": [],
   "LinkedPages": [
-    "workbench/tasks"
+    "workbench/tasks",
+    "research/codebase-audit-task-vetting-20260523"
   ],
   "Comments": [
     {
@@ -26,14 +31,26 @@
       "Author": "tracker-import",
       "Body": "Keep a note of the batch result breakdown.",
       "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z"
+    },
+    {
+      "Id": "c-audit-vet-0018",
+      "Author": "AgentSmith",
+      "Body": "Audit triage: scope narrowed, not closed. Recent implementation improved per-item outcomes, but deterministic pending-state cleanup still needs proof and likely more work.",
+      "CreatedAtUtc": "2026-05-24T03:20:00.0000000Z"
+    },
+    {
+      "Id": "c-review-0018-20260524",
+      "Author": "AgentSmith",
+      "Body": "Review round: remains Backlog. Per-item batch outcomes are improved, but deterministic pending-state reconciliation is still incomplete in reproduced mixed-batch scenarios.",
+      "CreatedAtUtc": "2026-05-24T04:44:00.0000000Z"
     }
   ],
   "EpicId": null,
   "ParentId": null,
   "DueDateUtc": null,
   "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z",
-  "UpdatedAtUtc": "2026-05-23T23:36:10.0439283Z",
+  "UpdatedAtUtc": "2026-05-24T04:44:00.0000000Z",
   "CompletedAtUtc": null,
-  "Revision": 1,
+  "Revision": 3,
   "IsArchived": false
 }

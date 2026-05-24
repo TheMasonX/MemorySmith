@@ -67,8 +67,18 @@ body {
     background: var(--vscode-panel) !important;
     border-right: 1px solid var(--vscode-border);
     color: var(--vscode-text);
-    width: 164px !important;
-    min-width: 164px !important;
+    width: 220px !important;
+    min-width: 220px !important;
+}
+
+.app-drawer.mud-drawer {
+    width: 220px !important;
+    min-width: 220px !important;
+}
+
+/* Keep the responsive closed drawer fully off-canvas at the customized width. */
+.app-drawer.mud-drawer-pos-left.mud-drawer--closed {
+    left: -220px !important;
 }
 
 .app-drawer .mud-drawer-header {
@@ -3078,11 +3088,39 @@ body {
     margin-left: auto;
 }
 
-.tasks-detail-header {
+.tasks-quick-create-pane {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: start;
+    grid-template-columns: minmax(220px, 1.3fr) minmax(180px, 0.9fr) minmax(280px, 1.8fr) auto;
     gap: 10px;
+    align-items: start;
+    width: 100%;
+    margin-top: 8px;
+    padding: 10px;
+    border: 1px solid var(--vscode-border-soft);
+    border-radius: 10px;
+    background: var(--vscode-panel-soft);
+}
+
+.tasks-quick-create-title,
+.tasks-quick-create-slug,
+.tasks-quick-create-description {
+    min-width: 0;
+}
+
+.tasks-quick-create-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: flex-end;
+    min-height: 52px;
+}
+
+.tasks-detail-header {
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
     overflow: visible;
 }
 
@@ -3091,6 +3129,22 @@ body {
     display: flex;
     flex-direction: column;
     gap: 6px;
+}
+
+.tasks-detail-actions {
+    position: static;
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    justify-content: flex-end;
+    margin-left: auto;
+    flex: 0 0 auto;
+}
+
+.tasks-header-icon-action {
+    border: 1px solid var(--vscode-border-soft);
+    border-radius: 4px;
+    background: var(--vscode-panel-soft);
 }
 
 .tasks-detail-title-text {
@@ -3115,6 +3169,7 @@ body {
 
 .tasks-editor-grid {
     align-items: start;
+    margin-top: 6px;
 }
 
 .tasks-description-field {
@@ -3136,6 +3191,20 @@ body {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.tasks-result-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.tasks-load-error-icon {
+    flex: 0 0 auto;
+}
+
+.tasks-load-error-alert {
+    margin-top: 6px;
 }
 
 @media (max-width: 1400px) {
@@ -3246,7 +3315,7 @@ body {
     }
 
     .tasks-detail-header {
-        grid-template-columns: 1fr;
+        gap: 10px;
     }
 
     .tasks-detail-title-text {
@@ -3256,6 +3325,14 @@ body {
     .tasks-status-combobox {
         min-width: 128px;
         max-width: 180px;
+    }
+
+    .tasks-quick-create-pane {
+        grid-template-columns: 1fr;
+    }
+
+    .tasks-quick-create-actions {
+        justify-content: flex-start;
     }
 
     .tag-manager-body {
@@ -3398,9 +3475,10 @@ body {
     }
 
     .tasks-detail-header {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
-        align-items: start;
+        position: relative;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
         gap: 10px;
         overflow: visible;
     }
@@ -3426,6 +3504,11 @@ body {
         margin-top: 0;
         gap: 6px;
         line-height: 1.2;
+    }
+
+    .tasks-detail-actions {
+        position: static;
+        margin-left: auto;
     }
 
     .tasks-status-combobox {
@@ -3482,7 +3565,7 @@ body {
         }
 
         .tasks-detail-header {
-            grid-template-columns: 1fr;
+            gap: 8px;
         }
 
         .tasks-detail-title-text {

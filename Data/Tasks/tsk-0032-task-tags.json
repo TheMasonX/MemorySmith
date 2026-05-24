@@ -1,0 +1,35 @@
+﻿{
+  "id": "tsk-0032-task-tags",
+  "key": "TSK-0032",
+  "title": "Task Tags",
+  "description": "Assign tags to tasks (uses the global tag system)",
+  "type": "Task",
+  "status": "Done",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [
+    {
+      "id": "c-review-0032-20260524",
+      "author": "AgentSmith",
+      "body": "Review round: completed. Added task-tag editing in /tasks via labels plus detail-chip display and persistence through task update API.",
+      "createdAtUtc": "2026-05-24T04:28:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-24T02:19:35.2143555Z",
+  "updatedAtUtc": "2026-05-24T04:28:00.0000000Z",
+  "completedAtUtc": "2026-05-24T04:28:00.0000000Z",
+  "revision": 2,
+  "isArchived": false
+}

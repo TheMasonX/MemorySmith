@@ -97,7 +97,8 @@ public class AppApiContractTests
             Labels: ["tasks", "backend"],
             DueDateUtc: null,
             EpicId: null,
-            ParentId: null));
+            ParentId: null,
+            Slug: "backend-delivery"));
 
         createResponse.EnsureSuccessStatusCode();
         var created = await createResponse.Content.ReadFromJsonAsync<TaskItem>();
@@ -105,6 +106,21 @@ public class AppApiContractTests
 
         var statusResponse = await _client.PostAsJsonAsync($"/api/tasks/{created!.Id}/status", new TaskStatusUpdateRequest(TaskStatuses.InProgress, "starting implementation"));
         statusResponse.EnsureSuccessStatusCode();
+
+        var updateResponse = await _client.PutAsJsonAsync($"/api/tasks/{created.Id}", new TaskUpdateRequest(
+            Title: "Implement task backend v2",
+            Description: "Track full backend delivery with triage updates",
+            Type: null,
+            Priority: TaskPriorities.Critical,
+            AssigneeMode: TaskAssigneeModes.Directory,
+            AssigneeDirectoryId: "reviewer-01",
+            AssigneeCustomText: string.Empty,
+            Reporter: null,
+            Labels: ["tasks", "backend", "vetted"],
+            DueDateUtc: null,
+            EpicId: null,
+            ParentId: null));
+        updateResponse.EnsureSuccessStatusCode();
 
         var commentResponse = await _client.PostAsJsonAsync($"/api/tasks/{created.Id}/comments", new TaskCommentRequest("Progress update"));
         commentResponse.EnsureSuccessStatusCode();
@@ -133,9 +149,16 @@ public class AppApiContractTests
         {
             Assert.That(invalidCreate.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
             Assert.That(createResponse.StatusCode, Is.EqualTo(HttpStatusCode.Created));
+            Assert.That(created.Id, Does.Contain("backend-delivery"));
             Assert.That(list, Is.Not.Null);
             Assert.That(list!.Any(item => item.Id == created.Id), Is.True);
             Assert.That(loaded, Is.Not.Null);
+            Assert.That(loaded!.Title, Is.EqualTo("Implement task backend v2"));
+            Assert.That(loaded.Description, Does.Contain("triage"));
+            Assert.That(loaded.Priority, Is.EqualTo(TaskPriorities.Critical));
+            Assert.That(loaded.AssigneeMode, Is.EqualTo(TaskAssigneeModes.Directory));
+            Assert.That(loaded.AssigneeDirectoryId, Is.EqualTo("reviewer-01"));
+            Assert.That(loaded.Labels, Does.Contain("vetted"));
             Assert.That(loaded!.Comments.Count, Is.EqualTo(1));
             Assert.That(loaded.ExternalLinks.Count, Is.EqualTo(1));
             Assert.That(loaded.LinkedPages.Count, Is.EqualTo(2));
@@ -152,6 +175,48 @@ public class AppApiContractTests
             Assert.That(File.Exists(Path.Combine(_tempDir, "Events", "tasks.activity.jsonl")), Is.True);
         });
     }
+
+        [Test]
+        public async Task TasksApi_MalformedTaskFile_DoesNotCrashAndReturnsLoadErrorMetadata()
+        {
+                var tasksRoot = Path.Combine(_tempDir, "Tasks");
+                Directory.CreateDirectory(tasksRoot);
+                var malformedPath = Path.Combine(tasksRoot, "tsk-9999-broken-json.json");
+                var malformedJson = """
+{
+    "id": "tsk-9999-broken-json",
+    "key": "TSK-9999",
+    "title": "Broken task record",
+    "description": "Line one
+Line two",
+    "type": "Task",
+    "status": "Backlog",
+    "priority": "High",
+    "assigneeMode": "Custom",
+    "assigneeCustomText": "Copilot"
+}
+""";
+                await File.WriteAllTextAsync(malformedPath, malformedJson);
+
+                var pageResponse = await _client.GetAsync("/tasks");
+                var listResponse = await _client.GetAsync("/api/tasks?limit=200");
+                var list = await listResponse.Content.ReadFromJsonAsync<List<TaskSummary>>();
+                var malformedSummary = list?.FirstOrDefault(item => item.Key == "TSK-9999" || item.Id == "tsk-9999-broken-json");
+                var loaded = await _client.GetFromJsonAsync<TaskItem>("/api/tasks/TSK-9999");
+
+                Assert.Multiple(() =>
+                {
+                        Assert.That(pageResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+                        Assert.That(listResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+                        Assert.That(list, Is.Not.Null);
+                        Assert.That(malformedSummary, Is.Not.Null);
+                        Assert.That(malformedSummary!.HasLoadError, Is.True);
+                        Assert.That(malformedSummary.SourceFilePath, Is.EqualTo("tsk-9999-broken-json.json"));
+                        Assert.That(loaded, Is.Not.Null);
+                        Assert.That(loaded!.HasLoadError, Is.True);
+                        Assert.That(loaded.LoadError, Is.Not.Null.And.Not.Empty);
+                });
+        }
 
     [Test]
     public async Task GetMemories_ClampsPageSizeAndKeepsRouteContract()

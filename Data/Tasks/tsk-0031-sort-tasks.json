@@ -1,0 +1,41 @@
+﻿{
+  "id": "tsk-0031-sort-tasks",
+  "key": "TSK-0031",
+  "title": "Sort Tasks",
+  "description": "Sort tasks by \u0022x\u0022 in the search panel",
+  "type": "Task",
+  "status": "Done",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [
+    {
+      "id": "c-5e32ddab5eb74f8dba79624941883263",
+      "author": "TheMasonX",
+      "body": "Looks like default is by string, which breaks on the TSK-#### format. sort by time (ascend/descend), id (asc/desc), severity, name (post TSK-### header)",
+      "createdAtUtc": "2026-05-24T02:24:54.986121Z"
+    },
+    {
+      "id": "c-review-0031-20260524",
+      "author": "AgentSmith",
+      "body": "Review round: completed. Added sort selector in /tasks with updated/key/severity/title modes including numeric key ordering for TSK-####.",
+      "createdAtUtc": "2026-05-24T04:27:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-24T02:19:08.724764Z",
+  "updatedAtUtc": "2026-05-24T04:27:00.0000000Z",
+  "completedAtUtc": "2026-05-24T04:27:00.0000000Z",
+  "revision": 3,
+  "isArchived": false
+}

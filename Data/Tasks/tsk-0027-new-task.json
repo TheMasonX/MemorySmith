@@ -22,14 +22,20 @@
       "author": "Themasonx",
       "body": "This should be renamed later and the description fixed, but the system prompt shouldn\u0027t be a loose file, but rather something governed within the system. Move the models configuration out to its own page and expose this",
       "createdAtUtc": "2026-05-24T01:58:12.3340313Z"
+    },
+    {
+      "id": "c-review-0027-20260524",
+      "author": "AgentSmith",
+      "body": "Review round: remains Backlog. Compatibility route and admin variable surfaces exist, but full governance migration of prompt/model config from loose files to managed pages is not fully completed.",
+      "createdAtUtc": "2026-05-24T04:46:00.0000000Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-24T01:56:44.8055541Z",
-  "updatedAtUtc": "2026-05-24T02:12:00.0000000Z",
+  "updatedAtUtc": "2026-05-24T04:46:00.0000000Z",
   "completedAtUtc": null,
-  "revision": 3,
+  "revision": 4,
   "isArchived": false
 }

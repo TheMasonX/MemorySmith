@@ -2,9 +2,9 @@
   "Id": "tsk-0009-admin-page-should-allow-the-user-to-edit-settings-and-not-just-view-them-as-appropriate",
   "Key": "TSK-0009",
   "Title": "admin/ page should allow the user to edit settings and not just view them (as appropriate)",
-  "Description": "Capture the current settings flow and note where edits are still blocked.\r\n\r\nImported from Data/Pages/workbench/tasks.md",
+  "Description": "Archived after audit on 2026-05-24.\r\n\r\nReason: current product state already includes searchable editable settings in `/admin` through `AdminSettingsService`, with allowlisted descriptors, sensitive-value handling, and documentation in README plus project wiki memories. This imported task no longer describes a net-new gap.",
   "Type": "Task",
-  "Status": "Backlog",
+  "Status": "Archived",
   "Priority": "Medium",
   "AssigneeMode": "Custom",
   "AssigneeDirectoryId": null,
@@ -13,12 +13,15 @@
   "Labels": [
     "tracker-import",
     "workbench",
-    "future"
+    "future",
+    "audit-vetted",
+    "obsolete"
   ],
   "Attachments": [],
   "ExternalLinks": [],
   "LinkedPages": [
-    "workbench/tasks"
+    "workbench/tasks",
+    "research/codebase-audit-task-vetting-20260523"
   ],
   "Comments": [
     {
@@ -26,14 +29,20 @@
       "Author": "tracker-import",
       "Body": "Capture the current settings flow and note where edits are still blocked.",
       "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z"
+    },
+    {
+      "Id": "c-audit-vet-0009",
+      "Author": "AgentSmith",
+      "Body": "Audit triage: archived as stale. Current README, AdminSettingsService, and project-wiki-admin-auth-hardening all show editable admin settings are already implemented.",
+      "CreatedAtUtc": "2026-05-24T03:20:00.0000000Z"
     }
   ],
   "EpicId": null,
   "ParentId": null,
   "DueDateUtc": null,
   "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z",
-  "UpdatedAtUtc": "2026-05-23T23:36:10.0439283Z",
-  "CompletedAtUtc": null,
-  "Revision": 1,
-  "IsArchived": false
+  "UpdatedAtUtc": "2026-05-24T03:20:00.0000000Z",
+  "CompletedAtUtc": "2026-05-24T03:20:00.0000000Z",
+  "Revision": 2,
+  "IsArchived": true
 }

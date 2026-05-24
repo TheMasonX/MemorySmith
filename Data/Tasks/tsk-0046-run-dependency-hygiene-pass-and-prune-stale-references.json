@@ -1,0 +1,41 @@
+{
+  "id": "tsk-0046-run-dependency-hygiene-pass-and-prune-stale-references",
+  "key": "TSK-0046",
+  "title": "Run dependency hygiene pass and prune stale references",
+  "description": "Problem: app dependency surface includes candidate stale references (for example Nerdbank.MessagePack) that may no longer be needed.\n\nDesired outcome: reduce dependency footprint and update governance around dependency introduction/removal.\n\nScope:\n- In scope: identify unused package references, remove safe candidates, and document retained optional dependencies.\n- Out of scope: replacing active core dependencies used by product features.\n\nAcceptance criteria:\n- Candidate unused dependencies are removed or explicitly justified.\n- Build and test validation remains green after changes.\n- Dependency review notes are captured in linked pages/tasks.\n\nValidation:\n- Build app/tests and run targeted suites impacted by removed packages.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "refactor",
+    "dependencies",
+    "cleanup",
+    "sprint-2"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "research/codebase-health-audit-20260523",
+    "tasks/sprints/codebase-health-refactor-sprints-20260523"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0046-20260523",
+      "author": "AgentSmith",
+      "body": "Created from F-005 with explicit validation gate before dependency removal.",
+      "createdAtUtc": "2026-05-23T19:18:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-23T19:18:00.0000000Z",
+  "updatedAtUtc": "2026-05-23T19:18:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false
+}
