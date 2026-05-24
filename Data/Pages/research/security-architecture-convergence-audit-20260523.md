@@ -18,9 +18,10 @@ Blend security hardening and architecture simplification into one delivery strea
 | C-002 | Configuration safety + architecture drift | High | 88% | Security posture depends on many configuration switches; without architectural guardrails and profile governance, complexity drift can reopen insecure combinations. | MemorySmith.App/Services/AdminSettingsService.cs, MemorySmith.App/appsettings.json, MemorySmith.App/appsettings.LocalDevelopment.json |
 | C-003 | Test topology and trust guarantees | Medium | 86% | Monolithic mixed-domain tests reduce the ability to prove security invariants at architectural seams. | MemorySmith.Tests/PagesAndChatTests.cs, MemorySmith.Tests/SecurityAndSourceLinkTests.cs |
 | C-004 | Dependency and attack surface coupling | Medium | 79% | Dependency hygiene is part of architecture health and security posture; stale packages increase maintenance and potential exposure. | MemorySmith.App/MemorySmith.App.csproj, workspace package/use scan |
-| C-005 | Task-store fault containment | High | 94% | A single malformed task JSON record can fail `FileTaskService.LoadAll` and return HTTP 500 for `/tasks`, creating an availability and governance risk on core workflow surfaces. | MemorySmith.App/Services/TaskDomainService.cs, MemorySmith.App/Components/Pages/Tasks.razor, MemorySmith.App/bin/Debug/net10.0/logs/memorysmith-20260523.log |
+| C-005 | Task-store fault containment | High | 90% | Task loading now includes malformed-file fallback handling, but recovery behavior is still incomplete across mutation/error-contract paths; malformed artifacts can still degrade reliability and governance UX if endpoint mappings are inconsistent. | MemorySmith.App/Services/TaskDomainService.cs, MemorySmith.App/Components/Pages/Tasks.razor, MemorySmith.App/Controllers/TasksController.cs, MemorySmith.App/bin/Debug/net10.0/logs/memorysmith-20260523.log |
 | C-006 | Task contract version drift | Medium | 91% | Task records currently exist in mixed root property casing variants (25 PascalCase, 27 camelCase). Runtime tolerates both today, but tooling/migrations/validation paths can diverge without an explicit canonical format and compatibility tests. | Data/Tasks/*.json audit, MemorySmith.App/Services/TaskDomainService.cs |
 | C-007 | Inconsistent task mutation error mapping | High | 93% | Task service now blocks edits for malformed fallback records via `EnsureTaskIsEditable` (`ArgumentException`), but not all mutation endpoints map `ArgumentException` to 4xx, so some paths can still return 500 instead of actionable client errors. | MemorySmith.App/Controllers/TasksController.cs, MemorySmith.App/Services/TaskDomainService.cs |
+| C-008 | Task read API authorization and disclosure posture | High | 95% | Task read endpoints (`GET /api/tasks`, `GET /api/tasks/{id}`) have no explicit view policy and are reachable without auth headers in current runtime; combined with remote-enabled local development profile this can expose task content and operational details unexpectedly. | MemorySmith.App/Controllers/TasksController.cs, MemorySmith.App/Services/MemorySmithRequestGuardMiddleware.cs, MemorySmith.App/appsettings.LocalDevelopment.json, runtime probe to `/api/tasks` |
 
 ## Converged Strategy
 
@@ -55,6 +56,10 @@ Blend security hardening and architecture simplification into one delivery strea
   - Impact: High
   - Likelihood: Medium
   - Mitigation: standardize mutation endpoint exception-to-ProblemDetails mapping and add malformed-record regression tests per endpoint.
+- R-CA-007: Task metadata disclosure through unauthenticated read APIs under permissive profile combinations.
+  - Impact: High
+  - Likelihood: Medium
+  - Mitigation: require explicit `CanViewMemorySmith` policy on task read endpoints and fail startup when remote mode is enabled without required auth controls.
 
 ## Open Questions
 
@@ -64,6 +69,7 @@ Blend security hardening and architecture simplification into one delivery strea
 - Q-CA-004: Should malformed task records be auto-quarantined or retained in-place with explicit admin recovery workflow?
 - Q-CA-005: Should legacy PascalCase task records be auto-normalized to canonical camelCase on write, via one-time migration, or preserved indefinitely?
 - Q-CA-006: Should task mutation endpoints standardize on typed error envelopes (ProblemDetails code set) instead of ad hoc BadRequest strings?
+- Q-CA-007: Should task read APIs require authenticated viewer policy in all profiles, or only when remote access is enabled?
 
 ## Confidence
 

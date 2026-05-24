@@ -17,6 +17,7 @@ Reduce structural complexity and security risk together by decomposing high-risk
 - TSK-0050 Converge maintenance decomposition with proposal/approval governance protections.
 - TSK-0052 Add task-store parse fault isolation and malformed-record recovery flow.
 - TSK-0054 Standardize task mutation error mapping for malformed-record safety.
+- TSK-0055 Enforce task read API view authorization and safe remote defaults.
 
 ## Stretch Items
 
@@ -44,6 +45,7 @@ Reduce structural complexity and security risk together by decomposing high-risk
 - TSK-0052: task-surface reliability and governance continuity under bad artifact input.
 - TSK-0053: task contract canonicalization and migration-safe governance checks.
 - TSK-0054: non-500 mutation behavior and consistent client-facing error contracts for malformed task records.
+- TSK-0055: task read-surface authorization hardening and startup guardrails for remote profile safety.
 
 ## Assumptions
 

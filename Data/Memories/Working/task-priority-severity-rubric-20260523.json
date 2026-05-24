@@ -1,0 +1,39 @@
+{
+  "Id": "task-priority-severity-rubric-20260523",
+  "Title": "Task Priority Uses Severity-First Ordering",
+  "Content": "MemorySmith task triage now uses priority as the practical severity signal. High priority is reserved for active security exposure, authorization gaps, integrity risks, and user-visible availability failures. Medium priority covers guardrails, regression matrices, migration compatibility, and maintainability refactors that reduce future risk but are not immediate exploitability/outage issues. Reprioritization examples from 2026-05-23: anti-forgery/bootstrap hardening moved to High, TaskDomainService decomposition moved to High due direct linkage with active reliability/security findings, and test fixture splitting moved to Medium.",
+  "Status": 1,
+  "Confidence": 0.92,
+  "Tags": [
+    "project-wiki",
+    "tasks",
+    "governance",
+    "prioritization",
+    "severity"
+  ],
+  "References": [
+    "task-tracking-feature-20260523",
+    "project-wiki-request-guard-hardening"
+  ],
+  "Conflicts": [],
+  "SourceLinks": [
+    {
+      "Label": "Convergence audit page",
+      "Uri": "%MemorySmithRepo%Data/Pages/research/security-architecture-convergence-audit-20260523.md"
+    },
+    {
+      "Label": "Convergence sprint plan",
+      "Uri": "%MemorySmithRepo%Data/Pages/Tasks/Sprints/security-architecture-convergence-sprint-20260523.md"
+    },
+    {
+      "Label": "Task domain service",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/TaskDomainService.cs"
+    },
+    {
+      "Label": "Tasks controller",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Controllers/TasksController.cs"
+    }
+  ],
+  "UsageCount": 0,
+  "LastUpdated": "2026-05-23T23:59:00Z"
+}

@@ -5,7 +5,7 @@
   "description": "Problem: TaskDomainService currently mixes models/contracts, validation, persistence, and activity-history concerns in one service.\n\nDesired outcome: clearer boundaries and lower complexity for task-domain evolution.\n\nScope:\n- In scope: separate contracts/models, file persistence adapter, and orchestration/validation service.\n- Out of scope: task feature additions.\n\nAcceptance criteria:\n- Core task-domain concerns are separated into focused units.\n- API behavior remains compatible.\n- Activity logging behavior remains unchanged.\n\nValidation:\n- Run tasks API and task-page tests.",
   "type": "Task",
   "status": "Backlog",
-  "priority": "Medium",
+  "priority": "High",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
   "assigneeCustomText": "Copilot",
@@ -28,14 +28,20 @@
       "author": "AgentSmith",
       "body": "Created from F-004 as Sprint 2 committed decomposition work.",
       "createdAtUtc": "2026-05-23T19:16:00.0000000Z"
+    },
+    {
+      "id": "c-reprioritize-0045-20260523",
+      "author": "AgentSmith",
+      "body": "Reprioritized to High after severity review: TaskDomainService is now directly tied to active reliability/security findings (malformed-task handling and mutation error behavior), making decomposition higher urgency.",
+      "createdAtUtc": "2026-05-23T23:59:00.0000000Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-23T19:16:00.0000000Z",
-  "updatedAtUtc": "2026-05-23T19:16:00.0000000Z",
+  "updatedAtUtc": "2026-05-23T23:59:00.0000000Z",
   "completedAtUtc": null,
-  "revision": 1,
+  "revision": 2,
   "isArchived": false
 }
