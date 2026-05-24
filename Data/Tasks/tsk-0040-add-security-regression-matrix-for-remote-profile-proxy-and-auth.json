@@ -1,0 +1,41 @@
+{
+  "id": "tsk-0040-add-security-regression-matrix-for-remote-profile-proxy-and-auth",
+  "key": "TSK-0040",
+  "title": "Add security regression matrix for remote profile, proxy, and auth",
+  "description": "Problem: security behavior relies on combinations of configuration flags and runtime context; current test coverage is strong but not yet organized as a posture matrix.\n\nDesired outcome: deterministic test matrix that validates safe-by-default behavior and approved opt-in overrides.\n\nScope:\n- In scope: matrix tests for remote API, API key, transport settings, proxy trust mode, setup/login protections, and agent write gating invariants.\n- Out of scope: external penetration testing.\n\nAcceptance criteria:\n- Matrix tests assert secure defaults and explicit opt-in behavior for insecure overrides.\n- Test suite is runnable in CI without external dependencies.\n- Failures are actionable with clear scenario names.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "security",
+    "tests",
+    "quality-gate",
+    "safe-by-default"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "research/security-codebase-audit-20260523",
+    "tasks/sprints/security-hardening-safe-default-20260523"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0040-20260523",
+      "author": "AgentSmith",
+      "body": "Created to close validation gap across findings F-001 through F-004 and enforce confidence gates.",
+      "createdAtUtc": "2026-05-23T18:11:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-23T18:11:00.0000000Z",
+  "updatedAtUtc": "2026-05-23T18:11:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false
+}

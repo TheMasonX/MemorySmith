@@ -1,0 +1,42 @@
+{
+  "id": "tsk-0053-add-task-json-contract-canonicalization-and-compatibility-guardrails",
+  "key": "TSK-0053",
+  "title": "Add task JSON contract canonicalization and compatibility guardrails",
+  "description": "Problem: task records currently exist in mixed JSON contract variants (PascalCase and camelCase root properties). Runtime deserialization is tolerant, but tooling and future schema/migration workflows can drift or break without explicit canonicalization policy.\n\nDesired outcome: define one canonical persisted task contract and enforce compatibility through tests, linting, and migration-safe normalization strategy.\n\nScope:\n- In scope: contract policy decision, optional one-time migration helper, read-path compatibility tests for legacy records, write-path canonical output checks, and guardrail lint command.\n- Out of scope: redesigning task business semantics.\n\nAcceptance criteria:\n- Canonical task JSON format is documented and used for all newly written files.\n- Legacy files remain readable or have a controlled migration path with rollback guidance.\n- CI/local checks detect non-canonical new task artifacts.\n\nValidation:\n- Add tests proving both legacy and canonical records deserialize correctly.\n- Add at least one negative test proving lint catches non-canonical output in newly generated artifacts.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "architecture",
+    "governance",
+    "reliability",
+    "tasks",
+    "convergence"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "research/security-architecture-convergence-audit-20260523",
+    "tasks/sprints/security-architecture-convergence-sprint-20260523"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0053-20260523",
+      "author": "AgentSmith",
+      "body": "Created from continued audit finding C-006 on task contract drift (PascalCase and camelCase coexistence).",
+      "createdAtUtc": "2026-05-23T23:35:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-23T23:35:00.0000000Z",
+  "updatedAtUtc": "2026-05-23T23:35:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false
+}

@@ -2,41 +2,51 @@
     <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">
         Home
     </MudNavLink>
-    <MudNavLink Href="/memories" Icon="@Icons.Material.Filled.Memory">
-        Memories
-    </MudNavLink>
-    <MudNavLink Href="/pages" Icon="@Icons.Material.Filled.Article">
-        Pages
-    </MudNavLink>
-    <MudNavLink Href="/tasks" Icon="@Icons.Material.Filled.TaskAlt">
-        Tasks
-    </MudNavLink>
-    <MudNavLink Href="/chat" Icon="@Icons.Material.Filled.Chat">
-        Chat
-    </MudNavLink>
-    <AuthorizeView Policy="@MemorySmithPolicies.CanApproveAgentWrites">
-        <Authorized>
-            <MudNavLink Href="/proposals" Icon="@Icons.Material.Filled.RuleFolder">
-                Proposals
-            </MudNavLink>
-        </Authorized>
-    </AuthorizeView>
-    <MudNavLink Href="/health" Icon="@Icons.Material.Filled.MonitorHeart">
-        Health
-    </MudNavLink>
+
+    <MudNavGroup Title="Workspace" Icon="@Icons.Material.Filled.Workspaces" Expanded="true">
+        <MudNavLink Href="/pages" Icon="@Icons.Material.Filled.Article">
+            Pages
+        </MudNavLink>
+        <MudNavLink Href="/memories" Icon="@Icons.Material.Filled.Memory">
+            Memories
+        </MudNavLink>
+        <MudNavLink Href="/chat" Icon="@Icons.Material.Filled.Chat">
+            Chat
+        </MudNavLink>
+    </MudNavGroup>
+
+    <MudNavGroup Title="Operations" Icon="@Icons.Material.Filled.FactCheck" Expanded="true">
+        <MudNavLink Href="/tasks" Icon="@Icons.Material.Filled.TaskAlt">
+            Tasks
+        </MudNavLink>
+        <AuthorizeView Policy="@MemorySmithPolicies.CanApproveAgentWrites">
+            <Authorized>
+                <MudNavLink Href="/proposals" Icon="@Icons.Material.Filled.RuleFolder">
+                    Proposals
+                </MudNavLink>
+            </Authorized>
+        </AuthorizeView>
+        <MudNavLink Href="/health" Icon="@Icons.Material.Filled.MonitorHeart">
+            Health
+        </MudNavLink>
+    </MudNavGroup>
+
     <AuthorizeView Policy="@MemorySmithPolicies.CanAdminMemorySmith">
         <Authorized>
-            <MudNavLink Href="/tags" Icon="@Icons.Material.Filled.LocalOffer">
-                Tags
-            </MudNavLink>
-            <MudNavLink Href="/maintenance" Icon="@Icons.Material.Filled.Engineering">
-                Maintenance
-            </MudNavLink>
-            <MudNavLink Href="/admin" Icon="@Icons.Material.Filled.AdminPanelSettings">
-                Admin
-            </MudNavLink>
+            <MudNavGroup Title="Governance" Icon="@Icons.Material.Filled.AdminPanelSettings" Expanded="true">
+                <MudNavLink Href="/tags" Icon="@Icons.Material.Filled.LocalOffer">
+                    Tags
+                </MudNavLink>
+                <MudNavLink Href="/maintenance" Icon="@Icons.Material.Filled.Engineering">
+                    Maintenance
+                </MudNavLink>
+                <MudNavLink Href="/admin" Icon="@Icons.Material.Filled.SettingsApplications">
+                    Admin
+                </MudNavLink>
+            </MudNavGroup>
         </Authorized>
     </AuthorizeView>
+
     <MudNavLink Href="/about" Icon="@Icons.Material.Filled.Info">
         About
     </MudNavLink>

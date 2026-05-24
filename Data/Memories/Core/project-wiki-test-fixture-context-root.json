@@ -21,6 +21,20 @@
   "Conflicts": [
     "project-wiki-test-fixture-conflict-note"
   ],
+  "SourceLinks": [
+    {
+      "Label": "Fixture graph behavior in base tests",
+      "Uri": "%MemorySmithRepo%MemorySmith.Tests/ProjectWikiTestbaseTests.cs",
+      "StartLine": 92,
+      "EndLine": 108
+    },
+    {
+      "Label": "Context pack relationship assertions",
+      "Uri": "%MemorySmithRepo%MemorySmith.Tests/McpAndSemanticSearchTests.cs",
+      "StartLine": 352,
+      "EndLine": 355
+    }
+  ],
   "UsageCount": 0,
-  "LastUpdated": "2026-05-17T12:00:00Z"
+  "LastUpdated": "2026-05-23T00:00:00Z"
 }

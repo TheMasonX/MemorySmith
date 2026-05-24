@@ -2,10 +2,10 @@
   "Id": "tsk-0016-fix-chat-agent-page-write-approval-path-validation-so-approved-proposals-targeting-data-pages-md-do-not-fail-with-outside-configured-maintenance-write-directories",
   "Key": "TSK-0016",
   "Title": "Fix chat agent page-write approval path validation so approved proposals targeting `Data/Pages/*.md` do not fail with \"outside configured maintenance write directories\".",
-  "Description": "Add a screenshot or log excerpt once the path check is fixed.\r\n\r\nImported from Data/Pages/workbench/tasks.md",
+  "Description": "Problem: proposal approval for normal page writes is still coupled to maintenance-agent write roots, so safe `Data/Pages/*.md` proposals can fail at approval time with `outside configured maintenance write directories`.\r\n\r\nDesired outcome:\r\n- Safe page proposals targeting approved wiki paths succeed without depending on maintenance write-root coupling.\r\n- Unsafe traversal targets are rejected before they appear as actionable pending writes.\r\n\r\nAcceptance criteria:\r\n- A normal page proposal under the intended chat write scope can be approved successfully.\r\n- Traversal-style targets are rejected at proposal time or clearly blocked before they become pending approvals.\r\n- Automated coverage proves safe writes still require approval while unsafe targets never reach disk.\r\n\r\nValidation:\r\n- Reproduce the previously failing approval path with a safe page slug.\r\n- Add focused tests around proposal-time path validation and approval-time success for safe slugs.\r\n\r\nAudit note: vetted on 2026-05-24; still high-priority. Local audit logs reproduced the failure state and confirmed apply-time safety without fixing operator usability.",
   "Type": "Task",
   "Status": "Backlog",
-  "Priority": "Medium",
+  "Priority": "High",
   "AssigneeMode": "Custom",
   "AssigneeDirectoryId": null,
   "AssigneeCustomText": "Copilot",
@@ -13,12 +13,17 @@
   "Labels": [
     "tracker-import",
     "workbench",
-    "future"
+    "future",
+    "audit-vetted",
+    "chat",
+    "governance",
+    "security"
   ],
   "Attachments": [],
   "ExternalLinks": [],
   "LinkedPages": [
-    "workbench/tasks"
+    "workbench/tasks",
+    "research/codebase-audit-task-vetting-20260523"
   ],
   "Comments": [
     {
@@ -26,14 +31,26 @@
       "Author": "tracker-import",
       "Body": "Add a screenshot or log excerpt once the path check is fixed.",
       "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z"
+    },
+    {
+      "Id": "c-audit-vet-0016",
+      "Author": "AgentSmith",
+      "Body": "Audit triage: still actionable and high severity. Reproduced safe page approvals failing because chat approval still effectively rides maintenance write-root constraints.",
+      "CreatedAtUtc": "2026-05-24T03:20:00.0000000Z"
+    },
+    {
+      "Id": "c-review-0016-20260524",
+      "Author": "AgentSmith",
+      "Body": "Review round: remains Backlog. Latest chat-agent testing logs still show the safe-slug approval guard failure (outside configured maintenance write directories), so closure criteria are not met.",
+      "CreatedAtUtc": "2026-05-24T04:42:00.0000000Z"
     }
   ],
   "EpicId": null,
   "ParentId": null,
   "DueDateUtc": null,
   "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z",
-  "UpdatedAtUtc": "2026-05-23T23:36:10.0439283Z",
+  "UpdatedAtUtc": "2026-05-24T04:42:00.0000000Z",
   "CompletedAtUtc": null,
-  "Revision": 1,
+  "Revision": 3,
   "IsArchived": false
 }

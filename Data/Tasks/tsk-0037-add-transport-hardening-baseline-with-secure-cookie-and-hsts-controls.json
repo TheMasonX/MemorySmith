@@ -1,0 +1,43 @@
+{
+  "id": "tsk-0037-add-transport-hardening-baseline-with-secure-cookie-and-hsts-controls",
+  "key": "TSK-0037",
+  "title": "Add transport hardening baseline with secure cookie and HSTS controls",
+  "description": "Problem: cookie-based auth currently lacks explicit secure transport hardening defaults for non-loopback deployments.\n\nDesired outcome: provide configurable, safe-by-default transport controls that keep localhost development functional while hardening remote scenarios.\n\nScope:\n- In scope: configurable cookie secure policy, HSTS option, and remote-safe defaults with explicit compatibility overrides.\n- Out of scope: external load balancer certificate automation.\n\nAcceptance criteria:\n- Cookie secure policy is explicitly configurable and defaults to safe behavior for remote exposure.\n- HSTS can be enabled through settings/profile with clear admin guidance.\n- Localhost workflow remains functional with documented compatibility path.\n\nValidation:\n- Add/extend tests for secure-cookie and HSTS behavior under local vs remote profile settings.\n- Run targeted auth and startup guard tests.\n\nRollback:\n- Disable hardened transport toggles through admin settings/profile if compatibility regressions are discovered.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "security",
+    "transport",
+    "auth",
+    "safe-by-default",
+    "sprint-guardrails"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "research/security-codebase-audit-20260523",
+    "council/security-safe-default-governance-council-20260523",
+    "tasks/sprints/security-hardening-safe-default-20260523"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0037-20260523",
+      "author": "AgentSmith",
+      "body": "Created from security audit finding F-002 to enforce transport hardening without impeding localhost functionality.",
+      "createdAtUtc": "2026-05-23T18:05:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-23T18:05:00.0000000Z",
+  "updatedAtUtc": "2026-05-23T18:05:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false
+}

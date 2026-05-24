@@ -1,0 +1,41 @@
+{
+  "id": "tsk-0048-establish-security-invariants-for-refactor-seams",
+  "key": "TSK-0048",
+  "title": "Establish security invariants for architectural refactor seams",
+  "description": "Problem: major service decompositions can silently weaken trust boundaries if authorization and approval invariants are not explicit.\n\nDesired outcome: define and enforce invariant checks that must remain true while refactoring architecture hotspots.\n\nScope:\n- In scope: invariant definitions and tests for request guard, role policies, write approval gating, and proposal workflow boundaries.\n- Out of scope: net-new business features.\n\nAcceptance criteria:\n- Invariant suite exists and runs in local/CI validation.\n- Refactor tasks reference these invariants as non-negotiable gates.\n- Failing invariants block merge.\n\nValidation:\n- Run targeted security and contract tests proving invariants hold before and after extraction slices.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "security",
+    "architecture",
+    "quality-gate",
+    "convergence"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "research/security-architecture-convergence-audit-20260523",
+    "tasks/sprints/security-architecture-convergence-sprint-20260523"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0048-20260523",
+      "author": "AgentSmith",
+      "body": "Convergence task created to lock security boundaries before architecture extraction.",
+      "createdAtUtc": "2026-05-23T19:34:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-23T19:34:00.0000000Z",
+  "updatedAtUtc": "2026-05-23T19:34:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false
+}

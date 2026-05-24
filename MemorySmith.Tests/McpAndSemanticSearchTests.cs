@@ -297,7 +297,7 @@ public class McpAndSemanticSearchTests
         var text = await ExtractFirstToolTextAsync(response);
         using var document = JsonDocument.Parse(text);
         var records = document.RootElement.GetProperty("records").EnumerateArray().ToList();
-        var warnings = document.RootElement.GetProperty("warnings").EnumerateArray().Select(warning => warning.GetString()).ToList();
+        var warnings = document.RootElement.GetProperty("warnings").EnumerateArray().Select(warning => warning.GetString() ?? string.Empty).ToList();
         Assert.Multiple(() =>
         {
             Assert.That(document.RootElement.GetProperty("schemaVersion").GetString(), Is.EqualTo("memorysmith.context-pack.v1"));
@@ -340,6 +340,7 @@ public class McpAndSemanticSearchTests
         var text = await ExtractFirstToolTextAsync(response);
         using var document = JsonDocument.Parse(text);
         var records = document.RootElement.GetProperty("records").EnumerateArray().ToList();
+        var warnings = document.RootElement.GetProperty("warnings").EnumerateArray().Select(warning => warning.GetString()).ToList();
         var relationships = records.ToDictionary(
             record => record.GetProperty("id").GetString()!,
             record => record.GetProperty("relationship").GetString(),
@@ -351,7 +352,8 @@ public class McpAndSemanticSearchTests
             Assert.That(relationships["project-wiki-test-fixture-reference-child"], Is.EqualTo("reference of project-wiki-test-fixture-context-root"));
             Assert.That(relationships["project-wiki-test-fixture-conflict-note"], Is.EqualTo("conflict of project-wiki-test-fixture-context-root"));
             Assert.That(relationships["project-wiki-test-fixture-backlink-source"], Is.EqualTo("references project-wiki-test-fixture-context-root"));
-            Assert.That(document.RootElement.GetProperty("warnings").EnumerateArray(), Is.Empty);
+            Assert.That(warnings, Has.Some.Contains("source.missing_variable"));
+            Assert.That(warnings, Has.Some.Contains("source.unresolved"));
         });
     }
 

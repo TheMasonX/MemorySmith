@@ -5,6 +5,7 @@
 - MVVM with minimal code-behind for UI components.
 - Treat `MemorySmith.App` as the active single-host app. Legacy `MemorySmith.Worker` and `MemorySmith.Dashboard` code has been removed from the active repository; references to them are historical only.
 - Keep `Data/Memories` stable: it is the live project wiki and realistic test fixture source. Tests should copy it to temp storage before mutation.
+- Treat `/tasks`, `/tags`, and maintenance proposal workflows as active product surfaces when updating docs or validating behavior.
 
 ## Knowledge Hub - Where to Find Things
 
@@ -21,7 +22,7 @@ The current project map starts at `README.md`, `Data/Memories`, and `MemorySmith
 | `MemorySmith.Core/Docs/Plans/` | Architecture and implementation plans. `MemorySmith_FinalRefactorDesign_20260507.md` is the current broad refactor blueprint. |
 | `MemorySmith.Core/Docs/Reviews/` | Review/audit reports. Useful, but verify against code because older reports can be stale. |
 | `MemorySmith.Core/Docs/ProgressReports/` | Historical progress snapshots. Verify against current code before relying on them. |
-| `MemorySmith.Core/Docs/Prompts/` | Prompts used by the app, including the wiki chat/agent prompt. |
+| `MemorySmith.Core/Docs/Prompts/` | Prompt source of truth used by chat/agent and maintenance workflows. Keep prompt text aligned with runtime capabilities. |
 | `Schemas/` | JSON schema and related data contracts. |
 
 ### Key Files to Read First
@@ -29,6 +30,9 @@ The current project map starts at `README.md`, `Data/Memories`, and `MemorySmith
 - `Data/Memories/Core/` - current structured project knowledge.
 - `MemorySmith.Core/Docs/Plans/MemorySmith_FinalRefactorDesign_20260507.md` - active broad architecture plan.
 - `MemorySmith.Core/Docs/Plans/SemantingSearch.md` - current semantic search/vector update plan when working on semantic retrieval.
+- `MemorySmith.Core/Docs/Prompts/wiki-chat-agent.md` - canonical chat/agent system prompt used by the app.
+- `MemorySmith.Core/Docs/Prompts/wiki-chat-agent.modelfile` - Athena/Ollama prompt package; keep in sync with the canonical chat prompt.
+- `MemorySmith.Core/Docs/Prompts/maintenance-agent-task.md`, `maintenance-proposal-generation.md`, and `maintenance-revision-cycle.md` - maintenance-agent prompt contracts.
 
 ### Reviewing Plans and Progress
 When reviewing plans or progress reports, cross-reference with the actual codebase to verify that the documented state matches reality.

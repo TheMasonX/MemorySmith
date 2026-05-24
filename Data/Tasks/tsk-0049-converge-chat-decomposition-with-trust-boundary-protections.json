@@ -1,0 +1,42 @@
+{
+  "id": "tsk-0049-converge-chat-decomposition-with-trust-boundary-protections",
+  "key": "TSK-0049",
+  "title": "Converge chat decomposition with trust-boundary protections",
+  "description": "Problem: chat module complexity and trust-sensitive behavior are tightly coupled in one large service, increasing regression and security risk.\n\nDesired outcome: decompose chat architecture while preserving role-based controls, tool-call bounds, and write-approval semantics.\n\nScope:\n- In scope: extract chat provider/orchestration/write proposal components with invariant checks from TSK-0048.\n- Out of scope: chat feature expansion.\n\nAcceptance criteria:\n- Chat service concerns are split into bounded modules.\n- Authorization and write approval behavior remains unchanged under tests.\n- Tool-call bounds and safe-context behavior are preserved.\n\nValidation:\n- Run targeted chat, pages/chat, and security tests covering proposal and approval flows.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "security",
+    "architecture",
+    "chat",
+    "convergence"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "research/security-architecture-convergence-audit-20260523",
+    "tasks/sprints/security-architecture-convergence-sprint-20260523",
+    "research/codebase-health-audit-20260523"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0049-20260523",
+      "author": "AgentSmith",
+      "body": "Convergence task created to combine chat hotspot decomposition with explicit trust-boundary preservation.",
+      "createdAtUtc": "2026-05-23T19:36:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-23T19:36:00.0000000Z",
+  "updatedAtUtc": "2026-05-23T19:36:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false
+}

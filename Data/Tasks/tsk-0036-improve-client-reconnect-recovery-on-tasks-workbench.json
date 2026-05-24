@@ -1,0 +1,40 @@
+{
+  "id": "tsk-0036-improve-client-reconnect-recovery-on-tasks-workbench",
+  "key": "TSK-0036",
+  "title": "Improve client reconnect recovery on tasks workbench",
+  "description": "Harden reconnect behavior and operator recovery path when the Blazor client briefly disconnects, so users are not stranded behind a persistent retry modal.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "tasks",
+    "reliability",
+    "ui",
+    "review-followup"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "workbench/tasks"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0036-20260524",
+      "author": "AgentSmith",
+      "body": "Review sweep observed repeated 'Failed to rejoin' modal behavior in the integrated browser despite healthy server listener; follow-up needed for reconnect UX resilience.",
+      "createdAtUtc": "2026-05-24T05:07:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-24T05:07:00.0000000Z",
+  "updatedAtUtc": "2026-05-24T05:07:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false
+}

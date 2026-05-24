@@ -1,0 +1,43 @@
+{
+  "id": "tsk-0038-add-trusted-proxy-forwarded-header-security-controls",
+  "key": "TSK-0038",
+  "title": "Add trusted proxy and forwarded-header security controls",
+  "description": "Problem: loopback/HTTPS-sensitive security decisions currently depend on direct connection properties and can be ambiguous in proxied deployments.\n\nDesired outcome: explicit, configurable trust boundaries for forwarded headers so request classification remains secure and predictable.\n\nScope:\n- In scope: trusted proxies/networks settings, forwarded-header processing, and updates to loopback/HTTPS-sensitive checks.\n- Out of scope: full multi-hop edge architecture support beyond initial trusted proxy model.\n\nAcceptance criteria:\n- Forwarded headers are processed only when trusted proxy settings are configured.\n- Security-sensitive decisions (loopback checks, remote auth HTTPS checks) behave correctly in direct and proxied modes.\n- Admin guidance documents intended deployment patterns and trust assumptions.\n\nValidation:\n- Add tests for direct localhost, untrusted proxy, and trusted proxy request paths.\n- Verify no regression to current local-first behavior.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "security",
+    "network",
+    "proxy",
+    "safe-by-default",
+    "sprint-guardrails"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "research/security-codebase-audit-20260523",
+    "council/security-safe-default-governance-council-20260523",
+    "tasks/sprints/security-hardening-safe-default-20260523"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0038-20260523",
+      "author": "AgentSmith",
+      "body": "Created from security audit finding F-003 to make proxy trust explicit and testable.",
+      "createdAtUtc": "2026-05-23T18:07:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-23T18:07:00.0000000Z",
+  "updatedAtUtc": "2026-05-23T18:07:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false
+}

@@ -1,5 +1,7 @@
 # Admin and Authentication
 
+Visibility: this page is intentionally Admin-only.
+
 The admin and authentication features cover local sign-in, role-based access control, provider management, audit visibility, and operational settings.
 
 ## What It Does

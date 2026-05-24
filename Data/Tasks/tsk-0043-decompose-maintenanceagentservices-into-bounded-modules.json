@@ -1,0 +1,42 @@
+{
+  "id": "tsk-0043-decompose-maintenanceagentservices-into-bounded-modules",
+  "key": "TSK-0043",
+  "title": "Decompose MaintenanceAgentServices into bounded modules",
+  "description": "Problem: MaintenanceAgentServices.cs combines proposal store, workflow, topic map, scheduler, and runtime services in one oversized file.\n\nDesired outcome: improve cohesion and maintainability by splitting maintenance-agent concerns into bounded service files with explicit contracts.\n\nScope:\n- In scope: separate proposal storage/workflow, topic-map logic, scheduler/runtime orchestration, and shared models.\n- Out of scope: changes to proposal semantics or scheduler behavior intent.\n\nDependencies:\n- Characterization tests for maintenance workflow and scheduler behavior.\n\nAcceptance criteria:\n- Maintenance hotspot file is materially reduced and responsibilities are modularized.\n- Proposal and scheduler behavior remains stable under existing tests.\n- New service boundaries are documented in code comments or docs where needed.\n\nValidation:\n- Run maintenance-agent and proposals-related test suites.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "refactor",
+    "maintenance-agent",
+    "complexity",
+    "sprint-1"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "research/codebase-health-audit-20260523",
+    "council/codebase-health-refactor-council-20260523",
+    "tasks/sprints/codebase-health-refactor-sprints-20260523"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0043-20260523",
+      "author": "AgentSmith",
+      "body": "Created from F-002 as Sprint 1 committed decomposition work.",
+      "createdAtUtc": "2026-05-23T19:12:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-23T19:12:00.0000000Z",
+  "updatedAtUtc": "2026-05-23T19:12:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false
+}

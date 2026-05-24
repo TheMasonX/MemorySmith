@@ -43,7 +43,7 @@
         </div>
     </section>
 
-    <section class="proposals-body">
+    <section class="proposals-body @(_isListPaneCollapsed ? "is-list-collapsed" : string.Empty)">
         <div class="wiki-results-pane proposals-list-pane">
             <div class="wiki-pane-header">
                 <strong>@FilteredProposals.Count proposal(s)</strong>
@@ -51,6 +51,13 @@
                 {
                     <span class="wiki-muted">Last run: @_lastRun.Trigger</span>
                 }
+                <MudSpacer />
+                <MudTooltip Text="Collapse proposal list" Placement="Placement.Top">
+                    <MudIconButton Icon="@Icons.Material.Filled.ViewSidebar"
+                                   Size="Size.Small"
+                                   OnClick="CollapseListPane"
+                                   aria-label="Collapse proposal list" />
+                </MudTooltip>
             </div>
             @if (_lastRun?.Warnings.Count > 0)
             {
@@ -136,6 +143,15 @@
                         <MudText Typo="Typo.h6">@_selectedProposal.Metadata.Task</MudText>
                         <span class="wiki-count">@_selectedProposal.ProposalId</span>
                     </div>
+                    @if (_isListPaneCollapsed)
+                    {
+                        <MudTooltip Text="Show proposal list" Placement="Placement.Top">
+                            <MudIconButton Icon="@Icons.Material.Filled.ViewSidebar"
+                                           Size="Size.Small"
+                                           OnClick="ExpandListPane"
+                                           aria-label="Show proposal list" />
+                        </MudTooltip>
+                    }
                     <span class="proposal-status @StatusClass(_selectedProposal.Status)">@StatusLabel(_selectedProposal.Status)</span>
                     <span class="proposal-risk @RiskClass(_selectedProposal.RiskLevel)">@_selectedProposal.RiskLevel</span>
                 </div>
@@ -232,6 +248,7 @@
     private string _selectedTask = "staleness_scan";
     private string _comment = string.Empty;
     private bool _isBusy;
+    private bool _isListPaneCollapsed;
     private MaintenanceActiveRunSnapshot? _activeRun;
     private MaintenanceActiveRunSnapshot? _localActiveRun;
 
@@ -290,6 +307,10 @@
 
         SelectProposal(proposal);
     }
+
+    private void CollapseListPane() => _isListPaneCollapsed = true;
+
+    private void ExpandListPane() => _isListPaneCollapsed = false;
 
     private async Task RunNowAsync()
     {

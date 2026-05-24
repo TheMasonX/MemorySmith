@@ -1,0 +1,45 @@
+{
+  "id": "tsk-0029-add-imported-task-review-metadata-and-backlog-triage-workflow",
+  "key": "TSK-0029",
+  "title": "Add imported-task review metadata and a backlog triage workflow in /tasks",
+  "description": "Problem: the imported `tracker-import` backlog entered `Data/Tasks` as durable records, but the task model does not yet make vetting status, stale-task disposition, or review ownership explicit. This leaves imported tasks looking equally trustworthy even when some are obsolete and others were never expanded beyond placeholder notes.\r\n\r\nDesired outcome:\r\n- Imported or machine-ingested tasks can be reviewed, marked vetted, archived as obsolete, or flagged for rewrite without relying on ad hoc manual inspection.\r\n- `/tasks` exposes enough provenance and review state to keep the backlog trustworthy over time.\r\n\r\nImplementation plan:\r\n1. Define the minimum provenance/review fields or conventions needed for imported tasks.\r\n2. Decide whether review state lives in first-class fields, labels, comments, or a hybrid model.\r\n3. Add UI affordances and documentation for reviewing, archiving, or rewriting imported tasks.\r\n4. Add tests covering import provenance display and review-state persistence.\r\n\r\nAcceptance criteria:\r\n- An imported task can be distinguished from a user-authored task at a glance.\r\n- A reviewer can mark a task as vetted or obsolete without freeform conventions only.\r\n- The review outcome survives reload and is queryable.\r\n\r\nValidation:\r\n- Exercise the workflow on at least one imported task.\r\n- Add focused tests for review metadata persistence and filtering.",
+  "type": "Task",
+  "status": "Done",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "audit",
+    "tasks",
+    "governance"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "research/codebase-audit-task-vetting-20260523"
+  ],
+  "comments": [
+    {
+      "id": "c-audit-create-0029",
+      "author": "AgentSmith",
+      "body": "Created from the 2026-05-24 codebase audit after vetting the imported tracker backlog.",
+      "createdAtUtc": "2026-05-24T03:20:00.0000000Z"
+    },
+    {
+      "id": "c-review-0029-20260524",
+      "author": "AgentSmith",
+      "body": "Review round: completed. Added imported-task triage actions in /tasks (vetted, needs-rewrite, obsolete/archive) with persisted labels and audit comments.",
+      "createdAtUtc": "2026-05-24T04:25:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-24T03:20:00.0000000Z",
+  "updatedAtUtc": "2026-05-24T04:25:00.0000000Z",
+  "completedAtUtc": "2026-05-24T04:25:00.0000000Z",
+  "revision": 2,
+  "isArchived": false
+}

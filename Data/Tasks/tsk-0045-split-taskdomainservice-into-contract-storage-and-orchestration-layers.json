@@ -1,0 +1,41 @@
+{
+  "id": "tsk-0045-split-taskdomainservice-into-contract-storage-and-orchestration-layers",
+  "key": "TSK-0045",
+  "title": "Split TaskDomainService into contract, storage, and orchestration layers",
+  "description": "Problem: TaskDomainService currently mixes models/contracts, validation, persistence, and activity-history concerns in one service.\n\nDesired outcome: clearer boundaries and lower complexity for task-domain evolution.\n\nScope:\n- In scope: separate contracts/models, file persistence adapter, and orchestration/validation service.\n- Out of scope: task feature additions.\n\nAcceptance criteria:\n- Core task-domain concerns are separated into focused units.\n- API behavior remains compatible.\n- Activity logging behavior remains unchanged.\n\nValidation:\n- Run tasks API and task-page tests.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "refactor",
+    "tasks",
+    "maintainability",
+    "sprint-2"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "research/codebase-health-audit-20260523",
+    "tasks/sprints/codebase-health-refactor-sprints-20260523"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0045-20260523",
+      "author": "AgentSmith",
+      "body": "Created from F-004 as Sprint 2 committed decomposition work.",
+      "createdAtUtc": "2026-05-23T19:16:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-23T19:16:00.0000000Z",
+  "updatedAtUtc": "2026-05-23T19:16:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false
+}

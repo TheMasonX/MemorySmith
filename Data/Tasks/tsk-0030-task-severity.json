@@ -1,0 +1,35 @@
+﻿{
+  "id": "tsk-0030-task-severity",
+  "key": "TSK-0030",
+  "title": "Task Severity",
+  "description": "Task severity property",
+  "type": "Task",
+  "status": "Done",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [
+    {
+      "id": "c-review-0030-20260524",
+      "author": "AgentSmith",
+      "body": "Review round: completed. /tasks now exposes severity as an editable workflow (mapped to task priority) and includes severity-aware sorting.",
+      "createdAtUtc": "2026-05-24T04:26:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-24T02:18:44.8467184Z",
+  "updatedAtUtc": "2026-05-24T04:26:00.0000000Z",
+  "completedAtUtc": "2026-05-24T04:26:00.0000000Z",
+  "revision": 2,
+  "isArchived": false
+}

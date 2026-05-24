@@ -2,7 +2,7 @@
   "Id": "tsk-0003-add-schema-or-fixture-validation-for-the-live-data-memories-wiki-so-bad-records-are-caught-before-runtime",
   "Key": "TSK-0003",
   "Title": "Add schema or fixture validation for the live `Data/Memories` wiki so bad records are caught before runtime.",
-  "Description": "Keep the validation output short and link the failing record id.\r\n\r\nImported from Data/Pages/workbench/tasks.md",
+  "Description": "Problem: live `Data/Memories` records are used as real app content and as test fixtures, but there is no dedicated validation pass that fails fast on malformed or incomplete records before runtime behavior drifts.\r\n\r\nDesired outcome:\r\n- Add an executable validation command for live memory records and fixture assumptions.\r\n- Surface the failing record id and reason without requiring deep log inspection.\r\n\r\nAcceptance criteria:\r\n- Validation checks required fields, filename/id alignment, and basic contract invariants for the live wiki set.\r\n- A failing record produces concise output with the offending record id/path.\r\n- The command is documented in README or a nearby wiki page.\r\n\r\nValidation:\r\n- Run the validation command against the current `Data/Memories` tree.\r\n- Add at least one focused automated test covering the validator.\r\n\r\nAudit note: vetted on 2026-05-24; still relevant because current tests exercise runtime behavior but no dedicated whole-wiki fixture validation surface was found.",
   "Type": "Task",
   "Status": "Backlog",
   "Priority": "Medium",
@@ -13,12 +13,16 @@
   "Labels": [
     "tracker-import",
     "workbench",
-    "future"
+    "future",
+    "audit-vetted",
+    "quality",
+    "data"
   ],
   "Attachments": [],
   "ExternalLinks": [],
   "LinkedPages": [
-    "workbench/tasks"
+    "workbench/tasks",
+    "research/codebase-audit-task-vetting-20260523"
   ],
   "Comments": [
     {
@@ -26,14 +30,26 @@
       "Author": "tracker-import",
       "Body": "Keep the validation output short and link the failing record id.",
       "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z"
+    },
+    {
+      "Id": "c-audit-vet-0003",
+      "Author": "AgentSmith",
+      "Body": "Audit triage: still actionable. The repo has broad behavior tests, but no dedicated validator task for the live Data/Memories corpus and fixture contract drift.",
+      "CreatedAtUtc": "2026-05-24T03:20:00.0000000Z"
+    },
+    {
+      "Id": "c-review-0003-20260524",
+      "Author": "AgentSmith",
+      "Body": "Review round: remains Backlog. Validation coverage exists in targeted tests, but no single live-wiki contract validator command surfaced for Data/Memories filename/id and required-field invariants.",
+      "CreatedAtUtc": "2026-05-24T04:41:00.0000000Z"
     }
   ],
   "EpicId": null,
   "ParentId": null,
   "DueDateUtc": null,
   "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z",
-  "UpdatedAtUtc": "2026-05-23T23:36:10.0439283Z",
+  "UpdatedAtUtc": "2026-05-24T04:41:00.0000000Z",
   "CompletedAtUtc": null,
-  "Revision": 1,
+  "Revision": 3,
   "IsArchived": false
 }

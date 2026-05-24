@@ -11,7 +11,11 @@
     "validation",
     "search"
   ],
-  "References": [],
+  "References": [
+    "project-wiki-test-architecture",
+    "project-wiki-validation-command",
+    "project-wiki-semantic-tool-quality-suite"
+  ],
   "Conflicts": [],
   "SourceLinks": [
     {
@@ -40,5 +44,5 @@
     }
   ],
   "UsageCount": 0,
-  "LastUpdated": "2026-05-17T17:00:00Z"
+  "LastUpdated": "2026-05-23T00:00:00Z"
 }

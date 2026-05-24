@@ -22,6 +22,20 @@
     "project-wiki-data-folder-policy"
   ],
   "Conflicts": [],
+  "SourceLinks": [
+    {
+      "Label": "Fixture assertions in project wiki tests",
+      "Uri": "%MemorySmithRepo%MemorySmith.Tests/ProjectWikiTestbaseTests.cs",
+      "StartLine": 92,
+      "EndLine": 108
+    },
+    {
+      "Label": "Context pack fixture assertions in MCP tests",
+      "Uri": "%MemorySmithRepo%MemorySmith.Tests/McpAndSemanticSearchTests.cs",
+      "StartLine": 330,
+      "EndLine": 355
+    }
+  ],
   "UsageCount": 0,
-  "LastUpdated": "2026-05-12T00:00:00Z"
+  "LastUpdated": "2026-05-23T00:00:00Z"
 }

@@ -1,0 +1,47 @@
+﻿{
+  "id": "tsk-0028-new-task",
+  "key": "TSK-0028",
+  "title": "Reorder and group the main navigation bar",
+  "description": "Redesign the navigation order and introduce clear groupings so primary workflows are easier to find and scan.",
+  "type": "Task",
+  "status": "Done",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "71d48bff32bb4490a89c36841b0937af",
+  "assigneeCustomText": null,
+  "reporter": "Themasonx",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [
+    {
+      "id": "c-fd8ed21d47794633be5d2985250c50d3",
+      "author": "Themasonx",
+      "body": "This should be renamed later and the description fixed. Reorder the nav bar and add groupings",
+      "createdAtUtc": "2026-05-24T01:59:29.0444132Z"
+    },
+    {
+      "id": "c-review-0028-20260524",
+      "author": "AgentSmith",
+      "body": "Review round: remains Backlog. Navigation links exist but are still presented as a flat sequence without grouped sections for primary workflows.",
+      "createdAtUtc": "2026-05-24T04:47:00.0000000Z"
+    },
+    {
+      "id": "c-review-0028-20260524-nav-grouping",
+      "author": "AgentSmith",
+      "body": "Completion round: implemented grouped main navigation sections (Workspace, Operations, Governance) and reordered primary links for faster scanning.",
+      "createdAtUtc": "2026-05-24T05:05:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-24T01:58:21.8924871Z",
+  "updatedAtUtc": "2026-05-24T05:05:00.0000000Z",
+  "completedAtUtc": "2026-05-24T05:05:00.0000000Z",
+  "revision": 7,
+  "isArchived": false
+}

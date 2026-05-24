@@ -1,0 +1,41 @@
+﻿{
+  "id": "tsk-0027-new-task",
+  "key": "TSK-0027",
+  "title": "Govern system prompt and model config in managed pages, not loose files",
+  "description": "Replace loose-file prompt/config handling with governed, first-class configuration surfaces. Move model configuration into a dedicated managed page and expose it in the app so changes are visible, reviewable, and auditable.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "71d48bff32bb4490a89c36841b0937af",
+  "assigneeCustomText": null,
+  "reporter": "Themasonx",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [
+    {
+      "id": "c-c590497c3b504fbcb21fb50b4a0a8bd0",
+      "author": "Themasonx",
+      "body": "This should be renamed later and the description fixed, but the system prompt shouldn\u0027t be a loose file, but rather something governed within the system. Move the models configuration out to its own page and expose this",
+      "createdAtUtc": "2026-05-24T01:58:12.3340313Z"
+    },
+    {
+      "id": "c-review-0027-20260524",
+      "author": "AgentSmith",
+      "body": "Review round: remains Backlog. Compatibility route and admin variable surfaces exist, but full governance migration of prompt/model config from loose files to managed pages is not fully completed.",
+      "createdAtUtc": "2026-05-24T04:46:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-24T01:56:44.8055541Z",
+  "updatedAtUtc": "2026-05-24T04:46:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 4,
+  "isArchived": false
+}

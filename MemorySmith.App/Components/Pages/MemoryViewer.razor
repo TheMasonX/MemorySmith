@@ -51,7 +51,7 @@
         </div>
     </section>
 
-    <section class="wiki-body">
+    <section class="wiki-body memory-body @(_isResultsPaneCollapsed ? "is-nav-collapsed" : string.Empty)">
         <aside class="wiki-results-pane" aria-label="Memory results">
             <div class="wiki-pane-header">
                 <MudText Typo="Typo.subtitle2">Results</MudText>
@@ -59,6 +59,13 @@
                 {
                     <span class="wiki-mode-label">@SearchModeLabel</span>
                 }
+                <MudSpacer />
+                <MudTooltip Text="Collapse memory results list" Placement="Placement.Top">
+                    <MudIconButton Icon="@Icons.Material.Filled.ViewSidebar"
+                                   Size="Size.Small"
+                                   OnClick="CollapseResultsPane"
+                                   aria-label="Collapse memory results list" />
+                </MudTooltip>
             </div>
 
             @if (_isLoading)
@@ -242,6 +249,15 @@
                         </div>
                     </div>
                     <MudSpacer />
+                    @if (_isResultsPaneCollapsed)
+                    {
+                        <MudTooltip Text="Show memory results list" Placement="Placement.Top">
+                            <MudIconButton Icon="@Icons.Material.Filled.ViewSidebar"
+                                           Size="Size.Small"
+                                           OnClick="ExpandResultsPane"
+                                           aria-label="Show memory results list" />
+                        </MudTooltip>
+                    }
                     <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Size="Size.Small" OnClick="CopySelectedContentAsync" aria-label="Copy content" />
                     <MudIconButton Icon="@Icons.Material.Filled.Assignment" Size="Size.Small" OnClick="CopyAgentContextAsync" aria-label="Copy agent context" />
                     <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
@@ -332,6 +348,7 @@
     private bool _isEditing;
     private bool _checkingDiagnostics;
     private bool _memoryContentEnhancementsPending;
+    private bool _isResultsPaneCollapsed;
 
     private bool HasBlockingEditDiagnostics => _editDiagnostics.Any(diagnostic => string.Equals(diagnostic.Severity, "Error", StringComparison.OrdinalIgnoreCase));
 
@@ -601,6 +618,10 @@
     {
         await SelectAsync(id);
     }
+
+    private void CollapseResultsPane() => _isResultsPaneCollapsed = true;
+
+    private void ExpandResultsPane() => _isResultsPaneCollapsed = false;
 
     private void PopulateEditor(MemoryRecord record, bool editingExisting)
     {

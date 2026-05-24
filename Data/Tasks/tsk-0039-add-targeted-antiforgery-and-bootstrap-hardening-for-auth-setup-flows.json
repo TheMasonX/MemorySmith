@@ -1,0 +1,43 @@
+{
+  "id": "tsk-0039-add-targeted-antiforgery-and-bootstrap-hardening-for-auth-setup-flows",
+  "key": "TSK-0039",
+  "title": "Add targeted anti-forgery and bootstrap hardening for auth/setup flows",
+  "description": "Problem: setup and login form flows are anonymous endpoints and currently rely on ambient browser protections plus deployment assumptions.\n\nDesired outcome: reduce cross-site request risk while preserving bootstrap and local login usability.\n\nScope:\n- In scope: targeted anti-forgery and/or equivalent request-origin protections for setup/login form flows, plus explicit bootstrap hardening options.\n- Out of scope: redesign of full authentication architecture.\n\nAcceptance criteria:\n- Setup/login form flows include explicit request validation protections with a documented compatibility path.\n- Bootstrap path remains functional for intended localhost onboarding scenarios.\n- Security and UX guidance clearly explains opt-in exceptions.\n\nValidation:\n- Add tests for protected form flows and setup compatibility conditions.\n- Verify first-admin setup succeeds under documented secure path and fails under invalid path.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "security",
+    "auth",
+    "csrf",
+    "bootstrap",
+    "safe-by-default"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "research/security-codebase-audit-20260523",
+    "council/security-safe-default-governance-council-20260523",
+    "tasks/sprints/security-hardening-safe-default-20260523"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0039-20260523",
+      "author": "AgentSmith",
+      "body": "Created from security audit finding F-004 with explicit compatibility guard to avoid workflow regressions.",
+      "createdAtUtc": "2026-05-23T18:09:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-23T18:09:00.0000000Z",
+  "updatedAtUtc": "2026-05-23T18:09:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false
+}

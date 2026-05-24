@@ -6,60 +6,135 @@
       "name": "kind",
       "cardinality": "single",
       "valueKind": "enum",
-      "allowedValues": [ "fact", "rule", "procedure", "decision", "plan", "research", "guide", "concept", "issue", "example", "index" ]
+      "allowedValues": [
+        "fact",
+        "rule",
+        "procedure",
+        "decision",
+        "plan",
+        "research",
+        "guide",
+        "concept",
+        "issue",
+        "example",
+        "index"
+      ]
     },
     {
       "name": "priority",
       "cardinality": "single",
       "valueKind": "enum",
-      "allowedValues": [ "critical", "high", "normal", "low" ]
+      "allowedValues": [
+        "critical",
+        "high",
+        "normal",
+        "low"
+      ]
     },
     {
       "name": "audience",
       "cardinality": "many",
       "valueKind": "enum",
-      "allowedValues": [ "agent", "human", "chat", "developer", "admin" ]
+      "allowedValues": [
+        "agent",
+        "human",
+        "chat",
+        "developer",
+        "admin"
+      ]
     },
     {
       "name": "scope",
       "cardinality": "many",
-      "valueKind": "tag"
+      "valueKind": "tag",
+      "allowedValues": []
     },
     {
       "name": "review-after",
       "cardinality": "single",
-      "valueKind": "year-month"
+      "valueKind": "year-month",
+      "allowedValues": []
     },
     {
       "name": "expires",
       "cardinality": "single",
-      "valueKind": "year-month"
+      "valueKind": "year-month",
+      "allowedValues": []
     },
     {
       "name": "stale-risk",
       "cardinality": "single",
-      "valueKind": "year-month"
+      "valueKind": "year-month",
+      "allowedValues": []
     },
     {
       "name": "supersedes",
       "cardinality": "many",
-      "valueKind": "memory-id"
+      "valueKind": "memory-id",
+      "allowedValues": []
     },
     {
       "name": "superseded-by",
       "cardinality": "many",
-      "valueKind": "memory-id"
+      "valueKind": "memory-id",
+      "allowedValues": []
     }
   ],
   "plainTags": {
     "mode": "allowWithSuggestions",
-    "allowlist": [ "project-wiki", "configuration", "settings", "admin", "search", "semantic-search", "hybrid-search", "chat", "mcp", "pages", "ui", "storage", "tests", "security", "source-links", "tag-governance", "governance", "memory-system", "maintenance", "diagnostics", "staleness", "architecture", "docs", "current-state" ],
-    "blocklist": [ "misc", "general", "important", "stuff", "todo", "notes", "old", "new", "core", "working", "deprecated", "unconsolidated" ],
+    "allowlist": [
+      "admin",
+      "api",
+      "architecture",
+      "benchmarks",
+      "chat",
+      "configuration",
+      "context-pack",
+      "current-state",
+      "deterministic-test",
+      "diagnostics",
+      "documentation",
+      "github",
+      "governance",
+      "graph-fixture",
+      "hybrid-search",
+      "maintenance",
+      "mcp",
+      "memory-system",
+      "ollama",
+      "pages",
+      "project-wiki",
+      "search",
+      "security",
+      "semantic-search",
+      "settings",
+      "source-links",
+      "staleness",
+      "storage",
+      "structured-output",
+      "tag-governance",
+      "test-fixture",
+      "tests",
+      "ui"
+    ],
+    "blocklist": [
+      "core",
+      "deprecated",
+      "general",
+      "important",
+      "misc",
+      "new",
+      "notes",
+      "old",
+      "stuff",
+      "todo",
+      "unconsolidated",
+      "working"
+    ],
     "aliases": {
       "retrieval": "search",
       "semantic-searching": "semantic-search",
-      "model-context-protocol": "mcp",
-      "documentation": "docs"
+      "model-context-protocol": "mcp"
     }
   }
 }

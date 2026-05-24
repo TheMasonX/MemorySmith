@@ -28,11 +28,17 @@
                     <MudSelectItem Value="@option">@option</MudSelectItem>
                 }
             </MudSelect>
+            <MudSelect T="string" Value="@_sortMode" ValueChanged="OnSortModeChanged" Label="Sort" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="wiki-filter">
+                @foreach (var option in SortOptions)
+                {
+                    <MudSelectItem Value="@option">@SortLabel(option)</MudSelectItem>
+                }
+            </MudSelect>
             <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Search" OnClick="LoadAsync">Search</MudButton>
             <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync">Refresh</MudButton>
             <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
                 <Authorized>
-                    <MudButton Variant="Variant.Outlined" Color="Color.Success" StartIcon="@Icons.Material.Filled.Add" OnClick="CreateQuickTaskAsync">Quick Add</MudButton>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Success" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenQuickCreatePane">Quick Add</MudButton>
                 </Authorized>
             </AuthorizeView>
             <MudButton Variant="Variant.Outlined"
@@ -43,6 +49,43 @@
                 @(_isListCollapsed ? "Show List" : "Hide List")
             </MudButton>
         </div>
+
+        @if (_showQuickCreatePane)
+        {
+            <div class="tasks-quick-create-pane" role="region" aria-label="Create task">
+                <MudTextField T="string"
+                              Value="@_createTitle"
+                              ValueChanged="OnCreateTitleChanged"
+                              Label="Title"
+                              Placeholder="Describe the task"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Required="true"
+                              Class="tasks-quick-create-title" />
+                <MudTextField T="string"
+                              Value="@_createSlug"
+                              ValueChanged="OnCreateSlugChanged"
+                              Label="Slug"
+                              Placeholder="Optional: nav-grouping"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              HelperText="Used in task id. Letters, numbers, spaces, underscores, and hyphens only."
+                              Class="tasks-quick-create-slug" />
+                <MudTextField T="string"
+                              Value="@_createDescription"
+                              ValueChanged="OnCreateDescriptionChanged"
+                              Label="Description"
+                              Placeholder="Add task context"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Lines="2"
+                              Class="tasks-quick-create-description" />
+                <div class="tasks-quick-create-actions">
+                    <MudButton Variant="Variant.Filled" Color="Color.Success" StartIcon="@Icons.Material.Filled.Check" OnClick="CreateQuickTaskAsync">Create</MudButton>
+                    <MudButton Variant="Variant.Text" OnClick="CancelQuickCreate">Cancel</MudButton>
+                </div>
+            </div>
+        }
     </section>
 
     <section class="wiki-body tasks-body @(_isListCollapsed ? "is-list-collapsed" : string.Empty)">
@@ -64,10 +107,18 @@
                         {
                             <article class="@(task.Id == _selectedTask?.Id ? "proposal-row is-selected" : "proposal-row")" @onclick="@(() => SelectAsync(task.Id))">
                                 <div class="wiki-result-main">
-                                    <div class="wiki-result-title" title="@task.Title">@task.Key - @task.Title</div>
+                                    <div class="wiki-result-title tasks-result-title" title="@task.Title">
+                                        @if (task.HasLoadError)
+                                        {
+                                            <MudTooltip Text="@($"Task file needs repair: {task.SourceFilePath ?? task.Id}. {task.LoadError}")">
+                                                <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Color="Color.Warning" Size="Size.Small" Class="tasks-load-error-icon" />
+                                            </MudTooltip>
+                                        }
+                                        <span>@task.Key - @task.Title</span>
+                                    </div>
                                     <div class="wiki-result-meta">
                                         <span class="wiki-status">@task.Status</span>
-                                        <span class="wiki-status">@task.Priority</span>
+                                        <span class="wiki-status" title="Severity">@task.Priority</span>
                                         <span>@(task.Assignee ?? "unassigned")</span>
                                         <span>@task.UpdatedAtUtc.ToLocalTime().ToString("g")</span>
                                     </div>
@@ -88,38 +139,157 @@
             {
                 <div class="wiki-pane-header wiki-detail-header tasks-detail-header">
                     <div class="tasks-detail-header-main">
-                        <MudText Typo="Typo.h6" Class="tasks-detail-title">@_selectedTask.Key - @_selectedTask.Title</MudText>
+                        <div class="tasks-detail-title-text">@_selectedTask.Key - @_selectedTask.Title</div>
                         <div class="wiki-result-meta tasks-detail-meta">
                             <span class="wiki-status">@_selectedTask.Status</span>
-                            <span class="wiki-status">@_selectedTask.Priority</span>
+                            <span class="wiki-status" title="Severity">@_selectedTask.Priority</span>
                             <span>@(_selectedTask.AssigneeCustomText ?? _selectedTask.AssigneeDirectoryId ?? "unassigned")</span>
-                            <span>@_selectedTask.UpdatedAtUtc.ToLocalTime().ToString("g")</span>
                         </div>
-                    </div>
-                    <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
-                        <Authorized>
-                            <MudSelect T="string"
-                                       Value="@_selectedStatus"
-                                       ValueChanged="OnTaskStatusChanged"
-                                       Label="Status"
-                                       Variant="Variant.Outlined"
-                                       Margin="Margin.Dense"
-                                       Dense="true"
-                                       Class="tasks-status-combobox">
-                                @foreach (var option in TaskStatusOptions)
+                        @if (_selectedTask.Labels.Count > 0)
+                        {
+                            <div class="wiki-tag-line">
+                                @foreach (var label in _selectedTask.Labels)
                                 {
-                                    <MudSelectItem Value="@option">@option</MudSelectItem>
+                                    <span class="wiki-tag">@label</span>
                                 }
-                            </MudSelect>
-                        </Authorized>
-                    </AuthorizeView>
+                            </div>
+                        }
+                        @if (_selectedTask.HasLoadError)
+                        {
+                            <MudAlert Severity="Severity.Warning" Dense="true" Variant="Variant.Outlined" Class="tasks-load-error-alert">
+                                This task file could not be fully parsed and is read-only until fixed.
+                                @if (!string.IsNullOrWhiteSpace(_selectedTask.SourceFilePath))
+                                {
+                                    <span> File: @_selectedTask.SourceFilePath.</span>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(_selectedTask.LoadError))
+                                {
+                                    <span> Error: @_selectedTask.LoadError</span>
+                                }
+                            </MudAlert>
+                        }
+                    </div>
+                    <div class="tasks-detail-actions">
+                        <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
+                            <Authorized>
+                                @if (_selectedTask.HasLoadError)
+                                {
+                                    <MudTooltip Text="Task has malformed JSON and must be repaired before editing.">
+                                        <MudIconButton Icon="@Icons.Material.Filled.ErrorOutline"
+                                                       Color="Color.Warning"
+                                                       Size="Size.Small"
+                                                       Disabled="true"
+                                                       Class="tasks-header-icon-action" />
+                                    </MudTooltip>
+                                }
+                                else if (_isEditingTask)
+                                {
+                                    <MudTooltip Text="Save task edits">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Save"
+                                                       Color="Color.Success"
+                                                       Size="Size.Small"
+                                                       Class="tasks-header-icon-action"
+                                                       OnClick="SaveTaskEditsAsync" />
+                                    </MudTooltip>
+                                    <MudTooltip Text="Cancel editing">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Close"
+                                                       Color="Color.Default"
+                                                       Size="Size.Small"
+                                                       Class="tasks-header-icon-action"
+                                                       OnClick="CancelTaskEdits" />
+                                    </MudTooltip>
+                                }
+                                else
+                                {
+                                    <MudTooltip Text="Edit task">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                                       Color="Color.Default"
+                                                       Size="Size.Small"
+                                                       Class="tasks-header-icon-action"
+                                                       OnClick="BeginTaskEdit" />
+                                    </MudTooltip>
+                                }
+                            </Authorized>
+                        </AuthorizeView>
+                    </div>
                 </div>
 
                 <div class="wiki-editor-grid tasks-editor-grid">
-                    <MudTextField T="string" Value="@_selectedTask.Type" Label="Type" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
-                    <MudTextField T="string" Value="@_selectedTask.Reporter" Label="Reporter" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
-                    <MudTextField T="string" Value="@_selectedTask.Description" Label="Description" Lines="5" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" Class="tasks-description-field" />
+                    <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
+                        <Authorized>
+                            @if (_selectedTask.HasLoadError)
+                            {
+                                <MudTextField T="string" Value="@_selectedTask.Status" Label="Status" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                            }
+                            else
+                            {
+                                <MudSelect T="string"
+                                           Value="@_selectedStatus"
+                                           ValueChanged="OnTaskStatusChanged"
+                                           Label="Status"
+                                           Variant="Variant.Outlined"
+                                           Margin="Margin.Dense"
+                                           Dense="true"
+                                           Class="tasks-status-combobox">
+                                    @foreach (var option in TaskStatusOptions)
+                                    {
+                                        <MudSelectItem Value="@option">@option</MudSelectItem>
+                                    }
+                                </MudSelect>
+                            }
+                        </Authorized>
+                        <NotAuthorized>
+                            <MudTextField T="string" Value="@_selectedTask.Status" Label="Status" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        </NotAuthorized>
+                    </AuthorizeView>
+                    @if (_isEditingTask)
+                    {
+                        <MudTextField T="string" Value="@_editTitle" ValueChanged="OnEditTitleChanged" Label="Title" Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" />
+                        <MudSelect T="string" Value="@_editPriority" ValueChanged="OnEditPriorityChanged" Label="Severity" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                            @foreach (var option in TaskPriorityOptions)
+                            {
+                                <MudSelectItem Value="@option">@option</MudSelectItem>
+                            }
+                        </MudSelect>
+                        <MudSelect T="string" Value="@_editAssigneeMode" ValueChanged="OnEditAssigneeModeChanged" Label="Assignee Mode" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                            <MudSelectItem Value="@TaskAssigneeModes.Directory">@TaskAssigneeModes.Directory</MudSelectItem>
+                            <MudSelectItem Value="@TaskAssigneeModes.Custom">@TaskAssigneeModes.Custom</MudSelectItem>
+                        </MudSelect>
+                        @if (string.Equals(_editAssigneeMode, TaskAssigneeModes.Directory, StringComparison.OrdinalIgnoreCase))
+                        {
+                            <MudTextField T="string" Value="@_editAssigneeDirectoryId" ValueChanged="OnEditAssigneeDirectoryIdChanged" Label="Assignee Directory ID" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        }
+                        else
+                        {
+                            <MudTextField T="string" Value="@_editAssigneeCustomText" ValueChanged="OnEditAssigneeCustomTextChanged" Label="Assignee (Custom)" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        }
+                        <MudTextField T="string" Value="@_editLabelsText" ValueChanged="OnEditLabelsTextChanged" Label="Task Tags" Placeholder="governance, tasks" Variant="Variant.Outlined" Margin="Margin.Dense" HelperText="Comma-separated labels." />
+                        <MudTextField T="string" Value="@_editDescription" ValueChanged="OnEditDescriptionChanged" Label="Description" Lines="5" Variant="Variant.Outlined" Margin="Margin.Dense" Class="tasks-description-field" />
+                    }
+                    else
+                    {
+                        <MudTextField T="string" Value="@_selectedTask.Type" Label="Type" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        <MudTextField T="string" Value="@_selectedTask.Reporter" Label="Reporter" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        <MudTextField T="string" Value="@_selectedTask.Description" Label="Description" Lines="5" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" Class="tasks-description-field" />
+                    }
                 </div>
+
+                @if (!_selectedTask.HasLoadError && IsImportedTask(_selectedTask))
+                {
+                    <div class="proposal-evidence-item">
+                        <strong>Imported Task Review</strong>
+                        <span>Apply triage metadata for imported backlog governance.</span>
+                        <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
+                            <Authorized>
+                                <div class="tasks-quick-create-actions">
+                                    <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="MarkImportedVettedAsync">Mark Vetted</MudButton>
+                                    <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="MarkImportedNeedsRewriteAsync">Needs Rewrite</MudButton>
+                                    <MudButton Variant="Variant.Outlined" Color="Color.Warning" Size="Size.Small" OnClick="MarkImportedObsoleteAsync">Mark Obsolete</MudButton>
+                                </div>
+                            </Authorized>
+                        </AuthorizeView>
+                    </div>
+                }
 
                 <MudTabs Rounded="false" Elevation="0" Class="proposal-tabs">
                     <MudTabPanel Text="Comments" Icon="@Icons.Material.Filled.Forum">
@@ -232,6 +402,8 @@
 @code {
     private static readonly IReadOnlyList<string> StatusOptions = ["All", TaskStatuses.Backlog, TaskStatuses.Ready, TaskStatuses.InProgress, TaskStatuses.Blocked, TaskStatuses.Done, TaskStatuses.Archived];
     private static readonly IReadOnlyList<string> TaskStatusOptions = [TaskStatuses.Backlog, TaskStatuses.Ready, TaskStatuses.InProgress, TaskStatuses.Blocked, TaskStatuses.Done, TaskStatuses.Archived];
+    private static readonly IReadOnlyList<string> TaskPriorityOptions = [TaskPriorities.Critical, TaskPriorities.High, TaskPriorities.Medium, TaskPriorities.Low];
+    private static readonly IReadOnlyList<string> SortOptions = ["updated-desc", "updated-asc", "key-asc", "key-desc", "severity-desc", "severity-asc", "title-asc", "title-desc"];
     private IReadOnlyList<TaskSummary> _tasks = [];
     private TaskItem? _selectedTask;
     private IReadOnlyList<TaskActivityEntry> _history = [];
@@ -244,8 +416,21 @@
     private string _externalLinkUrl = string.Empty;
     private string _attachmentName = string.Empty;
     private string _attachmentUri = string.Empty;
+    private string _createTitle = string.Empty;
+    private string _createDescription = string.Empty;
+    private string _createSlug = string.Empty;
+    private bool _showQuickCreatePane;
     private bool _isListCollapsed;
     private bool _isLoading = true;
+    private bool _isEditingTask;
+    private string _sortMode = "updated-desc";
+    private string _editTitle = string.Empty;
+    private string _editDescription = string.Empty;
+    private string _editPriority = TaskPriorities.Medium;
+    private string _editAssigneeMode = TaskAssigneeModes.Directory;
+    private string? _editAssigneeDirectoryId;
+    private string? _editAssigneeCustomText;
+    private string _editLabelsText = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
@@ -256,7 +441,8 @@
     {
         _isLoading = true;
         var status = _statusFilter == "All" ? null : _statusFilter;
-        _tasks = await TaskService.ListAsync(_query, status, null, 200, CancellationToken.None);
+        var loaded = await TaskService.ListAsync(_query, status, null, 200, CancellationToken.None);
+        _tasks = ApplySort(loaded);
         _isLoading = false;
 
         if (_selectedTask is not null)
@@ -272,16 +458,27 @@
         _history = _selectedTask is null
             ? []
             : await TaskService.GetHistoryAsync(_selectedTask.Id, 100, CancellationToken.None);
+
+        if (_selectedTask is not null && _isEditingTask)
+        {
+            PopulateEditDraft(_selectedTask);
+        }
     }
 
     private async Task CreateQuickTaskAsync()
     {
+        if (string.IsNullOrWhiteSpace(_createTitle))
+        {
+            Snackbar.Add("Title is required.", Severity.Warning);
+            return;
+        }
+
         try
         {
             var created = await TaskService.CreateAsync(
                 new TaskCreateRequest(
-                    Title: "New task",
-                    Description: "Quick-created from /tasks",
+                    Title: _createTitle,
+                    Description: _createDescription,
                     Type: "Task",
                     Status: TaskStatuses.Backlog,
                     Priority: TaskPriorities.Medium,
@@ -292,10 +489,13 @@
                     Labels: ["future"],
                     DueDateUtc: null,
                     EpicId: null,
-                    ParentId: null),
+                    ParentId: null,
+                    Slug: string.IsNullOrWhiteSpace(_createSlug) ? null : _createSlug),
                 CurrentUser.DisplayName,
                 CancellationToken.None);
 
+            ResetQuickCreateDraft();
+            _showQuickCreatePane = false;
             await LoadAsync();
             await SelectAsync(created.Id);
             Snackbar.Add($"Created {created.Key}.", Severity.Success);
@@ -306,6 +506,36 @@
         }
     }
 
+    private void OpenQuickCreatePane()
+    {
+        if (!_showQuickCreatePane)
+        {
+            ResetQuickCreateDraft();
+        }
+
+        _showQuickCreatePane = true;
+    }
+
+    private void CancelQuickCreate()
+    {
+        _showQuickCreatePane = false;
+        ResetQuickCreateDraft();
+    }
+
+    private static string BuildSlugSuggestion(string title)
+    {
+        var source = string.IsNullOrWhiteSpace(title) ? string.Empty : title.Trim().ToLowerInvariant();
+        source = System.Text.RegularExpressions.Regex.Replace(source, "[^a-z0-9]+", "-").Trim('-');
+        return source;
+    }
+
+    private void ResetQuickCreateDraft()
+    {
+        _createTitle = string.Empty;
+        _createDescription = string.Empty;
+        _createSlug = string.Empty;
+    }
+
     private async Task SetStatusAsync(string status)
     {
         if (_selectedTask is null)
@@ -313,9 +543,184 @@
             return;
         }
 
-        await TaskService.SetStatusAsync(_selectedTask.Id, new TaskStatusUpdateRequest(status), CurrentUser.DisplayName, CancellationToken.None);
-        await LoadAsync();
-        await SelectAsync(_selectedTask.Id);
+        try
+        {
+            await TaskService.SetStatusAsync(_selectedTask.Id, new TaskStatusUpdateRequest(status), CurrentUser.DisplayName, CancellationToken.None);
+            await LoadAsync();
+            await SelectAsync(_selectedTask.Id);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private void BeginTaskEdit()
+    {
+        if (_selectedTask is null)
+        {
+            return;
+        }
+
+        if (_selectedTask.HasLoadError)
+        {
+            Snackbar.Add("This task file is malformed and must be fixed before editing.", Severity.Warning);
+            return;
+        }
+
+        PopulateEditDraft(_selectedTask);
+        _isEditingTask = true;
+    }
+
+    private void CancelTaskEdits()
+    {
+        _isEditingTask = false;
+    }
+
+    private async Task SaveTaskEditsAsync()
+    {
+        if (_selectedTask is null)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_editTitle))
+        {
+            Snackbar.Add("Title is required.", Severity.Warning);
+            return;
+        }
+
+        if (string.Equals(_editAssigneeMode, TaskAssigneeModes.Directory, StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(_editAssigneeDirectoryId))
+        {
+            Snackbar.Add("Directory assignee mode requires Assignee Directory ID.", Severity.Warning);
+            return;
+        }
+
+        if (string.Equals(_editAssigneeMode, TaskAssigneeModes.Custom, StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(_editAssigneeCustomText))
+        {
+            Snackbar.Add("Custom assignee mode requires Assignee text.", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            var labels = SplitLabels(_editLabelsText);
+            var updated = await TaskService.UpdateAsync(
+                _selectedTask.Id,
+                new TaskUpdateRequest(
+                    Title: _editTitle,
+                    Description: _editDescription,
+                    Type: null,
+                    Priority: _editPriority,
+                    AssigneeMode: _editAssigneeMode,
+                    AssigneeDirectoryId: string.Equals(_editAssigneeMode, TaskAssigneeModes.Directory, StringComparison.OrdinalIgnoreCase) ? _editAssigneeDirectoryId : null,
+                    AssigneeCustomText: string.Equals(_editAssigneeMode, TaskAssigneeModes.Custom, StringComparison.OrdinalIgnoreCase) ? _editAssigneeCustomText : null,
+                    Reporter: null,
+                    Labels: labels,
+                    DueDateUtc: null,
+                    EpicId: null,
+                    ParentId: null),
+                CurrentUser.DisplayName,
+                CancellationToken.None);
+
+            if (updated is null)
+            {
+                Snackbar.Add("Task could not be updated.", Severity.Error);
+                return;
+            }
+
+            _isEditingTask = false;
+            await LoadAsync();
+            await SelectAsync(updated.Id);
+            Snackbar.Add($"Updated {updated.Key}.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task MarkImportedVettedAsync()
+    {
+        await ApplyImportedReviewAsync("Marked imported task as vetted.", labelsToAdd: ["imported", "vetted"], labelsToRemove: ["needs-rewrite", "obsolete"]);
+    }
+
+    private async Task MarkImportedNeedsRewriteAsync()
+    {
+        await ApplyImportedReviewAsync("Marked imported task as needs rewrite.", labelsToAdd: ["imported", "needs-rewrite"], labelsToRemove: ["vetted", "obsolete"]);
+    }
+
+    private async Task MarkImportedObsoleteAsync()
+    {
+        if (_selectedTask is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await ApplyImportedReviewAsync("Marked imported task as obsolete.", labelsToAdd: ["imported", "obsolete"], labelsToRemove: ["vetted", "needs-rewrite"]);
+            await TaskService.SetStatusAsync(_selectedTask.Id, new TaskStatusUpdateRequest(TaskStatuses.Archived, "Imported task triaged as obsolete."), CurrentUser.DisplayName, CancellationToken.None);
+            await LoadAsync();
+            await SelectAsync(_selectedTask.Id);
+            Snackbar.Add("Imported task triaged as obsolete and archived.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task ApplyImportedReviewAsync(string note, IReadOnlyList<string> labelsToAdd, IReadOnlyList<string> labelsToRemove)
+    {
+        if (_selectedTask is null)
+        {
+            return;
+        }
+
+        var labels = _selectedTask.Labels.ToList();
+        foreach (var remove in labelsToRemove)
+        {
+            labels.RemoveAll(existing => string.Equals(existing, remove, StringComparison.OrdinalIgnoreCase));
+        }
+
+        foreach (var add in labelsToAdd)
+        {
+            if (labels.All(existing => !string.Equals(existing, add, StringComparison.OrdinalIgnoreCase)))
+            {
+                labels.Add(add);
+            }
+        }
+
+        try
+        {
+            await TaskService.UpdateAsync(
+                _selectedTask.Id,
+                new TaskUpdateRequest(
+                    Title: _selectedTask.Title,
+                    Description: _selectedTask.Description,
+                    Type: null,
+                    Priority: _selectedTask.Priority,
+                    AssigneeMode: _selectedTask.AssigneeMode,
+                    AssigneeDirectoryId: _selectedTask.AssigneeDirectoryId,
+                    AssigneeCustomText: _selectedTask.AssigneeCustomText,
+                    Reporter: null,
+                    Labels: labels,
+                    DueDateUtc: _selectedTask.DueDateUtc,
+                    EpicId: _selectedTask.EpicId,
+                    ParentId: _selectedTask.ParentId),
+                CurrentUser.DisplayName,
+                CancellationToken.None);
+
+            await TaskService.AddCommentAsync(_selectedTask.Id, new TaskCommentRequest(note), CurrentUser.DisplayName, CancellationToken.None);
+            await LoadAsync();
+            await SelectAsync(_selectedTask.Id);
+            Snackbar.Add(note, Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
     }
 
     private async Task OnTaskStatusChanged(string value)
@@ -331,10 +736,17 @@
             return;
         }
 
-        await TaskService.AddCommentAsync(_selectedTask.Id, new TaskCommentRequest(_commentDraft), CurrentUser.DisplayName, CancellationToken.None);
-        _commentDraft = string.Empty;
-        await LoadAsync();
-        await SelectAsync(_selectedTask.Id);
+        try
+        {
+            await TaskService.AddCommentAsync(_selectedTask.Id, new TaskCommentRequest(_commentDraft), CurrentUser.DisplayName, CancellationToken.None);
+            _commentDraft = string.Empty;
+            await LoadAsync();
+            await SelectAsync(_selectedTask.Id);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
     }
 
     private async Task AddPageLinkAsync()
@@ -344,10 +756,17 @@
             return;
         }
 
-        await TaskService.AddLinkedPageAsync(_selectedTask.Id, new TaskPageLinkRequest(_pageLinkDraft), CurrentUser.DisplayName, CancellationToken.None);
-        _pageLinkDraft = string.Empty;
-        await LoadAsync();
-        await SelectAsync(_selectedTask.Id);
+        try
+        {
+            await TaskService.AddLinkedPageAsync(_selectedTask.Id, new TaskPageLinkRequest(_pageLinkDraft), CurrentUser.DisplayName, CancellationToken.None);
+            _pageLinkDraft = string.Empty;
+            await LoadAsync();
+            await SelectAsync(_selectedTask.Id);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
     }
 
     private async Task AddExternalLinkAsync()
@@ -399,9 +818,16 @@
             return;
         }
 
-        await TaskService.RemoveAttachmentAsync(_selectedTask.Id, attachmentId, CurrentUser.DisplayName, CancellationToken.None);
-        await LoadAsync();
-        await SelectAsync(_selectedTask.Id);
+        try
+        {
+            await TaskService.RemoveAttachmentAsync(_selectedTask.Id, attachmentId, CurrentUser.DisplayName, CancellationToken.None);
+            await LoadAsync();
+            await SelectAsync(_selectedTask.Id);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
     }
 
     private Task OnSearchKeyUp(KeyboardEventArgs eventArgs)
@@ -418,6 +844,13 @@
     {
         _statusFilter = value;
         return LoadAsync();
+    }
+
+    private Task OnSortModeChanged(string value)
+    {
+        _sortMode = value;
+        _tasks = ApplySort(_tasks);
+        return Task.CompletedTask;
     }
 
     private Task OnCommentDraftChanged(string value)
@@ -456,8 +889,154 @@
         return Task.CompletedTask;
     }
 
+    private Task OnCreateTitleChanged(string value)
+    {
+        var previousSuggestion = BuildSlugSuggestion(_createTitle);
+        _createTitle = value;
+
+        if (string.IsNullOrWhiteSpace(_createSlug) || string.Equals(_createSlug, previousSuggestion, StringComparison.OrdinalIgnoreCase))
+        {
+            _createSlug = BuildSlugSuggestion(value);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Task OnCreateSlugChanged(string value)
+    {
+        _createSlug = value;
+        return Task.CompletedTask;
+    }
+
+    private Task OnCreateDescriptionChanged(string value)
+    {
+        _createDescription = value;
+        return Task.CompletedTask;
+    }
+
     private void ToggleListCollapse()
     {
         _isListCollapsed = !_isListCollapsed;
+    }
+
+    private static string SortLabel(string mode) => mode switch
+    {
+        "updated-desc" => "Updated (newest)",
+        "updated-asc" => "Updated (oldest)",
+        "key-asc" => "Key (asc)",
+        "key-desc" => "Key (desc)",
+        "severity-desc" => "Severity (high to low)",
+        "severity-asc" => "Severity (low to high)",
+        "title-asc" => "Title (A-Z)",
+        "title-desc" => "Title (Z-A)",
+        _ => "Updated (newest)"
+    };
+
+    private IReadOnlyList<TaskSummary> ApplySort(IReadOnlyList<TaskSummary> source)
+    {
+        var ordered = _sortMode switch
+        {
+            "updated-asc" => source.OrderBy(task => task.UpdatedAtUtc),
+            "key-asc" => source.OrderBy(task => ExtractTaskKeyNumber(task.Key)).ThenBy(task => task.Key, StringComparer.OrdinalIgnoreCase),
+            "key-desc" => source.OrderByDescending(task => ExtractTaskKeyNumber(task.Key)).ThenByDescending(task => task.Key, StringComparer.OrdinalIgnoreCase),
+            "severity-desc" => source.OrderBy(task => PriorityRank(task.Priority)).ThenBy(task => task.UpdatedAtUtc),
+            "severity-asc" => source.OrderByDescending(task => PriorityRank(task.Priority)).ThenBy(task => task.UpdatedAtUtc),
+            "title-asc" => source.OrderBy(task => task.Title, StringComparer.OrdinalIgnoreCase),
+            "title-desc" => source.OrderByDescending(task => task.Title, StringComparer.OrdinalIgnoreCase),
+            _ => source.OrderByDescending(task => task.UpdatedAtUtc)
+        };
+
+        return ordered.ToList();
+    }
+
+    private static int ExtractTaskKeyNumber(string key)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            return int.MaxValue;
+        }
+
+        var parts = key.Split('-', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return parts.Length >= 2 && int.TryParse(parts[1], out var value) ? value : int.MaxValue;
+    }
+
+    private static int PriorityRank(string priority) => priority switch
+    {
+        TaskPriorities.Critical => 0,
+        TaskPriorities.High => 1,
+        TaskPriorities.Medium => 2,
+        TaskPriorities.Low => 3,
+        _ => 4
+    };
+
+    private static IReadOnlyList<string> SplitLabels(string labelsText) =>
+        labelsText.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(label => !string.IsNullOrWhiteSpace(label))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+    private static bool IsImportedTask(TaskItem item) =>
+        string.Equals(item.Reporter, "tracker-import", StringComparison.OrdinalIgnoreCase) ||
+        item.Labels.Any(label => string.Equals(label, "imported", StringComparison.OrdinalIgnoreCase));
+
+    private void PopulateEditDraft(TaskItem task)
+    {
+        _editTitle = task.Title;
+        _editDescription = task.Description;
+        _editPriority = string.IsNullOrWhiteSpace(task.Priority) ? TaskPriorities.Medium : task.Priority;
+        _editAssigneeMode = string.IsNullOrWhiteSpace(task.AssigneeMode) ? TaskAssigneeModes.Directory : task.AssigneeMode;
+        _editAssigneeDirectoryId = task.AssigneeDirectoryId;
+        _editAssigneeCustomText = task.AssigneeCustomText;
+        _editLabelsText = string.Join(", ", task.Labels);
+    }
+
+    private Task OnEditTitleChanged(string value)
+    {
+        _editTitle = value;
+        return Task.CompletedTask;
+    }
+
+    private Task OnEditDescriptionChanged(string value)
+    {
+        _editDescription = value;
+        return Task.CompletedTask;
+    }
+
+    private Task OnEditPriorityChanged(string value)
+    {
+        _editPriority = value;
+        return Task.CompletedTask;
+    }
+
+    private Task OnEditAssigneeModeChanged(string value)
+    {
+        _editAssigneeMode = value;
+        if (string.Equals(value, TaskAssigneeModes.Directory, StringComparison.OrdinalIgnoreCase))
+        {
+            _editAssigneeCustomText = null;
+        }
+        else
+        {
+            _editAssigneeDirectoryId = null;
+        }
+        return Task.CompletedTask;
+    }
+
+    private Task OnEditAssigneeDirectoryIdChanged(string value)
+    {
+        _editAssigneeDirectoryId = value;
+        return Task.CompletedTask;
+    }
+
+    private Task OnEditAssigneeCustomTextChanged(string value)
+    {
+        _editAssigneeCustomText = value;
+        return Task.CompletedTask;
+    }
+
+    private Task OnEditLabelsTextChanged(string value)
+    {
+        _editLabelsText = value;
+        return Task.CompletedTask;
     }
 }

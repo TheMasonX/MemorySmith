@@ -2,7 +2,7 @@
   "Id": "tsk-0002-add-browser-level-smoke-coverage-for-the-main-app-routes-memories-pages-chat-and-health",
   "Key": "TSK-0002",
   "Title": "Add browser-level smoke coverage for the main app routes: `/memories`, `/pages`, `/chat`, and `/health`.",
-  "Description": "Capture a simple pass/fail screenshot set after the smoke run so the route baseline is easy to review.\r\n\r\nImported from Data/Pages/workbench/tasks.md",
+  "Description": "Problem: the repo has route and API coverage, but no browser-level smoke pass proving the core workbench pages render together under a live app session.\r\n\r\nDesired outcome:\r\n- Add a repeatable browser smoke workflow for `/memories`, `/pages`, `/chat`, `/health`, and `/tasks`.\r\n- Persist a minimal screenshot or pass/fail artifact set so regressions are visible in PR review.\r\n\r\nAcceptance criteria:\r\n- One command or task exercises the listed routes against a running app instance.\r\n- Failures identify the route that broke.\r\n- Artifacts are saved under `artifacts/browser-validation/` or another documented path.\r\n\r\nValidation:\r\n- Run the browser smoke workflow locally.\r\n- Confirm artifacts are produced for each route.\r\n\r\nAudit note: vetted on 2026-05-24; still relevant because current coverage is primarily API/component-level, not live browser-route smoke coverage.",
   "Type": "Task",
   "Status": "Backlog",
   "Priority": "Medium",
@@ -13,12 +13,16 @@
   "Labels": [
     "tracker-import",
     "workbench",
-    "future"
+    "future",
+    "audit-vetted",
+    "quality",
+    "ui"
   ],
   "Attachments": [],
   "ExternalLinks": [],
   "LinkedPages": [
-    "workbench/tasks"
+    "workbench/tasks",
+    "research/codebase-audit-task-vetting-20260523"
   ],
   "Comments": [
     {
@@ -26,14 +30,26 @@
       "Author": "tracker-import",
       "Body": "Capture a simple pass/fail screenshot set after the smoke run so the route baseline is easy to review.",
       "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z"
+    },
+    {
+      "Id": "c-audit-vet-0002",
+      "Author": "AgentSmith",
+      "Body": "Audit triage: still actionable. README documents the core routes, but current repo evidence points to API/component checks rather than a repeatable browser-route smoke baseline.",
+      "CreatedAtUtc": "2026-05-24T03:20:00.0000000Z"
+    },
+    {
+      "Id": "c-review-0002-20260524",
+      "Author": "AgentSmith",
+      "Body": "Review round: remains Backlog. No dedicated browser-route smoke workflow with persisted per-route artifacts was found in Scripts or tests; keep open until route smoke automation is shipped.",
+      "CreatedAtUtc": "2026-05-24T04:40:00.0000000Z"
     }
   ],
   "EpicId": null,
   "ParentId": null,
   "DueDateUtc": null,
   "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z",
-  "UpdatedAtUtc": "2026-05-23T23:36:10.0439283Z",
+  "UpdatedAtUtc": "2026-05-24T04:40:00.0000000Z",
   "CompletedAtUtc": null,
-  "Revision": 1,
+  "Revision": 3,
   "IsArchived": false
 }

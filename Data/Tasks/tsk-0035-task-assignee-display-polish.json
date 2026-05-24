@@ -1,0 +1,39 @@
+{
+  "id": "tsk-0035-task-assignee-display-polish",
+  "key": "TSK-0035",
+  "title": "Polish task assignee display in /tasks",
+  "description": "Improve assignee readability in task list/detail by avoiding raw directory ids when a friendly name or normalized display string is available.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "tasks",
+    "ui",
+    "review-followup"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "workbench/tasks"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0035-20260524",
+      "author": "AgentSmith",
+      "body": "Review sweep identified low-quality assignee presentation where raw ids can be surfaced in list/detail metadata.",
+      "createdAtUtc": "2026-05-24T05:06:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-24T05:06:00.0000000Z",
+  "updatedAtUtc": "2026-05-24T05:06:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false
+}
