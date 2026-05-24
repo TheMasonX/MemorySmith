@@ -2,7 +2,7 @@
   "Id": "tsk-0013-design-a-chat-compaction-mode-that-preserves-auditability-while-reducing-long-session-context-load",
   "Key": "TSK-0013",
   "Title": "Design a chat compaction mode that preserves auditability while reducing long-session context load.",
-  "Description": "Imported from Data/Pages/workbench/tasks.md",
+  "Description": "Compaction should not hide evidence.\r\n\r\nImported from Data/Pages/workbench/tasks.md",
   "Type": "Task",
   "Status": "Backlog",
   "Priority": "Medium",
@@ -37,4 +37,3 @@
   "Revision": 1,
   "IsArchived": false
 }
-

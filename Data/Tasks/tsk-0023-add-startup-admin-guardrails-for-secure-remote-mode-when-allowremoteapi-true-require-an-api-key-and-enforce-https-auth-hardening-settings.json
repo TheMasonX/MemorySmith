@@ -2,7 +2,7 @@
   "Id": "tsk-0023-add-startup-admin-guardrails-for-secure-remote-mode-when-allowremoteapi-true-require-an-api-key-and-enforce-https-auth-hardening-settings",
   "Key": "TSK-0023",
   "Title": "Add startup/admin guardrails for secure remote mode: when `AllowRemoteApi=true`, require an API key and enforce HTTPS/auth hardening settings.",
-  "Description": "Imported from Data/Pages/workbench/tasks.md",
+  "Description": "This needs a visible safety note.\r\n\r\nImported from Data/Pages/workbench/tasks.md",
   "Type": "Task",
   "Status": "Backlog",
   "Priority": "Medium",
@@ -37,4 +37,3 @@
   "Revision": 1,
   "IsArchived": false
 }
-

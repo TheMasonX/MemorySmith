@@ -33,6 +33,13 @@
             <MudButtonGroup Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" Class="wiki-mode-toggle">
                 <MudButton Variant="@NavigationModeVariant(TreeMode)" OnClick="@(() => SetNavigationModeAsync(TreeMode))">Tree</MudButton>
                 <MudButton Variant="@NavigationModeVariant(FlatMode)" OnClick="@(() => SetNavigationModeAsync(FlatMode))">Flat</MudButton>
+                <MudTooltip Text="@(_selectedPage is null ? "Select a page to view table of contents" : "Table of contents for selected page")">
+                    <span>
+                        <MudButton Variant="@NavigationModeVariant(TocMode)"
+                                   OnClick="@(() => SetNavigationModeAsync(TocMode))"
+                                   Disabled="@(_selectedPage is null)">ToC</MudButton>
+                    </span>
+                </MudTooltip>
             </MudButtonGroup>
             <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Search" OnClick="SearchAsync">Search</MudButton>
             <MudIconButton Icon="@Icons.Material.Filled.Clear" Size="Size.Small" OnClick="ClearAsync" aria-label="Clear" />
@@ -41,6 +48,15 @@
                                Size="Size.Small"
                                OnClick="ToggleNavigationVisibilityAsync"
                                aria-label="Toggle navigation" />
+            </MudTooltip>
+            <MudTooltip Text="Reset view state for selected page (ToC collapse and section collapse)">
+                <span>
+                    <MudIconButton Icon="@Icons.Material.Filled.RestartAlt"
+                                   Size="Size.Small"
+                                   OnClick="ClearSelectedPageViewStateAsync"
+                                   Disabled="@(_selectedPage is null)"
+                                   aria-label="Reset page view state" />
+                </span>
             </MudTooltip>
             <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
                 <Authorized>
@@ -55,7 +71,7 @@
         {
         <aside class="wiki-results-pane pages-navigation-pane" aria-label="Pages">
             <div class="wiki-pane-header">
-                <MudText Typo="Typo.subtitle2">@(_navigationMode == TreeMode ? "Tree" : "Flat list")</MudText>
+                <MudText Typo="Typo.subtitle2">@NavigationPaneTitle</MudText>
             </div>
 
             @if (_isLoading)
@@ -94,6 +110,54 @@
                                 <span class="pages-tree-label">@row.Node.Label</span>
                             </button>
                         }
+                    }
+                </div>
+            }
+            else if (_navigationMode == TocMode)
+            {
+                <div class="pages-toc-shell">
+                    @if (_selectedPage is null)
+                    {
+                        <div class="wiki-empty-state">Select a page to generate a table of contents.</div>
+                    }
+                    else if (TocRows.Count == 0)
+                    {
+                        <div class="wiki-empty-state">No headings found in this page.</div>
+                    }
+                    else
+                    {
+                        <div class="pages-toc-toolbar">
+                            <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="CollapseAllTocAsync">Collapse all</MudButton>
+                            <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="ExpandAllTocAsync">Expand all</MudButton>
+                        </div>
+                        <div class="pages-toc-list" role="tree" aria-label="Table of contents">
+                            @foreach (var row in TocRows.Where(row => !row.IsHidden))
+                            {
+                                <div class="pages-toc-row"
+                                     role="treeitem"
+                                     aria-level="@row.Level"
+                                     style="@TocIndentStyle(row.Level)">
+                                    @if (row.HasChildren)
+                                    {
+                                        <MudIconButton Icon="@(row.IsCollapsed ? Icons.Material.Filled.ChevronRight : Icons.Material.Filled.ExpandMore)"
+                                                       Size="Size.Small"
+                                                       Class="pages-toc-toggle"
+                                                       OnClick="@(() => ToggleTocNodeAsync(row.Id))"
+                                                       aria-label="@($"Toggle {row.Text}")" />
+                                    }
+                                    else
+                                    {
+                                        <span class="pages-toc-toggle-placeholder" aria-hidden="true"></span>
+                                    }
+                                    <button type="button"
+                                            class="pages-toc-link"
+                                            @onclick="@(() => OpenHeadingAsync(row.Id))"
+                                            title="@row.Text">
+                                        @row.Text
+                                    </button>
+                                </div>
+                            }
+                        </div>
                     }
                 </div>
             }
@@ -250,7 +314,9 @@
 @code {
     private const string TreeMode = "tree";
     private const string FlatMode = "flat";
+    private const string TocMode = "toc";
     private const string PagesUiStateStorageKey = "memorysmith.pages.preferences.v1";
+    private const string HeadingCollapseStoragePrefix = "memorysmith.pages.headingCollapse.v1:";
 
     [Parameter] public string? Slug { get; set; }
 
@@ -281,6 +347,10 @@
     private bool _uiStateLoaded;
     private string _navigationMode = TreeMode;
     private readonly HashSet<string> _expandedTreeKeys = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _collapsedTocKeys = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, string[]> _collapsedTocKeysBySlug = new(StringComparer.OrdinalIgnoreCase);
+    private List<TocHeading> _tocHeadings = [];
+    private List<TocRow> _tocRows = [];
 
     private bool HasUnsavedChanges => _isEditing &&
         (!string.Equals(_editSlug, _originalSlug, StringComparison.Ordinal) ||
@@ -290,8 +360,16 @@
 
     private IReadOnlyList<string> EditableMinimumRoleOptions => PageAccessLevels.EditableOptions(CurrentUser, Options.CurrentValue.Auth);
     private IReadOnlyList<PageNavigationTreeRow> TreeRows => PageNavigationTreeBuilder.Flatten(_treeNodes, _expandedTreeKeys);
+    private IReadOnlyList<TocRow> TocRows => _tocRows;
     private string PagesBodyClass => _isNavigationVisible && !_isFocusMode ? "wiki-body pages-body" : "wiki-body pages-body is-nav-hidden";
     private string DetailPaneClass => _isFocusMode ? "wiki-detail-pane page-detail-pane is-focus-mode" : "wiki-detail-pane page-detail-pane";
+    private string NavigationPaneTitle => _navigationMode switch
+    {
+        TreeMode => "Tree",
+        FlatMode => "Flat list",
+        TocMode => "Table of contents",
+        _ => "Pages"
+    };
 
     protected override async Task OnParametersSetAsync()
     {
@@ -311,12 +389,26 @@
         if (_isEditing && _previewEnhancementsPending)
         {
             _previewEnhancementsPending = false;
-            await JS.InvokeVoidAsync("memorySmith.markdown.renderEnhancements", _previewPane);
+            try
+            {
+                await JS.InvokeVoidAsync("memorySmith.markdown.renderEnhancements", _previewPane, new { enableCollapsibleHeadings = true, collapseStateKey = $"preview:{_editSlug}" });
+            }
+            catch (JSException)
+            {
+            }
         }
         else if (_selectedPage is not null && _renderedPageEnhancementsPending)
         {
             _renderedPageEnhancementsPending = false;
-            await JS.InvokeVoidAsync("memorySmith.markdown.renderEnhancements", _renderedPagePane);
+            try
+            {
+                await JS.InvokeVoidAsync("memorySmith.markdown.renderEnhancements", _renderedPagePane, new { enableCollapsibleHeadings = true, collapseStateKey = $"page:{_selectedPage.Slug}" });
+            }
+            catch (JSException)
+            {
+            }
+
+            await RefreshTocHeadingsAsync();
         }
     }
 
@@ -400,6 +492,21 @@
         _selectedPage = page;
         _isEditing = false;
         _renderedPageEnhancementsPending = true;
+        _tocHeadings = [];
+        _collapsedTocKeys.Clear();
+        if (_collapsedTocKeysBySlug.TryGetValue(page.Slug, out var rememberedCollapsed))
+        {
+            foreach (var key in rememberedCollapsed)
+            {
+                if (!string.IsNullOrWhiteSpace(key))
+                {
+                    _collapsedTocKeys.Add(key);
+                }
+            }
+        }
+
+        RebuildTocRows();
+
         PopulateEditor(page, editingExisting: true);
         ExpandAncestorsForSelectedPage();
         await PersistUiStateAsync();
@@ -584,8 +691,102 @@
 
     private async Task SetNavigationModeAsync(string mode)
     {
-        _navigationMode = string.Equals(mode, FlatMode, StringComparison.OrdinalIgnoreCase) ? FlatMode : TreeMode;
+        if (string.Equals(mode, FlatMode, StringComparison.OrdinalIgnoreCase))
+        {
+            _navigationMode = FlatMode;
+        }
+        else if (string.Equals(mode, TocMode, StringComparison.OrdinalIgnoreCase) && _selectedPage is not null)
+        {
+            _navigationMode = TocMode;
+        }
+        else
+        {
+            _navigationMode = TreeMode;
+        }
+
         await PersistUiStateAsync();
+    }
+
+    private async Task OpenHeadingAsync(string id)
+    {
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            return;
+        }
+
+        await JS.InvokeAsync<bool>("memorySmith.markdown.scrollToHeading", _renderedPagePane, id);
+    }
+
+    private async Task ToggleTocNodeAsync(string id)
+    {
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            return;
+        }
+
+        if (_collapsedTocKeys.Contains(id))
+        {
+            _collapsedTocKeys.Remove(id);
+        }
+        else
+        {
+            _collapsedTocKeys.Add(id);
+        }
+
+        RebuildTocRows();
+
+        await PersistUiStateAsync();
+    }
+
+    private async Task CollapseAllTocAsync()
+    {
+        _collapsedTocKeys.Clear();
+        foreach (var row in _tocRows.Where(row => row.HasChildren))
+        {
+            _collapsedTocKeys.Add(row.Id);
+        }
+
+        RebuildTocRows();
+
+        await PersistUiStateAsync();
+    }
+
+    private async Task ExpandAllTocAsync()
+    {
+        _collapsedTocKeys.Clear();
+        RebuildTocRows();
+        await PersistUiStateAsync();
+    }
+
+    private async Task ClearSelectedPageViewStateAsync()
+    {
+        if (_selectedPage is null)
+        {
+            return;
+        }
+
+        var slug = _selectedPage.Slug;
+        _collapsedTocKeys.Clear();
+        _collapsedTocKeysBySlug.Remove(slug);
+        await PersistUiStateAsync();
+
+        try
+        {
+            await JS.InvokeAsync<bool>("memorySmith.storage.remove", HeadingCollapseStoragePrefix + "page:" + slug);
+            await JS.InvokeAsync<bool>("memorySmith.storage.remove", HeadingCollapseStoragePrefix + "preview:" + slug);
+        }
+        catch (JSException)
+        {
+        }
+
+        _renderedPageEnhancementsPending = true;
+        if (_isEditing)
+        {
+            _previewEnhancementsPending = true;
+        }
+
+        Snackbar.Add("Page view state reset for selected page", Severity.Success);
+        await InvokeAsync(StateHasChanged);
     }
 
     private async Task ToggleNavigationVisibilityAsync()
@@ -658,7 +859,16 @@
 
     private async Task RestoreUiStateAsync()
     {
-        var json = await JS.InvokeAsync<string?>("memorySmith.storage.getJsonString", PagesUiStateStorageKey);
+        string? json;
+        try
+        {
+            json = await JS.InvokeAsync<string?>("memorySmith.storage.getJsonString", PagesUiStateStorageKey);
+        }
+        catch (JSException)
+        {
+            return;
+        }
+
         if (string.IsNullOrWhiteSpace(json))
         {
             return;
@@ -672,7 +882,19 @@
                 return;
             }
 
-            _navigationMode = string.Equals(state.NavigationMode, FlatMode, StringComparison.OrdinalIgnoreCase) ? FlatMode : TreeMode;
+            if (string.Equals(state.NavigationMode, FlatMode, StringComparison.OrdinalIgnoreCase))
+            {
+                _navigationMode = FlatMode;
+            }
+            else if (string.Equals(state.NavigationMode, TocMode, StringComparison.OrdinalIgnoreCase))
+            {
+                _navigationMode = TocMode;
+            }
+            else
+            {
+                _navigationMode = TreeMode;
+            }
+
             _isNavigationVisible = state.NavigationVisible;
             _isFocusMode = state.FocusMode;
             _expandedTreeKeys.Clear();
@@ -684,9 +906,34 @@
                 }
             }
 
+            _collapsedTocKeys.Clear();
+            foreach (var key in state.CollapsedTocKeys ?? [])
+            {
+                if (!string.IsNullOrWhiteSpace(key))
+                {
+                    _collapsedTocKeys.Add(key);
+                }
+            }
+
+            _collapsedTocKeysBySlug.Clear();
+            foreach (var pair in state.CollapsedTocKeysBySlug ?? new Dictionary<string, string[]>())
+            {
+                if (string.IsNullOrWhiteSpace(pair.Key))
+                {
+                    continue;
+                }
+
+                _collapsedTocKeysBySlug[pair.Key] = pair.Value ?? [];
+            }
+
             if (_isFocusMode)
             {
                 _isNavigationVisible = false;
+            }
+
+            if (_selectedPage is null && string.Equals(_navigationMode, TocMode, StringComparison.OrdinalIgnoreCase))
+            {
+                _navigationMode = TreeMode;
             }
 
             RebuildTree();
@@ -703,14 +950,105 @@
             return;
         }
 
-        await JS.InvokeAsync<bool>(
-            "memorySmith.storage.setJson",
-            PagesUiStateStorageKey,
-            new PagesUiState(_navigationMode, _isNavigationVisible, _isFocusMode, [.. _expandedTreeKeys]));
+        try
+        {
+            await JS.InvokeAsync<bool>(
+                "memorySmith.storage.setJson",
+                PagesUiStateStorageKey,
+                new PagesUiState(
+                    _navigationMode,
+                    _isNavigationVisible,
+                    _isFocusMode,
+                    [.. _expandedTreeKeys],
+                    [.. _collapsedTocKeys],
+                    BuildCollapsedTocKeysBySlugSnapshot()));
+        }
+        catch (JSException)
+        {
+        }
+    }
+
+    private async Task RefreshTocHeadingsAsync()
+    {
+        List<TocHeading>? headings;
+        try
+        {
+            headings = await JS.InvokeAsync<List<TocHeading>?>("memorySmith.markdown.extractHeadings", _renderedPagePane);
+        }
+        catch (JSException)
+        {
+            return;
+        }
+
+        _tocHeadings = headings?.Where(IsMeaningfulHeading).ToList() ?? [];
+        _collapsedTocKeys.RemoveWhere(id => !_tocHeadings.Any(heading => string.Equals(heading.Id, id, StringComparison.Ordinal)));
+        RebuildTocRows();
+        if (_selectedPage is null && string.Equals(_navigationMode, TocMode, StringComparison.OrdinalIgnoreCase))
+        {
+            _navigationMode = TreeMode;
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private static string TocIndentStyle(int level) => $"--toc-depth:{Math.Clamp(level - 1, 0, 5)};";
+
+    private static bool IsMeaningfulHeading(TocHeading heading) =>
+        !string.IsNullOrWhiteSpace(heading.Id) &&
+        !string.IsNullOrWhiteSpace(heading.Text) &&
+        heading.Level is >= 1 and <= 6;
+
+    private void RebuildTocRows()
+    {
+        _tocRows = BuildTocRows(_tocHeadings, _collapsedTocKeys).ToList();
+    }
+
+    private static IReadOnlyList<TocRow> BuildTocRows(IReadOnlyList<TocHeading> headings, ISet<string> collapsedIds)
+    {
+        var rows = new List<TocRow>(headings.Count);
+        var ancestors = new List<TocHeading>();
+        for (var index = 0; index < headings.Count; index++)
+        {
+            var heading = headings[index];
+            while (ancestors.Count > 0 && ancestors[^1].Level >= heading.Level)
+            {
+                ancestors.RemoveAt(ancestors.Count - 1);
+            }
+
+            var hidden = ancestors.Any(ancestor => collapsedIds.Contains(ancestor.Id));
+            var hasChildren = index + 1 < headings.Count && headings[index + 1].Level > heading.Level;
+
+            var isCollapsed = hasChildren && collapsedIds.Contains(heading.Id);
+            rows.Add(new TocRow(heading.Id, heading.Text, heading.Level, hasChildren, isCollapsed, hidden));
+            ancestors.Add(heading);
+        }
+
+        return rows;
     }
 
     private static string EncodePageSlug(string slug) =>
         string.Join('/', slug.Split('/', StringSplitOptions.RemoveEmptyEntries).Select(Uri.EscapeDataString));
 
-    private sealed record PagesUiState(string NavigationMode, bool NavigationVisible, bool FocusMode, string[] ExpandedKeys);
+    private Dictionary<string, string[]> BuildCollapsedTocKeysBySlugSnapshot()
+    {
+        var snapshot = _collapsedTocKeysBySlug.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.OrdinalIgnoreCase);
+        if (_selectedPage is not null)
+        {
+            snapshot[_selectedPage.Slug] = [.. _collapsedTocKeys];
+        }
+
+        return snapshot;
+    }
+
+    private sealed record TocHeading(string Id, string Text, int Level);
+
+    private sealed record TocRow(string Id, string Text, int Level, bool HasChildren, bool IsCollapsed, bool IsHidden);
+
+    private sealed record PagesUiState(
+        string NavigationMode,
+        bool NavigationVisible,
+        bool FocusMode,
+        string[] ExpandedKeys,
+        string[] CollapsedTocKeys,
+        Dictionary<string, string[]>? CollapsedTocKeysBySlug = null);
 }

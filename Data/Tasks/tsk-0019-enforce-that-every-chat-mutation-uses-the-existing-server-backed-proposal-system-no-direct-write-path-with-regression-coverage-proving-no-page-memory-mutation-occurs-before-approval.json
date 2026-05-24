@@ -2,7 +2,7 @@
   "Id": "tsk-0019-enforce-that-every-chat-mutation-uses-the-existing-server-backed-proposal-system-no-direct-write-path-with-regression-coverage-proving-no-page-memory-mutation-occurs-before-approval",
   "Key": "TSK-0019",
   "Title": "Enforce that every chat mutation uses the existing server-backed proposal system (no direct write path), with regression coverage proving no page/memory mutation occurs before approval.",
-  "Description": "Imported from Data/Pages/workbench/tasks.md",
+  "Description": "This is the key governance rule for future work.\r\n\r\nImported from Data/Pages/workbench/tasks.md",
   "Type": "Task",
   "Status": "Backlog",
   "Priority": "Medium",
@@ -37,4 +37,3 @@
   "Revision": 1,
   "IsArchived": false
 }
-

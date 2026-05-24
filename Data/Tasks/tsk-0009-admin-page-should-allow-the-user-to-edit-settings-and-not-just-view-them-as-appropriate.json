@@ -2,7 +2,7 @@
   "Id": "tsk-0009-admin-page-should-allow-the-user-to-edit-settings-and-not-just-view-them-as-appropriate",
   "Key": "TSK-0009",
   "Title": "admin/ page should allow the user to edit settings and not just view them (as appropriate)",
-  "Description": "Imported from Data/Pages/workbench/tasks.md",
+  "Description": "Capture the current settings flow and note where edits are still blocked.\r\n\r\nImported from Data/Pages/workbench/tasks.md",
   "Type": "Task",
   "Status": "Backlog",
   "Priority": "Medium",
@@ -37,4 +37,3 @@
   "Revision": 1,
   "IsArchived": false
 }
-

@@ -2,7 +2,7 @@
   "Id": "tsk-0014-add-an-explicit-agent-write-approval-mode-setting-with-default-manual-and-an-optional-auto-accept-mode-for-trusted-environments",
   "Key": "TSK-0014",
   "Title": "Add an explicit Agent write approval mode setting with default `manual` and an optional `auto_accept` mode for trusted environments.",
-  "Description": "Imported from Data/Pages/workbench/tasks.md",
+  "Description": "Document the safe default clearly.\r\n\r\nImported from Data/Pages/workbench/tasks.md",
   "Type": "Task",
   "Status": "Backlog",
   "Priority": "Medium",
@@ -37,4 +37,3 @@
   "Revision": 1,
   "IsArchived": false
 }
-

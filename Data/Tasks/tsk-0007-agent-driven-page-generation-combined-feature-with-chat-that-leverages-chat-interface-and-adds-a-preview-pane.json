@@ -2,7 +2,7 @@
   "Id": "tsk-0007-agent-driven-page-generation-combined-feature-with-chat-that-leverages-chat-interface-and-adds-a-preview-pane",
   "Key": "TSK-0007",
   "Title": "Agent driven page generation - combined feature with chat that leverages chat interface and adds a preview pane",
-  "Description": "Imported from Data/Pages/workbench/tasks.md",
+  "Description": "Treat this as a visible dogfood target for future agent/page composition work.\r\n\r\nImported from Data/Pages/workbench/tasks.md",
   "Type": "Task",
   "Status": "Backlog",
   "Priority": "Medium",
@@ -37,4 +37,3 @@
   "Revision": 1,
   "IsArchived": false
 }
-

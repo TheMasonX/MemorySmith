@@ -2,7 +2,7 @@
   "Id": "tsk-0021-reject-unsafe-page-memory-proposal-identifiers-at-proposal-time-for-example-path-traversal-like-instead-of-waiting-for-apply-time-failures",
   "Key": "TSK-0021",
   "Title": "Reject unsafe page/memory proposal identifiers at proposal time (for example path traversal like `../`) instead of waiting for apply-time failures.",
-  "Description": "Imported from Data/Pages/workbench/tasks.md",
+  "Description": "Add a red/green example when implemented.\r\n\r\nImported from Data/Pages/workbench/tasks.md",
   "Type": "Task",
   "Status": "Backlog",
   "Priority": "Medium",
@@ -37,4 +37,3 @@
   "Revision": 1,
   "IsArchived": false
 }
-

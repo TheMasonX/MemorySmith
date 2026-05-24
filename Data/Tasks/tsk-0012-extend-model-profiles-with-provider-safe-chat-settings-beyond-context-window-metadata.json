@@ -2,7 +2,7 @@
   "Id": "tsk-0012-extend-model-profiles-with-provider-safe-chat-settings-beyond-context-window-metadata",
   "Key": "TSK-0012",
   "Title": "Extend model profiles with provider-safe chat settings beyond context-window metadata.",
-  "Description": "Imported from Data/Pages/workbench/tasks.md",
+  "Description": "Add notes on which settings are safe to surface per provider.\r\n\r\nImported from Data/Pages/workbench/tasks.md",
   "Type": "Task",
   "Status": "Backlog",
   "Priority": "Medium",
@@ -37,4 +37,3 @@
   "Revision": 1,
   "IsArchived": false
 }
-

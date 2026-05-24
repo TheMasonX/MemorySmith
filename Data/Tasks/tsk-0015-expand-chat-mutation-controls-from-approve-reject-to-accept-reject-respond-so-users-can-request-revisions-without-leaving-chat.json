@@ -2,7 +2,7 @@
   "Id": "tsk-0015-expand-chat-mutation-controls-from-approve-reject-to-accept-reject-respond-so-users-can-request-revisions-without-leaving-chat",
   "Key": "TSK-0015",
   "Title": "Expand chat mutation controls from Approve/Reject to Accept/Reject/Respond so users can request revisions without leaving chat.",
-  "Description": "Imported from Data/Pages/workbench/tasks.md",
+  "Description": "Add notes on how revision requests are summarized.\r\n\r\nImported from Data/Pages/workbench/tasks.md",
   "Type": "Task",
   "Status": "Backlog",
   "Priority": "Medium",
@@ -37,4 +37,3 @@
   "Revision": 1,
   "IsArchived": false
 }
-

@@ -35,73 +35,90 @@
                     <MudButton Variant="Variant.Outlined" Color="Color.Success" StartIcon="@Icons.Material.Filled.Add" OnClick="CreateQuickTaskAsync">Quick Add</MudButton>
                 </Authorized>
             </AuthorizeView>
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Default"
+                       StartIcon="@(_isListCollapsed ? Icons.Material.Filled.ChevronRight : Icons.Material.Filled.ChevronLeft)"
+                       OnClick="ToggleListCollapse"
+                       Class="tasks-sidebar-toggle">
+                @(_isListCollapsed ? "Show List" : "Hide List")
+            </MudButton>
         </div>
     </section>
 
-    <section class="wiki-body">
-        <aside class="wiki-results-pane" aria-label="Task list">
-            @if (_isLoading)
-            {
-                <MudProgressLinear Indeterminate="true" />
-            }
-            else if (_tasks.Count == 0)
-            {
-                <div class="wiki-empty-state">No tasks found.</div>
-            }
-            else
-            {
-                <div class="wiki-results-list">
-                    @foreach (var task in _tasks)
-                    {
-                        <article class="@(task.Id == _selectedTask?.Id ? "proposal-row is-selected" : "proposal-row")" @onclick="@(() => SelectAsync(task.Id))">
-                            <div class="wiki-result-main">
-                                <div class="wiki-result-title">@task.Key - @task.Title</div>
-                                <div class="wiki-result-meta">
-                                    <span class="wiki-status">@task.Status</span>
-                                    <span class="wiki-status">@task.Priority</span>
-                                    <span>@(task.Assignee ?? "unassigned")</span>
-                                    <span>@task.UpdatedAtUtc.ToLocalTime().ToString("g")</span>
+    <section class="wiki-body tasks-body @(_isListCollapsed ? "is-list-collapsed" : string.Empty)">
+        @if (!_isListCollapsed)
+        {
+            <aside class="wiki-results-pane tasks-list-pane" aria-label="Task list">
+                @if (_isLoading)
+                {
+                    <MudProgressLinear Indeterminate="true" />
+                }
+                else if (_tasks.Count == 0)
+                {
+                    <div class="wiki-empty-state">No tasks found.</div>
+                }
+                else
+                {
+                    <div class="wiki-results-list">
+                        @foreach (var task in _tasks)
+                        {
+                            <article class="@(task.Id == _selectedTask?.Id ? "proposal-row is-selected" : "proposal-row")" @onclick="@(() => SelectAsync(task.Id))">
+                                <div class="wiki-result-main">
+                                    <div class="wiki-result-title" title="@task.Title">@task.Key - @task.Title</div>
+                                    <div class="wiki-result-meta">
+                                        <span class="wiki-status">@task.Status</span>
+                                        <span class="wiki-status">@task.Priority</span>
+                                        <span>@(task.Assignee ?? "unassigned")</span>
+                                        <span>@task.UpdatedAtUtc.ToLocalTime().ToString("g")</span>
+                                    </div>
                                 </div>
-                            </div>
-                        </article>
-                    }
-                </div>
-            }
-        </aside>
+                            </article>
+                        }
+                    </div>
+                }
+            </aside>
+        }
 
-        <main class="wiki-detail-pane" aria-label="Task detail">
+        <main class="wiki-detail-pane tasks-detail-pane" aria-label="Task detail">
             @if (_selectedTask is null)
             {
                 <div class="wiki-empty-state">Select a task to inspect.</div>
             }
             else
             {
-                <div class="wiki-pane-header wiki-detail-header">
-                    <div>
-                        <MudText Typo="Typo.h6">@_selectedTask.Key - @_selectedTask.Title</MudText>
-                        <div class="wiki-result-meta">
+                <div class="wiki-pane-header wiki-detail-header tasks-detail-header">
+                    <div class="tasks-detail-header-main">
+                        <MudText Typo="Typo.h6" Class="tasks-detail-title">@_selectedTask.Key - @_selectedTask.Title</MudText>
+                        <div class="wiki-result-meta tasks-detail-meta">
                             <span class="wiki-status">@_selectedTask.Status</span>
                             <span class="wiki-status">@_selectedTask.Priority</span>
                             <span>@(_selectedTask.AssigneeCustomText ?? _selectedTask.AssigneeDirectoryId ?? "unassigned")</span>
                             <span>@_selectedTask.UpdatedAtUtc.ToLocalTime().ToString("g")</span>
                         </div>
                     </div>
-                    <MudSpacer />
                     <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
                         <Authorized>
-                            <MudButtonGroup Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small">
-                                <MudButton OnClick="@(() => SetStatusAsync(TaskStatuses.Ready))">Ready</MudButton>
-                                <MudButton OnClick="@(() => SetStatusAsync(TaskStatuses.InProgress))">In Progress</MudButton>
-                                <MudButton OnClick="@(() => SetStatusAsync(TaskStatuses.Done))">Done</MudButton>
-                            </MudButtonGroup>
+                            <MudSelect T="string"
+                                       Value="@_selectedStatus"
+                                       ValueChanged="OnTaskStatusChanged"
+                                       Label="Status"
+                                       Variant="Variant.Outlined"
+                                       Margin="Margin.Dense"
+                                       Dense="true"
+                                       Class="tasks-status-combobox">
+                                @foreach (var option in TaskStatusOptions)
+                                {
+                                    <MudSelectItem Value="@option">@option</MudSelectItem>
+                                }
+                            </MudSelect>
                         </Authorized>
                     </AuthorizeView>
                 </div>
 
-                <div class="wiki-editor-grid">
+                <div class="wiki-editor-grid tasks-editor-grid">
                     <MudTextField T="string" Value="@_selectedTask.Type" Label="Type" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
                     <MudTextField T="string" Value="@_selectedTask.Reporter" Label="Reporter" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
-                    <MudTextField T="string" Value="@_selectedTask.Description" Label="Description" Lines="4" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    <MudTextField T="string" Value="@_selectedTask.Description" Label="Description" Lines="5" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" Class="tasks-description-field" />
                 </div>
 
                 <MudTabs Rounded="false" Elevation="0" Class="proposal-tabs">
@@ -214,9 +231,11 @@
 
 @code {
     private static readonly IReadOnlyList<string> StatusOptions = ["All", TaskStatuses.Backlog, TaskStatuses.Ready, TaskStatuses.InProgress, TaskStatuses.Blocked, TaskStatuses.Done, TaskStatuses.Archived];
+    private static readonly IReadOnlyList<string> TaskStatusOptions = [TaskStatuses.Backlog, TaskStatuses.Ready, TaskStatuses.InProgress, TaskStatuses.Blocked, TaskStatuses.Done, TaskStatuses.Archived];
     private IReadOnlyList<TaskSummary> _tasks = [];
     private TaskItem? _selectedTask;
     private IReadOnlyList<TaskActivityEntry> _history = [];
+    private string _selectedStatus = TaskStatuses.Backlog;
     private string _query = string.Empty;
     private string _statusFilter = "All";
     private string _commentDraft = string.Empty;
@@ -225,6 +244,7 @@
     private string _externalLinkUrl = string.Empty;
     private string _attachmentName = string.Empty;
     private string _attachmentUri = string.Empty;
+    private bool _isListCollapsed;
     private bool _isLoading = true;
 
     protected override async Task OnInitializedAsync()
@@ -248,6 +268,7 @@
     private async Task SelectAsync(string id)
     {
         _selectedTask = await TaskService.GetAsync(id, CancellationToken.None);
+        _selectedStatus = _selectedTask?.Status ?? TaskStatuses.Backlog;
         _history = _selectedTask is null
             ? []
             : await TaskService.GetHistoryAsync(_selectedTask.Id, 100, CancellationToken.None);
@@ -295,6 +316,12 @@
         await TaskService.SetStatusAsync(_selectedTask.Id, new TaskStatusUpdateRequest(status), CurrentUser.DisplayName, CancellationToken.None);
         await LoadAsync();
         await SelectAsync(_selectedTask.Id);
+    }
+
+    private async Task OnTaskStatusChanged(string value)
+    {
+        _selectedStatus = value;
+        await SetStatusAsync(value);
     }
 
     private async Task AddCommentAsync()
@@ -427,5 +454,10 @@
     {
         _attachmentUri = value;
         return Task.CompletedTask;
+    }
+
+    private void ToggleListCollapse()
+    {
+        _isListCollapsed = !_isListCollapsed;
     }
 }

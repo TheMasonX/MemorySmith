@@ -2,7 +2,7 @@
   "Id": "tsk-0003-add-schema-or-fixture-validation-for-the-live-data-memories-wiki-so-bad-records-are-caught-before-runtime",
   "Key": "TSK-0003",
   "Title": "Add schema or fixture validation for the live `Data/Memories` wiki so bad records are caught before runtime.",
-  "Description": "Imported from Data/Pages/workbench/tasks.md",
+  "Description": "Keep the validation output short and link the failing record id.\r\n\r\nImported from Data/Pages/workbench/tasks.md",
   "Type": "Task",
   "Status": "Backlog",
   "Priority": "Medium",
@@ -37,4 +37,3 @@
   "Revision": 1,
   "IsArchived": false
 }
-

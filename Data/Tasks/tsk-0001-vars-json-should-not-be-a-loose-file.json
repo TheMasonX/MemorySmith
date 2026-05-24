@@ -2,7 +2,7 @@
   "Id": "tsk-0001-vars-json-should-not-be-a-loose-file",
   "Key": "TSK-0001",
   "Title": "Vars.json should not be a loose file",
-  "Description": "Imported from Data/Pages/workbench/tasks.md",
+  "Description": "Add validation so the variable store behaves like a managed config surface, not an ad hoc file.\r\n\r\nImported from Data/Pages/workbench/tasks.md",
   "Type": "Task",
   "Status": "Backlog",
   "Priority": "Medium",
@@ -37,4 +37,3 @@
   "Revision": 1,
   "IsArchived": false
 }
-

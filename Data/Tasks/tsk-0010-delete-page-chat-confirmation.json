@@ -2,7 +2,7 @@
   "Id": "tsk-0010-delete-page-chat-confirmation",
   "Key": "TSK-0010",
   "Title": "Delete page/chat confirmation",
-  "Description": "Imported from Data/Pages/workbench/tasks.md",
+  "Description": "Keep notes on the exact confirmation copy and whether the action feels recoverable.\r\n\r\nImported from Data/Pages/workbench/tasks.md",
   "Type": "Task",
   "Status": "Backlog",
   "Priority": "Medium",
@@ -37,4 +37,3 @@
   "Revision": 1,
   "IsArchived": false
 }
-

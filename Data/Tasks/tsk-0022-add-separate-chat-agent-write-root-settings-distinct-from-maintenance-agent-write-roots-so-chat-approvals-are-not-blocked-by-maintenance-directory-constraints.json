@@ -2,7 +2,7 @@
   "Id": "tsk-0022-add-separate-chat-agent-write-root-settings-distinct-from-maintenance-agent-write-roots-so-chat-approvals-are-not-blocked-by-maintenance-directory-constraints",
   "Key": "TSK-0022",
   "Title": "Add separate chat-agent write root settings (distinct from maintenance-agent write roots) so chat approvals are not blocked by maintenance directory constraints.",
-  "Description": "Imported from Data/Pages/workbench/tasks.md",
+  "Description": "Keep this scoped and well documented.\r\n\r\nImported from Data/Pages/workbench/tasks.md",
   "Type": "Task",
   "Status": "Backlog",
   "Priority": "Medium",
@@ -37,4 +37,3 @@
   "Revision": 1,
   "IsArchived": false
 }
-

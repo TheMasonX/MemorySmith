@@ -2,7 +2,7 @@
   "Id": "tsk-0004-keep-reducing-large-ui-service-files-where-extraction-makes-behavior-easier-to-review",
   "Key": "TSK-0004",
   "Title": "Keep reducing large UI/service files where extraction makes behavior easier to review.",
-  "Description": "Imported from Data/Pages/workbench/tasks.md",
+  "Description": "Prefer a slice that also improves testability.\r\n\r\nImported from Data/Pages/workbench/tasks.md",
   "Type": "Task",
   "Status": "Backlog",
   "Priority": "Medium",
@@ -37,4 +37,3 @@
   "Revision": 1,
   "IsArchived": false
 }
-

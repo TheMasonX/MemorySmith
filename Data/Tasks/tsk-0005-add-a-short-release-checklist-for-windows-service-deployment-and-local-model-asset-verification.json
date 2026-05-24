@@ -2,7 +2,7 @@
   "Id": "tsk-0005-add-a-short-release-checklist-for-windows-service-deployment-and-local-model-asset-verification",
   "Key": "TSK-0005",
   "Title": "Add a short release checklist for Windows Service deployment and local model asset verification.",
-  "Description": "Imported from Data/Pages/workbench/tasks.md",
+  "Description": "Include the screenshots or console output that prove the post-deploy checks succeeded.\r\n\r\nImported from Data/Pages/workbench/tasks.md",
   "Type": "Task",
   "Status": "Backlog",
   "Priority": "Medium",
@@ -37,4 +37,3 @@
   "Revision": 1,
   "IsArchived": false
 }
-

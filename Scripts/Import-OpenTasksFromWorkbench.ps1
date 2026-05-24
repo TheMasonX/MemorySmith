@@ -105,6 +105,14 @@ foreach ($row in $openRows) {
         }
     }
 
+    $summaryText = $row.Task
+    if ($comments.Count -gt 0 -and -not [string]::IsNullOrWhiteSpace($comments[0].Body)) {
+        $summaryText = $comments[0].Body
+    }
+
+    $importNote = 'Imported from Data/Pages/workbench/tasks.md'
+    $description = "$summaryText`n`n$importNote"
+
     $attachments = @()
     if (-not [string]::IsNullOrWhiteSpace($row.Screenshot) -and $row.Screenshot -ne 'Pending') {
         $attachments += [ordered]@{
@@ -125,7 +133,7 @@ foreach ($row in $openRows) {
         Id = $id
         Key = $key
         Title = $row.Task
-        Description = 'Imported from Data/Pages/workbench/tasks.md'
+        Description = $description
         Type = 'Task'
         Status = 'Backlog'
         Priority = 'Medium'

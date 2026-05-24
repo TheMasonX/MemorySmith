@@ -2,7 +2,7 @@
   "Id": "tsk-0018-fix-approve-all-batch-semantics-to-be-per-item-for-example-3-5-valid-applies-3-report-itemized-outcomes-approved-rejected-blocked-failed-and-clear-refresh-pending-cards-and-counters-deterministically",
   "Key": "TSK-0018",
   "Title": "Fix `Approve all` batch semantics to be per-item (for example 3/5 valid applies 3), report itemized outcomes (`approved`/`rejected`/`blocked`/`failed`), and clear/refresh pending cards and counters deterministically.",
-  "Description": "Imported from Data/Pages/workbench/tasks.md",
+  "Description": "Keep a note of the batch result breakdown.\r\n\r\nImported from Data/Pages/workbench/tasks.md",
   "Type": "Task",
   "Status": "Backlog",
   "Priority": "Medium",
@@ -37,4 +37,3 @@
   "Revision": 1,
   "IsArchived": false
 }
-

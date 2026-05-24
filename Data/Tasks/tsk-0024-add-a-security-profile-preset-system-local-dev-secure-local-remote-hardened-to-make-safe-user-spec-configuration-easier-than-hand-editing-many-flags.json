@@ -2,7 +2,7 @@
   "Id": "tsk-0024-add-a-security-profile-preset-system-local-dev-secure-local-remote-hardened-to-make-safe-user-spec-configuration-easier-than-hand-editing-many-flags",
   "Key": "TSK-0024",
   "Title": "Add a security profile preset system (`local-dev`, `secure-local`, `remote-hardened`) to make safe user-spec configuration easier than hand-editing many flags.",
-  "Description": "Imported from Data/Pages/workbench/tasks.md",
+  "Description": "Document which preset is the recommended default for dogfood.\r\n\r\nImported from Data/Pages/workbench/tasks.md",
   "Type": "Task",
   "Status": "Backlog",
   "Priority": "Medium",
@@ -37,4 +37,3 @@
   "Revision": 1,
   "IsArchived": false
 }
-

@@ -2,7 +2,7 @@
   "Id": "tsk-0008-grid-panels-like-the-markdown-preview-plane-and-the-pages-edit-columns-should-be-resizable-to-a-degree-like-a-classic-gridsplitter",
   "Key": "TSK-0008",
   "Title": "Grid panels like the markdown/preview plane and the pages/edit columns should be resizable to a degree, like a classic gridsplitter",
-  "Description": "Imported from Data/Pages/workbench/tasks.md",
+  "Description": "Add a screenshot once the split behavior feels usable at narrow widths.\r\n\r\nImported from Data/Pages/workbench/tasks.md",
   "Type": "Task",
   "Status": "Backlog",
   "Priority": "Medium",
@@ -37,4 +37,3 @@
   "Revision": 1,
   "IsArchived": false
 }
-

@@ -2,7 +2,7 @@
   "Id": "tsk-0020-add-explicit-proposal-linkage-metadata-for-related-batches-and-resubmissions-using-batchid-parentproposalid-attempt-and-surface-these-references-in-chat-proposal-history-for-automated-auditing",
   "Key": "TSK-0020",
   "Title": "Add explicit proposal linkage metadata for related batches and resubmissions using `batchId` + `parentProposalId` + `attempt`, and surface these references in chat/proposal history for automated auditing.",
-  "Description": "Imported from Data/Pages/workbench/tasks.md",
+  "Description": "Notes should include the lineage chain.\r\n\r\nImported from Data/Pages/workbench/tasks.md",
   "Type": "Task",
   "Status": "Backlog",
   "Priority": "Medium",
@@ -37,4 +37,3 @@
   "Revision": 1,
   "IsArchived": false
 }
-

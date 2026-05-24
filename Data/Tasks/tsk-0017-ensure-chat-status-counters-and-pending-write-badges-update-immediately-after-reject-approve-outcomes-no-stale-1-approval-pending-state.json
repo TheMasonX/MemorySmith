@@ -2,7 +2,7 @@
   "Id": "tsk-0017-ensure-chat-status-counters-and-pending-write-badges-update-immediately-after-reject-approve-outcomes-no-stale-1-approval-pending-state",
   "Key": "TSK-0017",
   "Title": "Ensure chat status counters and pending-write badges update immediately after reject/approve outcomes (no stale \"1 approval pending\" state).",
-  "Description": "Imported from Data/Pages/workbench/tasks.md",
+  "Description": "This should be verified with a quick visual check.\r\n\r\nImported from Data/Pages/workbench/tasks.md",
   "Type": "Task",
   "Status": "Backlog",
   "Priority": "Medium",
@@ -37,4 +37,3 @@
   "Revision": 1,
   "IsArchived": false
 }
-

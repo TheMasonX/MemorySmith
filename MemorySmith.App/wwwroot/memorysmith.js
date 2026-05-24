@@ -2,13 +2,269 @@
     window.memorySmith = window.memorySmith || {};
 
     const mermaidThemeStorageKey = "memorysmith.markdown.mermaidTheme.v1";
+    const headingCollapseStoragePrefix = "memorysmith.pages.headingCollapse.v1:";
     const mermaidThemeModes = new Set(["auto", "light", "dark"]);
+    const reconnectRecoveryStorageKey = "memorysmith.reconnect.resumeFailedReloadAt.v1";
+    const reconnectRecoveryCooldownMs = 15000;
     let mermaidSequence = 0;
     let mermaidTheme = null;
     let mermaidThemeWatcher = null;
 
+    function getLastReconnectRecoveryAttempt() {
+        try {
+            const value = Number.parseInt(sessionStorage.getItem(reconnectRecoveryStorageKey) || "0", 10);
+            return Number.isFinite(value) ? value : 0;
+        } catch {
+            return 0;
+        }
+    }
+
+    function markReconnectRecoveryAttempt(at) {
+        try {
+            sessionStorage.setItem(reconnectRecoveryStorageKey, String(at));
+        } catch {
+        }
+    }
+
+    function recoverFromResumeFailureIfNeeded() {
+        const resumeFailedModal = document.querySelector(".components-reconnect-resume-failed");
+        if (!resumeFailedModal) {
+            return;
+        }
+
+        const now = Date.now();
+        if (now - getLastReconnectRecoveryAttempt() < reconnectRecoveryCooldownMs) {
+            return;
+        }
+
+        markReconnectRecoveryAttempt(now);
+        window.location.reload();
+    }
+
+    function initializeReconnectRecovery() {
+        const observe = function () {
+            if (!document.body || typeof MutationObserver !== "function") {
+                return false;
+            }
+
+            const observer = new MutationObserver(recoverFromResumeFailureIfNeeded);
+            observer.observe(document.body, {
+                subtree: true,
+                attributes: true,
+                childList: true,
+                attributeFilter: ["class"]
+            });
+
+            return true;
+        };
+
+        recoverFromResumeFailureIfNeeded();
+        if (!observe()) {
+            document.addEventListener("DOMContentLoaded", function () {
+                observe();
+                recoverFromResumeFailureIfNeeded();
+            }, { once: true });
+        }
+
+        // Polling is a fallback in case reconnect UI classes change without observable mutations.
+        window.setInterval(recoverFromResumeFailureIfNeeded, 2000);
+    }
+
+    initializeReconnectRecovery();
+
     function markdownRoot(root) {
         return root && typeof root.querySelectorAll === "function" ? root : document;
+    }
+
+    function toHeadingLevel(element) {
+        if (!element || !element.tagName) {
+            return 0;
+        }
+
+        const match = /^H([1-6])$/i.exec(element.tagName);
+        if (!match) {
+            return 0;
+        }
+
+        const value = Number.parseInt(match[1], 10);
+        return Number.isFinite(value) ? value : 0;
+    }
+
+    function slugifyHeadingText(text) {
+        return String(text || "")
+            .toLowerCase()
+            .trim()
+            .replace(/[\s_]+/g, "-")
+            .replace(/[^a-z0-9-]/g, "")
+            .replace(/-+/g, "-")
+            .replace(/^-|-$/g, "");
+    }
+
+    function headingDisplayText(heading) {
+        if (!heading) {
+            return "";
+        }
+
+        const clone = heading.cloneNode(true);
+        Array.from(clone.querySelectorAll(":scope > .md-heading-toggle")).forEach(function (toggle) {
+            toggle.remove();
+        });
+
+        return (clone.textContent || "").trim();
+    }
+
+    function ensureHeadingIds(scope) {
+        const seen = new Set();
+        Array.from(scope.querySelectorAll("h1, h2, h3, h4, h5, h6")).forEach(function (heading) {
+            if (!heading.id) {
+                const base = slugifyHeadingText(headingDisplayText(heading) || "section") || "section";
+                let candidate = base;
+                let suffix = 2;
+                while (seen.has(candidate) || document.getElementById(candidate)) {
+                    candidate = `${base}-${suffix++}`;
+                }
+
+                heading.id = candidate;
+            }
+
+            seen.add(heading.id);
+        });
+    }
+
+    function headingStorageKey(pageKey) {
+        const key = String(pageKey || "").trim();
+        return key ? `${headingCollapseStoragePrefix}${key}` : "";
+    }
+
+    function loadCollapsedHeadings(pageKey) {
+        const key = headingStorageKey(pageKey);
+        if (!key) {
+            return new Set();
+        }
+
+        try {
+            const raw = localStorage.getItem(key);
+            if (!raw) {
+                return new Set();
+            }
+
+            const values = JSON.parse(raw);
+            if (!Array.isArray(values)) {
+                return new Set();
+            }
+
+            return new Set(values.filter(function (value) {
+                return typeof value === "string" && value.length > 0;
+            }));
+        } catch {
+            return new Set();
+        }
+    }
+
+    function saveCollapsedHeadings(pageKey, values) {
+        const key = headingStorageKey(pageKey);
+        if (!key) {
+            return;
+        }
+
+        try {
+            localStorage.setItem(key, JSON.stringify(Array.from(values || [])));
+        } catch {
+        }
+    }
+
+    function sectionContentElements(heading) {
+        const level = toHeadingLevel(heading);
+        if (level <= 0) {
+            return [];
+        }
+
+        const elements = [];
+        let sibling = heading.nextElementSibling;
+        while (sibling) {
+            const siblingLevel = toHeadingLevel(sibling);
+            if (siblingLevel > 0 && siblingLevel <= level) {
+                break;
+            }
+
+            elements.push(sibling);
+            sibling = sibling.nextElementSibling;
+        }
+
+        return elements;
+    }
+
+    function applyHeadingCollapsed(heading, collapsed) {
+        if (!heading) {
+            return;
+        }
+
+        heading.classList.toggle("is-collapsed", collapsed);
+        const toggle = heading.querySelector(":scope > .md-heading-toggle");
+        if (toggle) {
+            toggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+            toggle.setAttribute("title", collapsed ? "Expand section" : "Collapse section");
+            toggle.textContent = collapsed ? "+" : "-";
+        }
+
+        sectionContentElements(heading).forEach(function (element) {
+            element.classList.toggle("md-collapsed-content", collapsed);
+        });
+    }
+
+    function enhanceCollapsibleHeadings(scope, settings) {
+        if (!scope || scope.dataset.headingSectionsEnhanced === "true") {
+            return;
+        }
+
+        const shouldEnable = settings.enableCollapsibleHeadings === true;
+        if (!shouldEnable) {
+            return;
+        }
+
+        ensureHeadingIds(scope);
+        const storagePageKey = settings.collapseStateKey || "";
+        const collapsedIds = loadCollapsedHeadings(storagePageKey);
+        const headings = Array.from(scope.querySelectorAll("h1[id], h2[id], h3[id], h4[id], h5[id], h6[id]"));
+        headings.forEach(function (heading) {
+            if (!heading || heading.dataset.headingCollapseEnhanced === "true") {
+                return;
+            }
+
+            const sectionElements = sectionContentElements(heading);
+            if (sectionElements.length === 0) {
+                return;
+            }
+
+            heading.classList.add("md-collapsible-heading");
+            let toggle = heading.querySelector(":scope > .md-heading-toggle");
+            if (!toggle) {
+                toggle = document.createElement("button");
+                toggle.type = "button";
+                toggle.className = "md-heading-toggle";
+                toggle.setAttribute("aria-label", "Toggle section");
+                heading.insertBefore(toggle, heading.firstChild);
+            }
+
+            toggle.onclick = function (event) {
+                event.preventDefault();
+                const nextCollapsed = !heading.classList.contains("is-collapsed");
+                applyHeadingCollapsed(heading, nextCollapsed);
+
+                if (nextCollapsed) {
+                    collapsedIds.add(heading.id);
+                } else {
+                    collapsedIds.delete(heading.id);
+                }
+
+                saveCollapsedHeadings(storagePageKey, collapsedIds);
+            };
+
+            applyHeadingCollapsed(heading, collapsedIds.has(heading.id));
+            heading.dataset.headingCollapseEnhanced = "true";
+        });
+
+        scope.dataset.headingSectionsEnhanced = "true";
     }
 
     function normalizeMermaidThemeMode(mode) {
@@ -159,6 +415,8 @@
         renderEnhancements: async function (root, options) {
             const scope = markdownRoot(root);
             const settings = options || {};
+            ensureHeadingIds(scope);
+            enhanceCollapsibleHeadings(scope, settings);
             if (window.Prism) {
                 if (typeof window.Prism.highlightAllUnder === "function" && scope !== document) {
                     window.Prism.highlightAllUnder(scope);
@@ -170,6 +428,43 @@
             if (settings.skipMermaid !== true) {
                 await window.renderMermaid(scope);
             }
+        },
+
+        extractHeadings: function (root) {
+            const scope = markdownRoot(root);
+            ensureHeadingIds(scope);
+            return Array.from(scope.querySelectorAll("h1[id], h2[id], h3[id], h4[id], h5[id], h6[id]"))
+                .map(function (heading) {
+                    return {
+                        id: heading.id,
+                        text: headingDisplayText(heading),
+                        level: toHeadingLevel(heading)
+                    };
+                })
+                .filter(function (heading) {
+                    return heading.id && heading.text && heading.level > 0;
+                });
+        },
+
+        scrollToHeading: function (root, id) {
+            const scope = markdownRoot(root);
+            if (!id) {
+                return false;
+            }
+
+            const selector = `#${CSS.escape(id)}`;
+            const heading = scope.querySelector(selector);
+            if (!heading) {
+                return false;
+            }
+
+            Array.from(scope.querySelectorAll("h1.is-collapsed, h2.is-collapsed, h3.is-collapsed, h4.is-collapsed, h5.is-collapsed, h6.is-collapsed"))
+                .forEach(function (collapsedHeading) {
+                    applyHeadingCollapsed(collapsedHeading, false);
+                });
+
+            heading.scrollIntoView({ block: "start", behavior: "smooth" });
+            return true;
         }
     };
 
@@ -497,6 +792,15 @@
         setJson: function (key, value) {
             try {
                 localStorage.setItem(key, JSON.stringify(value));
+                return true;
+            } catch {
+                return false;
+            }
+        },
+
+        remove: function (key) {
+            try {
+                localStorage.removeItem(key);
                 return true;
             } catch {
                 return false;

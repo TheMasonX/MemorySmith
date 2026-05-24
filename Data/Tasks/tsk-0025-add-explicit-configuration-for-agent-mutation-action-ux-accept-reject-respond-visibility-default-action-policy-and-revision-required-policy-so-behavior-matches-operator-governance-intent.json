@@ -2,7 +2,7 @@
   "Id": "tsk-0025-add-explicit-configuration-for-agent-mutation-action-ux-accept-reject-respond-visibility-default-action-policy-and-revision-required-policy-so-behavior-matches-operator-governance-intent",
   "Key": "TSK-0025",
   "Title": "Add explicit configuration for agent mutation action UX (`accept/reject/respond` visibility, default action policy, and revision-required policy) so behavior matches operator governance intent.",
-  "Description": "Imported from Data/Pages/workbench/tasks.md",
+  "Description": "Track the exact action labels in the screenshot notes.\r\n\r\nImported from Data/Pages/workbench/tasks.md",
   "Type": "Task",
   "Status": "Backlog",
   "Priority": "Medium",
@@ -37,4 +37,3 @@
   "Revision": 1,
   "IsArchived": false
 }
-

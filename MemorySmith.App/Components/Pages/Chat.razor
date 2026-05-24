@@ -29,12 +29,35 @@
             </MudButtonGroup>
 
             <div class="chat-model-controls">
-                <MudSelect T="string" Value="_selectedModelProfileId" ValueChanged="OnModelProfileChanged" Label="Model Profile" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="chat-model-profile-select" Disabled="@(!CanSelectModelProfile)">
-                    @foreach (var profile in _modelProfiles)
-                    {
-                        <MudSelectItem T="string" Value="@profile.Id">@FormatProfileLabel(profile)</MudSelectItem>
-                    }
-                </MudSelect>
+                <div class="chat-model-profile-with-info">
+                    <MudSelect T="string" Value="_selectedModelProfileId" ValueChanged="OnModelProfileChanged" Label="Model Profile" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="chat-model-profile-select" Disabled="@(!CanSelectModelProfile)">
+                        @foreach (var profile in _modelProfiles)
+                        {
+                            <MudSelectItem T="string" Value="@profile.Id">
+                                <span class="chat-model-profile-option">
+                                    <span class="chat-model-profile-option-label">@profile.Name</span>
+                                    <span class="chat-model-profile-option-info-wrap" tabindex="0" aria-label="Details for @profile.Name">
+                                        <span class="admin-help-icon chat-model-profile-option-info">
+                                            <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" />
+                                        </span>
+                                        <span class="chat-model-profile-tooltip-panel" role="tooltip">
+                                            <strong>@profile.Name</strong>
+                                            <span><strong>Provider:</strong> @profile.Provider</span>
+                                            <span><strong>Model:</strong> @profile.Model</span>
+                                            <span><strong>Context Window:</strong> @FormatProfileContextWindow(profile)</span>
+                                            <span><strong>Allowed Roles:</strong> @FormatProfileRoles(profile)</span>
+                                            <span><strong>Default Assignments:</strong> @FormatProfileDefaults(profile)</span>
+                                            @if (!string.IsNullOrWhiteSpace(profile.Description))
+                                            {
+                                                <span><strong>Description:</strong> @profile.Description</span>
+                                            }
+                                        </span>
+                                    </span>
+                                </span>
+                            </MudSelectItem>
+                        }
+                    </MudSelect>
+                </div>
                 <MudSelect T="string" Value="_mermaidThemeMode" ValueChanged="SetMermaidThemeModeAsync" Label="Diagram" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="chat-mermaid-theme-select">
                     <MudSelectItem T="string" Value="@MermaidThemeAuto">Auto</MudSelectItem>
                     <MudSelectItem T="string" Value="@MermaidThemeLight">Light</MudSelectItem>
@@ -2345,12 +2368,39 @@
         (string.Equals(left, "GitHub", StringComparison.OrdinalIgnoreCase) && string.Equals(right, "Copilot", StringComparison.OrdinalIgnoreCase)) ||
         (string.Equals(left, "GitHubCopilot", StringComparison.OrdinalIgnoreCase) && string.Equals(right, "GitHub", StringComparison.OrdinalIgnoreCase));
 
-    private static string FormatProfileLabel(ChatModelProfileView profile)
+    private static string FormatProfileRoles(ChatModelProfileView profile)
     {
-        var defaultMarker = profile.IsDefault ? " default" : string.Empty;
-        var roles = profile.AllowedRoles.Count == 0 ? string.Empty : $" [{string.Join(", ", profile.AllowedRoles)}]";
-        return $"{profile.DisplayName}{defaultMarker}{roles}";
+        return profile.AllowedRoles.Count == 0 ? "All Roles" : string.Join(", ", profile.AllowedRoles);
     }
+
+    private static string FormatProfileDefaults(ChatModelProfileView profile)
+    {
+        var defaults = new List<string>();
+        if (profile.IsDefault)
+        {
+            defaults.Add("Chat");
+        }
+
+        if (profile.IsMaintenanceRunDefault)
+        {
+            defaults.Add("Maintenance");
+        }
+
+        if (profile.IsProposalReviewDefault)
+        {
+            defaults.Add("Proposal Review");
+        }
+
+        if (profile.IsAdminMaintenanceChatDefault)
+        {
+            defaults.Add("Admin Chat");
+        }
+
+        return defaults.Count == 0 ? "None" : string.Join(", ", defaults);
+    }
+
+    private static string FormatProfileContextWindow(ChatModelProfileView profile) =>
+        profile.ContextWindowTokens is > 0 ? profile.ContextWindowTokens.Value.ToString("N0") : "Auto";
 
     private static string NormalizeMermaidThemeMode(string? mode) =>
         string.Equals(mode, MermaidThemeDark, StringComparison.OrdinalIgnoreCase) ? MermaidThemeDark :

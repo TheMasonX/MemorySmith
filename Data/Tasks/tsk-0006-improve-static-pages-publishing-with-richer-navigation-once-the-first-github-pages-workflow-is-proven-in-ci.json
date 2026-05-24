@@ -2,7 +2,7 @@
   "Id": "tsk-0006-improve-static-pages-publishing-with-richer-navigation-once-the-first-github-pages-workflow-is-proven-in-ci",
   "Key": "TSK-0006",
   "Title": "Improve static Pages publishing with richer navigation once the first GitHub Pages workflow is proven in CI.",
-  "Description": "Imported from Data/Pages/workbench/tasks.md",
+  "Description": "Track a before/after render note for the generated site navigation.\r\n\r\nImported from Data/Pages/workbench/tasks.md",
   "Type": "Task",
   "Status": "Backlog",
   "Priority": "Medium",
@@ -37,4 +37,3 @@
   "Revision": 1,
   "IsArchived": false
 }
-

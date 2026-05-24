@@ -2,7 +2,7 @@
   "Id": "tsk-0016-fix-chat-agent-page-write-approval-path-validation-so-approved-proposals-targeting-data-pages-md-do-not-fail-with-outside-configured-maintenance-write-directories",
   "Key": "TSK-0016",
   "Title": "Fix chat agent page-write approval path validation so approved proposals targeting `Data/Pages/*.md` do not fail with \"outside configured maintenance write directories\".",
-  "Description": "Imported from Data/Pages/workbench/tasks.md",
+  "Description": "Add a screenshot or log excerpt once the path check is fixed.\r\n\r\nImported from Data/Pages/workbench/tasks.md",
   "Type": "Task",
   "Status": "Backlog",
   "Priority": "Medium",
@@ -37,4 +37,3 @@
   "Revision": 1,
   "IsArchived": false
 }
-

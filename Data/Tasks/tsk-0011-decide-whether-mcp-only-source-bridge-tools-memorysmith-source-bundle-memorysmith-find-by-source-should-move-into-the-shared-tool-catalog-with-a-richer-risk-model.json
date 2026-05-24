@@ -2,7 +2,7 @@
   "Id": "tsk-0011-decide-whether-mcp-only-source-bridge-tools-memorysmith-source-bundle-memorysmith-find-by-source-should-move-into-the-shared-tool-catalog-with-a-richer-risk-model",
   "Key": "TSK-0011",
   "Title": "Decide whether MCP-only source bridge tools (`memorysmith_source_bundle`, `memorysmith_find_by_source`) should move into the shared tool catalog with a richer risk model.",
-  "Description": "Imported from Data/Pages/workbench/tasks.md",
+  "Description": "This needs a design note before code.\r\n\r\nImported from Data/Pages/workbench/tasks.md",
   "Type": "Task",
   "Status": "Backlog",
   "Priority": "Medium",
@@ -37,4 +37,3 @@
   "Revision": 1,
   "IsArchived": false
 }
-
