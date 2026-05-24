@@ -484,7 +484,7 @@
         if (firstRender)
         {
             _dotNetRef = DotNetObjectReference.Create(this);
-            await JS.InvokeVoidAsync("memorySmith.chat.registerComposer", _composerInput, _dotNetRef, _sendOnEnter);
+            await TryInvokeVoidAsync("memorySmith.chat.registerComposer", _composerInput, _dotNetRef, _sendOnEnter);
             _composerRegistered = true;
             await LoadPreferencesAsync();
             await CollapseSidebarOnNarrowViewportAsync();
@@ -496,11 +496,16 @@
         if (_scrollPending)
         {
             _scrollPending = false;
-            await JS.InvokeVoidAsync("memorySmith.chat.scrollToBottom", _transcriptPane);
-            await JS.InvokeVoidAsync("memorySmith.chat.scrollToBottom", _tracePanelList);
+            await TryInvokeVoidAsync("memorySmith.chat.scrollToBottom", _transcriptPane);
+            await TryInvokeVoidAsync("memorySmith.chat.scrollToBottom", _tracePanelList);
         }
 
-        await JS.InvokeVoidAsync("memorySmith.markdown.renderEnhancements", _transcriptPane, new { skipMermaid = _isSending });
+        await TryInvokeVoidAsync("memorySmith.markdown.renderEnhancements", _transcriptPane, new { skipMermaid = _isSending });
+    }
+
+    private async Task TryInvokeVoidAsync(string identifier, params object?[] args)
+    {
+        await SafeJsInterop.TryInvokeVoidAsync(JS, identifier, args);
     }
 
     private async Task LoadPreferencesAsync()

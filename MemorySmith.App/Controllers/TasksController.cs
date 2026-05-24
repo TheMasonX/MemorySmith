@@ -6,6 +6,7 @@ namespace MemorySmith.App.Controllers;
 
 [ApiController]
 [Route("api/tasks")]
+[Authorize(Policy = MemorySmithPolicies.CanViewMemorySmith)]
 public sealed class TasksController : ControllerBase
 {
     private readonly ITaskService _tasks;
@@ -81,8 +82,15 @@ public sealed class TasksController : ControllerBase
     [Authorize(Policy = MemorySmithPolicies.CanEditMemorySmith)]
     public async Task<ActionResult<TaskItem>> SetStatus(string idOrKey, [FromBody] TaskStatusUpdateRequest request, CancellationToken cancellationToken)
     {
-        var updated = await _tasks.SetStatusAsync(idOrKey, request, Actor(), cancellationToken);
-        return updated is null ? NotFound() : Ok(updated);
+        try
+        {
+            var updated = await _tasks.SetStatusAsync(idOrKey, request, Actor(), cancellationToken);
+            return updated is null ? NotFound() : Ok(updated);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
     }
 
     [HttpPost("{idOrKey}/comments")]
@@ -149,24 +157,38 @@ public sealed class TasksController : ControllerBase
     [Authorize(Policy = MemorySmithPolicies.CanEditMemorySmith)]
     public async Task<ActionResult<TaskItem>> RemoveAttachment(string idOrKey, string attachmentId, CancellationToken cancellationToken)
     {
-        var updated = await _tasks.RemoveAttachmentAsync(idOrKey, attachmentId, Actor(), cancellationToken);
-        return updated is null ? NotFound() : Ok(updated);
+        try
+        {
+            var updated = await _tasks.RemoveAttachmentAsync(idOrKey, attachmentId, Actor(), cancellationToken);
+            return updated is null ? NotFound() : Ok(updated);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
     }
 
     [HttpDelete("{idOrKey}")]
     [Authorize(Policy = MemorySmithPolicies.CanEditMemorySmith)]
     public async Task<IActionResult> Delete(string idOrKey, [FromQuery] bool hard = false, CancellationToken cancellationToken = default)
     {
-        if (hard)
+        try
         {
-            var result = await _authorization.AuthorizeAsync(User, null, MemorySmithPolicies.CanAdminMemorySmith);
-            if (!result.Succeeded)
+            if (hard)
             {
-                return Forbid();
+                var result = await _authorization.AuthorizeAsync(User, null, MemorySmithPolicies.CanAdminMemorySmith);
+                if (!result.Succeeded)
+                {
+                    return Forbid();
+                }
             }
-        }
 
-        return await _tasks.DeleteAsync(idOrKey, hard, Actor(), cancellationToken) ? NoContent() : NotFound();
+            return await _tasks.DeleteAsync(idOrKey, hard, Actor(), cancellationToken) ? NoContent() : NotFound();
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
     }
 
     private string Actor()

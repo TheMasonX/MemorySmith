@@ -18,6 +18,7 @@ Reduce structural complexity and security risk together by decomposing high-risk
 - TSK-0052 Add task-store parse fault isolation and malformed-record recovery flow.
 - TSK-0054 Standardize task mutation error mapping for malformed-record safety.
 - TSK-0055 Enforce task read API view authorization and safe remote defaults.
+- TSK-0056 Add task hybrid semantic search default-on and admin toggle.
 
 ## Stretch Items
 
@@ -46,6 +47,14 @@ Reduce structural complexity and security risk together by decomposing high-risk
 - TSK-0053: task contract canonicalization and migration-safe governance checks.
 - TSK-0054: non-500 mutation behavior and consistent client-facing error contracts for malformed task records.
 - TSK-0055: task read-surface authorization hardening and startup guardrails for remote profile safety.
+- TSK-0056: task-search hybrid semantic recall parity with configurable default-on behavior.
+
+## Phase 1 Completion Snapshot
+
+- Completed in Phase 1:
+	- TSK-0054 Standardized malformed-task mutation error mapping to avoid 500 responses on core mutation routes.
+	- TSK-0055 Enforced task read API view authorization with regression coverage for unauthenticated caller behavior.
+	- TSK-0056 Implemented hybrid lexical+semantic task search with `MemorySmith:TaskSearch:HybridSemanticEnabled` defaulted on.
 
 ## Assumptions
 

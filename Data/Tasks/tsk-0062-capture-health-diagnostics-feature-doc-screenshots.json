@@ -1,0 +1,41 @@
+{
+  "id": "tsk-0062-capture-health-diagnostics-feature-doc-screenshots",
+  "key": "TSK-0062",
+  "title": "Capture health and diagnostics feature doc screenshots",
+  "description": "Problem: `features/health-and-diagnostics` now includes placeholder IDs but no final screenshots.\n\nDesired outcome: capture and embed images for FEAT-HEALTH placeholders so observability docs are visually actionable.\n\nScope:\n- In scope: FEAT-HEALTH-01..04 capture, redaction, asset storage in `Data/Pages/assets`, markdown image insertion.\n- Out of scope: broader admin/auth screenshots and chat workflows.\n\nAcceptance criteria:\n- All FEAT-HEALTH placeholders are fulfilled with image assets and embeds.\n- Sensitive runtime fields in diagnostics captures are redacted.\n- Page renders correctly in `/pages` with no broken image links.\n\nValidation:\n- Open `features/health-and-diagnostics` in `/pages` and verify all images load and match step intent.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Docs",
+  "reporter": "AgentSmith",
+  "labels": [
+    "docs",
+    "screenshots",
+    "health",
+    "diagnostics",
+    "wiki"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "features/health-and-diagnostics"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0062-20260524",
+      "author": "AgentSmith",
+      "body": "Created to track FEAT-HEALTH screenshot capture and insertion.",
+      "createdAtUtc": "2026-05-24T00:00:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-24T00:00:00.0000000Z",
+  "updatedAtUtc": "2026-05-24T00:00:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false
+}

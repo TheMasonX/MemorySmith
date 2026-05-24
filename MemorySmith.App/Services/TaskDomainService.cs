@@ -183,17 +183,52 @@ public sealed class FileTaskService : ITaskService
             var normalizedAssignee = Normalize(assignee);
             var cappedLimit = Math.Clamp(limit <= 0 ? 100 : limit, 1, 500);
 
-            var items = LoadAll(cancellationToken)
+            var filteredItems = LoadAll(cancellationToken)
                 .Where(item => string.IsNullOrWhiteSpace(normalizedStatus) || string.Equals(item.Status, normalizedStatus, StringComparison.OrdinalIgnoreCase))
                 .Where(item => string.IsNullOrWhiteSpace(normalizedAssignee) || string.Equals(ResolveAssignee(item), normalizedAssignee, StringComparison.OrdinalIgnoreCase))
-                .Where(item => string.IsNullOrWhiteSpace(normalizedQuery) || MatchesQuery(item, normalizedQuery))
-                .OrderByDescending(item => item.UpdatedAtUtc)
-                .ThenBy(item => item.Key, StringComparer.OrdinalIgnoreCase)
-                .Take(cappedLimit)
+                .ToList();
+
+            var hybridSearchEnabled = _options.CurrentValue.TaskSearch.HybridSemanticEnabled;
+            List<TaskItem> items;
+            if (string.IsNullOrWhiteSpace(normalizedQuery))
+            {
+                items = filteredItems
+                    .OrderByDescending(item => item.UpdatedAtUtc)
+                    .ThenBy(item => item.Key, StringComparer.OrdinalIgnoreCase)
+                    .Take(cappedLimit)
+                    .ToList();
+            }
+            else if (hybridSearchEnabled)
+            {
+                items = filteredItems
+                    .Select(item => new
+                    {
+                        Item = item,
+                        Score = ComputeHybridQueryScore(item, normalizedQuery)
+                    })
+                    .Where(entry => entry.Score > 0)
+                    .OrderByDescending(entry => entry.Score)
+                    .ThenByDescending(entry => entry.Item.UpdatedAtUtc)
+                    .ThenBy(entry => entry.Item.Key, StringComparer.OrdinalIgnoreCase)
+                    .Take(cappedLimit)
+                    .Select(entry => entry.Item)
+                    .ToList();
+            }
+            else
+            {
+                items = filteredItems
+                    .Where(item => MatchesQuery(item, normalizedQuery))
+                    .OrderByDescending(item => item.UpdatedAtUtc)
+                    .ThenBy(item => item.Key, StringComparer.OrdinalIgnoreCase)
+                    .Take(cappedLimit)
+                    .ToList();
+            }
+
+            var summaries = items
                 .Select(ToSummary)
                 .ToList();
 
-            return Task.FromResult<IReadOnlyList<TaskSummary>>(items);
+            return Task.FromResult<IReadOnlyList<TaskSummary>>(summaries);
         }
     }
 
@@ -839,6 +874,80 @@ public sealed class FileTaskService : ITaskService
                || item.Labels.Any(label => label.Contains(query, StringComparison.OrdinalIgnoreCase))
                || item.Key.Contains(query, StringComparison.OrdinalIgnoreCase)
                || item.Id.Contains(query, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static double ComputeHybridQueryScore(TaskItem item, string query)
+    {
+        var score = 0d;
+        if (item.Title.Contains(query, StringComparison.OrdinalIgnoreCase))
+        {
+            score += 8;
+        }
+
+        if (item.Description.Contains(query, StringComparison.OrdinalIgnoreCase))
+        {
+            score += 5;
+        }
+
+        if (item.Labels.Any(label => label.Contains(query, StringComparison.OrdinalIgnoreCase)))
+        {
+            score += 3;
+        }
+
+        if (item.Key.Contains(query, StringComparison.OrdinalIgnoreCase) || item.Id.Contains(query, StringComparison.OrdinalIgnoreCase))
+        {
+            score += 2;
+        }
+
+        var queryTokens = TokenizeForSemanticSearch(query);
+        if (queryTokens.Count == 0)
+        {
+            return score;
+        }
+
+        var taskTokens = TokenizeForSemanticSearch(BuildTaskSearchText(item));
+        if (taskTokens.Count == 0)
+        {
+            return score;
+        }
+
+        var overlap = queryTokens.Intersect(taskTokens, StringComparer.OrdinalIgnoreCase).Count();
+        if (overlap == 0)
+        {
+            return score;
+        }
+
+        var coverage = (double)overlap / queryTokens.Count;
+        var union = queryTokens.Union(taskTokens, StringComparer.OrdinalIgnoreCase).Count();
+        var jaccard = union == 0 ? 0 : (double)overlap / union;
+
+        return score + (coverage * 4.0) + (jaccard * 2.0);
+    }
+
+    private static HashSet<string> TokenizeForSemanticSearch(string text)
+    {
+        var tokens = Regex.Matches(text.ToLowerInvariant(), "[a-z0-9]{2,}")
+            .Select(match => match.Value)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        tokens.RemoveWhere(token => token is "the" or "and" or "for" or "with" or "that" or "this" or "from" or "into" or "over" or "under" or "after" or "before" or "task" or "tasks");
+        return tokens;
+    }
+
+    private static string BuildTaskSearchText(TaskItem item)
+    {
+        return string.Join(' ',
+            item.Title,
+            item.Description,
+            item.Type,
+            item.Status,
+            item.Priority,
+            item.Key,
+            item.Id,
+            string.Join(' ', item.Labels),
+            item.Reporter ?? string.Empty,
+            item.AssigneeDirectoryId ?? string.Empty,
+            item.AssigneeCustomText ?? string.Empty);
     }
 
     private static IReadOnlyList<string> NormalizeLabels(IReadOnlyList<string>? labels) =>

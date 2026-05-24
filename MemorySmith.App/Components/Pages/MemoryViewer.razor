@@ -377,7 +377,7 @@
         if (!_isEditing && _selectedRecord is not null && _memoryContentEnhancementsPending)
         {
             _memoryContentEnhancementsPending = false;
-            await JS.InvokeVoidAsync("memorySmith.markdown.renderEnhancements", _memoryContentPane);
+            await SafeJsInterop.TryInvokeVoidAsync(JS, "memorySmith.markdown.renderEnhancements", _memoryContentPane);
         }
     }
 

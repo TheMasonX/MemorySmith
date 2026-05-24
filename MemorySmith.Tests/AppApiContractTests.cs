@@ -219,6 +219,131 @@ Line two",
         }
 
     [Test]
+    public async Task TasksApi_MalformedTaskFile_MutationEndpointsReturnBadRequest()
+    {
+        var tasksRoot = Path.Combine(_tempDir, "Tasks");
+        Directory.CreateDirectory(tasksRoot);
+        var malformedPath = Path.Combine(tasksRoot, "tsk-9999-broken-json.json");
+        var malformedJson = """
+{
+    "id": "tsk-9999-broken-json",
+    "key": "TSK-9999",
+    "title": "Broken task record",
+    "description": "Line one
+Line two",
+    "type": "Task",
+    "status": "Backlog",
+    "priority": "High",
+    "assigneeMode": "Custom",
+    "assigneeCustomText": "Copilot"
+}
+""";
+        await File.WriteAllTextAsync(malformedPath, malformedJson);
+
+        var statusResponse = await _client.PostAsJsonAsync(
+            "/api/tasks/TSK-9999/status",
+            new TaskStatusUpdateRequest(TaskStatuses.InProgress, "attempt mutation"));
+        var deleteResponse = await _client.DeleteAsync("/api/tasks/TSK-9999");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(statusResponse.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+            Assert.That(deleteResponse.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+        });
+    }
+
+    [Test]
+    public async Task TasksApi_HybridSemanticSearch_DefaultOn_FindsReorderedQuery()
+    {
+        var createPrimary = await _client.PostAsJsonAsync("/api/tasks", new TaskCreateRequest(
+            Title: "Bootstrap hardening for auth setup",
+            Description: "Protect first-admin setup and authentication flow from forgery risks",
+            Type: "Task",
+            Status: TaskStatuses.Backlog,
+            Priority: TaskPriorities.High,
+            AssigneeMode: TaskAssigneeModes.Custom,
+            AssigneeDirectoryId: null,
+            AssigneeCustomText: "Copilot",
+            Reporter: "copilot",
+            Labels: ["security", "auth", "bootstrap"],
+            DueDateUtc: null,
+            EpicId: null,
+            ParentId: null,
+            Slug: "bootstrap-auth-hardening"));
+        createPrimary.EnsureSuccessStatusCode();
+
+        var createSecondary = await _client.PostAsJsonAsync("/api/tasks", new TaskCreateRequest(
+            Title: "Tag manager color polish",
+            Description: "Improve visual hierarchy in admin tag manager",
+            Type: "Task",
+            Status: TaskStatuses.Backlog,
+            Priority: TaskPriorities.Medium,
+            AssigneeMode: TaskAssigneeModes.Custom,
+            AssigneeDirectoryId: null,
+            AssigneeCustomText: "Copilot",
+            Reporter: "copilot",
+            Labels: ["ui", "polish"],
+            DueDateUtc: null,
+            EpicId: null,
+            ParentId: null,
+            Slug: "tag-manager-color-polish"));
+        createSecondary.EnsureSuccessStatusCode();
+
+        var results = await _client.GetFromJsonAsync<List<TaskSummary>>("/api/tasks?query=setup bootstrap auth hardening&limit=50");
+
+        Assert.That(results, Is.Not.Null);
+        Assert.That(results!.Any(item => item.Title.Contains("Bootstrap hardening for auth setup", StringComparison.OrdinalIgnoreCase)), Is.True);
+    }
+
+    [Test]
+    public async Task TasksApi_ReadEndpoints_AnonymousDisabled_RejectsUnauthenticatedCaller()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"memorysmith-tasks-auth-{Guid.NewGuid():N}");
+        var factory = new WebApplicationFactory<Program>()
+            .WithWebHostBuilder(builder =>
+            {
+                builder.ConfigureAppConfiguration((_, config) =>
+                {
+                    config.AddInMemoryCollection(new Dictionary<string, string?>
+                    {
+                        ["MemorySmith:DataPath"] = Path.Combine(tempDir, "Memories"),
+                        ["MemorySmith:PagesPath"] = Path.Combine(tempDir, "Pages"),
+                        ["MemorySmith:EventLogPath"] = Path.Combine(tempDir, "Events", "audit.log"),
+                        ["MemorySmith:DataProtectionKeysPath"] = Path.Combine(tempDir, "Keys"),
+                        ["MemorySmith:Database:ConnectionString"] = $"Data Source={Path.Combine(tempDir, "memorysmith.db")};Pooling=False",
+                        ["MemorySmith:Audit:JsonlPath"] = Path.Combine(tempDir, "Events", "audit-{yyyy}-W{week}.jsonl"),
+                        ["MemorySmith:History:RootPath"] = Path.Combine(tempDir, ".history"),
+                        ["MemorySmith:Maintenance:Enabled"] = "false",
+                        ["MemorySmith:Auth:AnonymousAccess"] = "None",
+                        ["MemorySmith:Auth:OpenLocalEditorCompatibility"] = "false"
+                    });
+                });
+            });
+
+        try
+        {
+            using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+            var listResponse = await client.GetAsync("/api/tasks?limit=1");
+            var detailResponse = await client.GetAsync("/api/tasks/TSK-0001");
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(listResponse.StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized).Or.EqualTo(HttpStatusCode.Forbidden).Or.EqualTo(HttpStatusCode.Redirect));
+                Assert.That(detailResponse.StatusCode, Is.EqualTo(HttpStatusCode.Unauthorized).Or.EqualTo(HttpStatusCode.Forbidden).Or.EqualTo(HttpStatusCode.Redirect));
+            });
+        }
+        finally
+        {
+            factory.Dispose();
+            SqliteConnection.ClearAllPools();
+            if (Directory.Exists(tempDir))
+            {
+                Directory.Delete(tempDir, recursive: true);
+            }
+        }
+    }
+
+    [Test]
     public async Task GetMemories_ClampsPageSizeAndKeepsRouteContract()
     {
         var response = await _client.GetFromJsonAsync<PagedResult<MemoryMetadata>>("/api/memories?page=-5&pageSize=500");

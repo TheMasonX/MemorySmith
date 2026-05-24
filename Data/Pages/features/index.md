@@ -28,6 +28,16 @@ Scope note: the Tasks feature is intentionally excluded from this section becaus
 
 - [Workbench Layout Hardening](workbench-layout-hardening.md)
 
+## Visual Walkthrough Pages
+
+These pages include Mermaid diagrams and ID-based screenshot placeholders with task-backed capture plans:
+
+- [Feature Route Map](route-map.md)
+- [API and MCP Integration](api-and-mcp.md)
+- [Admin and Authentication](admin-and-auth.md)
+- [Health and Diagnostics](health-and-diagnostics.md)
+- [Chat and Agent](chat-and-agent.md)
+
 ## How To Use This Section
 
 - Read these pages for a product-level overview of what each feature does.

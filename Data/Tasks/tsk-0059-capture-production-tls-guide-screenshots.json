@@ -1,0 +1,41 @@
+{
+  "id": "tsk-0059-capture-production-tls-guide-screenshots",
+  "key": "TSK-0059",
+  "title": "Capture production TLS guide screenshots",
+  "description": "Problem: the production TLS runbook includes screenshot placeholders but lacks deployment evidence images.\n\nDesired outcome: collect operational screenshots for hosted HTTPS deployment workflows and embed them into `ops/https-production-tls`.\n\nScope:\n- In scope: capture images for `HTTPS-PROD-01` through `HTTPS-PROD-08`, scrub environment-sensitive values, and insert markdown image references.\n- Out of scope: changing production architecture recommendations.\n\nAcceptance criteria:\n- Every production TLS placeholder ID has a corresponding image and inline placement in the runbook.\n- Captures include IIS/reverse-proxy or Kestrel evidence appropriate to the deployment path in use.\n- Any hostnames/secrets not intended for publication are redacted.\n\nValidation:\n- Render `ops/https-production-tls` in `/pages` and confirm all image links resolve and support operator walkthrough.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Docs",
+  "reporter": "AgentSmith",
+  "labels": [
+    "docs",
+    "screenshots",
+    "https",
+    "operations",
+    "wiki"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "ops/https-production-tls"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0059-20260523",
+      "author": "AgentSmith",
+      "body": "Created to track production TLS screenshot capture and runbook image insertion.",
+      "createdAtUtc": "2026-05-23T00:00:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-23T00:00:00.0000000Z",
+  "updatedAtUtc": "2026-05-23T00:00:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false
+}
