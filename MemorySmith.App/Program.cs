@@ -17,12 +17,17 @@ using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.Hosting.WindowsServices;
 using Microsoft.Extensions.Options;
 using MudBlazor.Services;
+using OpenTelemetry.Exporter;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using Serilog;
 using Serilog.Events;
 using Serilog.Formatting.Compact;
 using System.Diagnostics;
 using System.Threading.RateLimiting;
 using System.Text.Json.Serialization;
+using System.Reflection;
 
 if (WindowsServiceCommands.TryHandle(args, out var serviceCommandExitCode))
 {
@@ -352,6 +357,81 @@ try
     builder.Services.AddSingleton<MaintenanceTopicMapService>();
     builder.Services.AddScoped<MaintenanceAgentService>();
     builder.Services.AddSingleton<OperationalDiagnosticsService>();
+
+    var telemetryOptions = builder.Configuration.GetSection("MemorySmith:Telemetry").Get<TelemetryOptions>() ?? new TelemetryOptions();
+    if (telemetryOptions.Enabled)
+    {
+        var serviceVersion = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "1.0.0";
+        var openTelemetry = builder.Services.AddOpenTelemetry().ConfigureResource(resource =>
+        {
+            resource.Clear();
+            resource.AddService(
+                serviceName: string.IsNullOrWhiteSpace(telemetryOptions.ServiceName) ? "MemorySmith.App" : telemetryOptions.ServiceName,
+                serviceVersion: serviceVersion,
+                serviceInstanceId: Environment.MachineName);
+        });
+
+        if (telemetryOptions.TracingEnabled)
+        {
+            openTelemetry.WithTracing(tracing =>
+            {
+                tracing
+                    .AddSource(MemorySmithTelemetry.ActivitySourceName)
+                    .SetSampler(new ParentBasedSampler(new TraceIdRatioBasedSampler(Math.Clamp(telemetryOptions.TraceSamplingPercentage, 0, 100) / 100d)));
+
+                if (telemetryOptions.AspNetCoreInstrumentationEnabled)
+                {
+                    tracing.AddAspNetCoreInstrumentation(options =>
+                    {
+                        options.RecordException = telemetryOptions.RecordExceptions;
+                        options.Filter = context => !IsTelemetryPathExcluded(context.Request.Path, telemetryOptions.ExcludedRequestPathPrefixes);
+                    });
+                }
+
+                if (telemetryOptions.HttpClientInstrumentationEnabled)
+                {
+                    tracing.AddHttpClientInstrumentation(options =>
+                    {
+                        options.RecordException = telemetryOptions.RecordExceptions;
+                    });
+                }
+
+                if (telemetryOptions.ExporterEnabled)
+                {
+                    tracing.AddOtlpExporter(options => ConfigureOtlpExporter(options, telemetryOptions));
+                }
+            });
+        }
+
+        if (telemetryOptions.MetricsEnabled)
+        {
+            openTelemetry.WithMetrics(metrics =>
+            {
+                metrics.AddMeter(MemorySmithTelemetry.MeterName);
+
+                if (telemetryOptions.AspNetCoreInstrumentationEnabled)
+                {
+                    metrics.AddAspNetCoreInstrumentation();
+                }
+
+                if (telemetryOptions.HttpClientInstrumentationEnabled)
+                {
+                    metrics.AddHttpClientInstrumentation();
+                }
+
+                if (telemetryOptions.RuntimeInstrumentationEnabled)
+                {
+                    metrics.AddRuntimeInstrumentation();
+                }
+
+                if (telemetryOptions.ExporterEnabled)
+                {
+                    metrics.AddOtlpExporter(options => ConfigureOtlpExporter(options, telemetryOptions));
+                }
+            });
+        }
+    }
+
     builder.Services.AddHttpClient<OllamaChatProvider>((sp, client) =>
     {
         var options = sp.GetRequiredService<IOptions<MemorySmithOptions>>().Value;
@@ -539,6 +619,31 @@ public partial class Program
 
     private static void AddPermissionPolicy(AuthorizationOptions options, string name, MemorySmithPermission permission) =>
         options.AddPolicy(name, policy => policy.AddRequirements(new MemorySmithPermissionRequirement(permission)));
+
+    private static bool IsTelemetryPathExcluded(PathString requestPath, IEnumerable<string> excludedPrefixes)
+    {
+        if (!requestPath.HasValue)
+        {
+            return false;
+        }
+
+        var value = requestPath.Value ?? string.Empty;
+        return excludedPrefixes.Any(prefix =>
+            !string.IsNullOrWhiteSpace(prefix)
+            && value.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static void ConfigureOtlpExporter(OtlpExporterOptions options, TelemetryOptions telemetryOptions)
+    {
+        if (Uri.TryCreate(telemetryOptions.OtlpEndpoint, UriKind.Absolute, out var endpoint))
+        {
+            options.Endpoint = endpoint;
+        }
+
+        options.Protocol = telemetryOptions.OtlpProtocol.Equals("http/protobuf", StringComparison.OrdinalIgnoreCase)
+            ? OtlpExportProtocol.HttpProtobuf
+            : OtlpExportProtocol.Grpc;
+    }
 
     private static string? ResolvePageAssetPath(string pageAssetsPath, string assetPath)
     {

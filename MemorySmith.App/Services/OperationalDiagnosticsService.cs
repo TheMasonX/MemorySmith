@@ -28,7 +28,8 @@ public sealed record EffectiveMemorySmithConfiguration(
     LimitOptions Limits,
     SourceLinkOptions SourceLinks,
     SemanticSearchOptions SemanticSearch,
-    ChatOptions Chat);
+    ChatOptions Chat,
+    TelemetryOptions Telemetry);
 
 public sealed record StoragePathStatus(
     string Name,
@@ -104,7 +105,8 @@ public class OperationalDiagnosticsService
                 settings.Limits,
                 sourceLinks,
                 settings.SemanticSearch,
-                settings.Chat),
+                settings.Chat,
+                settings.Telemetry),
             [
                 GetDirectoryStatus("Memory data", dataPath, "*.json"),
                 GetDirectoryStatus("Pages", pagesPath, "*.md"),

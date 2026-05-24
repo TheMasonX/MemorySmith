@@ -27,6 +27,7 @@ public class MemorySmithOptions
     public ChatOptions Chat { get; set; } = new();
     public MaintenanceAgentOptions MaintenanceAgent { get; set; } = new();
     public LoggingOptions Logging { get; set; } = new();
+    public TelemetryOptions Telemetry { get; set; } = new();
 }
 
 public class LoggingOptions
@@ -46,6 +47,33 @@ public class LoggingOptions
     public int MetricsWindowDays { get; set; } = 30;
     public int MetricsSampleLimit { get; set; } = 5000;
     public int MaxDiagnosticsLogResults { get; set; } = 200;
+}
+
+public class TelemetryOptions
+{
+    public bool Enabled { get; set; } = true;
+    public string ServiceName { get; set; } = "MemorySmith.App";
+    public bool TracingEnabled { get; set; } = true;
+    public bool MetricsEnabled { get; set; } = true;
+    public bool InstrumentMemoryOperations { get; set; } = true;
+    public bool AspNetCoreInstrumentationEnabled { get; set; } = true;
+    public bool HttpClientInstrumentationEnabled { get; set; } = true;
+    public bool RuntimeInstrumentationEnabled { get; set; } = true;
+    public bool RecordExceptions { get; set; } = true;
+    public int TraceSamplingPercentage { get; set; } = 10;
+    public bool ExporterEnabled { get; set; }
+    public string OtlpEndpoint { get; set; } = "http://localhost:4317";
+    public string OtlpProtocol { get; set; } = "grpc";
+    public List<string> ExcludedRequestPathPrefixes { get; set; } =
+    [
+        "/health",
+        "/api/diagnostics",
+        "/_blazor",
+        "/css",
+        "/js",
+        "/lib",
+        "/favicon.ico"
+    ];
 }
 
 public class AuthOptions

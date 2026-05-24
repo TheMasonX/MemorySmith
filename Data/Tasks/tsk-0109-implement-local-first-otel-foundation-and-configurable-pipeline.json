@@ -1,0 +1,42 @@
+{
+  "Id": "tsk-0109-implement-local-first-otel-foundation-and-configurable-pipeline",
+  "Key": "TSK-0109",
+  "Title": "Implement local-first OpenTelemetry foundation and configurable pipeline.",
+  "Description": "Add a local-first OpenTelemetry foundation to MemorySmith.App that supports tracing and metrics without requiring cloud dependencies. Instrumentation must be configurable through MemorySmith settings and admin configuration, with exporter disabled by default and optional OTLP export to a local collector endpoint. Acceptance criteria: telemetry options exist in typed config and appsettings defaults, startup wiring initializes tracing/metrics only when enabled, OTLP endpoint/protocol/export toggles are configurable, and non-OTel logging behavior remains intact.",
+  "Type": "Task",
+  "Status": "Done",
+  "Priority": "High",
+  "AssigneeMode": "Custom",
+  "AssigneeDirectoryId": null,
+  "AssigneeCustomText": "Copilot",
+  "Reporter": "TheMasonX",
+  "Labels": [
+    "otel",
+    "observability",
+    "local-first",
+    "admin-config",
+    "implemented"
+  ],
+  "Attachments": [],
+  "ExternalLinks": [],
+  "LinkedPages": [
+    "workbench/tasks",
+    "research/otel-local-first-v1-plan-20260524"
+  ],
+  "Comments": [
+    {
+      "Id": "c-0109-1",
+      "Author": "AgentSmith",
+      "Body": "V1 foundation task tracks guarded OTel startup/config implementation aligned with local collector compatibility and default-off exporter behavior.",
+      "CreatedAtUtc": "2026-05-24T21:05:00.0000000Z"
+    }
+  ],
+  "EpicId": null,
+  "ParentId": null,
+  "DueDateUtc": null,
+  "CreatedAtUtc": "2026-05-24T21:05:00.0000000Z",
+  "UpdatedAtUtc": "2026-05-24T21:05:00.0000000Z",
+  "CompletedAtUtc": "2026-05-24T21:05:00.0000000Z",
+  "Revision": 1,
+  "IsArchived": false
+}

@@ -110,6 +110,7 @@ public partial class MemoryApplicationService
 
     public Task<IReadOnlyList<MemoryRecord>> SearchAsync(MemorySearchQuery query, CancellationToken cancellationToken)
     {
+        using var operation = StartTelemetryOperation("memory.search.lexical");
         var started = Stopwatch.GetTimestamp();
         var success = false;
         cancellationToken.ThrowIfCancellationRequested();
@@ -131,6 +132,7 @@ public partial class MemoryApplicationService
 
     public Task<IReadOnlyList<MemoryMetadata>> SearchMetadataAsync(MemorySearchQuery query, CancellationToken cancellationToken)
     {
+        using var operation = StartTelemetryOperation("memory.search.metadata");
         var started = Stopwatch.GetTimestamp();
         var success = false;
         cancellationToken.ThrowIfCancellationRequested();
@@ -152,6 +154,7 @@ public partial class MemoryApplicationService
 
     public Task<IReadOnlyList<MemorySearchResult>> LexicalSearchAsync(MemorySearchQuery query, CancellationToken cancellationToken)
     {
+        using var operation = StartTelemetryOperation("memory.search.lexical.diagnostics");
         var started = Stopwatch.GetTimestamp();
         var success = false;
         cancellationToken.ThrowIfCancellationRequested();
@@ -175,6 +178,7 @@ public partial class MemoryApplicationService
 
     public Task<IReadOnlyList<MemorySearchResult>> SemanticSearchAsync(SemanticMemorySearchQuery query, CancellationToken cancellationToken)
     {
+        using var operation = StartTelemetryOperation("memory.search.semantic");
         var started = Stopwatch.GetTimestamp();
         var success = false;
         cancellationToken.ThrowIfCancellationRequested();
@@ -198,6 +202,7 @@ public partial class MemoryApplicationService
 
     public Task<IReadOnlyList<MemorySearchResult>> HybridSearchAsync(HybridMemorySearchQuery query, CancellationToken cancellationToken)
     {
+        using var operation = StartTelemetryOperation("memory.search.hybrid");
         var started = Stopwatch.GetTimestamp();
         var success = false;
         cancellationToken.ThrowIfCancellationRequested();
@@ -235,6 +240,7 @@ public partial class MemoryApplicationService
 
     public async Task<MemoryContextPack> BuildContextPackAsync(MemoryContextPackQuery query, CancellationToken cancellationToken)
     {
+        using var operation = StartTelemetryOperation("memory.context-pack");
         var started = Stopwatch.GetTimestamp();
         var success = false;
         cancellationToken.ThrowIfCancellationRequested();
@@ -449,6 +455,7 @@ public partial class MemoryApplicationService
 
     public async Task<MemoryRecord> CreateAsync(MemoryRecord record, CancellationToken cancellationToken)
     {
+        using var operation = StartTelemetryOperation("memory.create");
         var started = Stopwatch.GetTimestamp();
         var success = false;
         cancellationToken.ThrowIfCancellationRequested();
@@ -482,6 +489,7 @@ public partial class MemoryApplicationService
 
     public async Task<MemoryRecord?> UpdateAsync(string id, MemoryRecord record, CancellationToken cancellationToken)
     {
+        using var operation = StartTelemetryOperation("memory.update");
         var started = Stopwatch.GetTimestamp();
         var success = false;
         cancellationToken.ThrowIfCancellationRequested();
@@ -522,6 +530,7 @@ public partial class MemoryApplicationService
 
     public async Task<bool> DeleteAsync(string id, CancellationToken cancellationToken)
     {
+        using var operation = StartTelemetryOperation("memory.delete");
         var started = Stopwatch.GetTimestamp();
         var success = false;
         cancellationToken.ThrowIfCancellationRequested();
@@ -1276,6 +1285,14 @@ public partial class MemoryApplicationService
 
     private void LogBenchmark(string operation, double elapsedMs, bool success, string? query = null, int? resultCount = null, string? recordId = null)
     {
+        var telemetrySettings = _options.Telemetry;
+        if (telemetrySettings.Enabled && telemetrySettings.MetricsEnabled && telemetrySettings.InstrumentMemoryOperations)
+        {
+            var category = operation.Split('.', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "memory";
+            var isSlowForTelemetry = elapsedMs >= _options.Logging.BenchmarkSlowThresholdMs;
+            MemorySmithTelemetry.RecordOperation(operation, category, elapsedMs, success, isSlowForTelemetry);
+        }
+
         if (!_options.Logging.BenchmarkLoggingEnabled)
         {
             return;
@@ -1305,6 +1322,18 @@ public partial class MemoryApplicationService
             query,
             resultCount,
             recordId);
+    }
+
+    private Activity? StartTelemetryOperation(string operation)
+    {
+        var telemetrySettings = _options.Telemetry;
+        if (!telemetrySettings.Enabled || !telemetrySettings.TracingEnabled || !telemetrySettings.InstrumentMemoryOperations)
+        {
+            return null;
+        }
+
+        var category = operation.Split('.', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "memory";
+        return MemorySmithTelemetry.StartOperation(operation, category);
     }
 
     private sealed record MemorySearchSnapshot(

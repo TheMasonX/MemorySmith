@@ -129,6 +129,11 @@
                 <span>Open Sources</span><strong>@(_diagnostics.Configuration.SourceLinks.AllowOpenWithDefaultApp ? "Enabled" : "Disabled")</strong>
                 <span>Semantic Search</span><strong>@FormatSemanticSearch(_diagnostics.Configuration.SemanticSearch, _diagnostics.SemanticEmbeddings)</strong>
                 <span>Chat</span><strong>@FormatChatProvider(_diagnostics.Configuration.Chat)</strong>
+                <span>Telemetry</span><strong>@(_diagnostics.Configuration.Telemetry.Enabled ? "Enabled" : "Disabled")</strong>
+                <span>Tracing</span><strong>@(_diagnostics.Configuration.Telemetry.TracingEnabled ? "Enabled" : "Disabled")</strong>
+                <span>Metrics</span><strong>@(_diagnostics.Configuration.Telemetry.MetricsEnabled ? "Enabled" : "Disabled")</strong>
+                <span>Trace sampling</span><strong>@(_diagnostics.Configuration.Telemetry.TraceSamplingPercentage)%</strong>
+                <span>OTLP export</span><strong>@FormatTelemetryExport(_diagnostics.Configuration.Telemetry)</strong>
                 @if (_logMetrics is not null)
                 {
                     <span>Log entries (@_logMetrics.WindowDays d)</span><strong>@_logMetrics.TotalEntries</strong>
@@ -322,6 +327,18 @@
         semanticSearch.EmbeddingsEnabled
             ? $"{(status.Available ? "Embeddings available" : "Token fallback")} / {status.Reason}"
             : "Token scoring only";
+
+    private static string FormatTelemetryExport(TelemetryOptions telemetry)
+    {
+        if (!telemetry.ExporterEnabled)
+        {
+            return "Disabled";
+        }
+
+        var protocol = string.IsNullOrWhiteSpace(telemetry.OtlpProtocol) ? "grpc" : telemetry.OtlpProtocol;
+        var endpoint = string.IsNullOrWhiteSpace(telemetry.OtlpEndpoint) ? "(unset endpoint)" : telemetry.OtlpEndpoint;
+        return $"{protocol} -> {endpoint}";
+    }
 
     private static string FormatPathDetails(StoragePathStatus path) => path switch
     {
