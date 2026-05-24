@@ -214,6 +214,10 @@ def export_mermaid_svg(
     input_file.write(diagram_text)
     input_path = Path(input_file.name)
 
+  with tempfile.NamedTemporaryFile(mode="w", suffix=".json", encoding="utf-8", delete=False) as config_file:
+    config_file.write('{"args":["--no-sandbox","--disable-setuid-sandbox"]}')
+    config_path = Path(config_file.name)
+
   try:
     command = [
       *context.command,
@@ -221,14 +225,20 @@ def export_mermaid_svg(
       str(input_path),
       "-o",
       str(svg_output_path),
+      "-p",
+      str(config_path),
       "--quiet",
     ]
     completed = subprocess.run(command, capture_output=True, text=True, check=False)
     if completed.returncode != 0:
       context.skipped_count += 1
+      stderr = (completed.stderr or "").strip()
+      if stderr:
+        print(f"Warning: Mermaid export failed for {source_relative_path.as_posix()} diagram {diagram_index}: {stderr}")
       return None
   finally:
     input_path.unlink(missing_ok=True)
+    config_path.unlink(missing_ok=True)
 
   context.exported_count += 1
   return compute_relative_href(current_output_relative_path, svg_relative_path)
