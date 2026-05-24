@@ -72,8 +72,17 @@
 
     initializeReconnectRecovery();
 
-    function markdownRoot(root) {
-        return root && typeof root.querySelectorAll === "function" ? root : document;
+    function markdownRoot(root, options) {
+        if (root && typeof root.querySelectorAll === "function") {
+            return root;
+        }
+
+        const allowDocumentFallback = !(options && options.allowDocumentFallback === false);
+        if (!allowDocumentFallback) {
+            return null;
+        }
+
+        return document && document.documentElement ? document.documentElement : document.body;
     }
 
     function toHeadingLevel(element) {
@@ -213,7 +222,11 @@
     }
 
     function enhanceCollapsibleHeadings(scope, settings) {
-        if (!scope || scope.dataset.headingSectionsEnhanced === "true") {
+        if (!scope) {
+            return;
+        }
+
+        if (scope.dataset && scope.dataset.headingSectionsEnhanced === "true") {
             return;
         }
 
@@ -264,7 +277,9 @@
             heading.dataset.headingCollapseEnhanced = "true";
         });
 
-        scope.dataset.headingSectionsEnhanced = "true";
+        if (scope.dataset) {
+            scope.dataset.headingSectionsEnhanced = "true";
+        }
     }
 
     function normalizeMermaidThemeMode(mode) {
@@ -413,7 +428,11 @@
         },
 
         renderEnhancements: async function (root, options) {
-            const scope = markdownRoot(root);
+            const scope = markdownRoot(root, { allowDocumentFallback: false });
+            if (!scope) {
+                return;
+            }
+
             const settings = options || {};
             ensureHeadingIds(scope);
             enhanceCollapsibleHeadings(scope, settings);
@@ -431,7 +450,11 @@
         },
 
         extractHeadings: function (root) {
-            const scope = markdownRoot(root);
+            const scope = markdownRoot(root, { allowDocumentFallback: false });
+            if (!scope) {
+                return [];
+            }
+
             ensureHeadingIds(scope);
             return Array.from(scope.querySelectorAll("h1[id], h2[id], h3[id], h4[id], h5[id], h6[id]"))
                 .map(function (heading) {
@@ -447,7 +470,11 @@
         },
 
         scrollToHeading: function (root, id) {
-            const scope = markdownRoot(root);
+            const scope = markdownRoot(root, { allowDocumentFallback: false });
+            if (!scope) {
+                return false;
+            }
+
             if (!id) {
                 return false;
             }

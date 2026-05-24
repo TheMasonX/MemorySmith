@@ -1,0 +1,31 @@
+﻿{
+  "id": "tsk-0066-task-assignee-improvements",
+  "key": "TSK-0066",
+  "title": "Task Assignee Improvements",
+  "description": "The task assignee shouldn\u0027t use the directory ID (a non-userfacing value). They should be able to type in the username.\nIt should ideally show a dropdown search below with the matching names that you can click on or use the arrow key to navigate through.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-24T16:49:34.9456037Z",
+  "updatedAtUtc": "2026-05-24T16:49:34.9456037Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

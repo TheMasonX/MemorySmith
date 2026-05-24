@@ -1,0 +1,31 @@
+﻿{
+  "id": "tsk-0065-pages-lock-when-navigating-to-new-page",
+  "key": "TSK-0065",
+  "title": "Pages Lock When Navigating To New Page",
+  "description": "The Pages web page will lock up if you try to switch to a new page. This is reproducable everytime and occurred post-ToC changes. This needs immediate review and dedicated ui testing scripts and any unit tests to safeguard against regressions. Unit tests in general need to be much more common, including browser usability tests",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-24T16:45:15.6941248Z",
+  "updatedAtUtc": "2026-05-24T16:45:15.6941248Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

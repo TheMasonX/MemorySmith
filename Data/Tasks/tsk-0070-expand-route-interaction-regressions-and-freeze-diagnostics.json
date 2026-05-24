@@ -1,0 +1,46 @@
+{
+  "id": "tsk-0070-expand-route-interaction-regressions-and-freeze-diagnostics",
+  "key": "TSK-0070",
+  "title": "Expand route interaction regressions and freeze diagnostics",
+  "description": "Problem: the current navigation-freeze test is valuable but narrow, leaving broader route interaction regressions under-protected.\n\nDesired outcome: expand browser regression coverage to include route-specific interaction expectations and standardized freeze diagnostics capture.\n\nScope:\n- In scope: additional deterministic specs for route interaction paths, client-side error capture normalization, and artifact enrichment.\n- Out of scope: full UI end-to-end feature testing beyond regression-priority paths.\n\nDependencies:\n- Browser smoke coverage from TSK-0068.\n\nAcceptance criteria:\n- Core route interactions have regression specs with clear expected heading/region checks.\n- Console/page errors relevant to circuit/render faults are captured in failure output.\n- Failure artifacts provide enough context to reproduce lockups quickly.\n\nValidation:\n- Run expanded browser suite locally and in CI with at least one induced assertion failure to verify diagnostics.\n\nRollback:\n- Disable newly added flaky specs individually while retaining stable baseline coverage.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "audit",
+    "testing",
+    "playwright",
+    "regression",
+    "diagnostics",
+    "sprint-20260524"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "tasks/sprints/codebase-audit-ci-testing-browser-regression-20260524",
+    "tasks/sprints/ci-cd-testing-regression-guardrails-sprints-20260524"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0070-20260524",
+      "author": "AgentSmith",
+      "body": "Created from audit finding F-004 to broaden lockup and navigation regression safety net.",
+      "createdAtUtc": "2026-05-24T18:23:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-24T18:23:00.0000000Z",
+  "updatedAtUtc": "2026-05-24T18:23:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

@@ -1,0 +1,31 @@
+﻿{
+  "id": "tsk-0064-pages-unfocus-on-nav-tree-change",
+  "key": "TSK-0064",
+  "title": "Pages Navigation Sidebar On Type Change",
+  "description": "Clicking on a tree navigation item such as tree/flat/toc should \u0022show navigation\u0022 and when in focused reading, it in pages should unfocus it and open the sidebar",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-24T16:09:19.769488Z",
+  "updatedAtUtc": "2026-05-24T17:14:44.7898596Z",
+  "completedAtUtc": null,
+  "revision": 4,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

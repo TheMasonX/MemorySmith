@@ -1,0 +1,31 @@
+﻿{
+  "id": "tsk-0072-github-pages-deployment-no-pages",
+  "key": "TSK-0072",
+  "title": "Github Pages Deployment - No Pages",
+  "description": "https://themasonx.github.io/MemorySmith/pages.html",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "71d48bff32bb4490a89c36841b0937af",
+  "assigneeCustomText": null,
+  "reporter": "Themasonx",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-24T17:20:18.5159995Z",
+  "updatedAtUtc": "2026-05-24T17:20:18.5159995Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

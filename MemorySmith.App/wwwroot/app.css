@@ -3090,7 +3090,12 @@ body {
 
 .tasks-quick-create-pane {
     display: grid;
-    grid-template-columns: minmax(220px, 1.3fr) minmax(180px, 0.9fr) minmax(280px, 1.8fr) auto;
+    grid-column: 1 / -1;
+    grid-template-columns: minmax(240px, 280px) minmax(0, 1fr);
+    grid-template-areas:
+        "title description"
+        "slug description"
+        ". actions";
     gap: 10px;
     align-items: start;
     width: 100%;
@@ -3107,12 +3112,31 @@ body {
     min-width: 0;
 }
 
+.tasks-quick-create-title {
+    grid-area: title;
+}
+
+.tasks-quick-create-slug {
+    grid-area: slug;
+}
+
+.tasks-quick-create-description {
+    grid-area: description;
+}
+
+.tasks-quick-create-actions {
+    grid-area: actions;
+    justify-self: end;
+    align-self: end;
+}
+
 .tasks-quick-create-actions {
     display: flex;
     gap: 8px;
     align-items: center;
     justify-content: flex-end;
-    min-height: 52px;
+    flex-wrap: wrap;
+    min-height: 0;
 }
 
 .tasks-detail-header {
@@ -3327,16 +3351,23 @@ body {
         max-width: 180px;
     }
 
+    .tag-manager-body {
+        grid-template-columns: minmax(260px, 44%) minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 780px) {
     .tasks-quick-create-pane {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-areas:
+            "title"
+            "slug"
+            "description"
+            "actions";
     }
 
     .tasks-quick-create-actions {
-        justify-content: flex-start;
-    }
-
-    .tag-manager-body {
-        grid-template-columns: minmax(260px, 44%) minmax(0, 1fr);
+        justify-self: start;
     }
 }
 

@@ -269,7 +269,7 @@
                         </div>
                         <div class="page-preview-pane">
                             <div class="page-pane-label">Preview</div>
-                            <div class="page-rendered page-editor-preview" @ref="_previewPane">@((MarkupString)_previewHtml)</div>
+                            <div class="page-rendered page-editor-preview" @key="_editSlug" @ref="_previewPane">@((MarkupString)_previewHtml)</div>
                         </div>
                     </div>
                 </div>
@@ -305,7 +305,7 @@
                         </Authorized>
                     </AuthorizeView>
                 </div>
-                <div class="page-rendered" @ref="_renderedPagePane">@((MarkupString)_selectedPage.Html)</div>
+                <div class="page-rendered" @key="_selectedPage.Slug" @ref="_renderedPagePane">@((MarkupString)_selectedPage.Html)</div>
             }
         </main>
     </section>
@@ -389,25 +389,12 @@
         if (_isEditing && _previewEnhancementsPending)
         {
             _previewEnhancementsPending = false;
-            try
-            {
-                await JS.InvokeVoidAsync("memorySmith.markdown.renderEnhancements", _previewPane, new { enableCollapsibleHeadings = true, collapseStateKey = $"preview:{_editSlug}" });
-            }
-            catch (JSException)
-            {
-            }
+            await TryInvokeVoidAsync("memorySmith.markdown.renderEnhancements", _previewPane, new { enableCollapsibleHeadings = true, collapseStateKey = $"preview:{_editSlug}" });
         }
         else if (_selectedPage is not null && _renderedPageEnhancementsPending)
         {
             _renderedPageEnhancementsPending = false;
-            try
-            {
-                await JS.InvokeVoidAsync("memorySmith.markdown.renderEnhancements", _renderedPagePane, new { enableCollapsibleHeadings = true, collapseStateKey = $"page:{_selectedPage.Slug}" });
-            }
-            catch (JSException)
-            {
-            }
-
+            await TryInvokeVoidAsync("memorySmith.markdown.renderEnhancements", _renderedPagePane, new { enableCollapsibleHeadings = true, collapseStateKey = $"page:{_selectedPage.Slug}" });
             await RefreshTocHeadingsAsync();
         }
     }
@@ -633,7 +620,12 @@
 
     private async Task InsertMarkdownAsync(string prefix, string suffix, string placeholder)
     {
-        _editMarkdown = await JS.InvokeAsync<string>("memorySmith.markdown.insert", _markdownEditor, prefix, suffix, placeholder);
+        var updated = await TryInvokeAsync<string>("memorySmith.markdown.insert", _markdownEditor, prefix, suffix, placeholder);
+        if (updated is not null)
+        {
+            _editMarkdown = updated;
+        }
+
         if (_livePreview)
         {
             RefreshPreview();
@@ -671,7 +663,8 @@
             return true;
         }
 
-        return await JS.InvokeAsync<bool>("confirm", "Discard unsaved page changes?");
+        var confirmed = await TryInvokeAsync<bool?>("confirm", "Discard unsaved page changes?");
+        return confirmed ?? false;
     }
 
     private string PageRowClass(PageSummary page) =>
@@ -714,7 +707,7 @@
             return;
         }
 
-        await JS.InvokeAsync<bool>("memorySmith.markdown.scrollToHeading", _renderedPagePane, id);
+        await TryInvokeVoidAsync("memorySmith.markdown.scrollToHeading", _renderedPagePane, id);
     }
 
     private async Task ToggleTocNodeAsync(string id)
@@ -770,14 +763,8 @@
         _collapsedTocKeysBySlug.Remove(slug);
         await PersistUiStateAsync();
 
-        try
-        {
-            await JS.InvokeAsync<bool>("memorySmith.storage.remove", HeadingCollapseStoragePrefix + "page:" + slug);
-            await JS.InvokeAsync<bool>("memorySmith.storage.remove", HeadingCollapseStoragePrefix + "preview:" + slug);
-        }
-        catch (JSException)
-        {
-        }
+        await TryInvokeAsync<bool?>("memorySmith.storage.remove", HeadingCollapseStoragePrefix + "page:" + slug);
+        await TryInvokeAsync<bool?>("memorySmith.storage.remove", HeadingCollapseStoragePrefix + "preview:" + slug);
 
         _renderedPageEnhancementsPending = true;
         if (_isEditing)
@@ -859,15 +846,7 @@
 
     private async Task RestoreUiStateAsync()
     {
-        string? json;
-        try
-        {
-            json = await JS.InvokeAsync<string?>("memorySmith.storage.getJsonString", PagesUiStateStorageKey);
-        }
-        catch (JSException)
-        {
-            return;
-        }
+        var json = await TryInvokeAsync<string?>("memorySmith.storage.getJsonString", PagesUiStateStorageKey);
 
         if (string.IsNullOrWhiteSpace(json))
         {
@@ -950,32 +929,22 @@
             return;
         }
 
-        try
-        {
-            await JS.InvokeAsync<bool>(
-                "memorySmith.storage.setJson",
-                PagesUiStateStorageKey,
-                new PagesUiState(
-                    _navigationMode,
-                    _isNavigationVisible,
-                    _isFocusMode,
-                    [.. _expandedTreeKeys],
-                    [.. _collapsedTocKeys],
-                    BuildCollapsedTocKeysBySlugSnapshot()));
-        }
-        catch (JSException)
-        {
-        }
+        await TryInvokeAsync<bool?>(
+            "memorySmith.storage.setJson",
+            PagesUiStateStorageKey,
+            new PagesUiState(
+                _navigationMode,
+                _isNavigationVisible,
+                _isFocusMode,
+                [.. _expandedTreeKeys],
+                [.. _collapsedTocKeys],
+                BuildCollapsedTocKeysBySlugSnapshot()));
     }
 
     private async Task RefreshTocHeadingsAsync()
     {
-        List<TocHeading>? headings;
-        try
-        {
-            headings = await JS.InvokeAsync<List<TocHeading>?>("memorySmith.markdown.extractHeadings", _renderedPagePane);
-        }
-        catch (JSException)
+        var headings = await TryInvokeAsync<List<TocHeading>?>("memorySmith.markdown.extractHeadings", _renderedPagePane);
+        if (headings is null)
         {
             return;
         }
@@ -1038,6 +1007,27 @@
         }
 
         return snapshot;
+    }
+
+    private async Task<bool> TryInvokeVoidAsync(string identifier, params object?[] args)
+    {
+        return await SafeJsInterop.TryInvokeVoidAsync(JS, identifier, args);
+    }
+
+    private async Task<T?> TryInvokeAsync<T>(string identifier, params object?[] args)
+    {
+        try
+        {
+            return await JS.InvokeAsync<T>(identifier, args);
+        }
+        catch (JSException)
+        {
+            return default;
+        }
+        catch (JSDisconnectedException)
+        {
+            return default;
+        }
     }
 
     private sealed record TocHeading(string Id, string Text, int Level);
