@@ -34,7 +34,8 @@ public sealed record ChatToolExecutionContext(
     ClaimsPrincipal? User = null,
     ICurrentUserContext? CurrentUser = null,
     AuthOptions? Auth = null,
-    string? DefaultPageMinimumRole = null)
+    string? DefaultPageMinimumRole = null,
+    VarResolver? Vars = null)
 {
     public bool CanViewPage(string minimumRole) =>
         CurrentUser is not null
@@ -196,6 +197,159 @@ public sealed class ChatToolCatalog
                 return record is null
                     ? new ChatToolExecutionResult($"No memory record found for id '{id}'.")
                     : new ChatToolExecutionResult(JsonSerializer.Serialize(record, ToolJsonOptions), ContextItems: [ToMemoryContextItem(record)]);
+            });
+
+        yield return new ChatToolDescriptor(
+            "memorysmith_source_bundle",
+            "Read the source file content for all source links attached to the specified memory records. Useful for fetching the exact code or document sections that KB entries reference. Returns URL references as-is (unfetchable server-side). Use format=jsonl for streaming-friendly large bundles.",
+            BuildSourceBundleSchema(),
+            ChatToolRisk.SensitiveRead,
+            AvailableInChat: false,
+            AvailableInMcp: true,
+            Execute: async (args, ctx, ct) =>
+            {
+                if (ctx.Vars is null)
+                {
+                    return new ChatToolExecutionResult("The memorysmith_source_bundle tool requires a source resolver.", IsError: true);
+                }
+
+                var maxFileBytes = Math.Clamp(ReadInt(args, "maxFileBytes", 16384), 1, 1048576);
+                var format = ReadString(args, "format") ?? "json";
+                var records = new List<MemoryRecord>();
+                var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                var ids = ReadString(args, "ids");
+                if (!string.IsNullOrWhiteSpace(ids))
+                {
+                    foreach (var id in ids.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+                    {
+                        if (!seen.Add(id))
+                        {
+                            continue;
+                        }
+
+                        var record = await ctx.Memories.GetAsync(id, ct);
+                        if (record is not null)
+                        {
+                            records.Add(record);
+                        }
+                    }
+                }
+
+                var query = ReadString(args, "query");
+                if (!string.IsNullOrWhiteSpace(query))
+                {
+                    var limit = ReadInt(args, "limit", 10);
+                    var searchResults = await ctx.Memories.HybridSearchAsync(
+                        new HybridMemorySearchQuery(query, ReadStatus(args), ReadString(args, "tags"), limit), ct);
+
+                    foreach (var result in searchResults)
+                    {
+                        if (!seen.Add(result.Id))
+                        {
+                            continue;
+                        }
+
+                        var record = await ctx.Memories.GetAsync(result.Id, ct);
+                        if (record is not null)
+                        {
+                            records.Add(record);
+                        }
+                    }
+                }
+
+                if (records.Count == 0)
+                {
+                    return new ChatToolExecutionResult("No records found. Provide ids or a query.");
+                }
+
+                var entries = new List<object>();
+                foreach (var record in records)
+                {
+                    foreach (var sl in record.SourceLinks)
+                    {
+                        var content = await ctx.Vars.ReadSourceAsync(sl, maxFileBytes);
+                        entries.Add(new
+                        {
+                            MemoryId = record.Id,
+                            MemoryTitle = record.Title,
+                            Label = string.IsNullOrWhiteSpace(sl.Label) ? content.ResolvedUri : sl.Label,
+                            RawUri = sl.Uri,
+                            ResolvedUri = content.ResolvedUri,
+                            ContentType = content.ContentType,
+                            StartLine = content.StartLine,
+                            EndLine = content.EndLine,
+                            Exists = content.Exists,
+                            Content = content.Content
+                        });
+                    }
+                }
+
+                if (entries.Count == 0)
+                {
+                    return new ChatToolExecutionResult($"Found {records.Count} record(s) but none have source links.", ContextItems: records.Select(ToMemoryContextItem).ToList());
+                }
+
+                if (string.Equals(format, "jsonl", StringComparison.OrdinalIgnoreCase))
+                {
+                    return new ChatToolExecutionResult(string.Join('\n', entries.Select(e => JsonSerializer.Serialize(e, ToolJsonOptions))), ContextItems: records.Select(ToMemoryContextItem).ToList());
+                }
+
+                return new ChatToolExecutionResult(JsonSerializer.Serialize(new
+                {
+                    MemoryCount = records.Count,
+                    SourceCount = entries.Count,
+                    Entries = entries
+                }, ToolJsonOptions), ContextItems: records.Select(ToMemoryContextItem).ToList());
+            });
+
+        yield return new ChatToolDescriptor(
+            "memorysmith_find_by_source",
+            "Back-map a source path or URL fragment to every KB entry that references it. Matches against both raw and resolved (variable-expanded) URIs.",
+            BuildFindBySourceSchema(),
+            ChatToolRisk.SensitiveRead,
+            AvailableInChat: false,
+            AvailableInMcp: true,
+            Execute: async (args, ctx, ct) =>
+            {
+                if (ctx.Vars is null)
+                {
+                    return new ChatToolExecutionResult("The memorysmith_find_by_source tool requires a source resolver.", IsError: true);
+                }
+
+                var pattern = ReadString(args, "pattern");
+                if (string.IsNullOrWhiteSpace(pattern))
+                {
+                    return new ChatToolExecutionResult("The memorysmith_find_by_source tool requires a pattern argument.", IsError: true);
+                }
+
+                var matches = await ctx.Memories.FindBySourceAsync(pattern, ctx.Vars.Resolve, ct);
+                if (matches.Count == 0)
+                {
+                    return new ChatToolExecutionResult($"No memory records found with source links matching '{pattern}'.");
+                }
+
+                var result = matches.Select(r => new
+                {
+                    r.Id,
+                    r.Title,
+                    r.Status,
+                    MatchingLinks = r.SourceLinks
+                        .Where(sl =>
+                            sl.Uri.Contains(pattern, StringComparison.OrdinalIgnoreCase) ||
+                            ctx.Vars.Resolve(sl.Uri).Contains(pattern, StringComparison.OrdinalIgnoreCase))
+                        .Select(sl => new
+                        {
+                            sl.Label,
+                            sl.Uri,
+                            ResolvedUri = ctx.Vars.Resolve(sl.Uri),
+                            sl.StartLine,
+                            sl.EndLine
+                        })
+                        .ToList()
+                }).ToList();
+
+                return new ChatToolExecutionResult(JsonSerializer.Serialize(result, ToolJsonOptions), ContextItems: matches.Select(ToMemoryContextItem).ToList());
             });
 
         // ---------- New tools (Phase 2 of ChatCapabilityImprovements plan) ----------
@@ -524,6 +678,35 @@ public sealed class ChatToolCatalog
                 ["enum"] = new JsonArray { "markdown", "json" }
             }
         }
+    };
+
+    private static JsonObject BuildSourceBundleSchema() => new()
+    {
+        ["type"] = "object",
+        ["properties"] = new JsonObject
+        {
+            ["ids"] = new JsonObject { ["type"] = "string", ["description"] = "Comma-separated memory record ids to fetch sources for." },
+            ["query"] = new JsonObject { ["type"] = "string", ["description"] = "Optional search query; matching records' sources are included." },
+            ["tags"] = new JsonObject { ["type"] = "string", ["description"] = "Optional comma-separated tag filter for the query." },
+            ["limit"] = new JsonObject { ["type"] = "integer", ["description"] = "Max hybrid-search results when query is provided. Default 10." },
+            ["maxFileBytes"] = new JsonObject { ["type"] = "integer", ["description"] = "Max bytes per file content entry. Default 16384; clamped by source-link policy." },
+            ["format"] = new JsonObject
+            {
+                ["type"] = "string",
+                ["description"] = "Output format. json (default) or jsonl for one JSON object per line.",
+                ["enum"] = new JsonArray { "json", "jsonl" }
+            }
+        }
+    };
+
+    private static JsonObject BuildFindBySourceSchema() => new()
+    {
+        ["type"] = "object",
+        ["properties"] = new JsonObject
+        {
+            ["pattern"] = new JsonObject { ["type"] = "string", ["description"] = "Substring to match against source link URIs (raw and variable-expanded). Case-insensitive." }
+        },
+        ["required"] = new JsonArray { "pattern" }
     };
 
     // ---------- Argument readers ----------

@@ -76,9 +76,14 @@ public class OperationalDiagnosticsService
         var sourceLinks = new SourceLinkOptions
         {
             MaxReadBytes = settings.SourceLinks.MaxReadBytes,
+            AllowUnrestrictedSourceReads = settings.SourceLinks.AllowUnrestrictedSourceReads,
+            ReadContextLinesBefore = settings.SourceLinks.ReadContextLinesBefore,
+            ReadContextLinesAfter = settings.SourceLinks.ReadContextLinesAfter,
             AllowOpenWithDefaultApp = settings.SourceLinks.AllowOpenWithDefaultApp,
             AllowedFileRootVariables = settings.SourceLinks.AllowedFileRootVariables.Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
-            AllowedFileRoots = settings.SourceLinks.AllowedFileRoots.Distinct(StringComparer.OrdinalIgnoreCase).ToList()
+            AllowedFileRoots = settings.SourceLinks.AllowedFileRoots.Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+            DeniedFileRootVariables = settings.SourceLinks.DeniedFileRootVariables.Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+            DeniedFileRoots = settings.SourceLinks.DeniedFileRoots.Distinct(StringComparer.OrdinalIgnoreCase).ToList()
         };
 
         return new OperationalDiagnosticsSnapshot(

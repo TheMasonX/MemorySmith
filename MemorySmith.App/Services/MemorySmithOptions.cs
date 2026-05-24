@@ -131,9 +131,14 @@ public class LimitOptions
 public class SourceLinkOptions
 {
     public int MaxReadBytes { get; set; } = 65536;
+    public bool AllowUnrestrictedSourceReads { get; set; }
+    public int ReadContextLinesBefore { get; set; } = 20;
+    public int ReadContextLinesAfter { get; set; } = 20;
     public bool AllowOpenWithDefaultApp { get; set; }
     public List<string> AllowedFileRootVariables { get; set; } = ["MemorySmithRepo"];
     public List<string> AllowedFileRoots { get; set; } = [];
+    public List<string> DeniedFileRootVariables { get; set; } = [];
+    public List<string> DeniedFileRoots { get; set; } = [];
 }
 
 public class ChatOptions
