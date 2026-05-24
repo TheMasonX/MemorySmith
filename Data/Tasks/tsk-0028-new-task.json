@@ -1,0 +1,35 @@
+﻿{
+  "id": "tsk-0028-new-task",
+  "key": "TSK-0028",
+  "title": "Reorder and group the main navigation bar",
+  "description": "Redesign the navigation order and introduce clear groupings so primary workflows are easier to find and scan.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "71d48bff32bb4490a89c36841b0937af",
+  "assigneeCustomText": null,
+  "reporter": "Themasonx",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [
+    {
+      "id": "c-fd8ed21d47794633be5d2985250c50d3",
+      "author": "Themasonx",
+      "body": "This should be renamed later and the description fixed. Reorder the nav bar and add groupings",
+      "createdAtUtc": "2026-05-24T01:59:29.0444132Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-24T01:58:21.8924871Z",
+  "updatedAtUtc": "2026-05-24T02:12:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 5,
+  "isArchived": false
+}

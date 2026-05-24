@@ -18,6 +18,9 @@ Opens on `http://localhost:5089` by default. Pages:
 | `/memories` | Browse, search, create, edit, delete memory records |
 | `/pages` | Create, search, edit, preview, and render markdown-backed pages from `Data/Pages` |
 | `/chat` | Memory-enhanced chat and agent mode with provider/model selection, streaming responses, context usage, attachments, and local chat history |
+| `/tasks` | Task tracking workspace with comments, status transitions, links, and attachments |
+| `/tags` | Tag governance and diagnostics management workspace |
+| `/maintenance` | Maintenance run controls and active-run status |
 | `/proposals` | Maintenance-agent proposal dashboard with diff previews, evidence, comments, risk indicators, and topic map visualization |
 | `/login`, `/profile`, `/admin/setup`, `/admin` | Local sign-in/profile management, first-admin bootstrap, and searchable RBAC/audit/history/settings administration |
 | `/health` | Scrollable stat cards, activity charts (queries/day, changes/day), maintenance telemetry |
@@ -25,6 +28,8 @@ Opens on `http://localhost:5089` by default. Pages:
 | `/about` | MemorySmith and third-party license information |
 | `/api/memories` | REST CRUD for automation |
 | `/api/pages`, `/api/search`, `/api/chat` | Page CRUD/search/rendering, combined memory/page search, and chat/agent/config API |
+| `/api/tasks`, `/api/governance` | Task CRUD/history/link APIs and tag-governance policy/suggestions/diagnostics APIs |
+| `/api/maintenance-agent/*`, `/api/source-links/open` | Maintenance runs/proposals/topic-map APIs and guarded source-link open API |
 | `/api/auth/*`, `/api/admin/*` | Current-user, login/logout, setup, user, provider, audit, and history metadata APIs |
 | `/api/stats`, `/api/health/*`, `/api/diagnostics` | Stats, readiness, and redacted operational diagnostics |
 | `/page-assets/*` | Static files from `Data/Pages/assets` for images, video, and audio embedded in pages |
@@ -145,6 +150,16 @@ The chat UI queries the selected provider for available models, supports provide
 Chat mode answers questions and the shared prompt asks providers to format normal answers as GitHub-flavored Markdown. The prompt also gives all chat agents explicit guidance for when to use preloaded wiki context, when to request a single app-intercepted read-only `toolCalls` JSON object, and how to produce complete Mermaid fenced diagrams only when a diagram clarifies the answer. Each turn includes a runtime capability message derived from the active mode, `Chat:*` limits, and the current user's roles, so models are told whether tools are read-only, whether Agent writes are configured, and whether the current user can approve writes. Chat mode cannot create or update memories/pages. Agent mode asks the provider for structured actions and can write memories and pages only when `Chat:AgentWritesEnabled` is explicitly set to true and the current user has an Editor or Admin role; the default is false. The chat UI still requires explicit per-action approval before applying proposed Agent writes, and pending proposals are described as pending rather than created. Tool-call execution is read-only and bounded by `Chat:MaxToolIterations`, `Chat:MaxToolCallsPerTurn`, and `Chat:MaxToolResultCharacters`; write actions still require Agent mode structured output, opt-in write setting, RBAC, and approval. The shared system prompt is stored in `MemorySmith.Core/Docs/Prompts/wiki-chat-agent.md` and copied into the app output for service/publish runs; `MemorySmith.Core/Docs/Prompts/wiki-chat-agent.modelfile` carries the matching Athena/Ollama system prompt.
 
 The provider interface is intentionally narrow so OpenAI, Anthropic, or other APIs can be added without changing the UI or agent workflow.
+
+### Agent Prompt Sources Of Truth
+
+- `MemorySmith.Core/Docs/Prompts/wiki-chat-agent.md`: the canonical chat/agent system prompt used by the app.
+- `MemorySmith.Core/Docs/Prompts/wiki-chat-agent.modelfile`: the aligned Athena/Ollama system prompt for local model packaging.
+- `MemorySmith.Core/Docs/Prompts/maintenance-agent-task.md`: maintenance task analysis prompt.
+- `MemorySmith.Core/Docs/Prompts/maintenance-proposal-generation.md`: proposal generation contract prompt.
+- `MemorySmith.Core/Docs/Prompts/maintenance-revision-cycle.md`: reviewer feedback revision-cycle prompt.
+
+When updating agent behavior, keep these prompt files aligned with runtime capabilities in `MemorySmith.App/Services` and `MemorySmith.App/Controllers`.
 
 ## Search
 
@@ -413,4 +428,4 @@ dotnet run -c Release --project MemorySmith.Benchmarks -- --smoke
 dotnet run -c Release --project MemorySmith.Benchmarks -- --filter *SearchBenchmarks*
 ```
 
-The solution builds `MemorySmith.App` as the single deployable host. `MemorySmith.Tests` includes 184 NUnit tests: unit tests, integration tests (via `WebApplicationFactory`), SQLite metadata coverage, auth/audit/history coverage, Markdown rendering coverage, and a `[Category("Benchmark")]` suite of search quality probes with latency thresholds. GitHub Actions collects Cobertura coverage in CI and publishes a Doxygen HTML wiki through the Pages workflow.
+The solution builds `MemorySmith.App` as the single deployable host. `MemorySmith.Tests` contains an actively growing NUnit suite spanning unit tests, integration tests (via `WebApplicationFactory`), SQLite metadata coverage, auth/audit/history coverage, Markdown rendering coverage, task/governance flows, and a `[Category("Benchmark")]` suite of search quality probes with latency thresholds. GitHub Actions collects Cobertura coverage in CI and publishes a Doxygen HTML wiki through the Pages workflow.
