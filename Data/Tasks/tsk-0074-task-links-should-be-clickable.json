@@ -1,0 +1,31 @@
+﻿{
+  "id": "tsk-0074-task-links-should-be-clickable",
+  "key": "TSK-0074",
+  "title": "Task Links Should Be Clickable",
+  "description": "The pages links or any other links attached to a task should be clickable",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-24T19:03:00.3439732Z",
+  "updatedAtUtc": "2026-05-24T19:03:00.3439732Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

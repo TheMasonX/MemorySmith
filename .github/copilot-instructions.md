@@ -8,6 +8,12 @@
 - Treat `/tasks`, `/tags`, and maintenance proposal workflows as active product surfaces when updating docs or validating behavior.
 - Do not stop work because extra changed files are present. Files under `Data/Pages` and `Data/Memories` are expected in normal workflows and should be included with related changes unless the user explicitly asks to exclude them.
 
+## Execution Standards
+- Use evidence-backed updates: include file paths, commands, test results, or page references for non-trivial claims.
+- Use `/tasks` as the first-class planning artifact for audits and implementation. Audit findings should map to explicit task records and status transitions.
+- Use `Scripts/Validate-Repo.ps1` as the default local validation entrypoint; add `-IncludeCoverage`, `-IncludeE2E`, or `-IncludeDocs` when the change scope warrants it.
+- Consolidate workflow guidance around `.github/agents/smith.agent.md` first, then backfill related docs/instructions so supporting guidance follows the Smith contract.
+
 ## Knowledge Hub - Where to Find Things
 
 The current project map starts at `README.md`, `Data/Memories`, and `MemorySmith.Core/Docs`.

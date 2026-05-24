@@ -58,8 +58,9 @@ test.describe('Navigation freeze regression', () => {
     await expect(page).toHaveURL(/\/pages\/features\/chat-and-agent$/);
     await expect(page.getByRole('heading', { name: 'Pages', exact: true })).toBeVisible();
 
-    await expect(page.getByRole('link', { name: 'Pages' })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Memories' })).toBeVisible();
+    const nav = appNavigation(page);
+    await expect(nav.getByRole('link', { name: /^Pages$/ })).toBeVisible();
+    await expect(nav.getByRole('link', { name: /^Memories$/ })).toBeVisible();
 
     const slugPathHops = [
       '/pages/features/health-and-diagnostics',
@@ -159,7 +160,9 @@ async function navigateAndAssert(
   expectedHeadingOrRegion: string,
   byRegionLabel = false,
 ): Promise<void> {
-  await page.getByRole('link', { name: navLabel }).click();
+  const nav = appNavigation(page);
+  const escapedNavLabel = navLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  await nav.getByRole('link', { name: new RegExp(`^${escapedNavLabel}$`) }).click();
   await expect(page).toHaveURL(urlPattern);
 
   if (byRegionLabel) {
@@ -168,4 +171,8 @@ async function navigateAndAssert(
   }
 
   await expect(page.getByRole('heading', { name: expectedHeadingOrRegion, exact: true }).first()).toBeVisible();
+}
+
+function appNavigation(page: import('@playwright/test').Page) {
+  return page.getByRole('navigation').first();
 }
