@@ -1,0 +1,43 @@
+{
+  "id": "tsk-0056-add-task-hybrid-semantic-search-default-on-and-admin-toggle",
+  "key": "TSK-0056",
+  "title": "Add task hybrid semantic search default-on and admin toggle",
+  "description": "Problem: task query behavior was lexical-only, which reduced recall for reordered or loosely phrased user queries and made task discovery weaker than memory hybrid semantic search flows.\n\nDesired outcome: task list query uses hybrid lexical+semantic ranking with an explicit configuration switch that defaults to on.\n\nScope:\n- In scope: task search ranking updates, default-on configuration in MemorySmith options/appsettings, admin settings toggle, and regression tests proving reordered query recall.\n- Out of scope: ONNX embedding model integration for tasks.\n\nAcceptance criteria:\n- Task query API returns relevant items for reordered/semantically similar phrasing when hybrid toggle is enabled.\n- `MemorySmith:TaskSearch:HybridSemanticEnabled` exists and defaults to true.\n- Admin settings exposes the hybrid task search toggle.\n\nValidation:\n- Contract tests validate reordered query recall and overall task API behavior remains green.\n- Focused test run includes AppApiContractTests with all passing.",
+  "type": "Task",
+  "status": "Done",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "search",
+    "tasks",
+    "semantic",
+    "configuration",
+    "phase-1"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "research/security-architecture-convergence-audit-20260523",
+    "tasks/sprints/security-architecture-convergence-sprint-20260523",
+    "council/phase1-task-completion-council-20260523"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0056-20260523",
+      "author": "AgentSmith",
+      "body": "Created and completed in phase 1 after implementing hybrid lexical+semantic ranking for task queries with default-on configuration and admin toggle.",
+      "createdAtUtc": "2026-05-24T00:00:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-24T00:00:00.0000000Z",
+  "updatedAtUtc": "2026-05-24T00:00:00.0000000Z",
+  "completedAtUtc": "2026-05-24T00:00:00.0000000Z",
+  "revision": 1,
+  "isArchived": false
+}

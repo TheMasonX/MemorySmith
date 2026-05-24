@@ -1,9 +1,9 @@
 {
   "Id": "task-tracking-feature-20260523",
   "Title": "Task Tracking Feature V1 Implementation",
-  "Content": "MemorySmith now has a file-backed task domain at Data/Tasks with a site-level /tasks workbench and api/tasks endpoints for CRUD, status updates, comments, links, attachments, history, and soft/hard delete. Assignee handling is dictionary-first with Directory mode and optional Custom text mode. Linked page checks are warning-only: missing pages do not block linking and produce page_link_warning activity entries. Finite state transition enforcement is intentionally deferred as an optional future feature. Open items from Data/Pages/workbench/tasks.md have been imported into backend task records with tracker-import metadata and durable activity events.",
+  "Content": "MemorySmith has a file-backed task domain at Data/Tasks with a site-level /tasks workbench and api/tasks endpoints for CRUD, status updates, comments, links, attachments, history, and soft/hard delete. Assignee handling is dictionary-first with Directory mode and optional Custom text mode. Linked page checks are warning-only: missing pages do not block linking and produce page_link_warning activity entries. Runtime hardening now includes malformed-task fallback loading: parse-failing files are represented as HasLoadError records instead of crashing list operations, with LoadError and SourceFilePath metadata. Mutations on malformed fallback records are blocked by EnsureTaskIsEditable, and phase-1 mutation endpoint contracts now map malformed-edit ArgumentException paths to client-safe 4xx responses instead of surfacing 500s on key routes. Task read APIs now enforce CanViewMemorySmith policy, and authorization behavior is test-covered for anonymous-disabled profiles. Task query behavior now supports hybrid lexical+semantic ranking with `MemorySmith:TaskSearch:HybridSemanticEnabled` defaulting to true and exposed in admin settings. Priority triage follows severity-first ordering: active exposure and availability risks before maintainability-only refactors.",
   "Status": 1,
-  "Confidence": 0.86,
+  "Confidence": 0.96,
   "Tags": [
     "project-wiki",
     "tasks",
@@ -12,7 +12,9 @@
     "pages",
     "api",
     "history",
-    "import"
+    "import",
+    "reliability",
+    "security"
   ],
   "References": [
     "task-tracking-feature-page",
@@ -46,5 +48,5 @@
     }
   ],
   "UsageCount": 0,
-  "LastUpdated": "2026-05-23T00:00:00Z"
+  "LastUpdated": "2026-05-24T00:05:00Z"
 }

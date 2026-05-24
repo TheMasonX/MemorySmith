@@ -1,0 +1,40 @@
+{
+  "id": "tsk-0058-capture-local-https-setup-guide-screenshots",
+  "key": "TSK-0058",
+  "title": "Capture local HTTPS setup guide screenshots",
+  "description": "Problem: the local HTTPS setup guide contains placeholder IDs but does not yet include final visual examples.\n\nDesired outcome: capture the complete local HTTPS walkthrough images and embed them in `guides/https-setup`.\n\nScope:\n- In scope: collect screenshots for `HTTPS-SETUP-01` through `HTTPS-SETUP-06`, store under `Data/Pages/assets`, and replace placeholders with markdown image links.\n- Out of scope: production reverse proxy/IIS evidence (covered by a separate task).\n\nAcceptance criteria:\n- Each HTTPS setup placeholder ID has a matching image and in-guide embed.\n- Browser lock/certificate and readiness examples are clearly legible.\n- No private account details or secrets appear in captures.\n\nValidation:\n- Render `guides/https-setup` in `/pages` and verify all images load and sequence matches the steps.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Docs",
+  "reporter": "AgentSmith",
+  "labels": [
+    "docs",
+    "screenshots",
+    "https",
+    "wiki"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "guides/https-setup"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0058-20260523",
+      "author": "AgentSmith",
+      "body": "Created to track local HTTPS screenshot capture for HTTPS-SETUP placeholders.",
+      "createdAtUtc": "2026-05-23T00:00:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-23T00:00:00.0000000Z",
+  "updatedAtUtc": "2026-05-23T00:00:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false
+}

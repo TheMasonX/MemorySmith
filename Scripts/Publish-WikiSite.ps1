@@ -6,7 +6,8 @@ Builds the GitHub Pages wiki site and optionally dispatches the Pages workflow.
 param(
     [switch]$Deploy,
     [switch]$OpenSite,
-    [switch]$ForceRecreateEnvironment
+    [switch]$ForceRecreateEnvironment,
+    [switch]$ExportMermaidSvg
 )
 
 Set-StrictMode -Version Latest
@@ -104,7 +105,13 @@ if (-not (Test-Path $buildScript)) {
 Push-Location $repoRoot
 try {
     Ensure-DocsEnvironment
-    Invoke-CheckedCommand -FilePath $environmentPython -Arguments @($buildScript) -Step 'Build GitHub Pages wiki site'
+
+    $buildArguments = @($buildScript)
+    if ($ExportMermaidSvg) {
+        $buildArguments += '--export-mermaid-svg'
+    }
+
+    Invoke-CheckedCommand -FilePath $environmentPython -Arguments $buildArguments -Step 'Build GitHub Pages wiki site'
 
     if (-not (Test-Path $outputIndex)) {
         throw "Site build finished, but the expected output file was not created: $outputIndex"

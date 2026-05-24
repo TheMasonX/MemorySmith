@@ -6,6 +6,7 @@
 - Treat `MemorySmith.App` as the active single-host app. Legacy `MemorySmith.Worker` and `MemorySmith.Dashboard` code has been removed from the active repository; references to them are historical only.
 - Keep `Data/Memories` stable: it is the live project wiki and realistic test fixture source. Tests should copy it to temp storage before mutation.
 - Treat `/tasks`, `/tags`, and maintenance proposal workflows as active product surfaces when updating docs or validating behavior.
+- Do not stop work because extra changed files are present. Files under `Data/Pages` and `Data/Memories` are expected in normal workflows and should be included with related changes unless the user explicitly asks to exclude them.
 
 ## Knowledge Hub - Where to Find Things
 

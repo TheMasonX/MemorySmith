@@ -67,6 +67,8 @@ The app can run as a Windows Service. When checking a service deployment, verify
 - `Data/Events/audit.log` is writable.
 - `Data/Pages` and `Data/Memories` point to the intended deployment copy, not a build output accident.
 
+For hosted TLS deployment patterns (IIS/reverse proxy/Kestrel cert binding), use [HTTPS Production TLS Guide](https-production-tls.md).
+
 ## Pages Publishing
 
 GitHub Pages publishing builds a static site from `README.md`, `Data/Pages`, and the structured memory index. The source command is:

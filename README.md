@@ -410,6 +410,15 @@ Collect local Cobertura coverage with the same collector used by CI:
 dotnet test MemorySmith.slnx --configuration Release --collect:"XPlat Code Coverage" --results-directory artifacts/TestResults -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura
 ```
 
+Run the browser route-hop regression suite (Playwright) for navigation freeze protection:
+
+```powershell
+Set-Location e2e
+npm install
+npx playwright install chromium
+npm run test:nav-freeze
+```
+
 Generate the Doxygen wiki locally when Doxygen and Graphviz are installed:
 
 ```powershell

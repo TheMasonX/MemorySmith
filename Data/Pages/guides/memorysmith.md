@@ -7,6 +7,8 @@ This folder is the human-readable side of the project wiki. Pages here are meant
 ## Start Here
 
 - [Architecture](architecture.md) explains the single-host app shape and where each project fits.
+- [System Setup Guide](system-setup.md) walks through prerequisites, first run, admin bootstrap, validation, and troubleshooting.
+- [HTTPS Setup Guide](https-setup.md) explains local development certificates, HTTPS launch profile setup, and verification steps.
 - [Features](../features/index.md) provides product-level overviews of major app capabilities.
 - [Operations](../ops/operations.md) covers running, validating, publishing, and the important data paths.
 - [Search and Chat](search-and-chat.md) explains lexical, semantic, hybrid, MCP, chat, and agent behavior.

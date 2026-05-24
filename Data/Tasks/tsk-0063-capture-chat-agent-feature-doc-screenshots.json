@@ -1,0 +1,42 @@
+{
+  "id": "tsk-0063-capture-chat-agent-feature-doc-screenshots",
+  "key": "TSK-0063",
+  "title": "Capture chat and agent feature doc screenshots",
+  "description": "Problem: `features/chat-and-agent` now includes screenshot placeholders and flow visuals but lacks captured assets.\n\nDesired outcome: capture and embed images for FEAT-CHAT placeholders to improve operator and contributor onboarding.\n\nScope:\n- In scope: FEAT-CHAT-01..05 screenshot capture, privacy review, image storage under `Data/Pages/assets`, and markdown insertion.\n- Out of scope: production TLS or health diagnostics captures.\n\nAcceptance criteria:\n- All FEAT-CHAT placeholders are fulfilled with image assets and embeds.\n- Screenshots avoid private usernames, tokens, and sensitive payload content.\n- Trace and proposal examples are readable and match current UI behavior.\n\nValidation:\n- Open `features/chat-and-agent` in `/pages` and verify all images render correctly with consistent sequence.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Docs",
+  "reporter": "AgentSmith",
+  "labels": [
+    "docs",
+    "screenshots",
+    "chat",
+    "agent",
+    "privacy",
+    "wiki"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "features/chat-and-agent"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0063-20260524",
+      "author": "AgentSmith",
+      "body": "Created to track FEAT-CHAT screenshot capture and insertion.",
+      "createdAtUtc": "2026-05-24T00:00:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-24T00:00:00.0000000Z",
+  "updatedAtUtc": "2026-05-24T00:00:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false
+}

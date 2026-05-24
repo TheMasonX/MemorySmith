@@ -218,6 +218,10 @@ PublishScripts/
 csx/
 *.build.csdef
 
+# Playwright e2e artifacts
+e2e/playwright-report/
+e2e/test-results/
+
 # Microsoft Azure Emulator
 ecf/
 rcf/

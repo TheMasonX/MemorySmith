@@ -1,0 +1,49 @@
+{
+  "id": "tsk-0055-enforce-task-read-api-view-authorization-and-safe-remote-defaults",
+  "key": "TSK-0055",
+  "title": "Enforce task read API view authorization and safe remote defaults",
+  "description": "Problem: task read endpoints are currently accessible without explicit view-policy authorization and were confirmed reachable without auth headers in runtime probes. Under permissive profile combinations (for example remote-enabled local development), this can expose task metadata unexpectedly.\n\nDesired outcome: task read APIs require explicit viewer authorization semantics and remote-enabled startup refuses insecure combinations unless explicitly acknowledged by operator policy.\n\nScope:\n- In scope: apply `CanViewMemorySmith` (or stricter) policy to task read endpoints, align middleware/startup guardrails for `AllowRemoteApi` + auth/key combinations, and add regression tests for unauthenticated access behavior by profile.\n- Out of scope: full auth subsystem redesign.\n\nAcceptance criteria:\n- `GET /api/tasks` and `GET /api/tasks/{id}` enforce configured viewer authorization policy.\n- Remote-enabled profile with missing required auth controls fails fast or emits explicit operator-blocking diagnostics.\n- Test matrix covers anonymous, viewer, editor, and admin behavior across local and remote profiles.\n\nValidation:\n- Add integration tests verifying unauthorized callers receive expected 401/403 where appropriate.\n- Verify authorized viewer/editor/admin callers retain expected read behavior.",
+  "type": "Task",
+  "status": "Done",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "security",
+    "api",
+    "authorization",
+    "tasks",
+    "convergence"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "research/security-architecture-convergence-audit-20260523",
+    "tasks/sprints/security-architecture-convergence-sprint-20260523",
+    "council/phase1-task-completion-council-20260523"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0055-20260523",
+      "author": "AgentSmith",
+      "body": "Created from continued audit finding C-008 after runtime confirmation of unauthenticated task-read API access.",
+      "createdAtUtc": "2026-05-23T23:59:00.0000000Z"
+    },
+    {
+      "id": "c-complete-0055-20260523",
+      "author": "AgentSmith",
+      "body": "Phase 1 complete: task read endpoints now require CanViewMemorySmith policy and contract tests verify unauthenticated callers are rejected when anonymous viewer access is disabled.",
+      "createdAtUtc": "2026-05-23T23:59:40.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-23T23:59:00.0000000Z",
+  "updatedAtUtc": "2026-05-23T23:59:40.0000000Z",
+  "completedAtUtc": "2026-05-23T23:59:40.0000000Z",
+  "revision": 2,
+  "isArchived": false
+}

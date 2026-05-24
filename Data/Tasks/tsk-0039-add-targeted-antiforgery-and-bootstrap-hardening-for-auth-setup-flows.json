@@ -5,7 +5,7 @@
   "description": "Problem: setup and login form flows are anonymous endpoints and currently rely on ambient browser protections plus deployment assumptions.\n\nDesired outcome: reduce cross-site request risk while preserving bootstrap and local login usability.\n\nScope:\n- In scope: targeted anti-forgery and/or equivalent request-origin protections for setup/login form flows, plus explicit bootstrap hardening options.\n- Out of scope: redesign of full authentication architecture.\n\nAcceptance criteria:\n- Setup/login form flows include explicit request validation protections with a documented compatibility path.\n- Bootstrap path remains functional for intended localhost onboarding scenarios.\n- Security and UX guidance clearly explains opt-in exceptions.\n\nValidation:\n- Add tests for protected form flows and setup compatibility conditions.\n- Verify first-admin setup succeeds under documented secure path and fails under invalid path.",
   "type": "Task",
   "status": "Backlog",
-  "priority": "Medium",
+  "priority": "High",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
   "assigneeCustomText": "Copilot",
@@ -30,14 +30,20 @@
       "author": "AgentSmith",
       "body": "Created from security audit finding F-004 with explicit compatibility guard to avoid workflow regressions.",
       "createdAtUtc": "2026-05-23T18:09:00.0000000Z"
+    },
+    {
+      "id": "c-reprioritize-0039-20260523",
+      "author": "AgentSmith",
+      "body": "Reprioritized to High after severity review: auth/setup anti-forgery hardening is direct security-risk reduction and should precede lower-severity governance tasks.",
+      "createdAtUtc": "2026-05-23T23:57:00.0000000Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-23T18:09:00.0000000Z",
-  "updatedAtUtc": "2026-05-23T18:09:00.0000000Z",
+  "updatedAtUtc": "2026-05-23T23:57:00.0000000Z",
   "completedAtUtc": null,
-  "revision": 1,
+  "revision": 2,
   "isArchived": false
 }

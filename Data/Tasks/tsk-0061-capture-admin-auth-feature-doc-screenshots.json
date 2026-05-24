@@ -1,0 +1,42 @@
+{
+  "id": "tsk-0061-capture-admin-auth-feature-doc-screenshots",
+  "key": "TSK-0061",
+  "title": "Capture admin and auth feature doc screenshots",
+  "description": "Problem: admin/auth documentation includes new screenshot placeholders but lacks captured evidence images.\n\nDesired outcome: capture and embed screenshots for admin/auth feature documentation while applying strict privacy redaction.\n\nScope:\n- In scope: placeholders `FEAT-ADMIN-01..04` in `features/admin-and-auth`; capture, redact, store in `Data/Pages/assets`, and embed in markdown.\n- Out of scope: non-admin feature pages and production-infrastructure screenshots.\n\nAcceptance criteria:\n- All FEAT-ADMIN placeholder IDs are fulfilled with image assets and markdown embeds.\n- Captures remove or mask sensitive account identifiers and environment-specific secrets.\n- Page renders correctly in `/pages` with all linked assets.\n\nValidation:\n- Open `features/admin-and-auth` in `/pages` and verify each image renders.\n- Confirm redaction pass is complete before commit.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Docs",
+  "reporter": "AgentSmith",
+  "labels": [
+    "docs",
+    "screenshots",
+    "admin",
+    "auth",
+    "privacy",
+    "wiki"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "features/admin-and-auth"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0061-20260524",
+      "author": "AgentSmith",
+      "body": "Created to track FEAT-ADMIN screenshot capture with privacy-focused redaction requirements.",
+      "createdAtUtc": "2026-05-24T00:00:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-24T00:00:00.0000000Z",
+  "updatedAtUtc": "2026-05-24T00:00:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false
+}

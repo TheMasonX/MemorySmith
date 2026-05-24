@@ -4,7 +4,7 @@
   "title": "Standardize task mutation error mapping for malformed-record safety",
   "description": "Problem: malformed task fallback records are intentionally non-editable, but task mutation API endpoints do not consistently map `ArgumentException` to client-safe 4xx responses. This can still surface as HTTP 500 on specific mutation paths.\n\nDesired outcome: all task mutation endpoints return consistent, explicit client error contracts (4xx + ProblemDetails/code) when operations are blocked by malformed task state or other validation failures.\n\nScope:\n- In scope: align endpoint exception handling across status, attachment removal, delete, and other mutation paths; add shared mapping helper/middleware pattern; add regression tests using malformed task fixtures.\n- Out of scope: full redesign of task API surface.\n\nAcceptance criteria:\n- No task mutation endpoint returns 500 for malformed-task edit attempts.\n- Validation and malformed-state failures produce stable 4xx envelopes.\n- Regression suite verifies each mutation endpoint behavior for malformed records.\n\nValidation:\n- Add integration tests for each mutation route against malformed fallback task data.\n- Confirm response contracts and status codes are consistent and documented.",
   "type": "Task",
-  "status": "Backlog",
+  "status": "Done",
   "priority": "High",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -21,7 +21,8 @@
   "externalLinks": [],
   "linkedPages": [
     "research/security-architecture-convergence-audit-20260523",
-    "tasks/sprints/security-architecture-convergence-sprint-20260523"
+    "tasks/sprints/security-architecture-convergence-sprint-20260523",
+    "council/phase1-task-completion-council-20260523"
   ],
   "comments": [
     {
@@ -29,14 +30,20 @@
       "author": "AgentSmith",
       "body": "Created from continued audit finding C-007 on inconsistent task mutation exception mapping.",
       "createdAtUtc": "2026-05-23T23:52:00.0000000Z"
+    },
+    {
+      "id": "c-complete-0054-20260523",
+      "author": "AgentSmith",
+      "body": "Phase 1 complete: standardized ArgumentException->BadRequest mapping for task mutation endpoints (status/remove-attachment/delete) and added regression tests for malformed-task mutation behavior.",
+      "createdAtUtc": "2026-05-23T23:59:30.0000000Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-23T23:52:00.0000000Z",
-  "updatedAtUtc": "2026-05-23T23:52:00.0000000Z",
-  "completedAtUtc": null,
-  "revision": 1,
+  "updatedAtUtc": "2026-05-23T23:59:30.0000000Z",
+  "completedAtUtc": "2026-05-23T23:59:30.0000000Z",
+  "revision": 2,
   "isArchived": false
 }

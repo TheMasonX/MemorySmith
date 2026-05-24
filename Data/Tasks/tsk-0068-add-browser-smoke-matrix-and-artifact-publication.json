@@ -1,0 +1,46 @@
+{
+  "id": "tsk-0068-add-browser-smoke-matrix-and-artifact-publication",
+  "key": "TSK-0068",
+  "title": "Add browser smoke matrix and artifact publication",
+  "description": "Problem: critical route smoke coverage (`/memories`, `/pages`, `/chat`, `/tasks`, `/health`) is documented as needed but not enforced by an implementation-quality CI matrix with clear artifacts.\n\nDesired outcome: add a route-smoke browser suite with per-route failure attribution and reliable artifact publication for triage.\n\nScope:\n- In scope: route smoke specs, deterministic selectors/assertions, artifact folder conventions, and CI artifact uploads.\n- Out of scope: deep functional scenario coverage unrelated to route rendering/navigation health.\n\nDependencies:\n- Required browser gate foundation from TSK-0067.\n\nAcceptance criteria:\n- Browser smoke suite exercises the five core routes under one CI run.\n- Failures identify which route assertion failed.\n- Artifacts are published and linked from CI summary.\n\nValidation:\n- Local run of browser smoke suite with artifact generation.\n- CI run verifies upload paths and retention settings.\n\nRollback:\n- Temporarily reduce smoke suite breadth to smallest stable subset while preserving route-hop regression test.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "audit",
+    "ci",
+    "testing",
+    "smoke",
+    "ui",
+    "sprint-20260524"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "tasks/sprints/codebase-audit-ci-testing-browser-regression-20260524",
+    "tasks/sprints/ci-cd-testing-regression-guardrails-sprints-20260524"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0068-20260524",
+      "author": "AgentSmith",
+      "body": "Created from audit finding F-003/F-004 and existing backlog signal in TSK-0002.",
+      "createdAtUtc": "2026-05-24T18:21:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-24T18:21:00.0000000Z",
+  "updatedAtUtc": "2026-05-24T18:21:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

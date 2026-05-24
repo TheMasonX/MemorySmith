@@ -1,0 +1,46 @@
+{
+  "id": "tsk-0071-align-validation-docs-and-ci-gates-for-browser-coverage",
+  "key": "TSK-0071",
+  "title": "Align validation docs and CI gates for browser coverage",
+  "description": "Problem: validation guidance can imply stronger coverage than what CI enforces, which reduces trust in delivery safety.\n\nDesired outcome: synchronize README and quality-runbook documentation with actual required CI checks, including browser regression gates and artifact expectations.\n\nScope:\n- In scope: README validation sections, testing runbook references, and explicit mandatory/optional gate annotations.\n- Out of scope: non-testing documentation cleanup unrelated to validation and CI.\n\nDependencies:\n- CI topology finalization from TSK-0069.\n\nAcceptance criteria:\n- Documentation clearly distinguishes required PR gates from optional local checks.\n- Browser regression gate commands and artifact paths are documented and current.\n- Sprint/audit links remain traceable from docs to task records.\n\nValidation:\n- Doc review against live CI workflow definitions and sample run outputs.\n\nRollback:\n- Revert doc changes if workflow naming changes unexpectedly; reissue once CI contract stabilizes.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "audit",
+    "documentation",
+    "ci",
+    "testing",
+    "governance",
+    "sprint-20260524"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "tasks/sprints/codebase-audit-ci-testing-browser-regression-20260524",
+    "tasks/sprints/ci-cd-testing-regression-guardrails-sprints-20260524"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0071-20260524",
+      "author": "AgentSmith",
+      "body": "Created from audit finding F-005 to reduce documentation-to-gate drift.",
+      "createdAtUtc": "2026-05-24T18:24:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-24T18:24:00.0000000Z",
+  "updatedAtUtc": "2026-05-24T18:24:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

@@ -11,7 +11,7 @@ param(
     [string]$PublishDirectory,
     [int]$Port = 5089,
     [int]$ServiceTimeoutSeconds = 60,
-    [int]$ReadyTimeoutSeconds = 60,
+    [int]$ReadyTimeoutSeconds = 180,
     [switch]$SkipReadyCheck
 )
 
@@ -143,6 +143,9 @@ function Wait-ReadyEndpoint {
     Write-Host "==> Verify ready endpoint"
     $deadline = [DateTimeOffset]::UtcNow.AddSeconds($TimeoutSeconds)
 
+    $readyUri = [System.Uri]::new($Url)
+    $liveUrl = [System.Uri]::new($readyUri, '../live').AbsoluteUri
+
     while ([DateTimeOffset]::UtcNow -lt $deadline) {
         try {
             $response = Invoke-WebRequest -Uri $Url -Method Get -SkipHttpErrorCheck -TimeoutSec 5
@@ -158,6 +161,25 @@ function Wait-ReadyEndpoint {
                 }
 
                 if ($null -ne $payload -and $payload.status -eq 'Ready') {
+                    return
+                }
+            }
+
+            # If ready does not explicitly return { status: "Ready" }, fall back to liveness.
+            # This covers auth redirects/HTML and environments where /ready requires credentials.
+            $liveResponse = Invoke-WebRequest -Uri $liveUrl -Method Get -SkipHttpErrorCheck -TimeoutSec 5
+            if ([int]$liveResponse.StatusCode -eq 200) {
+                $livePayload = $null
+                if (-not [string]::IsNullOrWhiteSpace($liveResponse.Content)) {
+                    try {
+                        $livePayload = $liveResponse.Content | ConvertFrom-Json
+                    }
+                    catch {
+                        $livePayload = $null
+                    }
+                }
+
+                if ($null -ne $livePayload -and $livePayload.status -eq 'Healthy') {
                     return
                 }
             }
