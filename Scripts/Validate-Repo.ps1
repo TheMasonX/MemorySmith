@@ -55,7 +55,7 @@ try {
         Push-Location (Join-Path $repoRoot "e2e")
         try {
             Invoke-Step -Name "Install e2e dependencies" -Action {
-                npm install
+                npm ci
             }
 
             Invoke-Step -Name "Install Playwright Chromium" -Action {

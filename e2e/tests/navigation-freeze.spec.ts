@@ -174,5 +174,5 @@ async function navigateAndAssert(
 }
 
 function appNavigation(page: import('@playwright/test').Page) {
-  return page.getByRole('navigation').first();
+  return page.getByRole('navigation', { name: /^Primary navigation$/ });
 }
