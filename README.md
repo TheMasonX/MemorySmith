@@ -14,7 +14,7 @@ dotnet run --project MemorySmith.App --launch-profile http
 Opens on `http://localhost:5089` by default. Pages:
 
 | Route | Purpose |
-|---|---|
+| --- | --- |
 | `/memories` | Browse, search, create, edit, delete memory records |
 | `/pages` | Create, search, edit, preview, and render markdown-backed pages from `Data/Pages` |
 | `/chat` | Memory-enhanced chat and agent mode with provider/model selection, streaming responses, context usage, attachments, and local chat history |
@@ -46,7 +46,7 @@ User-created markdown files under `Data/Pages/` are valid project wiki content a
 ### Current wiki records
 
 | ID | What it documents |
-|---|---|
+| --- | --- |
 | `project-wiki-active-architecture` | Single-host layout, project structure |
 | `project-wiki-data-folder-policy` | `Data/` folder conventions and test fixture policy |
 | `project-wiki-storage-rules` | `FileMemoryStore` behavior, atomic writes, ID sanitization |
@@ -105,7 +105,7 @@ Audit metadata is written to SQLite and mirrored to weekly JSONL files under `Da
 Each record is a JSON file in `Data/Memories/{Status}/`. Fields:
 
 | Field | Type | Description |
-|---|---|---|
+| --- | --- | --- |
 | `Id` | string | Unique, kebab-case. Must match the filename. |
 | `Title` | string | Short human name. |
 | `Content` | string | Body text. Max 20 000 chars. Rendered as safe Markdown in the `/memories` detail pane. |
@@ -141,9 +141,33 @@ Local file source-link chips copy the resolved path on click. Ctrl+Click opens t
 
 The page editor has a markdown toolbar for common inserts, an image upload/embed tool that writes to `Data/Pages/assets`, a toggleable live preview, a manual preview refresh button, and an unsaved-change prompt for internal and external navigation. Pages are rendered with the shared Markdig pipeline, including Mermaid fenced blocks (` ```mermaid `) and Prism-compatible fenced code classes such as `language-csharp` or `language-json`. Raw HTML is disabled by default for rendered pages; trusted local deployments can enable `MemorySmith:Pages:AllowRawHtml` when raw HTML media tags are intentionally needed. The static docs-site generator also sanitizes rendered page HTML and emits a restrictive Content Security Policy before publishing wiki pages.
 
+## Tasks Domain
+
+`/tasks` and `/api/tasks` provide a first-party task workflow integrated with the project wiki. The Tasks workbench supports search and filtering, quick task creation, status transitions (`Backlog`, `Ready`, `InProgress`, `Blocked`, `Done`, `Archived`), comments, page links, external links, attachments, and task activity history.
+
+Task APIs support list/get/create/update/delete plus dedicated mutation endpoints for status updates, comments, link management, and attachments. The page and task domains are intentionally linked (for example page-slug references), so execution and planning notes can stay close to implementation artifacts.
+
+## Tag Governance
+
+`/tags` and `/api/governance` provide admin-governed tag policy management. The Tag manager supports policy mode and plain-tag mode controls, allow/block lists, alias rules, namespace constraints, policy diagnostics feedback, observed-tag usage analytics, and suggestion triage (approve/reject).
+
+Governance endpoints include:
+
+- `GET/PUT /api/governance/tag-policy`
+- `GET /api/governance/tag-suggestions`
+- `POST /api/governance/memory-diagnostics`
+
+Use this flow to keep memory tagging consistent while still allowing practical iteration as the wiki grows.
+
+## Maintenance And Proposals
+
+`/maintenance`, `/proposals`, and `/api/maintenance-agent/*` deliver the maintenance-agent lifecycle: run-on-demand task execution, findings/proposal generation, admin transcript review, proposal action history, and topic-map visualization (`/api/maintenance-agent/topic-map/mermaid`).
+
+The maintenance workbench is non-mutating by default and warning-first; proposal approval remains the explicit control point for applying file changes.
+
 ## Chat and Agent Mode
 
-`/chat` uses the `IChatProvider` and `IChatAgent` abstractions. The registered providers are `OllamaChatProvider`, which calls a local Ollama HTTP service, and `GitHubCopilotChatProvider`, which uses the GitHub Copilot SDK with GitHub CLI authentication or a configured token environment variable. `MemoryChatAgent` now uses intent-aware preloading: exact-reply/simple prompts and write-only Agent commands skip local wiki pre-context, while explicit MemorySmith/wiki/codebase prompts receive a small bounded hybrid memory plus page preload. When preloaded context is absent or not enough, the shared prompt lets the model request an app-intercepted, MCP-compatible read-only wiki tool call by returning JSON such as `{"toolCalls":[{"name":"memorysmith_unified_search","arguments":{"query":"search text","memoryLimit":5,"pageLimit":5}}]}`. The chat allowlist now matches the read-only MCP surface: `memorysmith_search`, `memorysmith_semantic_search`, `memorysmith_hybrid_search`, `memorysmith_context_pack`, `memorysmith_get`, `memorysmith_page_search`, `memorysmith_page_get`, and `memorysmith_unified_search`. A deterministic intent interceptor (`ChatIntentInterceptor`) also pre-runs an obvious tool call when the user message starts with phrases like "search the wiki for ...", "open page <slug>", "get memory <id>", "semantic/hybrid search ...", or "context pack ...", so reliable retrieval does not depend on the model emitting the JSON tool-call protocol correctly. Retrieved tool output and preloaded context are wrapped in an "Untrusted retrieved data" preamble before being added to the model context so any embedded instructions are treated as data, not commands.
+`/chat` uses the `IChatProvider` and `IChatAgent` abstractions. The registered providers are `OllamaChatProvider`, which calls a local Ollama HTTP service, and `GitHubCopilotChatProvider`, which uses the GitHub Copilot SDK with GitHub CLI authentication or a configured token environment variable. `MemoryChatAgent` now uses intent-aware preloading: exact-reply/simple prompts and write-only Agent commands skip local wiki pre-context, while explicit MemorySmith/wiki/codebase prompts receive a small bounded hybrid memory plus page preload. When preloaded context is absent or not enough, the shared prompt lets the model request an app-intercepted, MCP-compatible read-only wiki tool call by returning JSON such as `{"toolCalls":[{"name":"memorysmith_unified_search","arguments":{"query":"search text","memoryLimit":5,"pageLimit":5}}]}`. The chat allowlist now matches the read-only MCP surface: `memorysmith_search`, `memorysmith_semantic_search`, `memorysmith_hybrid_search`, `memorysmith_context_pack`, `memorysmith_get`, `memorysmith_page_search`, `memorysmith_page_get`, and `memorysmith_unified_search`. A deterministic intent interceptor (`ChatIntentInterceptor`) also pre-runs an obvious tool call when the user message starts with phrases like "search the wiki for ...", "open page &lt;slug&gt;", "get memory &lt;id&gt;", "semantic/hybrid search ...", or "context pack ...", so reliable retrieval does not depend on the model emitting the JSON tool-call protocol correctly. Retrieved tool output and preloaded context are wrapped in an "Untrusted retrieved data" preamble before being added to the model context so any embedded instructions are treated as data, not commands.
 
 The chat UI queries the selected provider for available models, supports provider/model selection, persists the last used provider/model, Mermaid diagram theme mode, and active chat, keeps the top model bar and bottom composer stable when switching the shared sidebar between History and Trace, places the sidebar toggle at the right edge beside the shared sidebar, streams live response chunks with an elapsed timer, renders message bodies as safe Markdown through Markdig with raw HTML disabled, supports Mermaid diagrams and Prism-compatible fenced code highlighting, lets users choose Auto/Light/Dark Mermaid theme mode, wraps rendered diagrams in a matching readable light or dark surface, defers Mermaid conversion while a response is actively streaming so unfinished fences remain visible as code, shows the provider/model used on assistant turns, shows per-response durations, displays bottom-right context usage with context-window percentage when known and provider quota/rate text when reported, deletes chats from history with confirmation, supports icon Stop for immediate cancellation plus icon Finish Step for a softer stop after the current provider/tool step, supports text and image file attachments, supports pasted clipboard images, Enter-to-send with Shift+Enter newlines, autoscroll, clickable memory/page resource chips behind a collapsed per-turn References drawer, pending-response feedback, compact browser-local chat history, and collapsible thinking blocks when the provider returns reasoning content. History and Trace share one right sidebar with tabs; Trace shows the selected turn's execution graph, turn selector, reasoning, tool requests/results, write approvals, token estimates, and tool latency with filters, collapsible trace headers, and editable tool rerun. The transcript no longer renders per-turn Trace buttons. Neutral resource chips are preloaded context, blue resource chips are mid-turn tool/intercept resources, and green write chips are Agent-created pages. Text attachments are bounded and supplied as context. Image attachments are saved to trusted temp files for persistence and supplied as native image payloads when the selected provider supports them; Ctrl+V handles copied image files, Clipboard API image blobs, copied HTML image references, and data:image URLs. Draft text and queued attachments are retained per chat session when switching chats, and navigation warns before leaving with unsent content.
 
@@ -166,7 +190,7 @@ When updating agent behavior, keep these prompt files aligned with runtime capab
 Three search modes are available in the UI (`/memories` search bar) and the REST API:
 
 | Mode | Endpoint | Behavior |
-|---|---|---|
+| --- | --- | --- |
 | Lexical | `POST /api/memories/search` | Lucene.NET `StandardAnalyzer` tokenization and weighted title/tag/reference/content scoring. Empty queries retain deterministic `LastUpdated` ordering. |
 | Semantic | `POST /api/memories/search/semantic` | ONNX embedding cosine ranking when `SemanticSearch` model and vocabulary files are available; otherwise local token/tag/title/reference/alias scoring with match explanations. |
 | Hybrid | `POST /api/memories/search/hybrid` | Lucene.NET lexical analysis + the active semantic ranker, fused with Reciprocal Rank Fusion (RRF). Best for discovery. |
@@ -180,7 +204,7 @@ The embedding path uses ONNX Runtime, a local WordPiece vocabulary, E5-style `qu
 The MCP endpoint is at `http://localhost:5089/mcp`. VS Code config lives in `.vscode/mcp.json`. Twelve tools are exposed (eight read-only chat-allowlisted, two write tools requiring edit permission, plus two source-aware tools available only over MCP):
 
 | Tool | Key args | Returns | Permission |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `memorysmith_search` | `query`, `tags`, `status`, `limit` | Lexical results | View |
 | `memorysmith_semantic_search` | `query`, `tags`, `status`, `limit` | Scored results with match reasons | View |
 | `memorysmith_hybrid_search` | `query`, `tags`, `status`, `limit` | RRF-ranked results | View |
@@ -195,6 +219,7 @@ The MCP endpoint is at `http://localhost:5089/mcp`. VS Code config lives in `.vs
 | `memorysmith_find_by_source` | `pattern` | Records whose source link URIs match the substring (MCP only) | View |
 
 **`memorysmith_context_pack` tips:**
+
 - Use `query` for open-ended discovery; use `ids` for anchoring to known records.
 - `referenceDepth=1` follows one hop of `References` and `Conflicts` from root records.
 - `includeBacklinks=true` adds records that reference the roots.
@@ -202,6 +227,7 @@ The MCP endpoint is at `http://localhost:5089/mcp`. VS Code config lives in `.vs
 - The tool reports warnings for missing roots, missing links, or records omitted after hitting `maxRecords`.
 
 **`memorysmith_source_bundle` tips:**
+
 - Combine with `memorysmith_context_pack` results: get the context pack first, then bundle the source for the most relevant records.
 - `format=jsonl` returns one JSON object per line (streaming-friendly); `format=json` returns a single object with `memoryCount`, `sourceCount`, and `entries`.
 
@@ -307,7 +333,7 @@ All settings live under `MemorySmith` in `appsettings.json`:
 
 Override via `appsettings.Development.json` or environment variables (`MemorySmith__DataPath`, etc.).
 
-- **`ApiKey`** — if set, all API and MCP requests must include `X-Api-Key: <value>`. Leave `null` for local use. The shared API key can satisfy non-admin API/MCP policies; it does not grant admin, user-management, settings, audit, diagnostics, or restore access.
+- **`ApiKey`** — if set, all API and MCP requests must include `X-Api-Key: &lt;value&gt;`. Leave `null` for local use. The shared API key can satisfy non-admin API/MCP policies; it does not grant admin, user-management, settings, audit, diagnostics, or restore access.
 - **`AllowRemoteApi`** — set `true` to allow non-localhost callers. Off by default.
 - **`DataProtectionKeysPath`** — stores ASP.NET Core cookie/data-protection keys outside build output so local sign-in cookies survive app restarts.
 - **`Database:*`** — controls the SQLite metadata database used for users, roles, provider links, login history, audit metadata, version metadata, token metadata, admin settings, and semantic-index metadata. Content files remain in `Data/Memories` and `Data/Pages`.
@@ -351,7 +377,7 @@ Publish the app, then from an elevated PowerShell session:
 Install flags:
 
 | Flag | Purpose |
-|---|---|
+| --- | --- |
 | `install`, `--install-service` | Create the Windows Service |
 | `uninstall`, `--uninstall-service` | Stop and delete the Windows Service |
 | `--service-name` | Service name. Default: `MemorySmith` |
