@@ -3024,6 +3024,92 @@ body {
     font-size: 0.78rem;
 }
 
+.tasks-body {
+    grid-template-columns: minmax(280px, 34%) minmax(0, 1fr);
+}
+
+.tasks-body.is-list-collapsed {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+}
+
+.tasks-list-pane,
+.tasks-detail-pane {
+    min-width: 0;
+}
+
+.tasks-list-pane {
+    overflow: hidden;
+}
+
+.tasks-detail-pane {
+    overflow: auto;
+}
+
+.tasks-sidebar-toggle {
+    margin-left: auto;
+}
+
+.tasks-detail-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 10px;
+    overflow: visible;
+}
+
+.tasks-detail-header-main {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.tasks-detail-title-text {
+    color: var(--vscode-text);
+    font-size: 1.2rem;
+    font-weight: 700;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tasks-detail-meta {
+    margin-top: 0;
+    gap: 6px;
+    line-height: 1.2;
+}
+
+.tasks-status-combobox {
+    min-width: 160px;
+}
+
+.tasks-editor-grid {
+    align-items: start;
+}
+
+.tasks-description-field {
+    grid-column: 1 / -1;
+}
+
+.tasks-workbench .proposal-tabs,
+.tasks-workbench .mud-tabs,
+.tasks-workbench .mud-tabs-panels,
+.tasks-workbench .mud-tab-panel {
+    min-height: 0;
+}
+
+.tasks-workbench .mud-tabs-panels {
+    overflow: auto;
+}
+
+.tasks-workbench .wiki-result-title {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 @media (max-width: 1400px) {
     .chat-workbench.is-sidebar-open {
         grid-template-columns: minmax(0, 1fr) clamp(300px, 30%, 360px);
@@ -3112,6 +3198,32 @@ body {
     .chat-composer-side {
         max-width: none;
         width: 100%;
+    }
+
+    .tasks-body {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: minmax(170px, 36%) minmax(0, 1fr);
+    }
+
+    .tasks-body.is-list-collapsed {
+        grid-template-rows: minmax(0, 1fr);
+    }
+
+    .tasks-list-pane {
+        max-height: 38vh;
+    }
+
+    .tasks-detail-header {
+        grid-template-columns: 1fr;
+    }
+
+    .tasks-detail-title-text {
+        font-size: 1.05rem;
+    }
+
+    .tasks-status-combobox {
+        min-width: 128px;
+        max-width: 180px;
     }
 }
 
@@ -3212,6 +3324,7 @@ body {
 
     .tasks-body.is-list-collapsed {
         grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: minmax(0, 1fr);
     }
 
     .tasks-list-pane,
@@ -3232,25 +3345,34 @@ body {
     }
 
     .tasks-detail-header {
-        align-items: flex-start;
-        flex-wrap: wrap;
-        justify-content: space-between;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: start;
         gap: 10px;
+        overflow: visible;
     }
 
     .tasks-detail-header-main {
         min-width: 0;
-        flex: 1 1 420px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
     }
 
-    .tasks-detail-title {
-        line-height: 1.25;
-        overflow-wrap: anywhere;
-        word-break: break-word;
+    .tasks-detail-title-text {
+        color: var(--vscode-text);
+        font-size: 1.2rem;
+        font-weight: 700;
+        line-height: 1.2;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .tasks-detail-meta {
-        margin-top: 6px;
+        margin-top: 0;
+        gap: 6px;
+        line-height: 1.2;
     }
 
     .tasks-status-combobox {
@@ -3298,12 +3420,25 @@ body {
             grid-template-columns: minmax(0, 1fr);
         }
 
+        .tasks-body.is-list-collapsed {
+            grid-template-rows: minmax(0, 1fr);
+        }
+
         .tasks-list-pane {
             max-height: 36vh;
         }
 
         .tasks-detail-header {
-            align-items: stretch;
+            grid-template-columns: 1fr;
+        }
+
+        .tasks-detail-title-text {
+            font-size: 1.05rem;
+        }
+
+        .tasks-status-combobox {
+            min-width: 128px;
+            max-width: 160px;
         }
     }
 

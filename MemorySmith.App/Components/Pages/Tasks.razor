@@ -88,14 +88,16 @@
             {
                 <div class="wiki-pane-header wiki-detail-header tasks-detail-header">
                     <div class="tasks-detail-header-main">
-                        <MudText Typo="Typo.h6" Class="tasks-detail-title">@_selectedTask.Key - @_selectedTask.Title</MudText>
+                        <div class="tasks-detail-title-text">@_selectedTask.Key - @_selectedTask.Title</div>
                         <div class="wiki-result-meta tasks-detail-meta">
                             <span class="wiki-status">@_selectedTask.Status</span>
                             <span class="wiki-status">@_selectedTask.Priority</span>
                             <span>@(_selectedTask.AssigneeCustomText ?? _selectedTask.AssigneeDirectoryId ?? "unassigned")</span>
-                            <span>@_selectedTask.UpdatedAtUtc.ToLocalTime().ToString("g")</span>
                         </div>
                     </div>
+                </div>
+
+                <div class="wiki-editor-grid tasks-editor-grid">
                     <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
                         <Authorized>
                             <MudSelect T="string"
@@ -112,10 +114,10 @@
                                 }
                             </MudSelect>
                         </Authorized>
+                        <NotAuthorized>
+                            <MudTextField T="string" Value="@_selectedTask.Status" Label="Status" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        </NotAuthorized>
                     </AuthorizeView>
-                </div>
-
-                <div class="wiki-editor-grid tasks-editor-grid">
                     <MudTextField T="string" Value="@_selectedTask.Type" Label="Type" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
                     <MudTextField T="string" Value="@_selectedTask.Reporter" Label="Reporter" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
                     <MudTextField T="string" Value="@_selectedTask.Description" Label="Description" Lines="5" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" Class="tasks-description-field" />
