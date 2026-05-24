@@ -2,14 +2,21 @@
 
 from __future__ import annotations
 
+import argparse
 import datetime as dt
 import html
 from html.parser import HTMLParser
 import json
+import os
+import posixpath
 import re
 import shutil
+import subprocess
+import tempfile
+from dataclasses import dataclass
+import hashlib
+from pathlib import Path, PurePosixPath
 from urllib.parse import urlparse
-from pathlib import Path
 
 import markdown
 
@@ -18,6 +25,8 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 PAGES_DIR = REPO_ROOT / "Data" / "Pages"
 MEMORY_CORE_DIR = REPO_ROOT / "Data" / "Memories" / "Core"
 OUTPUT_DIR = REPO_ROOT / "docs" / "output" / "wiki"
+MERMAID_OUTPUT_DIR = Path("assets") / "mermaid"
+MERMAID_BLOCK_PATTERN = re.compile(r"```mermaid\s*\n(.*?)```", flags=re.IGNORECASE | re.DOTALL)
 
 ALLOWED_TAGS = {
   "a",
@@ -146,24 +155,191 @@ def sanitize_html(html_body: str) -> str:
   return sanitizer.get_html()
 
 
-def to_html_filename(stem: str) -> str:
-    safe = re.sub(r"[^a-zA-Z0-9_-]+", "-", stem).strip("-").lower()
-    return f"{safe or 'page'}.html"
+def parse_bool_env(name: str) -> bool:
+  value = os.environ.get(name, "").strip().lower()
+  return value in {"1", "true", "yes", "on"}
 
 
-def rewrite_markdown_links(markdown_text: str) -> str:
-    text = re.sub(r"\(([^)]+)\.md\)", r"(\1.html)", markdown_text, flags=re.IGNORECASE)
-    return text
+def find_mermaid_command() -> list[str] | None:
+  mmdc = shutil.which("mmdc")
+  if mmdc:
+    return [mmdc]
+
+  npx = shutil.which("npx")
+  if npx:
+    return [npx, "--yes", "@mermaid-js/mermaid-cli@10.9.1"]
+
+  return None
 
 
-def render_html(title: str, markdown_text: str) -> str:
+@dataclass
+class BuildOptions:
+  export_mermaid_svg: bool
+
+
+@dataclass
+class MermaidExportContext:
+  options: BuildOptions
+  command: list[str] | None
+  exported_count: int = 0
+  skipped_count: int = 0
+
+
+def get_mermaid_export_context(options: BuildOptions) -> MermaidExportContext:
+  command = find_mermaid_command() if options.export_mermaid_svg else None
+  return MermaidExportContext(options=options, command=command)
+
+
+def export_mermaid_svg(
+  context: MermaidExportContext,
+  diagram_text: str,
+  source_relative_path: Path,
+  current_output_relative_path: Path,
+  diagram_index: int,
+) -> str | None:
+  if not context.options.export_mermaid_svg:
+    return None
+
+  if context.command is None:
+    context.skipped_count += 1
+    return None
+
+  source_stem = source_relative_path.with_suffix("")
+  source_hash = hashlib.sha1(diagram_text.encode("utf-8")).hexdigest()[:10]
+  svg_relative_path = MERMAID_OUTPUT_DIR / source_stem / f"diagram-{diagram_index:02d}-{source_hash}.svg"
+  svg_output_path = OUTPUT_DIR / svg_relative_path
+  svg_output_path.parent.mkdir(parents=True, exist_ok=True)
+
+  with tempfile.NamedTemporaryFile(mode="w", suffix=".mmd", encoding="utf-8", delete=False) as input_file:
+    input_file.write(diagram_text)
+    input_path = Path(input_file.name)
+
+  try:
+    command = [
+      *context.command,
+      "-i",
+      str(input_path),
+      "-o",
+      str(svg_output_path),
+      "--quiet",
+    ]
+    completed = subprocess.run(command, capture_output=True, text=True, check=False)
+    if completed.returncode != 0:
+      context.skipped_count += 1
+      return None
+  finally:
+    input_path.unlink(missing_ok=True)
+
+  context.exported_count += 1
+  return compute_relative_href(current_output_relative_path, svg_relative_path)
+
+
+def to_output_relative_path(source_relative_path: Path) -> Path:
+  return Path("pages") / source_relative_path.with_suffix(".html")
+
+
+def compute_relative_href(from_output_relative_path: Path, to_output_relative_path: Path) -> str:
+  return posixpath.relpath(to_output_relative_path.as_posix(), from_output_relative_path.parent.as_posix())
+
+
+def rewrite_markdown_links(
+  markdown_text: str,
+  current_source_relative_path: Path,
+  source_to_output_paths: dict[str, Path],
+  current_output_relative_path: Path,
+) -> str:
+  markdown_link_pattern = re.compile(r"\(([^)\s]+)\)")
+
+  def replace_link(match: re.Match[str]) -> str:
+    target = match.group(1)
+    if target.startswith(("http://", "https://", "mailto:", "data:", "#")):
+      return f"({target})"
+
+    parsed_target = urlparse(target)
+    path_part = parsed_target.path
+    if not path_part.lower().endswith(".md"):
+      return f"({target})"
+
+    current_source_posix = PurePosixPath(current_source_relative_path.as_posix())
+
+    if path_part.startswith("/"):
+      source_candidate = PurePosixPath(path_part.lstrip("/"))
+      parts = list(source_candidate.parts)
+      if len(parts) >= 2 and parts[0].lower() == "data" and parts[1].lower() == "pages":
+        source_candidate = PurePosixPath(*parts[2:])
+    else:
+      source_candidate = current_source_posix.parent / PurePosixPath(path_part)
+
+    normalized_source = PurePosixPath(source_candidate).as_posix()
+    mapped_output_path = source_to_output_paths.get(normalized_source)
+    if mapped_output_path is None:
+      fallback_path = f"{path_part[:-3]}.html"
+      rebuilt = parsed_target._replace(path=fallback_path).geturl()
+      return f"({rebuilt})"
+
+    rewritten_path = compute_relative_href(current_output_relative_path, mapped_output_path)
+    rebuilt = parsed_target._replace(path=rewritten_path).geturl()
+    return f"({rebuilt})"
+
+  return markdown_link_pattern.sub(replace_link, markdown_text)
+
+
+def rewrite_mermaid_blocks(
+  markdown_text: str,
+  context: MermaidExportContext,
+  source_relative_path: Path,
+  current_output_relative_path: Path,
+) -> str:
+  diagram_counter = 0
+
+  def replace_mermaid(match: re.Match[str]) -> str:
+    nonlocal diagram_counter
+    diagram_counter += 1
+    diagram_source = match.group(1).strip()
+    exported_href = export_mermaid_svg(
+      context,
+      diagram_source,
+      source_relative_path,
+      current_output_relative_path,
+      diagram_counter,
+    )
+    if exported_href is None:
+      return match.group(0)
+
+    return f"![Mermaid diagram {diagram_counter}]({exported_href})"
+
+  return MERMAID_BLOCK_PATTERN.sub(replace_mermaid, markdown_text)
+
+
+def render_html(
+  title: str,
+  markdown_text: str,
+  current_source_relative_path: Path,
+  source_to_output_paths: dict[str, Path],
+  current_output_relative_path: Path,
+  mermaid_context: MermaidExportContext,
+) -> str:
+    markdown_with_mermaid = rewrite_mermaid_blocks(
+        markdown_text,
+        mermaid_context,
+        current_source_relative_path,
+        current_output_relative_path,
+    )
     html_body = sanitize_html(markdown.markdown(
-        rewrite_markdown_links(markdown_text),
+    rewrite_markdown_links(
+      markdown_with_mermaid,
+      current_source_relative_path,
+      source_to_output_paths,
+      current_output_relative_path,
+    ),
         extensions=["extra", "tables", "fenced_code", "toc", "sane_lists"],
         output_format="html5",
     ))
     generated_at = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     safe_title = html.escape(title, quote=True)
+    home_href = compute_relative_href(current_output_relative_path, Path("index.html"))
+    pages_href = compute_relative_href(current_output_relative_path, Path("pages.html"))
+    memories_href = compute_relative_href(current_output_relative_path, Path("structured-memories.html"))
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -238,9 +414,9 @@ def render_html(title: str, markdown_text: str) -> str:
 </head>
 <body>
   <nav>
-    <a href="index.html">Home (README)</a>
-    <a href="pages.html">Markdown Wiki Pages</a>
-    <a href="structured-memories.html">Structured Wiki Index</a>
+    <a href="{home_href}">Home (README)</a>
+    <a href="{pages_href}">Markdown Wiki Pages</a>
+    <a href="{memories_href}">Structured Wiki Index</a>
   </nav>
   <main>
     <article>
@@ -253,15 +429,38 @@ def render_html(title: str, markdown_text: str) -> str:
 """
 
 
-def build_pages_index(page_outputs: list[tuple[str, str]]) -> str:
+def build_pages_index(page_outputs: list[tuple[Path, str, Path]]) -> str:
     lines = [
         "# Markdown Wiki Pages",
         "",
         "These pages are sourced from `Data/Pages`.",
         "",
+        "The list below reflects the directory tree.",
+        "",
     ]
-    for title, filename in page_outputs:
-        lines.append(f"- [{title}]({filename})")
+
+    previous_directories: tuple[str, ...] = ()
+    for source_relative_path, title, output_relative_path in page_outputs:
+        source_parts = source_relative_path.parts
+        directory_parts = source_parts[:-1]
+
+        common_prefix_length = 0
+        while (
+            common_prefix_length < len(previous_directories)
+            and common_prefix_length < len(directory_parts)
+            and previous_directories[common_prefix_length] == directory_parts[common_prefix_length]
+        ):
+            common_prefix_length += 1
+
+        for index in range(common_prefix_length, len(directory_parts)):
+            indent = "  " * index
+            lines.append(f"{indent}- **{directory_parts[index]}**")
+
+        page_indent = "  " * len(directory_parts)
+        lines.append(f"{page_indent}- [{title}]({output_relative_path.as_posix()})")
+
+        previous_directories = tuple(directory_parts)
+
     return "\n".join(lines)
 
 
@@ -289,37 +488,113 @@ def build_structured_memories_markdown() -> str:
     return "\n".join(lines)
 
 
+def copy_pages_assets() -> None:
+  for source_path in PAGES_DIR.rglob("*"):
+    if not source_path.is_file() or source_path.suffix.lower() == ".md":
+      continue
+
+    source_relative_path = source_path.relative_to(PAGES_DIR)
+    destination_path = OUTPUT_DIR / "pages" / source_relative_path
+    destination_path.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source_path, destination_path)
+
+
+def parse_args() -> BuildOptions:
+  parser = argparse.ArgumentParser(description="Build static wiki pages for GitHub Pages.")
+  parser.add_argument(
+    "--export-mermaid-svg",
+    action="store_true",
+    help="Export Mermaid fenced code blocks to SVG files and replace them with image links.",
+  )
+  args = parser.parse_args()
+  export_mermaid_svg = args.export_mermaid_svg or parse_bool_env("MEMORYSMITH_EXPORT_MERMAID_SVG")
+  return BuildOptions(export_mermaid_svg=export_mermaid_svg)
+
+
 def main() -> None:
+    options = parse_args()
+    mermaid_context = get_mermaid_export_context(options)
+
     if OUTPUT_DIR.exists():
         shutil.rmtree(OUTPUT_DIR)
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    readme_text = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
-    (OUTPUT_DIR / "index.html").write_text(render_html("MemorySmith Wiki", readme_text), encoding="utf-8")
+    page_files = sorted(PAGES_DIR.rglob("*.md"))
+    source_to_output_paths = {
+        page_file.relative_to(PAGES_DIR).as_posix(): to_output_relative_path(page_file.relative_to(PAGES_DIR))
+        for page_file in page_files
+    }
 
-    page_outputs: list[tuple[str, str]] = []
-    for page_file in sorted(PAGES_DIR.glob("*.md")):
+    readme_text = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+    (OUTPUT_DIR / "index.html").write_text(
+        render_html(
+            "MemorySmith Wiki",
+            readme_text,
+            Path("README.md"),
+            source_to_output_paths,
+            Path("index.html"),
+            mermaid_context,
+        ),
+        encoding="utf-8",
+    )
+
+    page_outputs: list[tuple[Path, str, Path]] = []
+    for page_file in page_files:
+        source_relative_path = page_file.relative_to(PAGES_DIR)
         content = page_file.read_text(encoding="utf-8")
         title = page_file.stem
         first_heading = next((line.strip("# ").strip() for line in content.splitlines() if line.startswith("# ")), "")
         if first_heading:
             title = first_heading
-        output_name = to_html_filename(page_file.stem)
-        (OUTPUT_DIR / output_name).write_text(render_html(title, content), encoding="utf-8")
-        page_outputs.append((title, output_name))
+
+        output_relative_path = source_to_output_paths[source_relative_path.as_posix()]
+        output_path = OUTPUT_DIR / output_relative_path
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(
+            render_html(
+                title,
+                content,
+                source_relative_path,
+                source_to_output_paths,
+                output_relative_path,
+                mermaid_context,
+            ),
+            encoding="utf-8",
+        )
+        page_outputs.append((source_relative_path, title, output_relative_path))
 
     pages_index_md = build_pages_index(page_outputs)
-    (OUTPUT_DIR / "pages.html").write_text(render_html("Markdown Wiki Pages", pages_index_md), encoding="utf-8")
-
-    structured_index_md = build_structured_memories_markdown()
-    (OUTPUT_DIR / "structured-memories.html").write_text(
-        render_html("Structured Wiki Index", structured_index_md),
+    (OUTPUT_DIR / "pages.html").write_text(
+        render_html(
+            "Markdown Wiki Pages",
+            pages_index_md,
+            Path("pages.md"),
+            source_to_output_paths,
+            Path("pages.html"),
+            mermaid_context,
+        ),
         encoding="utf-8",
     )
 
-    assets_src = PAGES_DIR / "assets"
-    if assets_src.exists():
-        shutil.copytree(assets_src, OUTPUT_DIR / "assets", dirs_exist_ok=True)
+    structured_index_md = build_structured_memories_markdown()
+    (OUTPUT_DIR / "structured-memories.html").write_text(
+        render_html(
+            "Structured Wiki Index",
+            structured_index_md,
+            Path("structured-memories.md"),
+            source_to_output_paths,
+            Path("structured-memories.html"),
+            mermaid_context,
+        ),
+        encoding="utf-8",
+    )
+
+    copy_pages_assets()
+
+    if options.export_mermaid_svg and mermaid_context.command is None:
+      print("Mermaid SVG export requested, but no Mermaid CLI was found. Kept Mermaid fenced blocks unchanged.")
+    elif options.export_mermaid_svg:
+      print(f"Mermaid SVG export complete: {mermaid_context.exported_count} exported, {mermaid_context.skipped_count} skipped.")
 
 
 if __name__ == "__main__":
