@@ -153,6 +153,8 @@ public class OperationalDiagnosticsService
         new("Chat config", "/api/chat/config", "Current chat provider, default model, and provider model discovery"),
         new("Stats", "/api/stats", "Counts, activity, and maintenance telemetry"),
         new("Diagnostics", "/api/diagnostics", "Redacted runtime configuration and storage diagnostics"),
+        new("Diagnostic logs", "/api/diagnostics/logs", "Structured application log search with optional Windows Event Log source"),
+        new("Diagnostic log metrics", "/api/diagnostics/logs/metrics", "Log-derived error, warning, request, and latency trend metrics"),
         new("MCP", "/mcp", "HTTP JSON-RPC MCP tools")
     ];
 

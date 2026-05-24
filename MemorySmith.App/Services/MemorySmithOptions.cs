@@ -26,6 +26,26 @@ public class MemorySmithOptions
     public SourceLinkOptions SourceLinks { get; set; } = new();
     public ChatOptions Chat { get; set; } = new();
     public MaintenanceAgentOptions MaintenanceAgent { get; set; } = new();
+    public LoggingOptions Logging { get; set; } = new();
+}
+
+public class LoggingOptions
+{
+    public string MinimumLevel { get; set; } = "Information";
+    public bool EnableConsole { get; set; } = true;
+    public bool EnableStructuredFile { get; set; } = true;
+    public string StructuredFilePath { get; set; } = Path.Combine("logs", "memorysmith-structured-.jsonl");
+    public int StructuredFileRetainedDays { get; set; } = 14;
+    public bool WindowsEventLogEnabled { get; set; } = true;
+    public string WindowsEventLogSource { get; set; } = "MemorySmith.App";
+    public string WindowsEventLogName { get; set; } = "Application";
+    public bool RequestLoggingEnabled { get; set; } = true;
+    public int SlowRequestThresholdMs { get; set; } = 1000;
+    public bool BenchmarkLoggingEnabled { get; set; } = true;
+    public int BenchmarkSlowThresholdMs { get; set; } = 750;
+    public int MetricsWindowDays { get; set; } = 30;
+    public int MetricsSampleLimit { get; set; } = 5000;
+    public int MaxDiagnosticsLogResults { get; set; } = 200;
 }
 
 public class AuthOptions

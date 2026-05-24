@@ -9,13 +9,18 @@ using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.Hosting.WindowsServices;
 using Microsoft.Extensions.Options;
 using MudBlazor.Services;
 using Serilog;
+using Serilog.Events;
+using Serilog.Formatting.Compact;
+using System.Diagnostics;
 using System.Threading.RateLimiting;
 using System.Text.Json.Serialization;
 
@@ -26,9 +31,9 @@ if (WindowsServiceCommands.TryHandle(args, out var serviceCommandExitCode))
 }
 
 Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()
     .WriteTo.Console()
-    .WriteTo.File(Path.Combine(AppContext.BaseDirectory, "logs", "memorysmith-.log"), rollingInterval: RollingInterval.Day)
-    .CreateLogger();
+    .CreateBootstrapLogger();
 
 try
 {
@@ -42,7 +47,43 @@ try
         ? Path.Combine(AppContext.BaseDirectory, "appsettings.LocalDevelopment.json")
         : Path.GetFullPath(configuredSettingsOverridePath);
     builder.Configuration.AddJsonFile(localDevelopmentFile, optional: true, reloadOnChange: true);
-    builder.Host.UseSerilog();
+    builder.Host.UseSerilog((context, services, loggerConfiguration) =>
+    {
+        var loggingOptions = context.Configuration.GetSection("MemorySmith:Logging").Get<LoggingOptions>() ?? new LoggingOptions();
+        var minimumLevel = ParseLogLevel(loggingOptions.MinimumLevel, LogEventLevel.Information);
+
+        loggerConfiguration
+            .MinimumLevel.Is(minimumLevel)
+            .ReadFrom.Configuration(context.Configuration)
+            .Enrich.FromLogContext()
+            .Enrich.WithProperty("Application", "MemorySmith.App")
+            .Enrich.WithProperty("Environment", context.HostingEnvironment.EnvironmentName);
+
+        if (loggingOptions.EnableConsole)
+        {
+            loggerConfiguration.WriteTo.Console();
+        }
+
+        if (loggingOptions.EnableStructuredFile)
+        {
+            var structuredFilePath = ResolveLogPath(loggingOptions.StructuredFilePath);
+            Directory.CreateDirectory(Path.GetDirectoryName(structuredFilePath)!);
+            loggerConfiguration.WriteTo.File(
+                new CompactJsonFormatter(),
+                structuredFilePath,
+                rollingInterval: RollingInterval.Day,
+                retainedFileCountLimit: Math.Max(1, loggingOptions.StructuredFileRetainedDays),
+                shared: true);
+        }
+
+        if (OperatingSystem.IsWindows() && loggingOptions.WindowsEventLogEnabled)
+        {
+            loggerConfiguration.WriteTo.EventLog(
+                source: string.IsNullOrWhiteSpace(loggingOptions.WindowsEventLogSource) ? "MemorySmith.App" : loggingOptions.WindowsEventLogSource,
+                manageEventSource: false,
+                restrictedToMinimumLevel: LogEventLevel.Warning);
+        }
+    });
     builder.Host.UseWindowsService(options =>
     {
         options.ServiceName = builder.Configuration["MemorySmith:WindowsService:Name"] ?? WindowsServiceCommands.DefaultServiceName;
@@ -305,6 +346,7 @@ try
     builder.Services.AddSingleton<MaintenanceResourceProbe>();
     builder.Services.AddSingleton<MaintenanceDiffService>();
     builder.Services.AddSingleton<MaintenanceWritePermissionService>();
+    builder.Services.AddSingleton<LoggingObservabilityService>();
     builder.Services.AddSingleton<IMaintenanceProposalStore, FileMaintenanceProposalStore>();
     builder.Services.AddSingleton<MaintenanceProposalWorkflow>();
     builder.Services.AddSingleton<MaintenanceTopicMapService>();
@@ -336,6 +378,7 @@ try
         {
             options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter<MemoryChatMode>());
         });
+    builder.Services.AddProblemDetails();
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen();
 
@@ -350,6 +393,70 @@ try
         app.UseSwagger();
         app.UseSwaggerUI();
     }
+
+    app.UseExceptionHandler(exceptionApp =>
+    {
+        exceptionApp.Run(async context =>
+        {
+            var exceptionFeature = context.Features.Get<IExceptionHandlerFeature>();
+            var exception = exceptionFeature?.Error;
+            var traceId = Activity.Current?.TraceId.ToString() ?? context.TraceIdentifier;
+
+            Log.Error(exception, "Unhandled request failure {Method} {Path} TraceId={TraceId}", context.Request.Method, context.Request.Path, traceId);
+
+            context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+            context.Response.ContentType = "application/problem+json";
+
+            var details = new ProblemDetails
+            {
+                Status = StatusCodes.Status500InternalServerError,
+                Title = "An unexpected error occurred.",
+                Detail = "Use the traceId when reporting this issue.",
+                Instance = context.Request.Path
+            };
+            details.Extensions["traceId"] = traceId;
+
+            await context.Response.WriteAsJsonAsync(details);
+        });
+    });
+
+    var loggingSettings = app.Configuration.GetSection("MemorySmith:Logging").Get<LoggingOptions>() ?? new LoggingOptions();
+    if (loggingSettings.RequestLoggingEnabled)
+    {
+        app.UseSerilogRequestLogging(options =>
+        {
+            options.GetLevel = (_, elapsed, ex) =>
+            {
+                if (ex is not null)
+                {
+                    return LogEventLevel.Error;
+                }
+
+                if (elapsed >= loggingSettings.SlowRequestThresholdMs)
+                {
+                    return LogEventLevel.Warning;
+                }
+
+                return LogEventLevel.Information;
+            };
+
+            options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
+            {
+                diagnosticContext.Set("TraceId", Activity.Current?.TraceId.ToString() ?? httpContext.TraceIdentifier);
+                diagnosticContext.Set("RequestPath", httpContext.Request.Path.ToString());
+                diagnosticContext.Set("RequestHost", httpContext.Request.Host.Value);
+                diagnosticContext.Set("RequestScheme", httpContext.Request.Scheme);
+                diagnosticContext.Set("UserAgent", httpContext.Request.Headers.UserAgent.ToString());
+                diagnosticContext.Set("CorrelationId", httpContext.TraceIdentifier);
+            };
+        });
+    }
+
+    app.Use(async (context, next) =>
+    {
+        context.Response.Headers["X-Correlation-Id"] = Activity.Current?.TraceId.ToString() ?? context.TraceIdentifier;
+        await next();
+    });
 
     app.UseHttpsRedirection();
     app.UseRateLimiter();
@@ -410,6 +517,26 @@ finally
 
 public partial class Program
 {
+    private static string ResolveLogPath(string configuredPath)
+    {
+        if (Path.IsPathRooted(configuredPath))
+        {
+            return configuredPath;
+        }
+
+        return Path.Combine(AppContext.BaseDirectory, configuredPath);
+    }
+
+    private static LogEventLevel ParseLogLevel(string? rawLevel, LogEventLevel fallback)
+    {
+        if (Enum.TryParse<LogEventLevel>(rawLevel, ignoreCase: true, out var parsed))
+        {
+            return parsed;
+        }
+
+        return fallback;
+    }
+
     private static void AddPermissionPolicy(AuthorizationOptions options, string name, MemorySmithPermission permission) =>
         options.AddPolicy(name, policy => policy.AddRequirements(new MemorySmithPermissionRequirement(permission)));
 
