@@ -9,6 +9,7 @@ type SmokeRoute = {
   name: string;
   slug: string;
   routePath: string;
+  expectedTitle: string;
   assertReady: (page: Page) => Promise<void>;
   interact?: (page: Page) => Promise<void>;
 };
@@ -27,6 +28,7 @@ const routes: SmokeRoute[] = [
     name: 'Memories',
     slug: 'memories',
     routePath: '/memories',
+    expectedTitle: 'Memories - MemorySmith',
     assertReady: async (page) => {
       await expect(page.getByRole('region', { name: 'Memory search' })).toBeVisible();
       await expect(page.getByRole('complementary', { name: 'Memory results' })).toBeVisible();
@@ -36,6 +38,7 @@ const routes: SmokeRoute[] = [
     name: 'Pages',
     slug: 'pages',
     routePath: '/pages',
+    expectedTitle: 'Pages - MemorySmith',
     assertReady: async (page) => {
       await expect(page.getByRole('region', { name: 'Page search' })).toBeVisible();
       await expect(page.getByRole('complementary', { name: 'Pages' })).toBeVisible();
@@ -50,6 +53,7 @@ const routes: SmokeRoute[] = [
     name: 'Chat',
     slug: 'chat',
     routePath: '/chat',
+    expectedTitle: 'Chat - MemorySmith',
     assertReady: async (page) => {
       await expect(page.getByRole('region', { name: 'MemorySmith chat' })).toBeVisible();
     },
@@ -58,6 +62,7 @@ const routes: SmokeRoute[] = [
     name: 'Tasks',
     slug: 'tasks',
     routePath: '/tasks',
+    expectedTitle: 'Tasks - MemorySmith',
     assertReady: async (page) => {
       await expect(page.getByRole('region', { name: 'Tasks workbench' })).toBeVisible();
       await expect(page.getByRole('complementary', { name: 'Task list' })).toBeVisible();
@@ -72,6 +77,7 @@ const routes: SmokeRoute[] = [
     name: 'Health',
     slug: 'health',
     routePath: '/health',
+    expectedTitle: 'Health - MemorySmith',
     assertReady: async (page) => {
       await expect(page.getByRole('heading', { name: 'Health & Activity', exact: true })).toBeVisible();
     },
@@ -100,6 +106,8 @@ test.describe('Route smoke', () => {
 
       await page.goto(route.routePath);
       await expect(page).toHaveURL(new RegExp(`${escapeRegExp(route.routePath)}$`));
+      await expect(page).toHaveTitle(route.expectedTitle);
+      await expect(page.getByRole('button', { name: 'Toggle primary navigation' })).toHaveAttribute('title', 'Toggle primary navigation');
 
       await route.assertReady(page);
 
@@ -161,7 +169,7 @@ async function hidePagesNavigation(page: Page): Promise<void> {
       return;
     }
 
-    await page.getByRole('button', { name: 'Toggle navigation' }).click();
+    await page.getByRole('button', { name: 'Toggle page navigation' }).click();
     await expect(pagesPanel).toHaveCount(0, { timeout: 1_000 });
   }).toPass({ timeout: 10_000 });
 }

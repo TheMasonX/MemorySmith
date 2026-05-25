@@ -10,7 +10,7 @@
 @inject IOptionsMonitor<MemorySmithOptions> Options
 @inject ICurrentUserContext CurrentUser
 
-<PageTitle>Pages</PageTitle>
+<PageTitle>Pages - MemorySmith</PageTitle>
 <NavigationLock ConfirmExternalNavigation="@HasUnsavedChanges" OnBeforeInternalNavigation="ConfirmInternalNavigation" />
 
 <div class="wiki-workbench pages-workbench">
@@ -61,7 +61,8 @@
                     <MudIconButton Icon="@(_isNavigationVisible ? Icons.Material.Filled.MenuOpen : Icons.Material.Filled.Menu)"
                                    Size="Size.Small"
                                    OnClick="ToggleNavigationVisibilityAsync"
-                                   aria-label="Toggle navigation" />
+                                   aria-label="Toggle page navigation"
+                                   title="Toggle page navigation" />
                 </MudTooltip>
                 <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
                     <Authorized>
