@@ -56,6 +56,8 @@ const routes: SmokeRoute[] = [
     expectedTitle: 'Chat - MemorySmith',
     assertReady: async (page) => {
       await expect(page.getByRole('region', { name: 'MemorySmith chat' })).toBeVisible();
+      await expect(page.getByTitle('Attach files')).toContainText('Attach');
+      await expect(page.locator('#chat-file-input')).toHaveAttribute('aria-label', 'Attach files');
     },
   },
   {

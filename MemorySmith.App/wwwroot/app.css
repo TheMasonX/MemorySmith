@@ -2110,7 +2110,42 @@ body {
     border-top: 1px solid var(--vscode-border-soft);
 }
 
+.chat-attachment-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 32px;
+    padding: 0 10px;
+    border: 1px solid var(--vscode-border-soft);
+    border-radius: 4px;
+    color: var(--vscode-text-muted);
+    background: rgba(255, 255, 255, 0.03);
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    font-size: 0.82rem;
+}
+
+.chat-attachment-button:hover,
+.chat-attachment-button:focus-within {
+    color: #9cdcfe;
+    border-color: var(--vscode-accent);
+    background: rgba(0, 122, 204, 0.12);
+}
+
+.chat-attachment-button .mud-icon-root,
+.chat-attachment-button span {
+    pointer-events: none;
+}
+
 .chat-file-input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
     color: var(--vscode-text-muted);
     font-size: 0.78rem;
 }

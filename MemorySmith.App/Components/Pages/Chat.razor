@@ -187,7 +187,13 @@
         </div>
 
         <div class="chat-attachment-row">
-            <InputFile id="chat-file-input" OnChange="OnFilesSelectedAsync" multiple class="chat-file-input" />
+            <MudTooltip Text="Attach files">
+                <label class="chat-attachment-button" for="chat-file-input" title="Attach files">
+                    <MudIcon Icon="@Icons.Material.Filled.AttachFile" Size="Size.Small" />
+                    <span>Attach</span>
+                    <InputFile id="chat-file-input" OnChange="OnFilesSelectedAsync" multiple class="chat-file-input" aria-label="Attach files" />
+                </label>
+            </MudTooltip>
             @foreach (var attachment in _attachments)
             {
                 <span class="wiki-tag chat-attachment-chip" title="@AttachmentTitle(attachment)">
