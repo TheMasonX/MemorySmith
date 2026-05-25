@@ -203,7 +203,7 @@ public class SearchBenchmarkTests
         var queries = new[]
         {
             "zzqvflorp qwxn sentinel",
-            "nonesuch token lattice 9f4b7c"
+            "nonesuch qxjvblm lattice 9f4b7c"
         };
 
         foreach (var query in queries)

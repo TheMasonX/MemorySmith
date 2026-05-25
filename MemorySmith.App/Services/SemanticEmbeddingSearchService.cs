@@ -1,3 +1,7 @@
+using System.Collections.Concurrent;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.ML.OnnxRuntime;
@@ -29,16 +33,24 @@ public sealed class SemanticEmbeddingSearchService : IDisposable
 {
     private const int MaxCachedQueryEmbeddings = 256;
     private const int MaxCachedDocumentEmbeddings = 4096;
+    private static readonly JsonSerializerOptions PersistentEmbeddingJsonOptions = new(JsonSerializerDefaults.Web);
 
     private readonly ITextEmbeddingProvider _embeddingProvider;
+    private readonly MemorySmithOptions _settings;
     private readonly SemanticSearchOptions _options;
     private readonly MemoryCache _queryEmbeddingCache = new(new MemoryCacheOptions { SizeLimit = MaxCachedQueryEmbeddings });
     private readonly MemoryCache _documentEmbeddingCache = new(new MemoryCacheOptions { SizeLimit = MaxCachedDocumentEmbeddings });
+    private readonly ConcurrentDictionary<string, object> _persistentDocumentLocks = new(StringComparer.OrdinalIgnoreCase);
+    private readonly string _persistentDocumentCacheDirectory;
+    private readonly string _embeddingConfigurationHash;
 
     public SemanticEmbeddingSearchService(ITextEmbeddingProvider embeddingProvider, IOptions<MemorySmithOptions> options)
     {
         _embeddingProvider = embeddingProvider;
-        _options = options.Value.SemanticSearch;
+        _settings = options.Value;
+        _options = _settings.SemanticSearch;
+        _persistentDocumentCacheDirectory = Path.Combine(ResolveDataDeploymentRoot(_settings.DataPath), "Graph", "embeddings");
+        _embeddingConfigurationHash = BuildEmbeddingConfigurationHash();
     }
 
     public RetrievalProviderMetadata GetProviderMetadata()
@@ -144,12 +156,163 @@ public sealed class SemanticEmbeddingSearchService : IDisposable
             return true;
         }
 
-        if (!_embeddingProvider.TryEmbed(text, EmbeddingInputKind.Document, out embedding, out _) || embedding.Length != expectedLength)
+        var persistentLock = _persistentDocumentLocks.GetOrAdd(recordId, static _ => new object());
+        lock (persistentLock)
+        {
+            if (_documentEmbeddingCache.TryGetValue(recordId, out cached) &&
+                cached is not null &&
+                string.Equals(cached.SourceText, text, StringComparison.Ordinal) &&
+                cached.Embedding.Length == expectedLength)
+            {
+                embedding = cached.Embedding;
+                return true;
+            }
+
+            if (TryLoadPersistedDocumentEmbedding(recordId, text, expectedLength, out embedding))
+            {
+                _documentEmbeddingCache.Set(recordId, new CachedEmbeddingEntry(text, embedding), new MemoryCacheEntryOptions { Size = 1 });
+                return true;
+            }
+
+            if (!_embeddingProvider.TryEmbed(text, EmbeddingInputKind.Document, out embedding, out _) || embedding.Length != expectedLength)
+            {
+                return false;
+            }
+
+            _documentEmbeddingCache.Set(recordId, new CachedEmbeddingEntry(text, embedding), new MemoryCacheEntryOptions { Size = 1 });
+            TryPersistDocumentEmbedding(recordId, text, embedding);
+            return true;
+        }
+    }
+
+    private bool TryLoadPersistedDocumentEmbedding(string recordId, string sourceText, int expectedLength, out float[] embedding)
+    {
+        embedding = [];
+        var path = GetPersistentEmbeddingPath(recordId);
+        if (!File.Exists(path))
         {
             return false;
         }
 
-        _documentEmbeddingCache.Set(recordId, new CachedEmbeddingEntry(text, embedding), new MemoryCacheEntryOptions { Size = 1 });
+        try
+        {
+            var persisted = JsonSerializer.Deserialize<PersistedEmbeddingEntry>(File.ReadAllText(path), PersistentEmbeddingJsonOptions);
+            if (persisted is null ||
+                !string.Equals(persisted.ConfigurationHash, _embeddingConfigurationHash, StringComparison.Ordinal) ||
+                !string.Equals(persisted.SourceTextHash, ComputeHash(sourceText), StringComparison.Ordinal) ||
+                persisted.Embedding.Length != expectedLength)
+            {
+                return false;
+            }
+
+            embedding = persisted.Embedding;
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private void TryPersistDocumentEmbedding(string recordId, string sourceText, float[] embedding)
+    {
+        try
+        {
+            Directory.CreateDirectory(_persistentDocumentCacheDirectory);
+            var path = GetPersistentEmbeddingPath(recordId);
+            var tempPath = path + ".tmp";
+            var entry = new PersistedEmbeddingEntry(
+                recordId,
+                ComputeHash(sourceText),
+                _embeddingConfigurationHash,
+                embedding,
+                DateTime.UtcNow);
+
+            File.WriteAllText(tempPath, JsonSerializer.Serialize(entry, PersistentEmbeddingJsonOptions));
+            File.Move(tempPath, path, overwrite: true);
+        }
+        catch
+        {
+            // Persistence is an optimization; on write failure the in-memory caches still serve the current process.
+        }
+    }
+
+    private string GetPersistentEmbeddingPath(string recordId)
+    {
+        var fileName = IsSafeEmbeddingId(recordId) ? recordId : ComputeHash(recordId);
+        return Path.Combine(_persistentDocumentCacheDirectory, fileName + ".json");
+    }
+
+    private string BuildEmbeddingConfigurationHash()
+    {
+        var modelPath = ResolveSemanticPath(_options.ModelPath);
+        var vocabularyPath = ResolveSemanticPath(_options.VocabularyPath);
+        var payload = string.Join('|',
+            modelPath,
+            File.Exists(modelPath) ? File.GetLastWriteTimeUtc(modelPath).Ticks.ToString() : "missing",
+            vocabularyPath,
+            File.Exists(vocabularyPath) ? File.GetLastWriteTimeUtc(vocabularyPath).Ticks.ToString() : "missing",
+            _options.QueryPrefix,
+            _options.DocumentPrefix,
+            _options.MaxInputTokens,
+            _options.MaxIndexedTextCharacters);
+
+        return ComputeHash(payload);
+    }
+
+    private string ResolveSemanticPath(string path)
+    {
+        var expanded = Environment.ExpandEnvironmentVariables(path);
+        if (Path.IsPathFullyQualified(expanded))
+        {
+            return Path.GetFullPath(expanded);
+        }
+
+        return Path.GetFullPath(Path.Combine(ResolveDataDeploymentRoot(_settings.DataPath), NormalizeDataRelativePath(expanded)));
+    }
+
+    private static string ResolveDataDeploymentRoot(string dataPath)
+    {
+        var expanded = Environment.ExpandEnvironmentVariables(dataPath);
+        var fullPath = Path.GetFullPath(expanded).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        return string.Equals(Path.GetFileName(fullPath), "Memories", StringComparison.OrdinalIgnoreCase)
+            ? Directory.GetParent(fullPath)?.FullName ?? fullPath
+            : fullPath;
+    }
+
+    private static string NormalizeDataRelativePath(string path)
+    {
+        var normalized = path.Trim().Replace('\\', '/');
+        foreach (var prefix in new[] { "../Data/", "./Data/", "Data/" })
+        {
+            if (normalized.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                normalized = normalized[prefix.Length..];
+                break;
+            }
+        }
+
+        while (normalized.StartsWith("./", StringComparison.Ordinal))
+        {
+            normalized = normalized[2..];
+        }
+
+        return normalized.Replace('/', Path.DirectorySeparatorChar);
+    }
+
+    private static string ComputeHash(string text) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text ?? string.Empty)));
+
+    private static bool IsSafeEmbeddingId(string recordId)
+    {
+        foreach (var character in recordId)
+        {
+            if (!char.IsAsciiLetterOrDigit(character) && character != '-' && character != '_')
+            {
+                return false;
+            }
+        }
+
         return true;
     }
 
@@ -199,6 +362,13 @@ public sealed class SemanticEmbeddingSearchService : IDisposable
     }
 
     private sealed record CachedEmbeddingEntry(string SourceText, float[] Embedding);
+
+    private sealed record PersistedEmbeddingEntry(
+        string RecordId,
+        string SourceTextHash,
+        string ConfigurationHash,
+        float[] Embedding,
+        DateTime UpdatedUtc);
 }
 
 public sealed class OnnxTextEmbeddingProvider : ITextEmbeddingProvider, IDisposable

@@ -1,7 +1,7 @@
 {
   "Id": "project-wiki-semantic-search-gap",
   "Title": "Semantic Search Gap",
-  "Content": "MemorySmith now has an optional ONNX embedding path for memory semantic search, but the remaining gap is a durable vector index. When SemanticSearch model and WordPiece vocabulary assets are available, SemanticEmbeddingSearchService ranks filtered memories by exact in-memory cosine similarity; when assets are missing or unusable, MemoryApplicationService falls back to local token, tag, title, reference, and alias scoring. Hybrid search fuses Lucene.NET lexical rank with whichever semantic ranker is active through RRF. A more general large-KB tool still needs cached/durable vector indexing, page embeddings, model asset validation, and a migration path that does not force PostgreSQL before the product needs it.",
+  "Content": "MemorySmith now has an optional ONNX embedding path for memory semantic search plus persisted per-record document embeddings under Data/Graph/embeddings so recreated services can reuse unchanged vectors across restarts. When SemanticSearch model and WordPiece vocabulary assets are available, SemanticEmbeddingSearchService ranks filtered memories by exact cosine similarity over cached or persisted embeddings; when assets are missing or unusable, MemoryApplicationService falls back to local token, tag, title, reference, and alias scoring. Hybrid search fuses Lucene.NET lexical rank with whichever semantic ranker is active through RRF. The remaining gap is a more general large-KB vector retrieval layer: approximate nearest-neighbor indexing, broader page/document coverage, model asset validation, and a migration path that does not force PostgreSQL before the product needs it.",
   "Status": 2,
   "Confidence": 0.94,
   "Tags": [
@@ -21,7 +21,7 @@
   ],
   "Conflicts": [],
   "UsageCount": 2,
-  "LastUpdated": "2026-05-17T03:55:00Z",
+  "LastUpdated": "2026-05-25T00:00:00Z",
   "SourceLinks": [
     {
       "Label": "MemoryApplicationService.cs (SemanticSearchAsync)",
