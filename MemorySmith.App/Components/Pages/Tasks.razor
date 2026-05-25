@@ -377,6 +377,17 @@
                                     <MudTextField T="string" Value="@_attachmentName" ValueChanged="OnAttachmentNameChanged" Label="Attachment name" Variant="Variant.Outlined" Margin="Margin.Dense" />
                                     <MudTextField T="string" Value="@_attachmentUri" ValueChanged="OnAttachmentUriChanged" Label="Attachment uri" Variant="Variant.Outlined" Margin="Margin.Dense" />
                                     <MudButton Variant="Variant.Outlined" OnClick="AddAttachmentAsync">Add Attachment</MudButton>
+                                    <MudAutocomplete T="TaskSummary"
+                                                     Value="@_relatedTaskAttachment"
+                                                     ValueChanged="OnRelatedTaskAttachmentChanged"
+                                                     SearchFunc="SearchRelatedTaskAttachmentsAsync"
+                                                     ToStringFunc="FormatRelatedTaskOption"
+                                                     Label="Related task"
+                                                     Variant="Variant.Outlined"
+                                                     Margin="Margin.Dense"
+                                                     Dense="true"
+                                                     Clearable="true" />
+                                    <MudButton Variant="Variant.Outlined" OnClick="AddRelatedTaskAttachmentAsync" Disabled="@(_relatedTaskAttachment is null)">Add Related Task</MudButton>
                                 </div>
                             </Authorized>
                         </AuthorizeView>
@@ -385,7 +396,11 @@
                             {
                                 <div class="proposal-evidence-item">
                                     <strong>@attachment.Name</strong>
-                                    @if (CanOpenAttachmentUri(attachment.Uri))
+                                    @if (IsTaskAttachment(attachment))
+                                    {
+                                        <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="@(() => SelectRelatedTaskAttachmentAsync(attachment.Uri))">@FormatTaskAttachmentLabel(attachment)</MudButton>
+                                    }
+                                    else if (CanOpenAttachmentUri(attachment.Uri))
                                     {
                                         <a href="@attachment.Uri" target="_blank" rel="noopener noreferrer">@attachment.Uri</a>
                                     }
@@ -447,6 +462,7 @@
     private string _externalLinkUrl = string.Empty;
     private string _attachmentName = string.Empty;
     private string _attachmentUri = string.Empty;
+    private TaskSummary? _relatedTaskAttachment;
     private string _createTitle = string.Empty;
     private string _createDescription = string.Empty;
     private string _createSlug = string.Empty;
@@ -865,6 +881,27 @@
         }
     }
 
+    private async Task AddRelatedTaskAttachmentAsync()
+    {
+        if (_selectedTask is null || _relatedTaskAttachment is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var related = _relatedTaskAttachment;
+            await TaskService.AddAttachmentAsync(_selectedTask.Id, new TaskAttachmentRequest(FormatRelatedTaskOption(related), "task", $"task:{related.Id}"), CurrentUser.DisplayName, CancellationToken.None);
+            _relatedTaskAttachment = null;
+            await LoadAsync();
+            await SelectAsync(_selectedTask.Id);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
     private async Task RemoveAttachmentAsync(string attachmentId)
     {
         if (_selectedTask is null)
@@ -943,8 +980,35 @@
         return Task.CompletedTask;
     }
 
+    private Task OnRelatedTaskAttachmentChanged(TaskSummary? value)
+    {
+        _relatedTaskAttachment = value;
+        return Task.CompletedTask;
+    }
+
+    private async Task<IEnumerable<TaskSummary>> SearchRelatedTaskAttachmentsAsync(string value, CancellationToken cancellationToken)
+    {
+        if (_selectedTask is null)
+        {
+            return [];
+        }
+
+        var search = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+        var candidates = await TaskService.ListAsync(search, null, null, 12, cancellationToken);
+        return candidates
+            .Where(task => !string.Equals(task.Id, _selectedTask.Id, StringComparison.OrdinalIgnoreCase))
+            .Where(task => !_selectedTask.Attachments.Any(attachment => string.Equals(TryReadTaskAttachmentId(attachment.Uri), task.Id, StringComparison.OrdinalIgnoreCase)))
+            .Take(8)
+            .ToList();
+    }
+
     private static bool CanOpenAttachmentUri(string? value)
     {
+        if (IsLocalTaskAttachmentUri(value))
+        {
+            return true;
+        }
+
         if (!Uri.TryCreate(value, UriKind.Absolute, out var uri))
         {
             return false;
@@ -952,6 +1016,40 @@
 
         return uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps;
     }
+
+    private static bool IsTaskAttachment(TaskAttachment attachment) =>
+        string.Equals(attachment.Kind, "task", StringComparison.OrdinalIgnoreCase) && TryReadTaskAttachmentId(attachment.Uri) is not null;
+
+    private static string? TryReadTaskAttachmentId(string? uri)
+    {
+        if (string.IsNullOrWhiteSpace(uri) || !uri.StartsWith("task:", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        var id = uri[5..].Trim();
+        return string.IsNullOrWhiteSpace(id) ? null : id;
+    }
+
+    private static string FormatTaskAttachmentLabel(TaskAttachment attachment) =>
+        TryReadTaskAttachmentId(attachment.Uri) is { } id ? id : attachment.Uri;
+
+    private static string FormatRelatedTaskOption(TaskSummary? task) =>
+        task is null ? string.Empty : $"{task.Key} - {task.Title}";
+
+    private async Task SelectRelatedTaskAttachmentAsync(string uri)
+    {
+        var id = TryReadTaskAttachmentId(uri);
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            return;
+        }
+
+        await SelectAsync(id);
+    }
+
+    private static bool IsLocalTaskAttachmentUri(string? value) =>
+        !string.IsNullOrWhiteSpace(value) && value.Replace('\\', '/').StartsWith("/artifacts/task-attachments/", StringComparison.OrdinalIgnoreCase);
 
     private Task OnCreateTitleChanged(string value)
     {

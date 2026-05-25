@@ -352,6 +352,65 @@ public class AppApiContractTests
     }
 
     [Test]
+    public async Task TasksApi_CanAttachRelatedTasksAsFirstClassAttachments()
+    {
+        var parentResponse = await _client.PostAsJsonAsync("/api/tasks", new TaskCreateRequest(
+            Title: "Parent attachment task",
+            Description: "Primary task that references another task.",
+            Type: "Task",
+            Status: TaskStatuses.Backlog,
+            Priority: TaskPriorities.Medium,
+            AssigneeMode: TaskAssigneeModes.Custom,
+            AssigneeDirectoryId: null,
+            AssigneeCustomText: "Copilot",
+            Reporter: "copilot",
+            Labels: ["tasks"],
+            DueDateUtc: null,
+            EpicId: null,
+            ParentId: null,
+            Slug: "parent-attachment-task"));
+        parentResponse.EnsureSuccessStatusCode();
+        var parent = await parentResponse.Content.ReadFromJsonAsync<TaskItem>();
+
+        var childResponse = await _client.PostAsJsonAsync("/api/tasks", new TaskCreateRequest(
+            Title: "Related attachment task",
+            Description: "Related task target.",
+            Type: "Task",
+            Status: TaskStatuses.Backlog,
+            Priority: TaskPriorities.Medium,
+            AssigneeMode: TaskAssigneeModes.Custom,
+            AssigneeDirectoryId: null,
+            AssigneeCustomText: "Copilot",
+            Reporter: "copilot",
+            Labels: ["tasks"],
+            DueDateUtc: null,
+            EpicId: null,
+            ParentId: null,
+            Slug: "related-attachment-task"));
+        childResponse.EnsureSuccessStatusCode();
+        var child = await childResponse.Content.ReadFromJsonAsync<TaskItem>();
+
+        var relatedResponse = await _client.PostAsJsonAsync($"/api/tasks/{parent!.Id}/attachments", new TaskAttachmentRequest(
+            "Related attachment task",
+            "task",
+            $"task:{child!.Key}"));
+        relatedResponse.EnsureSuccessStatusCode();
+        var updated = await relatedResponse.Content.ReadFromJsonAsync<TaskItem>();
+        var selfResponse = await _client.PostAsJsonAsync($"/api/tasks/{parent.Id}/attachments", new TaskAttachmentRequest("Self", "task", $"task:{parent.Key}"));
+        var missingResponse = await _client.PostAsJsonAsync($"/api/tasks/{parent.Id}/attachments", new TaskAttachmentRequest("Missing", "task", "task:TSK-9999"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(updated, Is.Not.Null);
+            Assert.That(updated!.Attachments, Has.Count.EqualTo(1));
+            Assert.That(updated.Attachments[0].Kind, Is.EqualTo("task"));
+            Assert.That(updated.Attachments[0].Uri, Is.EqualTo($"task:{child.Id}"));
+            Assert.That(selfResponse.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+            Assert.That(missingResponse.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+        });
+    }
+
+    [Test]
     public async Task TasksApi_CanSetRejectedStatusWithoutCompletingOrArchivingTask()
     {
         var createResponse = await _client.PostAsJsonAsync("/api/tasks", new TaskCreateRequest(

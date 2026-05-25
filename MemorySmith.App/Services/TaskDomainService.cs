@@ -522,27 +522,18 @@ public sealed class FileTaskService : ITaskService
             }
 
             var name = NormalizeNullable(request.Name);
-            var kind = NormalizeNullable(request.Kind) ?? "file";
+            var kind = NormalizeAttachmentKind(request.Kind);
             var uri = NormalizeNullable(request.Uri);
             if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(uri))
             {
                 throw new ArgumentException("Attachment name and uri are required.");
             }
 
-            if (uri.Contains("..", StringComparison.Ordinal))
-            {
-                throw new ArgumentException("Attachment uri cannot contain traversal segments.");
-            }
-
-            if (!Uri.TryCreate(uri, UriKind.Absolute, out var absoluteUri) ||
-                (absoluteUri.Scheme != Uri.UriSchemeHttp && absoluteUri.Scheme != Uri.UriSchemeHttps))
-            {
-                throw new ArgumentException("Attachment uri must be an absolute http or https url.");
-            }
+            var attachmentUri = NormalizeAttachmentUri(item, kind, uri, cancellationToken);
 
             EnsureTaskIsEditable(item);
             var now = DateTime.UtcNow;
-            var attachment = new TaskAttachment($"a-{Guid.NewGuid():N}", name, kind, uri, now);
+            var attachment = new TaskAttachment($"a-{Guid.NewGuid():N}", name, kind, attachmentUri, now);
             var updated = item with
             {
                 Attachments = item.Attachments.Append(attachment).ToList(),
@@ -986,6 +977,68 @@ public sealed class FileTaskService : ITaskService
         return string.Equals(normalized, TaskAssigneeModes.Custom, StringComparison.OrdinalIgnoreCase)
             ? TaskAssigneeModes.Custom
             : TaskAssigneeModes.Directory;
+    }
+
+    private static string NormalizeAttachmentKind(string? kind) =>
+        string.IsNullOrWhiteSpace(kind) ? "file" : kind.Trim().ToLowerInvariant();
+
+    private string NormalizeAttachmentUri(TaskItem owner, string kind, string uri, CancellationToken cancellationToken)
+    {
+        var normalizedUri = uri.Trim();
+        if (normalizedUri.Contains("..", StringComparison.Ordinal))
+        {
+            throw new ArgumentException("Attachment uri cannot contain traversal segments.");
+        }
+
+        if (string.Equals(kind, "task", StringComparison.OrdinalIgnoreCase))
+        {
+            var relatedToken = normalizedUri.StartsWith("task:", StringComparison.OrdinalIgnoreCase)
+                ? normalizedUri[5..].Trim()
+                : normalizedUri;
+            var relatedTask = FindByIdOrKey(relatedToken, cancellationToken);
+            if (relatedTask is null)
+            {
+                throw new ArgumentException("Related task attachment must reference an existing task id or key.");
+            }
+
+            if (string.Equals(relatedTask.Id, owner.Id, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new ArgumentException("Related task attachment cannot reference the same task.");
+            }
+
+            return $"task:{relatedTask.Id}";
+        }
+
+        if (IsSafeLocalTaskAttachmentUri(normalizedUri))
+        {
+            return normalizedUri.Replace('\\', '/');
+        }
+
+        if (!Uri.TryCreate(normalizedUri, UriKind.Absolute, out var absoluteUri) ||
+            (absoluteUri.Scheme != Uri.UriSchemeHttp && absoluteUri.Scheme != Uri.UriSchemeHttps))
+        {
+            throw new ArgumentException("Attachment uri must be an absolute http/https url, a related task reference, or a safe local task attachment path.");
+        }
+
+        return normalizedUri;
+    }
+
+    private static bool IsSafeLocalTaskAttachmentUri(string uri)
+    {
+        var normalized = uri.Replace('\\', '/');
+        if (!normalized.StartsWith("/artifacts/task-attachments/", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (!Uri.TryCreate(normalized, UriKind.Relative, out _))
+        {
+            return false;
+        }
+
+        var decoded = Uri.UnescapeDataString(normalized);
+        return decoded.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .All(segment => segment is not "." and not "..");
     }
 
     private static void ValidateCreate(TaskCreateRequest request)
