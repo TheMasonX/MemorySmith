@@ -47,10 +47,24 @@
                     <MudSelectItem Value="@option">@SortLabel(option)</MudSelectItem>
                 }
             </MudSelect>
-            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync">Refresh</MudButton>
+            <MudTooltip Text="Refresh tasks">
+                <MudIconButton Icon="@Icons.Material.Filled.Refresh"
+                               Variant="Variant.Outlined"
+                               Color="Color.Default"
+                               Size="Size.Small"
+                               OnClick="LoadAsync"
+                               aria-label="Refresh tasks" />
+            </MudTooltip>
             <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
                 <Authorized>
-                    <MudButton Variant="Variant.Outlined" Color="Color.Success" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenQuickCreatePane">Quick Add</MudButton>
+                    <MudTooltip Text="Quick add task">
+                        <MudIconButton Icon="@Icons.Material.Filled.Add"
+                                       Variant="Variant.Outlined"
+                                       Color="Color.Success"
+                                       Size="Size.Small"
+                                       OnClick="OpenQuickCreatePane"
+                                       aria-label="Quick add task" />
+                    </MudTooltip>
                 </Authorized>
             </AuthorizeView>
             <div class="tasks-sidebar-toggle">
@@ -457,7 +471,9 @@
 </div>
 
 @code {
-    private static readonly IReadOnlyList<string> StatusOptions = ["All", TaskStatuses.Backlog, TaskStatuses.Ready, TaskStatuses.InProgress, TaskStatuses.Blocked, TaskStatuses.Rejected, TaskStatuses.Done, TaskStatuses.Archived];
+    private const string ActiveStatusFilter = "Active";
+
+    private static readonly IReadOnlyList<string> StatusOptions = [ActiveStatusFilter, "All", TaskStatuses.Backlog, TaskStatuses.Ready, TaskStatuses.InProgress, TaskStatuses.Blocked, TaskStatuses.Rejected, TaskStatuses.Done, TaskStatuses.Archived];
     private static readonly IReadOnlyList<string> TaskStatusOptions = [TaskStatuses.Backlog, TaskStatuses.Ready, TaskStatuses.InProgress, TaskStatuses.Blocked, TaskStatuses.Rejected, TaskStatuses.Done, TaskStatuses.Archived];
     private static readonly IReadOnlyList<string> TaskPriorityOptions = [TaskPriorities.Critical, TaskPriorities.High, TaskPriorities.Medium, TaskPriorities.Low];
     private static readonly IReadOnlyList<string> SortOptions = ["updated-desc", "updated-asc", "key-asc", "key-desc", "severity-desc", "severity-asc", "title-asc", "title-desc"];
@@ -466,7 +482,7 @@
     private IReadOnlyList<TaskActivityEntry> _history = [];
     private string _selectedStatus = TaskStatuses.Backlog;
     private string _query = string.Empty;
-    private string _statusFilter = "All";
+    private string _statusFilter = ActiveStatusFilter;
     private string _commentDraft = string.Empty;
     private string _pageLinkDraft = string.Empty;
     private string _externalLinkLabel = string.Empty;
@@ -518,9 +534,9 @@
     private async Task LoadAsync()
     {
         _isLoading = true;
-        var status = _statusFilter == "All" ? null : _statusFilter;
+        var status = _statusFilter is "All" or ActiveStatusFilter ? null : _statusFilter;
         var loaded = await TaskService.ListAsync(_query, status, null, 200, CancellationToken.None);
-        _tasks = ApplySort(loaded);
+        _tasks = ApplySort(_statusFilter == ActiveStatusFilter ? loaded.Where(IsActiveTaskStatus).ToList() : loaded);
         await WarmAssigneeCacheAsync(_tasks
             .Where(task => string.Equals(task.AssigneeMode, TaskAssigneeModes.Directory, StringComparison.OrdinalIgnoreCase))
             .Select(task => task.AssigneeDirectoryId));
@@ -546,6 +562,10 @@
             PopulateEditDraft(_selectedTask);
         }
     }
+
+    private static bool IsActiveTaskStatus(TaskSummary task)
+        => !string.Equals(task.Status, TaskStatuses.Done, StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(task.Status, TaskStatuses.Archived, StringComparison.OrdinalIgnoreCase);
 
     private async Task CreateQuickTaskAsync()
     {

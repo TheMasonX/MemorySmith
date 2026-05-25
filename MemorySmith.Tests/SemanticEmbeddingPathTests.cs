@@ -82,6 +82,38 @@ public class SemanticEmbeddingPathTests
         });
     }
 
+    [Test]
+    public void GetStatus_RejectsUnsupportedTokenizerKindBeforeOpeningOnnxSession()
+    {
+        var dataRoot = CreateDataDeploymentRoot("TokenizerKind");
+        var unrelatedWorkingDirectory = Path.Combine(_tempRoot, "unsupported-tokenizer");
+        Directory.CreateDirectory(unrelatedWorkingDirectory);
+        Directory.SetCurrentDirectory(unrelatedWorkingDirectory);
+
+        File.WriteAllBytes(Path.Combine(dataRoot, "Models", "embedding-model.onnx"), new byte[] { 0x00 });
+        File.WriteAllLines(Path.Combine(dataRoot, "Models", "vocab.txt"), ["[UNK]", "[CLS]", "[SEP]"]);
+
+        using var provider = new OnnxTextEmbeddingProvider(Options.Create(new MemorySmithOptions
+        {
+            DataPath = Path.Combine(dataRoot, "Memories"),
+            SemanticSearch = new SemanticSearchOptions
+            {
+                ModelPath = Path.Combine("Models", "embedding-model.onnx"),
+                VocabularyPath = Path.Combine("Models", "vocab.txt"),
+                TokenizerKind = "SentencePiece"
+            }
+        }));
+
+        var status = provider.GetStatus();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(status.Available, Is.False);
+            Assert.That(status.Reason, Does.Contain("Tokenizer kind 'SentencePiece' is not supported"));
+            Assert.That(status.Reason, Does.Contain("WordPiece"));
+        });
+    }
+
     private string CreateDataDeploymentRoot(string folderName)
     {
         var dataRoot = Path.Combine(_tempRoot, folderName);

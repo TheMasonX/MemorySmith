@@ -29,6 +29,107 @@ public interface ITextEmbeddingProvider
     bool TryEmbed(string text, EmbeddingInputKind kind, out float[] embedding, out string? reason);
 }
 
+internal static class OnnxEmbeddingModelConventions
+{
+    public static string CanonicalizeTokenizerKind(string? tokenizerKind)
+    {
+        var normalized = tokenizerKind?.Trim();
+        if (string.IsNullOrWhiteSpace(normalized))
+        {
+            return "wordpiece";
+        }
+
+        return normalized.ToLowerInvariant() switch
+        {
+            "wordpiece" or "bert" or "bert-wordpiece" => "wordpiece",
+            _ => normalized.ToLowerInvariant()
+        };
+    }
+
+    public static string CanonicalizePoolingMode(string? poolingMode)
+    {
+        var normalized = poolingMode?.Trim();
+        if (string.IsNullOrWhiteSpace(normalized))
+        {
+            return "mean";
+        }
+
+        return normalized.ToLowerInvariant() switch
+        {
+            "mean" or "meanpool" or "mean_pool" => "mean",
+            "cls" or "class" or "class-token" or "class_token" => "cls",
+            _ => normalized.ToLowerInvariant()
+        };
+    }
+
+    public static string GetUnsupportedTokenizerMessage(string? tokenizerKind) =>
+        $"Tokenizer kind '{tokenizerKind ?? string.Empty}' is not supported. Supported kinds: WordPiece.";
+
+    public static string GetUnsupportedPoolingMessage(string? poolingMode) =>
+        $"Pooling mode '{poolingMode ?? string.Empty}' is not supported. Supported modes: Mean, Cls.";
+}
+
+internal static class OnnxEmbeddingVectorProjector
+{
+    public static float[] ProjectSequenceOutput(float[] data, int tokenCount, int dimension, long[] attentionMask, string? poolingMode)
+    {
+        return OnnxEmbeddingModelConventions.CanonicalizePoolingMode(poolingMode) switch
+        {
+            "mean" => MeanPool(data, tokenCount, dimension, attentionMask),
+            "cls" => ClsPool(data, tokenCount, dimension, attentionMask),
+            _ => throw new NotSupportedException(OnnxEmbeddingModelConventions.GetUnsupportedPoolingMessage(poolingMode))
+        };
+    }
+
+    private static float[] MeanPool(float[] data, int tokenCount, int dimension, long[] attentionMask)
+    {
+        var pooled = new float[dimension];
+        var included = 0;
+        for (var tokenIndex = 0; tokenIndex < tokenCount && tokenIndex < attentionMask.Length; tokenIndex++)
+        {
+            if (attentionMask[tokenIndex] == 0)
+            {
+                continue;
+            }
+
+            included++;
+            var offset = tokenIndex * dimension;
+            for (var dimensionIndex = 0; dimensionIndex < dimension; dimensionIndex++)
+            {
+                pooled[dimensionIndex] += data[offset + dimensionIndex];
+            }
+        }
+
+        if (included == 0)
+        {
+            return pooled;
+        }
+
+        for (var dimensionIndex = 0; dimensionIndex < pooled.Length; dimensionIndex++)
+        {
+            pooled[dimensionIndex] /= included;
+        }
+
+        return pooled;
+    }
+
+    private static float[] ClsPool(float[] data, int tokenCount, int dimension, long[] attentionMask)
+    {
+        for (var tokenIndex = 0; tokenIndex < tokenCount && tokenIndex < attentionMask.Length; tokenIndex++)
+        {
+            if (attentionMask[tokenIndex] == 0)
+            {
+                continue;
+            }
+
+            var offset = tokenIndex * dimension;
+            return data.Skip(offset).Take(dimension).ToArray();
+        }
+
+        return new float[dimension];
+    }
+}
+
 public sealed class SemanticEmbeddingSearchService : IDisposable
 {
     private const int MaxCachedQueryEmbeddings = 256;
@@ -252,6 +353,8 @@ public sealed class SemanticEmbeddingSearchService : IDisposable
             File.Exists(modelPath) ? File.GetLastWriteTimeUtc(modelPath).Ticks.ToString() : "missing",
             vocabularyPath,
             File.Exists(vocabularyPath) ? File.GetLastWriteTimeUtc(vocabularyPath).Ticks.ToString() : "missing",
+            OnnxEmbeddingModelConventions.CanonicalizeTokenizerKind(_options.TokenizerKind),
+            OnnxEmbeddingModelConventions.CanonicalizePoolingMode(_options.PoolingMode),
             _options.QueryPrefix,
             _options.DocumentPrefix,
             _options.MaxInputTokens,
@@ -377,7 +480,7 @@ public sealed class OnnxTextEmbeddingProvider : ITextEmbeddingProvider, IDisposa
     private readonly SemanticSearchOptions _options;
     private readonly object _lock = new();
     private InferenceSession? _session;
-    private WordPieceTokenizer? _tokenizer;
+    private ITokenizer? _tokenizer;
     private bool _initialized;
     private string? _modelPath;
     private string? _vocabularyPath;
@@ -411,7 +514,7 @@ public sealed class OnnxTextEmbeddingProvider : ITextEmbeddingProvider, IDisposa
             var prefix = kind == EmbeddingInputKind.Query ? _options.QueryPrefix : _options.DocumentPrefix;
             var tokenized = _tokenizer!.Encode(prefix + (text ?? string.Empty), _options.MaxInputTokens);
             using var results = session.Run(CreateInputs(session, tokenized));
-            embedding = ExtractEmbedding(results, tokenized.AttentionMask);
+            embedding = ExtractEmbedding(results, tokenized.AttentionMask, _options.PoolingMode);
             Normalize(embedding);
             _dimension = embedding.Length;
             reason = null;
@@ -462,7 +565,7 @@ public sealed class OnnxTextEmbeddingProvider : ITextEmbeddingProvider, IDisposa
 
             try
             {
-                _tokenizer = WordPieceTokenizer.Load(_vocabularyPath);
+                _tokenizer = CreateTokenizer(_options.TokenizerKind, _vocabularyPath);
                 _session = new InferenceSession(_modelPath);
                 _statusReason = "ONNX embedding provider is available.";
                 return true;
@@ -558,7 +661,7 @@ public sealed class OnnxTextEmbeddingProvider : ITextEmbeddingProvider, IDisposa
     private static string NormalizeInputName(string name) =>
         name.Replace('-', '_').ToLowerInvariant();
 
-    private static float[] ExtractEmbedding(IDisposableReadOnlyCollection<DisposableNamedOnnxValue> results, long[] attentionMask)
+    private static float[] ExtractEmbedding(IDisposableReadOnlyCollection<DisposableNamedOnnxValue> results, long[] attentionMask, string? poolingMode)
     {
         foreach (var result in results.OrderByDescending(result => result.Name.Contains("embedding", StringComparison.OrdinalIgnoreCase)))
         {
@@ -586,43 +689,20 @@ public sealed class OnnxTextEmbeddingProvider : ITextEmbeddingProvider, IDisposa
 
             if (dimensions.Length == 3 && dimensions[0] == 1)
             {
-                return MeanPool(data, dimensions[1], dimensions[2], attentionMask);
+                return OnnxEmbeddingVectorProjector.ProjectSequenceOutput(data, dimensions[1], dimensions[2], attentionMask, poolingMode);
             }
         }
 
         throw new InvalidOperationException("The ONNX embedding model did not return a supported float tensor output.");
     }
 
-    private static float[] MeanPool(float[] data, int tokenCount, int dimension, long[] attentionMask)
+    private static ITokenizer CreateTokenizer(string? tokenizerKind, string vocabularyPath)
     {
-        var pooled = new float[dimension];
-        var included = 0;
-        for (var tokenIndex = 0; tokenIndex < tokenCount && tokenIndex < attentionMask.Length; tokenIndex++)
+        return OnnxEmbeddingModelConventions.CanonicalizeTokenizerKind(tokenizerKind) switch
         {
-            if (attentionMask[tokenIndex] == 0)
-            {
-                continue;
-            }
-
-            included++;
-            var offset = tokenIndex * dimension;
-            for (var dimensionIndex = 0; dimensionIndex < dimension; dimensionIndex++)
-            {
-                pooled[dimensionIndex] += data[offset + dimensionIndex];
-            }
-        }
-
-        if (included == 0)
-        {
-            return pooled;
-        }
-
-        for (var dimensionIndex = 0; dimensionIndex < pooled.Length; dimensionIndex++)
-        {
-            pooled[dimensionIndex] /= included;
-        }
-
-        return pooled;
+            "wordpiece" => WordPieceTokenizer.Load(vocabularyPath),
+            _ => throw new NotSupportedException(OnnxEmbeddingModelConventions.GetUnsupportedTokenizerMessage(tokenizerKind))
+        };
     }
 
     private static void Normalize(float[] vector)
@@ -646,7 +726,12 @@ public sealed class OnnxTextEmbeddingProvider : ITextEmbeddingProvider, IDisposa
 
     private sealed record TokenizedText(long[] InputIds, long[] AttentionMask, long[] TokenTypeIds);
 
-    private sealed class WordPieceTokenizer
+    private interface ITokenizer
+    {
+        TokenizedText Encode(string text, int maxInputTokens);
+    }
+
+    private sealed class WordPieceTokenizer : ITokenizer
     {
         private readonly IReadOnlyDictionary<string, long> _vocabulary;
         private readonly long _unknownId;

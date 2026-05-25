@@ -151,9 +151,13 @@ Use relative configuration values:
 {
   "EmbeddingsEnabled": true,
   "ModelPath": "Models/embedding-model.onnx",
-  "VocabularyPath": "Models/vocab.txt"
+  "VocabularyPath": "Models/vocab.txt",
+  "TokenizerKind": "WordPiece",
+  "PoolingMode": "Mean"
 }
 ```
+
+`TokenizerKind` and `PoolingMode` are part of the semantic-provider contract and also affect persisted embedding reuse under `Data/Graph/embeddings`. The current built-in provider supports `WordPiece` tokenization and `Mean` or `Cls` pooling; if you point the app at a model family that needs a different tokenizer, `/health` should report that mismatch clearly instead of silently serving stale vectors.
 
 Restart the app and confirm semantic provider status in `/health`.
 

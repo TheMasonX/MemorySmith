@@ -112,8 +112,9 @@ Clamp rule: Admin access is not granted by broad anonymous/default-role settings
 
 | Key | Purpose | Verify |
 | --- | --- | --- |
-| `MemorySmith:SemanticSearch:*` | ONNX model paths, prefixes, and size limits | `/health` semantic provider state, semantic/hybrid search |
+| `MemorySmith:SemanticSearch:*` | ONNX model paths, tokenizer/pooling convention, prefixes, and size limits | `/health` semantic provider state, semantic/hybrid search |
 | `MemorySmith:TaskSearch:HybridSemanticEnabled` | Hybrid lexical/semantic task ranking | `/tasks` query relevance |
+| `MemorySmith:TaskAttachments:*` | Task file upload storage path and per-file byte limit | `/tasks` attachment upload and `/artifacts/task-attachments/...` serving |
 | `MemorySmith:Governance:TagPolicyPath` | Tag policy JSON path | `/tags`, policy diagnostics |
 | `MemorySmith:Maintenance:*` | Background triage/index/consolidation cadence | `/maintenance`, `/health` |
 

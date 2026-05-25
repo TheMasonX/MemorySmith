@@ -711,6 +711,59 @@ public class MemoryApplicationServiceTests
         }
     }
 
+    [Test]
+    public async Task SemanticSearchAsync_InvalidatesPersistedDocumentEmbeddingsWhenPoolingModeChangesAcrossServiceRecreation()
+    {
+        var tempRoot = CreateSemanticCacheTempRoot();
+
+        try
+        {
+            var meanOptions = CreateSemanticCacheOptions(tempRoot, poolingMode: "Mean");
+            var clsOptions = CreateSemanticCacheOptions(tempRoot, poolingMode: "Cls");
+
+            _store.Save(new MemoryRecord
+            {
+                Id = "persisted-pooling-change",
+                Title = "Persisted Pooling Change",
+                Content = "relevant target",
+                Status = MemoryStatus.Core,
+                Tags = ["search"],
+                LastUpdated = new DateTime(2026, 05, 27, 0, 0, 0, DateTimeKind.Utc)
+            });
+
+            var firstProvider = new CountingTextEmbeddingProvider();
+            using (var firstSearch = new SemanticEmbeddingSearchService(firstProvider, meanOptions))
+            {
+                var firstService = TestServiceFactory.CreateMemoryApplicationService(_store, _events, _publisher, firstSearch, options: meanOptions);
+                var first = await firstService.SemanticSearchAsync(
+                    new SemanticMemorySearchQuery(Query: "durable recall", Tags: "search", Limit: 5),
+                    CancellationToken.None);
+
+                Assert.That(first.Select(result => result.Id), Is.EqualTo(new[] { "persisted-pooling-change" }));
+            }
+
+            var secondProvider = new CountingTextEmbeddingProvider();
+            using var secondSearch = new SemanticEmbeddingSearchService(secondProvider, clsOptions);
+            var secondService = TestServiceFactory.CreateMemoryApplicationService(_store, _events, _publisher, secondSearch, options: clsOptions);
+            var second = await secondService.SemanticSearchAsync(
+                new SemanticMemorySearchQuery(Query: "durable recall", Tags: "search", Limit: 5),
+                CancellationToken.None);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(second.Select(result => result.Id), Is.EqualTo(new[] { "persisted-pooling-change" }));
+                Assert.That(secondProvider.DocumentEmbeddingsRequested, Is.EqualTo(1), "Changing pooling mode should invalidate persisted document embeddings because the provider semantics changed.");
+            });
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot))
+            {
+                Directory.Delete(tempRoot, recursive: true);
+            }
+        }
+    }
+
     private static string CreateSemanticCacheTempRoot()
     {
         var tempRoot = Path.Combine(Path.GetTempPath(), $"memorysmith-semantic-cache-{Guid.NewGuid():N}");
@@ -718,7 +771,7 @@ public class MemoryApplicationServiceTests
         return tempRoot;
     }
 
-    private static IOptions<MemorySmithOptions> CreateSemanticCacheOptions(string tempRoot) =>
+    private static IOptions<MemorySmithOptions> CreateSemanticCacheOptions(string tempRoot, string poolingMode = "Mean", string tokenizerKind = "WordPiece") =>
         Options.Create(new MemorySmithOptions
         {
             DataPath = Path.Combine(tempRoot, "Memories"),
@@ -727,6 +780,8 @@ public class MemoryApplicationServiceTests
                 EmbeddingsEnabled = true,
                 ModelPath = Path.Combine("Models", "embedding-model.onnx"),
                 VocabularyPath = Path.Combine("Models", "vocab.txt"),
+                TokenizerKind = tokenizerKind,
+                PoolingMode = poolingMode,
                 MaxInputTokens = 512,
                 MaxIndexedTextCharacters = 6000,
                 QueryPrefix = "query: ",

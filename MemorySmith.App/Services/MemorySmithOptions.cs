@@ -154,6 +154,8 @@ public class SemanticSearchOptions
     public bool EmbeddingsEnabled { get; set; } = true;
     public string ModelPath { get; set; } = Path.Combine("Models", "embedding-model.onnx");
     public string VocabularyPath { get; set; } = Path.Combine("Models", "vocab.txt");
+    public string TokenizerKind { get; set; } = "WordPiece";
+    public string PoolingMode { get; set; } = "Mean";
     public int MaxInputTokens { get; set; } = 512;
     public int MaxIndexedTextCharacters { get; set; } = 6000;
     public string QueryPrefix { get; set; } = "query: ";
