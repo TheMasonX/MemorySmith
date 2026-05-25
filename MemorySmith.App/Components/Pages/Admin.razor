@@ -70,36 +70,43 @@
             </MudTable>
         </MudTabPanel>
         <MudTabPanel Text="OAuth" Icon="@Icons.Material.Filled.Link">
-            <MudTable Items="@_providers" Dense="true" Class="health-table">
-                <HeaderContent>
-                    <MudTh>Provider</MudTh>
-                    <MudTh>Status</MudTh>
-                    <MudTh>Configured</MudTh>
-                    <MudTh>Links</MudTh>
-                    <MudTh>Updated</MudTh>
-                    <MudTh>Action</MudTh>
-                </HeaderContent>
-                <RowTemplate>
-                    <MudTd>
-                        <div class="admin-provider-cell">
-                            <span>@context.DisplayName</span>
-                            @if (ProviderOAuthSetupUrl(context.ProviderName) is { } setupUrl)
-                            {
-                                <a class="admin-provider-setup-link" href="@setupUrl" target="_blank" rel="noopener noreferrer" title="Open @context.DisplayName OAuth setup" aria-label="Open @context.DisplayName OAuth setup">
-                                    <MudIcon Icon="@Icons.Material.Filled.OpenInNew" Size="Size.Small" />
-                                </a>
-                            }
+            <div class="admin-provider-grid" aria-label="Identity providers">
+                @foreach (var provider in _providers)
+                {
+                    <article class="health-lower-card admin-provider-card">
+                        <div class="admin-provider-card-header">
+                            <div class="admin-provider-title">
+                                <strong>@provider.DisplayName</strong>
+                                @if (ProviderOAuthSetupUrl(provider.ProviderName) is { } setupUrl)
+                                {
+                                    <a class="admin-provider-setup-link" href="@setupUrl" target="_blank" rel="noopener noreferrer" title="Open @provider.DisplayName OAuth setup" aria-label="Open @provider.DisplayName OAuth setup">
+                                        <MudIcon Icon="@Icons.Material.Filled.OpenInNew" Size="Size.Small" />
+                                    </a>
+                                }
+                            </div>
+                            <span class="@ProviderStatusClass(provider)">@(provider.IsEnabled ? "Enabled" : "Disabled")</span>
                         </div>
-                    </MudTd>
-                    <MudTd>@(context.IsEnabled ? "Enabled" : "Disabled")</MudTd>
-                    <MudTd>@ProviderConfigurationLabel(context.ProviderName)</MudTd>
-                    <MudTd>@ProviderLinkCount(context.ProviderName)</MudTd>
-                    <MudTd>@context.UpdatedAtUtc.ToLocalTime().ToString("g")</MudTd>
-                    <MudTd>
-                        <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="@(context.IsEnabled ? Color.Warning : Color.Success)" Disabled="@_isBusy" OnClick="@(() => ToggleProviderAsync(context))">@(context.IsEnabled ? "Disable" : "Enable")</MudButton>
-                    </MudTd>
-                </RowTemplate>
-            </MudTable>
+                        <dl class="admin-provider-meta">
+                            <div>
+                                <dt>Configured</dt>
+                                <dd>@ProviderConfigurationLabel(provider.ProviderName)</dd>
+                            </div>
+                            <div>
+                                <dt>Links</dt>
+                                <dd>@ProviderLinkCount(provider.ProviderName)</dd>
+                            </div>
+                            <div>
+                                <dt>Updated</dt>
+                                <dd>@provider.UpdatedAtUtc.ToLocalTime().ToString("g")</dd>
+                            </div>
+                        </dl>
+                        <p class="admin-provider-impact">@ProviderActionImpact(provider)</p>
+                        <div class="admin-provider-card-actions">
+                            <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="@ProviderToggleColor(provider)" Disabled="@(_isBusy || !CanToggleProvider(provider))" OnClick="@(() => ToggleProviderAsync(provider))" aria-label="@ProviderToggleLabel(provider)" title="@ProviderToggleTooltip(provider)">@ProviderToggleText(provider)</MudButton>
+                        </div>
+                    </article>
+                }
+            </div>
         </MudTabPanel>
         <MudTabPanel Text="Models" Icon="@Icons.Material.Filled.Memory">
             <div class="admin-models-layout">
@@ -614,8 +621,22 @@
 
     private async Task ToggleProviderAsync(AuthProviderRecord provider)
     {
-        _isBusy = true;
+        if (!CanToggleProvider(provider))
+        {
+            Snackbar.Add(ProviderToggleTooltip(provider), Severity.Warning);
+            return;
+        }
+
         var enabled = !provider.IsEnabled;
+        if (!await Dialogs.ConfirmDestructiveActionAsync(
+            $"{ProviderToggleText(provider)} provider?",
+            ProviderToggleConfirmation(provider, enabled),
+            $"{ProviderToggleText(provider)} provider"))
+        {
+            return;
+        }
+
+        _isBusy = true;
         await Database.ProviderLinks.SetProviderEnabledAsync(provider.ProviderName, enabled, CurrentUser.UserId, CancellationToken.None);
         await Audit.RecordAsync("provider.enabled.changed", "Provider", provider.ProviderName, MemorySmithAuditOutcomes.Success, details: new { enabled }, cancellationToken: CancellationToken.None);
         Snackbar.Add($"{provider.DisplayName} {(enabled ? "enabled" : "disabled")}.", Severity.Success);
@@ -845,6 +866,76 @@
     }
 
     private int ProviderLinkCount(string providerName) => _providerLinkCounts.TryGetValue(providerName, out var count) ? count : 0;
+
+    private static string ProviderStatusClass(AuthProviderRecord provider) => provider.IsEnabled ? "wiki-status is-core" : "wiki-status";
+
+    private static string ProviderToggleText(AuthProviderRecord provider) => provider.IsEnabled ? "Disable" : "Enable";
+
+    private static Color ProviderToggleColor(AuthProviderRecord provider) => provider.IsEnabled ? Color.Warning : Color.Success;
+
+    private string ProviderToggleLabel(AuthProviderRecord provider) => $"{ProviderToggleText(provider)} {provider.DisplayName} sign-in provider";
+
+    private string ProviderToggleTooltip(AuthProviderRecord provider)
+    {
+        if (IsSystemProvider(provider))
+        {
+            return "Built-in system providers are managed by the app and cannot be toggled here.";
+        }
+
+        if (!provider.IsEnabled && !IsProviderConfiguredForUse(provider.ProviderName))
+        {
+            return $"Configure {provider.DisplayName} before enabling this sign-in provider.";
+        }
+
+        return provider.IsEnabled
+            ? $"Disable {provider.DisplayName} sign-in after confirmation."
+            : $"Enable {provider.DisplayName} sign-in after confirmation.";
+    }
+
+    private string ProviderActionImpact(AuthProviderRecord provider)
+    {
+        if (IsSystemProvider(provider))
+        {
+            return "Built-in provider; no manual action is available.";
+        }
+
+        if (!provider.IsEnabled && !IsProviderConfiguredForUse(provider.ProviderName))
+        {
+            return "Configuration is incomplete, so enabling is blocked until prerequisites are set.";
+        }
+
+        var links = ProviderLinkCount(provider.ProviderName);
+        return provider.IsEnabled
+            ? $"Disabling pauses this sign-in path for {links:N0} linked account(s) until it is re-enabled."
+            : "Enabling makes this configured sign-in path available to users.";
+    }
+
+    private string ProviderToggleConfirmation(AuthProviderRecord provider, bool enabled)
+    {
+        var links = ProviderLinkCount(provider.ProviderName);
+        return enabled
+            ? $"Enable {provider.DisplayName} sign-in. This makes the configured provider available to users."
+            : $"Disable {provider.DisplayName} sign-in. {links:N0} linked account(s) will be unable to use this provider until it is re-enabled.";
+    }
+
+    private bool CanToggleProvider(AuthProviderRecord provider) => !IsSystemProvider(provider) && (provider.IsEnabled || IsProviderConfiguredForUse(provider.ProviderName));
+
+    private static bool IsSystemProvider(AuthProviderRecord provider) => string.Equals(provider.ProviderName, MemorySmithProviders.System, StringComparison.OrdinalIgnoreCase);
+
+    private bool IsProviderConfiguredForUse(string providerName)
+    {
+        var auth = Options.CurrentValue.Auth;
+        return providerName switch
+        {
+            MemorySmithProviders.LocalPassword => auth.LocalPasswordEnabled,
+            MemorySmithProviders.ApiToken => !string.IsNullOrWhiteSpace(Options.CurrentValue.ApiKey),
+            MemorySmithProviders.System => true,
+            MemorySmithProviders.GitHub => auth.Providers.GitHub.Enabled && !string.IsNullOrWhiteSpace(auth.Providers.GitHub.ClientId),
+            MemorySmithProviders.Google => auth.Providers.Google.Enabled && !string.IsNullOrWhiteSpace(auth.Providers.Google.ClientId),
+            MemorySmithProviders.Microsoft => auth.Providers.Microsoft.Enabled && !string.IsNullOrWhiteSpace(auth.Providers.Microsoft.ClientId),
+            _ => false
+        };
+    }
 
     private static string FormatContextWindow(int? tokens) => tokens is null ? "Provider default" : $"{tokens.Value:n0}";
 

@@ -2681,11 +2681,65 @@ body {
     color: var(--vscode-text-muted);
 }
 
-.admin-provider-cell {
+.admin-provider-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 10px;
+}
+
+.admin-provider-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.admin-provider-card-header {
+    display: flex;
+    align-items: start;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.admin-provider-title {
     display: inline-flex;
     align-items: center;
     gap: 6px;
     min-width: 0;
+}
+
+.admin-provider-meta {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin: 0;
+}
+
+.admin-provider-meta div {
+    min-width: 0;
+}
+
+.admin-provider-meta dt {
+    color: var(--vscode-text-muted);
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.admin-provider-meta dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.admin-provider-impact {
+    margin: 0;
+    color: var(--vscode-text-muted);
+    font-size: 0.82rem;
+    min-height: 2.4em;
+}
+
+.admin-provider-card-actions {
+    display: flex;
+    justify-content: flex-end;
 }
 
 .admin-provider-setup-link {
@@ -3987,6 +4041,7 @@ body {
     .wiki-editor-grid,
     .wiki-link-grid,
     .vars-row,
+    .admin-provider-meta,
     .health-config-grid {
         grid-template-columns: 1fr;
     }
