@@ -16,6 +16,7 @@
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
 @inject ICurrentUserContext CurrentUser
+@inject IDialogService Dialogs
 
 <PageTitle>Chat - MemorySmith</PageTitle>
 <NavigationLock ConfirmExternalNavigation="@HasPendingDraft" OnBeforeInternalNavigation="ConfirmInternalNavigation" />
@@ -1004,7 +1005,10 @@
         }
 
         var title = string.IsNullOrWhiteSpace(session.Title) ? "this chat" : session.Title;
-        if (!await JS.InvokeAsync<bool>("confirm", $"Delete chat '{title}'? This cannot be undone."))
+        if (!await Dialogs.ConfirmDestructiveActionAsync(
+            "Delete chat?",
+            $"Delete chat \"{title}\". This removes the saved chat session from this browser profile and cannot be undone.",
+            "Delete chat"))
         {
             return;
         }
@@ -1025,6 +1029,7 @@
         }
 
         _agentStatus = "Chat deleted";
+        Snackbar.Add("Chat deleted.", Severity.Success);
         await SaveSessionsAsync();
         await SavePreferencesAsync();
     }

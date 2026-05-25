@@ -5,6 +5,7 @@
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
 @inject VarResolver VarResolver
+@inject IDialogService Dialogs
 
 <PageTitle>Memories - MemorySmith</PageTitle>
 
@@ -593,7 +594,20 @@
 
     private async Task DeleteAsync(string id)
     {
+        var selectedRecord = string.Equals(_selectedRecord?.Id, id, StringComparison.OrdinalIgnoreCase) ? _selectedRecord : null;
+        var recordTitle = selectedRecord is not null && !string.IsNullOrWhiteSpace(selectedRecord.Title)
+            ? $"{selectedRecord.Title} ({id})"
+            : id;
+        if (!await Dialogs.ConfirmDestructiveActionAsync(
+            "Delete memory?",
+            $"Delete memory \"{recordTitle}\". This removes the record from the knowledge base. Existing file history or backups may be needed to recover it.",
+            "Delete memory"))
+        {
+            return;
+        }
+
         await Memories.DeleteAsync(id, CancellationToken.None);
+        Snackbar.Add("Memory deleted. Check history or backups if recovery is needed.", Severity.Success);
         if (_selectedRecord?.Id == id)
         {
             _selectedRecord = null;

@@ -11,6 +11,7 @@
 @inject VarResolver VarResolver
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
+@inject IDialogService Dialogs
 @using Microsoft.Extensions.Options
 @using Microsoft.AspNetCore.WebUtilities
 @using System.Text.Json
@@ -708,6 +709,14 @@
 
     private async Task DeleteModelProfileAsync(ChatModelProfileView profile)
     {
+        if (!await Dialogs.ConfirmDestructiveActionAsync(
+            "Delete model profile?",
+            $"Delete model profile \"{profile.DisplayName}\". This removes the saved profile configuration; recreate it from Admin Models if needed.",
+            "Delete model profile"))
+        {
+            return;
+        }
+
         _isBusy = true;
         var result = await ModelProfiles.DeleteAsync(profile.Id, CancellationToken.None);
         if (result.Succeeded)

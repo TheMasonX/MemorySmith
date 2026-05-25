@@ -10,6 +10,7 @@
 @inject IJSRuntime JS
 @inject IOptionsMonitor<MemorySmithOptions> Options
 @inject ICurrentUserContext CurrentUser
+@inject IDialogService Dialogs
 
 <PageTitle>Pages - MemorySmith</PageTitle>
 <NavigationLock ConfirmExternalNavigation="@HasUnsavedChanges" OnBeforeInternalNavigation="ConfirmInternalNavigation" />
@@ -662,8 +663,17 @@
             return;
         }
 
+        var pageTitle = string.IsNullOrWhiteSpace(_selectedPage.Title) ? _selectedPage.Slug : _selectedPage.Title;
+        if (!await Dialogs.ConfirmDestructiveActionAsync(
+            "Delete page?",
+            $"Delete page \"{pageTitle}\" ({_selectedPage.Slug}). This removes it from the wiki. Existing file history or backups may be needed to recover it.",
+            "Delete page"))
+        {
+            return;
+        }
+
         var deleted = await PageService.DeleteAsync(_selectedPage.Slug, CancellationToken.None);
-        Snackbar.Add(deleted ? "Page deleted" : "Delete failed", deleted ? Severity.Success : Severity.Error);
+        Snackbar.Add(deleted ? "Page deleted. Check history or backups if recovery is needed." : "Delete failed", deleted ? Severity.Success : Severity.Error);
         _selectedPage = null;
         await LoadAsync();
         Navigation.NavigateTo("/pages");

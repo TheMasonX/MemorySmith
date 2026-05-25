@@ -6,6 +6,7 @@
 @inject MemorySmithLocalAuthService Auth
 @inject IOptionsMonitor<MemorySmithOptions> Options
 @inject ISnackbar Snackbar
+@inject IDialogService Dialogs
 @using Microsoft.Extensions.Options
 @using System.Security.Claims
 
@@ -168,6 +169,16 @@
     private async Task RemoveLinkAsync(ProviderLink link)
     {
         if (_userId is null) return;
+        var provider = ProviderDisplay(link.ProviderName);
+        var account = ProviderAccountLabel(link);
+        if (!await Dialogs.ConfirmDestructiveActionAsync(
+            "Remove sign-in method?",
+            $"Remove {provider} sign-in method \"{account}\". You will need another available sign-in method to access this account afterward.",
+            "Remove sign-in method"))
+        {
+            return;
+        }
+
         _isBusy = true;
         var result = string.Equals(link.ProviderName, MemorySmithProviders.LocalPassword, StringComparison.OrdinalIgnoreCase)
             ? await Auth.RemoveLocalPasswordAsync(_userId, CancellationToken.None)

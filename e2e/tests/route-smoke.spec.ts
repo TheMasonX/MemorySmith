@@ -59,6 +59,24 @@ const routes: SmokeRoute[] = [
       await expect(page.getByTitle('Attach files')).toContainText('Attach');
       await expect(page.locator('#chat-file-input')).toHaveAttribute('aria-label', 'Attach files');
     },
+    interact: async (page) => {
+      await seedDisposableChatSession(page);
+      await page.reload();
+      await expect(page.getByRole('region', { name: 'MemorySmith chat' })).toBeVisible();
+      await openChatHistory(page);
+
+      await expect(page.getByText('Smoke delete cancel')).toBeVisible();
+      await page.getByRole('button', { name: 'Delete chat' }).first().click();
+
+      const dialog = page.getByRole('dialog', { name: 'Delete chat?' });
+      await expect(dialog).toBeVisible();
+      await expect(dialog).toContainText('Smoke delete cancel');
+      await dialog.getByRole('button', { name: 'Cancel' }).click();
+
+      await expect(dialog).toHaveCount(0);
+      await expect(page.getByText('Smoke delete cancel')).toBeVisible();
+      await clearDisposableChatSession(page);
+    },
   },
   {
     name: 'Tasks',
@@ -198,6 +216,42 @@ async function reopenTaskList(page: Page): Promise<void> {
     await page.getByRole('button', { name: 'Toggle task list' }).click();
     await expect(taskList).toBeVisible({ timeout: 1_000 });
   }).toPass({ timeout: 10_000 });
+}
+
+async function seedDisposableChatSession(page: Page): Promise<void> {
+  const timestamp = new Date().toISOString();
+  await page.evaluate((updatedUtc) => {
+    localStorage.setItem(
+      'memorysmith.chat.sessions.v1',
+      JSON.stringify([
+        {
+          id: 'route-smoke-delete-cancel',
+          title: 'Smoke delete cancel',
+          createdUtc: updatedUtc,
+          updatedUtc,
+          draft: 'kept by cancel',
+          pendingAttachments: [],
+          turns: [],
+          history: [],
+        },
+      ]),
+    );
+  }, timestamp);
+}
+
+async function clearDisposableChatSession(page: Page): Promise<void> {
+  await page.evaluate(() => localStorage.removeItem('memorysmith.chat.sessions.v1'));
+}
+
+async function openChatHistory(page: Page): Promise<void> {
+  const sidebar = page.getByRole('complementary', { name: 'Chat sidebar' });
+  if ((await sidebar.count()) === 0) {
+    await page.getByRole('button', { name: 'Toggle sidebar' }).click();
+  }
+
+  await expect(sidebar).toBeVisible();
+  await page.getByRole('button', { name: 'History' }).click();
+  await expect(page.getByRole('region', { name: 'Chat history' })).toBeVisible();
 }
 
 async function selectFirstTask(page: Page): Promise<void> {
