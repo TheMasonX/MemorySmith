@@ -42,7 +42,9 @@ public class ChatToolCatalogAndInterceptTests
             "memorysmith_get",
             "memorysmith_page_search",
             "memorysmith_page_get",
-            "memorysmith_unified_search"
+            "memorysmith_unified_search",
+            "memorysmith_task_list",
+            "memorysmith_task_get"
         };
 
         var actual = catalog.ChatTools.Select(tool => tool.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -55,6 +57,30 @@ public class ChatToolCatalogAndInterceptTests
                 Assert.That(catalog.TryGet(name, out var tool), Is.True);
                 Assert.That(tool.InputSchema, Is.Not.Null, $"Tool '{name}' must declare an input schema.");
             }
+        });
+    }
+
+    [Test]
+    public void ChatToolCatalog_ExposesWriteToolsOnlyToAgentMode()
+    {
+        var catalog = new ChatToolCatalog();
+        var chatTools = catalog.ChatTools.Select(tool => tool.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var agentTools = catalog.AgentTools.Select(tool => tool.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(chatTools.Contains("memorysmith_task_list"), Is.True);
+            Assert.That(chatTools.Contains("memorysmith_task_get"), Is.True);
+            Assert.That(chatTools.Contains("memorysmith_task_create"), Is.False);
+            Assert.That(chatTools.Contains("memorysmith_task_update"), Is.False);
+            Assert.That(chatTools.Contains("memorysmith_page_save"), Is.False);
+            Assert.That(agentTools.Contains("memorysmith_task_create"), Is.True);
+            Assert.That(agentTools.Contains("memorysmith_task_update"), Is.True);
+            Assert.That(agentTools.Contains("memorysmith_task_set_status"), Is.True);
+            Assert.That(agentTools.Contains("memorysmith_task_add_comment"), Is.True);
+            Assert.That(agentTools.Contains("memorysmith_task_add_attachment"), Is.True);
+            Assert.That(agentTools.Contains("memorysmith_page_save"), Is.True);
+            Assert.That(agentTools.Contains("memorysmith_page_delete"), Is.True);
         });
     }
 

@@ -1232,6 +1232,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
     private readonly ChatToolCatalog _toolCatalog;
     private readonly ChatIntentInterceptor _intentInterceptor;
     private readonly MaintenanceProposalWorkflow? _proposalWorkflow;
+    private readonly ITaskService? _tasks;
 
     public MemoryChatAgent(
         IEnumerable<IChatProvider> providers,
@@ -1241,7 +1242,8 @@ public sealed partial class MemoryChatAgent : IChatAgent
         ICurrentUserContext? currentUser = null,
         ChatToolCatalog? toolCatalog = null,
         ChatIntentInterceptor? intentInterceptor = null,
-        MaintenanceProposalWorkflow? proposalWorkflow = null)
+        MaintenanceProposalWorkflow? proposalWorkflow = null,
+        ITaskService? tasks = null)
     {
         _providers = providers.ToList();
         if (_providers.Count == 0)
@@ -1256,6 +1258,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
         _intentInterceptor = intentInterceptor ?? new ChatIntentInterceptor();
         _currentUser = currentUser;
         _proposalWorkflow = proposalWorkflow;
+        _tasks = tasks;
     }
 
     public async Task<MemoryChatResponse> SendAsync(MemoryChatRequest request, CancellationToken cancellationToken)
@@ -1268,7 +1271,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
         var provider = ResolveProvider(request.Provider);
         var contextPlan = BuildContextPlan(request);
         var context = await BuildContextAsync(request, contextPlan, cancellationToken);
-        var interceptResults = await RunIntentInterceptAsync(request.Message, cancellationToken);
+        var interceptResults = await RunIntentInterceptAsync(request.Message, request.Mode, cancellationToken);
         var accessedContext = ExtractToolContext(interceptResults);
         var messages = BuildMessages(request, context, interceptResults, provider, contextPlan);
         var toolLoop = await CompleteWithToolCallsAsync(provider, request, messages, cancellationToken);
@@ -1287,7 +1290,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
         var provider = ResolveProvider(request.Provider);
         var contextPlan = BuildContextPlan(request);
         var context = await BuildContextAsync(request, contextPlan, cancellationToken);
-        var interceptResults = await RunIntentInterceptAsync(request.Message, cancellationToken);
+        var interceptResults = await RunIntentInterceptAsync(request.Message, request.Mode, cancellationToken);
         var accessedContext = ExtractToolContext(interceptResults).ToList();
         var messages = BuildMessages(request, context, interceptResults, provider, contextPlan);
         var resolvedModel = string.IsNullOrWhiteSpace(request.Model) ? DefaultModelForProvider(provider.Name) : request.Model.Trim();
@@ -1435,7 +1438,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
                     yield break;
                 }
 
-                var toolResults = await ExecuteToolCallsAsync(toolCalls, cancellationToken);
+                var toolResults = await ExecuteToolCallsAsync(toolCalls, request.Mode, cancellationToken);
                 accessedContext.AddRange(ExtractToolContext(toolResults));
                 messages.Add(new ChatMessage("assistant", providerResponse.Content));
                 messages.Add(new ChatMessage("system", FormatToolResults(toolResults)));
@@ -1517,7 +1520,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
                 }, messages, accessedContext);
             }
 
-            var toolResults = await ExecuteToolCallsAsync(toolCalls, cancellationToken);
+            var toolResults = await ExecuteToolCallsAsync(toolCalls, request.Mode, cancellationToken);
             accessedContext.AddRange(ExtractToolContext(toolResults));
             messages.Add(new ChatMessage("assistant", providerResponse.Content));
             messages.Add(new ChatMessage("system", FormatToolResults(toolResults)));
@@ -1941,6 +1944,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
 
     private async Task<IReadOnlyList<ChatToolResult>> ExecuteToolCallsAsync(
         IReadOnlyList<ChatToolCall> toolCalls,
+        MemoryChatMode mode,
         CancellationToken cancellationToken)
     {
         var options = _options.Value.Chat;
@@ -1953,7 +1957,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
             var started = Stopwatch.GetTimestamp();
             try
             {
-                var result = await ExecuteToolCallAsync(toolCall, cancellationToken);
+                var result = await ExecuteToolCallAsync(toolCall, mode, cancellationToken);
                 var duration = Stopwatch.GetElapsedTime(started);
                 results.Add(new ChatToolResult(
                     toolCall.Name,
@@ -1977,18 +1981,39 @@ public sealed partial class MemoryChatAgent : IChatAgent
         return results;
     }
 
-    private async Task<ChatToolExecutionResult> ExecuteToolCallAsync(ChatToolCall toolCall, CancellationToken cancellationToken)
+    private async Task<ChatToolExecutionResult> ExecuteToolCallAsync(
+        ChatToolCall toolCall,
+        MemoryChatMode mode,
+        CancellationToken cancellationToken)
     {
-        if (!_toolCatalog.TryGet(toolCall.Name, out var tool) || !tool.AvailableInChat)
+        if (!_toolCatalog.TryGet(toolCall.Name, out var tool))
         {
             return new ChatToolExecutionResult($"Unknown MemorySmith tool '{toolCall.Name}'.", IsError: true);
         }
 
-        var executionContext = new ChatToolExecutionContext(_memories, _pages, Transport: "chat", CurrentUser: _currentUser, Auth: _options.Value.Auth, DefaultPageMinimumRole: _options.Value.Pages.DefaultMinimumRole);
+        if (!ChatToolCatalog.IsAvailableInMode(tool, mode))
+        {
+            return tool.AvailableInAgent && mode != MemoryChatMode.Agent
+                ? new ChatToolExecutionResult($"MemorySmith tool '{toolCall.Name}' is only available in Agent mode.", IsError: true)
+                : new ChatToolExecutionResult($"Unknown MemorySmith tool '{toolCall.Name}'.", IsError: true);
+        }
+
+        if (tool.Risk == ChatToolRisk.Write && !CanApplyAgentWrites())
+        {
+            var message = _options.Value.Chat.AgentWritesEnabled
+                ? "Your current MemorySmith role cannot run Agent write tools."
+                : "Agent write tools are disabled by configuration.";
+            return new ChatToolExecutionResult(message, IsError: true);
+        }
+
+        var executionContext = new ChatToolExecutionContext(_memories, _pages, Transport: "chat", CurrentUser: _currentUser, Auth: _options.Value.Auth, DefaultPageMinimumRole: _options.Value.Pages.DefaultMinimumRole, Tasks: _tasks);
         return await tool.Execute(toolCall.Arguments, executionContext, cancellationToken);
     }
 
-    private async Task<IReadOnlyList<ChatToolResult>> RunIntentInterceptAsync(string userMessage, CancellationToken cancellationToken)
+    private async Task<IReadOnlyList<ChatToolResult>> RunIntentInterceptAsync(
+        string userMessage,
+        MemoryChatMode mode,
+        CancellationToken cancellationToken)
     {
         if (!_options.Value.Chat.ToolCallsEnabled)
         {
@@ -2004,7 +2029,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
         try
         {
             var started = Stopwatch.GetTimestamp();
-            var result = await ExecuteToolCallAsync(new ChatToolCall(match.ToolName, match.Arguments), cancellationToken);
+            var result = await ExecuteToolCallAsync(new ChatToolCall(match.ToolName, match.Arguments), mode, cancellationToken);
             var duration = Stopwatch.GetElapsedTime(started);
             var maxResultCharacters = Math.Clamp(_options.Value.Chat.MaxToolResultCharacters, 1000, 100000);
             var prefixed = $"[Auto-intercept: {match.Reason}]\n" + Truncate(result.Text, maxResultCharacters);
@@ -2419,29 +2444,46 @@ public sealed partial class MemoryChatAgent : IChatAgent
         var capabilities = provider.Capabilities;
         var writeFlow = request.Mode == MemoryChatMode.Agent
             ? request.RequireAgentWriteApproval
-                ? "Agent write proposals require explicit user approval in the MemorySmith UI before anything is changed."
+                ? "Agent memory/page write proposals require explicit user approval in the MemorySmith UI before those proposal changes are applied. Agent-only tool mutations are still gated by AgentWritesEnabled and edit role."
                 : canApplyWrites
-                    ? "The app may apply valid Agent write JSON directly for this request."
+                    ? "The app may apply valid Agent write JSON and Agent-only mutation tool calls directly for this request."
                     : !chat.AgentWritesEnabled
                         ? "Agent writes are disabled by configuration; no writes will be applied."
                         : "The current user's role does not permit applying Agent writes."
-            : "Chat mode cannot create, update, or delete MemorySmith memories or pages.";
+            : "Chat mode cannot create, update, or delete MemorySmith memories, pages, or tasks.";
 
         var writeCapability = chat.AgentWritesEnabled
             ? canApplyWrites
                 ? "enabled for this user"
                 : "configured, but not allowed for this user"
             : "disabled by configuration";
+        var readToolNames = string.Join(", ", _toolCatalog.ToolsForMode(request.Mode)
+            .Where(tool => tool.Risk == ChatToolRisk.ReadOnly)
+            .Select(tool => tool.Name));
+        var writeToolNames = request.Mode == MemoryChatMode.Agent && canApplyWrites
+            ? string.Join(", ", _toolCatalog.ToolsForMode(request.Mode)
+                .Where(tool => tool.Risk == ChatToolRisk.Write)
+                .Select(tool => tool.Name))
+            : string.Empty;
+        var readToolDisplay = chat.ToolCallsEnabled && !string.IsNullOrWhiteSpace(readToolNames)
+            ? readToolNames
+            : "none";
+        var mutationToolLine = request.Mode == MemoryChatMode.Agent
+            ? !string.IsNullOrWhiteSpace(writeToolNames)
+                ? $"- Agent-only local mutation tools: enabled for explicit task/page changes ({writeToolNames}).\n"
+                : "- Agent-only local mutation tools: unavailable for this request.\n"
+            : "- Local mutation tools: unavailable in Chat mode; use Agent mode for task/page mutations.\n";
 
         return "Current MemorySmith capabilities and limits:\n" +
             $"- Mode: {request.Mode}.\n" +
             $"- Provider: {provider.Name}; streaming {(capabilities.SupportsStreaming ? "supported" : "not reported")}; image input {(capabilities.SupportsImageInput ? "supported" : "not reported")}; structured responses {(capabilities.SupportsStructuredResponses ? "native" : "via text JSON only")}; context-window reporting {(capabilities.ReportsContextWindowUsage ? "supported" : "not reported")}.\n" +
             $"- Native tool calls: {(capabilities.SupportsNativeToolCalls ? "supported" : "not available")}. {capabilities.NativeToolCallStatus}\n" +
             $"- Context planner: {contextPlan.Summary}.\n" +
-            $"- Read-only local wiki search/retrieval tools: {(chat.ToolCallsEnabled ? "enabled" : "disabled")}. These tools can only read MemorySmith memories/pages; they cannot write files, create pages, use shell commands, browse the web, or call external MCP tools.\n" +
+            $"- Read-only local MemorySmith tools: {(chat.ToolCallsEnabled ? "enabled" : "disabled")}. Available read tools in this mode: {readToolDisplay}. These tools can only read MemorySmith memories/pages/tasks; they cannot use shell commands, browse the web, or call external MCP tools.\n" +
+            mutationToolLine +
             $"- Agent writes: {writeCapability}.\n" +
             $"- Write flow: {writeFlow}\n" +
-            "- Never claim that a memory or page was created, updated, deleted, or saved unless the application response includes written memory/page ids. Pending proposals are not changes.";
+            "- Never claim that a memory, page, or task was created, updated, deleted, or saved unless the application response includes written memory/page ids or a successful mutation tool result. Pending proposals are not changes.";
     }
 
     private bool CanApplyAgentWrites() =>
@@ -2507,12 +2549,26 @@ public sealed partial class MemoryChatAgent : IChatAgent
             ? "The selected provider reports native tool calls, but MemorySmith still keeps the application-intercepted JSON protocol as a deterministic fallback."
             : "The selected provider does not expose native MemorySmith tool registration here, so use the application-intercepted JSON protocol.";
         var toolCallExample = BuildToolCallExample(contextPlan.RecommendedToolName);
-        return "\n\nLocal wiki search/retrieval tools are available in Chat and Agent mode through an application-intercepted MCP-compatible protocol. " +
+        var readOnlyToolNames = string.Join(", ", _toolCatalog.ToolsForMode(mode)
+            .Where(tool => tool.Risk == ChatToolRisk.ReadOnly)
+            .Select(tool => tool.Name));
+        var writeToolNames = mode == MemoryChatMode.Agent && CanApplyAgentWrites()
+            ? string.Join(", ", _toolCatalog.ToolsForMode(mode)
+                .Where(tool => tool.Risk == ChatToolRisk.Write)
+                .Select(tool => tool.Name))
+            : string.Empty;
+        var writeToolInstruction = mode == MemoryChatMode.Agent
+            ? !string.IsNullOrWhiteSpace(writeToolNames)
+                ? $"Agent-only mutation tools are also available for explicit user-requested task/page changes: {writeToolNames}. Do not use mutation tools for ordinary lookup questions. "
+                : "No mutation tools are available for this request. "
+            : "Chat mode has no mutation tools; do not request write tools. ";
+        return "\n\nLocal MemorySmith tools are available in Chat and Agent mode through an application-intercepted MCP-compatible protocol. " +
             nativeToolStatus + " " +
             $"The context planner recommends {contextPlan.RecommendedToolName} when additional evidence is needed. " +
             "When you need more MemorySmith wiki evidence than the preloaded context provides, respond with only one JSON object and no prose: " +
             toolCallExample + ". " +
-            "Available read-only tools: memorysmith_unified_search (recommended for broad questions; searches memories AND pages), memorysmith_search, memorysmith_semantic_search, memorysmith_hybrid_search, memorysmith_context_pack, memorysmith_get, memorysmith_page_search, memorysmith_page_get. " +
+            $"Available read-only tools: {readOnlyToolNames}. " +
+            writeToolInstruction +
             "The application will run the call locally and send results back in the same conversation turn. " +
             finalInstruction;
     }
@@ -2523,6 +2579,8 @@ public sealed partial class MemoryChatAgent : IChatAgent
         {
             "memorysmith_get" => "{\"id\":\"record-id\"}",
             "memorysmith_page_get" => "{\"slug\":\"page-slug\"}",
+            "memorysmith_task_get" => "{\"idOrKey\":\"TSK-0001\"}",
+            "memorysmith_task_list" => "{\"query\":\"search text\",\"limit\":10}",
             _ => "{\"query\":\"search text\"}"
         };
 

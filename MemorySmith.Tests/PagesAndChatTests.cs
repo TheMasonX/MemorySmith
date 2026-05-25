@@ -3,6 +3,7 @@ using MemorySmith.App.Controllers;
 using MemorySmith.Core.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using System.Net;
 using System.Security.Claims;
@@ -836,8 +837,8 @@ public class PagesAndChatTests
         {
             Assert.That(provider.LastRequest!.Messages.Any(message => message.Content.Contains("Current MemorySmith user: Signed In User", StringComparison.Ordinal)), Is.True);
             Assert.That(provider.LastRequest.Messages.Any(message => message.Content.Contains("Current MemorySmith capabilities and limits", StringComparison.Ordinal)), Is.True);
-            Assert.That(provider.LastRequest.Messages.Any(message => message.Content.Contains("Chat mode cannot create, update, or delete MemorySmith memories or pages", StringComparison.Ordinal)), Is.True);
-            Assert.That(provider.LastRequest.Messages.Any(message => message.Content.Contains("read-only local wiki search/retrieval tools", StringComparison.OrdinalIgnoreCase)), Is.True);
+            Assert.That(provider.LastRequest.Messages.Any(message => message.Content.Contains("Chat mode cannot create, update, or delete MemorySmith memories, pages, or tasks", StringComparison.Ordinal)), Is.True);
+            Assert.That(provider.LastRequest.Messages.Any(message => message.Content.Contains("read-only local MemorySmith tools", StringComparison.OrdinalIgnoreCase)), Is.True);
         });
     }
 
@@ -1233,6 +1234,111 @@ public class PagesAndChatTests
     }
 
     [Test]
+    public async Task MemoryChatAgent_ExecutesTaskListToolInChatMode()
+    {
+        var memoryStore = new InMemoryMemoryStore();
+        var eventStore = new RecordingEventStore();
+        var publisher = new RecordingMemoryChangePublisher();
+        var memories = TestServiceFactory.CreateMemoryApplicationService(memoryStore, eventStore, publisher);
+        var pages = new FilePageService(_tempDir);
+        var options = CreateTaskToolOptions();
+        var tasks = CreateTaskService(options);
+        await tasks.CreateAsync(new TaskCreateRequest(
+            "Internal Chat Task Search",
+            "Task evidence should be searchable from standard Chat mode.",
+            "Task",
+            TaskStatuses.Ready,
+            TaskPriorities.High,
+            TaskAssigneeModes.Custom,
+            null,
+            "Agent",
+            "Test",
+            ["chat-tools"],
+            null,
+            null,
+            null), "Test", CancellationToken.None);
+        var provider = new SequencedChatProvider(
+            """
+            {"toolCalls":[{"name":"memorysmith_task_list","arguments":{"query":"Internal Chat Task Search","limit":5}}]}
+            """,
+            "Found the internal chat task.");
+        var agent = new MemoryChatAgent([provider], memories, pages, Options.Create(options), tasks: tasks);
+
+        var response = await agent.SendAsync(new MemoryChatRequest("Find the internal chat task", MemoryChatMode.Chat), CancellationToken.None);
+        var toolResultMessage = provider.Requests[1].Messages.Single(message => message.Content.StartsWith("Local MemorySmith tool results", StringComparison.Ordinal));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(response.Reply, Is.EqualTo("Found the internal chat task."));
+            Assert.That(provider.Requests, Has.Count.EqualTo(2));
+            Assert.That(toolResultMessage.Content, Does.Contain("memorysmith_task_list"));
+            Assert.That(toolResultMessage.Content, Does.Contain("Internal Chat Task Search"));
+        });
+    }
+
+    [Test]
+    public async Task MemoryChatAgent_RejectsTaskMutationToolInChatMode()
+    {
+        var memoryStore = new InMemoryMemoryStore();
+        var eventStore = new RecordingEventStore();
+        var publisher = new RecordingMemoryChangePublisher();
+        var memories = TestServiceFactory.CreateMemoryApplicationService(memoryStore, eventStore, publisher);
+        var pages = new FilePageService(_tempDir);
+        var options = CreateTaskToolOptions();
+        var tasks = CreateTaskService(options);
+        var provider = new SequencedChatProvider(
+            """
+            {"toolCalls":[{"name":"memorysmith_task_create","arguments":{"title":"Chat Mode Should Not Create Tasks"}}]}
+            """,
+            "I could not create the task from Chat mode.");
+        var agent = new MemoryChatAgent([provider], memories, pages, Options.Create(options), tasks: tasks);
+
+        var response = await agent.SendAsync(new MemoryChatRequest("Create a task from chat", MemoryChatMode.Chat), CancellationToken.None);
+        var toolResultMessage = provider.Requests[1].Messages.Single(message => message.Content.StartsWith("Local MemorySmith tool results", StringComparison.Ordinal));
+        var createdTasks = await tasks.ListAsync("Chat Mode Should Not Create Tasks", null, null, 5, CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(response.Reply, Is.EqualTo("I could not create the task from Chat mode."));
+            Assert.That(toolResultMessage.Content, Does.Contain("only available in Agent mode"));
+            Assert.That(createdTasks, Is.Empty);
+        });
+    }
+
+    [Test]
+    public async Task MemoryChatAgent_AllowsTaskMutationToolInAgentModeForEditor()
+    {
+        var memoryStore = new InMemoryMemoryStore();
+        var eventStore = new RecordingEventStore();
+        var publisher = new RecordingMemoryChangePublisher();
+        var memories = TestServiceFactory.CreateMemoryApplicationService(memoryStore, eventStore, publisher);
+        var pages = new FilePageService(_tempDir);
+        var options = CreateTaskToolOptions();
+        options.Chat.AgentWritesEnabled = true;
+        var tasks = CreateTaskService(options);
+        var provider = new SequencedChatProvider(
+            """
+            {"toolCalls":[{"name":"memorysmith_task_create","arguments":{"title":"Agent Mode Created Task","description":"Created through an Agent-only task tool.","status":"Ready","priority":"High","labels":["agent-tools"]}}]}
+            """,
+            """
+            {"reply":"Created the Agent-mode task.","memoryWrites":[],"pageWrites":[]}
+            """);
+        var currentUser = new FakeCurrentUserContext("editor-1", "Editor User", [MemorySmithRoles.Editor]);
+        var agent = new MemoryChatAgent([provider], memories, pages, Options.Create(options), currentUser, tasks: tasks);
+
+        var response = await agent.SendAsync(new MemoryChatRequest("Create an implementation task", MemoryChatMode.Agent, RequireAgentWriteApproval: true), CancellationToken.None);
+        var createdTasks = await tasks.ListAsync("Agent Mode Created Task", null, null, 5, CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(response.Reply, Is.EqualTo("Created the Agent-mode task."));
+            Assert.That(createdTasks, Has.Count.EqualTo(1));
+            Assert.That(createdTasks[0].Title, Is.EqualTo("Agent Mode Created Task"));
+            Assert.That(createdTasks[0].Status, Is.EqualTo(TaskStatuses.Ready));
+        });
+    }
+
+    [Test]
     public async Task MemoryChatAgent_StopAfterCurrentStepSkipsRequestedToolCalls()
     {
         var memoryStore = new InMemoryMemoryStore();
@@ -1518,6 +1624,21 @@ public class PagesAndChatTests
             await Task.Yield();
             yield return new ChatProviderChunk(_content, _thinking, _content, _thinking, IsFinal: true, Name, request.Model ?? "fake-model");
         }
+    }
+
+    private FileTaskService CreateTaskService(MemorySmithOptions options) =>
+        new(new StaticOptionsMonitor<MemorySmithOptions>(options), NullLogger<FileTaskService>.Instance);
+
+    private MemorySmithOptions CreateTaskToolOptions()
+    {
+        var root = Path.Combine(_tempDir, "task-tools");
+        Directory.CreateDirectory(root);
+        return new MemorySmithOptions
+        {
+            DataPath = Path.Combine(root, "Memories"),
+            PagesPath = Path.Combine(root, "Pages"),
+            EventLogPath = Path.Combine(root, "Events", "audit.log")
+        };
     }
 
     private sealed class SequencedChatProvider : IChatProvider

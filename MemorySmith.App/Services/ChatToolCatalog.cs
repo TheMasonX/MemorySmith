@@ -27,7 +27,8 @@ public sealed record ChatToolDescriptor(
     bool AvailableInChat,
     bool AvailableInMcp,
     Func<JsonObject, ChatToolExecutionContext, CancellationToken, Task<ChatToolExecutionResult>> Execute,
-    bool EnabledByDefaultInMcp = true);
+    bool EnabledByDefaultInMcp = true,
+    bool AvailableInAgent = false);
 
 public sealed record ChatToolExecutionContext(
     MemoryApplicationService Memories,
@@ -58,7 +59,7 @@ public sealed record ChatToolExecutionResult(
     JsonNode? Structured = null);
 
 /// <summary>
-/// Single source of truth for the read-only tool surface used by both the JSON-RPC /mcp endpoint
+/// Single source of truth for the tool surface used by both the JSON-RPC /mcp endpoint
 /// and the in-chat application-intercepted tool protocol.
 /// </summary>
 public sealed class ChatToolCatalog
@@ -78,10 +79,16 @@ public sealed class ChatToolCatalog
     public IReadOnlyList<ChatToolDescriptor> All => _tools.Values.ToList();
 
     public IReadOnlyList<ChatToolDescriptor> ChatTools =>
-        _tools.Values.Where(tool => tool.AvailableInChat).ToList();
+        ToolsForMode(MemoryChatMode.Chat);
+
+    public IReadOnlyList<ChatToolDescriptor> AgentTools =>
+        ToolsForMode(MemoryChatMode.Agent);
 
     public IReadOnlyList<ChatToolDescriptor> McpTools =>
         _tools.Values.Where(tool => tool.AvailableInMcp).ToList();
+
+    public IReadOnlyList<ChatToolDescriptor> ToolsForMode(MemoryChatMode mode) =>
+        _tools.Values.Where(tool => IsAvailableInMode(tool, mode)).ToList();
 
     public bool TryGet(string name, out ChatToolDescriptor tool)
     {
@@ -94,7 +101,15 @@ public sealed class ChatToolCatalog
     }
 
     public bool IsChatEnabled(string name) =>
-        TryGet(name, out var tool) && tool.AvailableInChat;
+        IsAvailableInMode(name, MemoryChatMode.Chat);
+
+    public bool IsAvailableInMode(string name, MemoryChatMode mode) =>
+        TryGet(name, out var tool) && IsAvailableInMode(tool, mode);
+
+    public static bool IsAvailableInMode(ChatToolDescriptor tool, MemoryChatMode mode) =>
+        mode == MemoryChatMode.Agent
+            ? tool.AvailableInChat || tool.AvailableInAgent
+            : tool.AvailableInChat;
 
     public bool IsMcpEnabled(string name) =>
         TryGet(name, out var tool) && tool.AvailableInMcp;
@@ -547,7 +562,7 @@ public sealed class ChatToolCatalog
             "List MemorySmith tasks by query, status, assignee, and limit.",
             BuildTaskListSchema(),
             ChatToolRisk.ReadOnly,
-            AvailableInChat: false,
+            AvailableInChat: true,
             AvailableInMcp: true,
             Execute: async (args, ctx, ct) =>
             {
@@ -566,7 +581,7 @@ public sealed class ChatToolCatalog
             "Fetch one MemorySmith task by id or key.",
             BuildTaskIdSchema(),
             ChatToolRisk.ReadOnly,
-            AvailableInChat: false,
+            AvailableInChat: true,
             AvailableInMcp: true,
             Execute: async (args, ctx, ct) =>
             {
@@ -625,7 +640,8 @@ public sealed class ChatToolCatalog
                 {
                     return new ChatToolExecutionResult(ex.Message, IsError: true);
                 }
-            });
+            },
+            AvailableInAgent: true);
 
         yield return new ChatToolDescriptor(
             "memorysmith_task_update",
@@ -676,7 +692,8 @@ public sealed class ChatToolCatalog
                 {
                     return new ChatToolExecutionResult(ex.Message, IsError: true);
                 }
-            });
+            },
+            AvailableInAgent: true);
 
         yield return new ChatToolDescriptor(
             "memorysmith_task_set_status",
@@ -709,7 +726,8 @@ public sealed class ChatToolCatalog
                 {
                     return new ChatToolExecutionResult(ex.Message, IsError: true);
                 }
-            });
+            },
+            AvailableInAgent: true);
 
         yield return new ChatToolDescriptor(
             "memorysmith_task_add_comment",
@@ -742,7 +760,8 @@ public sealed class ChatToolCatalog
                 {
                     return new ChatToolExecutionResult(ex.Message, IsError: true);
                 }
-            });
+            },
+            AvailableInAgent: true);
 
         yield return new ChatToolDescriptor(
             "memorysmith_task_add_attachment",
@@ -778,7 +797,8 @@ public sealed class ChatToolCatalog
                 {
                     return new ChatToolExecutionResult(ex.Message, IsError: true);
                 }
-            });
+            },
+            AvailableInAgent: true);
 
         yield return new ChatToolDescriptor(
             "memorysmith_page_save",
@@ -841,7 +861,8 @@ public sealed class ChatToolCatalog
 
                 var saved = await ctx.Pages.SaveAsync(new PageSaveRequest(slug, title, markdown, resolvedMinimumRole), ct);
                 return new ChatToolExecutionResult($"Page saved. Slug: {saved.Slug}  Title: {saved.Title}  Updated: {saved.LastUpdatedUtc:O}");
-            });
+            },
+            AvailableInAgent: true);
 
         yield return new ChatToolDescriptor(
             "memorysmith_page_delete",
@@ -875,7 +896,8 @@ public sealed class ChatToolCatalog
                 return new ChatToolExecutionResult(deleted
                     ? $"Page '{slug}' deleted."
                     : $"No page found with slug '{slug}'.");
-            });
+            },
+            AvailableInAgent: true);
     }
 
     // ---------- Schema builders ----------

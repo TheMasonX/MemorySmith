@@ -11,6 +11,7 @@
 @inject ChatModelProfileService ModelProfiles
 @inject MemoryApplicationService Memories
 @inject IPageService Pages
+@inject ITaskService Tasks
 @inject IEnumerable<IChatProvider> ChatProviders
 @inject IOptionsMonitor<MemorySmithOptions> Options
 @inject ISnackbar Snackbar
@@ -1623,7 +1624,7 @@
             return;
         }
 
-        if (!ToolCatalog.TryGet(entry.ToolName, out var tool) || !tool.AvailableInChat)
+        if (!ToolCatalog.TryGet(entry.ToolName, out var tool) || !ChatToolCatalog.IsAvailableInMode(tool, _mode))
         {
             AddTraceEntry(turn, ChatTraceKinds.ToolResult, $"Retry failed: {entry.ToolName}", $"Tool '{entry.ToolName}' is not available in chat.", IsError: true, toolName: entry.ToolName);
             return;
@@ -1634,7 +1635,7 @@
         try
         {
             _agentStatus = $"Running {entry.ToolName}";
-            var result = await tool.Execute(arguments, new ChatToolExecutionContext(Memories, Pages, "chat-ui-retry", CurrentUser: CurrentUser, Auth: Options.CurrentValue.Auth, DefaultPageMinimumRole: Options.CurrentValue.Pages.DefaultMinimumRole), CancellationToken.None);
+            var result = await tool.Execute(arguments, new ChatToolExecutionContext(Memories, Pages, "chat-ui-retry", CurrentUser: CurrentUser, Auth: Options.CurrentValue.Auth, DefaultPageMinimumRole: Options.CurrentValue.Pages.DefaultMinimumRole, Tasks: Tasks), CancellationToken.None);
             var duration = (long)Math.Max(0, (DateTimeOffset.UtcNow - started).TotalMilliseconds);
             AddTraceEntry(turn, ChatTraceKinds.ToolResult, $"Retry result: {entry.ToolName}", result.Text, result.IsError, entry.ToolName, duration);
             if (result.ContextItems is { Count: > 0 })
