@@ -22,7 +22,7 @@ test.describe('Navigation freeze regression', () => {
     await page.goto('/pages');
 
     await expect(page).toHaveURL(/\/pages$/);
-    await expect(page.getByRole('heading', { name: 'Pages', exact: true })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Page search' })).toBeVisible();
 
     await navigateAndAssert(page, 'Memories', /\/memories$/, 'Memories');
     await navigateAndAssert(page, 'Chat', /\/chat$/, 'MemorySmith chat', true);
@@ -194,6 +194,7 @@ async function expectPagesCommandbarLayout(page: import('@playwright/test').Page
     const clearButton = document.querySelector('.pages-search-clear')?.getBoundingClientRect();
     const searchButton = document.querySelector('.pages-search-submit') as HTMLElement | null;
     const searchButtonRect = searchButton?.getBoundingClientRect();
+    const navControls = document.querySelector('.pages-navigation-controls')?.getBoundingClientRect();
     const modeToggle = document.querySelector('.pages-navigation-controls .wiki-mode-toggle')?.getBoundingClientRect();
     const navToggle = document.querySelector('.pages-navigation-controls [aria-label="Toggle navigation"]')?.getBoundingClientRect();
     const searchIcon = searchButton?.querySelector('.mud-icon-root');
@@ -206,7 +207,7 @@ async function expectPagesCommandbarLayout(page: import('@playwright/test').Page
       inputSearchGap: searchBox && searchButtonRect ? searchButtonRect.left - searchBox.right : Number.POSITIVE_INFINITY,
       modeNavGap: modeToggle && navToggle ? navToggle.left - modeToggle.right : Number.POSITIVE_INFINITY,
       modeNavCenterDelta: modeToggle && navToggle ? Math.abs((modeToggle.top + modeToggle.height / 2) - (navToggle.top + navToggle.height / 2)) : Number.POSITIVE_INFINITY,
-      navRightGap: strip && navToggle ? strip.right - navToggle.right : Number.POSITIVE_INFINITY,
+      navRightGap: strip && navControls ? strip.right - navControls.right : Number.POSITIVE_INFINITY,
       searchBackground: searchButtonStyle?.backgroundColor ?? '',
       searchIconColor: searchIconStyle?.color ?? '',
     };
