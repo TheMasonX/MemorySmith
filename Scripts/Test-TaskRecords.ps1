@@ -13,6 +13,44 @@ $allowedStatuses = New-Object 'System.Collections.Generic.HashSet[string]' ([Sys
 $errors = New-Object 'System.Collections.Generic.List[string]'
 $records = New-Object 'System.Collections.Generic.List[object]'
 
+function Test-PageSlug {
+    param([string]$Slug)
+
+    if ([string]::IsNullOrWhiteSpace($Slug)) {
+        return $false
+    }
+
+    try {
+        $candidate = [System.Uri]::UnescapeDataString($Slug.Trim())
+    }
+    catch {
+        return $false
+    }
+
+    $candidate = $candidate.Replace('\', '/').Trim().Trim('/')
+    if ($candidate.StartsWith('pages/', [System.StringComparison]::OrdinalIgnoreCase)) {
+        $candidate = $candidate.Substring('pages/'.Length).Trim('/')
+    }
+
+    if ($candidate.EndsWith('.md', [System.StringComparison]::OrdinalIgnoreCase)) {
+        $candidate = $candidate.Substring(0, $candidate.Length - 3)
+    }
+
+    $segments = $candidate.Split('/', [System.StringSplitOptions]::RemoveEmptyEntries)
+    if ($segments.Count -eq 0) {
+        return $false
+    }
+
+    foreach ($segment in $segments) {
+        $trimmed = $segment.Trim()
+        if ($trimmed -eq '.' -or $trimmed -eq '..' -or $trimmed -notmatch '^[A-Za-z0-9][A-Za-z0-9_-]*$') {
+            return $false
+        }
+    }
+
+    return $true
+}
+
 Get-ChildItem -LiteralPath $tasksRoot -Filter '*.json' -File | Sort-Object Name | ForEach-Object {
     try {
         $task = Get-Content -LiteralPath $_.FullName -Raw | ConvertFrom-Json
@@ -51,6 +89,15 @@ Get-ChildItem -LiteralPath $tasksRoot -Filter '*.json' -File | Sort-Object Name 
     }
     elseif (-not $allowedStatuses.Contains($status)) {
         [void]$errors.Add("$($_.Name): status '$status' is not one of $($allowedStatuses -join ', ')")
+    }
+
+    if ($null -ne $task.linkedPages) {
+        foreach ($linkedPage in $task.linkedPages) {
+            $slug = [string]$linkedPage
+            if (-not (Test-PageSlug -Slug $slug)) {
+                [void]$errors.Add("$($_.Name): linkedPages entry '$slug' is not a safe page slug")
+            }
+        }
     }
 
     [void]$records.Add([pscustomobject]@{

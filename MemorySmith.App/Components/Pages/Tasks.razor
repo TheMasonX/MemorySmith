@@ -485,8 +485,7 @@
         await LoadAsync();
     }
 
-    private static string ToPageHref(string slug) =>
-        "/pages/" + string.Join('/', slug.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(Uri.EscapeDataString));
+    private static string ToPageHref(string slug) => PageSlugPolicy.ToPageHref(slug);
 
     private async Task LoadAsync()
     {

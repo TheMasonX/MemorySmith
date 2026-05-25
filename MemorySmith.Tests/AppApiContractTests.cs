@@ -243,6 +243,68 @@ public class AppApiContractTests
         });
     }
 
+    [Test]
+    public async Task TasksApi_RejectsUnsafeLinkedPageSlugsAndKeepsSafeNestedSlugs()
+    {
+        var pageDirectory = Path.Combine(_tempDir, "Pages", "guides");
+        Directory.CreateDirectory(pageDirectory);
+        await File.WriteAllTextAsync(Path.Combine(pageDirectory, "configuration-reference.md"), "# Configuration Reference");
+
+        var createResponse = await _client.PostAsJsonAsync("/api/tasks", new TaskCreateRequest(
+            Title: "Validate page links",
+            Description: "Exercise task page link validation",
+            Type: "Task",
+            Status: TaskStatuses.Backlog,
+            Priority: TaskPriorities.High,
+            AssigneeMode: TaskAssigneeModes.Custom,
+            AssigneeDirectoryId: null,
+            AssigneeCustomText: "Copilot",
+            Reporter: "copilot",
+            Labels: ["tasks", "pages"],
+            DueDateUtc: null,
+            EpicId: null,
+            ParentId: null,
+            Slug: "validate-page-links"));
+        createResponse.EnsureSuccessStatusCode();
+        var created = await createResponse.Content.ReadFromJsonAsync<TaskItem>();
+        Assert.That(created, Is.Not.Null);
+
+        var safeResponse = await _client.PostAsJsonAsync($"/api/tasks/{created!.Id}/links/pages", new TaskPageLinkRequest("pages/guides/configuration-reference.md"));
+        safeResponse.EnsureSuccessStatusCode();
+
+        var unsafeSlugs = new[]
+        {
+            "../admin",
+            "./admin",
+            "guides/../admin",
+            "%2e%2e/admin",
+            "guides\\..\\admin",
+            "."
+        };
+
+        var unsafeResponses = new List<HttpResponseMessage>();
+        foreach (var slug in unsafeSlugs)
+        {
+            unsafeResponses.Add(await _client.PostAsJsonAsync($"/api/tasks/{created.Id}/links/pages", new TaskPageLinkRequest(slug)));
+        }
+
+        var loaded = await _client.GetFromJsonAsync<TaskItem>($"/api/tasks/{created.Id}");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(loaded, Is.Not.Null);
+            Assert.That(loaded!.LinkedPages, Is.EqualTo(new[] { "guides/configuration-reference" }));
+            Assert.That(unsafeResponses.Select(response => response.StatusCode), Is.All.EqualTo(HttpStatusCode.BadRequest));
+            Assert.That(PageSlugPolicy.ToPageHref("guides/configuration-reference"), Is.EqualTo("/pages/guides/configuration-reference"));
+            Assert.That(PageSlugPolicy.ToPageHref("../admin"), Is.EqualTo("#"));
+        });
+
+        foreach (var response in unsafeResponses)
+        {
+            response.Dispose();
+        }
+    }
+
         [Test]
         public async Task TasksApi_MalformedTaskFile_DoesNotCrashAndReturnsLoadErrorMetadata()
         {

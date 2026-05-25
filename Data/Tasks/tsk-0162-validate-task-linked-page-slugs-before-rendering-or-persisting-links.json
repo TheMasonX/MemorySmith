@@ -4,7 +4,7 @@
   "title": "Validate task linked page slugs before rendering or persisting links",
   "description": "Problem: task linked-page evidence accepts canonicalized strings that are not passed through the same page slug safety contract used by the Pages service. A value such as ../admin can be persisted as a linked page and rendered by Tasks.razor as /pages/../admin, which browsers or intermediaries may normalize outside the intended /pages slug space.\n\nEvidence from the 2026-05-25 deepdive:\n- FileTaskService.AddLinkedPageAsync calls CanonicalizePageSlug, but CanonicalizePageSlug only trims slashes, strips .md, and removes a leading pages/ prefix; it does not reject dot segments or invalid slug characters.\n- FileTaskService.LinkedPageExists combines PagesPath with the canonical slug and checks existence without requiring the result to remain under PagesPath. The current operation is only an existence check, but it still treats unsafe input as a valid task link candidate.\n- Tasks.razor ToPageHref emits /pages/ + escaped slug segments, so a stored ../admin link can render as /pages/../admin instead of a canonical page route.\n\nDesired outcome: task linked-page slugs use one shared, traversal-safe page slug normalization policy before persistence and before href rendering. Invalid linked page input should fail clearly and not be saved.\n\nScope:\n- In scope: replace ad hoc task linked-page canonicalization with the page service slug validation/normalization helper or an equivalent shared helper.\n- In scope: add API/service and UI regression coverage for ../, ., empty, encoded traversal, backslash traversal, and normal nested slugs.\n- In scope: keep warning behavior for safe but missing pages.\n- Out of scope: changing external link or attachment URL policy.\n\nAcceptance criteria:\n- Task linked-page mutation rejects traversal and dot-segment slugs with a 400/client-safe validation response.\n- Stored task linked-page entries cannot render hrefs outside /pages/<safe slug>.\n- Safe nested page slugs such as guides/configuration-reference still work and still warn when missing.\n- Existing task records with invalid linkedPages, if any, are reported by a validation check or migration note instead of silently rendered as unsafe links.\n\nValidation:\n- Add focused task API/service tests for AddLinkedPageAsync validation and href rendering.\n- Run AppApiContractTests task-link coverage and any focused Tasks markup tests.\n- Run ./Scripts/Test-TaskRecords.ps1 after task metadata changes.",
   "type": "Task",
-  "status": "Backlog",
+  "status": "Done",
   "priority": "High",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -29,15 +29,21 @@
       "author": "AgentSmith",
       "body": "Created during 2026-05-25 deepdive audit. Attachments/external links have scheme validation, but linked page slugs still use task-local string cleanup and can produce /pages/../admin-style hrefs.",
       "createdAtUtc": "2026-05-25T16:55:00.0000000Z"
+    },
+    {
+      "id": "c-0162-1",
+      "author": "AgentSmith",
+      "body": "Implemented shared strict page slug policy for task linked pages. AddLinkedPageAsync now rejects traversal, dot-segment, encoded traversal, and invalid-character slugs before persistence; Tasks.razor uses the same policy for page href rendering so stale unsafe values resolve to # instead of /pages/<unsafe>; Test-TaskRecords now reports unsafe linkedPages entries in task JSON. Validation: dotnet build .\\MemorySmith.App\\MemorySmith.App.csproj --nologo passed; dotnet test .\\MemorySmith.Tests\\MemorySmith.Tests.csproj --no-restore --filter \"FullyQualifiedName~TasksApi_FullWorkflow_SupportsCrudHistoryAndRelatedArtifacts|FullyQualifiedName~TasksApi_RejectsUnsafeLinkedPageSlugsAndKeepsSafeNestedSlugs\" passed 2/2; .\\Scripts\\Test-TaskRecords.ps1 passed over 169 task records.",
+      "createdAtUtc": "2026-05-25T20:11:11.2171884Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-25T16:55:00.0000000Z",
-  "updatedAtUtc": "2026-05-25T16:55:00.0000000Z",
-  "completedAtUtc": null,
-  "revision": 1,
+  "updatedAtUtc": "2026-05-25T20:11:11.2171884Z",
+  "completedAtUtc": "2026-05-25T20:11:11.2171884Z",
+  "revision": 2,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

@@ -434,7 +434,11 @@ public sealed class FileTaskService : ITaskService
                 throw new ArgumentException("Page slug is required.");
             }
 
-            var canonicalSlug = CanonicalizePageSlug(slug);
+            if (!PageSlugPolicy.TryNormalize(slug, out var canonicalSlug))
+            {
+                throw new ArgumentException("Page slug must be a safe page path using letters, numbers, hyphens, underscores, and forward slashes.");
+            }
+
             var pageExists = LinkedPageExists(canonicalSlug);
             EnsureTaskIsEditable(item);
 
@@ -729,24 +733,9 @@ public sealed class FileTaskService : ITaskService
 
         var pagesRoot = ResolvePagesRoot();
         var relativePath = slug.Replace('/', Path.DirectorySeparatorChar);
-        var markdownPath = Path.Combine(pagesRoot, relativePath + ".md");
-        return File.Exists(markdownPath);
-    }
-
-    private static string CanonicalizePageSlug(string slug)
-    {
-        var normalized = slug.Trim().Replace('\\', '/').Trim('/');
-        if (normalized.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
-        {
-            normalized = normalized[..^3];
-        }
-
-        if (normalized.StartsWith("pages/", StringComparison.OrdinalIgnoreCase))
-        {
-            normalized = normalized["pages/".Length..];
-        }
-
-        return normalized;
+        var markdownPath = Path.GetFullPath(Path.Combine(pagesRoot, relativePath + ".md"));
+        var root = pagesRoot.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        return markdownPath.StartsWith(root, StringComparison.OrdinalIgnoreCase) && File.Exists(markdownPath);
     }
 
     private static TaskSummary ToSummary(TaskItem item) =>
