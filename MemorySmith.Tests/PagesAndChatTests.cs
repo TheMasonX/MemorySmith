@@ -551,7 +551,7 @@ public class PagesAndChatTests
         """);
         var agent = new MemoryChatAgent([provider], memories, pages, Options.Create(new MemorySmithOptions
         {
-            Chat = new ChatOptions { AgentWritesEnabled = true }
+            Chat = new ChatOptions { AgentWritesEnabled = true, AgentWriteApprovalMode = AgentWriteApprovalModes.AutoAccept }
         }), new FakeCurrentUserContext("editor-1", "Editor User", [MemorySmithRoles.Editor]));
 
         var response = await agent.SendAsync(new MemoryChatRequest("Capture this", MemoryChatMode.Agent), CancellationToken.None);
@@ -590,7 +590,7 @@ public class PagesAndChatTests
         """);
         var agent = new MemoryChatAgent([provider], memories, pages, Options.Create(new MemorySmithOptions
         {
-            Chat = new ChatOptions { AgentWritesEnabled = true }
+            Chat = new ChatOptions { AgentWritesEnabled = true, AgentWriteApprovalMode = AgentWriteApprovalModes.AutoAccept }
         }), new FakeCurrentUserContext("editor-1", "Editor User", [MemorySmithRoles.Editor]));
 
         var response = await agent.SendAsync(new MemoryChatRequest("Create a page", MemoryChatMode.Agent), CancellationToken.None);
@@ -769,7 +769,7 @@ public class PagesAndChatTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(response.Reply, Is.EqualTo("Recorded.\n\nAgent write actions are disabled; no memories or pages were changed."));
+            Assert.That(response.Reply, Is.EqualTo("Agent writes are disabled by configuration; no memories or pages were changed."));
             Assert.That(response.WrittenMemories, Is.Empty);
             Assert.That(response.WrittenPages, Is.Empty);
             Assert.That(memoryStore.Load("agent-note"), Is.Null);
@@ -1306,7 +1306,7 @@ public class PagesAndChatTests
     }
 
     [Test]
-    public async Task MemoryChatAgent_AllowsTaskMutationToolInAgentModeForEditor()
+    public async Task MemoryChatAgent_BlocksTaskMutationToolWhenAgentApprovalIsManual()
     {
         var memoryStore = new InMemoryMemoryStore();
         var eventStore = new RecordingEventStore();
@@ -1328,12 +1328,46 @@ public class PagesAndChatTests
 
         var response = await agent.SendAsync(new MemoryChatRequest("Create an implementation task", MemoryChatMode.Agent, RequireAgentWriteApproval: true), CancellationToken.None);
         var createdTasks = await tasks.ListAsync("Agent Mode Created Task", null, null, 5, CancellationToken.None);
+        var toolResultMessage = provider.Requests[1].Messages.Single(message => message.Content.StartsWith("Local MemorySmith tool results", StringComparison.Ordinal));
 
         Assert.Multiple(() =>
         {
             Assert.That(response.Reply, Is.EqualTo("Created the Agent-mode task."));
+            Assert.That(toolResultMessage.Content, Does.Contain("requires Agent auto_accept mode"));
+            Assert.That(createdTasks, Is.Empty);
+        });
+    }
+
+    [Test]
+    public async Task MemoryChatAgent_AllowsTaskMutationToolInAgentAutoAcceptModeForEditor()
+    {
+        var memoryStore = new InMemoryMemoryStore();
+        var eventStore = new RecordingEventStore();
+        var publisher = new RecordingMemoryChangePublisher();
+        var memories = TestServiceFactory.CreateMemoryApplicationService(memoryStore, eventStore, publisher);
+        var pages = new FilePageService(_tempDir);
+        var options = CreateTaskToolOptions();
+        options.Chat.AgentWritesEnabled = true;
+        options.Chat.AgentWriteApprovalMode = AgentWriteApprovalModes.AutoAccept;
+        var tasks = CreateTaskService(options);
+        var provider = new SequencedChatProvider(
+            """
+            {"toolCalls":[{"name":"memorysmith_task_create","arguments":{"title":"Agent AutoAccept Created Task","description":"Created through a trusted Agent-only task tool.","status":"Ready","priority":"High","labels":["agent-tools"]}}]}
+            """,
+            """
+            {"reply":"Created the trusted Agent-mode task.","memoryWrites":[],"pageWrites":[]}
+            """);
+        var currentUser = new FakeCurrentUserContext("editor-1", "Editor User", [MemorySmithRoles.Editor]);
+        var agent = new MemoryChatAgent([provider], memories, pages, Options.Create(options), currentUser, tasks: tasks);
+
+        var response = await agent.SendAsync(new MemoryChatRequest("Create an implementation task", MemoryChatMode.Agent, RequireAgentWriteApproval: true), CancellationToken.None);
+        var createdTasks = await tasks.ListAsync("Agent AutoAccept Created Task", null, null, 5, CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(response.Reply, Is.EqualTo("Created the trusted Agent-mode task."));
             Assert.That(createdTasks, Has.Count.EqualTo(1));
-            Assert.That(createdTasks[0].Title, Is.EqualTo("Agent Mode Created Task"));
+            Assert.That(createdTasks[0].Title, Is.EqualTo("Agent AutoAccept Created Task"));
             Assert.That(createdTasks[0].Status, Is.EqualTo(TaskStatuses.Ready));
         });
     }

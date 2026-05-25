@@ -1438,7 +1438,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
                     yield break;
                 }
 
-                var toolResults = await ExecuteToolCallsAsync(toolCalls, request.Mode, cancellationToken);
+                var toolResults = await ExecuteToolCallsAsync(toolCalls, request.Mode, RequiresAgentWriteApproval(request), cancellationToken);
                 accessedContext.AddRange(ExtractToolContext(toolResults));
                 messages.Add(new ChatMessage("assistant", providerResponse.Content));
                 messages.Add(new ChatMessage("system", FormatToolResults(toolResults)));
@@ -1520,7 +1520,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
                 }, messages, accessedContext);
             }
 
-            var toolResults = await ExecuteToolCallsAsync(toolCalls, request.Mode, cancellationToken);
+            var toolResults = await ExecuteToolCallsAsync(toolCalls, request.Mode, RequiresAgentWriteApproval(request), cancellationToken);
             accessedContext.AddRange(ExtractToolContext(toolResults));
             messages.Add(new ChatMessage("assistant", providerResponse.Content));
             messages.Add(new ChatMessage("system", FormatToolResults(toolResults)));
@@ -1535,10 +1535,11 @@ public sealed partial class MemoryChatAgent : IChatAgent
     {
         if (request.Mode == MemoryChatMode.Agent)
         {
-            var agentResult = request.RequireAgentWriteApproval
+            var approvalRequired = RequiresAgentWriteApproval(request);
+            var agentResult = approvalRequired
                 ? PlanAgentActions(providerResponse.Content)
                 : await TryApplyAgentActionsAsync(providerResponse.Content, cancellationToken);
-            if (request.RequireAgentWriteApproval)
+            if (approvalRequired)
             {
                 agentResult = PrepareApprovalRequiredResult(agentResult);
             }
@@ -1945,6 +1946,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
     private async Task<IReadOnlyList<ChatToolResult>> ExecuteToolCallsAsync(
         IReadOnlyList<ChatToolCall> toolCalls,
         MemoryChatMode mode,
+        bool approvalRequired,
         CancellationToken cancellationToken)
     {
         var options = _options.Value.Chat;
@@ -1957,7 +1959,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
             var started = Stopwatch.GetTimestamp();
             try
             {
-                var result = await ExecuteToolCallAsync(toolCall, mode, cancellationToken);
+                var result = await ExecuteToolCallAsync(toolCall, mode, approvalRequired, cancellationToken);
                 var duration = Stopwatch.GetElapsedTime(started);
                 results.Add(new ChatToolResult(
                     toolCall.Name,
@@ -1984,6 +1986,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
     private async Task<ChatToolExecutionResult> ExecuteToolCallAsync(
         ChatToolCall toolCall,
         MemoryChatMode mode,
+        bool approvalRequired,
         CancellationToken cancellationToken)
     {
         if (!_toolCatalog.TryGet(toolCall.Name, out var tool))
@@ -2004,6 +2007,11 @@ public sealed partial class MemoryChatAgent : IChatAgent
                 ? "Your current MemorySmith role cannot run Agent write tools."
                 : "Agent write tools are disabled by configuration.";
             return new ChatToolExecutionResult(message, IsError: true);
+        }
+
+        if (tool.Risk == ChatToolRisk.Write && approvalRequired)
+        {
+            return new ChatToolExecutionResult($"MemorySmith tool '{toolCall.Name}' requires Agent auto_accept mode; direct mutation tool calls are disabled while Agent write approval is manual.", IsError: true);
         }
 
         var executionContext = new ChatToolExecutionContext(_memories, _pages, Transport: "chat", CurrentUser: _currentUser, Auth: _options.Value.Auth, DefaultPageMinimumRole: _options.Value.Pages.DefaultMinimumRole, Tasks: _tasks);
@@ -2029,7 +2037,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
         try
         {
             var started = Stopwatch.GetTimestamp();
-            var result = await ExecuteToolCallAsync(new ChatToolCall(match.ToolName, match.Arguments), mode, cancellationToken);
+            var result = await ExecuteToolCallAsync(new ChatToolCall(match.ToolName, match.Arguments), mode, mode == MemoryChatMode.Agent && !IsAgentWriteAutoAcceptMode(), cancellationToken);
             var duration = Stopwatch.GetElapsedTime(started);
             var maxResultCharacters = Math.Clamp(_options.Value.Chat.MaxToolResultCharacters, 1000, 100000);
             var prefixed = $"[Auto-intercept: {match.Reason}]\n" + Truncate(result.Text, maxResultCharacters);
@@ -2398,7 +2406,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
         var options = _options.Value.Chat;
         var messages = new List<ChatMessage>
         {
-            new("system", BuildSystemPrompt(request.Mode, provider.Capabilities, contextPlan)),
+            new("system", BuildSystemPrompt(request, provider.Capabilities, contextPlan)),
             new("system", FormatCurrentUser()),
             new("system", FormatCapabilityContext(request, provider, contextPlan)),
             new("system", FormatContext(context))
@@ -2441,12 +2449,13 @@ public sealed partial class MemoryChatAgent : IChatAgent
     {
         var chat = _options.Value.Chat;
         var canApplyWrites = CanApplyAgentWrites();
+        var approvalRequired = RequiresAgentWriteApproval(request);
         var capabilities = provider.Capabilities;
         var writeFlow = request.Mode == MemoryChatMode.Agent
-            ? request.RequireAgentWriteApproval
-                ? "Agent memory/page write proposals require explicit user approval in the MemorySmith UI before those proposal changes are applied. Agent-only tool mutations are still gated by AgentWritesEnabled and edit role."
+            ? approvalRequired
+                ? "Agent write proposals require explicit user approval before changes are applied. Direct Agent mutation tool calls are disabled while approval mode is manual."
                 : canApplyWrites
-                    ? "The app may apply valid Agent write JSON and Agent-only mutation tool calls directly for this request."
+                    ? "The app may apply valid Agent write JSON and Agent-only mutation tool calls directly because Agent write approval mode is auto_accept."
                     : !chat.AgentWritesEnabled
                         ? "Agent writes are disabled by configuration; no writes will be applied."
                         : "The current user's role does not permit applying Agent writes."
@@ -2460,7 +2469,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
         var readToolNames = string.Join(", ", _toolCatalog.ToolsForMode(request.Mode)
             .Where(tool => tool.Risk == ChatToolRisk.ReadOnly)
             .Select(tool => tool.Name));
-        var writeToolNames = request.Mode == MemoryChatMode.Agent && canApplyWrites
+        var writeToolNames = request.Mode == MemoryChatMode.Agent && canApplyWrites && !approvalRequired
             ? string.Join(", ", _toolCatalog.ToolsForMode(request.Mode)
                 .Where(tool => tool.Risk == ChatToolRisk.Write)
                 .Select(tool => tool.Name))
@@ -2470,8 +2479,10 @@ public sealed partial class MemoryChatAgent : IChatAgent
             : "none";
         var mutationToolLine = request.Mode == MemoryChatMode.Agent
             ? !string.IsNullOrWhiteSpace(writeToolNames)
-                ? $"- Agent-only local mutation tools: enabled for explicit task/page changes ({writeToolNames}).\n"
-                : "- Agent-only local mutation tools: unavailable for this request.\n"
+                ? $"- Agent-only local mutation tools: enabled for explicit task/page changes in auto_accept mode ({writeToolNames}).\n"
+                : approvalRequired
+                    ? "- Agent-only local mutation tools: unavailable while Agent write approval mode is manual.\n"
+                    : "- Agent-only local mutation tools: unavailable for this request.\n"
             : "- Local mutation tools: unavailable in Chat mode; use Agent mode for task/page mutations.\n";
 
         return "Current MemorySmith capabilities and limits:\n" +
@@ -2482,9 +2493,16 @@ public sealed partial class MemoryChatAgent : IChatAgent
             $"- Read-only local MemorySmith tools: {(chat.ToolCallsEnabled ? "enabled" : "disabled")}. Available read tools in this mode: {readToolDisplay}. These tools can only read MemorySmith memories/pages/tasks; they cannot use shell commands, browse the web, or call external MCP tools.\n" +
             mutationToolLine +
             $"- Agent writes: {writeCapability}.\n" +
+            $"- Agent write approval mode: {AgentWriteApprovalModes.Normalize(chat.AgentWriteApprovalMode)}.\n" +
             $"- Write flow: {writeFlow}\n" +
             "- Never claim that a memory, page, or task was created, updated, deleted, or saved unless the application response includes written memory/page ids or a successful mutation tool result. Pending proposals are not changes.";
     }
+
+    private bool RequiresAgentWriteApproval(MemoryChatRequest request) =>
+        request.Mode == MemoryChatMode.Agent && !IsAgentWriteAutoAcceptMode();
+
+    private bool IsAgentWriteAutoAcceptMode() =>
+        AgentWriteApprovalModes.IsAutoAccept(_options.Value.Chat.AgentWriteApprovalMode);
 
     private bool CanApplyAgentWrites() =>
         _options.Value.Chat.AgentWritesEnabled &&
@@ -2493,8 +2511,9 @@ public sealed partial class MemoryChatAgent : IChatAgent
             string.Equals(role, MemorySmithRoles.Admin, StringComparison.OrdinalIgnoreCase) ||
             string.Equals(role, MemorySmithRoles.Editor, StringComparison.OrdinalIgnoreCase));
 
-    private string BuildSystemPrompt(MemoryChatMode mode, ChatProviderCapabilities providerCapabilities, ChatContextPlan contextPlan)
+    private string BuildSystemPrompt(MemoryChatRequest request, ChatProviderCapabilities providerCapabilities, ChatContextPlan contextPlan)
     {
+        var mode = request.Mode;
         var configuredPrompt = ReadConfiguredSystemPrompt();
         if (!string.IsNullOrWhiteSpace(configuredPrompt))
         {
@@ -2505,7 +2524,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
             }
             else
             {
-                extraPrompt.Append(BuildToolProtocolPrompt(mode, providerCapabilities, contextPlan));
+                extraPrompt.Append(BuildToolProtocolPrompt(request, providerCapabilities, contextPlan));
             }
 
             if (!HasMarkdownOutputGuidance(configuredPrompt))
@@ -2519,7 +2538,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
         var prompt = mode == MemoryChatMode.Agent
             ? "You are MemorySmith Agent. Answer the user and, only when useful, propose memoryWrites and pageWrites. Return strict JSON with keys reply, memoryWrites, and pageWrites. memoryWrites items may include id, title, content, tags, status, confidence. pageWrites items may include slug, title, markdown. Do not include markdown fences around the JSON."
             : "You are MemorySmith Chat. Answer the user's question using the supplied memories and pages when useful. Be direct when the local knowledge base does not contain enough evidence.";
-        return prompt + BuildToolProtocolPrompt(mode, providerCapabilities, contextPlan) + BuildOutputCapabilityPrompt(mode);
+        return prompt + BuildToolProtocolPrompt(request, providerCapabilities, contextPlan) + BuildOutputCapabilityPrompt(mode);
     }
 
     private string BuildToolRecommendationPrompt(ChatContextPlan contextPlan)
@@ -2535,13 +2554,15 @@ public sealed partial class MemoryChatAgent : IChatAgent
             toolCallExample + ".";
     }
 
-    private string BuildToolProtocolPrompt(MemoryChatMode mode, ChatProviderCapabilities providerCapabilities, ChatContextPlan contextPlan)
+    private string BuildToolProtocolPrompt(MemoryChatRequest request, ChatProviderCapabilities providerCapabilities, ChatContextPlan contextPlan)
     {
         if (!_options.Value.Chat.ToolCallsEnabled)
         {
             return string.Empty;
         }
 
+        var mode = request.Mode;
+        var approvalRequired = RequiresAgentWriteApproval(request);
         var finalInstruction = mode == MemoryChatMode.Agent
             ? "After tool results are supplied, return the normal strict Agent JSON with reply, memoryWrites, and pageWrites."
             : "After tool results are supplied, answer the user normally and do not expose the tool-call JSON.";
@@ -2552,7 +2573,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
         var readOnlyToolNames = string.Join(", ", _toolCatalog.ToolsForMode(mode)
             .Where(tool => tool.Risk == ChatToolRisk.ReadOnly)
             .Select(tool => tool.Name));
-        var writeToolNames = mode == MemoryChatMode.Agent && CanApplyAgentWrites()
+        var writeToolNames = mode == MemoryChatMode.Agent && CanApplyAgentWrites() && !approvalRequired
             ? string.Join(", ", _toolCatalog.ToolsForMode(mode)
                 .Where(tool => tool.Risk == ChatToolRisk.Write)
                 .Select(tool => tool.Name))
@@ -2560,7 +2581,9 @@ public sealed partial class MemoryChatAgent : IChatAgent
         var writeToolInstruction = mode == MemoryChatMode.Agent
             ? !string.IsNullOrWhiteSpace(writeToolNames)
                 ? $"Agent-only mutation tools are also available for explicit user-requested task/page changes: {writeToolNames}. Do not use mutation tools for ordinary lookup questions. "
-                : "No mutation tools are available for this request. "
+                : approvalRequired
+                    ? "Mutation tool calls are not available because Agent write approval mode is manual; propose memory/page writes through strict Agent JSON instead, and ask the user to approve or use the task UI for task changes. "
+                    : "No mutation tools are available for this request. "
             : "Chat mode has no mutation tools; do not request write tools. ";
         return "\n\nLocal MemorySmith tools are available in Chat and Agent mode through an application-intercepted MCP-compatible protocol. " +
             nativeToolStatus + " " +

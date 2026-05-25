@@ -242,6 +242,22 @@ public class ChatOptions
     public int MaxToolCallsPerTurn { get; set; } = 3;
     public int MaxToolResultCharacters { get; set; } = 12000;
     public bool AgentWritesEnabled { get; set; }
+    public string AgentWriteApprovalMode { get; set; } = AgentWriteApprovalModes.Manual;
+}
+
+public static class AgentWriteApprovalModes
+{
+    public const string Manual = "manual";
+    public const string AutoAccept = "auto_accept";
+
+    public static bool IsAutoAccept(string? value) =>
+        string.Equals(Normalize(value), AutoAccept, StringComparison.OrdinalIgnoreCase);
+
+    public static string Normalize(string? value)
+    {
+        var normalized = (value ?? Manual).Trim().Replace('-', '_');
+        return string.IsNullOrWhiteSpace(normalized) ? Manual : normalized;
+    }
 }
 
 public class ChatModelOption
