@@ -116,19 +116,19 @@
         <div class="health-lower-card">
             <div class="health-section-title">Runtime Configuration</div>
             <div class="health-config-grid">
-                <span>Data Path</span><strong>@_diagnostics.Configuration.DataPath</strong>
-                <span>Pages Path</span><strong>@_diagnostics.Configuration.PagesPath</strong>
-                <span>Event Log</span><strong>@_diagnostics.Configuration.EventLogPath</strong>
-                <span>Variables</span><strong>@_diagnostics.Configuration.VarsPath</strong>
+                <span>Data Path</span><strong><SensitiveValue Value="@_diagnostics.Configuration.DataPath" Summary="@MaskOperationalValue(_diagnostics.Configuration.DataPath)" Label="data path" Class="health-sensitive-value" /></strong>
+                <span>Pages Path</span><strong><SensitiveValue Value="@_diagnostics.Configuration.PagesPath" Summary="@MaskOperationalValue(_diagnostics.Configuration.PagesPath)" Label="pages path" Class="health-sensitive-value" /></strong>
+                <span>Event Log</span><strong><SensitiveValue Value="@_diagnostics.Configuration.EventLogPath" Summary="@MaskOperationalValue(_diagnostics.Configuration.EventLogPath)" Label="event log path" Class="health-sensitive-value" /></strong>
+                <span>Variables</span><strong><SensitiveValue Value="@_diagnostics.Configuration.VarsPath" Summary="@MaskOperationalValue(_diagnostics.Configuration.VarsPath)" Label="variables path" Class="health-sensitive-value" /></strong>
                 <span>URLs</span><strong>@FormatUrls(_diagnostics.Configuration.ConfiguredUrls)</strong>
                 <span>Service</span><strong>@_diagnostics.Configuration.WindowsServiceName</strong>
                 <span>API Key</span><strong>@(_diagnostics.Configuration.ApiKeyConfigured ? "Configured" : "Not configured")</strong>
                 <span>Remote API</span><strong>@(_diagnostics.Configuration.AllowRemoteApi ? "Allowed" : "Local only")</strong>
                 <span>Maintenance</span><strong>@(_diagnostics.Configuration.Maintenance.Enabled ? "Enabled" : "Disabled")</strong>
-                <span>Source Roots</span><strong>@FormatSourceRoots(_diagnostics.Configuration.SourceLinks)</strong>
+                <span>Source Roots</span><strong><SensitiveValue Value="@FormatSourceRoots(_diagnostics.Configuration.SourceLinks)" Summary="@MaskSourceRoots(_diagnostics.Configuration.SourceLinks)" Label="source roots" Class="health-sensitive-value" /></strong>
                 <span>Open Sources</span><strong>@(_diagnostics.Configuration.SourceLinks.AllowOpenWithDefaultApp ? "Enabled" : "Disabled")</strong>
                 <span>Semantic Search</span><strong>@FormatSemanticSearch(_diagnostics.Configuration.SemanticSearch, _diagnostics.SemanticEmbeddings)</strong>
-                <span>Chat</span><strong>@FormatChatProvider(_diagnostics.Configuration.Chat)</strong>
+                <span>Chat</span><strong><SensitiveValue Value="@FormatChatProvider(_diagnostics.Configuration.Chat)" Summary="@FormatChatProviderSummary(_diagnostics.Configuration.Chat)" Label="chat provider configuration" Class="health-sensitive-value" /></strong>
                 <span>Telemetry</span><strong>@(_diagnostics.Configuration.Telemetry.Enabled ? "Enabled" : "Disabled")</strong>
                 <span>Tracing</span><strong>@(_diagnostics.Configuration.Telemetry.TracingEnabled ? "Enabled" : "Disabled")</strong>
                 <span>Metrics</span><strong>@(_diagnostics.Configuration.Telemetry.MetricsEnabled ? "Enabled" : "Disabled")</strong>
@@ -185,7 +185,7 @@
                         <MudTh>Observed</MudTh>
                     </HeaderContent>
                     <RowTemplate>
-                        <MudTd>@context.Path</MudTd>
+                        <MudTd><SensitiveValue Value="@context.Path" Summary="@MaskOperationalValue(context.Path)" Label="corrupt file path" Class="health-sensitive-value" /></MudTd>
                         <MudTd>@context.ObservedAtUtc.ToLocalTime().ToString("g")</MudTd>
                     </RowTemplate>
                 </MudTable>
@@ -320,8 +320,19 @@
         return string.Join(", ", roots.DefaultIfEmpty("None"));
     }
 
+    private static string MaskSourceRoots(SourceLinkOptions sourceLinks)
+    {
+        var roots = sourceLinks.AllowedFileRootVariables.Select(name => $"%{name}%")
+            .Concat(sourceLinks.AllowedFileRoots.Select(MaskOperationalValue))
+            .Distinct(StringComparer.OrdinalIgnoreCase);
+        return string.Join(", ", roots.DefaultIfEmpty("None"));
+    }
+
     private static string FormatChatProvider(ChatOptions chat) =>
         $"{chat.Provider} / Ollama:{chat.OllamaModel} / GitHub:{chat.GitHubModel} / {chat.SystemPromptPath}";
+
+    private static string FormatChatProviderSummary(ChatOptions chat) =>
+        $"{chat.Provider} / Ollama:{chat.OllamaModel} / GitHub:{chat.GitHubModel} / {MaskOperationalValue(chat.SystemPromptPath)}";
 
     private static string FormatSemanticSearch(SemanticSearchOptions semanticSearch, EmbeddingProviderStatus status) =>
         semanticSearch.EmbeddingsEnabled
@@ -338,6 +349,80 @@
         var protocol = string.IsNullOrWhiteSpace(telemetry.OtlpProtocol) ? "grpc" : telemetry.OtlpProtocol;
         var endpoint = string.IsNullOrWhiteSpace(telemetry.OtlpEndpoint) ? "(unset endpoint)" : telemetry.OtlpEndpoint;
         return $"{protocol} -> {endpoint}";
+    }
+
+    private static string MaskOperationalValue(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "Not set";
+        }
+
+        if (LooksLikeEmail(value))
+        {
+            return MaskEmail(value);
+        }
+
+        if (LooksLikeLocalPath(value))
+        {
+            return MaskPath(value);
+        }
+
+        return SummarizeIdentifier(value);
+    }
+
+    private static bool LooksLikeEmail(string value)
+    {
+        var atIndex = value.IndexOf('@');
+        return atIndex > 0 && atIndex < value.Length - 1 && value[(atIndex + 1)..].Contains('.');
+    }
+
+    private static bool LooksLikeLocalPath(string value) => value.Contains(@":\", StringComparison.Ordinal) || value.StartsWith(@"\\", StringComparison.Ordinal) || value.StartsWith("/", StringComparison.Ordinal);
+
+    private static string MaskEmail(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "Not set";
+        }
+
+        var atIndex = value.IndexOf('@');
+        if (atIndex <= 0 || atIndex == value.Length - 1)
+        {
+            return SummarizeIdentifier(value);
+        }
+
+        var local = value[..atIndex];
+        var domain = value[(atIndex + 1)..];
+        var visibleLocal = local.Length <= 2 ? local[..1] : local[..Math.Min(2, local.Length)];
+        return $"{visibleLocal}...@{domain}";
+    }
+
+    private static string MaskPath(string value)
+    {
+        var trimmed = value.Trim();
+        var separator = trimmed.Contains('\\') ? '\\' : '/';
+        var parts = trimmed.Split(separator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var leaf = parts.LastOrDefault() ?? "path";
+
+        if (trimmed.Length >= 2 && trimmed[1] == ':')
+        {
+            return $"{trimmed[..2]}{separator}...{separator}{leaf}";
+        }
+
+        return trimmed.StartsWith(@"\\", StringComparison.Ordinal)
+            ? $@"\\...\{leaf}"
+            : $"...{separator}{leaf}";
+    }
+
+    private static string SummarizeIdentifier(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "Not set";
+        }
+
+        return value.Length <= 10 ? value : $"{value[..4]}...{value[^4..]}";
     }
 
     private static string FormatPathDetails(StoragePathStatus path) => path switch

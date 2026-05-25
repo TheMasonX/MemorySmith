@@ -12,6 +12,7 @@
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
 @inject IDialogService Dialogs
+@inject IJSRuntime JS
 @using Microsoft.Extensions.Options
 @using Microsoft.AspNetCore.WebUtilities
 @using System.Text.Json
@@ -42,9 +43,9 @@
                 <RowTemplate>
                     <MudTd>
                         <strong>@context.User.DisplayName</strong><br />
-                        <small>@context.User.UserId</small>
+                        <SensitiveValue Value="@context.User.UserId" Summary="@SummarizeIdentifier(context.User.UserId)" Label="@($"{context.User.DisplayName} user ID")" Class="admin-sensitive-value admin-sensitive-compact" />
                     </MudTd>
-                    <MudTd>@(context.User.Email ?? "-")</MudTd>
+                    <MudTd><SensitiveValue Value="@context.User.Email" Summary="@MaskEmail(context.User.Email)" Label="@($"{context.User.DisplayName} email")" Class="admin-sensitive-value" EmptyText="-" /></MudTd>
                     <MudTd>@(context.User.IsDisabled ? "Disabled" : "Active")</MudTd>
                     <MudTd>
                         @if (context.IsAdmin)
@@ -264,7 +265,16 @@
                 </HeaderContent>
                 <RowTemplate>
                     <MudTd>@context.Key</MudTd>
-                    <MudTd>@context.DisplayValue</MudTd>
+                    <MudTd>
+                        @if (context.ExactValue is null)
+                        {
+                            @context.DisplayValue
+                        }
+                        else
+                        {
+                            <SensitiveValue Value="@context.ExactValue" Summary="@context.DisplayValue" Label="@($"{context.Key} value")" Class="admin-sensitive-value" />
+                        }
+                    </MudTd>
                 </RowTemplate>
             </MudTable>
         </MudTabPanel>
@@ -307,7 +317,24 @@
                                           Variant="Variant.Outlined"
                                           Margin="Margin.Dense"
                                           Class="vars-value-field"
+                                          InputType="@VariableValueInputType(row)"
                                           Disabled="@_isBusy" />
+                            <div class="vars-value-actions">
+                                <MudIconButton Icon="@VariableRevealIcon(row)"
+                                               Color="Color.Secondary"
+                                               Size="Size.Small"
+                                               Disabled="@_isBusy"
+                                               OnClick="@(() => ToggleVariableValueReveal(row))"
+                                               aria-label="@VariableRevealLabel(row)"
+                                               title="@VariableRevealLabel(row)" />
+                                <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
+                                               Color="Color.Secondary"
+                                               Size="Size.Small"
+                                               Disabled="@(_isBusy || string.IsNullOrWhiteSpace(row.Value))"
+                                               OnClick="@(() => CopyVariableValueAsync(row))"
+                                               aria-label="@VariableCopyLabel(row)"
+                                               title="@VariableCopyLabel(row)" />
+                            </div>
                             <MudTooltip Text="Remove this variable row.">
                                 <MudIconButton Icon="@Icons.Material.Filled.Delete"
                                                Color="Color.Error"
@@ -352,7 +379,10 @@
                     <MudTd>@context.OccurredAtUtc.ToLocalTime().ToString("g")</MudTd>
                     <MudTd>@context.ActorDisplay</MudTd>
                     <MudTd>@context.Action</MudTd>
-                    <MudTd>@context.TargetKind:@context.TargetId</MudTd>
+                    <MudTd>
+                        <span>@context.TargetKind:</span>
+                        <SensitiveValue Value="@context.TargetId" Summary="@SummarizeIdentifier(context.TargetId)" Label="@($"{context.TargetKind} target ID")" Class="admin-sensitive-inline" EmptyText="-" />
+                    </MudTd>
                     <MudTd>@context.Outcome</MudTd>
                 </RowTemplate>
             </MudTable>
@@ -384,11 +414,14 @@
                     <MudTh>Artifact</MudTh>
                 </HeaderContent>
                 <RowTemplate>
-                    <MudTd>@context.TargetKind:@context.TargetId</MudTd>
+                    <MudTd>
+                        <span>@context.TargetKind:</span>
+                        <SensitiveValue Value="@context.TargetId" Summary="@SummarizeIdentifier(context.TargetId)" Label="@($"{context.TargetKind} target ID")" Class="admin-sensitive-inline" EmptyText="-" />
+                    </MudTd>
                     <MudTd>@context.VersionNumber</MudTd>
                     <MudTd>@context.CreatedAtUtc.ToLocalTime().ToString("g")</MudTd>
                     <MudTd>@context.Format</MudTd>
-                    <MudTd>@context.HistoryPath</MudTd>
+                    <MudTd><SensitiveValue Value="@context.HistoryPath" Summary="@MaskOperationalValue(context.HistoryPath)" Label="version history artifact path" Class="admin-sensitive-value" EmptyText="-" /></MudTd>
                 </RowTemplate>
             </MudTable>
         </MudTabPanel>
@@ -444,7 +477,7 @@
         .ToList();
 
     private IReadOnlyList<ConfigurationItem> FilteredConfigurationItems => _configurationItems
-        .Where(item => IsSearchMatch(_configurationSearch, item.Key, item.DisplayValue))
+        .Where(item => IsSearchMatch(_configurationSearch, item.Key, item.DisplayValue, item.ExactValue))
         .ToList();
 
     private IReadOnlyList<string> AuditOutcomeOptions => DistinctSorted(_audit.Select(entry => entry.Outcome));
@@ -896,6 +929,33 @@
 
     private void AddVariableRow() => _variableRows.Add(new VarRow());
 
+    private static InputType VariableValueInputType(VarRow row) => row.IsValueRevealed ? InputType.Text : InputType.Password;
+
+    private static string VariableRevealIcon(VarRow row) => row.IsValueRevealed ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility;
+
+    private static string VariableRevealLabel(VarRow row) => row.IsValueRevealed ? $"Hide {VariableNameLabel(row)} value" : $"Reveal {VariableNameLabel(row)} value";
+
+    private static string VariableCopyLabel(VarRow row) => $"Copy {VariableNameLabel(row)} value";
+
+    private static string VariableNameLabel(VarRow row) => string.IsNullOrWhiteSpace(row.Name) ? "variable" : row.Name.Trim();
+
+    private static void ToggleVariableValueReveal(VarRow row)
+    {
+        row.IsValueRevealed = !row.IsValueRevealed;
+    }
+
+    private async Task CopyVariableValueAsync(VarRow row)
+    {
+        if (string.IsNullOrWhiteSpace(row.Value))
+        {
+            Snackbar.Add($"No {VariableNameLabel(row)} value to copy.", Severity.Info);
+            return;
+        }
+
+        var copied = await SafeJsInterop.TryInvokeVoidAsync(JS, "navigator.clipboard.writeText", row.Value);
+        Snackbar.Add(copied ? $"{VariableNameLabel(row)} value copied." : "Clipboard unavailable. Reveal the value and copy it manually.", copied ? Severity.Success : Severity.Warning);
+    }
+
     private void RemoveVariableRow(int index)
     {
         if (index < 0 || index >= _variableRows.Count)
@@ -1045,9 +1105,18 @@
                 }
                 break;
             default:
-                items.Add(new ConfigurationItem(key, FormatConfigValue(node, IsSensitiveKey(key))));
+                items.Add(CreateConfigurationItem(key, node));
                 break;
         }
+    }
+
+    private static ConfigurationItem CreateConfigurationItem(string key, JsonNode? node)
+    {
+        var sensitive = IsSensitiveKey(key);
+        var value = FormatConfigValue(node, sensitive);
+        return !sensitive && ShouldMaskOperationalValue(value)
+            ? new ConfigurationItem(key, MaskOperationalValue(value), value)
+            : new ConfigurationItem(key, value, null);
     }
 
     private static bool IsSensitiveKey(string key)
@@ -1085,6 +1154,90 @@
         }
 
         return node.ToJsonString(JsonOptions);
+    }
+
+    private static bool ShouldMaskOperationalValue(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value) || value is "(empty)" or "(null)" or "true" or "false")
+        {
+            return false;
+        }
+
+        return LooksLikeEmail(value) || LooksLikeLocalPath(value);
+    }
+
+    private static string MaskOperationalValue(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "Not set";
+        }
+
+        if (LooksLikeEmail(value))
+        {
+            return MaskEmail(value);
+        }
+
+        if (LooksLikeLocalPath(value))
+        {
+            return MaskPath(value);
+        }
+
+        return SummarizeIdentifier(value);
+    }
+
+    private static bool LooksLikeEmail(string value)
+    {
+        var atIndex = value.IndexOf('@');
+        return atIndex > 0 && atIndex < value.Length - 1 && value[(atIndex + 1)..].Contains('.');
+    }
+
+    private static bool LooksLikeLocalPath(string value) => value.Contains(@":\", StringComparison.Ordinal) || value.StartsWith(@"\\", StringComparison.Ordinal) || value.StartsWith("/", StringComparison.Ordinal);
+
+    private static string MaskEmail(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "Not set";
+        }
+
+        var atIndex = value.IndexOf('@');
+        if (atIndex <= 0 || atIndex == value.Length - 1)
+        {
+            return SummarizeIdentifier(value);
+        }
+
+        var local = value[..atIndex];
+        var domain = value[(atIndex + 1)..];
+        var visibleLocal = local.Length <= 2 ? local[..1] : local[..Math.Min(2, local.Length)];
+        return $"{visibleLocal}...@{domain}";
+    }
+
+    private static string MaskPath(string value)
+    {
+        var trimmed = value.Trim();
+        var separator = trimmed.Contains('\\') ? '\\' : '/';
+        var parts = trimmed.Split(separator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var leaf = parts.LastOrDefault() ?? "path";
+
+        if (trimmed.Length >= 2 && trimmed[1] == ':')
+        {
+            return $"{trimmed[..2]}{separator}...{separator}{leaf}";
+        }
+
+        return trimmed.StartsWith(@"\\", StringComparison.Ordinal)
+            ? $@"\\...\{leaf}"
+            : $"...{separator}{leaf}";
+    }
+
+    private static string SummarizeIdentifier(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "Not set";
+        }
+
+        return value.Length <= 10 ? value : $"{value[..4]}...{value[^4..]}";
     }
 
     private async Task<IReadOnlyList<VersionHistoryEntry>> LoadRecentVersionsAsync()
@@ -1128,7 +1281,7 @@
 
     private sealed record SettingCategoryGroup(string Category, IReadOnlyList<EditableConfigurationRow> Items);
 
-    private sealed record ConfigurationItem(string Key, string DisplayValue);
+    private sealed record ConfigurationItem(string Key, string DisplayValue, string? ExactValue);
 
     private sealed class ModelProfileEditor
     {
@@ -1169,5 +1322,6 @@
     {
         public string Name { get; set; } = string.Empty;
         public string Value { get; set; } = string.Empty;
+        public bool IsValueRevealed { get; set; }
     }
 }

@@ -4,7 +4,7 @@
   "title": "Mask and reveal sensitive account, path, and identifier values in operational UI",
   "description": "Problem: the continued live review found several operator surfaces showing full account identifiers, linked sign-in identifiers, local filesystem paths, and long audit targets by default. This is useful for debugging but noisy in normal use and risky for screenshots, demos, shared browser sessions, and copied reports.\n\nDesired outcome: operational screens should default to privacy-conscious summaries while preserving copy/reveal affordances for operators who need exact values.\n\nScope:\n- In scope: Profile linked sign-in methods, Admin Users/OAuth/Audit/History/Variables, Health runtime configuration, local path values, account/user identifiers, email-like identifiers, and copy/reveal affordances.\n- Out of scope: changing persisted audit records, authentication identifiers, or diagnostics API payload contracts.\n\nAcceptance criteria:\n- Sensitive-looking identifiers and local paths are masked or summarized by default in UI.\n- Exact values can be copied or revealed intentionally with clear affordances and accessible labels.\n- Tables remain scannable after masking, with stable columns/card labels.\n- Browser screenshots of default operator views avoid exposing full account emails, user IDs, or local machine paths.\n\nValidation:\n- Capture Profile, Admin Users, Admin Audit, Admin Variables, and Health before/after using generic fixture or masked values.\n- Run focused browser checks for reveal/copy behavior and accessible names.\n- Ensure no persistence or API contract behavior changes unless explicitly intended.",
   "type": "Task",
-  "status": "Backlog",
+  "status": "Done",
   "priority": "High",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -28,15 +28,21 @@
       "author": "AgentSmith",
       "body": "Created from 2026-05-25 continued live review: Profile/Admin/Health surfaces displayed full local paths and account or target identifiers by default. Task text intentionally avoids copying real observed values.",
       "createdAtUtc": "2026-05-25T00:00:00.0000000Z"
+    },
+    {
+      "id": "c-0138-2",
+      "author": "AgentSmith",
+      "body": "Implemented privacy-conscious reveal/copy affordances for Profile email and linked sign-in identifiers, Admin user IDs/emails, Admin effective configuration values that look like local paths or emails, Admin Audit/History target IDs and history paths, Admin Variables values, and Health runtime/path diagnostics. Added reusable SensitiveValue component so exact values remain available only through explicit reveal/copy actions. Validation: dotnet build .\\MemorySmith.App\\MemorySmith.App.csproj --nologo passed; route-smoke passed 6/6 against http://127.0.0.1:5099; browser Health probe confirmed default summarized path display, Reveal data path exposed the exact value, and Hide data path restored the summary. Authenticated Profile/Admin browser proof remains limited by the current lack of a Playwright auth fixture, but the affected Razor paths compile and share the same component used by the browser-verified Health route.",
+      "createdAtUtc": "2026-05-25T15:30:24.7170876Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-25T00:00:00.0000000Z",
-  "updatedAtUtc": "2026-05-25T00:00:00.0000000Z",
-  "completedAtUtc": null,
-  "revision": 1,
+  "updatedAtUtc": "2026-05-25T15:30:24.7170876Z",
+  "completedAtUtc": "2026-05-25T15:30:24.7170876Z",
+  "revision": 2,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

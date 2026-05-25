@@ -2261,9 +2261,14 @@ body {
 
 .vars-row {
     display: grid;
-    grid-template-columns: 220px 1fr 40px;
+    grid-template-columns: 220px minmax(0, 1fr) auto 40px;
     align-items: center;
     gap: 8px;
+}
+
+.vars-value-actions {
+    display: inline-flex;
+    gap: 2px;
 }
 
 .health-workbench {
@@ -2948,6 +2953,41 @@ body {
 
 .profile-account-summary {
     overflow-wrap: anywhere;
+}
+
+.sensitive-value {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+    justify-content: space-between;
+    min-width: 0;
+}
+
+.sensitive-value-text {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.sensitive-value-actions {
+    display: inline-flex;
+    flex: 0 0 auto;
+    gap: 2px;
+}
+
+.profile-sensitive-summary,
+.profile-sensitive-value,
+.admin-sensitive-value,
+.health-sensitive-value {
+    width: 100%;
+}
+
+.admin-sensitive-compact {
+    margin-top: 2px;
+}
+
+.admin-sensitive-inline {
+    margin-left: 2px;
+    vertical-align: middle;
 }
 
 .profile-edit-grid {

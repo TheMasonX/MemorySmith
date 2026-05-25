@@ -46,7 +46,7 @@
                     </div>
                     <div>
                         <dt>Email</dt>
-                        <dd>@MaskedEmailLabel</dd>
+                        <dd><SensitiveValue Value="@_email" Summary="@MaskedEmailLabel" Label="profile email" Class="profile-sensitive-summary" /></dd>
                     </div>
                     <div>
                         <dt>Roles</dt>
@@ -95,7 +95,9 @@
                     </HeaderContent>
                     <RowTemplate>
                         <MudTd>@ProviderDisplay(context.ProviderName)</MudTd>
-                        <MudTd><span class="profile-account-summary">@ProviderAccountSummary(context)</span></MudTd>
+                        <MudTd>
+                            <SensitiveValue Value="@ProviderAccountLabel(context)" Summary="@ProviderAccountSummary(context)" Label="@($"{ProviderDisplay(context.ProviderName)} account identifier")" Class="profile-sensitive-value" />
+                        </MudTd>
                         <MudTd>@context.LinkedAtUtc.ToLocalTime().ToString("g")</MudTd>
                         <MudTd>
                             <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error" Disabled="@(_isBusy || !CanRemoveLink(context))" OnClick="@(() => RemoveLinkAsync(context))">Remove</MudButton>
