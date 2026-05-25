@@ -4,7 +4,7 @@
   "title": "Standardize icon-button tooltip coverage across primary workbenches",
   "description": "Problem: the live UI audit found several icon-only controls with accessible labels but no visible tooltip affordance, which is inconsistent with MemorySmith's control style and makes toolbar actions harder to learn. Examples include Pages `New`, `Edit`, and `Delete`; Memories `Copy content`, `Copy agent context`, `Edit`, `Increment usage`, and `Delete`; Chat `Refresh models` and `Toggle sidebar`; and Admin tab scroll buttons.\n\nDesired outcome: icon-only buttons across the main workbenches consistently expose both an accessible name and a hover/focus tooltip.\n\nScope:\n- In scope: Pages, Memories, Chat, Admin tab-scroll controls, and any shared icon-button helper/component discovered while implementing.\n- Out of scope: changing button icons, changing command behavior, or converting text buttons to icons.\n\nAcceptance criteria:\n- Every icon-only command in the audited route headers/toolbars has a stable accessible name.\n- Every non-trivial icon-only command has a MudTooltip/title consistent with the visible command name.\n- Disabled icon buttons still expose their purpose to assistive technology.\n- Common toolbar patterns prefer a shared wrapper/helper where the existing component structure allows it.\n\nValidation:\n- Re-run the browser audit over `/pages`, `/memories`, `/chat`, and `/admin` and confirm no actionable icon-only toolbar controls are missing tooltip/name coverage.\n- Run route-smoke or focused component/browser tests for the affected routes.",
   "type": "Task",
-  "status": "Backlog",
+  "status": "Done",
   "priority": "Medium",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -28,15 +28,21 @@
       "author": "AgentSmith",
       "body": "Created from 2026-05-25 live browser audit: multiple icon-only toolbar buttons had aria labels but no tooltip/title, while nearby controls such as Pages focus reading already use tooltips.",
       "createdAtUtc": "2026-05-25T00:00:00.0000000Z"
+    },
+    {
+      "id": "c-0119-2",
+      "author": "AgentSmith",
+      "body": "Implemented native `title` coverage for audited icon-only controls across Pages, Memories, Chat, and Admin-owned toolbar/panel actions while preserving existing `MudTooltip` wrappers and command behavior. Covered examples include Pages New/Edit/Delete and markdown toolbar controls, Memories copy/context/edit/usage/delete plus search/navigation/pagination/tag controls, Chat model/sidebar/history/composer/trace filter controls, and Admin model/variable action buttons. Admin tab scroll buttons are MudBlazor-generated chrome rather than app-owned `MudIconButton` markup in `Admin.razor`; this checkpoint covers the Admin icon actions the app owns. Validation: `dotnet build .\\MemorySmith.App\\MemorySmith.App.csproj --nologo` succeeded; `MEMORYSMITH_BASE_URL=http://127.0.0.1:5099 npm run test:route-smoke` passed 5/5; a multiline static sweep found no `MudIconButton` with `aria-label` but missing native `title` in Pages, MemoryViewer, Chat, or Admin.",
+      "createdAtUtc": "2026-05-25T14:41:23.0729398Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-25T00:00:00.0000000Z",
-  "updatedAtUtc": "2026-05-25T00:00:00.0000000Z",
-  "completedAtUtc": null,
-  "revision": 1,
+  "updatedAtUtc": "2026-05-25T14:41:23.0729398Z",
+  "completedAtUtc": "2026-05-25T14:41:23.0729398Z",
+  "revision": 2,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

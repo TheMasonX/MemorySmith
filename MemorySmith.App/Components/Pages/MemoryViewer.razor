@@ -31,7 +31,8 @@
                                    Size="Size.Small"
                                    Class="wiki-search-clear"
                                    OnClick="ClearAsync"
-                                   aria-label="Clear" />
+                                   aria-label="Clear"
+                                   title="Clear search" />
                 </MudTooltip>
                 <MudTooltip Text="Search">
                     <MudIconButton Icon="@Icons.Material.Filled.Search"
@@ -40,7 +41,8 @@
                                    Size="Size.Small"
                                    Class="wiki-search-submit"
                                    OnClick="SearchAsync"
-                                   aria-label="Search" />
+                                   aria-label="Search"
+                                   title="Search" />
                 </MudTooltip>
             </div>
 
@@ -64,7 +66,8 @@
                     <MudIconButton Icon="@(_isResultsPaneCollapsed ? Icons.Material.Filled.Menu : Icons.Material.Filled.MenuOpen)"
                                    Size="Size.Small"
                                    OnClick="ToggleResultsPane"
-                                   aria-label="Toggle memory results list" />
+                                   aria-label="Toggle memory results list"
+                                   title="Toggle memory results list" />
                 </MudTooltip>
                 <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
                     <Authorized>
@@ -73,7 +76,8 @@
                                            Size="Size.Small"
                                            Color="Color.Success"
                                            OnClick="NewRecord"
-                                           aria-label="New" />
+                                           aria-label="New"
+                                           title="New memory" />
                         </MudTooltip>
                     </Authorized>
                 </AuthorizeView>
@@ -156,9 +160,9 @@
                 @if (!_isSearchMode && TotalPages > 1)
                 {
                     <div class="wiki-pagination">
-                        <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" Disabled="@(_page <= 1)" Size="Size.Small" OnClick="@(() => GoToPageAsync(_page - 1))" />
+                        <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" Disabled="@(_page <= 1)" Size="Size.Small" OnClick="@(() => GoToPageAsync(_page - 1))" aria-label="Previous page" title="Previous page" />
                         <span>Page @_page of @TotalPages</span>
-                        <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" Disabled="@(_page >= TotalPages)" Size="Size.Small" OnClick="@(() => GoToPageAsync(_page + 1))" />
+                        <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" Disabled="@(_page >= TotalPages)" Size="Size.Small" OnClick="@(() => GoToPageAsync(_page + 1))" aria-label="Next page" title="Next page" />
                     </div>
                 }
             }
@@ -211,7 +215,7 @@
                                           Immediate="true"
                                           OnKeyUp="OnTagDraftKeyUp"
                                           Class="wiki-tag-input" />
-                            <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" OnClick="AddTagDraftAsync" aria-label="Add tag" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" OnClick="AddTagDraftAsync" aria-label="Add tag" title="Add tag" />
                         </div>
                         @if (_tagSuggestions.Count > 0)
                         {
@@ -273,13 +277,13 @@
                         </div>
                     </div>
                     <MudSpacer />
-                    <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Size="Size.Small" OnClick="CopySelectedContentAsync" aria-label="Copy content" />
-                    <MudIconButton Icon="@Icons.Material.Filled.Assignment" Size="Size.Small" OnClick="CopyAgentContextAsync" aria-label="Copy agent context" />
+                    <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Size="Size.Small" OnClick="CopySelectedContentAsync" aria-label="Copy content" title="Copy content" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Assignment" Size="Size.Small" OnClick="CopyAgentContextAsync" aria-label="Copy agent context" title="Copy agent context" />
                     <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
                         <Authorized>
-                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="EditSelected" aria-label="Edit" />
-                            <MudIconButton Icon="@Icons.Material.Filled.AddCircle" Size="Size.Small" OnClick="@(() => IncrementUsageAsync(_selectedRecord.Id))" aria-label="Increment usage" />
-                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteAsync(_selectedRecord.Id))" aria-label="Delete" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="EditSelected" aria-label="Edit" title="Edit" />
+                            <MudIconButton Icon="@Icons.Material.Filled.AddCircle" Size="Size.Small" OnClick="@(() => IncrementUsageAsync(_selectedRecord.Id))" aria-label="Increment usage" title="Increment usage" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteAsync(_selectedRecord.Id))" aria-label="Delete" title="Delete" />
                         </Authorized>
                     </AuthorizeView>
                 </div>

@@ -33,7 +33,7 @@
                               OnKeyUp="OnSearchKeyUp"
                               Class="wiki-search-box" />
                 <MudTooltip Text="Clear search">
-                    <MudIconButton Icon="@Icons.Material.Filled.Clear" Size="Size.Small" Class="pages-search-clear" OnClick="ClearAsync" aria-label="Clear" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Clear" Size="Size.Small" Class="pages-search-clear" OnClick="ClearAsync" aria-label="Clear" title="Clear search" />
                 </MudTooltip>
                 <MudTooltip Text="Search">
                     <MudIconButton Icon="@Icons.Material.Filled.Search"
@@ -42,7 +42,8 @@
                                    Size="Size.Small"
                                    Class="pages-search-submit"
                                    OnClick="SearchAsync"
-                                   aria-label="Search" />
+                                   aria-label="Search"
+                                   title="Search" />
                 </MudTooltip>
             </div>
             <div class="pages-navigation-controls">
@@ -67,7 +68,7 @@
                 </MudTooltip>
                 <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
                     <Authorized>
-                        <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" Color="Color.Success" OnClick="NewPageAsync" aria-label="New" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" Color="Color.Success" OnClick="NewPageAsync" aria-label="New" title="New" />
                     </Authorized>
                 </AuthorizeView>
             </div>
@@ -151,7 +152,8 @@
                                                        Size="Size.Small"
                                                        Class="pages-toc-toggle"
                                                        OnClick="@(() => ToggleTocNodeAsync(row.Id))"
-                                                       aria-label="@($"Toggle {row.Text}")" />
+                                                       aria-label="@($"Toggle {row.Text}")"
+                                                       title="@($"Toggle {row.Text}")" />
                                     }
                                     else
                                     {
@@ -208,7 +210,8 @@
                                            Size="Size.Small"
                                            Color="Color.Primary"
                                            OnClick="ToggleFocusModeAsync"
-                                           aria-label="Toggle focus reading" />
+                                           aria-label="Toggle focus reading"
+                                           title="Toggle focus reading" />
                         </MudTooltip>
                         <MudCheckBox T="bool"
                                      Value="_livePreview"
@@ -216,7 +219,7 @@
                                      Label="Live preview"
                                      Size="Size.Small"
                                      Class="page-editor-live-preview" />
-                        <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Small" Color="Color.Primary" OnClick="RefreshPreview" aria-label="Refresh preview" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Small" Color="Color.Primary" OnClick="RefreshPreview" aria-label="Refresh preview" title="Refresh preview" />
                         <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
                             <Authorized>
                                 <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Save" OnClick="SaveAsync">Save</MudButton>
@@ -241,22 +244,22 @@
 
                     <div class="page-editor-toolbar" role="toolbar" aria-label="Markdown tools">
                         <MudTooltip Text="Bold">
-                            <MudIconButton Icon="@Icons.Material.Filled.FormatBold" Size="Size.Small" OnClick="@(() => InsertMarkdownAsync("**", "**", "bold text"))" aria-label="Bold" />
+                            <MudIconButton Icon="@Icons.Material.Filled.FormatBold" Size="Size.Small" OnClick="@(() => InsertMarkdownAsync("**", "**", "bold text"))" aria-label="Bold" title="Bold" />
                         </MudTooltip>
                         <MudTooltip Text="Italic">
-                            <MudIconButton Icon="@Icons.Material.Filled.FormatItalic" Size="Size.Small" OnClick="@(() => InsertMarkdownAsync("*", "*", "italic text"))" aria-label="Italic" />
+                            <MudIconButton Icon="@Icons.Material.Filled.FormatItalic" Size="Size.Small" OnClick="@(() => InsertMarkdownAsync("*", "*", "italic text"))" aria-label="Italic" title="Italic" />
                         </MudTooltip>
                         <MudTooltip Text="Page link">
-                            <MudIconButton Icon="@Icons.Material.Filled.Description" Size="Size.Small" OnClick='@(() => InsertMarkdownAsync("[", "](../relative/path.md)", "Page"))' aria-label="Page link" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Description" Size="Size.Small" OnClick='@(() => InsertMarkdownAsync("[", "](../relative/path.md)", "Page"))' aria-label="Page link" title="Page link" />
                         </MudTooltip>
                         <MudTooltip Text="Web link">
-                            <MudIconButton Icon="@Icons.Material.Filled.Link" Size="Size.Small" OnClick="@(() => InsertMarkdownAsync("[", "](https://)", "link text"))" aria-label="Link" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Link" Size="Size.Small" OnClick="@(() => InsertMarkdownAsync("[", "](https://)", "link text"))" aria-label="Link" title="Web link" />
                         </MudTooltip>
                         <MudTooltip Text="Checkbox">
-                            <MudIconButton Icon="@Icons.Material.Filled.CheckBoxOutlineBlank" Size="Size.Small" OnClick="@(() => InsertMarkdownAsync("- [ ] ", "", "Task"))" aria-label="Checkbox" />
+                            <MudIconButton Icon="@Icons.Material.Filled.CheckBoxOutlineBlank" Size="Size.Small" OnClick="@(() => InsertMarkdownAsync("- [ ] ", "", "Task"))" aria-label="Checkbox" title="Checkbox" />
                         </MudTooltip>
                         <MudTooltip Text="Table">
-                            <MudIconButton Icon="@Icons.Material.Filled.TableChart" Size="Size.Small" OnClick="@(() => InsertMarkdownAsync("\n| Column | Value |\n| --- | --- |\n| Item | Detail |\n", "", ""))" aria-label="Table" />
+                            <MudIconButton Icon="@Icons.Material.Filled.TableChart" Size="Size.Small" OnClick="@(() => InsertMarkdownAsync("\n| Column | Value |\n| --- | --- |\n| Item | Detail |\n", "", ""))" aria-label="Table" title="Table" />
                         </MudTooltip>
                         <MudTooltip Text="Upload image">
                             <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
@@ -345,12 +348,13 @@
                                        Size="Size.Small"
                                        Color="Color.Primary"
                                        OnClick="ToggleFocusModeAsync"
-                                       aria-label="Toggle focus reading" />
+                                       aria-label="Toggle focus reading"
+                                       title="Toggle focus reading" />
                     </MudTooltip>
                     <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
                         <Authorized>
-                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="EditSelected" aria-label="Edit" />
-                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="DeleteSelectedAsync" aria-label="Delete" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="EditSelected" aria-label="Edit" title="Edit" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="DeleteSelectedAsync" aria-label="Delete" title="Delete" />
                         </Authorized>
                     </AuthorizeView>
                 </div>

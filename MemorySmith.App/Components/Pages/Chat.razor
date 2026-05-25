@@ -63,10 +63,10 @@
                     <MudSelectItem T="string" Value="@MermaidThemeLight">Light</MudSelectItem>
                     <MudSelectItem T="string" Value="@MermaidThemeDark">Dark</MudSelectItem>
                 </MudSelect>
-                <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Small" Color="Color.Primary" Disabled="@_isLoadingModels" OnClick="RefreshModelsAsync" aria-label="Refresh models" />
+                <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Small" Color="Color.Primary" Disabled="@_isLoadingModels" OnClick="RefreshModelsAsync" aria-label="Refresh models" title="Refresh models" />
             </div>
 
-            <MudIconButton Icon="@(_sidebarOpen ? Icons.Material.Filled.ChevronRight : Icons.Material.Filled.Menu)" Size="Size.Small" OnClick="ToggleSidebar" aria-label="Toggle sidebar" />
+            <MudIconButton Icon="@(_sidebarOpen ? Icons.Material.Filled.ChevronRight : Icons.Material.Filled.Menu)" Size="Size.Small" OnClick="ToggleSidebar" aria-label="Toggle sidebar" title="Toggle sidebar" />
         </div>
 
         <div class="chat-status-strip">
@@ -219,10 +219,10 @@
                 <div class="chat-composer-actions">
                     <MudCheckBox T="bool" Value="_sendOnEnter" ValueChanged="SetSendOnEnterAsync" Label="Send on Enter" Size="Size.Small" />
                     <MudTooltip Text="Finish current step">
-                        <MudIconButton Icon="@Icons.Material.Filled.Pause" Size="Size.Small" Color="Color.Warning" Class="chat-composer-icon" Disabled="@(!_isSending || _activeRunControl?.StopAfterCurrentStepRequested == true)" OnClick="StopAfterCurrentStepAsync" aria-label="Finish current step" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Pause" Size="Size.Small" Color="Color.Warning" Class="chat-composer-icon" Disabled="@(!_isSending || _activeRunControl?.StopAfterCurrentStepRequested == true)" OnClick="StopAfterCurrentStepAsync" aria-label="Finish current step" title="Finish current step" />
                     </MudTooltip>
                     <MudTooltip Text="Stop generation">
-                        <MudIconButton Icon="@Icons.Material.Filled.Stop" Size="Size.Small" Color="Color.Error" Class="chat-composer-icon" Disabled="@(!_isSending)" OnClick="StopGeneratingAsync" aria-label="Stop generation" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Stop" Size="Size.Small" Color="Color.Error" Class="chat-composer-icon" Disabled="@(!_isSending)" OnClick="StopGeneratingAsync" aria-label="Stop generation" title="Stop generation" />
                     </MudTooltip>
                     <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Send" Disabled="@(!CanSendChat)" OnClick="SendAsync">Send</MudButton>
                 </div>
@@ -238,7 +238,7 @@
                     <MudButton Variant="@SidebarTabVariant(ChatSidebarTab.History)" Color="@SidebarTabColor(ChatSidebarTab.History)" Class="@SidebarTabClass(ChatSidebarTab.History)" OnClick="@(() => ShowSidebarTab(ChatSidebarTab.History))">History</MudButton>
                     <MudButton Variant="@SidebarTabVariant(ChatSidebarTab.Trace)" Color="@SidebarTabColor(ChatSidebarTab.Trace)" Class="@SidebarTabClass(ChatSidebarTab.Trace)" OnClick="@(() => ShowSidebarTab(ChatSidebarTab.Trace))">Trace</MudButton>
                 </MudButtonGroup>
-                <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" Color="Color.Default" OnClick="ToggleSidebar" aria-label="Close sidebar" />
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" Color="Color.Default" OnClick="ToggleSidebar" aria-label="Close sidebar" title="Close sidebar" />
             </div>
 
             @if (_sidebarTab == ChatSidebarTab.History)
@@ -246,7 +246,7 @@
                 <section class="chat-history-panel" aria-label="Chat history">
                     <div class="chat-history-header">
                         <MudText Typo="Typo.subtitle2">History</MudText>
-                        <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" Color="Color.Success" OnClick="StartNewChatAsync" aria-label="New chat" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" Color="Color.Success" OnClick="StartNewChatAsync" aria-label="New chat" title="New chat" />
                     </div>
 
                     <div class="chat-history-list">
@@ -257,7 +257,7 @@
                                     <span>@session.Title</span>
                                     <small>@session.UpdatedUtc.ToLocalTime().ToString("M/d HH:mm")</small>
                                 </button>
-                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" Disabled="@_isSending" OnClick="@(() => DeleteSessionAsync(session.Id))" aria-label="Delete chat" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" Disabled="@_isSending" OnClick="@(() => DeleteSessionAsync(session.Id))" aria-label="Delete chat" title="Delete chat" />
                             </div>
                         }
                     </div>
@@ -291,19 +291,19 @@
 
                         <div class="chat-trace-filters" aria-label="Trace filters">
                             <MudTooltip Text="@TraceFilterTooltipText("Reasoning", _traceShowReasoning)">
-                                <MudIconButton Icon="@Icons.Material.Filled.Psychology" Size="Size.Small" Variant="Variant.Outlined" Color="@TraceFilterColor(_traceShowReasoning)" Class="chat-trace-filter-button" OnClick="ToggleTraceReasoning" aria-label="Toggle reasoning filter" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Psychology" Size="Size.Small" Variant="Variant.Outlined" Color="@TraceFilterColor(_traceShowReasoning)" Class="chat-trace-filter-button" OnClick="ToggleTraceReasoning" aria-label="Toggle reasoning filter" title='@TraceFilterTooltipText("Reasoning", _traceShowReasoning)' />
                             </MudTooltip>
                             <MudTooltip Text="@TraceFilterTooltipText("Tools", _traceShowTools)">
-                                <MudIconButton Icon="@Icons.Material.Filled.Build" Size="Size.Small" Variant="Variant.Outlined" Color="@TraceFilterColor(_traceShowTools)" Class="chat-trace-filter-button" OnClick="ToggleTraceTools" aria-label="Toggle tools filter" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Build" Size="Size.Small" Variant="Variant.Outlined" Color="@TraceFilterColor(_traceShowTools)" Class="chat-trace-filter-button" OnClick="ToggleTraceTools" aria-label="Toggle tools filter" title='@TraceFilterTooltipText("Tools", _traceShowTools)' />
                             </MudTooltip>
                             <MudTooltip Text="@TraceFilterTooltipText("Answer", _traceShowAssistant)">
-                                <MudIconButton Icon="@Icons.Material.Filled.QuestionAnswer" Size="Size.Small" Variant="Variant.Outlined" Color="@TraceFilterColor(_traceShowAssistant)" Class="chat-trace-filter-button" OnClick="ToggleTraceAssistant" aria-label="Toggle answer filter" />
+                                <MudIconButton Icon="@Icons.Material.Filled.QuestionAnswer" Size="Size.Small" Variant="Variant.Outlined" Color="@TraceFilterColor(_traceShowAssistant)" Class="chat-trace-filter-button" OnClick="ToggleTraceAssistant" aria-label="Toggle answer filter" title='@TraceFilterTooltipText("Answer", _traceShowAssistant)' />
                             </MudTooltip>
                             <MudTooltip Text="@TraceFilterTooltipText("System", _traceShowSystem)">
-                                <MudIconButton Icon="@Icons.Material.Filled.Settings" Size="Size.Small" Variant="Variant.Outlined" Color="@TraceFilterColor(_traceShowSystem)" Class="chat-trace-filter-button" OnClick="ToggleTraceSystem" aria-label="Toggle system filter" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Settings" Size="Size.Small" Variant="Variant.Outlined" Color="@TraceFilterColor(_traceShowSystem)" Class="chat-trace-filter-button" OnClick="ToggleTraceSystem" aria-label="Toggle system filter" title='@TraceFilterTooltipText("System", _traceShowSystem)' />
                             </MudTooltip>
                             <MudTooltip Text="@TraceFilterTooltipText("Errors", _traceErrorsOnly)">
-                                <MudIconButton Icon="@Icons.Material.Filled.Error" Size="Size.Small" Variant="Variant.Outlined" Color="@TraceFilterColor(_traceErrorsOnly, Color.Error)" Class="chat-trace-filter-button" OnClick="ToggleTraceErrors" aria-label="Toggle errors-only filter" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Error" Size="Size.Small" Variant="Variant.Outlined" Color="@TraceFilterColor(_traceErrorsOnly, Color.Error)" Class="chat-trace-filter-button" OnClick="ToggleTraceErrors" aria-label="Toggle errors-only filter" title='@TraceFilterTooltipText("Errors", _traceErrorsOnly)' />
                             </MudTooltip>
                         </div>
 

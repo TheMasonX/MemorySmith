@@ -142,13 +142,13 @@
                             <MudTd>
                                 <div class="admin-row-actions">
                                     <MudTooltip Text="@DuplicateModelTooltip(context)">
-                                        <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Color="Color.Primary" Size="Size.Small" Disabled="@_isBusy" OnClick="@(() => DuplicateModelProfileAsync(context))" aria-label="Duplicate model profile" />
+                                        <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Color="Color.Primary" Size="Size.Small" Disabled="@_isBusy" OnClick="@(() => DuplicateModelProfileAsync(context))" aria-label="Duplicate model profile" title="Duplicate model profile" />
                                     </MudTooltip>
                                     <MudTooltip Text="@EditModelTooltip(context)">
-                                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" Disabled="@_isBusy" OnClick="@(() => EditModelProfile(context))" aria-label="Edit model profile" />
+                                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" Disabled="@_isBusy" OnClick="@(() => EditModelProfile(context))" aria-label="Edit model profile" title="Edit model profile" />
                                     </MudTooltip>
                                     <MudTooltip Text="@DeleteModelTooltip(context)">
-                                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" Disabled="@(_isBusy || context.IsImplicit)" OnClick="@(() => DeleteModelProfileAsync(context))" aria-label="Delete model profile" />
+                                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" Disabled="@(_isBusy || context.IsImplicit)" OnClick="@(() => DeleteModelProfileAsync(context))" aria-label="Delete model profile" title="Delete model profile" />
                                     </MudTooltip>
                                 </div>
                             </MudTd>
@@ -178,7 +178,7 @@
                             </MudSelect>
                             <div class="admin-model-select-meta">
                                 <small>@ModelDiscoveryStatus</small>
-                                <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Small" Color="Color.Primary" Disabled="@(_isBusy || _isLoadingModelOptions)" OnClick="RefreshModelOptionsAsync" aria-label="Refresh provider models" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Small" Color="Color.Primary" Disabled="@(_isBusy || _isLoadingModelOptions)" OnClick="RefreshModelOptionsAsync" aria-label="Refresh provider models" title="Refresh provider models" />
                             </div>
                         </div>
                         <MudNumericField T="int?" Value="@_modelProfileEditor.ContextWindowTokens" ValueChanged="@((int? value) => _modelProfileEditor.ContextWindowTokens = value)" Label="Context tokens" Variant="Variant.Outlined" Margin="Margin.Dense" Min="512" Max="262144" Disabled="@_isBusy" />
@@ -313,7 +313,8 @@
                                                Size="Size.Small"
                                                Disabled="@_isBusy"
                                                OnClick="@(() => RemoveVariableRow(index))"
-                                               aria-label="Remove variable" />
+                                               aria-label="Remove variable"
+                                               title="Remove variable" />
                             </MudTooltip>
                         </div>
                     }
