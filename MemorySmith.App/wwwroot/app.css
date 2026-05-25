@@ -2731,6 +2731,108 @@ body {
     color: var(--vscode-text-muted);
 }
 
+.about-workbench {
+    height: auto;
+    min-height: 100%;
+    overflow: visible;
+}
+
+.about-commandbar {
+    grid-template-columns: minmax(220px, max-content) minmax(240px, 1fr);
+    align-items: center;
+}
+
+.about-summary-copy,
+.about-muted {
+    color: var(--vscode-text-muted);
+}
+
+.about-overview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.about-stat-card {
+    display: grid;
+    gap: 4px;
+}
+
+.about-stat-card span {
+    color: var(--vscode-text-muted);
+    font-size: 0.76rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.about-stat-card strong {
+    color: var(--vscode-text);
+    font-size: 1.25rem;
+    font-weight: 650;
+}
+
+.about-license-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.about-section-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.about-filter-row {
+    display: grid;
+    grid-template-columns: minmax(240px, 1fr) auto;
+    gap: 8px;
+    align-items: center;
+}
+
+.about-license-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.about-table .mud-table-cell {
+    vertical-align: top;
+}
+
+.about-url-cell {
+    max-width: 220px;
+    overflow-wrap: anywhere;
+}
+
+.about-empty-state {
+    margin: 0;
+}
+
+.about-license-details {
+    margin: 0;
+}
+
+.about-license-details summary {
+    cursor: pointer;
+    color: var(--vscode-text);
+    font-weight: 650;
+}
+
+.about-license-text {
+    max-height: 380px;
+    margin: 10px 0 0;
+    overflow: auto;
+    color: var(--vscode-text);
+    font-family: Consolas, "Liberation Mono", monospace;
+    font-size: 0.82rem;
+    white-space: pre-wrap;
+}
+
 .profile-workbench {
     height: auto;
     min-height: 100%;
@@ -3627,6 +3729,12 @@ body {
 
     .profile-commandbar,
     .profile-sectionbar {
+        align-items: stretch;
+    }
+
+    .about-commandbar,
+    .about-filter-row {
+        grid-template-columns: 1fr;
         align-items: stretch;
     }
 

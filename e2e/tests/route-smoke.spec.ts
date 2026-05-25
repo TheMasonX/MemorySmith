@@ -106,6 +106,30 @@ const routes: SmokeRoute[] = [
       await expect(page.getByRole('heading', { name: 'Health & Activity', exact: true })).toBeVisible();
     },
   },
+  {
+    name: 'About',
+    slug: 'about',
+    routePath: '/about',
+    expectedTitle: 'About - MemorySmith',
+    assertReady: async (page) => {
+      await expect(page.getByRole('heading', { name: 'About MemorySmith', exact: true })).toBeVisible();
+      await expect(page.getByRole('region', { name: 'Third-party licenses' })).toBeVisible();
+      await expect(page.getByRole('textbox', { name: 'Search dependencies' })).toBeVisible();
+    },
+    interact: async (page) => {
+      await page.getByRole('textbox', { name: 'Search dependencies' }).fill('MudBlazor');
+      await expect(page.getByText('MudBlazor', { exact: true })).toBeVisible();
+      await expect(page.getByText('BenchmarkDotNet', { exact: true })).toHaveCount(0);
+
+      await page.getByRole('button', { name: 'Clear' }).click();
+      await expect(page.getByText('BenchmarkDotNet', { exact: true })).toBeVisible();
+
+      const licenseDetails = page.locator('details.about-license-details');
+      await expect(licenseDetails).not.toHaveAttribute('open', '');
+      await page.getByText('MemorySmith License (MIT)').click();
+      await expect(licenseDetails).toHaveAttribute('open', '');
+    },
+  },
 ];
 
 test.describe('Route smoke', () => {

@@ -1,0 +1,31 @@
+﻿{
+  "id": "tsk-0146-include-license-text",
+  "key": "TSK-0146",
+  "title": "Include License Text",
+  "description": "Include the full license text for MIT, BSD, Apache, etc. so that we are fully compliant. Clicking on the license chip should show it as a dialog overlay (scrollable if needed for longer licenses) or something that includes the text and not just the name.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T15:05:56.9452866Z",
+  "updatedAtUtc": "2026-05-25T15:05:56.9452866Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

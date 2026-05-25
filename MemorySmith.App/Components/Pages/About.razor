@@ -3,46 +3,102 @@
 
 <PageTitle>About - MemorySmith</PageTitle>
 
-<MudText Typo="Typo.h4" GutterBottom="true">About MemorySmith</MudText>
-<MudText Typo="Typo.body1" Class="mb-4">
-    MemorySmith is a personal knowledge and memory management system. This application is released under the MIT License.
-</MudText>
+<div class="wiki-workbench about-workbench">
+    <section class="wiki-commandbar about-commandbar" aria-label="About">
+        <div class="wiki-title-block">
+            <MudText Typo="Typo.h4">About MemorySmith</MudText>
+            <span class="wiki-count">MIT licensed</span>
+        </div>
+        <MudText Typo="Typo.body2" Class="about-summary-copy">
+            MemorySmith is a personal knowledge and memory management system.
+        </MudText>
+    </section>
 
-<MudDivider Class="my-4" />
+    <section class="about-overview-grid" aria-label="License overview">
+        <div class="health-lower-card about-stat-card">
+            <span>Packages</span>
+            <strong>@_licenses.Length</strong>
+        </div>
+        <div class="health-lower-card about-stat-card">
+            <span>License Families</span>
+            <strong>@LicenseFamilies.Count()</strong>
+        </div>
+        <div class="health-lower-card about-stat-card">
+            <span>Visible</span>
+            <strong>@FilteredLicenses.Count</strong>
+        </div>
+    </section>
 
-<MudText Typo="Typo.h5" GutterBottom="true">Third-Party Licenses</MudText>
-<MudText Typo="Typo.body2" Class="mb-4">
-    MemorySmith uses the following open-source packages. Each is used under its respective license as noted.
-</MudText>
+    <section class="health-lower-card about-license-panel" aria-label="Third-party licenses">
+        <div class="about-section-header">
+            <div>
+                <MudText Typo="Typo.h5">Third-Party Licenses</MudText>
+                <MudText Typo="Typo.body2" Class="about-muted">@FilteredLicenses.Count of @_licenses.Length packages shown</MudText>
+            </div>
+        </div>
 
-<MudTable Items="_licenses" Hover="true" Breakpoint="Breakpoint.Sm" Dense="true" Elevation="1">
-    <HeaderContent>
-        <MudTh>Package</MudTh>
-        <MudTh>Version</MudTh>
-        <MudTh>License</MudTh>
-        <MudTh>Project URL</MudTh>
-    </HeaderContent>
-    <RowTemplate>
-        <MudTd DataLabel="Package"><MudText Typo="Typo.body2">@context.Name</MudText></MudTd>
-        <MudTd DataLabel="Version"><MudText Typo="Typo.body2">@context.Version</MudText></MudTd>
-        <MudTd DataLabel="License"><MudChip T="string" Size="Size.Small" Color="@LicenseColor(context.License)">@context.License</MudChip></MudTd>
-        <MudTd DataLabel="Project URL">
-            <MudLink Href="@context.Url" Target="_blank" Typo="Typo.body2">@context.Url</MudLink>
-        </MudTd>
-    </RowTemplate>
-</MudTable>
+        <div class="about-filter-row">
+            <MudTextField T="string"
+                          Value="@_licenseSearch"
+                          ValueChanged="OnLicenseSearchChanged"
+                          Immediate="true"
+                          Label="Search dependencies"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          Class="about-search-input" />
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Clear" Disabled="@(!HasActiveFilter)" OnClick="ClearFilters">Clear</MudButton>
+        </div>
 
-<MudDivider Class="my-6" />
+        <div class="about-license-filters" aria-label="License filters">
+            <MudButton Size="Size.Small" Variant="@LicenseFilterVariant(null)" Color="@LicenseFilterColor(null)" OnClick="@(() => SetLicenseFilter(null))">All</MudButton>
+            @foreach (var license in LicenseFamilies)
+            {
+                <MudButton Size="Size.Small" Variant="@LicenseFilterVariant(license)" Color="@LicenseFilterColor(license)" OnClick="@(() => SetLicenseFilter(license))">@license (@CountLicenseFamily(license))</MudButton>
+            }
+        </div>
 
-<MudText Typo="Typo.h6" GutterBottom="true">MemorySmith License (MIT)</MudText>
-<MudPaper Class="pa-4" Elevation="1">
-    <MudText Typo="Typo.body2" Style="white-space: pre-wrap; font-family: monospace;">@_mitLicenseText</MudText>
-</MudPaper>
+        @if (FilteredLicenses.Count == 0)
+        {
+            <div class="wiki-empty-state about-empty-state">No dependency licenses match the current filters.</div>
+        }
+        else
+        {
+            <MudTable Items="FilteredLicenses" Hover="true" Breakpoint="Breakpoint.Sm" Dense="true" Elevation="0" Class="about-table">
+                <HeaderContent>
+                    <MudTh>Package</MudTh>
+                    <MudTh>Version</MudTh>
+                    <MudTh>License</MudTh>
+                    <MudTh>Project</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Package"><MudText Typo="Typo.body2">@context.Name</MudText></MudTd>
+                    <MudTd DataLabel="Version"><MudText Typo="Typo.body2">@context.Version</MudText></MudTd>
+                    <MudTd DataLabel="License"><MudChip T="string" Size="Size.Small" Color="@LicenseColor(context.License)">@context.License</MudChip></MudTd>
+                    <MudTd DataLabel="Project" Class="about-url-cell">
+                        <MudLink Href="@context.Url" Target="_blank" Typo="Typo.body2" title="@context.Url">@ProjectHost(context.Url)</MudLink>
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </section>
+
+    <details class="health-lower-card about-license-details">
+        <summary>MemorySmith License (MIT)</summary>
+        <pre class="about-license-text">@_mitLicenseText</pre>
+    </details>
+</div>
 
 @code {
     private record LicenseEntry(string Name, string Version, string License, string Url);
 
-    private static readonly Color[] _licenseColors = [Color.Success, Color.Info, Color.Warning];
+    private string _licenseSearch = string.Empty;
+    private string? _licenseFilter;
+
+    private IReadOnlyList<LicenseEntry> FilteredLicenses => _licenses.Where(MatchesLicense).ToArray();
+    private IEnumerable<string> LicenseFamilies => _licenses.Select(item => item.License).Distinct().OrderBy(item => item, StringComparer.OrdinalIgnoreCase);
+    private bool HasActiveFilter => !string.IsNullOrWhiteSpace(_licenseSearch) || !string.IsNullOrWhiteSpace(_licenseFilter);
 
     private Color LicenseColor(string license) => license switch
     {
@@ -50,6 +106,54 @@
         "Apache-2.0"  => Color.Info,
         _             => Color.Default,
     };
+
+    private Variant LicenseFilterVariant(string? license) => IsSelectedLicenseFilter(license) ? Variant.Filled : Variant.Outlined;
+
+    private Color LicenseFilterColor(string? license) => IsSelectedLicenseFilter(license) ? Color.Primary : Color.Default;
+
+    private void OnLicenseSearchChanged(string value) => _licenseSearch = value;
+
+    private void SetLicenseFilter(string? license) => _licenseFilter = string.IsNullOrWhiteSpace(license) ? null : license;
+
+    private void ClearFilters()
+    {
+        _licenseSearch = string.Empty;
+        _licenseFilter = null;
+    }
+
+    private bool IsSelectedLicenseFilter(string? license)
+    {
+        if (string.IsNullOrWhiteSpace(license))
+        {
+            return string.IsNullOrWhiteSpace(_licenseFilter);
+        }
+
+        return string.Equals(_licenseFilter, license, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private int CountLicenseFamily(string license) => _licenses.Count(item => string.Equals(item.License, license, StringComparison.OrdinalIgnoreCase));
+
+    private bool MatchesLicense(LicenseEntry entry)
+    {
+        if (!string.IsNullOrWhiteSpace(_licenseFilter) && !string.Equals(entry.License, _licenseFilter, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(_licenseSearch))
+        {
+            return true;
+        }
+
+        return Contains(entry.Name, _licenseSearch)
+            || Contains(entry.Version, _licenseSearch)
+            || Contains(entry.License, _licenseSearch)
+            || Contains(entry.Url, _licenseSearch);
+    }
+
+    private static bool Contains(string value, string search) => value.Contains(search, StringComparison.OrdinalIgnoreCase);
+
+    private static string ProjectHost(string url) => Uri.TryCreate(url, UriKind.Absolute, out var uri) ? uri.Host : url;
 
     private readonly LicenseEntry[] _licenses =
     [

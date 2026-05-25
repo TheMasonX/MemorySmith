@@ -4,7 +4,7 @@
   "title": "Make About dependencies and license information compact and scannable",
   "description": "Problem: the continued visual-density review found `/about` dominated by a long third-party dependency table and a full license block. This is legitimate information, but it is presented as one long read-through surface, making package lookup, license review, and attribution scanning harder than necessary.\n\nDesired outcome: About should keep legal/dependency information complete while giving users compact navigation, filtering, and progressive disclosure.\n\nScope:\n- In scope: About page section navigation, dependency table search/filter, license-family grouping, collapsible full license text, external-link affordances, and responsive table/card behavior.\n- Out of scope: changing license text, package metadata source of truth, or legal attribution content.\n\nAcceptance criteria:\n- Users can quickly find a package, license, or project URL without scrolling through the whole dependency table.\n- Full license text remains available but does not dominate the first-pass view.\n- The dependency/license layout stays readable at narrow widths without requiring horizontal scrolling.\n- External project/license links are clear and keyboard accessible.\n\nValidation:\n- Capture `/about` before/after at narrow and desktop widths.\n- Run focused browser checks for package search/filter, license expansion/collapse, and link accessibility.",
   "type": "Task",
-  "status": "Backlog",
+  "status": "Done",
   "priority": "Low",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -28,15 +28,21 @@
       "author": "AgentSmith",
       "body": "Created from 2026-05-25 continued visual-density review: `/about` measured as a long dependency/license surface where the package table and full license text dominate scanning.",
       "createdAtUtc": "2026-05-25T00:00:00.0000000Z"
+    },
+    {
+      "id": "c-0144-2",
+      "author": "AgentSmith",
+      "body": "Completed by turning `/about` into a compact workbench with package/license summary cards, dependency search, license-family filters, shorter project host links with full URL titles, and a collapsed native details block for the MIT license text. Added route-smoke coverage for About filtering, clearing, and license expansion. Evidence: `MemorySmith.App/Components/Pages/About.razor`, `MemorySmith.App/wwwroot/app.css`, `e2e/tests/route-smoke.spec.ts`. Validation passed: `dotnet build .\\MemorySmith.App\\MemorySmith.App.csproj --nologo`; focused About route-smoke 1/1; full route-smoke 6/6 against `http://127.0.0.1:5099`. Note: an integrated-browser probe confirmed no horizontal overflow on the visible About page, but its Blazor input state was less reliable than the Playwright route-smoke browser run.",
+      "createdAtUtc": "2026-05-25T15:07:06.7020206Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-25T00:00:00.0000000Z",
-  "updatedAtUtc": "2026-05-25T00:00:00.0000000Z",
-  "completedAtUtc": null,
-  "revision": 1,
+  "updatedAtUtc": "2026-05-25T15:07:06.7020206Z",
+  "completedAtUtc": "2026-05-25T15:07:06.7020206Z",
+  "revision": 2,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,
