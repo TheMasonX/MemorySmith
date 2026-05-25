@@ -10,7 +10,9 @@
 @inject IEnumerable<IChatProvider> ChatProviders
 @inject VarResolver VarResolver
 @inject ISnackbar Snackbar
+@inject NavigationManager Navigation
 @using Microsoft.Extensions.Options
+@using Microsoft.AspNetCore.WebUtilities
 @using System.Text.Json
 @using System.Text.Json.Nodes
 
@@ -25,7 +27,7 @@
         <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync">Refresh</MudButton>
     </section>
 
-    <MudTabs Rounded="false" Elevation="0" Class="admin-tabs">
+    <MudTabs Rounded="false" Elevation="0" Class="admin-tabs" ActivePanelIndex="@_activeAdminTabIndex" ActivePanelIndexChanged="OnAdminTabChanged">
         <MudTabPanel Text="Users" Icon="@Icons.Material.Filled.People">
             <MudTable Items="@_userRows" Dense="true" Class="health-table">
                 <HeaderContent>
@@ -393,6 +395,8 @@
 
 @code {
     private const string AllFilterValue = "__all__";
+    private const string VariablesTabName = "variables";
+    private const int VariablesTabIndex = 4;
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private IReadOnlyList<UserAdminRow> _userRows = [];
     private IReadOnlyList<RoleRecord> _roles = [];
@@ -419,6 +423,7 @@
     private string? _modelProfileModelError;
     private ModelProfileEditor _modelProfileEditor = ModelProfileEditor.New();
     private List<VarRow> _variableRows = [];
+    private int _activeAdminTabIndex;
     private bool _isBusy;
     private bool _isLoadingModelOptions;
 
@@ -461,7 +466,33 @@
         .Where(MatchesHistoryFilter)
         .ToList();
 
-    protected override async Task OnInitializedAsync() => await LoadAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        ApplyAdminTabFromUri();
+        await LoadAsync();
+    }
+
+    private void ApplyAdminTabFromUri()
+    {
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        var query = QueryHelpers.ParseQuery(uri.Query);
+        if (query.TryGetValue("tab", out var tab) && string.Equals(tab.ToString(), VariablesTabName, StringComparison.OrdinalIgnoreCase))
+        {
+            _activeAdminTabIndex = VariablesTabIndex;
+        }
+    }
+
+    private void OnAdminTabChanged(int index)
+    {
+        _activeAdminTabIndex = index;
+        var current = Navigation.ToAbsoluteUri(Navigation.Uri);
+        var path = current.GetLeftPart(UriPartial.Path);
+        var target = index == VariablesTabIndex ? $"{path}?tab={VariablesTabName}" : path;
+        if (!string.Equals(current.ToString(), target, StringComparison.OrdinalIgnoreCase))
+        {
+            Navigation.NavigateTo(target, replace: true);
+        }
+    }
 
     private async Task LoadAsync()
     {
