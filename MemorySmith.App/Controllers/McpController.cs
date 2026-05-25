@@ -19,13 +19,16 @@ public class McpController : ControllerBase
     };
 
     private static readonly JsonSerializerOptions CompactJsonOptions = new(JsonSerializerDefaults.Web);
-    private string[] ToolNames => _toolCatalog.McpTools
+    private string[] ToolNames => EnabledMcpTools
         .Select(tool => tool.Name)
         .ToArray();
+    private IReadOnlyList<ChatToolDescriptor> EnabledMcpTools => _toolCatalog.McpTools
+        .Where(IsMcpToolEnabled)
+        .ToList();
 
     private readonly MemoryApplicationService _memories;
     private readonly VarResolver _vars;
-    private readonly MemorySmithOptions _options;
+    private readonly IOptionsMonitor<MemorySmithOptions> _options;
     private readonly IAuthorizationService _authorization;
     private readonly ChatToolCatalog _toolCatalog;
     private readonly IPageService _pages;
@@ -33,14 +36,14 @@ public class McpController : ControllerBase
     public McpController(
         MemoryApplicationService memories,
         VarResolver vars,
-        IOptions<MemorySmithOptions> options,
+        IOptionsMonitor<MemorySmithOptions> options,
         IAuthorizationService authorization,
         ChatToolCatalog toolCatalog,
         IPageService pages)
     {
         _memories = memories;
         _vars = vars;
-        _options = options.Value;
+        _options = options;
         _authorization = authorization;
         _toolCatalog = toolCatalog;
         _pages = pages;
@@ -125,6 +128,10 @@ public class McpController : ControllerBase
         {
             return ToolText($"Unknown MemorySmith tool '{toolName}'.", isError: true);
         }
+        if (!IsMcpToolEnabled(tool))
+        {
+            return ToolText($"MemorySmith tool '{toolName}' is disabled by MCP tool configuration.", isError: true);
+        }
         if (tool.Risk == ChatToolRisk.SensitiveRead && !await CanReadSourceBundleAsync())
         {
             return ToolText("The caller is not authorized to read source bundles.", isError: true);
@@ -136,10 +143,30 @@ public class McpController : ControllerBase
         var args = argumentsElement.ValueKind == JsonValueKind.Object
             ? JsonNode.Parse(argumentsElement.GetRawText()) as JsonObject ?? new JsonObject()
             : new JsonObject();
-        var ctx = new ChatToolExecutionContext(_memories, _pages, Transport: "mcp", User: User, Auth: _options.Auth, DefaultPageMinimumRole: _options.Pages.DefaultMinimumRole, Vars: _vars);
+        var options = _options.CurrentValue;
+        var ctx = new ChatToolExecutionContext(_memories, _pages, Transport: "mcp", User: User, Auth: options.Auth, DefaultPageMinimumRole: options.Pages.DefaultMinimumRole, Vars: _vars);
         var result = await tool.Execute(args, ctx, cancellationToken);
         return ToolText(result.Text, isError: result.IsError);
     }
+
+    private bool IsMcpToolEnabled(ChatToolDescriptor tool)
+    {
+        var mcp = _options.CurrentValue.Mcp;
+        if (ContainsTool(mcp.DisabledTools, tool.Name))
+        {
+            return false;
+        }
+
+        if (ContainsTool(mcp.EnabledTools, tool.Name))
+        {
+            return true;
+        }
+
+        return tool.EnabledByDefaultInMcp;
+    }
+
+    private static bool ContainsTool(IEnumerable<string> configuredTools, string toolName) =>
+        configuredTools.Any(configured => string.Equals(configured, toolName, StringComparison.OrdinalIgnoreCase));
 
     private async Task<bool> CanReadSourceBundleAsync() =>
         (await _authorization.AuthorizeAsync(User, null, MemorySmithPolicies.CanReadSourceBundle)).Succeeded;
@@ -164,7 +191,7 @@ public class McpController : ControllerBase
     private JsonObject BuildToolsListResult()
     {
         var array = new JsonArray();
-        foreach (var tool in _toolCatalog.McpTools)
+        foreach (var tool in EnabledMcpTools)
         {
             var clonedSchema = JsonNode.Parse(tool.InputSchema.ToJsonString()) as JsonObject ?? new JsonObject();
             array.Add(BuildTool(tool.Name, tool.Description, clonedSchema));

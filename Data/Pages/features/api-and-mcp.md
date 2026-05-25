@@ -33,6 +33,7 @@ This feature makes MemorySmith usable by scripts, local tools, and AI agents wit
 - Unified search and retrieval surfaces across memories and pages.
 - Context-pack and source-bundle support for evidence-driven workflows.
 - Edit-gated page save and delete MCP operations.
+- Per-tool MCP enable/disable configuration for local deployment risk controls.
 - Local-first operational defaults with optional API hardening controls.
 
 ## MCP Authorization Contract
@@ -43,6 +44,8 @@ This feature makes MemorySmith usable by scripts, local tools, and AI agents wit
 | Page search, page get, and unified page results | Requires view access and filters by page minimum visibility: Anonymous, Authenticated, or Admin. |
 | Page save and delete | Requires edit permission; Admin-only page visibility remains limited to Admin callers. |
 | Source bundle and find-by-source | Requires the source-bundle policy because resolved source links may include local file content. These tools are MCP-only, not chat-requested model tools. Editor and Admin callers satisfy this policy; configured API-key requests and auth-disabled local installs also satisfy it. Viewer callers, including the default anonymous Viewer role, do not. |
+
+`MemorySmith:Mcp:DisabledTools` removes named tools from MCP discovery and direct execution; `MemorySmith:Mcp:EnabledTools` opts in descriptor-level default-off tools. Disabled wins if both lists name the same tool.
 
 For external agents, use `memorysmith_context_pack` to narrow evidence before calling `memorysmith_source_bundle`. Treat missing page hits or source entries as a possible permission/filtering outcome, not only as absent content.
 

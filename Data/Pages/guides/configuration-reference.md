@@ -37,6 +37,7 @@ This page is the operator and agent-oriented map of the configuration groups, wh
 | Pages and search | `Pages:*`, `SemanticSearch:*`, `TaskSearch:*`, `Governance:*` | `/pages`, `/memories`, `/tasks`, `/tags`, `/health` | Search quality or wiki rendering drifts from operator expectations. |
 | Maintenance | `Maintenance:*` | `/maintenance`, `/health` | Background work runs too often, too rarely, or not at all. |
 | Source links | `SourceLinks:*` | `/variables`, source-link actions, diagnostics | Agents can read too much or too little local source. |
+| MCP tools | `Mcp:*` | `/mcp`, `/admin` Configuration | A deployment exposes an unwanted tool or hides an expected one. |
 | Chat | `Chat:*` | `/chat`, `/api/chat/config` | Wrong provider/model defaults, context bloat, or disabled tool flow. |
 | Maintenance agent | `MaintenanceAgent:*` | `/maintenance`, `/proposals`, admin maintenance chat | Review paths, write roots, or transcript handling drift. |
 | Logging and telemetry | `Logging:*`, `Telemetry:*` | `/api/diagnostics`, `/api/diagnostics/logs*`, structured logs | Observability is too noisy, too sparse, or exporter behavior surprises operators. |
@@ -130,6 +131,15 @@ Current semantic behavior: embeddings are optional. If model assets are missing 
 | `DeniedFileRootVariables` / `DeniedFileRoots` | Explicit deny roots | blocked read/open behavior |
 
 Deny roots take precedence over allow roots and unrestricted mode.
+
+## MCP Tools
+
+| Key | Purpose | Verify |
+| --- | --- | --- |
+| `MemorySmith:Mcp:EnabledTools` | Explicitly enables descriptor-level default-off MCP tools | `/mcp` `tools/list` |
+| `MemorySmith:Mcp:DisabledTools` | Hides named MCP tools and rejects direct calls | `/mcp` `tools/list` and `tools/call` |
+
+Existing MCP tools default on unless they are listed in `DisabledTools`; `DisabledTools` takes precedence if a tool appears in both lists.
 
 ## Chat
 

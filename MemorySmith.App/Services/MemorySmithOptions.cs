@@ -25,6 +25,7 @@ public class MemorySmithOptions
     public MaintenanceOptions Maintenance { get; set; } = new();
     public LimitOptions Limits { get; set; } = new();
     public SourceLinkOptions SourceLinks { get; set; } = new();
+    public McpOptions Mcp { get; set; } = new();
     public ChatOptions Chat { get; set; } = new();
     public MaintenanceAgentOptions MaintenanceAgent { get; set; } = new();
     public LoggingOptions Logging { get; set; } = new();
@@ -193,6 +194,12 @@ public class SourceLinkOptions
     public List<string> AllowedFileRoots { get; set; } = [];
     public List<string> DeniedFileRootVariables { get; set; } = [];
     public List<string> DeniedFileRoots { get; set; } = [];
+}
+
+public class McpOptions
+{
+    public List<string> EnabledTools { get; set; } = [];
+    public List<string> DisabledTools { get; set; } = [];
 }
 
 public class ChatOptions

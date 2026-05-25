@@ -126,6 +126,66 @@ public class McpAndSemanticSearchTests
     }
 
     [Test]
+    public async Task McpToolConfig_HidesAndBlocksDisabledTools()
+    {
+        var dataPath = ProjectWikiFixture.CopyToTemp(_tempRoot);
+        await using var factory = CreateFactory(dataPath, new Dictionary<string, string?>
+        {
+            ["MemorySmith:Mcp:DisabledTools:0"] = "memorysmith_context_pack"
+        });
+        using var client = factory.CreateClient();
+
+        var listResponse = await client.PostAsJsonAsync("/mcp", new
+        {
+            JsonRpc = "2.0",
+            Id = 1,
+            Method = "tools/list"
+        }, JsonSerializerOptions.Web);
+
+        Assert.That(listResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+
+        using var listDocument = await JsonDocument.ParseAsync(await listResponse.Content.ReadAsStreamAsync());
+        var toolNames = listDocument.RootElement
+            .GetProperty("result")
+            .GetProperty("tools")
+            .EnumerateArray()
+            .Select(tool => tool.GetProperty("name").GetString())
+            .ToList();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(toolNames, Does.Contain("memorysmith_search"));
+            Assert.That(toolNames, Does.Not.Contain("memorysmith_context_pack"));
+        });
+
+        var callResponse = await client.PostAsJsonAsync("/mcp", new
+        {
+            JsonRpc = "2.0",
+            Id = 2,
+            Method = "tools/call",
+            Params = new
+            {
+                Name = "memorysmith_context_pack",
+                Arguments = new
+                {
+                    Query = "configuration disabled tool",
+                    MaxRecords = 1
+                }
+            }
+        }, JsonSerializerOptions.Web);
+
+        Assert.That(callResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+
+        using var callDocument = await JsonDocument.ParseAsync(await callResponse.Content.ReadAsStreamAsync());
+        var result = callDocument.RootElement.GetProperty("result");
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.GetProperty("isError").GetBoolean(), Is.True);
+            Assert.That(result.GetProperty("content")[0].GetProperty("text").GetString(), Does.Contain("disabled by MCP tool configuration"));
+        });
+    }
+
+    [Test]
     public async Task McpContextPackTool_ReturnsHybridResultsWithLinkedContext()
     {
         var dataPath = ProjectWikiFixture.CopyToTemp(_tempRoot);
@@ -490,17 +550,27 @@ public class McpAndSemanticSearchTests
         Assert.That(text, Does.Contain("Semantic search"), "The search current-state record should describe semantic search behavior.");
     }
 
-    private WebApplicationFactory<Program> CreateFactory(string memoryPath) =>
+    private WebApplicationFactory<Program> CreateFactory(string memoryPath, IReadOnlyDictionary<string, string?>? overrides = null) =>
         new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
             builder.ConfigureAppConfiguration((_, config) =>
             {
-                config.AddInMemoryCollection(new Dictionary<string, string?>
+                var settings = new Dictionary<string, string?>
                 {
                     ["MemorySmith:DataPath"] = memoryPath,
                     ["MemorySmith:EventLogPath"] = Path.Combine(_tempRoot, "Events", "audit.log"),
                     ["MemorySmith:Maintenance:Enabled"] = "false"
-                });
+                };
+
+                if (overrides is not null)
+                {
+                    foreach (var item in overrides)
+                    {
+                        settings[item.Key] = item.Value;
+                    }
+                }
+
+                config.AddInMemoryCollection(settings);
             });
         });
 

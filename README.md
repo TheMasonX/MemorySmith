@@ -225,7 +225,7 @@ The embedding path uses ONNX Runtime, a local WordPiece vocabulary, E5-style `qu
 
 ## MCP Tools
 
-The MCP endpoint is at `http://localhost:5089/mcp`. VS Code config lives in `.vscode/mcp.json`. Twelve tools are exposed (eight read-only chat-allowlisted, two write tools requiring edit permission, plus two source-aware tools available only over MCP):
+The MCP endpoint is at `http://localhost:5089/mcp`. VS Code config lives in `.vscode/mcp.json`. Up to twelve tools are exposed by default (eight read-only chat-allowlisted, two write tools requiring edit permission, plus two source-aware tools available only over MCP):
 
 | Tool | Key args | Returns | Permission |
 | --- | --- | --- | --- |
@@ -256,6 +256,7 @@ The MCP endpoint is at `http://localhost:5089/mcp`. VS Code config lives in `.vs
 - Page tools also respect each page's minimum visibility role, so `memorysmith_page_search`, `memorysmith_page_get`, and `memorysmith_unified_search` omit pages the caller cannot view.
 - `memorysmith_page_save` and `memorysmith_page_delete` require edit permission and still apply page visibility rules, including Admin-only minimum-role restrictions.
 - `memorysmith_source_bundle` and `memorysmith_find_by_source` are MCP-only `SensitiveRead` tools. They require the source-bundle policy because they can resolve local source-link file slices, and they are intentionally not available as chat-requested model tools. The source-bundle policy is granted to Editor and Admin callers, configured API-key requests, and auth-disabled local installs; Viewer callers, including the default anonymous Viewer role, can list and read normal memory/page content but cannot call source-bundle tools.
+- `MemorySmith:Mcp:DisabledTools` hides individual tools from `tools/list` and rejects `tools/call` for those names. `MemorySmith:Mcp:EnabledTools` explicitly opts in descriptor-level default-off tool names; `DisabledTools` wins if a tool is listed in both places. Existing tools default on unless disabled, preserving the current MCP surface.
 
 **`memorysmith_source_bundle` tips:**
 
@@ -327,6 +328,10 @@ All settings live under `MemorySmith` in `appsettings.json`:
       "AllowedFileRootVariables": [ "MemorySmithRepo" ],
       "AllowedFileRoots": []
     },
+    "Mcp": {
+      "EnabledTools": [],
+      "DisabledTools": []
+    },
     "Chat": {
       "Provider": "Ollama",
       "OllamaEndpoint": "http://localhost:11434",
@@ -379,6 +384,7 @@ For an operator-facing map of the active settings, see [`Data/Pages/guides/confi
 - **`Pages:DefaultMinimumRole`** — default minimum visibility for newly saved pages. Use `Anonymous`, `Authenticated`, or `Admin`; the admin settings UI exposes this as default page visibility.
 - **`Pages:AllowRawHtml`** — enables trusted raw HTML rendering in markdown pages. Off by default; leave disabled for agent-written or unreviewed pages.
 - **`SemanticSearch:*`** — controls optional ONNX embedding ranking. Relative model and vocabulary paths resolve from the configured data deployment root: the folder that contains `Memories`, `Events`, `Graph`, `Models`, and `Pages`. The default model path is `Models/embedding-model.onnx`; ONNX/model artifacts are ignored by Git, and a matching WordPiece `vocab.txt` is required before embeddings activate. Legacy `../Data/Models/...` values are also interpreted relative to that data root.
+- **`Mcp:*`** — controls per-tool MCP exposure. `DisabledTools` hides named tools from `tools/list` and rejects direct `tools/call`; `EnabledTools` opts in descriptor-level default-off tools. Existing MCP tools default on unless disabled.
 - **`DataPath`** — root of the memory store. Subdirectories (`Unconsolidated/`, `Working/`, `Core/`, `Deprecated/`) are created automatically.
 - **`PagesPath`** — root of the markdown page store. `assets/` under this directory is served at `/page-assets` with page visibility checks for referenced assets.
 - **`VarsPath`** — path to the flat JSON dict used for `%VarName%` source link expansion.

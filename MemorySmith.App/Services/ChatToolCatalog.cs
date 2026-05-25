@@ -25,7 +25,8 @@ public sealed record ChatToolDescriptor(
     ChatToolRisk Risk,
     bool AvailableInChat,
     bool AvailableInMcp,
-    Func<JsonObject, ChatToolExecutionContext, CancellationToken, Task<ChatToolExecutionResult>> Execute);
+    Func<JsonObject, ChatToolExecutionContext, CancellationToken, Task<ChatToolExecutionResult>> Execute,
+    bool EnabledByDefaultInMcp = true);
 
 public sealed record ChatToolExecutionContext(
     MemoryApplicationService Memories,
