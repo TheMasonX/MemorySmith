@@ -708,6 +708,85 @@ public class PagesAndChatTests
     }
 
     [Test]
+    public async Task MemoryChatAgent_RejectsUnsafeProposalIdentifiersBeforeApproval()
+    {
+        var memoryStore = new InMemoryMemoryStore();
+        var eventStore = new RecordingEventStore();
+        var publisher = new RecordingMemoryChangePublisher();
+        var memories = TestServiceFactory.CreateMemoryApplicationService(memoryStore, eventStore, publisher);
+        var pages = new FilePageService(_tempDir);
+        var provider = new FakeChatProvider("""
+        {
+            "reply": "Ready to record.",
+            "memoryWrites": [
+                { "id": "../outside", "title": "Unsafe Memory", "content": "Do not propose this." }
+            ],
+            "pageWrites": [
+                { "slug": "../outside", "title": "Unsafe Page", "markdown": "Do not propose this." }
+            ]
+        }
+        """);
+        var agent = new MemoryChatAgent([provider], memories, pages, Options.Create(new MemorySmithOptions
+        {
+            Chat = new ChatOptions { AgentWritesEnabled = true }
+        }), new FakeCurrentUserContext("editor-1", "Editor User", [MemorySmithRoles.Editor]));
+
+        var response = await agent.SendAsync(new MemoryChatRequest("Capture this", MemoryChatMode.Agent, RequireAgentWriteApproval: true), CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(response.Reply, Does.Contain("Rejected unsafe write proposal(s)"));
+            Assert.That(response.Reply, Does.Contain("Unsafe memory proposal id"));
+            Assert.That(response.Reply, Does.Contain("Unsafe page proposal slug"));
+            Assert.That(response.ProposedMemoryWrites, Is.Empty);
+            Assert.That(response.ProposedPageWrites, Is.Empty);
+            Assert.That(memoryStore.Load("outside"), Is.Null);
+        });
+    }
+
+    [Test]
+    public async Task MemoryChatAgent_RejectsUnsafeProposalPathBeforeMaintenanceProposalSubmission()
+    {
+        var memoryStore = new InMemoryMemoryStore();
+        var eventStore = new RecordingEventStore();
+        var publisher = new RecordingMemoryChangePublisher();
+        var memories = TestServiceFactory.CreateMemoryApplicationService(memoryStore, eventStore, publisher);
+        var dataPath = Path.Combine(_tempDir, "Memories");
+        var pagesPath = Path.Combine(_tempDir, "Pages");
+        var pages = new FilePageService(pagesPath);
+        var options = new MemorySmithOptions
+        {
+            DataPath = dataPath,
+            PagesPath = pagesPath,
+            Chat = new ChatOptions { AgentWritesEnabled = true },
+            MaintenanceAgent = new MaintenanceAgentOptions
+            {
+                Read = [dataPath, pagesPath],
+                Write = [Path.Combine(dataPath, "Working"), pagesPath],
+                Storage = new MaintenanceAgentStorageOptions
+                {
+                    ProposalsPath = Path.Combine(_tempDir, "Proposals")
+                }
+            }
+        };
+        var config = new MaintenanceAgentConfigService(new StaticOptionsMonitor<MemorySmithOptions>(options));
+        var workflow = new MaintenanceProposalWorkflow(
+            new FileMaintenanceProposalStore(config, new MaintenanceWritePermissionService(config), new MaintenanceDiffService()),
+            new FakeCurrentUserContext("editor-1", "Editor User", [MemorySmithRoles.Editor]));
+        var agent = new MemoryChatAgent([new FakeChatProvider("not used")], memories, pages, Options.Create(options), new FakeCurrentUserContext("editor-1", "Editor User", [MemorySmithRoles.Editor]), proposalWorkflow: workflow);
+
+        var ex = Assert.ThrowsAsync<InvalidOperationException>(() =>
+            agent.ApplyAgentWritesAsync([], [new AgentPageWriteProposal("../outside", "Unsafe Page", "Do not submit this.")], CancellationToken.None));
+        var proposals = await workflow.ListAsync(CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(ex!.Message, Does.Contain("Unsafe page proposal slug"));
+            Assert.That(proposals, Is.Empty);
+        });
+    }
+
+    [Test]
     public async Task MemoryChatAgent_AgentModeApprovalReplyDoesNotClaimWritesWereApplied()
     {
         var memoryStore = new InMemoryMemoryStore();

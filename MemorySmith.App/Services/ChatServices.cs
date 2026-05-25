@@ -1681,6 +1681,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
             return null;
         }
 
+        ValidateMemoryProposalId(proposal.Id);
         var id = NormalizeMemoryId(string.IsNullOrWhiteSpace(proposal.Id) ? proposal.Title : proposal.Id);
         var existing = await _memories.GetAsync(id, cancellationToken);
         var record = new MemoryRecord
@@ -1707,7 +1708,10 @@ public sealed partial class MemoryChatAgent : IChatAgent
             return null;
         }
 
-        var path = Path.Combine(Path.GetFullPath(_options.Value.DataPath), MemoryStatus.Working.ToString(), $"{id}.json");
+        var path = BuildSafeProposalPath(
+            _options.Value.DataPath,
+            Path.Combine(MemoryStatus.Working.ToString(), $"{id}.json"),
+            "memory proposal path");
         return (new MaintenanceProposalChange(path, before, after), id);
     }
 
@@ -1718,6 +1722,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
             return null;
         }
 
+        ValidatePageProposalSlug(proposal.Slug);
         var slug = FilePageService.NormalizeSlug(string.IsNullOrWhiteSpace(proposal.Slug) ? proposal.Title : proposal.Slug);
         var existing = await _pages.GetAsync(slug, cancellationToken);
         var before = existing?.Markdown ?? string.Empty;
@@ -1728,7 +1733,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
         }
 
         var relative = slug.Replace('/', Path.DirectorySeparatorChar) + ".md";
-        var path = Path.Combine(Path.GetFullPath(_options.Value.PagesPath), relative);
+        var path = BuildSafeProposalPath(_options.Value.PagesPath, relative, "page proposal path");
         return new MaintenanceProposalChange(path, before, after);
     }
 
@@ -2819,14 +2824,23 @@ public sealed partial class MemoryChatAgent : IChatAgent
         var proposedMemories = new List<AgentMemoryWriteProposal>();
         var proposedPages = new List<AgentPageWriteProposal>();
 
+        var rejectedProposals = new List<string>();
+
         if (json["memoryWrites"] is JsonArray memoryWrites)
         {
             foreach (var item in memoryWrites.OfType<JsonObject>())
             {
-                var proposal = ReadMemoryWriteProposal(item);
-                if (proposal is not null)
+                try
                 {
-                    proposedMemories.Add(proposal);
+                    var proposal = ReadMemoryWriteProposal(item);
+                    if (proposal is not null)
+                    {
+                        proposedMemories.Add(proposal);
+                    }
+                }
+                catch (InvalidOperationException ex)
+                {
+                    rejectedProposals.Add(ex.Message);
                 }
             }
         }
@@ -2835,15 +2849,22 @@ public sealed partial class MemoryChatAgent : IChatAgent
         {
             foreach (var item in pageWrites.OfType<JsonObject>())
             {
-                var proposal = ReadPageWriteProposal(item);
-                if (proposal is not null)
+                try
                 {
-                    proposedPages.Add(proposal);
+                    var proposal = ReadPageWriteProposal(item);
+                    if (proposal is not null)
+                    {
+                        proposedPages.Add(proposal);
+                    }
+                }
+                catch (InvalidOperationException ex)
+                {
+                    rejectedProposals.Add(ex.Message);
                 }
             }
         }
 
-        return new AgentActionResult(reply ?? string.Empty, [], [], proposedMemories, proposedPages, ParsedJson: true);
+        return new AgentActionResult(AppendRejectedProposalNotice(reply ?? string.Empty, rejectedProposals), [], [], proposedMemories, proposedPages, ParsedJson: true);
     }
 
     private static string ResolveAgentReply(string? reply, IReadOnlyList<string> writtenMemories, IReadOnlyList<string> writtenPages, string providerContent)
@@ -2877,7 +2898,9 @@ public sealed partial class MemoryChatAgent : IChatAgent
             return null;
         }
 
-        var id = NormalizeMemoryId(ReadString(item, "id") ?? title ?? "agent-memory");
+        var rawId = ReadString(item, "id");
+        ValidateMemoryProposalId(rawId);
+        var id = NormalizeMemoryId(rawId ?? title ?? "agent-memory");
         return new AgentMemoryWriteProposal(
             id,
             title ?? id,
@@ -2896,6 +2919,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
         }
 
         var slug = ReadString(item, "slug");
+        ValidatePageProposalSlug(slug);
         var title = ReadString(item, "title") ?? slug ?? "Agent Page";
         return new AgentPageWriteProposal(slug ?? string.Empty, title, markdown);
     }
@@ -2907,6 +2931,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
             return null;
         }
 
+        ValidateMemoryProposalId(proposal.Id);
         var id = NormalizeMemoryId(string.IsNullOrWhiteSpace(proposal.Id) ? proposal.Title : proposal.Id);
         var existing = await _memories.GetAsync(id, cancellationToken);
         var record = new MemoryRecord
@@ -2942,8 +2967,68 @@ public sealed partial class MemoryChatAgent : IChatAgent
             return null;
         }
 
+        ValidatePageProposalSlug(proposal.Slug);
         var page = await _pages.SaveAsync(new PageSaveRequest(proposal.Slug, proposal.Title, proposal.Markdown), cancellationToken);
         return page.Slug;
+    }
+
+    private static string AppendRejectedProposalNotice(string reply, IReadOnlyList<string> rejectedProposals)
+    {
+        if (rejectedProposals.Count == 0)
+        {
+            return reply;
+        }
+
+        var notice = "Rejected unsafe write proposal(s): " + string.Join(" ", rejectedProposals.Distinct(StringComparer.OrdinalIgnoreCase));
+        return string.IsNullOrWhiteSpace(reply) ? notice : $"{reply.TrimEnd()}\n\n{notice}";
+    }
+
+    private static void ValidateMemoryProposalId(string? id)
+    {
+        if (!string.IsNullOrWhiteSpace(id))
+        {
+            ValidateSafeProposalIdentifier(id, "memory proposal id", allowHierarchy: false);
+        }
+    }
+
+    private static void ValidatePageProposalSlug(string? slug)
+    {
+        if (!string.IsNullOrWhiteSpace(slug))
+        {
+            ValidateSafeProposalIdentifier(slug, "page proposal slug", allowHierarchy: true);
+        }
+    }
+
+    private static void ValidateSafeProposalIdentifier(string value, string kind, bool allowHierarchy)
+    {
+        var trimmed = value.Trim();
+        var normalized = trimmed.Replace('\\', '/');
+        var hasHierarchy = normalized.Contains('/');
+        var hasUnsafeSegment = normalized.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Any(segment => segment is "." or "..");
+        if (Path.IsPathRooted(trimmed) || normalized.StartsWith("/", StringComparison.Ordinal) || trimmed.Contains(':') || hasUnsafeSegment || (!allowHierarchy && hasHierarchy))
+        {
+            throw new InvalidOperationException($"Unsafe {kind} '{TrimForMessage(trimmed)}' was rejected before proposal submission.");
+        }
+    }
+
+    private static string BuildSafeProposalPath(string rootPath, string relativePath, string kind)
+    {
+        var root = Path.GetFullPath(rootPath);
+        var fullPath = Path.GetFullPath(Path.Combine(root, relativePath));
+        var rootWithSeparator = root.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        if (!fullPath.StartsWith(rootWithSeparator, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException($"Unsafe {kind} resolves outside the configured root.");
+        }
+
+        return fullPath;
+    }
+
+    private static string TrimForMessage(string value)
+    {
+        var singleLine = value.ReplaceLineEndings(" ");
+        return singleLine.Length <= 80 ? singleLine : singleLine[..80] + "...";
     }
 
     private static string StripJsonFence(string content)
