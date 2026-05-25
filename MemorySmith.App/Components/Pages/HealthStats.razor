@@ -116,19 +116,19 @@
         <div class="health-lower-card">
             <div class="health-section-title">Runtime Configuration</div>
             <div class="health-config-grid">
-                <span>Data Path</span><strong><SensitiveValue Value="@_diagnostics.Configuration.DataPath" Summary="@MaskOperationalValue(_diagnostics.Configuration.DataPath)" Label="data path" Class="health-sensitive-value" /></strong>
-                <span>Pages Path</span><strong><SensitiveValue Value="@_diagnostics.Configuration.PagesPath" Summary="@MaskOperationalValue(_diagnostics.Configuration.PagesPath)" Label="pages path" Class="health-sensitive-value" /></strong>
-                <span>Event Log</span><strong><SensitiveValue Value="@_diagnostics.Configuration.EventLogPath" Summary="@MaskOperationalValue(_diagnostics.Configuration.EventLogPath)" Label="event log path" Class="health-sensitive-value" /></strong>
-                <span>Variables</span><strong><SensitiveValue Value="@_diagnostics.Configuration.VarsPath" Summary="@MaskOperationalValue(_diagnostics.Configuration.VarsPath)" Label="variables path" Class="health-sensitive-value" /></strong>
+                <span>Data Path</span><strong>@_diagnostics.Configuration.DataPath</strong>
+                <span>Pages Path</span><strong>@_diagnostics.Configuration.PagesPath</strong>
+                <span>Event Log</span><strong>@_diagnostics.Configuration.EventLogPath</strong>
+                <span>Variables</span><strong>@_diagnostics.Configuration.VarsPath</strong>
                 <span>URLs</span><strong>@FormatUrls(_diagnostics.Configuration.ConfiguredUrls)</strong>
                 <span>Service</span><strong>@_diagnostics.Configuration.WindowsServiceName</strong>
                 <span>API Key</span><strong>@(_diagnostics.Configuration.ApiKeyConfigured ? "Configured" : "Not configured")</strong>
                 <span>Remote API</span><strong>@(_diagnostics.Configuration.AllowRemoteApi ? "Allowed" : "Local only")</strong>
                 <span>Maintenance</span><strong>@(_diagnostics.Configuration.Maintenance.Enabled ? "Enabled" : "Disabled")</strong>
-                <span>Source Roots</span><strong><SensitiveValue Value="@FormatSourceRoots(_diagnostics.Configuration.SourceLinks)" Summary="@MaskSourceRoots(_diagnostics.Configuration.SourceLinks)" Label="source roots" Class="health-sensitive-value" /></strong>
+                <span>Source Roots</span><strong>@FormatSourceRoots(_diagnostics.Configuration.SourceLinks)</strong>
                 <span>Open Sources</span><strong>@(_diagnostics.Configuration.SourceLinks.AllowOpenWithDefaultApp ? "Enabled" : "Disabled")</strong>
                 <span>Semantic Search</span><strong>@FormatSemanticSearch(_diagnostics.Configuration.SemanticSearch, _diagnostics.SemanticEmbeddings)</strong>
-                <span>Chat</span><strong><SensitiveValue Value="@FormatChatProvider(_diagnostics.Configuration.Chat)" Summary="@FormatChatProviderSummary(_diagnostics.Configuration.Chat)" Label="chat provider configuration" Class="health-sensitive-value" /></strong>
+                <span>Chat</span><strong>@FormatChatProvider(_diagnostics.Configuration.Chat)</strong>
                 <span>Telemetry</span><strong>@(_diagnostics.Configuration.Telemetry.Enabled ? "Enabled" : "Disabled")</strong>
                 <span>Tracing</span><strong>@(_diagnostics.Configuration.Telemetry.TracingEnabled ? "Enabled" : "Disabled")</strong>
                 <span>Metrics</span><strong>@(_diagnostics.Configuration.Telemetry.MetricsEnabled ? "Enabled" : "Disabled")</strong>
@@ -185,7 +185,7 @@
                         <MudTh>Observed</MudTh>
                     </HeaderContent>
                     <RowTemplate>
-                        <MudTd><SensitiveValue Value="@context.Path" Summary="@MaskOperationalValue(context.Path)" Label="corrupt file path" Class="health-sensitive-value" /></MudTd>
+                        <MudTd>@context.Path</MudTd>
                         <MudTd>@context.ObservedAtUtc.ToLocalTime().ToString("g")</MudTd>
                     </RowTemplate>
                 </MudTable>
@@ -320,19 +320,8 @@
         return string.Join(", ", roots.DefaultIfEmpty("None"));
     }
 
-    private static string MaskSourceRoots(SourceLinkOptions sourceLinks)
-    {
-        var roots = sourceLinks.AllowedFileRootVariables.Select(name => $"%{name}%")
-            .Concat(sourceLinks.AllowedFileRoots.Select(MaskOperationalValue))
-            .Distinct(StringComparer.OrdinalIgnoreCase);
-        return string.Join(", ", roots.DefaultIfEmpty("None"));
-    }
-
     private static string FormatChatProvider(ChatOptions chat) =>
         $"{chat.Provider} / Ollama:{chat.OllamaModel} / GitHub:{chat.GitHubModel} / {chat.SystemPromptPath}";
-
-    private static string FormatChatProviderSummary(ChatOptions chat) =>
-        $"{chat.Provider} / Ollama:{chat.OllamaModel} / GitHub:{chat.GitHubModel} / {MaskOperationalValue(chat.SystemPromptPath)}";
 
     private static string FormatSemanticSearch(SemanticSearchOptions semanticSearch, EmbeddingProviderStatus status) =>
         semanticSearch.EmbeddingsEnabled

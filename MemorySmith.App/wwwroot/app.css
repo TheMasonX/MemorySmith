@@ -2386,8 +2386,16 @@ body {
 }
 
 .health-config-grid strong {
-    color: var(--vscode-text);
+    display: block;
+    color: #d4e8ff;
+    background: var(--vscode-panel-soft);
+    border: 1px solid var(--vscode-border);
+    border-radius: 3px;
+    padding: 2px 6px;
+    font-family: "Cascadia Code", Consolas, monospace;
+    font-size: 0.78rem;
     font-weight: 500;
+    line-height: 1.45;
     min-width: 0;
     overflow-wrap: anywhere;
 }
