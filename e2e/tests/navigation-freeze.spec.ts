@@ -24,7 +24,7 @@ test.describe('Navigation freeze regression', () => {
     await expect(page).toHaveURL(/\/pages$/);
     await expect(page.getByRole('region', { name: 'Page search' })).toBeVisible();
 
-    await navigateAndAssert(page, 'Memories', /\/memories$/, 'Memories');
+    await navigateAndAssert(page, 'Memories', /\/memories$/, 'Memory search', true);
     await navigateAndAssert(page, 'Chat', /\/chat$/, 'MemorySmith chat', true);
     await navigateAndAssert(page, 'Tasks', /\/tasks$/, 'Tasks');
     await navigateAndAssert(page, 'Pages', /\/pages$/, 'Pages');
@@ -174,6 +174,17 @@ test.describe('Navigation freeze regression', () => {
     await page.getByRole('button', { name: 'ToC' }).click();
     await expect(page.getByRole('complementary', { name: 'Pages' })).toBeVisible();
   });
+
+  test('missing pages slug shows persistent recovery state', async ({ page }) => {
+    const missingSlug = `e2e/missing-page-${Date.now()}`;
+
+    await page.goto(`/pages/${missingSlug}`);
+    await expect(page).toHaveURL(new RegExp(`/pages/${missingSlug}$`));
+    await expect(page.getByRole('main', { name: 'Selected page' }).getByText('Page not found')).toBeVisible();
+    await expect(page.getByText(missingSlug)).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Open Pages root' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Open first page' })).toBeVisible();
+  });
 });
 
 async function hidePagesNavigation(page: import('@playwright/test').Page): Promise<void> {
@@ -183,7 +194,7 @@ async function hidePagesNavigation(page: import('@playwright/test').Page): Promi
       return;
     }
 
-    await page.getByRole('button', { name: 'Toggle navigation' }).click();
+    await page.getByRole('button', { name: 'Toggle page navigation' }).click();
     await expect(pagesPanel).toHaveCount(0, { timeout: 1_000 });
   }).toPass({ timeout: 10_000 });
 }
@@ -197,7 +208,7 @@ async function expectPagesCommandbarLayout(page: import('@playwright/test').Page
     const searchButtonRect = searchButton?.getBoundingClientRect();
     const navControls = document.querySelector('.pages-navigation-controls')?.getBoundingClientRect();
     const modeToggle = document.querySelector('.pages-navigation-controls .wiki-mode-toggle')?.getBoundingClientRect();
-    const navToggle = document.querySelector('.pages-navigation-controls [aria-label="Toggle navigation"]')?.getBoundingClientRect();
+    const navToggle = document.querySelector('.pages-navigation-controls [aria-label="Toggle page navigation"]')?.getBoundingClientRect();
     const searchIcon = searchButton?.querySelector('.mud-icon-root');
     const searchButtonStyle = searchButton ? getComputedStyle(searchButton) : null;
     const searchIconStyle = searchIcon ? getComputedStyle(searchIcon) : null;
