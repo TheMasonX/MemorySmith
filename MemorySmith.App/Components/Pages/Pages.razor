@@ -15,7 +15,7 @@
 <PageTitle>Pages - MemorySmith</PageTitle>
 <NavigationLock ConfirmExternalNavigation="@HasUnsavedChanges" OnBeforeInternalNavigation="ConfirmInternalNavigation" />
 
-<div class="wiki-workbench pages-workbench">
+<div class="@PagesWorkbenchClass">
     <section class="wiki-commandbar" aria-label="Page search">
         <div class="wiki-title-block">
             <MudText Typo="Typo.h5">Pages</MudText>
@@ -416,6 +416,7 @@
     private IReadOnlyList<string> EditableMinimumRoleOptions => PageAccessLevels.EditableOptions(CurrentUser, Options.CurrentValue.Auth);
     private IReadOnlyList<PageNavigationTreeRow> TreeRows => PageNavigationTreeBuilder.Flatten(_treeNodes, _expandedTreeKeys);
     private IReadOnlyList<TocRow> TocRows => _tocRows;
+    private string PagesWorkbenchClass => _isEditing ? "wiki-workbench pages-workbench is-editing" : "wiki-workbench pages-workbench";
     private string PagesBodyClass => _isNavigationVisible && !_isFocusMode ? "wiki-body pages-body" : "wiki-body pages-body is-nav-hidden";
     private string DetailPaneClass => _isFocusMode ? "wiki-detail-pane page-detail-pane is-focus-mode" : "wiki-detail-pane page-detail-pane";
     private string NavigationPaneTitle => _navigationMode switch
