@@ -17,6 +17,7 @@
 @inject IJSRuntime JS
 @inject ICurrentUserContext CurrentUser
 @inject IDialogService Dialogs
+@inject ILogger<Chat> Logger
 
 <PageTitle>Chat - MemorySmith</PageTitle>
 <NavigationLock ConfirmExternalNavigation="@HasPendingDraft" OnBeforeInternalNavigation="ConfirmInternalNavigation" />
@@ -474,6 +475,7 @@
     protected override void OnInitialized()
     {
         var chatOptions = Options.CurrentValue.Chat;
+        CleanupStaleAttachmentTempFiles(chatOptions);
         LoadModelProfiles();
         _availableProviders.Clear();
         _availableProviders.AddRange(ChatProviders.Select(provider => provider.Name).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(provider => provider));
@@ -1014,6 +1016,7 @@
         }
 
         var wasActive = string.Equals(_activeSessionId, id, StringComparison.Ordinal);
+        var pendingAttachments = session.PendingAttachments.ToList();
         _sessions.Remove(session);
         if (_sessions.Count == 0)
         {
@@ -1028,6 +1031,7 @@
             _currentUsage = null;
         }
 
+        LogAttachmentCleanupResult("session-delete", ChatAttachmentFiles.DeleteTempFiles(pendingAttachments, RetainedPendingAttachments()));
         _agentStatus = "Chat deleted";
         Snackbar.Add("Chat deleted.", Severity.Success);
         await SaveSessionsAsync();
@@ -1398,6 +1402,7 @@
             StopResponseTimer();
             _isSending = false;
             _scrollPending = true;
+            LogAttachmentCleanupResult("send-complete", ChatAttachmentFiles.DeleteTempFiles(attachments, RetainedPendingAttachments()));
             await InvokeAsync(StateHasChanged);
             await SaveSessionsAsync();
             await SavePreferencesAsync();
@@ -1756,11 +1761,40 @@
 
     private async Task RemoveAttachment(string name)
     {
+        var removed = _attachments.Where(attachment => string.Equals(attachment.Name, name, StringComparison.OrdinalIgnoreCase)).ToList();
         _attachments.RemoveAll(attachment => string.Equals(attachment.Name, name, StringComparison.OrdinalIgnoreCase));
         PersistActiveDraft();
+        LogAttachmentCleanupResult("remove", ChatAttachmentFiles.DeleteTempFiles(removed, RetainedPendingAttachments()));
         await SaveSessionsAsync();
         await SavePreferencesAsync();
         _agentStatus = "Ready";
+    }
+
+    private void CleanupStaleAttachmentTempFiles(ChatOptions chatOptions)
+    {
+        var retentionHours = Math.Clamp(chatOptions.AttachmentTempFileRetentionHours, 1, 720);
+        var result = ChatAttachmentFiles.DeleteStaleTempFiles(TimeSpan.FromHours(retentionHours));
+        LogAttachmentCleanupResult("stale", result);
+    }
+
+    private IReadOnlyList<ChatAttachment> RetainedPendingAttachments() =>
+        _sessions.SelectMany(session => session.PendingAttachments).ToList();
+
+    private void LogAttachmentCleanupResult(string reason, ChatAttachmentCleanupResult result)
+    {
+        if (result.DeletedCount + result.RetainedCount + result.MissingCount + result.RefusedCount + result.FailedCount == 0)
+        {
+            return;
+        }
+
+        Logger.LogInformation(
+            "Chat attachment temp cleanup {Reason}: deleted {DeletedCount}, retained {RetainedCount}, missing {MissingCount}, refused {RefusedCount}, failed {FailedCount}.",
+            reason,
+            result.DeletedCount,
+            result.RetainedCount,
+            result.MissingCount,
+            result.RefusedCount,
+            result.FailedCount);
     }
 
     private async Task SaveSessionsAsync()

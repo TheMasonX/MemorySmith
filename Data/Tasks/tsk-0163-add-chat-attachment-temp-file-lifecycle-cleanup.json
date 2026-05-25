@@ -4,7 +4,7 @@
   "title": "Add chat attachment temp-file lifecycle cleanup",
   "description": "Problem: chat image attachments are copied into a MemorySmith temp directory and referenced from pending chat session state, but there is no visible lifecycle cleanup when attachments are removed, sent, sessions are deleted, or the chat component is disposed. This can leave pasted/uploaded images on disk longer than users expect and can leak private screenshot/image content through temp storage accumulation.\n\nEvidence from the 2026-05-25 deepdive:\n- ChatAttachmentFiles.SaveTempAsync writes image bytes under Path.GetTempPath()/MemorySmith/ChatAttachments.\n- ChatAttachmentFiles.ReadTrustedImageBase64 later reads LocalPath if it is under that temp root.\n- Chat.razor stores pending image attachments with LocalPath in browser session state via ToStoredAttachment, and restores them with RestoreSessionDraft.\n- Chat.razor RemoveAttachment only removes the in-memory/list state. SendAsync clears _attachments and PendingAttachments after queuing a turn, DeleteSessionAsync removes browser session state, and DisposeAsync unregisters JS/cancels sending, but none of these paths delete temp files or expire old files.\n\nDesired outcome: image attachment temp files have explicit retention and cleanup semantics that balance draft restoration with privacy and disk hygiene.\n\nScope:\n- In scope: add a ChatAttachmentFiles cleanup/delete API, call it when queued attachments are removed or no longer needed, and run age-based cleanup on chat startup or app startup.\n- In scope: preserve active pending draft images when still needed, or document and surface when stale temp files cannot be restored after cleanup.\n- In scope: add privacy-conscious logging/diagnostics that report counts/age, not full local user paths.\n- Out of scope: changing provider image payload semantics or replacing browser session storage.\n\nAcceptance criteria:\n- Removing a queued image attachment deletes its temp file when no other active pending attachment references it.\n- Sending a message eventually deletes temp files for queued image attachments after the provider no longer needs them.\n- Deleting a saved chat session deletes any temp files referenced by its pending attachments.\n- App/chat startup removes stale MemorySmith chat attachment temp files older than a configurable retention period.\n- Tests cover trusted-root deletion, non-root path refusal, send/remove/session-delete cleanup, and stale-file expiry without logging full user paths.\n\nValidation:\n- Add focused unit/service tests around ChatAttachmentFiles trusted-root cleanup.\n- Add focused Chat.razor or service-level tests for attachment removal/session deletion lifecycle where practical.\n- Run PagesAndChatTests attachment-related cases.\n- Run ./Scripts/Test-TaskRecords.ps1 after task metadata changes.",
   "type": "Task",
-  "status": "Backlog",
+  "status": "Done",
   "priority": "High",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -28,15 +28,21 @@
       "author": "AgentSmith",
       "body": "Created during 2026-05-25 deepdive audit. Image attachment temp files are written under the OS temp directory and can be restored from stored LocalPath, but cleanup hooks were not found on remove/send/session delete/dispose.",
       "createdAtUtc": "2026-05-25T17:05:00.0000000Z"
+    },
+    {
+      "id": "c-0163-1",
+      "author": "AgentSmith",
+      "body": "Implemented explicit chat image attachment temp-file lifecycle cleanup. ChatAttachmentFiles now supports trusted-root deletion, retained-reference protection, and stale-file expiry; Chat.razor runs stale cleanup on startup and deletes temp files after attachment removal, send completion, and chat session deletion while logging counts only. Added configurable MemorySmith:Chat:AttachmentTempFileRetentionHours and exposed it in Admin settings/README. Validation passed: app build; focused ChatAttachmentFiles/Ollama trusted image tests passed 4/4; broader PagesAndChatTests passed 54/54; Scripts/Test-TaskRecords.ps1 passed over 170 task records.",
+      "createdAtUtc": "2026-05-25T20:32:17.6225153Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-25T17:05:00.0000000Z",
-  "updatedAtUtc": "2026-05-25T17:05:00.0000000Z",
-  "completedAtUtc": null,
-  "revision": 1,
+  "updatedAtUtc": "2026-05-25T20:32:17.6225153Z",
+  "completedAtUtc": "2026-05-25T20:32:17.6225153Z",
+  "revision": 2,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

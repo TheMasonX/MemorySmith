@@ -1394,6 +1394,66 @@ public class PagesAndChatTests
     }
 
     [Test]
+    public async Task ChatAttachmentFiles_DeletesTrustedTempFilesAndRefusesNonRootPaths()
+    {
+        var tempRoot = Path.Combine(_tempDir, "chat-attachments");
+        var tempPath = await ChatAttachmentFiles.SaveTempAsync("image.png", [1, 2, 3], CancellationToken.None, tempRoot);
+        var nonRootPath = Path.Combine(_tempDir, "outside.png");
+        await File.WriteAllBytesAsync(nonRootPath, [4, 5, 6]);
+
+        var result = ChatAttachmentFiles.DeleteTempFiles([
+            new ChatAttachment("image.png", "image/png", "image", 3, IsImage: true, LocalPath: tempPath),
+            new ChatAttachment("outside.png", "image/png", "image", 3, IsImage: true, LocalPath: nonRootPath)
+        ], tempRoot: tempRoot);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.DeletedCount, Is.EqualTo(1));
+            Assert.That(result.RefusedCount, Is.EqualTo(1));
+            Assert.That(File.Exists(tempPath), Is.False);
+            Assert.That(File.Exists(nonRootPath), Is.True);
+        });
+    }
+
+    [Test]
+    public async Task ChatAttachmentFiles_RetainsTempFilesStillReferencedByActiveAttachments()
+    {
+        var tempRoot = Path.Combine(_tempDir, "chat-attachments");
+        var tempPath = await ChatAttachmentFiles.SaveTempAsync("shared.png", [1, 2, 3], CancellationToken.None, tempRoot);
+        var removed = new ChatAttachment("shared.png", "image/png", "image", 3, IsImage: true, LocalPath: tempPath);
+        var retained = new ChatAttachment("shared-copy.png", "image/png", "image", 3, IsImage: true, LocalPath: tempPath);
+
+        var result = ChatAttachmentFiles.DeleteTempFiles([removed], [retained], tempRoot);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.RetainedCount, Is.EqualTo(1));
+            Assert.That(result.DeletedCount, Is.EqualTo(0));
+            Assert.That(File.Exists(tempPath), Is.True);
+        });
+    }
+
+    [Test]
+    public async Task ChatAttachmentFiles_DeletesOnlyStaleTempFiles()
+    {
+        var tempRoot = Path.Combine(_tempDir, "chat-attachments");
+        var oldPath = await ChatAttachmentFiles.SaveTempAsync("old.png", [1], CancellationToken.None, tempRoot);
+        var freshPath = await ChatAttachmentFiles.SaveTempAsync("fresh.png", [2], CancellationToken.None, tempRoot);
+        var now = DateTime.UtcNow;
+        File.SetLastWriteTimeUtc(oldPath, now - TimeSpan.FromHours(25));
+        File.SetLastWriteTimeUtc(freshPath, now - TimeSpan.FromHours(1));
+
+        var result = ChatAttachmentFiles.DeleteStaleTempFiles(TimeSpan.FromHours(24), now, tempRoot);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.DeletedCount, Is.EqualTo(1));
+            Assert.That(File.Exists(oldPath), Is.False);
+            Assert.That(File.Exists(freshPath), Is.True);
+        });
+    }
+
+    [Test]
     public async Task MemoryChatAgent_ApplyAgentWritesThrowsForViewerRole()
     {
         var memoryStore = new InMemoryMemoryStore();

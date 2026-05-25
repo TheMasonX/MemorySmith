@@ -229,6 +229,7 @@ public class ChatOptions
     public int MaxHistoryMessages { get; set; } = 16;
     public int MaxAttachmentCharacters { get; set; } = 120000;
     public long MaxAttachmentBytes { get; set; } = 8 * 1024 * 1024;
+    public int AttachmentTempFileRetentionHours { get; set; } = 24;
     public bool ToolCallsEnabled { get; set; } = true;
     public int MaxToolIterations { get; set; } = 2;
     public int MaxToolCallsPerTurn { get; set; } = 3;

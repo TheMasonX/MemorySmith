@@ -33,6 +33,24 @@ public sealed record ChatAttachment(
     bool IsTruncated = false,
     string? LocalPath = null);
 
+public sealed record ChatAttachmentCleanupResult(
+    int DeletedCount,
+    int RetainedCount,
+    int MissingCount,
+    int RefusedCount,
+    int FailedCount)
+{
+    public static ChatAttachmentCleanupResult Empty { get; } = new(0, 0, 0, 0, 0);
+
+    public ChatAttachmentCleanupResult Add(ChatAttachmentCleanupResult other) =>
+        new(
+            DeletedCount + other.DeletedCount,
+            RetainedCount + other.RetainedCount,
+            MissingCount + other.MissingCount,
+            RefusedCount + other.RefusedCount,
+            FailedCount + other.FailedCount);
+}
+
 public sealed record ChatProviderRequest(
     IReadOnlyList<ChatMessage> Messages,
     MemoryChatMode Mode,
@@ -243,11 +261,14 @@ public interface IChatAgent
 
 public static class ChatAttachmentFiles
 {
-    private static readonly string TempRoot = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "MemorySmith", "ChatAttachments"));
+    private static readonly string DefaultTempRoot = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "MemorySmith", "ChatAttachments"));
 
-    public static async Task<string> SaveTempAsync(string originalName, byte[] content, CancellationToken cancellationToken = default)
+    public static string TempRoot => DefaultTempRoot;
+
+    public static async Task<string> SaveTempAsync(string originalName, byte[] content, CancellationToken cancellationToken = default, string? tempRoot = null)
     {
-        Directory.CreateDirectory(TempRoot);
+        var root = GetTempRoot(tempRoot);
+        Directory.CreateDirectory(root);
         var extension = Path.GetExtension(originalName);
         if (string.IsNullOrWhiteSpace(extension) || extension.Length > 12)
         {
@@ -255,7 +276,7 @@ public static class ChatAttachmentFiles
         }
 
         var fileName = $"{DateTime.UtcNow:yyyyMMddHHmmssfff}-{Guid.NewGuid():N}{extension.ToLowerInvariant()}";
-        var path = Path.Combine(TempRoot, fileName);
+        var path = Path.Combine(root, fileName);
         await File.WriteAllBytesAsync(path, content, cancellationToken);
         return path;
     }
@@ -275,18 +296,141 @@ public static class ChatAttachmentFiles
         return Convert.ToBase64String(File.ReadAllBytes(attachment.LocalPath));
     }
 
-    private static bool IsTrustedTempPath(string path)
+    public static ChatAttachmentCleanupResult DeleteTempFiles(IEnumerable<ChatAttachment> attachments, IEnumerable<ChatAttachment>? retainedAttachments = null, string? tempRoot = null)
+    {
+        var retainedPaths = BuildRetainedPathSet(retainedAttachments, tempRoot);
+        var result = ChatAttachmentCleanupResult.Empty;
+        foreach (var attachment in attachments)
+        {
+            result = result.Add(DeleteTempFile(attachment.LocalPath, retainedPaths, tempRoot));
+        }
+
+        return result;
+    }
+
+    public static ChatAttachmentCleanupResult DeleteStaleTempFiles(TimeSpan maxAge, DateTime? nowUtc = null, string? tempRoot = null)
+    {
+        if (maxAge <= TimeSpan.Zero)
+        {
+            return ChatAttachmentCleanupResult.Empty;
+        }
+
+        var root = GetTempRoot(tempRoot);
+        if (!Directory.Exists(root))
+        {
+            return ChatAttachmentCleanupResult.Empty;
+        }
+
+        var cutoffUtc = (nowUtc ?? DateTime.UtcNow) - maxAge;
+        var result = ChatAttachmentCleanupResult.Empty;
+        foreach (var path in Directory.EnumerateFiles(root, "*", SearchOption.TopDirectoryOnly))
+        {
+            try
+            {
+                if (File.GetLastWriteTimeUtc(path) <= cutoffUtc)
+                {
+                    result = result.Add(DeleteTempFile(path, retainedPaths: null, tempRoot));
+                }
+            }
+            catch
+            {
+                result = result.Add(new ChatAttachmentCleanupResult(0, 0, 0, 0, 1));
+            }
+        }
+
+        return result;
+    }
+
+    private static ChatAttachmentCleanupResult DeleteTempFile(string? path, ISet<string>? retainedPaths, string? tempRoot)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return ChatAttachmentCleanupResult.Empty;
+        }
+
+        string fullPath;
+        try
+        {
+            fullPath = Path.GetFullPath(path);
+        }
+        catch
+        {
+            return new ChatAttachmentCleanupResult(0, 0, 0, 1, 0);
+        }
+
+        if (!IsTrustedTempPath(fullPath, tempRoot))
+        {
+            return new ChatAttachmentCleanupResult(0, 0, 0, 1, 0);
+        }
+
+        if (retainedPaths?.Contains(fullPath) == true)
+        {
+            return new ChatAttachmentCleanupResult(0, 1, 0, 0, 0);
+        }
+
+        if (!File.Exists(fullPath))
+        {
+            return new ChatAttachmentCleanupResult(0, 0, 1, 0, 0);
+        }
+
+        try
+        {
+            File.Delete(fullPath);
+            return new ChatAttachmentCleanupResult(1, 0, 0, 0, 0);
+        }
+        catch
+        {
+            return new ChatAttachmentCleanupResult(0, 0, 0, 0, 1);
+        }
+    }
+
+    private static HashSet<string> BuildRetainedPathSet(IEnumerable<ChatAttachment>? attachments, string? tempRoot)
+    {
+        var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (attachments is null)
+        {
+            return paths;
+        }
+
+        foreach (var attachment in attachments)
+        {
+            if (string.IsNullOrWhiteSpace(attachment.LocalPath))
+            {
+                continue;
+            }
+
+            try
+            {
+                var fullPath = Path.GetFullPath(attachment.LocalPath);
+                if (IsTrustedTempPath(fullPath, tempRoot))
+                {
+                    paths.Add(fullPath);
+                }
+            }
+            catch
+            {
+            }
+        }
+
+        return paths;
+    }
+
+    private static bool IsTrustedTempPath(string path, string? tempRoot = null)
     {
         try
         {
+            var root = GetTempRoot(tempRoot);
             var fullPath = Path.GetFullPath(path);
-            return fullPath.StartsWith(TempRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
+            return fullPath.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
         }
         catch
         {
             return false;
         }
     }
+
+    private static string GetTempRoot(string? tempRoot) =>
+        Path.GetFullPath(string.IsNullOrWhiteSpace(tempRoot) ? DefaultTempRoot : tempRoot).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
 }
 
 public sealed partial class OllamaChatProvider : IChatProvider
