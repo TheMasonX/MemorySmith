@@ -1,0 +1,44 @@
+{
+  "id": "tsk-0131-improve-selected-task-detail-density-and-edit-form-hierarchy",
+  "key": "TSK-0131",
+  "title": "Improve selected Task detail density and edit form hierarchy",
+  "description": "Problem: the live selected-task review showed the `/tasks` detail area getting squeezed below a tall filter bar and short results list. In the selected task pane, status/priority chips, tag chips, the edit icon, and form fields compete for the same vertical space, and labels can visually crowd nearby metadata.\n\nDesired outcome: when a task is selected, the detail pane should prioritize the task title, status, key metadata, description, and comments without making the user fight nested scrolling or crowded form chrome.\n\nScope:\n- In scope: selected-task detail layout, metadata/chip grouping, edit/view mode hierarchy, list/detail split behavior, and clearer affordances for collapse/focus.\n- Out of scope: changing task JSON schema or task persistence semantics.\n\nAcceptance criteria:\n- Selecting a task gives the detail pane enough room to read the description and comments on narrow viewports.\n- Metadata chips and form labels do not overlap or crowd each other.\n- The edit action and edit fields have a clear hierarchy distinct from read-only metadata.\n- Collapsing the task list or entering a focused detail mode is discoverable.\n\nValidation:\n- Capture `/tasks` before/after with a selected task in read and edit states.\n- Run focused browser checks for selecting a task, toggling the list, editing fields, and saving/canceling without layout regressions.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "ui",
+    "tasks",
+    "screen-real-estate",
+    "forms",
+    "audit-vetted"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "workbench/tasks"
+  ],
+  "comments": [
+    {
+      "id": "c-0131-1",
+      "author": "AgentSmith",
+      "body": "Created from 2026-05-25 deeper live review: selected `/tasks` detail showed a cramped detail form, short list/detail split, and crowded metadata/field hierarchy.",
+      "createdAtUtc": "2026-05-25T00:00:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T00:00:00.0000000Z",
+  "updatedAtUtc": "2026-05-25T00:00:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

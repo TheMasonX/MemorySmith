@@ -1,0 +1,44 @@
+{
+  "id": "tsk-0135-make-chat-side-panels-responsive-and-content-aware",
+  "key": "TSK-0135",
+  "title": "Make Chat side panels responsive and content-aware",
+  "description": "Problem: the deeper `/chat` trace-sidebar review showed an empty Trace panel consuming nearly half of the available width on a narrow viewport. The main chat shell, model controls, composer, and message stream were compressed even though the side panel only showed `No turn selected` and `No trace events.`\n\nDesired outcome: Chat side panels should adapt to available space and content value, making traces/history easy to access without reducing the primary conversation area when there is little to show.\n\nScope:\n- In scope: responsive sidebar widths, auto-collapse or drawer behavior for empty panels, trace/history empty-state hierarchy, close/toggle discoverability, and interaction with composer layout work in TSK-0125.\n- Out of scope: changing trace event schema or chat history persistence.\n\nAcceptance criteria:\n- Empty Trace/History panels do not permanently consume large portions of narrow viewports.\n- When trace data exists, the panel can expand or focus without hiding critical composer controls.\n- The side-panel state is easy to understand and close/reopen.\n- Sidebar behavior remains stable across Chat and Agent modes.\n\nValidation:\n- Capture `/chat` with sidebar closed, history open, empty trace open, and populated trace if fixture data is available.\n- Run focused browser checks for sidebar toggle, Trace/History tab switching, and composer usability at narrow width.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "ui",
+    "chat",
+    "trace",
+    "responsive",
+    "audit-vetted"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "workbench/tasks"
+  ],
+  "comments": [
+    {
+      "id": "c-0135-1",
+      "author": "AgentSmith",
+      "body": "Created from 2026-05-25 deeper live review: an empty Chat Trace side panel took substantial width and compressed the primary chat/composer area.",
+      "createdAtUtc": "2026-05-25T00:00:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T00:00:00.0000000Z",
+  "updatedAtUtc": "2026-05-25T00:00:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

@@ -1,0 +1,44 @@
+{
+  "id": "tsk-0122-replace-chat-native-file-input-with-styled-accessible-attachment-control",
+  "key": "TSK-0122",
+  "title": "Replace Chat native file input with a styled accessible attachment control",
+  "description": "Problem: the Chat route still exposes a native `Choose File` input in the composer area. The browser audit reported the underlying `#chat-file-input` as an unlabeled interactive element, and visually it does not match the app's icon/button/tooltip affordance pattern.\n\nDesired outcome: chat attachments use a MemorySmith-styled upload affordance with an accessible name, tooltip/help text, keyboard support, and clear selected-file feedback.\n\nScope:\n- In scope: Chat composer attachment trigger, hidden file input labeling, selected attachment display, tooltip/aria description, and browser regression coverage.\n- Out of scope: changing accepted file types, attachment payload processing, or chat model behavior.\n\nAcceptance criteria:\n- The visible attachment control is styled consistently with the chat toolbar/composer controls.\n- The hidden/native file input is not exposed as an unnamed interactive element.\n- Keyboard and screen-reader users can discover and activate the attachment action.\n- Selected attachments remain visible and removable before sending.\n\nValidation:\n- Browser audit of `/chat` reports no unlabeled file-input control.\n- Route-smoke or focused Playwright coverage verifies the attachment button can receive focus and open the chooser path without breaking the composer.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "accessibility",
+    "ui",
+    "chat",
+    "attachments",
+    "audit-vetted"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "workbench/tasks"
+  ],
+  "comments": [
+    {
+      "id": "c-0122-1",
+      "author": "AgentSmith",
+      "body": "Created from 2026-05-25 live browser audit: Chat's native file input is visible as `Choose File`, was flagged as unlabeled by the DOM sweep, and is inconsistent with the app's styled command controls.",
+      "createdAtUtc": "2026-05-25T00:00:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T00:00:00.0000000Z",
+  "updatedAtUtc": "2026-05-25T00:00:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

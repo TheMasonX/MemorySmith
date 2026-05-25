@@ -1,0 +1,44 @@
+{
+  "id": "tsk-0128-make-admin-users-and-tabs-responsive-and-privacy-conscious",
+  "key": "TSK-0128",
+  "title": "Make Admin users and tabs responsive and privacy-conscious",
+  "description": "Problem: the live `/admin` review showed the Users tab dominated by long directory identifiers and account contact fields, while the tab strip uses horizontal tab scrolling that hides later administrative surfaces. This is hard to scan, wastes space on raw IDs, and increases incidental exposure of sensitive account metadata.\n\nDesired outcome: Admin should be easier to scan at narrow widths, expose raw identifiers only when needed, and make all admin surfaces discoverable without awkward tab scrolling.\n\nScope:\n- In scope: responsive admin navigation, compact user row/card layout, truncation/copy affordances for directory IDs, optional reveal for contact fields, and clearer role/status/action hierarchy.\n- Out of scope: changing authorization rules, account data contracts, or audit retention.\n\nAcceptance criteria:\n- Admin tabs or sections remain discoverable at narrow widths without relying only on horizontal scroll arrows.\n- Raw directory IDs are shortened by default with copy/reveal affordances.\n- Contact/account metadata is not the dominant visual element in user rows.\n- User role/status/actions are easier to compare at a glance.\n\nValidation:\n- Capture `/admin` screenshots at narrow and desktop widths.\n- Run focused browser checks for tab navigation, role display, user actions, and copy/reveal affordances.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "ui",
+    "admin",
+    "privacy",
+    "responsive",
+    "audit-vetted"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "workbench/tasks"
+  ],
+  "comments": [
+    {
+      "id": "c-0128-1",
+      "author": "AgentSmith",
+      "body": "Created from 2026-05-25 live visual review: `/admin` exposes long raw directory IDs/contact metadata in a cramped users view and relies on a horizontally scrolling tab strip for later admin surfaces.",
+      "createdAtUtc": "2026-05-25T00:00:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T00:00:00.0000000Z",
+  "updatedAtUtc": "2026-05-25T00:00:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

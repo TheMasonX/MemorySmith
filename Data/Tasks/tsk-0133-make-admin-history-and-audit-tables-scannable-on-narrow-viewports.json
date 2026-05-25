@@ -1,0 +1,44 @@
+{
+  "id": "tsk-0133-make-admin-history-and-audit-tables-scannable-on-narrow-viewports",
+  "key": "TSK-0133",
+  "title": "Make Admin history and audit tables scannable on narrow viewports",
+  "description": "Problem: the deeper `/admin` History review showed the active tab strip scrolled so far that the visible top area mostly displayed arrows instead of the current section label. History rows then rendered as raw value stacks with long page IDs, versions, timestamps, formats, and file paths, but without compact labels or grouping.\n\nDesired outcome: Admin history/audit views should make the current section obvious and let operators scan snapshots/events without decoding unlabeled raw columns.\n\nScope:\n- In scope: History and Audit tab responsive layout, active-section label, row/card formatting, path truncation/copy affordances, filters density, and tab navigation state.\n- Out of scope: changing history retention, snapshot storage, or audit event schema.\n\nAcceptance criteria:\n- The active Admin section remains visible even when the tab strip is scrolled.\n- History/Audit rows use labeled compact fields or cards at narrow widths.\n- Long IDs and paths truncate with copy/reveal affordances instead of dominating rows.\n- Filters remain useful without consuming excessive first-viewport space.\n\nValidation:\n- Capture `/admin` History and Audit states at narrow and desktop widths.\n- Run focused browser checks for tab navigation, filter entry, and row copy/reveal affordances.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "ui",
+    "admin",
+    "history",
+    "responsive",
+    "audit-vetted"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "workbench/tasks"
+  ],
+  "comments": [
+    {
+      "id": "c-0133-1",
+      "author": "AgentSmith",
+      "body": "Created from 2026-05-25 deeper live review: Admin History hid the active tab context behind the horizontal tab scroller and rendered dense unlabeled raw values on narrow width.",
+      "createdAtUtc": "2026-05-25T00:00:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T00:00:00.0000000Z",
+  "updatedAtUtc": "2026-05-25T00:00:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

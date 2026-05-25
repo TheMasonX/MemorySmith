@@ -1,0 +1,44 @@
+{
+  "id": "tsk-0140-add-guardrails-and-responsive-cards-for-admin-identity-provider-actions",
+  "key": "TSK-0140",
+  "title": "Add guardrails and responsive cards for Admin identity provider actions",
+  "description": "Problem: the continued `/admin` OAuth review showed provider rows with enabled/configured state, linked-account counts, setup links, and Enable/Disable actions in a table that becomes long on narrow screens. The actions are operationally significant, but the UI does not clearly distinguish routine status scanning from provider-changing actions or explain the effects before activation/deactivation.\n\nDesired outcome: Admin identity provider management should make provider status easy to scan and require intentional, well-explained action for enable/disable changes.\n\nScope:\n- In scope: OAuth/provider responsive row/card layout, enable/disable confirmation or warning copy, disabled/precondition explanations, setup-link affordances, account-count visibility, and accessible labels/tooltips.\n- Out of scope: changing provider configuration storage, OAuth callback behavior, or bootstrap auth rules.\n\nAcceptance criteria:\n- Provider state, configured status, and linked-account count remain clear at narrow and desktop widths.\n- Enable/disable controls explain consequences and require an intentional confirmation for risky state changes.\n- Setup links are discoverable without overwhelming the row/card.\n- Browser checks cover at least one disabled provider and one enabled provider state without mutating live credentials in destructive ways.\n\nValidation:\n- Capture `/admin` OAuth before/after at narrow and desktop widths.\n- Add or run focused browser checks for provider action affordances and accessible names, using fixture/safe test state where available.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "ui",
+    "admin",
+    "auth",
+    "responsive",
+    "audit-vetted"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "workbench/tasks"
+  ],
+  "comments": [
+    {
+      "id": "c-0140-1",
+      "author": "AgentSmith",
+      "body": "Created from 2026-05-25 continued live review: Admin OAuth provider management exposed important enable/disable actions in a dense table without a clear action-safety hierarchy on narrow width.",
+      "createdAtUtc": "2026-05-25T00:00:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T00:00:00.0000000Z",
+  "updatedAtUtc": "2026-05-25T00:00:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

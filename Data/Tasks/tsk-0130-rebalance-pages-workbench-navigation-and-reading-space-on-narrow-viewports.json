@@ -1,0 +1,44 @@
+{
+  "id": "tsk-0130-rebalance-pages-workbench-navigation-and-reading-space-on-narrow-viewports",
+  "key": "TSK-0130",
+  "title": "Rebalance Pages navigation and reading space on narrow viewports",
+  "description": "Problem: the live `/pages` review showed both the navigation tree and rendered page fighting for vertical space on narrow viewports. The navigation tree shows only a few rows, the reader pane has its own short scroll area, and code blocks add another horizontal scroller inside the already constrained content area.\n\nDesired outcome: Pages should preserve always-available navigation while giving the selected page enough reading/editing space to feel usable.\n\nScope:\n- In scope: responsive navigation/detail proportions, compact tree header, optional navigation drawer/peek mode, code-block overflow treatment, and focus-reading transitions that preserve discoverability.\n- Out of scope: changing page storage or markdown parsing semantics.\n\nAcceptance criteria:\n- Narrow-width Pages view shows a useful amount of selected page content without forcing users through multiple small nested scroll areas.\n- Navigation remains discoverable and quick to reopen.\n- Code blocks do not dominate or awkwardly trap horizontal scrolling in the first viewport.\n- Existing Tree/Flat/ToC modes remain reachable and understandable.\n\nValidation:\n- Capture `/pages` screenshots for Tree, Flat, ToC, and focus-reading states.\n- Run Pages route-smoke/navigation-freeze checks after layout changes.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "ui",
+    "pages",
+    "screen-real-estate",
+    "responsive",
+    "audit-vetted"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "workbench/tasks"
+  ],
+  "comments": [
+    {
+      "id": "c-0130-1",
+      "author": "AgentSmith",
+      "body": "Created from 2026-05-25 live visual review: `/pages` keeps navigation visible, but the narrow view leaves both the tree and reader in short nested scroll regions with limited reading room.",
+      "createdAtUtc": "2026-05-25T00:00:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T00:00:00.0000000Z",
+  "updatedAtUtc": "2026-05-25T00:00:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

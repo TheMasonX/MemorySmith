@@ -1,11 +1,11 @@
 {
   "Id": "tsk-0010-delete-page-chat-confirmation",
   "Key": "TSK-0010",
-  "Title": "Delete page/chat confirmation",
-  "Description": "Keep notes on the exact confirmation copy and whether the action feels recoverable.\r\n\r\nImported from Data/Pages/workbench/tasks.md",
+  "Title": "Standardize destructive-action confirmation and recovery across workbenches",
+  "Description": "Problem: the 2026-05-25 modal-flow review found inconsistent destructive-action handling. Chat delete uses a native browser confirmation, but Pages delete, Memories delete, Profile sign-in method removal, and Admin model profile deletion call their delete/remove services directly from UI handlers. Some edit-buffer removals such as tag namespace rows and variable rows are less risky because they still require a later save, but persisted deletes/removals need a consistent confirmation and recovery story.\r\n\r\nDesired outcome: destructive actions should require intentional confirmation, explain what will be removed, and provide a recoverability path where the backing store supports it.\r\n\r\nScope:\r\n- In scope: Page delete, Memory delete, Chat delete, Profile sign-in method removal, Admin model profile deletion, confirmation copy, cancel/default focus behavior, snackbar/undo or history recovery affordances, and browser coverage for cancel/confirm paths.\r\n- Out of scope: changing persistence semantics for soft-delete/history unless needed to expose an existing recovery path.\r\n\r\nAcceptance criteria:\r\n- Persisted destructive actions use a consistent app-level confirmation dialog rather than silent execution or native browser-only prompts.\r\n- Confirmation copy includes the affected item type/name and whether the action is recoverable.\r\n- Cancel is the safe default and keyboard/focus behavior is accessible.\r\n- Success/failure feedback explains what changed and, where practical, links to history or provides undo.\r\n\r\nValidation:\r\n- Run focused browser checks for canceling and confirming page, memory, chat, profile-link, and model-profile destructive actions using safe fixtures.\r\n- Confirm no live production wiki records or account links are mutated during review/validation without fixture isolation.\r\n\r\nImported from Data/Pages/workbench/tasks.md; broadened with live/code evidence on 2026-05-25.",
   "Type": "Task",
   "Status": "Backlog",
-  "Priority": "Medium",
+  "Priority": "High",
   "AssigneeMode": "Custom",
   "AssigneeDirectoryId": null,
   "AssigneeCustomText": "Copilot",
@@ -13,7 +13,10 @@
   "Labels": [
     "tracker-import",
     "workbench",
-    "future"
+    "future",
+    "ui",
+    "safety",
+    "audit-vetted"
   ],
   "Attachments": [],
   "ExternalLinks": [],
@@ -26,14 +29,20 @@
       "Author": "tracker-import",
       "Body": "Keep notes on the exact confirmation copy and whether the action feels recoverable.",
       "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z"
+    },
+    {
+      "Id": "c-audit-modal-flow-0010-20260525",
+      "Author": "AgentSmith",
+      "Body": "Review update: code inspection found direct persisted deletes/removals in Pages, Memories, Profile sign-in methods, and Admin model profiles, while Chat uses a native confirm. Broadened this task to standardize confirmation/recovery across destructive actions.",
+      "CreatedAtUtc": "2026-05-25T00:00:00.0000000Z"
     }
   ],
   "EpicId": null,
   "ParentId": null,
   "DueDateUtc": null,
   "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z",
-  "UpdatedAtUtc": "2026-05-23T23:36:10.0439283Z",
+  "UpdatedAtUtc": "2026-05-25T00:00:00.0000000Z",
   "CompletedAtUtc": null,
-  "Revision": 1,
+  "Revision": 2,
   "IsArchived": false
 }

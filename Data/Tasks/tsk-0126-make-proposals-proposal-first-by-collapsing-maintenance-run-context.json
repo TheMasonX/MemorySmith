@@ -1,0 +1,44 @@
+{
+  "id": "tsk-0126-make-proposals-proposal-first-by-collapsing-maintenance-run-context",
+  "key": "TSK-0126",
+  "title": "Make Proposals proposal-first by collapsing maintenance run context",
+  "description": "Problem: the live `/proposals` review showed the route spending most first-viewport space on maintenance task controls and recent task activity before the actual proposal list/detail area. The detail placeholder is pushed to the bottom, and only a small slice of proposal rows is visible without scrolling.\n\nDesired outcome: Proposals should prioritize proposal triage and review, while maintenance run controls and recent activity remain available as contextual secondary information.\n\nScope:\n- In scope: collapse or relocate recent maintenance task activity, compact maintenance run controls, improve proposal list/detail proportions, and provide clearer empty/detail state affordances.\n- Out of scope: changing proposal application semantics or maintenance task execution behavior.\n\nAcceptance criteria:\n- At narrow widths, proposal rows and the selected proposal/detail state occupy the primary first-viewport area.\n- Recent maintenance activity is discoverable but does not dominate by default.\n- Run maintenance controls are grouped as secondary route actions or a collapsible panel.\n- Proposal triage actions remain reachable by keyboard and pointer.\n\nValidation:\n- Capture `/proposals` screenshots before/after with no selection and with a selected proposal.\n- Run focused browser checks for filtering, selecting a proposal, collapsing context, and triggering maintenance controls.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "ui",
+    "proposals",
+    "maintenance",
+    "screen-real-estate",
+    "audit-vetted"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "workbench/tasks"
+  ],
+  "comments": [
+    {
+      "id": "c-0126-1",
+      "author": "AgentSmith",
+      "body": "Created from 2026-05-25 live visual review: `/proposals` currently reads as maintenance-run-first, leaving little first-viewport room for proposal triage and detail review.",
+      "createdAtUtc": "2026-05-25T00:00:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T00:00:00.0000000Z",
+  "updatedAtUtc": "2026-05-25T00:00:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

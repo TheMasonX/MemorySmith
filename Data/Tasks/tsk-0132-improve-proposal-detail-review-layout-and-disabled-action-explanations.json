@@ -1,0 +1,44 @@
+{
+  "id": "tsk-0132-improve-proposal-detail-review-layout-and-disabled-action-explanations",
+  "key": "TSK-0132",
+  "title": "Improve proposal detail review layout and disabled action explanations",
+  "description": "Problem: the selected `/proposals` review showed the proposal detail pane squeezed beneath recent maintenance activity and proposal rows. The summary/diff/review tabs and action controls are visible only in a short scroll area, and disabled actions such as approve/respond/reject do not explain why they are unavailable for an already rejected proposal.\n\nDesired outcome: selecting a proposal should make the review target, state, summary, diff/evidence, comments, and available actions immediately understandable.\n\nScope:\n- In scope: selected proposal detail layout, action bar placement, disabled action tooltips/reasons, rejected/approved state explanation, and summary/diff/evidence tab prioritization.\n- Out of scope: changing proposal apply/reject semantics or maintenance generation behavior.\n\nAcceptance criteria:\n- Selected proposal detail receives enough first-viewport space to review the summary and state.\n- Disabled actions explain the current state or required prerequisite.\n- The current proposal status and allowed next actions are visually obvious.\n- Diff/evidence/comments remain reachable without burying the review action area.\n\nValidation:\n- Capture `/proposals` with an open, approved, and rejected proposal where fixture data permits.\n- Run focused browser checks for selecting a proposal, reading disabled-action labels/tooltips, and switching detail tabs.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "ui",
+    "proposals",
+    "governance",
+    "discoverability",
+    "audit-vetted"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "workbench/tasks"
+  ],
+  "comments": [
+    {
+      "id": "c-0132-1",
+      "author": "AgentSmith",
+      "body": "Created from 2026-05-25 deeper live review: selected proposal detail was compressed below maintenance context, and disabled review actions did not explain their disabled state.",
+      "createdAtUtc": "2026-05-25T00:00:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T00:00:00.0000000Z",
+  "updatedAtUtc": "2026-05-25T00:00:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

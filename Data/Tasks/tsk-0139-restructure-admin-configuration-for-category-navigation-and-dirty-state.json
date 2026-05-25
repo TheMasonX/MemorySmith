@@ -1,0 +1,44 @@
+{
+  "id": "tsk-0139-restructure-admin-configuration-for-category-navigation-and-dirty-state",
+  "key": "TSK-0139",
+  "title": "Restructure Admin Configuration for category navigation and dirty state",
+  "description": "Problem: the continued `/admin` Configuration review found the tab rendering as a very long single settings surface on narrow width, with more than 160 inputs, more than 50 switches, and repeated per-setting Save buttons. The page is searchable, but the current layout makes category scanning, dirty-state awareness, and save scope hard to understand.\n\nDesired outcome: Admin Configuration should feel like a managed settings workbench: searchable, categorized, compact, and explicit about what changed and what will be saved.\n\nScope:\n- In scope: category navigation, sticky compact filters, setting grouping, dirty-state indicators, save scope, repeated Save button reduction, keyboard/focus flow, and responsive rendering of setting descriptions/keys.\n- Out of scope: changing the allowlisted settings catalog or persistence backend unless needed to expose dirty-state metadata.\n\nAcceptance criteria:\n- Operators can jump between setting categories without scrolling through the entire catalog.\n- Changed settings are visually identifiable before save.\n- Save actions make their scope clear and avoid dozens of visually identical buttons in the first-pass scan.\n- Setting keys/descriptions are readable but do not dominate the narrow layout.\n\nValidation:\n- Capture `/admin` Configuration before/after at narrow and desktop widths with default and filtered states.\n- Run focused browser checks for search, category selection, changing a switch/text setting, dirty-state display, save, and cancel/reset behavior.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "ui",
+    "admin",
+    "configuration",
+    "settings",
+    "audit-vetted"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "workbench/tasks"
+  ],
+  "comments": [
+    {
+      "id": "c-0139-1",
+      "author": "AgentSmith",
+      "body": "Created from 2026-05-25 continued live review: Admin Configuration measured as a very long single settings panel with 164 inputs, 52 switches, and many repeated Save controls on narrow width.",
+      "createdAtUtc": "2026-05-25T00:00:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T00:00:00.0000000Z",
+  "updatedAtUtc": "2026-05-25T00:00:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

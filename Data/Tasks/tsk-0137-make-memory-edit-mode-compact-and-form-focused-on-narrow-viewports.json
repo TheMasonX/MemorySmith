@@ -1,0 +1,44 @@
+{
+  "id": "tsk-0137-make-memory-edit-mode-compact-and-form-focused-on-narrow-viewports",
+  "key": "TSK-0137",
+  "title": "Make Memory edit mode compact and form-focused on narrow viewports",
+  "description": "Problem: the deeper `/memories` edit-mode review showed the selected-memory edit panel scrolling nearly 1,000 px inside a roughly 300 px viewport area. The search controls and results list remain visible above the form, while save/check/cancel, ID/title/status, confidence, tags, references, source links, and content compete for the limited detail pane.\n\nDesired outcome: editing a memory should shift the interface into a focused form state where the user can review metadata, content, references, and source links without deep nested scrolling.\n\nScope:\n- In scope: memory edit-mode responsive layout, result-list collapse/focus behavior, grouped metadata sections, source-link/reference editor density, save/check/cancel hierarchy, and dirty-state feedback.\n- Out of scope: changing memory JSON schema, validation semantics, or search behavior.\n\nAcceptance criteria:\n- Entering edit mode gives the form enough first-viewport space on narrow screens.\n- Search/results controls can collapse or step aside without losing the selected memory context.\n- Tags, references, conflicts, source links, and content are grouped with clear labels and reachable controls.\n- Save, check, and cancel remain visible or predictably sticky without crowding metadata fields.\n\nValidation:\n- Capture `/memories` selected edit mode before/after at narrow and desktop widths.\n- Run focused browser checks for edit, validation/check, save/cancel, tag edits, and source-link edits.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "ui",
+    "memories",
+    "editor",
+    "responsive",
+    "audit-vetted"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "workbench/tasks"
+  ],
+  "comments": [
+    {
+      "id": "c-0137-1",
+      "author": "AgentSmith",
+      "body": "Created from 2026-05-25 continued live review: Memories edit mode kept search/results above a nested selected pane whose form scroll height was much larger than the visible area.",
+      "createdAtUtc": "2026-05-25T00:00:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T00:00:00.0000000Z",
+  "updatedAtUtc": "2026-05-25T00:00:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

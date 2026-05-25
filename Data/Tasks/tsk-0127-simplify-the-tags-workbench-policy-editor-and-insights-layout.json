@@ -1,0 +1,50 @@
+{
+  "id": "tsk-0127-simplify-the-tags-workbench-policy-editor-and-insights-layout",
+  "key": "TSK-0127",
+  "title": "Simplify the Tags workbench policy editor and insights layout",
+  "description": "Problem: the live `/tags` review showed multiple nested scroll regions and dense policy textareas above a separate insights tab/table area. Policy editing, feedback, usage, and suggestions are all visible at once, which makes the route feel crowded and reduces the visible area for both editing and analysis. A continued visual-density pass also measured roughly 41 inputs, 20 combobox-like controls, repeated namespace removal actions, and a long insights table, reinforcing that the route needs stronger workflow separation.\n\nDesired outcome: Tags should separate policy editing from insights cleanly while preserving fast access to both workflows.\n\nScope:\n- In scope: clearer edit/insights modes or collapsible policy sections, better save-state visibility, textarea sizing, tag table density, suggestion review density, and responsive behavior for Usage/Suggestions tabs.\n- Out of scope: changing tag policy file format or validation rules.\n\nAcceptance criteria:\n- Policy editing gets enough vertical room to edit allowlist/blocklist/aliases without fighting nested scrollbars.\n- Insights tables remain scannable and do not compete with open textareas unless the user chooses a split view.\n- Suggestions can be reviewed efficiently without a very long table dominating the route.\n- Dirty/saved policy state is clear without requiring permanently large command buttons.\n- The layout preserves fast refresh/save actions and keyboard navigation.\n\nValidation:\n- Capture `/tags` screenshots in edit-heavy, usage-insights, and suggestions-review states.\n- Run focused checks for policy edit, save, tab switching, suggestion approve/reject affordances, and no horizontal overflow.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "ui",
+    "tags",
+    "screen-real-estate",
+    "discoverability",
+    "audit-vetted"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "workbench/tasks"
+  ],
+  "comments": [
+    {
+      "id": "c-0127-1",
+      "author": "AgentSmith",
+      "body": "Created from 2026-05-25 live visual review: `/tags` shows policy controls, large textareas, feedback, and insights at once, producing nested-scroll density and weak workflow separation.",
+      "createdAtUtc": "2026-05-25T00:00:00.0000000Z"
+    },
+    {
+      "id": "c-0127-2",
+      "author": "AgentSmith",
+      "body": "Continued review update: `/tags` visual-density metrics showed many policy inputs/selectors, repeated namespace removal controls, and a long usage/suggestions table, so implementation should include suggestion-review density, not only textarea sizing.",
+      "createdAtUtc": "2026-05-25T00:00:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T00:00:00.0000000Z",
+  "updatedAtUtc": "2026-05-25T00:00:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

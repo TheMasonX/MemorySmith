@@ -1,0 +1,44 @@
+{
+  "id": "tsk-0144-make-about-dependencies-and-license-information-compact-and-scannable",
+  "key": "TSK-0144",
+  "title": "Make About dependencies and license information compact and scannable",
+  "description": "Problem: the continued visual-density review found `/about` dominated by a long third-party dependency table and a full license block. This is legitimate information, but it is presented as one long read-through surface, making package lookup, license review, and attribution scanning harder than necessary.\n\nDesired outcome: About should keep legal/dependency information complete while giving users compact navigation, filtering, and progressive disclosure.\n\nScope:\n- In scope: About page section navigation, dependency table search/filter, license-family grouping, collapsible full license text, external-link affordances, and responsive table/card behavior.\n- Out of scope: changing license text, package metadata source of truth, or legal attribution content.\n\nAcceptance criteria:\n- Users can quickly find a package, license, or project URL without scrolling through the whole dependency table.\n- Full license text remains available but does not dominate the first-pass view.\n- The dependency/license layout stays readable at narrow widths without requiring horizontal scrolling.\n- External project/license links are clear and keyboard accessible.\n\nValidation:\n- Capture `/about` before/after at narrow and desktop widths.\n- Run focused browser checks for package search/filter, license expansion/collapse, and link accessibility.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Low",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "ui",
+    "about",
+    "dependencies",
+    "screen-real-estate",
+    "audit-vetted"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "workbench/tasks"
+  ],
+  "comments": [
+    {
+      "id": "c-0144-1",
+      "author": "AgentSmith",
+      "body": "Created from 2026-05-25 continued visual-density review: `/about` measured as a long dependency/license surface where the package table and full license text dominate scanning.",
+      "createdAtUtc": "2026-05-25T00:00:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T00:00:00.0000000Z",
+  "updatedAtUtc": "2026-05-25T00:00:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

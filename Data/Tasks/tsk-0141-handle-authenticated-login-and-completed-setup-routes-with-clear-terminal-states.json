@@ -1,0 +1,44 @@
+{
+  "id": "tsk-0141-handle-authenticated-login-and-completed-setup-routes-with-clear-terminal-states",
+  "key": "TSK-0141",
+  "title": "Handle authenticated login and completed setup routes with clear terminal states",
+  "description": "Problem: the continued live review found `/login` still presenting a full sign-in form while the authenticated app chrome showed a signed-in session, and `/admin/setup` showing a completed-setup card beneath an empty-looking header strip. These terminal auth/setup routes are valid compatibility states, but the current UI can feel contradictory or unfinished.\n\nDesired outcome: auth and setup terminal routes should make the current state obvious and route users to the next appropriate action without showing stale or contradictory forms.\n\nScope:\n- In scope: `/login` when already authenticated, `/admin/setup` when setup is already complete, visible page titles/status regions, redirect-or-status-card behavior, and accessible labels for terminal-state actions.\n- Out of scope: changing authentication providers, setup persistence, or first-run bootstrap semantics.\n\nAcceptance criteria:\n- Authenticated users visiting `/login` are redirected or shown a signed-in state with clear actions such as open app/profile or sign out.\n- Completed setup visits to `/admin/setup` show an intentional terminal state without an empty header strip.\n- The visible UI and accessibility tree agree on the page purpose.\n- Browser checks cover authenticated `/login` and completed `/admin/setup` states.\n\nValidation:\n- Capture `/login` while authenticated and unauthenticated where feasible.\n- Capture `/admin/setup` after setup is complete.\n- Run focused browser route checks for the terminal states and action labels.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "ui",
+    "auth",
+    "setup",
+    "routes",
+    "audit-vetted"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "workbench/tasks"
+  ],
+  "comments": [
+    {
+      "id": "c-0141-1",
+      "author": "AgentSmith",
+      "body": "Created from 2026-05-25 continued live review: `/login` showed a sign-in form under authenticated chrome, and `/admin/setup` showed setup-complete content under an empty-looking header strip.",
+      "createdAtUtc": "2026-05-25T00:00:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T00:00:00.0000000Z",
+  "updatedAtUtc": "2026-05-25T00:00:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

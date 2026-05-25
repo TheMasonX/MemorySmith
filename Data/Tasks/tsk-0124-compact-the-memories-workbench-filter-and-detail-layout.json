@@ -1,0 +1,44 @@
+{
+  "id": "tsk-0124-compact-the-memories-workbench-filter-and-detail-layout",
+  "key": "TSK-0124",
+  "title": "Compact the Memories workbench filter and detail layout",
+  "description": "Problem: the live `/memories` review showed the filter command bar, pagination, metadata chips, nested content scroller, and references section competing for a small viewport. The search controls take roughly the first quarter of the visible page, the results list can show only a small slice, and the selected memory body has limited reading space before another nested reference scroller appears.\n\nDesired outcome: Memories remains information-dense, but the selected record body and search results get more of the first viewport.\n\nScope:\n- In scope: compact/collapsible advanced filters, tighter search-mode controls, denser pagination, metadata chip grouping, references folding, and clearer result/detail pane proportions.\n- Out of scope: changing memory search semantics or record schema.\n\nAcceptance criteria:\n- At narrow widths, a selected memory shows materially more body content without hiding critical commands.\n- Basic search remains immediately available; secondary filters can collapse or move behind an advanced-controls affordance.\n- References and dense metadata can be expanded, copied, or navigated without permanently taking priority over body text.\n- No horizontal overflow or nested-scroll confusion is introduced.\n\nValidation:\n- Capture before/after `/memories` screenshots at narrow and desktop widths.\n- Re-run route-smoke or focused browser checks for search, result selection, pagination, and reference navigation.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "ui",
+    "memories",
+    "screen-real-estate",
+    "discoverability",
+    "audit-vetted"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "workbench/tasks"
+  ],
+  "comments": [
+    {
+      "id": "c-0124-1",
+      "author": "AgentSmith",
+      "body": "Created from 2026-05-25 live visual review: `/memories` used a tall filter stack and nested detail/reference scrolling that limited the selected memory reading area.",
+      "createdAtUtc": "2026-05-25T00:00:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T00:00:00.0000000Z",
+  "updatedAtUtc": "2026-05-25T00:00:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

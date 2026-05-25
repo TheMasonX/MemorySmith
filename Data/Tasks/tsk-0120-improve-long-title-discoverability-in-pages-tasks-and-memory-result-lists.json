@@ -1,0 +1,45 @@
+{
+  "id": "tsk-0120-improve-long-title-discoverability-in-pages-tasks-and-memory-result-lists",
+  "key": "TSK-0120",
+  "title": "Improve long-title discoverability in Pages, Tasks, and Memory result lists",
+  "description": "Problem: a live browser sweep found long page and task titles are single-line clipped in dense list rows without an obvious pointer tooltip or title affordance. The truncation is visually tidy, but it hides important identifying text for long task titles and page names.\n\nEvidence: `/pages` tree rows clipped examples such as `Council Review: Chat Harness Capability Uplift (Context Window, Compaction, Memory, Prompting, Tooling)`, and `/tasks` clipped examples such as `TSK-0104 - Modernize Serilog bootstrap with config-driven structured sinks, enrichers, and Windows Event Log.`\n\nDesired outcome: dense list rows remain compact while exposing full titles through consistent tooltip/title behavior and screen-reader names.\n\nScope:\n- In scope: Pages tree rows, Tasks list rows, Memory result rows where title-like content is ellipsized, and reusable row-title styling or helper patterns.\n- Out of scope: virtualizing lists or redesigning the workbench layout.\n\nAcceptance criteria:\n- Long titles remain visually constrained without layout shift.\n- Hover/focus exposes the full title for clipped rows.\n- Accessible names include the full title, not only the clipped visual text.\n- The pattern is applied consistently across Pages, Tasks, and Memory search/list results.\n\nValidation:\n- Use a narrow viewport and known long records to confirm full titles are discoverable.\n- Re-run route-smoke or focused browser checks for `/pages`, `/tasks`, and `/memories`.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "accessibility",
+    "ui",
+    "pages",
+    "tasks",
+    "memories",
+    "audit-vetted"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "workbench/tasks"
+  ],
+  "comments": [
+    {
+      "id": "c-0120-1",
+      "author": "AgentSmith",
+      "body": "Created from 2026-05-25 live browser audit: dense Pages and Tasks lists clipped long titles; this should be made discoverable without expanding the rows by default.",
+      "createdAtUtc": "2026-05-25T00:00:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T00:00:00.0000000Z",
+  "updatedAtUtc": "2026-05-25T00:00:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}
