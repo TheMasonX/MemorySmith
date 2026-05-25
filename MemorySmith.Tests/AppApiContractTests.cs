@@ -39,6 +39,7 @@ public class AppApiContractTests
                         ["MemorySmith:Database:ConnectionString"] = $"Data Source={Path.Combine(_tempDir, "memorysmith.db")};Pooling=False",
                         ["MemorySmith:Audit:JsonlPath"] = Path.Combine(_tempDir, "Events", "audit-{yyyy}-W{week}.jsonl"),
                         ["MemorySmith:History:RootPath"] = Path.Combine(_tempDir, ".history"),
+                        ["MemorySmith:TaskAttachments:StoragePath"] = Path.Combine(_tempDir, "Artifacts", "TaskAttachments"),
                         ["MemorySmith:Maintenance:Enabled"] = "false"
                     });
                 });
@@ -407,6 +408,50 @@ public class AppApiContractTests
             Assert.That(updated.Attachments[0].Uri, Is.EqualTo($"task:{child.Id}"));
             Assert.That(selfResponse.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
             Assert.That(missingResponse.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+        });
+    }
+
+    [Test]
+    public async Task TasksApi_CanUploadFileAttachmentsToArtifactsFolder()
+    {
+        var createResponse = await _client.PostAsJsonAsync("/api/tasks", new TaskCreateRequest(
+            Title: "File attachment task",
+            Description: "Task with a local uploaded artifact.",
+            Type: "Task",
+            Status: TaskStatuses.Backlog,
+            Priority: TaskPriorities.Medium,
+            AssigneeMode: TaskAssigneeModes.Custom,
+            AssigneeDirectoryId: null,
+            AssigneeCustomText: "Copilot",
+            Reporter: "copilot",
+            Labels: ["tasks"],
+            DueDateUtc: null,
+            EpicId: null,
+            ParentId: null,
+            Slug: "file-attachment-task"));
+        createResponse.EnsureSuccessStatusCode();
+        var created = await createResponse.Content.ReadFromJsonAsync<TaskItem>();
+
+        using var form = new MultipartFormDataContent();
+        var content = new ByteArrayContent("task attachment body"u8.ToArray());
+        content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("text/plain");
+        form.Add(content, "file", "Notes To Keep.txt");
+        form.Add(new StringContent("Implementation notes"), "name");
+        var uploadResponse = await _client.PostAsync($"/api/tasks/{created!.Id}/attachments/files", form);
+        uploadResponse.EnsureSuccessStatusCode();
+        var updated = await uploadResponse.Content.ReadFromJsonAsync<TaskItem>();
+        var attachment = updated!.Attachments.Single();
+        var fileResponse = await _client.GetAsync(attachment.Uri);
+        var fileBody = await fileResponse.Content.ReadAsStringAsync();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(attachment.Name, Is.EqualTo("Implementation notes"));
+            Assert.That(attachment.Kind, Is.EqualTo("file"));
+            Assert.That(attachment.Uri, Does.StartWith("/artifacts/task-attachments/"));
+            Assert.That(fileResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+            Assert.That(fileBody, Is.EqualTo("task attachment body"));
+            Assert.That(File.Exists(Path.Combine(_tempDir, "Artifacts", "TaskAttachments", created.Id, "notes-to-keep.txt")), Is.True);
         });
     }
 

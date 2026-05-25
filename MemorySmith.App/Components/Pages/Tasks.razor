@@ -4,6 +4,7 @@
 @inject ITaskService TaskService
 @inject ICurrentUserContext CurrentUser
 @inject ISnackbar Snackbar
+@inject Microsoft.Extensions.Options.IOptionsMonitor<MemorySmithOptions> Options
 
 <PageTitle>Tasks - MemorySmith</PageTitle>
 
@@ -377,6 +378,12 @@
                                     <MudTextField T="string" Value="@_attachmentName" ValueChanged="OnAttachmentNameChanged" Label="Attachment name" Variant="Variant.Outlined" Margin="Margin.Dense" />
                                     <MudTextField T="string" Value="@_attachmentUri" ValueChanged="OnAttachmentUriChanged" Label="Attachment uri" Variant="Variant.Outlined" Margin="Margin.Dense" />
                                     <MudButton Variant="Variant.Outlined" OnClick="AddAttachmentAsync">Add Attachment</MudButton>
+                                    <MudTooltip Text="Upload file attachment">
+                                        <label class="page-toolbar-file-button" aria-label="Upload file attachment">
+                                            <MudIcon Icon="@Icons.Material.Filled.UploadFile" Size="Size.Small" />
+                                            <InputFile OnChange="OnTaskAttachmentFileSelectedAsync" class="page-toolbar-file-input" />
+                                        </label>
+                                    </MudTooltip>
                                     <MudAutocomplete T="TaskSummary"
                                                      Value="@_relatedTaskAttachment"
                                                      ValueChanged="OnRelatedTaskAttachmentChanged"
@@ -388,6 +395,10 @@
                                                      Dense="true"
                                                      Clearable="true" />
                                     <MudButton Variant="Variant.Outlined" OnClick="AddRelatedTaskAttachmentAsync" Disabled="@(_relatedTaskAttachment is null)">Add Related Task</MudButton>
+                                    @if (_isUploadingAttachment)
+                                    {
+                                        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+                                    }
                                 </div>
                             </Authorized>
                         </AuthorizeView>
@@ -463,6 +474,7 @@
     private string _attachmentName = string.Empty;
     private string _attachmentUri = string.Empty;
     private TaskSummary? _relatedTaskAttachment;
+    private bool _isUploadingAttachment;
     private string _createTitle = string.Empty;
     private string _createDescription = string.Empty;
     private string _createSlug = string.Empty;
@@ -899,6 +911,41 @@
         catch (Exception ex)
         {
             Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private async Task OnTaskAttachmentFileSelectedAsync(InputFileChangeEventArgs args)
+    {
+        if (_selectedTask is null || args.FileCount == 0)
+        {
+            return;
+        }
+
+        var file = args.File;
+        var attachmentOptions = Options.CurrentValue.TaskAttachments;
+        if (file.Size > attachmentOptions.MaxFileBytes)
+        {
+            Snackbar.Add($"Attachment exceeds the configured limit of {attachmentOptions.MaxFileBytes} bytes.", Severity.Warning);
+            return;
+        }
+
+        _isUploadingAttachment = true;
+        try
+        {
+            await using var stream = file.OpenReadStream(attachmentOptions.MaxFileBytes);
+            var stored = await TaskAttachmentFiles.SaveAsync(_selectedTask.Id, file.Name, stream, file.Size, attachmentOptions, CancellationToken.None);
+            await TaskService.AddAttachmentAsync(_selectedTask.Id, new TaskAttachmentRequest(file.Name, "file", stored.PublicUri), CurrentUser.DisplayName, CancellationToken.None);
+            Snackbar.Add($"Attached {file.Name}.", Severity.Success);
+            await LoadAsync();
+            await SelectAsync(_selectedTask.Id);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _isUploadingAttachment = false;
         }
     }
 

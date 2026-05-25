@@ -21,6 +21,7 @@ public class MemorySmithOptions
     public PageOptions Pages { get; set; } = new();
     public SemanticSearchOptions SemanticSearch { get; set; } = new();
     public TaskSearchOptions TaskSearch { get; set; } = new();
+    public TaskAttachmentOptions TaskAttachments { get; set; } = new();
     public GovernanceOptions Governance { get; set; } = new();
     public MaintenanceOptions Maintenance { get; set; } = new();
     public LimitOptions Limits { get; set; } = new();
@@ -400,4 +401,10 @@ public class MaintenanceAgentStorageOptions
 public class TaskSearchOptions
 {
     public bool HybridSemanticEnabled { get; set; } = true;
+}
+
+public class TaskAttachmentOptions
+{
+    public string StoragePath { get; set; } = Path.Combine("..", "artifacts", "task-attachments");
+    public long MaxFileBytes { get; set; } = 10 * 1024 * 1024;
 }

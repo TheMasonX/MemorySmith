@@ -557,6 +557,27 @@ try
     var pageAssetsPath = Path.GetFullPath(Path.Combine(pagesPath, "assets"));
     Directory.CreateDirectory(pageAssetsPath);
     var contentTypeProvider = new FileExtensionContentTypeProvider();
+    app.MapGet("/artifacts/task-attachments/{taskId}/{fileName}", (
+        string taskId,
+        string fileName,
+        IOptionsMonitor<MemorySmithOptions> options) =>
+    {
+        var resolvedPath = TaskAttachmentFiles.ResolvePublicPath(options.CurrentValue.TaskAttachments, taskId, fileName);
+        if (resolvedPath is null)
+        {
+            return Results.BadRequest();
+        }
+
+        if (!File.Exists(resolvedPath))
+        {
+            return Results.NotFound();
+        }
+
+        return Results.File(
+            resolvedPath,
+            contentTypeProvider.TryGetContentType(resolvedPath, out var contentType) ? contentType : "application/octet-stream");
+    }).RequireAuthorization(MemorySmithPolicies.CanViewMemorySmith);
+
     app.MapGet("/page-assets/{**assetPath}", async (
         string assetPath,
         FilePageService pages,

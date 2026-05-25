@@ -38,6 +38,122 @@ public sealed record TaskAttachment(
     string Uri,
     DateTime AddedAtUtc);
 
+public sealed record StoredTaskAttachmentFile(string FileName, string PublicUri, long Size);
+
+public static partial class TaskAttachmentFiles
+{
+    public const string PublicPathPrefix = "/artifacts/task-attachments";
+
+    public static async Task<StoredTaskAttachmentFile> SaveAsync(string taskId, string fileName, Stream source, long size, TaskAttachmentOptions options, CancellationToken cancellationToken)
+    {
+        if (size <= 0)
+        {
+            throw new ArgumentException("Attachment file is empty.");
+        }
+
+        if (size > options.MaxFileBytes)
+        {
+            throw new ArgumentException($"Attachment file exceeds the configured limit of {options.MaxFileBytes} bytes.");
+        }
+
+        var safeTaskId = SafeSegment(taskId, "task");
+        var safeFileName = SafeFileName(fileName);
+        var directory = Path.Combine(ResolveStorageRoot(options), safeTaskId);
+        Directory.CreateDirectory(directory);
+
+        var uniqueFileName = GetUniqueFileName(directory, safeFileName);
+        var path = Path.Combine(directory, uniqueFileName);
+        await using var target = File.Create(path);
+        await source.CopyToAsync(target, cancellationToken);
+        var publicUri = $"{PublicPathPrefix}/{Uri.EscapeDataString(safeTaskId)}/{Uri.EscapeDataString(uniqueFileName)}";
+        return new StoredTaskAttachmentFile(uniqueFileName, publicUri, size);
+    }
+
+    public static string? ResolvePublicPath(TaskAttachmentOptions options, string taskId, string fileName)
+    {
+        if (!HasValidPercentEncoding(taskId) || !HasValidPercentEncoding(fileName))
+        {
+            return null;
+        }
+
+        var decodedTaskId = Uri.UnescapeDataString(taskId);
+        var decodedFileName = Uri.UnescapeDataString(fileName);
+        if (!string.Equals(decodedTaskId, SafeSegment(decodedTaskId, "task"), StringComparison.Ordinal) ||
+            !string.Equals(decodedFileName, SafeFileName(decodedFileName), StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        var root = ResolveStorageRoot(options);
+        var path = Path.GetFullPath(Path.Combine(root, decodedTaskId, decodedFileName));
+        var rootWithSeparator = root.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        return path.StartsWith(rootWithSeparator, StringComparison.OrdinalIgnoreCase) ? path : null;
+    }
+
+    public static string ResolveStorageRoot(TaskAttachmentOptions options) =>
+        Path.GetFullPath(options.StoragePath);
+
+    private static string GetUniqueFileName(string directory, string fileName)
+    {
+        var baseName = Path.GetFileNameWithoutExtension(fileName);
+        var extension = Path.GetExtension(fileName);
+        var candidate = fileName;
+        var index = 2;
+        while (File.Exists(Path.Combine(directory, candidate)))
+        {
+            candidate = $"{baseName}-{index}{extension}";
+            index++;
+        }
+
+        return candidate;
+    }
+
+    private static string SafeFileName(string fileName)
+    {
+        var name = Path.GetFileName(fileName);
+        var extension = Path.GetExtension(name).ToLowerInvariant();
+        var baseName = Path.GetFileNameWithoutExtension(name).ToLowerInvariant();
+        baseName = SafeFileSegmentRegex().Replace(baseName, "-").Trim('-');
+        extension = SafeExtensionRegex().Replace(extension, string.Empty);
+        if (string.IsNullOrWhiteSpace(baseName))
+        {
+            baseName = $"attachment-{DateTime.UtcNow:yyyyMMddHHmmss}";
+        }
+
+        return string.IsNullOrWhiteSpace(extension) ? baseName : baseName + extension;
+    }
+
+    private static string SafeSegment(string value, string fallback)
+    {
+        var segment = SafeFileSegmentRegex().Replace(value.Trim().ToLowerInvariant(), "-").Trim('-');
+        return string.IsNullOrWhiteSpace(segment) ? fallback : segment;
+    }
+
+    private static bool HasValidPercentEncoding(string value)
+    {
+        for (var index = 0; index < value.Length; index++)
+        {
+            if (value[index] != '%')
+            {
+                continue;
+            }
+
+            if (index + 2 >= value.Length || !Uri.IsHexDigit(value[index + 1]) || !Uri.IsHexDigit(value[index + 2]))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    [GeneratedRegex("[^a-z0-9._-]+")]
+    private static partial Regex SafeFileSegmentRegex();
+
+    [GeneratedRegex("[^.a-z0-9]+")]
+    private static partial Regex SafeExtensionRegex();
+}
+
 public sealed record TaskExternalLink(
     string Id,
     string Label,

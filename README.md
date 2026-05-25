@@ -245,7 +245,7 @@ The MCP endpoint is at `http://localhost:5089/mcp`. VS Code config lives in `.vs
 | `memorysmith_task_update` | `idOrKey`, editable task fields such as `title`, `description`, `priority`, `labels` | Updates task fields and records task activity | **Edit** |
 | `memorysmith_task_set_status` | `idOrKey`, `status`, `note` | Changes status and records status history | **Edit** |
 | `memorysmith_task_add_comment` | `idOrKey`, `body` | Adds a task comment | **Edit** |
-| `memorysmith_task_add_attachment` | `idOrKey`, `name`, `kind`, `uri` | Adds an absolute http/https task attachment URI | **Edit** |
+| `memorysmith_task_add_attachment` | `idOrKey`, `name`, `kind`, `uri` | Adds an http/https, local file artifact, or `task:` related-task attachment | **Edit** |
 | `memorysmith_page_save` | `markdown`, `slug` (opt), `title` (opt) | Creates or updates a wiki page; returns slug, title, and updated timestamp | **Edit** |
 | `memorysmith_page_delete` | `slug` | Deletes a wiki page; returns success or not-found | **Edit** |
 | `memorysmith_source_bundle` | `ids` or `query`/`tags`/`limit`, `maxFileBytes`, `format` | Records + resolved file content slices for every source link (MCP only) | Source bundle |
@@ -325,6 +325,13 @@ All settings live under `MemorySmith` in `appsettings.json`:
       "QueryPrefix": "query: ",
       "DocumentPrefix": "passage: "
     },
+    "TaskSearch": {
+      "HybridSemanticEnabled": true
+    },
+    "TaskAttachments": {
+      "StoragePath": "../artifacts/task-attachments",
+      "MaxFileBytes": 10485760
+    },
     "Maintenance": {
       "Enabled": true,
       "TriageMinutes": 5,
@@ -395,6 +402,7 @@ For an operator-facing map of the active settings, see [`Data/Pages/guides/confi
 - **`Pages:DefaultMinimumRole`** — default minimum visibility for newly saved pages. Use `Anonymous`, `Authenticated`, or `Admin`; the admin settings UI exposes this as default page visibility.
 - **`Pages:AllowRawHtml`** — enables trusted raw HTML rendering in markdown pages. Off by default; leave disabled for agent-written or unreviewed pages.
 - **`SemanticSearch:*`** — controls optional ONNX embedding ranking. Relative model and vocabulary paths resolve from the configured data deployment root: the folder that contains `Memories`, `Events`, `Graph`, `Models`, and `Pages`. The default model path is `Models/embedding-model.onnx`; ONNX/model artifacts are ignored by Git, and a matching WordPiece `vocab.txt` is required before embeddings activate. Legacy `../Data/Models/...` values are also interpreted relative to that data root.
+- **`TaskSearch:*` / `TaskAttachments:*`** — controls task search ranking and task attachment storage. Uploaded task files are stored under `TaskAttachments:StoragePath`, served from `/artifacts/task-attachments/...` behind task view authorization, and capped by `TaskAttachments:MaxFileBytes`. Related-task attachments use `kind=task` and `task:<idOrKey>` URIs.
 - **`Mcp:*`** — controls per-tool MCP exposure. `DisabledTools` hides named tools from `tools/list` and rejects direct `tools/call`; `EnabledTools` opts in descriptor-level default-off tools. Existing MCP tools default on unless disabled.
 - **`DataPath`** — root of the memory store. Subdirectories (`Unconsolidated/`, `Working/`, `Core/`, `Deprecated/`) are created automatically.
 - **`PagesPath`** — root of the markdown page store. `assets/` under this directory is served at `/page-assets` with page visibility checks for referenced assets.
