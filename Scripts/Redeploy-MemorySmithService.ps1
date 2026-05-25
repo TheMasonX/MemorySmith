@@ -10,6 +10,14 @@ param(
     [string]$MemoryDirectory,
     [string]$PublishDirectory,
     [int]$Port = 5089,
+    [string]$BindAddress = '0.0.0.0',
+    [switch]$UseHttps,
+    [int]$HttpsPort = 7090,
+    [string]$HttpsBindAddress,
+    [string]$HttpsCertificatePath,
+    [string]$HttpsCertificatePassword,
+    [bool]$AllowRemoteApi = $true,
+    [switch]$EnsurePrivateFirewallRule = $true,
     [int]$ServiceTimeoutSeconds = 60,
     [int]$ReadyTimeoutSeconds = 180,
     [switch]$SkipReadyCheck
@@ -84,7 +92,7 @@ function Stop-ServiceIfPresent {
     $service.WaitForStatus([System.ServiceProcess.ServiceControllerStatus]::Stopped, [TimeSpan]::FromSeconds($TimeoutSeconds))
 }
 
-function Register-ServiceIfMissing {
+function Register-OrUpdateService {
     param(
         [Parameter(Mandatory = $true)]
         [string]$Name,
@@ -99,21 +107,85 @@ function Register-ServiceIfMissing {
         [string]$DataPath,
 
         [Parameter(Mandatory = $true)]
-        [int]$HttpPort
+        [string]$ListenUrl,
+
+        [Parameter(Mandatory = $true)]
+        [bool]$RemoteApiEnabled,
+
+        [string[]]$AdditionalRuntimeArgs = @()
     )
 
     if (Get-ServiceController -Name $Name) {
-        Write-Host "==> Register service (skipped: '$Name' already exists)"
-        return
+        Invoke-CheckedCommand -FilePath $ExecutablePath -Arguments @(
+            'uninstall',
+            '--service-name', $Name
+        ) -Step "Unregister Windows service '$Name'"
     }
 
-    Invoke-CheckedCommand -FilePath $ExecutablePath -Arguments @(
+    $runtimeArguments = @(
         'install',
         '--service-name', $Name,
         '--service-display-name', $DisplayName,
         '--memory-directory', $DataPath,
-        '--port', $HttpPort.ToString()
-    ) -Step "Register Windows service '$Name'"
+        '--',
+        '--urls', $ListenUrl,
+        '--MemorySmith:AllowRemoteApi', $RemoteApiEnabled.ToString().ToLowerInvariant()
+    ) + $AdditionalRuntimeArgs
+
+    Invoke-CheckedCommand -FilePath $ExecutablePath -Arguments $runtimeArguments -Step "Register Windows service '$Name'"
+}
+
+function Ensure-FirewallRuleForPort {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RuleName,
+
+        [Parameter(Mandatory = $true)]
+        [int]$Port
+    )
+
+    $rule = Get-NetFirewallRule -DisplayName $RuleName -ErrorAction SilentlyContinue
+    if ($null -eq $rule) {
+        Write-Host "==> Create firewall rule '$RuleName'"
+        New-NetFirewallRule `
+            -DisplayName $RuleName `
+            -Direction Inbound `
+            -Action Allow `
+            -Profile Private `
+            -Protocol TCP `
+            -LocalPort $Port | Out-Null
+    }
+    else {
+        Write-Host "==> Firewall rule (skipped: '$RuleName' already exists)"
+    }
+}
+
+function Get-PrimaryLanIp {
+    $defaultRoute = Get-NetRoute -DestinationPrefix '0.0.0.0/0' -AddressFamily IPv4 -ErrorAction SilentlyContinue |
+        Where-Object { $_.NextHop -and $_.NextHop -ne '0.0.0.0' } |
+        Sort-Object RouteMetric, InterfaceMetric |
+        Select-Object -First 1
+
+    if ($defaultRoute) {
+        $routeIp = Get-NetIPAddress -InterfaceIndex $defaultRoute.InterfaceIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue |
+            Where-Object {
+                $_.IPAddress -notlike '127.*' -and
+                $_.IPAddress -notlike '169.254.*'
+            } |
+            Select-Object -ExpandProperty IPAddress -First 1
+
+        if ($routeIp) {
+            return $routeIp
+        }
+    }
+
+    return (Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue |
+        Where-Object {
+            $_.IPAddress -like '192.168.*' -or
+            $_.IPAddress -like '10.*' -or
+            $_.IPAddress -match '^172\.(1[6-9]|2[0-9]|3[0-1])\.'
+        } |
+        Select-Object -ExpandProperty IPAddress -First 1)
 }
 
 function Start-ServiceAndWait {
@@ -137,7 +209,9 @@ function Wait-ReadyEndpoint {
         [string]$Url,
 
         [Parameter(Mandatory = $true)]
-        [int]$TimeoutSeconds
+        [int]$TimeoutSeconds,
+
+        [switch]$SkipCertificateCheck
     )
 
     Write-Host "==> Verify ready endpoint"
@@ -148,7 +222,18 @@ function Wait-ReadyEndpoint {
 
     while ([DateTimeOffset]::UtcNow -lt $deadline) {
         try {
-            $response = Invoke-WebRequest -Uri $Url -Method Get -SkipHttpErrorCheck -TimeoutSec 5
+            $requestArguments = @{
+                Uri = $Url
+                Method = 'Get'
+                SkipHttpErrorCheck = $true
+                TimeoutSec = 5
+            }
+
+            if ($SkipCertificateCheck) {
+                $requestArguments['SkipCertificateCheck'] = $true
+            }
+
+            $response = Invoke-WebRequest @requestArguments
             if ([int]$response.StatusCode -eq 200) {
                 $payload = $null
                 if (-not [string]::IsNullOrWhiteSpace($response.Content)) {
@@ -167,7 +252,18 @@ function Wait-ReadyEndpoint {
 
             # If ready does not explicitly return { status: "Ready" }, fall back to liveness.
             # This covers auth redirects/HTML and environments where /ready requires credentials.
-            $liveResponse = Invoke-WebRequest -Uri $liveUrl -Method Get -SkipHttpErrorCheck -TimeoutSec 5
+            $liveArguments = @{
+                Uri = $liveUrl
+                Method = 'Get'
+                SkipHttpErrorCheck = $true
+                TimeoutSec = 5
+            }
+
+            if ($SkipCertificateCheck) {
+                $liveArguments['SkipCertificateCheck'] = $true
+            }
+
+            $liveResponse = Invoke-WebRequest @liveArguments
             if ([int]$liveResponse.StatusCode -eq 200) {
                 $livePayload = $null
                 if (-not [string]::IsNullOrWhiteSpace($liveResponse.Content)) {
@@ -203,6 +299,35 @@ if (-not (Test-Path $appProject)) {
 
 Push-Location $repoRoot
 try {
+    $listenUrls = @("http://$BindAddress`:$Port")
+    $additionalRuntimeArgs = @()
+    $readyUrl = "http://localhost:$Port/api/health/ready"
+    $readySkipCertificateCheck = $false
+    $resolvedHttpsCertificatePath = $null
+
+    if ($UseHttps) {
+        if ([string]::IsNullOrWhiteSpace($HttpsCertificatePath)) {
+            throw 'Use -HttpsCertificatePath when enabling -UseHttps.'
+        }
+
+        $resolvedHttpsCertificatePath = [System.IO.Path]::GetFullPath($HttpsCertificatePath)
+        if (-not (Test-Path $resolvedHttpsCertificatePath)) {
+            throw "HTTPS certificate file not found: $resolvedHttpsCertificatePath"
+        }
+
+        $resolvedHttpsBindAddress = if ([string]::IsNullOrWhiteSpace($HttpsBindAddress)) { $BindAddress } else { $HttpsBindAddress }
+        $listenUrls += "https://$resolvedHttpsBindAddress`:$HttpsPort"
+        $additionalRuntimeArgs += @('--Kestrel:Certificates:Default:Path', $resolvedHttpsCertificatePath)
+        if (-not [string]::IsNullOrWhiteSpace($HttpsCertificatePassword)) {
+            $additionalRuntimeArgs += @('--Kestrel:Certificates:Default:Password', $HttpsCertificatePassword)
+        }
+
+        $readyUrl = "https://localhost:$HttpsPort/api/health/ready"
+        $readySkipCertificateCheck = $true
+    }
+
+    $listenUrl = [string]::Join(';', $listenUrls)
+
     Stop-ServiceIfPresent -Name $ServiceName -TimeoutSeconds $ServiceTimeoutSeconds
     Invoke-CheckedCommand -FilePath 'dotnet' -Arguments @('build', $appProject, '-c', $Configuration, '-v', 'minimal') -Step 'Build MemorySmith.App'
     Invoke-CheckedCommand -FilePath 'dotnet' -Arguments @('publish', $appProject, '-c', $Configuration, '-o', $PublishDirectory, '--no-build', '-v', 'minimal') -Step 'Publish MemorySmith.App'
@@ -211,17 +336,37 @@ try {
         throw "Publish completed, but the expected executable was not found: $publishExe"
     }
 
-    Register-ServiceIfMissing -Name $ServiceName -DisplayName $ServiceDisplayName -ExecutablePath $publishExe -DataPath $MemoryDirectory -HttpPort $Port
+    Register-OrUpdateService -Name $ServiceName -DisplayName $ServiceDisplayName -ExecutablePath $publishExe -DataPath $MemoryDirectory -ListenUrl $listenUrl -RemoteApiEnabled $AllowRemoteApi -AdditionalRuntimeArgs $additionalRuntimeArgs
+
+    if ($EnsurePrivateFirewallRule) {
+        Ensure-FirewallRuleForPort -RuleName "MemorySmith HTTP $Port" -Port $Port
+        if ($UseHttps) {
+            Ensure-FirewallRuleForPort -RuleName "MemorySmith HTTPS $HttpsPort" -Port $HttpsPort
+        }
+    }
+
     Start-ServiceAndWait -Name $ServiceName -TimeoutSeconds $ServiceTimeoutSeconds
 
     if (-not $SkipReadyCheck) {
-        Wait-ReadyEndpoint -Url "http://localhost:$Port/api/health/ready" -TimeoutSeconds $ReadyTimeoutSeconds
+        Wait-ReadyEndpoint -Url $readyUrl -TimeoutSeconds $ReadyTimeoutSeconds -SkipCertificateCheck:$readySkipCertificateCheck
     }
 
     Write-Host ''
     Write-Host "MemorySmith service '$ServiceName' is deployed and running."
     Write-Host "Publish directory: $PublishDirectory"
-    Write-Host "Ready endpoint: http://localhost:$Port/api/health/ready"
+    Write-Host "Listen URL: $listenUrl"
+    Write-Host "MemorySmith:AllowRemoteApi: $AllowRemoteApi"
+    if ($UseHttps -and $resolvedHttpsCertificatePath) {
+        Write-Host "HTTPS certificate: $resolvedHttpsCertificatePath"
+    }
+    $lanIp = Get-PrimaryLanIp
+    if ($lanIp) {
+        Write-Host "LAN URL: http://${lanIp}:$Port"
+        if ($UseHttps) {
+            Write-Host "LAN HTTPS URL: https://${lanIp}:$HttpsPort"
+        }
+    }
+    Write-Host "Ready endpoint: $readyUrl"
 }
 finally {
     Pop-Location

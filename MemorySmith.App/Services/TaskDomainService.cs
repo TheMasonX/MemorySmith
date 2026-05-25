@@ -92,6 +92,9 @@ public sealed record TaskSummary(
     string Status,
     string Priority,
     string? Assignee,
+    string AssigneeMode,
+    string? AssigneeDirectoryId,
+    string? AssigneeCustomText,
     DateTime UpdatedAtUtc,
     int AttachmentCount,
     int LinkCount,
@@ -518,6 +521,12 @@ public sealed class FileTaskService : ITaskService
                 throw new ArgumentException("Attachment uri cannot contain traversal segments.");
             }
 
+            if (!Uri.TryCreate(uri, UriKind.Absolute, out var absoluteUri) ||
+                (absoluteUri.Scheme != Uri.UriSchemeHttp && absoluteUri.Scheme != Uri.UriSchemeHttps))
+            {
+                throw new ArgumentException("Attachment uri must be an absolute http or https url.");
+            }
+
             EnsureTaskIsEditable(item);
             var now = DateTime.UtcNow;
             var attachment = new TaskAttachment($"a-{Guid.NewGuid():N}", name, kind, uri, now);
@@ -748,6 +757,9 @@ public sealed class FileTaskService : ITaskService
             item.Status,
             item.Priority,
             ResolveAssignee(item),
+            item.AssigneeMode,
+            item.AssigneeDirectoryId,
+            item.AssigneeCustomText,
             item.UpdatedAtUtc,
             item.Attachments.Count,
             item.ExternalLinks.Count + item.LinkedPages.Count,

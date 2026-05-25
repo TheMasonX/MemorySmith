@@ -4,7 +4,7 @@
   "title": "Add browser smoke matrix and artifact publication",
   "description": "Problem: critical route smoke coverage (`/memories`, `/pages`, `/chat`, `/tasks`, `/health`) is documented as needed but not enforced by an implementation-quality CI matrix with clear artifacts.\n\nDesired outcome: add a route-smoke browser suite with per-route failure attribution and reliable artifact publication for triage.\n\nScope:\n- In scope: route smoke specs, deterministic selectors/assertions, artifact folder conventions, and CI artifact uploads.\n- Out of scope: deep functional scenario coverage unrelated to route rendering/navigation health.\n\nDependencies:\n- Required browser gate foundation from TSK-0067.\n\nAcceptance criteria:\n- Browser smoke suite exercises the five core routes under one CI run.\n- Failures identify which route assertion failed.\n- Artifacts are published and linked from CI summary.\n\nValidation:\n- Local run of browser smoke suite with artifact generation.\n- CI run verifies upload paths and retention settings.\n\nRollback:\n- Temporarily reduce smoke suite breadth to smallest stable subset while preserving route-hop regression test.",
   "type": "Task",
-  "status": "Backlog",
+  "status": "InProgress",
   "priority": "High",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -30,15 +30,21 @@
       "author": "AgentSmith",
       "body": "Created from audit finding F-003/F-004 and existing backlog signal in TSK-0002.",
       "createdAtUtc": "2026-05-24T18:21:00.0000000Z"
+    },
+    {
+      "id": "c-impl-0068-20260525",
+      "author": "AgentSmith",
+      "body": "Implemented `browser-route-smoke` in `.github/workflows/ci.yml` with artifact upload, `retention-days: 14`, and step-summary links. Local validation passed via `./Scripts/Validate-Repo.ps1 -SkipBuild -SkipTests -IncludeE2E`; the next pushed CI run should confirm the hosted artifact URLs end to end.",
+      "createdAtUtc": "2026-05-25T02:24:56.4938183Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-24T18:21:00.0000000Z",
-  "updatedAtUtc": "2026-05-24T18:21:00.0000000Z",
+  "updatedAtUtc": "2026-05-25T02:24:56.4938183Z",
   "completedAtUtc": null,
-  "revision": 1,
+  "revision": 2,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

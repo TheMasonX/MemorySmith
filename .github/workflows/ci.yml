@@ -24,6 +24,10 @@ jobs:
         shell: pwsh
         run: ./Scripts/Test-TaskRecords.ps1
 
+      - name: Validate memory records
+        shell: pwsh
+        run: ./Scripts/Test-MemoryRecords.ps1
+
       - name: Validate page links
         shell: pwsh
         run: ./Scripts/Test-PageLinks.ps1
@@ -70,6 +74,73 @@ jobs:
           name: coverage-html-report
           path: artifacts/coverage-report
           if-no-files-found: error
+
+  browser-route-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Install e2e dependencies
+        working-directory: e2e
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        working-directory: e2e
+        run: npx playwright install --with-deps chromium
+
+      - name: Run route-smoke browser regression
+        working-directory: e2e
+        run: npm run test:route-smoke
+
+      - name: Upload route-smoke artifacts
+        if: always()
+        id: upload-route-smoke-artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-route-smoke-artifacts
+          path: artifacts/browser-validation/route-smoke
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload route-smoke diagnostics
+        if: failure()
+        id: upload-route-smoke-diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-route-smoke-diagnostics
+          path: |
+            e2e/playwright-report
+            e2e/test-results
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Summarize route-smoke artifacts
+        if: always()
+        shell: bash
+        run: |
+          echo "## Browser route smoke" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Artifact: [browser-route-smoke-artifacts](${{ steps.upload-route-smoke-artifacts.outputs.artifact-url }})" >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "${{ steps.upload-route-smoke-diagnostics.outputs.artifact-url }}" ]; then
+            echo "- Diagnostics: [browser-route-smoke-diagnostics](${{ steps.upload-route-smoke-diagnostics.outputs.artifact-url }})" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if [ -f artifacts/browser-validation/route-smoke/manifest.json ]; then
+            echo "- Manifest path: artifacts/browser-validation/route-smoke/manifest.json" >> "$GITHUB_STEP_SUMMARY"
+          fi
 
   browser-navigation-freeze:
     runs-on: ubuntu-latest

@@ -230,7 +230,19 @@ public class SecurityAndSourceLinkTests
         var broadRoot = Path.Combine(_tempRoot, "broad");
         Directory.CreateDirectory(broadRoot);
         var sourceFile = Path.Combine(broadRoot, "source.txt");
-        await File.WriteAllTextAsync(sourceFile, "broad read allowed");
+        await File.WriteAllTextAsync(sourceFile, string.Join(Environment.NewLine, Enumerable.Range(1, 120).Select(index => $"LINE-{index:000}")));
+
+        var boundedResolver = new VarResolver(
+            new FileVarStore(Path.Combine(_tempRoot, "vars-bounded.json")),
+            Options.Create(new MemorySmithOptions
+            {
+                SourceLinks = new SourceLinkOptions
+                {
+                    AllowedFileRoots = [broadRoot]
+                }
+            }));
+
+        var boundedContent = await boundedResolver.ReadSourceAsync(new SourceLink { Uri = sourceFile });
 
         var resolver = new VarResolver(
             new FileVarStore(Path.Combine(_tempRoot, "vars.json")),
@@ -246,8 +258,13 @@ public class SecurityAndSourceLinkTests
 
         Assert.Multiple(() =>
         {
+            Assert.That(boundedContent.Exists, Is.True);
+            Assert.That(boundedContent.Content, Does.Contain("LINE-001"));
+            Assert.That(boundedContent.Content, Does.Contain("LINE-050"));
+            Assert.That(boundedContent.Content, Does.Not.Contain("LINE-051"));
             Assert.That(content.Exists, Is.True);
-            Assert.That(content.Content, Does.Contain("broad read allowed"));
+            Assert.That(content.Content, Does.Contain("LINE-001"));
+            Assert.That(content.Content, Does.Contain("LINE-120"));
         });
     }
 

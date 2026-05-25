@@ -1299,27 +1299,28 @@ public partial class MemoryApplicationService
         }
 
         var isSlow = elapsedMs >= _options.Logging.BenchmarkSlowThresholdMs;
+        int? queryLength = string.IsNullOrWhiteSpace(query) ? null : query.Length;
         if (isSlow)
         {
             _logger.LogWarning(
-                "Benchmark operation={Operation} elapsedMs={ElapsedMs} slow={IsSlow} success={Success} query={Query} resultCount={ResultCount} recordId={RecordId}",
+                "Benchmark operation={Operation} elapsedMs={ElapsedMs} slow={IsSlow} success={Success} queryLength={QueryLength} resultCount={ResultCount} recordId={RecordId}",
                 operation,
                 elapsedMs,
                 true,
                 success,
-                query,
+                queryLength,
                 resultCount,
                 recordId);
             return;
         }
 
         _logger.LogInformation(
-            "Benchmark operation={Operation} elapsedMs={ElapsedMs} slow={IsSlow} success={Success} query={Query} resultCount={ResultCount} recordId={RecordId}",
+            "Benchmark operation={Operation} elapsedMs={ElapsedMs} slow={IsSlow} success={Success} queryLength={QueryLength} resultCount={ResultCount} recordId={RecordId}",
             operation,
             elapsedMs,
             false,
             success,
-            query,
+            queryLength,
             resultCount,
             recordId);
     }

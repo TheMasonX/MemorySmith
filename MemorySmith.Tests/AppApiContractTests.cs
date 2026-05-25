@@ -134,7 +134,10 @@ public class AppApiContractTests
         var externalLinkResponse = await _client.PostAsJsonAsync($"/api/tasks/{created.Id}/links/external", new TaskExternalLinkRequest("Spec", "https://example.test/spec"));
         externalLinkResponse.EnsureSuccessStatusCode();
 
-        var attachmentResponse = await _client.PostAsJsonAsync($"/api/tasks/{created.Id}/attachments", new TaskAttachmentRequest("Screenshot", "image", "artifacts/browser-validation/tasks.png"));
+        var invalidAttachmentResponse = await _client.PostAsJsonAsync($"/api/tasks/{created.Id}/attachments", new TaskAttachmentRequest("Screenshot", "image", "javascript:alert('xss')"));
+        Assert.That(invalidAttachmentResponse.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+
+        var attachmentResponse = await _client.PostAsJsonAsync($"/api/tasks/{created.Id}/attachments", new TaskAttachmentRequest("Screenshot", "image", "https://example.test/artifacts/browser-validation/tasks.png"));
         attachmentResponse.EnsureSuccessStatusCode();
         var withAttachment = await attachmentResponse.Content.ReadFromJsonAsync<TaskItem>();
 
@@ -147,11 +150,15 @@ public class AppApiContractTests
 
         Assert.Multiple(() =>
         {
+            var createdSummary = list!.Single(item => item.Id == created.Id);
             Assert.That(invalidCreate.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
             Assert.That(createResponse.StatusCode, Is.EqualTo(HttpStatusCode.Created));
             Assert.That(created.Id, Does.Contain("backend-delivery"));
             Assert.That(list, Is.Not.Null);
             Assert.That(list!.Any(item => item.Id == created.Id), Is.True);
+            Assert.That(createdSummary.AssigneeMode, Is.EqualTo(TaskAssigneeModes.Directory));
+            Assert.That(createdSummary.AssigneeDirectoryId, Is.EqualTo("reviewer-01"));
+            Assert.That(createdSummary.AssigneeCustomText, Is.Null);
             Assert.That(loaded, Is.Not.Null);
             Assert.That(loaded!.Title, Is.EqualTo("Implement task backend v2"));
             Assert.That(loaded.Description, Does.Contain("triage"));
@@ -161,6 +168,8 @@ public class AppApiContractTests
             Assert.That(loaded.Labels, Does.Contain("vetted"));
             Assert.That(loaded!.Comments.Count, Is.EqualTo(1));
             Assert.That(loaded.ExternalLinks.Count, Is.EqualTo(1));
+            Assert.That(loaded.Attachments.Count, Is.EqualTo(1));
+            Assert.That(loaded.Attachments[0].Uri, Is.EqualTo("https://example.test/artifacts/browser-validation/tasks.png"));
             Assert.That(loaded.LinkedPages.Count, Is.EqualTo(2));
             Assert.That(loaded.LinkedPages, Does.Contain("plans/tasks-page-feature-design-20260523"));
             Assert.That(loaded.LinkedPages, Does.Contain("does/not/exist"));

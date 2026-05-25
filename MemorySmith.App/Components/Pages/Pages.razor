@@ -193,37 +193,42 @@
             @if (_isEditing)
             {
                 <div class="wiki-pane-header page-editor-header">
-                    <div>
+                    <div class="page-editor-header-copy">
                         <MudText Typo="Typo.subtitle2">@(_editingExisting ? "Edit Page" : "New Page")</MudText>
                         @if (HasUnsavedChanges)
                         {
                             <span class="wiki-count">Unsaved changes</span>
                         }
                     </div>
-                    <MudSpacer />
-                    <MudTooltip Text="@(_isFocusMode ? "Exit focus reading" : "Focus reading")">
-                        <MudIconButton Icon="@(_isFocusMode ? Icons.Material.Filled.FullscreenExit : Icons.Material.Filled.Fullscreen)"
-                                       Size="Size.Small"
-                                       Color="Color.Primary"
-                                       OnClick="ToggleFocusModeAsync"
-                                       aria-label="Toggle focus reading" />
-                    </MudTooltip>
-                    <MudCheckBox T="bool" Value="_livePreview" ValueChanged="SetLivePreviewAsync" Label="Live preview" Size="Size.Small" />
-                    <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Small" Color="Color.Primary" OnClick="RefreshPreview" aria-label="Refresh preview" />
-                    <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
-                        <Authorized>
-                            <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Save" OnClick="SaveAsync">Save</MudButton>
-                        </Authorized>
-                    </AuthorizeView>
-                    <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="CancelEditAsync">Cancel</MudButton>
+                    <div class="page-editor-header-actions">
+                        <MudTooltip Text="@(_isFocusMode ? "Exit focus reading" : "Focus reading")">
+                            <MudIconButton Icon="@(_isFocusMode ? Icons.Material.Filled.FullscreenExit : Icons.Material.Filled.Fullscreen)"
+                                           Size="Size.Small"
+                                           Color="Color.Primary"
+                                           OnClick="ToggleFocusModeAsync"
+                                           aria-label="Toggle focus reading" />
+                        </MudTooltip>
+                        <MudCheckBox T="bool"
+                                     Value="_livePreview"
+                                     ValueChanged="SetLivePreviewAsync"
+                                     Label="Live preview"
+                                     Size="Size.Small"
+                                     Class="page-editor-live-preview" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Small" Color="Color.Primary" OnClick="RefreshPreview" aria-label="Refresh preview" />
+                        <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
+                            <Authorized>
+                                <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Save" OnClick="SaveAsync">Save</MudButton>
+                            </Authorized>
+                        </AuthorizeView>
+                        <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="CancelEditAsync">Cancel</MudButton>
+                    </div>
                 </div>
                 <div class="page-editor-shell">
                     <div class="wiki-editor-grid page-editor-fields">
-                        <MudTextField @bind-Value="_editSlug" Label="Slug" Disabled="@_editingExisting" Immediate="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
                         <MudTextField @bind-Value="_editTitle" Label="Title" Immediate="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
                         @if (EditableMinimumRoleOptions.Count > 0)
                         {
-                            <MudSelect T="string" Value="_editMinimumRole" ValueChanged="@((string value) => _editMinimumRole = value)" Label="Visibility" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                            <MudSelect T="string" Value="_editMinimumRole" ValueChanged="@((string value) => _editMinimumRole = value)" Label="Visibility" Variant="Variant.Outlined" Margin="Margin.Dense">
                                 @foreach (var role in EditableMinimumRoleOptions)
                                 {
                                     <MudSelectItem T="string" Value="@role">@VisibilityLabel(role)</MudSelectItem>

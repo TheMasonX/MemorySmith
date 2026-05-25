@@ -25,10 +25,7 @@ public sealed class AdminSettingsService
         _options = options;
         _configuration = configuration;
         _audit = audit;
-        var configuredSettingsPath = configuration["MemorySmith:SettingsOverridePath"];
-        _settingsPath = string.IsNullOrWhiteSpace(configuredSettingsPath)
-            ? Path.Combine(AppContext.BaseDirectory, "appsettings.LocalDevelopment.json")
-            : Path.GetFullPath(configuredSettingsPath);
+        _settingsPath = MemorySmithConfigurationPaths.ResolveSettingsOverridePath(configuration["MemorySmith:SettingsOverridePath"]);
         _editableSettings = BuildEditableSettings();
     }
 
@@ -132,6 +129,7 @@ public sealed class AdminSettingsService
         EditableSettingDescriptor.String("MemorySmith:EventLogPath", "Event log path", "Core paths", settings => settings.EventLogPath, 500, "Path for the legacy file event log used by memory events. Keep it under Data/Events for local-first backups and avoid pointing it at a shared or sensitive directory."),
         EditableSettingDescriptor.String("MemorySmith:VarsPath", "Variables path", "Core paths", settings => settings.VarsPath, 500, "Path to vars.json, the variable map used by source links such as %MemorySmithRepo%. Source-link reading and open-with-default-app checks depend on these variables."),
         EditableSettingDescriptor.String("MemorySmith:DataProtectionKeysPath", "Data protection keys path", "Core paths", settings => settings.DataProtectionKeysPath, 500, "Directory where ASP.NET Core data-protection keys are persisted for auth cookies and encrypted state. Changing this can sign users out and should be stable for a deployed instance."),
+        EditableSettingDescriptor.Integer("MemorySmith:Blazor:MaximumReceiveMessageSizeBytes", "Blazor max receive bytes", "Core paths", settings => (int)Math.Min(settings.Blazor.MaximumReceiveMessageSizeBytes, int.MaxValue), 65536, 67108864, "Maximum SignalR payload size accepted by the interactive server circuit. Larger values help with big page edits/uploads but usually require an app restart before the circuit limit changes."),
         EditableSettingDescriptor.Boolean("MemorySmith:AllowRemoteApi", "Allow remote API", "Security", settings => settings.AllowRemoteApi, "Allows non-loopback HTTP API/MCP requests through the request guard. Keep disabled unless the instance is protected by a strong API key, network boundary, and intentional remote access policy."),
         EditableSettingDescriptor.String("MemorySmith:ApiKey", "Shared API key", "Security", settings => settings.ApiKey, 500, "Write-only shared API key accepted by API and MCP requests when configured. The UI never echoes the existing value; enter a new value only when rotating or clearing the key.", isSensitive: true),
 

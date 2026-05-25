@@ -1,5 +1,6 @@
 @page "/tasks"
 @rendermode InteractiveServer
+@inject IMemorySmithDatabase Database
 @inject ITaskService TaskService
 @inject ICurrentUserContext CurrentUser
 @inject ISnackbar Snackbar
@@ -13,15 +14,26 @@
             <span class="wiki-count">@_tasks.Count task(s)</span>
         </div>
         <div class="wiki-search-strip">
-            <MudTextField @bind-Value="_query"
-                          Label="Search tasks"
-                          Placeholder="Title, id, key, labels"
-                          Variant="Variant.Outlined"
-                          Margin="Margin.Dense"
-                          Adornment="Adornment.Start"
-                          AdornmentIcon="@Icons.Material.Filled.Search"
-                          OnKeyUp="OnSearchKeyUp"
-                          Class="wiki-search-box" />
+            <div class="wiki-search-main">
+                <MudTextField @bind-Value="_query"
+                              Label="Search tasks"
+                              Placeholder="Title, id, key, labels"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              OnKeyUp="OnSearchKeyUp"
+                              Class="wiki-search-box" />
+                <MudTooltip Text="Search">
+                    <MudIconButton Icon="@Icons.Material.Filled.Search"
+                                   Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   Size="Size.Small"
+                                   Class="wiki-search-submit"
+                                   OnClick="LoadAsync"
+                                   aria-label="Search" />
+                </MudTooltip>
+            </div>
             <MudSelect T="string" Value="@_statusFilter" ValueChanged="OnStatusChanged" Label="Status" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="wiki-filter">
                 @foreach (var option in StatusOptions)
                 {
@@ -34,20 +46,22 @@
                     <MudSelectItem Value="@option">@SortLabel(option)</MudSelectItem>
                 }
             </MudSelect>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Search" OnClick="LoadAsync">Search</MudButton>
             <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync">Refresh</MudButton>
             <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
                 <Authorized>
                     <MudButton Variant="Variant.Outlined" Color="Color.Success" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenQuickCreatePane">Quick Add</MudButton>
                 </Authorized>
             </AuthorizeView>
-            <MudButton Variant="Variant.Outlined"
-                       Color="Color.Default"
-                       StartIcon="@(_isListCollapsed ? Icons.Material.Filled.ChevronRight : Icons.Material.Filled.ChevronLeft)"
-                       OnClick="ToggleListCollapse"
-                       Class="tasks-sidebar-toggle">
-                @(_isListCollapsed ? "Show List" : "Hide List")
-            </MudButton>
+            <div class="tasks-sidebar-toggle">
+                <MudTooltip Text="@TaskListToggleTooltip">
+                    <MudIconButton Icon="@(IsTaskListCollapsed ? Icons.Material.Filled.Menu : Icons.Material.Filled.MenuOpen)"
+                                   Color="Color.Default"
+                                   Size="Size.Small"
+                                   Disabled="@(!CanToggleTaskListCollapse)"
+                                   OnClick="ToggleListCollapse"
+                                   aria-label="Toggle task list" />
+                </MudTooltip>
+            </div>
         </div>
 
         @if (_showQuickCreatePane)
@@ -88,8 +102,8 @@
         }
     </section>
 
-    <section class="wiki-body tasks-body @(_isListCollapsed ? "is-list-collapsed" : string.Empty)">
-        @if (!_isListCollapsed)
+    <section class="@TasksBodyClass">
+        @if (!IsTaskListCollapsed)
         {
             <aside class="wiki-results-pane tasks-list-pane" aria-label="Task list">
                 @if (_isLoading)
@@ -119,7 +133,7 @@
                                     <div class="wiki-result-meta">
                                         <span class="wiki-status">@task.Status</span>
                                         <span class="wiki-status" title="Severity">@task.Priority</span>
-                                        <span>@(task.Assignee ?? "unassigned")</span>
+                                        <span>@GetAssigneeDisplay(task)</span>
                                         <span>@task.UpdatedAtUtc.ToLocalTime().ToString("g")</span>
                                     </div>
                                 </div>
@@ -130,20 +144,16 @@
             </aside>
         }
 
+        @if (_selectedTask is not null)
+        {
         <main class="wiki-detail-pane tasks-detail-pane" aria-label="Task detail">
-            @if (_selectedTask is null)
-            {
-                <div class="wiki-empty-state">Select a task to inspect.</div>
-            }
-            else
-            {
                 <div class="wiki-pane-header wiki-detail-header tasks-detail-header">
                     <div class="tasks-detail-header-main">
                         <div class="tasks-detail-title-text">@_selectedTask.Key - @_selectedTask.Title</div>
                         <div class="wiki-result-meta tasks-detail-meta">
                             <span class="wiki-status">@_selectedTask.Status</span>
                             <span class="wiki-status" title="Severity">@_selectedTask.Priority</span>
-                            <span>@(_selectedTask.AssigneeCustomText ?? _selectedTask.AssigneeDirectoryId ?? "unassigned")</span>
+                            <span>@GetAssigneeDisplay(_selectedTask)</span>
                         </div>
                         @if (_selectedTask.Labels.Count > 0)
                         {
@@ -257,7 +267,21 @@
                         </MudSelect>
                         @if (string.Equals(_editAssigneeMode, TaskAssigneeModes.Directory, StringComparison.OrdinalIgnoreCase))
                         {
-                            <MudTextField T="string" Value="@_editAssigneeDirectoryId" ValueChanged="OnEditAssigneeDirectoryIdChanged" Label="Assignee Directory ID" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                            <MudAutocomplete T="UserAccount"
+                                             Value="@_editAssigneeUser"
+                                             ValueChanged="OnEditAssigneeUserChanged"
+                                             SearchFunc="SearchAssignableUsersAsync"
+                                             ToStringFunc="FormatAssigneeUser"
+                                             Label="Assignee Username"
+                                             Variant="Variant.Outlined"
+                                             Margin="Margin.Dense"
+                                             Dense="true"
+                                             Clearable="true"
+                                             HelperText="Type a display name or email and choose a matching user." />
+                            @if (!string.IsNullOrWhiteSpace(_editAssigneeDirectoryId) && _editAssigneeUser is null)
+                            {
+                                <MudText Typo="Typo.caption" Class="mud-secondary-text">Current assignee could not be resolved. Saving will keep the existing assignment unless you choose a different user.</MudText>
+                            }
                         }
                         else
                         {
@@ -361,7 +385,14 @@
                             {
                                 <div class="proposal-evidence-item">
                                     <strong>@attachment.Name</strong>
-                                    <a href="@attachment.Uri" target="_blank" rel="noopener noreferrer">@attachment.Uri</a>
+                                    @if (CanOpenAttachmentUri(attachment.Uri))
+                                    {
+                                        <a href="@attachment.Uri" target="_blank" rel="noopener noreferrer">@attachment.Uri</a>
+                                    }
+                                    else
+                                    {
+                                        <span>@attachment.Uri</span>
+                                    }
                                     <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
                                         <Authorized>
                                             <MudButton Variant="Variant.Text" Color="Color.Error" Size="Size.Small" OnClick="@(() => RemoveAttachmentAsync(attachment.Id))">Remove</MudButton>
@@ -394,8 +425,8 @@
                         }
                     </MudTabPanel>
                 </MudTabs>
-            }
         </main>
+        }
     </section>
 </div>
 
@@ -430,7 +461,24 @@
     private string _editAssigneeMode = TaskAssigneeModes.Directory;
     private string? _editAssigneeDirectoryId;
     private string? _editAssigneeCustomText;
+    private UserAccount? _editAssigneeUser;
     private string _editLabelsText = string.Empty;
+    private readonly Dictionary<string, UserAccount> _userAccountsById = new(StringComparer.OrdinalIgnoreCase);
+
+    private bool CanToggleTaskListCollapse => _selectedTask is not null;
+    private bool IsTaskListCollapsed => _isListCollapsed && CanToggleTaskListCollapse;
+    private string TaskListToggleTooltip => !CanToggleTaskListCollapse
+        ? "Select a task first"
+        : IsTaskListCollapsed
+            ? "Show task list"
+            : "Hide task list";
+    private string TasksBodyClass => string.Join(' ', new[]
+    {
+        "wiki-body",
+        "tasks-body",
+        IsTaskListCollapsed ? "is-list-collapsed" : null,
+        _selectedTask is null ? "is-detail-empty" : null
+    }.Where(static value => !string.IsNullOrWhiteSpace(value)));
 
     protected override async Task OnInitializedAsync()
     {
@@ -446,6 +494,9 @@
         var status = _statusFilter == "All" ? null : _statusFilter;
         var loaded = await TaskService.ListAsync(_query, status, null, 200, CancellationToken.None);
         _tasks = ApplySort(loaded);
+        await WarmAssigneeCacheAsync(_tasks
+            .Where(task => string.Equals(task.AssigneeMode, TaskAssigneeModes.Directory, StringComparison.OrdinalIgnoreCase))
+            .Select(task => task.AssigneeDirectoryId));
         _isLoading = false;
 
         if (_selectedTask is not null)
@@ -457,6 +508,7 @@
     private async Task SelectAsync(string id)
     {
         _selectedTask = await TaskService.GetAsync(id, CancellationToken.None);
+        await WarmAssigneeCacheAsync([_selectedTask?.AssigneeDirectoryId]);
         _selectedStatus = _selectedTask?.Status ?? TaskStatuses.Backlog;
         _history = _selectedTask is null
             ? []
@@ -595,7 +647,7 @@
 
         if (string.Equals(_editAssigneeMode, TaskAssigneeModes.Directory, StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(_editAssigneeDirectoryId))
         {
-            Snackbar.Add("Directory assignee mode requires Assignee Directory ID.", Severity.Warning);
+            Snackbar.Add("Directory assignee mode requires a selected username.", Severity.Warning);
             return;
         }
 
@@ -892,6 +944,16 @@
         return Task.CompletedTask;
     }
 
+    private static bool CanOpenAttachmentUri(string? value)
+    {
+        if (!Uri.TryCreate(value, UriKind.Absolute, out var uri))
+        {
+            return false;
+        }
+
+        return uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps;
+    }
+
     private Task OnCreateTitleChanged(string value)
     {
         var previousSuggestion = BuildSlugSuggestion(_createTitle);
@@ -919,6 +981,11 @@
 
     private void ToggleListCollapse()
     {
+        if (!CanToggleTaskListCollapse)
+        {
+            return;
+        }
+
         _isListCollapsed = !_isListCollapsed;
     }
 
@@ -990,6 +1057,7 @@
         _editAssigneeMode = string.IsNullOrWhiteSpace(task.AssigneeMode) ? TaskAssigneeModes.Directory : task.AssigneeMode;
         _editAssigneeDirectoryId = task.AssigneeDirectoryId;
         _editAssigneeCustomText = task.AssigneeCustomText;
+        _editAssigneeUser = TryGetCachedUser(task.AssigneeDirectoryId);
         _editLabelsText = string.Join(", ", task.Labels);
     }
 
@@ -1017,17 +1085,20 @@
         if (string.Equals(value, TaskAssigneeModes.Directory, StringComparison.OrdinalIgnoreCase))
         {
             _editAssigneeCustomText = null;
+            _editAssigneeUser = TryGetCachedUser(_editAssigneeDirectoryId);
         }
         else
         {
             _editAssigneeDirectoryId = null;
+            _editAssigneeUser = null;
         }
         return Task.CompletedTask;
     }
 
-    private Task OnEditAssigneeDirectoryIdChanged(string value)
+    private Task OnEditAssigneeUserChanged(UserAccount? value)
     {
-        _editAssigneeDirectoryId = value;
+        _editAssigneeUser = value;
+        _editAssigneeDirectoryId = value?.UserId;
         return Task.CompletedTask;
     }
 
@@ -1041,5 +1112,97 @@
     {
         _editLabelsText = value;
         return Task.CompletedTask;
+    }
+
+    private async Task<IEnumerable<UserAccount>> SearchAssignableUsersAsync(string value, CancellationToken cancellationToken)
+    {
+        var search = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+        var users = (await Database.Users.ListAsync(new UserQuery(search, 1, 8), cancellationToken)).Data
+            .Where(user => !user.IsDisabled)
+            .ToList();
+
+        CacheUsers(users);
+        return users;
+    }
+
+    private async Task WarmAssigneeCacheAsync(IEnumerable<string?> userIds)
+    {
+        var missingUserIds = userIds
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Select(id => id!)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Where(id => !_userAccountsById.ContainsKey(id))
+            .ToList();
+
+        foreach (var userId in missingUserIds)
+        {
+            var user = await Database.Users.GetByIdAsync(userId, CancellationToken.None);
+            if (user is not null)
+            {
+                _userAccountsById[userId] = user;
+            }
+        }
+    }
+
+    private void CacheUsers(IEnumerable<UserAccount> users)
+    {
+        foreach (var user in users)
+        {
+            if (!string.IsNullOrWhiteSpace(user.UserId))
+            {
+                _userAccountsById[user.UserId] = user;
+            }
+        }
+    }
+
+    private UserAccount? TryGetCachedUser(string? userId)
+    {
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return null;
+        }
+
+        return _userAccountsById.TryGetValue(userId, out var user) ? user : null;
+    }
+
+    private string GetAssigneeDisplay(TaskSummary task)
+    {
+        return GetAssigneeDisplay(task.AssigneeMode, task.AssigneeDirectoryId, task.AssigneeCustomText);
+    }
+
+    private string GetAssigneeDisplay(TaskItem task)
+    {
+        return GetAssigneeDisplay(task.AssigneeMode, task.AssigneeDirectoryId, task.AssigneeCustomText);
+    }
+
+    private string GetAssigneeDisplay(string assigneeMode, string? assigneeDirectoryId, string? assigneeCustomText)
+    {
+        if (string.Equals(assigneeMode, TaskAssigneeModes.Directory, StringComparison.OrdinalIgnoreCase))
+        {
+            var user = TryGetCachedUser(assigneeDirectoryId);
+            if (!string.IsNullOrWhiteSpace(user?.DisplayName))
+            {
+                return user.DisplayName;
+            }
+
+            return string.IsNullOrWhiteSpace(assigneeDirectoryId) ? "unassigned" : "Unknown user";
+        }
+
+        return string.IsNullOrWhiteSpace(assigneeCustomText) ? "unassigned" : assigneeCustomText;
+    }
+
+    private static string FormatAssigneeUser(UserAccount? user)
+    {
+        if (user is null)
+        {
+            return string.Empty;
+        }
+
+        if (string.IsNullOrWhiteSpace(user.Email))
+        {
+            return user.DisplayName;
+        }
+
+        return $"{user.DisplayName} ({user.Email})";
     }
 }

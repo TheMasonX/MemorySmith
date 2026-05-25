@@ -23,28 +23,34 @@ Expected result: check returns success for a valid trusted certificate.
 > [!NOTE]
 > Screenshot placeholder [HTTPS-SETUP-01]: terminal showing successful `dotnet dev-certs https --check`.
 
-## 3. Add An HTTPS Launch Profile
+## 2a. LAN Certificate Example For This Repository
 
-The current project launch settings only include an `http` profile. Add an `https` profile in `MemorySmith.App/Properties/launchSettings.json`.
+For the current local-network setup, the concrete LAN certificate target is:
 
-Use this profile block under `profiles`:
+- Host name: `memorysmith.home.arpa`
+- LAN IP: `192.168.1.8`
+- HTTPS port: `7090`
 
-```json
-"https": {
-  "commandName": "Project",
-  "dotnetRunMessages": true,
-  "launchBrowser": true,
-  "applicationUrl": "https://localhost:7090;http://localhost:5089",
-  "environmentVariables": {
-    "ASPNETCORE_ENVIRONMENT": "Development"
-  }
-}
-```
+Windows-native certificate artifacts have been generated under `artifacts/certs`:
 
-This keeps HTTP available while enabling HTTPS as the primary local entrypoint.
+- Root CA to trust on LAN clients: `artifacts/certs/MemorySmith-LAN-Root-CA.cer`
+- Server PFX for Kestrel/service binding: `artifacts/certs/memorysmith.home.arpa-7090.pfx`
+- Server CER for inspection/distribution: `artifacts/certs/memorysmith.home.arpa-7090.cer`
+- Generated PFX password file: `artifacts/certs/memorysmith.home.arpa-7090-password.txt`
+
+If clients should use the host name instead of the raw IP, make sure `memorysmith.home.arpa` resolves to `192.168.1.8` on those devices through router DNS or a hosts file entry.
+
+## 3. Use The Built-In HTTPS Launch Profiles
+
+`MemorySmith.App/Properties/launchSettings.json` now includes two HTTPS paths:
+
+- `https` for `https://localhost:7090;http://localhost:5089`
+- `https-lan` for `https://0.0.0.0:7090;http://0.0.0.0:5089`
+
+Both profiles run under `LocalDevelopment`, which preserves static web assets and the local-development post-configuration defaults without relying on a separate `appsettings.LocalDevelopment.json` file.
 
 > [!NOTE]
-> Screenshot placeholder [HTTPS-SETUP-02]: `launchSettings.json` with the new `https` profile.
+> Screenshot placeholder [HTTPS-SETUP-02]: `launchSettings.json` with the `https` and `https-lan` profiles.
 
 ## 4. Run The App With HTTPS
 
@@ -54,11 +60,29 @@ From repo root:
 dotnet run --project MemorySmith.App --launch-profile https
 ```
 
+For LAN binding from the repo run path:
+
+```powershell
+dotnet run --project MemorySmith.App --launch-profile https-lan
+```
+
 Open:
 
 - `https://localhost:7090`
+- `https://memorysmith.home.arpa:7090`
+- `https://192.168.1.8:7090`
 
 If prompted by the browser, verify certificate details and confirm it is the local ASP.NET Core development certificate.
+
+For other devices on the LAN, the built-in ASP.NET Core development certificate is usually only valid for `localhost`. That means `https-lan` will bind the HTTPS listener, but a phone or another PC will still see a certificate mismatch unless you use a certificate whose SAN matches the host name or IP that device connects to.
+
+For a stronger LAN HTTPS path, use the Windows service redeploy script with an explicit certificate:
+
+```powershell
+.\Scripts\Redeploy-MemorySmithService.ps1 -UseHttps -HttpsPort 7090 -HttpsCertificatePath .\artifacts\certs\memorysmith.home.arpa-7090.pfx -HttpsCertificatePassword (Get-Content .\artifacts\certs\memorysmith.home.arpa-7090-password.txt -Raw)
+```
+
+That command keeps HTTP on `5089` and adds HTTPS on `7090` using the LAN cert whose SAN covers both `memorysmith.home.arpa` and `192.168.1.8`.
 
 > [!NOTE]
 > Screenshot placeholder [HTTPS-SETUP-03]: browser on `https://localhost:7090` with lock icon visible.
@@ -104,6 +128,8 @@ MemorySmith and ASP.NET Core can still expose both endpoints for compatibility d
 
 - Confirm you are visiting `https://localhost:<port>` and not an IP address
 - Verify the certificate subject and issuer indicate the ASP.NET Core development certificate
+- For LAN access, prefer a certificate whose SAN matches the machine name or LAN IP rather than the default localhost development certificate
+- For this repo's LAN example, trust `artifacts/certs/MemorySmith-LAN-Root-CA.cer` on the client device and browse to `https://memorysmith.home.arpa:7090` or `https://192.168.1.8:7090`
 - Remove stale certificates and recreate:
 
 ```powershell

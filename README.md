@@ -65,23 +65,33 @@ User-created markdown files under `Data/Pages/` are valid project wiki content a
 | `project-wiki-test-architecture` | NUnit fixture strategy, benchmark suite |
 | `project-wiki-windows-service-operations` | Windows Service install/uninstall flags |
 | `project-wiki-markdown-pages` | Markdown page storage, rendering, and page assets |
+| `project-wiki-memory-status-classification-current` | Status meanings and how MemorySmith treats Working, Core, Deprecated, and Unconsolidated records |
 | `project-wiki-chat-agent-provider` | Chat provider/agent abstractions, Ollama streaming, and GitHub Copilot provider workflow |
+| `project-wiki-chat-configuration-current` | Chat settings, model profile fallback, context/tool limits, and agent-write gating |
 | `project-wiki-chat-image-attachments` | Image attachment pipeline, trusted temp storage, and vision payload routing |
 | `project-wiki-chat-local-storage-persistence` | Browser-local chat history, draft retention, and provider/model selection persistence |
 | `project-wiki-chat-streaming-thinking` | Streaming response chunks, thinking-block extraction, and elapsed timers |
 | `project-wiki-agent-instructions-source-of-truth` | Copilot instruction files and current agent-facing source-of-truth map |
+| `project-wiki-admin-configuration-surface` | `/admin` settings and Models tabs, write-only secrets, and settings reload behavior |
+| `project-wiki-configuration-settings-current` | The active `MemorySmith:*` configuration surface and which settings stay file-managed |
 | `project-wiki-ui-layout-source-link-polish` | UI layout, source-link open behavior, and navigation polish |
 | `project-wiki-scope-boundaries` | What is and isn't in scope for the current implementation |
 | `project-wiki-generalization-friction` | Known gaps for broader adoption |
+| `ai-memory-suite-implementation-plan-20260520` | Current implementation status snapshot for the AI Memory Suite planning work |
 | `project-wiki-benchmarkdotnet-suite` | BenchmarkDotNet project: smoke validation and full benchmark commands |
 | `project-wiki-semantic-tool-quality-suite` | Search relevance probes, aggregate MRR, and MCP tool output quality assertions |
 | `project-wiki-current-validation-146-tests` | Historical validation baseline: 146 NUnit tests across the solution |
+| `project-wiki-wiki-validation-current` | Current validation coverage for pages, tasks, and the remaining live-memory validator gap |
 | `project-wiki-github-actions-artifacts` | CI Cobertura coverage artifacts and Doxygen GitHub Pages export |
+| `project-wiki-logging-telemetry-current` | Logging and OpenTelemetry settings, runtime endpoints, and local-first defaults |
 | `project-wiki-maintenance-observability-refinements` | Startup triage/index scheduling and stats activity bucket API |
+| `project-wiki-maintenance-proposals-current` | Current proposal dashboard, admin maintenance chat, and review workflow behavior |
 | `project-wiki-operational-diagnostics-dashboard` | `/health` dashboard and `/api/diagnostics` operational snapshot |
 | `project-wiki-request-guard-hardening` | Request guard middleware, `AllowRemoteApi` and `ApiKey` enforcement |
 | `project-wiki-admin-auth-hardening` | Admin-policy hardening and editable settings current state |
+| `project-wiki-source-link-configuration-current` | Source-link settings exposed through admin configuration and their runtime effects |
 | `project-wiki-source-link-security-boundaries` | Source bundle read boundaries and allowed root variable rules |
+| `project-wiki-tag-governance-current` | Tag policy management, diagnostics, suggestions, and `/tags` behavior |
 | `project-wiki-test-fixture-overview` | Overview of the five integration-test fixture records |
 | `project-wiki-test-fixture-context-root` | Context pack root fixture (context pack traversal tests) |
 | `project-wiki-test-fixture-reference-child` | Reference child fixture |
@@ -344,13 +354,16 @@ All settings live under `MemorySmith` in `appsettings.json`:
 }
 ```
 
-Override via `appsettings.Development.json` or environment variables (`MemorySmith__DataPath`, etc.).
+Override via `appsettings.LocalOverrides.json`, a custom `SettingsOverridePath`, or environment variables (`MemorySmith__DataPath`, etc.).
+
+For an operator-facing map of the active settings, see [`Data/Pages/guides/configuration-reference.md`](Data/Pages/guides/configuration-reference.md). For chat model profile routing and maintenance-agent assignments, see [`Data/Pages/guides/agent-configuration.md`](Data/Pages/guides/agent-configuration.md).
 
 - **`ApiKey`** — if set, all API and MCP requests must include `X-Api-Key: &lt;value&gt;`. Leave `null` for local use. The shared API key can satisfy non-admin API/MCP policies; it does not grant admin, user-management, settings, audit, diagnostics, or restore access.
 - **`AllowRemoteApi`** — set `true` to allow non-localhost callers. Off by default.
 - **`DataProtectionKeysPath`** — stores ASP.NET Core cookie/data-protection keys outside build output so local sign-in cookies survive app restarts.
 - **`Database:*`** — controls the SQLite metadata database used for users, roles, provider links, login history, audit metadata, version metadata, token metadata, admin settings, and semantic-index metadata. Content files remain in `Data/Memories` and `Data/Pages`.
-- **`SettingsOverridePath`** — optional path for admin-edited local settings. Defaults to `appsettings.LocalDevelopment.json` beside the running app.
+- **`SettingsOverridePath`** — optional path for admin-edited local settings. Defaults to `appsettings.LocalOverrides.json` beside the running app.
+- **`Blazor:MaximumReceiveMessageSizeBytes`** — maximum SignalR payload size for interactive server circuits. The Admin settings UI exposes this, but changing it typically requires reconnecting or restarting the app to affect existing circuits.
 - **`Auth:*`** — controls cookie/RBAC behavior. `AnonymousAccess=Viewer` keeps local browsing open by default; config-derived anonymous/default roles are clamped below Admin, and `OpenLocalEditorCompatibility=true` preserves pre-setup loopback write compatibility only for non-admin operations.
 - **`Audit:*`** — controls the weekly JSONL audit mirror. SQLite remains the queryable metadata store.
 - **`History:*`** — controls version-history artifact storage for memory and page mutations.
@@ -376,6 +389,21 @@ Easy local redeploy from an elevated PowerShell session:
 ```powershell
 .\Scripts\Redeploy-MemorySmithService.ps1
 ```
+
+Optional LAN HTTPS path with a certificate file:
+
+```powershell
+.\Scripts\Redeploy-MemorySmithService.ps1 -UseHttps -HttpsPort 7090 -HttpsCertificatePath .\artifacts\certs\memorysmith.home.arpa-7090.pfx -HttpsCertificatePassword (Get-Content .\artifacts\certs\memorysmith.home.arpa-7090-password.txt -Raw)
+```
+
+Current LAN certificate example for this repo:
+
+- Host name: `memorysmith.home.arpa`
+- LAN IP: `192.168.1.8`
+- HTTPS port: `7090`
+- Trust anchor for other devices: `artifacts/certs/MemorySmith-LAN-Root-CA.cer`
+
+If clients should browse by name, make `memorysmith.home.arpa` resolve to `192.168.1.8` on the LAN.
 
 Publish the app, then from an elevated PowerShell session:
 
@@ -405,6 +433,8 @@ Install flags:
 
 Arguments after `--` are still passed as runtime args to the service process for advanced ASP.NET Core settings. Use either `--port` or a custom runtime `--urls`, not both.
 
+`Redeploy-MemorySmithService.ps1` keeps the current HTTP path on `5089` and can optionally add HTTPS with `-UseHttps`. The current repo example uses a certificate whose SAN matches both `memorysmith.home.arpa` and `192.168.1.8`, with HTTPS served on port `7090`.
+
 For this repository's live project wiki, the target memory directory is `C:\Users\norrt\source\repos\MemorySmith\Data\Memories`. A local service install on port 5089 would be:
 
 ```powershell
@@ -429,13 +459,14 @@ Common optional variants:
 .\Scripts\Validate-Repo.ps1 -IncludeDocs
 ```
 
-The script runs build/test plus markdown/wiki integrity checks by default, then adds optional coverage, browser regression, and docs-site validation when requested.
+The script runs build/test plus live-wiki integrity checks by default, then adds optional coverage, browser regression, and docs-site validation when requested.
 
-Default local validation includes task-record integrity, markdown page-link checks, and markdown path-literal checks. The task-record check verifies JSON parseability, required identity fields, filename/id consistency, recognized statuses, and unique task ids/keys.
+Default local validation includes task-record integrity, live memory-record validation, markdown page-link checks, and markdown path-literal checks. The task-record check verifies JSON parseability, required identity fields, filename/id consistency, recognized statuses, and unique task ids/keys. The memory-record check validates the live `Data/Memories` corpus against filename/id alignment, status-folder alignment, and the application validation rules used by `MemoryApplicationService`.
 
-The CI workflow has two stable validation jobs:
+The CI workflow has three stable validation jobs:
 
-- `build-and-test`: restore, task-record validation, page validators, build, NUnit tests, and Cobertura coverage artifacts.
+- `build-and-test`: restore, task-record validation, live memory-record validation, page validators, build, NUnit tests, and Cobertura coverage artifacts.
+- `browser-route-smoke`: Playwright route smoke coverage for `/memories`, `/pages`, `/chat`, `/tasks`, and `/health`, plus uploaded screenshots/manifest from `artifacts/browser-validation/route-smoke`.
 - `browser-navigation-freeze`: Playwright navigation-freeze regression with failure screenshots, video, traces, and HTML report artifacts.
 
 Underlying commands (also available individually):
@@ -450,6 +481,17 @@ Collect local Cobertura coverage with the same collector used by CI:
 ```powershell
 dotnet test MemorySmith.slnx --configuration Release --collect:"XPlat Code Coverage" --results-directory artifacts/TestResults -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura
 ```
+
+Run the browser route-smoke suite (Playwright) with per-route screenshots and manifest output:
+
+```powershell
+Set-Location e2e
+npm ci
+npx playwright install chromium
+npm run test:route-smoke
+```
+
+Artifacts are written to `artifacts/browser-validation/route-smoke/` with one screenshot per route plus `manifest.json`.
 
 Run the browser route-hop regression suite (Playwright) for navigation freeze protection:
 
@@ -478,6 +520,12 @@ Validate task records for parseability and unique ids/keys:
 
 ```powershell
 .\Scripts\Test-TaskRecords.ps1
+```
+
+Validate live memory records for filename/id alignment, status-folder alignment, and application contract invariants:
+
+```powershell
+.\Scripts\Test-MemoryRecords.ps1
 ```
 
 Validate local markdown page links (relative .md links and existing targets under `Data/Pages`):

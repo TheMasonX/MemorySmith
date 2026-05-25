@@ -1,0 +1,48 @@
+{
+  "Id": "project-wiki-wiki-validation-current",
+  "Title": "Wiki Validation Current State",
+  "Content": "MemorySmith validation has a strong page and task baseline but still has a dedicated live-memory validation gap. `Scripts/Validate-Repo.ps1` runs solution build and tests plus `Test-TaskRecords.ps1`, `Test-PageLinks.ps1`, and `Test-PagePathLiterals.ps1`. Those checks catch task-record JSON drift, markdown link issues, and path-literal hygiene problems, and the NUnit suite exercises many wiki-backed behaviors by copying the live data into temp storage. The remaining gap is that the repository still lacks a first-class whole-corpus validator focused only on `Data/Memories` required fields, filename or id alignment, and other memory record invariants; that gap is already tracked in task TSK-0003. Operators and agents should therefore treat page-link and task-record scripts as cheap mandatory gates, but still verify live memory behavior through runtime surfaces such as `/memories`, `/chat`, `/health`, and `/api/diagnostics` when the issue could be data-shape rather than link-shape drift.",
+  "Status": 2,
+  "Confidence": 0.93,
+  "Tags": [
+    "project-wiki",
+    "documentation",
+    "tests",
+    "current-state",
+    "kind:fact",
+    "audience:developer",
+    "audience:admin",
+    "scope:validation",
+    "scope:wiki-health"
+  ],
+  "References": [
+    "project-wiki-validation-command",
+    "project-wiki-test-architecture",
+    "project-wiki-operational-diagnostics-dashboard"
+  ],
+  "Conflicts": [],
+  "SourceLinks": [
+    {
+      "Label": "Validate-Repo.ps1",
+      "Uri": "%MemorySmithRepo%Scripts/Validate-Repo.ps1"
+    },
+    {
+      "Label": "Test-TaskRecords.ps1",
+      "Uri": "%MemorySmithRepo%Scripts/Test-TaskRecords.ps1"
+    },
+    {
+      "Label": "Test-PageLinks.ps1",
+      "Uri": "%MemorySmithRepo%Scripts/Test-PageLinks.ps1"
+    },
+    {
+      "Label": "Test-PagePathLiterals.ps1",
+      "Uri": "%MemorySmithRepo%Scripts/Test-PagePathLiterals.ps1"
+    },
+    {
+      "Label": "README.md",
+      "Uri": "%MemorySmithRepo%README.md"
+    }
+  ],
+  "UsageCount": 0,
+  "LastUpdated": "2026-05-24T22:40:00Z"
+}

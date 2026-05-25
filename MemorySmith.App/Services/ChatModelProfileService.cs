@@ -57,10 +57,7 @@ public sealed class ChatModelProfileService
         _options = options;
         _configuration = configuration;
         _audit = audit;
-        var configuredSettingsPath = configuration["MemorySmith:SettingsOverridePath"];
-        _settingsPath = string.IsNullOrWhiteSpace(configuredSettingsPath)
-            ? Path.Combine(AppContext.BaseDirectory, "appsettings.LocalDevelopment.json")
-            : Path.GetFullPath(configuredSettingsPath);
+        _settingsPath = MemorySmithConfigurationPaths.ResolveSettingsOverridePath(configuration["MemorySmith:SettingsOverridePath"]);
     }
 
     public IReadOnlyList<string> ProviderOptions => SupportedProviders;

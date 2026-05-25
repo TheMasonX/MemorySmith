@@ -20,6 +20,8 @@ Useful pages:
 | `/health` | Readiness is clear, data paths are correct, semantic search status is visible. |
 | `/variables` | `%VarName%` values are available for source links. |
 
+For setting-level guidance, use [Configuration Reference](../guides/configuration-reference.md). For model profile and maintenance-agent routing questions, use [Agent and Model Configuration](../guides/agent-configuration.md).
+
 ## Validate Changes
 
 Use the solution file for normal validation:
@@ -30,6 +32,8 @@ dotnet test MemorySmith.slnx --configuration Release
 ```
 
 For search quality work, also run the focused search and semantic tool tests. For benchmark smoke checks, use the benchmark project rather than assuming UI behavior proves search quality.
+
+For wiki-specific guardrails and the current live-memory validation gap, use [Wiki Health and Validation](wiki-health-and-validation.md).
 
 ## Data Deployment Folder
 
@@ -91,3 +95,5 @@ Start with `/health`, then check configuration in this order:
 6. `MemorySmith:Chat:*`
 
 Most surprising behavior comes from a path resolving to a different data folder than the one the operator expects.
+
+If the paths look right but the wiki still behaves unexpectedly, follow the focused checks in [Wiki Health and Validation](wiki-health-and-validation.md) before assuming the stored content is wrong.

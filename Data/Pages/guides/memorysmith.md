@@ -8,9 +8,12 @@ This folder is the human-readable side of the project wiki. Pages here are meant
 
 - [Architecture](architecture.md) explains the single-host app shape and where each project fits.
 - [System Setup Guide](system-setup.md) walks through prerequisites, first run, admin bootstrap, validation, and troubleshooting.
+- [Configuration Reference](configuration-reference.md) maps the active `MemorySmith:*` settings to their edit and verification surfaces.
+- [Agent and Model Configuration](agent-configuration.md) explains chat model profiles, maintenance-agent model routing, and write gates.
 - [HTTPS Setup Guide](https-setup.md) explains local development certificates, HTTPS launch profile setup, and verification steps.
 - [Features](../features/index.md) provides product-level overviews of major app capabilities.
 - [Operations](../ops/operations.md) covers running, validating, publishing, and the important data paths.
+- [Wiki Health and Validation](../ops/wiki-health-and-validation.md) documents the current wiki/task validation commands and known live-memory validation gap.
 - [Search and Chat](search-and-chat.md) explains lexical, semantic, hybrid, MCP, chat, and agent behavior.
 - [Core Memory System Improvements RFC](../plans/temp-plan.md) reviews long-term options for making memories, search, pages, and chat more useful for AI agents and humans.
 - [AI Memory Suite Implementation Plan](../plans/ai-memory-suite-implementation-plan.md) records the full 10-round council synthesis and phased plan for tag policy, staleness, retrieval, Agent writes, schema promotion, and page chunking.
@@ -32,6 +35,7 @@ This folder is the human-readable side of the project wiki. Pages here are meant
 | `Data/Policies` | File-backed governance policy such as the local tag policy. |
 | `Data/Models` | Optional local ONNX embedding model and vocabulary files. |
 | `Data/vars.json` | Path variables such as `%MemorySmithRepo%` for source links. |
+| `Data/Tasks` | First-class task records used by `/tasks` and sprint/workflow tracking. |
 
 ## Current App Surfaces
 

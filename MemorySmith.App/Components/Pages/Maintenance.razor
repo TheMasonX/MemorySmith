@@ -137,7 +137,16 @@
                 </div>
                 <div class="admin-maintenance-transcript-search">
                     <MudTextField T="string" Value="@_maintenanceTranscriptSearch" ValueChanged="@((string value) => _maintenanceTranscriptSearch = value)" Immediate="true" Label="Search transcripts" Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Disabled="@_isBusy" />
-                    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Search" Disabled="@_isBusy" OnClick="LoadMaintenanceTranscriptsAsync">Search</MudButton>
+                    <MudTooltip Text="Search">
+                        <MudIconButton Icon="@Icons.Material.Filled.Search"
+                                       Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       Size="Size.Small"
+                                       Class="wiki-search-submit"
+                                       Disabled="@_isBusy"
+                                       OnClick="LoadMaintenanceTranscriptsAsync"
+                                       aria-label="Search" />
+                    </MudTooltip>
                 </div>
                 @if (_maintenanceTranscripts.Count == 0)
                 {

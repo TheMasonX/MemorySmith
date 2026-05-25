@@ -79,6 +79,8 @@ During generation, the icon Stop control cancels immediately. The icon Finish St
 
 Use Agent mode when the desired outcome is a wiki update or a multi-step change. Use Chat mode when the desired outcome is explanation, research, or a concise answer.
 
+For the exact split between generic chat settings, model profiles, maintenance-agent assignments, and write gates, use [Agent and Model Configuration](agent-configuration.md).
+
 ## Good Search Habits
 
 - Start broad with hybrid search.

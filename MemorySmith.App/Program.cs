@@ -43,15 +43,16 @@ Log.Logger = new LoggerConfiguration()
 try
 {
     var builder = WebApplication.CreateBuilder(args);
+    if (string.Equals(builder.Environment.EnvironmentName, "LocalDevelopment", StringComparison.OrdinalIgnoreCase))
+    {
+        builder.WebHost.UseStaticWebAssets();
+    }
     // Load optional local secrets file from the service working directory (survives publishes, gitignored in artifacts/)
     var secretsFile = Path.Combine(AppContext.BaseDirectory, "appsettings.Secrets.json");
     if (File.Exists(secretsFile))
         builder.Configuration.AddJsonFile(secretsFile, optional: true, reloadOnChange: false);
-    var configuredSettingsOverridePath = builder.Configuration["MemorySmith:SettingsOverridePath"];
-    var localDevelopmentFile = string.IsNullOrWhiteSpace(configuredSettingsOverridePath)
-        ? Path.Combine(AppContext.BaseDirectory, "appsettings.LocalDevelopment.json")
-        : Path.GetFullPath(configuredSettingsOverridePath);
-    builder.Configuration.AddJsonFile(localDevelopmentFile, optional: true, reloadOnChange: true);
+    var settingsOverrideFile = MemorySmithConfigurationPaths.ResolveSettingsOverridePath(builder.Configuration["MemorySmith:SettingsOverridePath"]);
+    builder.Configuration.AddJsonFile(settingsOverrideFile, optional: true, reloadOnChange: true);
     builder.Host.UseSerilog((context, services, loggerConfiguration) =>
     {
         var loggingOptions = context.Configuration.GetSection("MemorySmith:Logging").Get<LoggingOptions>() ?? new LoggingOptions();
@@ -72,7 +73,14 @@ try
         if (loggingOptions.EnableStructuredFile)
         {
             var structuredFilePath = ResolveLogPath(loggingOptions.StructuredFilePath);
-            Directory.CreateDirectory(Path.GetDirectoryName(structuredFilePath)!);
+            var structuredFileDirectory = Path.GetDirectoryName(structuredFilePath);
+            if (string.IsNullOrWhiteSpace(structuredFileDirectory))
+            {
+                structuredFileDirectory = AppContext.BaseDirectory;
+                structuredFilePath = Path.Combine(structuredFileDirectory, Path.GetFileName(structuredFilePath));
+            }
+
+            Directory.CreateDirectory(structuredFileDirectory);
             loggerConfiguration.WriteTo.File(
                 new CompactJsonFormatter(),
                 structuredFilePath,
@@ -101,6 +109,7 @@ try
     builder.Services.AddMudServices();
 
     builder.Services.Configure<MemorySmithOptions>(builder.Configuration.GetSection("MemorySmith"));
+    builder.Services.AddSingleton<IPostConfigureOptions<MemorySmithOptions>, MemorySmithLocalDevelopmentPostConfigure>();
     builder.Services.AddHttpContextAccessor();
     builder.Services.AddCascadingAuthenticationState();
     var authProviders = builder.Configuration.GetSection("MemorySmith:Auth:Providers").Get<AuthProviderOptions>() ?? new AuthProviderOptions();

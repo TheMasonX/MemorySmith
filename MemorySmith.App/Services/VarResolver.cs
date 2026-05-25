@@ -82,15 +82,25 @@ public partial class VarResolver
         var before = Math.Max(0, _options.SourceLinks.ReadContextLinesBefore);
         var after = Math.Max(0, _options.SourceLinks.ReadContextLinesAfter);
         var hasRequestedWindow = link.StartLine.HasValue || link.EndLine.HasValue;
-        int startIdx = link.StartLine.HasValue ? Math.Max(0, link.StartLine.Value - 1 - before) : 0;
-        int endIdx = link.EndLine.HasValue
-            ? Math.Min(lines.Length - 1, link.EndLine.Value - 1 + after)
-            : (link.StartLine.HasValue ? Math.Min(lines.Length - 1, link.StartLine.Value - 1 + after) : lines.Length - 1);
+        int startIdx;
+        int endIdx;
 
-        if (!hasRequestedWindow && !_options.SourceLinks.AllowUnrestrictedSourceReads)
+        if (hasRequestedWindow)
+        {
+            startIdx = link.StartLine.HasValue ? Math.Max(0, link.StartLine.Value - 1 - before) : 0;
+            endIdx = link.EndLine.HasValue
+                ? Math.Min(lines.Length - 1, link.EndLine.Value - 1 + after)
+                : (link.StartLine.HasValue ? Math.Min(lines.Length - 1, link.StartLine.Value - 1 + after) : lines.Length - 1);
+        }
+        else if (_options.SourceLinks.AllowUnrestrictedSourceReads)
         {
             startIdx = 0;
             endIdx = lines.Length - 1;
+        }
+        else
+        {
+            startIdx = 0;
+            endIdx = Math.Min(lines.Length - 1, 49);
         }
 
         var content = string.Join('\n', lines[startIdx..(endIdx + 1)]);

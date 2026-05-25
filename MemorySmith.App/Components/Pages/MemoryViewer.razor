@@ -16,15 +16,33 @@
         </div>
 
         <div class="wiki-search-strip">
-            <MudTextField @bind-Value="_searchQuery"
-                          Label="@SearchLabel"
-                          Placeholder="@SearchPlaceholder"
-                          Variant="Variant.Outlined"
-                          Margin="Margin.Dense"
-                          Adornment="Adornment.Start"
-                          AdornmentIcon="@Icons.Material.Filled.Search"
-                          OnKeyUp="OnSearchKeyUp"
-                          Class="wiki-search-box" />
+            <div class="wiki-search-main">
+                <MudTextField @bind-Value="_searchQuery"
+                              Label="@SearchLabel"
+                              Placeholder="@SearchPlaceholder"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              OnKeyUp="OnSearchKeyUp"
+                              Class="wiki-search-box" />
+                <MudTooltip Text="Clear search">
+                    <MudIconButton Icon="@Icons.Material.Filled.Clear"
+                                   Size="Size.Small"
+                                   Class="wiki-search-clear"
+                                   OnClick="ClearAsync"
+                                   aria-label="Clear" />
+                </MudTooltip>
+                <MudTooltip Text="Search">
+                    <MudIconButton Icon="@Icons.Material.Filled.Search"
+                                   Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   Size="Size.Small"
+                                   Class="wiki-search-submit"
+                                   OnClick="SearchAsync"
+                                   aria-label="Search" />
+                </MudTooltip>
+            </div>
 
             <MudSelect T="MemoryStatus?" @bind-Value="_statusFilter" Label="Status" Clearable="true" Variant="Variant.Outlined" Margin="Margin.Dense" Class="wiki-filter">
                 @foreach (MemoryStatus status in Enum.GetValues(typeof(MemoryStatus)))
@@ -41,13 +59,25 @@
                 <MudButton Variant="@(_searchMode == SearchMode.Hybrid ? Variant.Filled : Variant.Outlined)" OnClick="@(() => SetSearchMode(SearchMode.Hybrid))">Hybrid</MudButton>
             </MudButtonGroup>
 
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Search" OnClick="SearchAsync">Search</MudButton>
-            <MudIconButton Icon="@Icons.Material.Filled.Clear" Size="Size.Small" OnClick="ClearAsync" aria-label="Clear" />
-            <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
-                <Authorized>
-                    <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" Color="Color.Success" OnClick="NewRecord" aria-label="New" />
-                </Authorized>
-            </AuthorizeView>
+            <div class="wiki-navigation-controls">
+                <MudTooltip Text="@(_isResultsPaneCollapsed ? "Show memory results list" : "Hide memory results list")">
+                    <MudIconButton Icon="@(_isResultsPaneCollapsed ? Icons.Material.Filled.Menu : Icons.Material.Filled.MenuOpen)"
+                                   Size="Size.Small"
+                                   OnClick="ToggleResultsPane"
+                                   aria-label="Toggle memory results list" />
+                </MudTooltip>
+                <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
+                    <Authorized>
+                        <MudTooltip Text="New memory">
+                            <MudIconButton Icon="@Icons.Material.Filled.Add"
+                                           Size="Size.Small"
+                                           Color="Color.Success"
+                                           OnClick="NewRecord"
+                                           aria-label="New" />
+                        </MudTooltip>
+                    </Authorized>
+                </AuthorizeView>
+            </div>
         </div>
     </section>
 
@@ -60,12 +90,6 @@
                     <span class="wiki-mode-label">@SearchModeLabel</span>
                 }
                 <MudSpacer />
-                <MudTooltip Text="Collapse memory results list" Placement="Placement.Top">
-                    <MudIconButton Icon="@Icons.Material.Filled.ViewSidebar"
-                                   Size="Size.Small"
-                                   OnClick="CollapseResultsPane"
-                                   aria-label="Collapse memory results list" />
-                </MudTooltip>
             </div>
 
             @if (_isLoading)
@@ -249,15 +273,6 @@
                         </div>
                     </div>
                     <MudSpacer />
-                    @if (_isResultsPaneCollapsed)
-                    {
-                        <MudTooltip Text="Show memory results list" Placement="Placement.Top">
-                            <MudIconButton Icon="@Icons.Material.Filled.ViewSidebar"
-                                           Size="Size.Small"
-                                           OnClick="ExpandResultsPane"
-                                           aria-label="Show memory results list" />
-                        </MudTooltip>
-                    }
                     <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Size="Size.Small" OnClick="CopySelectedContentAsync" aria-label="Copy content" />
                     <MudIconButton Icon="@Icons.Material.Filled.Assignment" Size="Size.Small" OnClick="CopyAgentContextAsync" aria-label="Copy agent context" />
                     <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
@@ -619,9 +634,7 @@
         await SelectAsync(id);
     }
 
-    private void CollapseResultsPane() => _isResultsPaneCollapsed = true;
-
-    private void ExpandResultsPane() => _isResultsPaneCollapsed = false;
+    private void ToggleResultsPane() => _isResultsPaneCollapsed = !_isResultsPaneCollapsed;
 
     private void PopulateEditor(MemoryRecord record, bool editingExisting)
     {

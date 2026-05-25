@@ -4,7 +4,7 @@
   "Title": "Add browser-level smoke coverage for the main app routes: `/memories`, `/pages`, `/chat`, and `/health`.",
   "Description": "Problem: the repo has route and API coverage, but no browser-level smoke pass proving the core workbench pages render together under a live app session.\r\n\r\nDesired outcome:\r\n- Add a repeatable browser smoke workflow for `/memories`, `/pages`, `/chat`, `/health`, and `/tasks`.\r\n- Persist a minimal screenshot or pass/fail artifact set so regressions are visible in PR review.\r\n\r\nAcceptance criteria:\r\n- One command or task exercises the listed routes against a running app instance.\r\n- Failures identify the route that broke.\r\n- Artifacts are saved under `artifacts/browser-validation/` or another documented path.\r\n\r\nValidation:\r\n- Run the browser smoke workflow locally.\r\n- Confirm artifacts are produced for each route.\r\n\r\nAudit note: vetted on 2026-05-24; still relevant because current coverage is primarily API/component-level, not live browser-route smoke coverage.",
   "Type": "Task",
-  "Status": "Backlog",
+  "Status": "Done",
   "Priority": "Medium",
   "AssigneeMode": "Custom",
   "AssigneeDirectoryId": null,
@@ -42,14 +42,20 @@
       "Author": "AgentSmith",
       "Body": "Review round: remains Backlog. No dedicated browser-route smoke workflow with persisted per-route artifacts was found in Scripts or tests; keep open until route smoke automation is shipped.",
       "CreatedAtUtc": "2026-05-24T04:40:00.0000000Z"
+    },
+    {
+      "Id": "c-impl-0002-20260525",
+      "Author": "AgentSmith",
+      "Body": "Implemented `npm run test:route-smoke` with per-route coverage in `e2e/tests/route-smoke.spec.ts`. Local validation passed via `./Scripts/Validate-Repo.ps1 -SkipBuild -SkipTests -IncludeE2E`, and screenshots plus `manifest.json` now land under `artifacts/browser-validation/route-smoke/`.",
+      "CreatedAtUtc": "2026-05-25T02:24:56.4938183Z"
     }
   ],
   "EpicId": null,
   "ParentId": null,
   "DueDateUtc": null,
   "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z",
-  "UpdatedAtUtc": "2026-05-24T04:40:00.0000000Z",
-  "CompletedAtUtc": null,
-  "Revision": 3,
+  "UpdatedAtUtc": "2026-05-25T02:24:56.4938183Z",
+  "CompletedAtUtc": "2026-05-25T02:24:56.4938183Z",
+  "Revision": 4,
   "IsArchived": false
 }

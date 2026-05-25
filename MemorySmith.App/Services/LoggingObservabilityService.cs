@@ -112,23 +112,7 @@ public sealed class LoggingObservabilityService
 
         if (query.IncludeStructuredLogs)
         {
-            foreach (var file in ResolveStructuredLogFiles(settings.StructuredFilePath))
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                if (!File.Exists(file))
-                {
-                    continue;
-                }
-
-                foreach (var line in File.ReadLines(file))
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    if (TryParseStructuredLog(line, out var entry) && Matches(entry, sinceUtc, query.Text, query.Level))
-                    {
-                        entries.Add(entry);
-                    }
-                }
-            }
+            entries.AddRange(ReadStructuredEntries(query, settings, limit, sinceUtc, cancellationToken));
         }
 
         if (OperatingSystem.IsWindows() && settings.WindowsEventLogEnabled && query.IncludeWindowsEventLog)
@@ -141,6 +125,57 @@ public sealed class LoggingObservabilityService
             .Take(limit)
             .ToList();
         return ordered;
+    }
+
+    private static List<LogEntryDto> ReadStructuredEntries(LogSearchQuery query, LoggingOptions settings, int limit, DateTime sinceUtc, CancellationToken cancellationToken)
+    {
+        var results = new List<LogEntryDto>();
+
+        foreach (var file in ResolveStructuredLogFiles(settings.StructuredFilePath))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!File.Exists(file))
+            {
+                continue;
+            }
+
+            string[] lines;
+            try
+            {
+                lines = File.ReadAllLines(file);
+            }
+            catch
+            {
+                continue;
+            }
+
+            for (var index = lines.Length - 1; index >= 0; index--)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (!TryParseStructuredLog(lines[index], out var entry))
+                {
+                    continue;
+                }
+
+                if (entry.TimestampUtc < sinceUtc)
+                {
+                    break;
+                }
+
+                if (!Matches(entry, sinceUtc, query.Text, query.Level))
+                {
+                    continue;
+                }
+
+                results.Add(entry);
+                if (results.Count >= limit)
+                {
+                    return results;
+                }
+            }
+        }
+
+        return results;
     }
 
     private static bool IsError(string level) => string.Equals(level, "Error", StringComparison.OrdinalIgnoreCase)
@@ -208,7 +243,9 @@ public sealed class LoggingObservabilityService
         if (fileName.Contains("-."))
         {
             var wildcard = fileName.Replace("-.", "*.", StringComparison.Ordinal);
-            return Directory.EnumerateFiles(directory, wildcard, SearchOption.TopDirectoryOnly);
+            return Directory.EnumerateFiles(directory, wildcard, SearchOption.TopDirectoryOnly)
+                .OrderByDescending(path => File.GetLastWriteTimeUtc(path))
+                .ThenByDescending(path => path, StringComparer.OrdinalIgnoreCase);
         }
 
         return [resolvedPath];

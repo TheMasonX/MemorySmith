@@ -172,6 +172,8 @@ If setup fails, check in this order:
 
 Most setup issues come from path mismatches to an unintended `Data` folder.
 
+For a full setting-by-setting map after first run succeeds, use [Configuration Reference](configuration-reference.md).
+
 > [!NOTE]
 > Screenshot placeholder [SYS-SETUP-13]: example `/health` view highlighting a misconfigured path.
 

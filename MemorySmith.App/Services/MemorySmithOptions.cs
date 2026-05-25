@@ -13,6 +13,7 @@ public class MemorySmithOptions
     public string? SettingsOverridePath { get; set; }
     public string? ApiKey { get; set; }
     public bool AllowRemoteApi { get; set; }
+    public BlazorOptions Blazor { get; set; } = new();
     public DatabaseOptions Database { get; set; } = new();
     public AuthOptions Auth { get; set; } = new();
     public AuditOptions Audit { get; set; } = new();
@@ -28,6 +29,11 @@ public class MemorySmithOptions
     public MaintenanceAgentOptions MaintenanceAgent { get; set; } = new();
     public LoggingOptions Logging { get; set; } = new();
     public TelemetryOptions Telemetry { get; set; } = new();
+}
+
+public class BlazorOptions
+{
+    public long MaximumReceiveMessageSizeBytes { get; set; } = 1024 * 1024;
 }
 
 public class LoggingOptions
