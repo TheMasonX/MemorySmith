@@ -158,6 +158,8 @@ The page editor has a markdown toolbar for common inserts, an image upload/embed
 
 Task APIs support list/get/create/update/delete plus dedicated mutation endpoints for status updates, comments, link management, and attachments. The page and task domains are intentionally linked (for example page-slug references), so execution and planning notes can stay close to implementation artifacts.
 
+MCP agents can use task tools for task list/get/create/update/status/comment/attachment workflows. Read task tools require view permission; write task tools require edit permission and reuse the same validation and activity-history service path as `/api/tasks`.
+
 ### Evidence-Backed Task Standard
 
 Use `/tasks` as the primary planning surface for audits and implementation, not as a mirror of external notes.
@@ -225,7 +227,7 @@ The embedding path uses ONNX Runtime, a local WordPiece vocabulary, E5-style `qu
 
 ## MCP Tools
 
-The MCP endpoint is at `http://localhost:5089/mcp`. VS Code config lives in `.vscode/mcp.json`. Up to twelve tools are exposed by default (eight read-only chat-allowlisted, two write tools requiring edit permission, plus two source-aware tools available only over MCP):
+The MCP endpoint is at `http://localhost:5089/mcp`. VS Code config lives in `.vscode/mcp.json`. Up to nineteen tools are exposed by default (eight read-only chat-allowlisted, seven task tools, two page write tools requiring edit permission, plus two source-aware tools available only over MCP):
 
 | Tool | Key args | Returns | Permission |
 | --- | --- | --- | --- |
@@ -237,6 +239,13 @@ The MCP endpoint is at `http://localhost:5089/mcp`. VS Code config lives in `.vs
 | `memorysmith_page_search` | `query`, `limit` | Markdown page summaries from `Data/Pages` | View |
 | `memorysmith_page_get` | `slug`, `maxCharacters` | One markdown page body, bounded for safe context inclusion | View |
 | `memorysmith_unified_search` | `query`, `memoryLimit`, `pageLimit`, `tags`, `status` | One call across memories + pages, returning separate memory and page result sections | View |
+| `memorysmith_task_list` | `query`, `status`, `assignee`, `limit` | Task summaries from `Data/Tasks` | View |
+| `memorysmith_task_get` | `idOrKey` | One full task record by id or key | View |
+| `memorysmith_task_create` | `title`, `description`, `priority`, `labels`, `slug` | Creates a task and records task activity | **Edit** |
+| `memorysmith_task_update` | `idOrKey`, editable task fields such as `title`, `description`, `priority`, `labels` | Updates task fields and records task activity | **Edit** |
+| `memorysmith_task_set_status` | `idOrKey`, `status`, `note` | Changes status and records status history | **Edit** |
+| `memorysmith_task_add_comment` | `idOrKey`, `body` | Adds a task comment | **Edit** |
+| `memorysmith_task_add_attachment` | `idOrKey`, `name`, `kind`, `uri` | Adds an absolute http/https task attachment URI | **Edit** |
 | `memorysmith_page_save` | `markdown`, `slug` (opt), `title` (opt) | Creates or updates a wiki page; returns slug, title, and updated timestamp | **Edit** |
 | `memorysmith_page_delete` | `slug` | Deletes a wiki page; returns success or not-found | **Edit** |
 | `memorysmith_source_bundle` | `ids` or `query`/`tags`/`limit`, `maxFileBytes`, `format` | Records + resolved file content slices for every source link (MCP only) | Source bundle |
@@ -254,6 +263,7 @@ The MCP endpoint is at `http://localhost:5089/mcp`. VS Code config lives in `.vs
 
 - Memory and page read tools require the normal view policy for the caller.
 - Page tools also respect each page's minimum visibility role, so `memorysmith_page_search`, `memorysmith_page_get`, and `memorysmith_unified_search` omit pages the caller cannot view.
+- Task read tools require view permission. Task write tools require edit permission and share validation with `/api/tasks`, including task status, assignee, page-link, and attachment URI safety rules.
 - `memorysmith_page_save` and `memorysmith_page_delete` require edit permission and still apply page visibility rules, including Admin-only minimum-role restrictions.
 - `memorysmith_source_bundle` and `memorysmith_find_by_source` are MCP-only `SensitiveRead` tools. They require the source-bundle policy because they can resolve local source-link file slices, and they are intentionally not available as chat-requested model tools. The source-bundle policy is granted to Editor and Admin callers, configured API-key requests, and auth-disabled local installs; Viewer callers, including the default anonymous Viewer role, can list and read normal memory/page content but cannot call source-bundle tools.
 - `MemorySmith:Mcp:DisabledTools` hides individual tools from `tools/list` and rejects `tools/call` for those names. `MemorySmith:Mcp:EnabledTools` explicitly opts in descriptor-level default-off tool names; `DisabledTools` wins if a tool is listed in both places. Existing tools default on unless disabled, preserving the current MCP surface.

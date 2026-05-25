@@ -32,6 +32,7 @@ This feature makes MemorySmith usable by scripts, local tools, and AI agents wit
 
 - Unified search and retrieval surfaces across memories and pages.
 - Context-pack and source-bundle support for evidence-driven workflows.
+- Agent task tools for listing, reading, creating, updating, status changes, comments, and attachments.
 - Edit-gated page save and delete MCP operations.
 - Per-tool MCP enable/disable configuration for local deployment risk controls.
 - Local-first operational defaults with optional API hardening controls.
@@ -42,6 +43,8 @@ This feature makes MemorySmith usable by scripts, local tools, and AI agents wit
 | --- | --- |
 | Memory search, semantic, hybrid, context-pack, and get | Requires the caller to satisfy the MemorySmith view policy. |
 | Page search, page get, and unified page results | Requires view access and filters by page minimum visibility: Anonymous, Authenticated, or Admin. |
+| Task list and get | Requires view access and returns task summaries/full records from the same task service used by `/tasks` and `/api/tasks`. |
+| Task create, update, status, comment, and attachment tools | Requires edit permission and reuses task-service validation, persistence, and activity-history writes. |
 | Page save and delete | Requires edit permission; Admin-only page visibility remains limited to Admin callers. |
 | Source bundle and find-by-source | Requires the source-bundle policy because resolved source links may include local file content. These tools are MCP-only, not chat-requested model tools. Editor and Admin callers satisfy this policy; configured API-key requests and auth-disabled local installs also satisfy it. Viewer callers, including the default anonymous Viewer role, do not. |
 

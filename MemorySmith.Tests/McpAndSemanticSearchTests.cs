@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using MemorySmith.App.Services;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
@@ -182,6 +183,163 @@ public class McpAndSemanticSearchTests
         {
             Assert.That(result.GetProperty("isError").GetBoolean(), Is.True);
             Assert.That(result.GetProperty("content")[0].GetProperty("text").GetString(), Does.Contain("disabled by MCP tool configuration"));
+        });
+    }
+
+    [Test]
+    public async Task McpTaskTools_ListAndMutateTasks()
+    {
+        var dataPath = ProjectWikiFixture.CopyToTemp(_tempRoot);
+        await using var factory = CreateFactory(dataPath);
+        using var client = factory.CreateClient();
+
+        var listToolsResponse = await client.PostAsJsonAsync("/mcp", new
+        {
+            JsonRpc = "2.0",
+            Id = "task-tools",
+            Method = "tools/list"
+        }, JsonSerializerOptions.Web);
+
+        listToolsResponse.EnsureSuccessStatusCode();
+        using var listToolsDocument = await JsonDocument.ParseAsync(await listToolsResponse.Content.ReadAsStreamAsync());
+        var toolNames = listToolsDocument.RootElement
+            .GetProperty("result")
+            .GetProperty("tools")
+            .EnumerateArray()
+            .Select(tool => tool.GetProperty("name").GetString())
+            .ToList();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(toolNames, Does.Contain("memorysmith_task_list"));
+            Assert.That(toolNames, Does.Contain("memorysmith_task_get"));
+            Assert.That(toolNames, Does.Contain("memorysmith_task_create"));
+            Assert.That(toolNames, Does.Contain("memorysmith_task_update"));
+            Assert.That(toolNames, Does.Contain("memorysmith_task_set_status"));
+            Assert.That(toolNames, Does.Contain("memorysmith_task_add_comment"));
+            Assert.That(toolNames, Does.Contain("memorysmith_task_add_attachment"));
+        });
+
+        var createResponse = await client.PostAsJsonAsync("/mcp", new
+        {
+            JsonRpc = "2.0",
+            Id = "create-task",
+            Method = "tools/call",
+            Params = new
+            {
+                Name = "memorysmith_task_create",
+                Arguments = new
+                {
+                    Title = "Agent tool smoke task",
+                    Description = "Created through the MCP task tool regression.",
+                    Priority = TaskPriorities.High,
+                    Labels = new[] { "agent", "mcp" },
+                    Slug = "agent-tool-smoke"
+                }
+            }
+        }, JsonSerializerOptions.Web);
+
+        createResponse.EnsureSuccessStatusCode();
+        using var createDocument = JsonDocument.Parse(await ExtractFirstToolTextAsync(createResponse));
+        var taskId = createDocument.RootElement.GetProperty("task").GetProperty("id").GetString();
+        Assert.That(taskId, Is.Not.Null.And.Contains("agent-tool-smoke"));
+
+        var statusResponse = await client.PostAsJsonAsync("/mcp", new
+        {
+            JsonRpc = "2.0",
+            Id = "status-task",
+            Method = "tools/call",
+            Params = new
+            {
+                Name = "memorysmith_task_set_status",
+                Arguments = new
+                {
+                    IdOrKey = taskId,
+                    Status = TaskStatuses.InProgress,
+                    Note = "agent started the task"
+                }
+            }
+        }, JsonSerializerOptions.Web);
+        statusResponse.EnsureSuccessStatusCode();
+
+        var updateResponse = await client.PostAsJsonAsync("/mcp", new
+        {
+            JsonRpc = "2.0",
+            Id = "update-task",
+            Method = "tools/call",
+            Params = new
+            {
+                Name = "memorysmith_task_update",
+                Arguments = new
+                {
+                    IdOrKey = taskId,
+                    Priority = TaskPriorities.Critical
+                }
+            }
+        }, JsonSerializerOptions.Web);
+        updateResponse.EnsureSuccessStatusCode();
+
+        var commentResponse = await client.PostAsJsonAsync("/mcp", new
+        {
+            JsonRpc = "2.0",
+            Id = "comment-task",
+            Method = "tools/call",
+            Params = new
+            {
+                Name = "memorysmith_task_add_comment",
+                Arguments = new
+                {
+                    IdOrKey = taskId,
+                    Body = "Progress note from the MCP task tool."
+                }
+            }
+        }, JsonSerializerOptions.Web);
+        commentResponse.EnsureSuccessStatusCode();
+
+        var attachmentResponse = await client.PostAsJsonAsync("/mcp", new
+        {
+            JsonRpc = "2.0",
+            Id = "attach-task",
+            Method = "tools/call",
+            Params = new
+            {
+                Name = "memorysmith_task_add_attachment",
+                Arguments = new
+                {
+                    IdOrKey = taskId,
+                    Name = "Smoke Artifact",
+                    Kind = "report",
+                    Uri = "https://example.test/artifacts/task-tool-smoke.txt"
+                }
+            }
+        }, JsonSerializerOptions.Web);
+        attachmentResponse.EnsureSuccessStatusCode();
+
+        var getResponse = await client.PostAsJsonAsync("/mcp", new
+        {
+            JsonRpc = "2.0",
+            Id = "get-task",
+            Method = "tools/call",
+            Params = new
+            {
+                Name = "memorysmith_task_get",
+                Arguments = new
+                {
+                    IdOrKey = taskId
+                }
+            }
+        }, JsonSerializerOptions.Web);
+
+        getResponse.EnsureSuccessStatusCode();
+        using var getDocument = JsonDocument.Parse(await ExtractFirstToolTextAsync(getResponse));
+        var task = getDocument.RootElement.GetProperty("task");
+        Assert.Multiple(() =>
+        {
+            Assert.That(task.GetProperty("status").GetString(), Is.EqualTo(TaskStatuses.InProgress));
+            Assert.That(task.GetProperty("priority").GetString(), Is.EqualTo(TaskPriorities.Critical));
+            Assert.That(task.GetProperty("comments").GetArrayLength(), Is.EqualTo(1));
+            Assert.That(task.GetProperty("attachments").GetArrayLength(), Is.EqualTo(1));
+            Assert.That(task.GetProperty("attachments")[0].GetProperty("uri").GetString(), Is.EqualTo("https://example.test/artifacts/task-tool-smoke.txt"));
         });
     }
 

@@ -32,6 +32,7 @@ public class McpController : ControllerBase
     private readonly IAuthorizationService _authorization;
     private readonly ChatToolCatalog _toolCatalog;
     private readonly IPageService _pages;
+    private readonly ITaskService _tasks;
 
     public McpController(
         MemoryApplicationService memories,
@@ -39,7 +40,8 @@ public class McpController : ControllerBase
         IOptionsMonitor<MemorySmithOptions> options,
         IAuthorizationService authorization,
         ChatToolCatalog toolCatalog,
-        IPageService pages)
+        IPageService pages,
+        ITaskService tasks)
     {
         _memories = memories;
         _vars = vars;
@@ -47,6 +49,7 @@ public class McpController : ControllerBase
         _authorization = authorization;
         _toolCatalog = toolCatalog;
         _pages = pages;
+        _tasks = tasks;
     }
 
     [HttpGet]
@@ -144,7 +147,7 @@ public class McpController : ControllerBase
             ? JsonNode.Parse(argumentsElement.GetRawText()) as JsonObject ?? new JsonObject()
             : new JsonObject();
         var options = _options.CurrentValue;
-        var ctx = new ChatToolExecutionContext(_memories, _pages, Transport: "mcp", User: User, Auth: options.Auth, DefaultPageMinimumRole: options.Pages.DefaultMinimumRole, Vars: _vars);
+        var ctx = new ChatToolExecutionContext(_memories, _pages, Transport: "mcp", User: User, Auth: options.Auth, DefaultPageMinimumRole: options.Pages.DefaultMinimumRole, Vars: _vars, Tasks: _tasks);
         var result = await tool.Execute(args, ctx, cancellationToken);
         return ToolText(result.Text, isError: result.IsError);
     }

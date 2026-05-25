@@ -1,0 +1,31 @@
+﻿{
+  "id": "tsk-0174-vector-embedding-model",
+  "key": "TSK-0174",
+  "title": "Vector Embedding Model",
+  "description": "Look to improve the vector embedding\nhttps://huggingface.co/nomic-ai/nomic-embed-text-v1.5\nhttps://huggingface.co/jinaai/jina-embeddings-v2-base-code/blob/main/onnx/model_fp16.onnx",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T20:40:09.0157422Z",
+  "updatedAtUtc": "2026-05-25T20:40:09.0157422Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}
