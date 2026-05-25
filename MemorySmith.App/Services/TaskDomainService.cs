@@ -329,15 +329,23 @@ public sealed class FileTaskService : ITaskService
                 return Task.FromResult<TaskItem?>(null);
             }
 
+            var assigneeMode = string.IsNullOrWhiteSpace(request.AssigneeMode) ? item.AssigneeMode : NormalizeAssigneeMode(request.AssigneeMode);
+            var assigneeDirectoryId = string.Equals(assigneeMode, TaskAssigneeModes.Directory, StringComparison.OrdinalIgnoreCase)
+                ? request.AssigneeDirectoryId is null ? item.AssigneeDirectoryId : NormalizeNullable(request.AssigneeDirectoryId)
+                : request.AssigneeDirectoryId is null ? null : NormalizeNullable(request.AssigneeDirectoryId);
+            var assigneeCustomText = string.Equals(assigneeMode, TaskAssigneeModes.Custom, StringComparison.OrdinalIgnoreCase)
+                ? request.AssigneeCustomText is null && string.Equals(item.AssigneeMode, TaskAssigneeModes.Custom, StringComparison.OrdinalIgnoreCase) ? item.AssigneeCustomText : NormalizeNullable(request.AssigneeCustomText)
+                : request.AssigneeCustomText is null ? null : NormalizeNullable(request.AssigneeCustomText);
+
             var updated = item with
             {
                 Title = string.IsNullOrWhiteSpace(request.Title) ? item.Title : request.Title.Trim(),
                 Description = request.Description is null ? item.Description : request.Description.Trim(),
                 Type = string.IsNullOrWhiteSpace(request.Type) ? item.Type : request.Type.Trim(),
                 Priority = string.IsNullOrWhiteSpace(request.Priority) ? item.Priority : request.Priority.Trim(),
-                AssigneeMode = string.IsNullOrWhiteSpace(request.AssigneeMode) ? item.AssigneeMode : NormalizeAssigneeMode(request.AssigneeMode),
-                AssigneeDirectoryId = request.AssigneeDirectoryId is null ? item.AssigneeDirectoryId : NormalizeNullable(request.AssigneeDirectoryId),
-                AssigneeCustomText = request.AssigneeCustomText is null ? item.AssigneeCustomText : NormalizeNullable(request.AssigneeCustomText),
+                AssigneeMode = assigneeMode,
+                AssigneeDirectoryId = assigneeDirectoryId,
+                AssigneeCustomText = assigneeCustomText,
                 Reporter = request.Reporter is null ? item.Reporter : NormalizeNullable(request.Reporter),
                 Labels = request.Labels is null ? item.Labels : NormalizeLabels(request.Labels),
                 DueDateUtc = request.DueDateUtc,

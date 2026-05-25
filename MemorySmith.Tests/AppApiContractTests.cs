@@ -306,6 +306,52 @@ public class AppApiContractTests
     }
 
     [Test]
+    public async Task TasksApi_CanSwitchDirectoryAssigneeToCustomAssignee()
+    {
+        var createResponse = await _client.PostAsJsonAsync("/api/tasks", new TaskCreateRequest(
+            Title: "Custom assignee regression",
+            Description: "Verify Directory to Custom assignment updates clear the directory id.",
+            Type: "Task",
+            Status: TaskStatuses.Backlog,
+            Priority: TaskPriorities.Medium,
+            AssigneeMode: TaskAssigneeModes.Directory,
+            AssigneeDirectoryId: "editor-01",
+            AssigneeCustomText: null,
+            Reporter: "copilot",
+            Labels: ["tasks"],
+            DueDateUtc: null,
+            EpicId: null,
+            ParentId: null,
+            Slug: "custom-assignee-regression"));
+        createResponse.EnsureSuccessStatusCode();
+        var created = await createResponse.Content.ReadFromJsonAsync<TaskItem>();
+
+        var updateResponse = await _client.PutAsJsonAsync($"/api/tasks/{created!.Id}", new TaskUpdateRequest(
+            Title: null,
+            Description: null,
+            Type: null,
+            Priority: null,
+            AssigneeMode: TaskAssigneeModes.Custom,
+            AssigneeDirectoryId: null,
+            AssigneeCustomText: "Agent Smith",
+            Reporter: null,
+            Labels: null,
+            DueDateUtc: null,
+            EpicId: null,
+            ParentId: null));
+        updateResponse.EnsureSuccessStatusCode();
+        var updated = await updateResponse.Content.ReadFromJsonAsync<TaskItem>();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(updated, Is.Not.Null);
+            Assert.That(updated!.AssigneeMode, Is.EqualTo(TaskAssigneeModes.Custom));
+            Assert.That(updated.AssigneeDirectoryId, Is.Null);
+            Assert.That(updated.AssigneeCustomText, Is.EqualTo("Agent Smith"));
+        });
+    }
+
+    [Test]
     public async Task TasksApi_CanSetRejectedStatusWithoutCompletingOrArchivingTask()
     {
         var createResponse = await _client.PostAsJsonAsync("/api/tasks", new TaskCreateRequest(
