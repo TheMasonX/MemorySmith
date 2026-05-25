@@ -6,19 +6,26 @@
 <PageTitle>Admin Setup - MemorySmith</PageTitle>
 
 <div class="wiki-workbench admin-workbench">
-    <section class="wiki-commandbar" aria-label="Admin setup">
+    <section class="wiki-commandbar" aria-label="@SetupHeaderLabel">
         <div class="wiki-title-block">
-            <MudText Typo="Typo.h5">Admin Setup</MudText>
-            <span class="wiki-count">First administrator</span>
+            <MudText Typo="Typo.h5">@SetupHeading</MudText>
+            <span class="wiki-count">@SetupSubheading</span>
         </div>
     </section>
 
     <section class="admin-panel-grid">
         <div class="health-lower-card admin-form-panel">
-            @if (!_needsSetup)
+            @if (_needsSetup is null)
             {
-                <MudAlert Severity="Severity.Success" Dense="true">Setup is already complete.</MudAlert>
-                <MudButton Href="/admin" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.AdminPanelSettings">Open admin</MudButton>
+                <MudProgressLinear Indeterminate="true" />
+            }
+            else if (_needsSetup == false)
+            {
+                <MudAlert Severity="Severity.Success" Dense="true">Admin setup is already complete.</MudAlert>
+                <div class="admin-form-stack">
+                    <MudButton Href="/admin" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.AdminPanelSettings">Open admin</MudButton>
+                    <MudButton Href="/" Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Home">Open MemorySmith</MudButton>
+                </div>
             }
             else
             {
@@ -46,10 +53,13 @@
     [SupplyParameterFromQuery(Name = "returnUrl")] public string? ReturnUrl { get; set; }
     [SupplyParameterFromQuery(Name = "error")] public string? Error { get; set; }
 
-    private bool _needsSetup;
+    private bool? _needsSetup;
     private bool ShowError => Error == "1";
     private string SanitizedReturnUrl => MemorySmithLocalAuthService.SanitizeReturnUrl(ReturnUrl ?? "/admin");
     private string SetupAction => $"/api/admin/setup?returnUrl={Uri.EscapeDataString(SanitizedReturnUrl)}";
+    private string SetupHeading => _needsSetup == false ? "Setup Complete" : "Admin Setup";
+    private string SetupSubheading => _needsSetup == false ? "First administrator already configured" : "First administrator";
+    private string SetupHeaderLabel => _needsSetup == false ? "Setup complete" : "Admin setup";
 
     protected override async Task OnInitializedAsync()
     {
