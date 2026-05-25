@@ -415,10 +415,18 @@ Easy local redeploy from an elevated PowerShell session:
 .\Scripts\Redeploy-MemorySmithService.ps1
 ```
 
+By default, the script now attempts HTTPS first by auto-discovering a certificate under `artifacts/certs` (prefers `*-[HttpsPort].pfx`, then newest `*.pfx`). If no certificate is found, it falls back to HTTP-only and continues deployment.
+
+Force HTTP-only deployment (skip HTTPS auto-discovery):
+
+```powershell
+.\Scripts\Redeploy-MemorySmithService.ps1 -HttpOnly
+```
+
 Optional LAN HTTPS path with a certificate file:
 
 ```powershell
-.\Scripts\Redeploy-MemorySmithService.ps1 -UseHttps -HttpsPort 7090 -HttpsCertificatePath .\artifacts\certs\memorysmith.home.arpa-7090.pfx -HttpsCertificatePassword (Get-Content .\artifacts\certs\memorysmith.home.arpa-7090-password.txt -Raw)
+.\Scripts\Redeploy-MemorySmithService.ps1 -UseHttps -HttpsPort 7090 -HttpsCertificatePath .\artifacts\certs\memorysmith.home.arpa-7090.pfx -HttpsCertificatePasswordFile .\artifacts\certs\memorysmith.home.arpa-7090-password.txt
 ```
 
 Current LAN certificate example for this repo:
@@ -458,7 +466,7 @@ Install flags:
 
 Arguments after `--` are still passed as runtime args to the service process for advanced ASP.NET Core settings. Use either `--port` or a custom runtime `--urls`, not both.
 
-`Redeploy-MemorySmithService.ps1` keeps the current HTTP path on `5089` and can optionally add HTTPS with `-UseHttps`. The current repo example uses a certificate whose SAN matches both `memorysmith.home.arpa` and `192.168.1.8`, with HTTPS served on port `7090`.
+`Redeploy-MemorySmithService.ps1` keeps HTTP on `5089` and now prefers HTTPS by default when it can discover certificate material. The current repo example uses a certificate whose SAN matches both `memorysmith.home.arpa` and `192.168.1.8`, with HTTPS served on port `7090`.
 
 For this repository's live project wiki, the target memory directory is `<repo>\Data\Memories`. A local service install on port 5089 would be:
 

@@ -127,10 +127,18 @@ For other devices on the LAN, the built-in ASP.NET Core development certificate 
 For a stronger LAN HTTPS path, use the Windows service redeploy script with an explicit certificate:
 
 ```powershell
-.\Scripts\Redeploy-MemorySmithService.ps1 -UseHttps -HttpsPort 7090 -HttpsCertificatePath .\artifacts\certs\memorysmith.home.arpa-7090.pfx -HttpsCertificatePassword (Get-Content .\artifacts\certs\memorysmith.home.arpa-7090-password.txt -Raw)
+.\Scripts\Redeploy-MemorySmithService.ps1 -UseHttps -HttpsPort 7090 -HttpsCertificatePath .\artifacts\certs\memorysmith.home.arpa-7090.pfx -HttpsCertificatePasswordFile .\artifacts\certs\memorysmith.home.arpa-7090-password.txt
 ```
 
 That command keeps HTTP on `5089` and adds HTTPS on `7090` using the LAN cert whose SAN covers both `memorysmith.home.arpa` and `192.168.1.8`.
+
+Current default behavior of `Redeploy-MemorySmithService.ps1` is HTTPS-first: running it with no HTTPS parameters attempts auto-discovery from `artifacts/certs` (prefers `*-[HttpsPort].pfx`, then newest `*.pfx`). If no certificate is found, deployment continues over HTTP-only.
+
+To explicitly skip HTTPS and force HTTP-only:
+
+```powershell
+.\Scripts\Redeploy-MemorySmithService.ps1 -HttpOnly
+```
 
 > [!NOTE]
 > Screenshot placeholder [HTTPS-SETUP-03]: browser on `https://localhost:7090` with lock icon visible.

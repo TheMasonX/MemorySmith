@@ -12,10 +12,12 @@ param(
     [int]$Port = 5089,
     [string]$BindAddress = '0.0.0.0',
     [switch]$UseHttps,
+    [switch]$HttpOnly,
     [int]$HttpsPort = 7090,
     [string]$HttpsBindAddress,
     [string]$HttpsCertificatePath,
     [string]$HttpsCertificatePassword,
+    [string]$HttpsCertificatePasswordFile,
     [bool]$AllowRemoteApi = $true,
     [switch]$EnsurePrivateFirewallRule = $true,
     [int]$ServiceTimeoutSeconds = 60,
@@ -203,6 +205,52 @@ function Start-ServiceAndWait {
     $service.WaitForStatus([System.ServiceProcess.ServiceControllerStatus]::Running, [TimeSpan]::FromSeconds($TimeoutSeconds))
 }
 
+function Resolve-DefaultHttpsCertificatePath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepositoryRoot,
+
+        [Parameter(Mandatory = $true)]
+        [int]$Port
+    )
+
+    $certDirectory = Join-Path $RepositoryRoot 'artifacts\certs'
+    if (-not (Test-Path $certDirectory)) {
+        return $null
+    }
+
+    $portMatchedCert = Get-ChildItem -Path $certDirectory -Filter "*-$Port.pfx" -File -ErrorAction SilentlyContinue |
+        Sort-Object LastWriteTimeUtc -Descending |
+        Select-Object -First 1
+
+    if ($portMatchedCert) {
+        return $portMatchedCert.FullName
+    }
+
+    $anyCert = Get-ChildItem -Path $certDirectory -Filter '*.pfx' -File -ErrorAction SilentlyContinue |
+        Sort-Object LastWriteTimeUtc -Descending |
+        Select-Object -First 1
+
+    return $anyCert?.FullName
+}
+
+function Resolve-DefaultHttpsPasswordFilePath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$CertificatePath
+    )
+
+    $certificateDirectory = Split-Path $CertificatePath -Parent
+    $certificateFileNameWithoutExtension = [System.IO.Path]::GetFileNameWithoutExtension($CertificatePath)
+    $defaultPasswordFile = Join-Path $certificateDirectory "$certificateFileNameWithoutExtension-password.txt"
+
+    if (Test-Path $defaultPasswordFile) {
+        return $defaultPasswordFile
+    }
+
+    return $null
+}
+
 function Wait-ReadyEndpoint {
     param(
         [Parameter(Mandatory = $true)]
@@ -297,33 +345,80 @@ if (-not (Test-Path $appProject)) {
     throw "Missing project file: $appProject"
 }
 
+if ($HttpOnly -and $UseHttps) {
+    throw 'Use either -HttpOnly or -UseHttps, not both.'
+}
+
+if (-not [string]::IsNullOrWhiteSpace($HttpsCertificatePassword) -and -not [string]::IsNullOrWhiteSpace($HttpsCertificatePasswordFile)) {
+    throw 'Use either -HttpsCertificatePassword or -HttpsCertificatePasswordFile, not both.'
+}
+
 Push-Location $repoRoot
 try {
+    $preferHttps = -not $HttpOnly
+    if ($UseHttps) {
+        $preferHttps = $true
+    }
+
     $listenUrls = @("http://$BindAddress`:$Port")
     $additionalRuntimeArgs = @()
     $readyUrl = "http://localhost:$Port/api/health/ready"
     $readySkipCertificateCheck = $false
     $resolvedHttpsCertificatePath = $null
+    $resolvedHttpsCertificatePassword = $null
+    $httpsEnabled = $false
 
-    if ($UseHttps) {
-        if ([string]::IsNullOrWhiteSpace($HttpsCertificatePath)) {
-            throw 'Use -HttpsCertificatePath when enabling -UseHttps.'
+    if ($preferHttps) {
+        $resolvedHttpsCertificatePath = if ([string]::IsNullOrWhiteSpace($HttpsCertificatePath)) {
+            Resolve-DefaultHttpsCertificatePath -RepositoryRoot $repoRoot -Port $HttpsPort
+        }
+        else {
+            [System.IO.Path]::GetFullPath($HttpsCertificatePath)
         }
 
-        $resolvedHttpsCertificatePath = [System.IO.Path]::GetFullPath($HttpsCertificatePath)
-        if (-not (Test-Path $resolvedHttpsCertificatePath)) {
+        if (-not [string]::IsNullOrWhiteSpace($resolvedHttpsCertificatePath) -and -not (Test-Path $resolvedHttpsCertificatePath)) {
             throw "HTTPS certificate file not found: $resolvedHttpsCertificatePath"
         }
 
-        $resolvedHttpsBindAddress = if ([string]::IsNullOrWhiteSpace($HttpsBindAddress)) { $BindAddress } else { $HttpsBindAddress }
-        $listenUrls += "https://$resolvedHttpsBindAddress`:$HttpsPort"
-        $additionalRuntimeArgs += @('--Kestrel:Certificates:Default:Path', $resolvedHttpsCertificatePath)
-        if (-not [string]::IsNullOrWhiteSpace($HttpsCertificatePassword)) {
-            $additionalRuntimeArgs += @('--Kestrel:Certificates:Default:Password', $HttpsCertificatePassword)
+        if ([string]::IsNullOrWhiteSpace($resolvedHttpsCertificatePath)) {
+            Write-Warning "No HTTPS certificate found under artifacts/certs. Continuing with HTTP only. Use -HttpOnly to suppress HTTPS auto-discovery."
         }
+        else {
+            if ([string]::IsNullOrWhiteSpace($HttpsCertificatePassword) -and [string]::IsNullOrWhiteSpace($HttpsCertificatePasswordFile)) {
+                $HttpsCertificatePasswordFile = Resolve-DefaultHttpsPasswordFilePath -CertificatePath $resolvedHttpsCertificatePath
+            }
 
-        $readyUrl = "https://localhost:$HttpsPort/api/health/ready"
-        $readySkipCertificateCheck = $true
+            if (-not [string]::IsNullOrWhiteSpace($HttpsCertificatePasswordFile)) {
+                $resolvedHttpsCertificatePasswordFile = [System.IO.Path]::GetFullPath($HttpsCertificatePasswordFile)
+                if (-not (Test-Path $resolvedHttpsCertificatePasswordFile)) {
+                    throw "HTTPS certificate password file not found: $resolvedHttpsCertificatePasswordFile"
+                }
+
+                $resolvedHttpsCertificatePassword = (Get-Content -Path $resolvedHttpsCertificatePasswordFile -Raw).Trim()
+                if ([string]::IsNullOrWhiteSpace($resolvedHttpsCertificatePassword)) {
+                    throw "HTTPS certificate password file is empty: $resolvedHttpsCertificatePasswordFile"
+                }
+            }
+            elseif (-not [string]::IsNullOrWhiteSpace($HttpsCertificatePassword)) {
+                $resolvedHttpsCertificatePassword = $HttpsCertificatePassword.Trim()
+                if ([string]::IsNullOrWhiteSpace($resolvedHttpsCertificatePassword)) {
+                    throw 'HTTPS certificate password resolves to empty after trimming.'
+                }
+            }
+
+            $resolvedHttpsBindAddress = if ([string]::IsNullOrWhiteSpace($HttpsBindAddress)) { $BindAddress } else { $HttpsBindAddress }
+            $listenUrls += "https://$resolvedHttpsBindAddress`:$HttpsPort"
+            $additionalRuntimeArgs += @('--Kestrel:Certificates:Default:Path', $resolvedHttpsCertificatePath)
+            if (-not [string]::IsNullOrWhiteSpace($resolvedHttpsCertificatePassword)) {
+                $additionalRuntimeArgs += @('--Kestrel:Certificates:Default:Password', $resolvedHttpsCertificatePassword)
+            }
+
+            $readyUrl = "https://localhost:$HttpsPort/api/health/ready"
+            $readySkipCertificateCheck = $true
+            $httpsEnabled = $true
+
+            Write-Host "==> HTTPS enabled using certificate: $resolvedHttpsCertificatePath"
+        }
     }
 
     $listenUrl = [string]::Join(';', $listenUrls)
@@ -340,7 +435,7 @@ try {
 
     if ($EnsurePrivateFirewallRule) {
         Ensure-FirewallRuleForPort -RuleName "MemorySmith HTTP $Port" -Port $Port
-        if ($UseHttps) {
+        if ($httpsEnabled) {
             Ensure-FirewallRuleForPort -RuleName "MemorySmith HTTPS $HttpsPort" -Port $HttpsPort
         }
     }
@@ -356,13 +451,13 @@ try {
     Write-Host "Publish directory: $PublishDirectory"
     Write-Host "Listen URL: $listenUrl"
     Write-Host "MemorySmith:AllowRemoteApi: $AllowRemoteApi"
-    if ($UseHttps -and $resolvedHttpsCertificatePath) {
+    if ($httpsEnabled -and $resolvedHttpsCertificatePath) {
         Write-Host "HTTPS certificate: $resolvedHttpsCertificatePath"
     }
     $lanIp = Get-PrimaryLanIp
     if ($lanIp) {
         Write-Host "LAN URL: http://${lanIp}:$Port"
-        if ($UseHttps) {
+        if ($httpsEnabled) {
             Write-Host "LAN HTTPS URL: https://${lanIp}:$HttpsPort"
         }
     }
