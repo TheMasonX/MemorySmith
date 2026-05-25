@@ -272,7 +272,7 @@ body {
 }
 
 .wiki-detail-header {
-    align-items: center;
+    align-items: flex-start;
     min-height: 68px;
     padding: 12px;
 }
@@ -281,12 +281,24 @@ body {
     display: flex;
     flex-direction: column;
     gap: 6px;
+    flex: 1 1 auto;
     min-width: 0;
     padding: 2px 0;
 }
 
 .wiki-detail-title-block .mud-typography-h6 {
     line-height: 1.25;
+    overflow-wrap: anywhere;
+}
+
+.wiki-detail-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    gap: 2px;
+    max-width: 168px;
 }
 
 .wiki-detail-header .wiki-result-meta {
@@ -655,6 +667,14 @@ body {
     flex: 0 0 auto;
     max-height: 32%;
     overflow: auto;
+}
+
+.wiki-link-grid section {
+    min-width: 0;
+}
+
+.wiki-conflicts-section {
+    grid-column: 1 / -1;
 }
 
 .wiki-section-title {

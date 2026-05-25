@@ -273,7 +273,7 @@
             else
             {
                 <div class="wiki-pane-header wiki-detail-header">
-                    <div>
+                    <div class="wiki-detail-title-block">
                         <MudText Typo="Typo.h6">@(string.IsNullOrWhiteSpace(_selectedRecord.Title) ? "(untitled)" : _selectedRecord.Title)</MudText>
                         <div class="wiki-result-meta">
                             <span class="wiki-status @StatusClass(_selectedRecord.Status)">@_selectedRecord.Status</span>
@@ -282,16 +282,17 @@
                             <span>@_selectedRecord.Confidence.ToString("P0") confidence</span>
                         </div>
                     </div>
-                    <MudSpacer />
-                    <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Size="Size.Small" OnClick="CopySelectedContentAsync" aria-label="Copy content" title="Copy content" />
-                    <MudIconButton Icon="@Icons.Material.Filled.Assignment" Size="Size.Small" OnClick="CopyAgentContextAsync" aria-label="Copy agent context" title="Copy agent context" />
-                    <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
-                        <Authorized>
-                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="EditSelected" aria-label="Edit" title="Edit" />
-                            <MudIconButton Icon="@Icons.Material.Filled.AddCircle" Size="Size.Small" OnClick="@(() => IncrementUsageAsync(_selectedRecord.Id))" aria-label="Increment usage" title="Increment usage" />
-                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteAsync(_selectedRecord.Id))" aria-label="Delete" title="Delete" />
-                        </Authorized>
-                    </AuthorizeView>
+                    <div class="wiki-detail-actions">
+                        <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Size="Size.Small" OnClick="CopySelectedContentAsync" aria-label="Copy content" title="Copy content" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Assignment" Size="Size.Small" OnClick="CopyAgentContextAsync" aria-label="Copy agent context" title="Copy agent context" />
+                        <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
+                            <Authorized>
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="EditSelected" aria-label="Edit" title="Edit" />
+                                <MudIconButton Icon="@Icons.Material.Filled.AddCircle" Size="Size.Small" OnClick="@(() => IncrementUsageAsync(_selectedRecord.Id))" aria-label="Increment usage" title="Increment usage" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="@(() => DeleteAsync(_selectedRecord.Id))" aria-label="Delete" title="Delete" />
+                            </Authorized>
+                        </AuthorizeView>
+                    </div>
                 </div>
 
                 @if (_selectedSemanticMatch is not null)
@@ -336,13 +337,16 @@
                         @RenderMemoryLinks(_selectedRecord.References)
                     </section>
                     <section>
-                        <div class="wiki-section-title">Conflicts</div>
-                        @RenderMemoryLinks(_selectedRecord.Conflicts)
-                    </section>
-                    <section>
                         <div class="wiki-section-title">Source Links</div>
                         @RenderSourceLinks(_selectedRecord.SourceLinks)
                     </section>
+                    @if (_selectedRecord.Conflicts.Count > 0)
+                    {
+                        <section class="wiki-conflicts-section">
+                            <div class="wiki-section-title">Conflicts</div>
+                            @RenderMemoryLinks(_selectedRecord.Conflicts)
+                        </section>
+                    }
                 </div>
             }
         </main>
