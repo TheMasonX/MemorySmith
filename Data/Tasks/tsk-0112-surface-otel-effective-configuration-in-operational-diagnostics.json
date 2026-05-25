@@ -1,0 +1,41 @@
+{
+  "Id": "tsk-0112-surface-otel-effective-configuration-in-operational-diagnostics",
+  "Key": "TSK-0112",
+  "Title": "Surface OTel effective configuration in operational diagnostics.",
+  "Description": "Extend diagnostics visibility so operators can verify telemetry posture without inspecting code or raw config files. Include whether OTel is enabled, tracing/metrics/export toggles, endpoint/protocol, sampling percentage, and configured path exclusions. Acceptance criteria: diagnostics snapshots include redacted effective telemetry configuration details, health/diagnostics workflows can confirm runtime telemetry posture, and no sensitive secrets are exposed.",
+  "Type": "Task",
+  "Status": "Done",
+  "Priority": "Medium",
+  "AssigneeMode": "Custom",
+  "AssigneeDirectoryId": null,
+  "AssigneeCustomText": "Copilot",
+  "Reporter": "TheMasonX",
+  "Labels": [
+    "otel",
+    "diagnostics",
+    "admin-config",
+    "implemented"
+  ],
+  "Attachments": [],
+  "ExternalLinks": [],
+  "LinkedPages": [
+    "workbench/tasks",
+    "research/otel-local-first-v1-plan-20260524"
+  ],
+  "Comments": [
+    {
+      "Id": "c-0112-1",
+      "Author": "AgentSmith",
+      "Body": "Operational diagnostics must expose effective telemetry posture without leaking secrets or payload data.",
+      "CreatedAtUtc": "2026-05-24T21:08:00.0000000Z"
+    }
+  ],
+  "EpicId": null,
+  "ParentId": null,
+  "DueDateUtc": null,
+  "CreatedAtUtc": "2026-05-24T21:08:00.0000000Z",
+  "UpdatedAtUtc": "2026-05-24T21:08:00.0000000Z",
+  "CompletedAtUtc": "2026-05-24T21:08:00.0000000Z",
+  "Revision": 1,
+  "IsArchived": false
+}

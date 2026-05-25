@@ -837,6 +837,7 @@ public class PagesAndChatTests
             Assert.That(provider.LastRequest!.Messages.Any(message => message.Content.Contains("Current MemorySmith user: Signed In User", StringComparison.Ordinal)), Is.True);
             Assert.That(provider.LastRequest.Messages.Any(message => message.Content.Contains("Current MemorySmith capabilities and limits", StringComparison.Ordinal)), Is.True);
             Assert.That(provider.LastRequest.Messages.Any(message => message.Content.Contains("Chat mode cannot create, update, or delete MemorySmith memories or pages", StringComparison.Ordinal)), Is.True);
+            Assert.That(provider.LastRequest.Messages.Any(message => message.Content.Contains("read-only local wiki search/retrieval tools", StringComparison.OrdinalIgnoreCase)), Is.True);
         });
     }
 

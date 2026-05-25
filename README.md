@@ -147,6 +147,16 @@ The page editor has a markdown toolbar for common inserts, an image upload/embed
 
 Task APIs support list/get/create/update/delete plus dedicated mutation endpoints for status updates, comments, link management, and attachments. The page and task domains are intentionally linked (for example page-slug references), so execution and planning notes can stay close to implementation artifacts.
 
+### Evidence-Backed Task Standard
+
+Use `/tasks` as the primary planning surface for audits and implementation, not as a mirror of external notes.
+
+- Every implementation task should include explicit acceptance criteria and at least one validation note.
+- Every audit finding should map to a task (`Backlog`, `Ready`, or `Archived` with reason) rather than remaining only in markdown reports.
+- Use task comments for evidence snapshots: file paths, command outputs, test names, screenshots, or page links.
+- When a task is blocked, capture blocker details, last verified state, and the next proposed action in the task comment stream.
+- Keep report pages in `Data/Pages/research` and durable memory records in `Data/Memories`, then link both from the corresponding `/tasks` item.
+
 ## Tag Governance
 
 `/tags` and `/api/governance` provide admin-governed tag policy management. The Tag manager supports policy mode and plain-tag mode controls, allow/block lists, alias rules, namespace constraints, policy diagnostics feedback, observed-tag usage analytics, and suggestion triage (approve/reject).
@@ -171,7 +181,7 @@ The maintenance workbench is non-mutating by default and warning-first; proposal
 
 The chat UI queries the selected provider for available models, supports provider/model selection, persists the last used provider/model, Mermaid diagram theme mode, and active chat, keeps the top model bar and bottom composer stable when switching the shared sidebar between History and Trace, places the sidebar toggle at the right edge beside the shared sidebar, streams live response chunks with an elapsed timer, renders message bodies as safe Markdown through Markdig with raw HTML disabled, supports Mermaid diagrams and Prism-compatible fenced code highlighting, lets users choose Auto/Light/Dark Mermaid theme mode, wraps rendered diagrams in a matching readable light or dark surface, defers Mermaid conversion while a response is actively streaming so unfinished fences remain visible as code, shows the provider/model used on assistant turns, shows per-response durations, displays bottom-right context usage with context-window percentage when known and provider quota/rate text when reported, deletes chats from history with confirmation, supports icon Stop for immediate cancellation plus icon Finish Step for a softer stop after the current provider/tool step, supports text and image file attachments, supports pasted clipboard images, Enter-to-send with Shift+Enter newlines, autoscroll, clickable memory/page resource chips behind a collapsed per-turn References drawer, pending-response feedback, compact browser-local chat history, and collapsible thinking blocks when the provider returns reasoning content. History and Trace share one right sidebar with tabs; Trace shows the selected turn's execution graph, turn selector, reasoning, tool requests/results, write approvals, token estimates, and tool latency with filters, collapsible trace headers, and editable tool rerun. The transcript no longer renders per-turn Trace buttons. Neutral resource chips are preloaded context, blue resource chips are mid-turn tool/intercept resources, and green write chips are Agent-created pages. Text attachments are bounded and supplied as context. Image attachments are saved to trusted temp files for persistence and supplied as native image payloads when the selected provider supports them; Ctrl+V handles copied image files, Clipboard API image blobs, copied HTML image references, and data:image URLs. Draft text and queued attachments are retained per chat session when switching chats, and navigation warns before leaving with unsent content.
 
-Chat mode answers questions and the shared prompt asks providers to format normal answers as GitHub-flavored Markdown. The prompt also gives all chat agents explicit guidance for when to use preloaded wiki context, when to request a single app-intercepted read-only `toolCalls` JSON object, and how to produce complete Mermaid fenced diagrams only when a diagram clarifies the answer. Each turn includes a runtime capability message derived from the active mode, `Chat:*` limits, and the current user's roles, so models are told whether tools are read-only, whether Agent writes are configured, and whether the current user can approve writes. Chat mode cannot create or update memories/pages. Agent mode asks the provider for structured actions and can write memories and pages only when `Chat:AgentWritesEnabled` is explicitly set to true and the current user has an Editor or Admin role; the default is false. The chat UI still requires explicit per-action approval before applying proposed Agent writes, and pending proposals are described as pending rather than created. Tool-call execution is read-only and bounded by `Chat:MaxToolIterations`, `Chat:MaxToolCallsPerTurn`, and `Chat:MaxToolResultCharacters`; write actions still require Agent mode structured output, opt-in write setting, RBAC, and approval. The shared system prompt is stored in `MemorySmith.Core/Docs/Prompts/wiki-chat-agent.md` and copied into the app output for service/publish runs; `MemorySmith.Core/Docs/Prompts/wiki-chat-agent.modelfile` carries the matching Athena/Ollama system prompt.
+Chat mode answers questions and the shared prompt asks providers to format normal answers as GitHub-flavored Markdown. The prompt also gives all chat agents explicit guidance for when to use preloaded wiki context, when to request a single app-intercepted read-only `toolCalls` JSON object, and how to produce complete Mermaid fenced diagrams only when a diagram clarifies the answer. Each turn includes a runtime capability message derived from the active mode, `Chat:*` limits, and the current user's roles, so models are told whether tools are read-only, whether Agent writes are configured, and whether the current user can approve writes. Chat mode cannot create or update memories/pages, but it can use the read-only search and retrieval tools for local wiki evidence. Agent mode asks the provider for structured actions and can write memories and pages only when `Chat:AgentWritesEnabled` is explicitly set to true and the current user has an Editor or Admin role; the default is false. The chat UI still requires explicit per-action approval before applying proposed Agent writes, and pending proposals are described as pending rather than created. Tool-call execution is read-only and bounded by `Chat:MaxToolIterations`, `Chat:MaxToolCallsPerTurn`, and `Chat:MaxToolResultCharacters`; write actions still require Agent mode structured output, opt-in write setting, RBAC, and approval. The shared system prompt is stored in `MemorySmith.Core/Docs/Prompts/wiki-chat-agent.md` and copied into the app output for service/publish runs; `MemorySmith.Core/Docs/Prompts/wiki-chat-agent.modelfile` carries the matching Athena/Ollama system prompt.
 
 The provider interface is intentionally narrow so OpenAI, Anthropic, or other APIs can be added without changing the UI or agent workflow.
 
@@ -182,8 +192,11 @@ The provider interface is intentionally narrow so OpenAI, Anthropic, or other AP
 - `MemorySmith.Core/Docs/Prompts/maintenance-agent-task.md`: maintenance task analysis prompt.
 - `MemorySmith.Core/Docs/Prompts/maintenance-proposal-generation.md`: proposal generation contract prompt.
 - `MemorySmith.Core/Docs/Prompts/maintenance-revision-cycle.md`: reviewer feedback revision-cycle prompt.
+- `.github/agents/smith.agent.md`: canonical repository-workflow prompt for Agent Smith (task tracking, evidence standards, and memory/wiki maintenance).
+- `.github/copilot-instructions.md`: repository-wide Copilot behavior and project map guidance.
 
 When updating agent behavior, keep these prompt files aligned with runtime capabilities in `MemorySmith.App/Services` and `MemorySmith.App/Controllers`.
+Treat `.github/agents/smith.agent.md` as the primary workflow contract for this repository, and backfill supporting instructions/docs after Smith prompt updates to avoid guidance drift.
 
 ## Search
 
@@ -348,9 +361,12 @@ Override via `appsettings.Development.json` or environment variables (`MemorySmi
 - **`PagesPath`** — root of the markdown page store. `assets/` under this directory is served at `/page-assets` with page visibility checks for referenced assets.
 - **`VarsPath`** — path to the flat JSON dict used for `%VarName%` source link expansion.
 - **`SourceLinks:MaxReadBytes`** — maximum local file content returned per source-link entry by MCP source bundle reads.
+- **`SourceLinks:AllowUnrestrictedSourceReads`** — opt-in broad read mode for local source-linked files when you want reads outside the configured allowlist.
+- **`SourceLinks:ReadContextLinesBefore` / `SourceLinks:ReadContextLinesAfter`** — line padding added around requested source line ranges so source-grounded reads can include nearby context.
 - **`SourceLinks:AllowOpenWithDefaultApp`** — allows Ctrl+Click source-link opening after variable resolution and allowed-root checks.
 - **`SourceLinks:AllowedFileRootVariables`** — variable names whose resolved values are trusted roots for local source-link file reads. Defaults to `MemorySmithRepo`.
 - **`SourceLinks:AllowedFileRoots`** — optional explicit local roots, useful when source links need access outside the repo wiki root.
+- **`SourceLinks:DeniedFileRootVariables` / `SourceLinks:DeniedFileRoots`** — explicit deny roots that always block source-link reads and opening, even when broad reads are enabled.
 - **`Chat:*`** — provider, Ollama endpoint/model, GitHub Copilot model/token environment settings, prompt path, timeout, context/history/attachment limits, read-only intercepted wiki tool-call limits, and whether agent-mode writes are enabled. `AgentWritesEnabled` is false by default; enabling it allows Agent mode to propose structured memory/page writes, but applying those writes still requires an authenticated Editor or Admin and explicit approval. `PreloadContextEnabled`, `MaxPreloadedContextRecords`, and `MaxPreloadedContextPages` control the small automatic pre-context used only for explicit local-knowledge prompts. `MaxContextItemCharacters` bounds each memory/page item sent to the chat provider, `MaxAttachmentCharacters` bounds text attachments, and `MaxAttachmentBytes` bounds uploaded/pasted files. `ToolCallsEnabled` allows models to request app-executed MemorySmith search/context/get calls inside the same user turn, while `MaxToolIterations`, `MaxToolCallsPerTurn`, and `MaxToolResultCharacters` bound cost and result size. `OllamaContextWindowTokens` is optional metadata for the UI usage meter when a local model's context window is known. Set `OllamaModel` to a model returned by `ollama list`; set `GitHubModel` to a Copilot model available to the authenticated GitHub account. The configured GitHub fallback order prefers free/low-cost GPT models first, then Claude Haiku, then Sonnet. The UI can query providers directly for available models and stores the last selected provider/model in browser storage.
 
 ## Windows Service
@@ -399,6 +415,31 @@ After installation, start the service from `services.msc` or PowerShell, then op
 
 ## Validate
 
+Use one entrypoint for local validation:
+
+```powershell
+.\Scripts\Validate-Repo.ps1
+```
+
+Common optional variants:
+
+```powershell
+.\Scripts\Validate-Repo.ps1 -IncludeCoverage
+.\Scripts\Validate-Repo.ps1 -IncludeE2E
+.\Scripts\Validate-Repo.ps1 -IncludeDocs
+```
+
+The script runs build/test plus markdown/wiki integrity checks by default, then adds optional coverage, browser regression, and docs-site validation when requested.
+
+Default local validation includes task-record integrity, markdown page-link checks, and markdown path-literal checks. The task-record check verifies JSON parseability, required identity fields, filename/id consistency, recognized statuses, and unique task ids/keys.
+
+The CI workflow has two stable validation jobs:
+
+- `build-and-test`: restore, task-record validation, page validators, build, NUnit tests, and Cobertura coverage artifacts.
+- `browser-navigation-freeze`: Playwright navigation-freeze regression with failure screenshots, video, traces, and HTML report artifacts.
+
+Underlying commands (also available individually):
+
 ```powershell
 dotnet build MemorySmith.slnx -v minimal
 dotnet test MemorySmith.slnx -v minimal
@@ -414,7 +455,7 @@ Run the browser route-hop regression suite (Playwright) for navigation freeze pr
 
 ```powershell
 Set-Location e2e
-npm install
+npm ci
 npx playwright install chromium
 npm run test:nav-freeze
 ```
@@ -431,6 +472,12 @@ Rebuild the GitHub Pages wiki site locally, open the generated site, or trigger 
 .\Scripts\Publish-WikiSite.ps1
 .\Scripts\Publish-WikiSite.ps1 -OpenSite
 .\Scripts\Publish-WikiSite.ps1 -Deploy
+```
+
+Validate task records for parseability and unique ids/keys:
+
+```powershell
+.\Scripts\Test-TaskRecords.ps1
 ```
 
 Validate local markdown page links (relative .md links and existing targets under `Data/Pages`):
@@ -452,7 +499,7 @@ git config core.hooksPath .githooks
 ```
 
 After setting `core.hooksPath`, `git commit` runs the page-link validator automatically.
-After setting `core.hooksPath`, `git commit` runs both validators automatically.
+After setting `core.hooksPath`, `git commit` runs the task-record and page validators automatically.
 
 The script creates or reuses a local Python virtual environment under `artifacts/tools/docs-site-venv`, installs the `markdown` package used by CI, rebuilds `docs/output/wiki`, and with `-Deploy` dispatches `.github/workflows/docs-pages.yml` through GitHub CLI. `-Deploy` requires `gh auth login` and only runs from `main` or `master`.
 

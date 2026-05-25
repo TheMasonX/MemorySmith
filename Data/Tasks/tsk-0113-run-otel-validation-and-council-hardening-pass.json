@@ -1,0 +1,42 @@
+{
+  "Id": "tsk-0113-run-otel-validation-and-council-hardening-pass",
+  "Key": "TSK-0113",
+  "Title": "Run OTel validation and council hardening pass.",
+  "Description": "After OTel implementation, run repository validation/tests and perform a simulated LLM council review focused on privacy, performance, and operational safety. Remediate findings before completion. Acceptance criteria: validation scripts/tests pass, council review findings are documented, identified risks are either fixed or explicitly accepted with rationale, and implementation remains local-first with no mandatory external dependency.",
+  "Type": "Task",
+  "Status": "Done",
+  "Priority": "High",
+  "AssigneeMode": "Custom",
+  "AssigneeDirectoryId": null,
+  "AssigneeCustomText": "Copilot",
+  "Reporter": "TheMasonX",
+  "Labels": [
+    "otel",
+    "validation",
+    "council-review",
+    "hardening",
+    "implemented"
+  ],
+  "Attachments": [],
+  "ExternalLinks": [],
+  "LinkedPages": [
+    "workbench/tasks",
+    "research/otel-local-first-v1-plan-20260524"
+  ],
+  "Comments": [
+    {
+      "Id": "c-0113-1",
+      "Author": "AgentSmith",
+      "Body": "Council/hardening task enforces explicit post-implementation risk review with remediation before sign-off.",
+      "CreatedAtUtc": "2026-05-24T21:09:00.0000000Z"
+    }
+  ],
+  "EpicId": null,
+  "ParentId": null,
+  "DueDateUtc": null,
+  "CreatedAtUtc": "2026-05-24T21:09:00.0000000Z",
+  "UpdatedAtUtc": "2026-05-24T21:09:00.0000000Z",
+  "CompletedAtUtc": "2026-05-24T21:09:00.0000000Z",
+  "Revision": 1,
+  "IsArchived": false
+}

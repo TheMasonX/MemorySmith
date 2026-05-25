@@ -1,0 +1,44 @@
+{
+  "Id": "tsk-0104-modernize-serilog-bootstrap-with-config-driven-structured-sinks-and-enrichers",
+  "Key": "TSK-0104",
+  "Title": "Modernize Serilog bootstrap with config-driven structured sinks, enrichers, and Windows Event Log.",
+  "Description": "MemorySmith already uses Serilog, but the bootstrap is still a minimal code-only console plus rolling file setup. Move logger construction to configuration-backed Serilog settings, add standard enrichers and correlation metadata, keep a developer-friendly console sink, and configure structured sinks for both file/JSON search and Windows Event Log when running on Windows. Windows Event Log should be enabled by default on Windows systems, with an explicit setting to disable it when needed. Acceptance criteria: logging is configured from app settings, structured event payloads include common correlation fields, sink selection is environment-aware, Windows Event Log entries are emitted for key operational and error events by default on Windows, and every logging control is editable from the existing admin configuration UI/service. Validation: start the app in local and service-like modes, trigger representative requests and failures, confirm structured fields and event-log entries appear in configured destinations, then disable the Windows Event Log sink via admin settings and verify behavior changes without code edits.",
+  "Type": "Task",
+  "Status": "Backlog",
+  "Priority": "High",
+  "AssigneeMode": "Custom",
+  "AssigneeDirectoryId": null,
+  "AssigneeCustomText": "Copilot",
+  "Reporter": "TheMasonX",
+  "Labels": [
+    "logging",
+    "serilog",
+    "observability",
+    "configuration",
+    "audit-vetted",
+    "windows-event-log",
+    "traceability",
+    "admin-config"
+  ],
+  "Attachments": [],
+  "ExternalLinks": [],
+  "LinkedPages": [
+    "workbench/tasks"
+  ],
+  "Comments": [
+    {
+      "Id": "c-0104-1",
+      "Author": "AgentSmith",
+      "Body": "Evidence: `MemorySmith.App/Program.cs` currently builds `Log.Logger` with only `WriteTo.Console()` and `WriteTo.File(...)`, and `MemorySmith.App/appsettings.json` has no `Serilog` section for sink or enricher configuration.",
+      "CreatedAtUtc": "2026-05-25T00:12:00.0000000Z"
+    }
+  ],
+  "EpicId": null,
+  "ParentId": null,
+  "DueDateUtc": null,
+  "CreatedAtUtc": "2026-05-25T00:12:00.0000000Z",
+  "UpdatedAtUtc": "2026-05-25T00:12:00.0000000Z",
+  "CompletedAtUtc": null,
+  "Revision": 1,
+  "IsArchived": false
+}

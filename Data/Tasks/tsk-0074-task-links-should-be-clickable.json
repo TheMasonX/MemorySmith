@@ -1,0 +1,38 @@
+﻿{
+  "id": "tsk-0074-task-links-should-be-clickable",
+  "key": "TSK-0074",
+  "title": "Task Links Should Be Clickable",
+  "description": "The pages links or any other links attached to a task should be clickable",
+  "type": "Task",
+  "status": "Done",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [
+    {
+      "id": "c-complete-0074-20260524",
+      "author": "AgentSmith",
+      "body": "Completed by rendering linked page slugs as /pages/<slug> anchors and attachment URIs as external anchors in the Tasks workbench Links/Attachments tabs. External links were already clickable. Validation: focused Tasks markup test and dotnet build passed.",
+      "createdAtUtc": "2026-05-24T20:47:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-24T19:03:00.3439732Z",
+  "updatedAtUtc": "2026-05-24T20:47:00.0000000Z",
+  "completedAtUtc": "2026-05-24T20:47:00.0000000Z",
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

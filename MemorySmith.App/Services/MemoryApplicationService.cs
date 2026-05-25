@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using System.Diagnostics;
 using Lucene.Net.Analysis.Standard;
 using Lucene.Net.Analysis.TokenAttributes;
 using Lucene.Net.Util;
@@ -6,6 +7,8 @@ using MemorySmith.Core.Indexing;
 using MemorySmith.Core.Models;
 using MemorySmith.Storage;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace MemorySmith.App.Services;
 
@@ -46,6 +49,7 @@ public partial class MemoryApplicationService
     private readonly AuditLogService? _audit;
     private readonly VersionHistoryService? _history;
     private readonly MemoryDiagnosticsService? _diagnostics;
+    private readonly ILogger<MemoryApplicationService> _logger;
 
     public MemoryApplicationService(
         IMemoryStore store,
@@ -57,7 +61,8 @@ public partial class MemoryApplicationService
         SemanticEmbeddingSearchService? semanticEmbeddings = null,
         AuditLogService? audit = null,
         VersionHistoryService? history = null,
-        MemoryDiagnosticsService? diagnostics = null)
+        MemoryDiagnosticsService? diagnostics = null,
+        ILogger<MemoryApplicationService>? logger = null)
     {
         _store = store;
         _eventStore = eventStore;
@@ -65,6 +70,7 @@ public partial class MemoryApplicationService
         _telemetryTracker = telemetryTracker;
         _publisher = publisher;
         _options = options.Value;
+        _logger = logger ?? NullLogger<MemoryApplicationService>.Instance;
         _semanticEmbeddings = semanticEmbeddings;
         _audit = audit;
         _history = history;
@@ -104,6 +110,9 @@ public partial class MemoryApplicationService
 
     public Task<IReadOnlyList<MemoryRecord>> SearchAsync(MemorySearchQuery query, CancellationToken cancellationToken)
     {
+        using var operation = StartTelemetryOperation("memory.search.lexical");
+        var started = Stopwatch.GetTimestamp();
+        var success = false;
         cancellationToken.ThrowIfCancellationRequested();
 
         RecordQueryEvent("lexical", query.Query);
@@ -116,12 +125,16 @@ public partial class MemoryApplicationService
             .Take(limit)
             .Select(result => snapshot.FilteredRecordsById[result.Id])
             .ToList();
-
+        success = true;
+        LogBenchmark("memory.search.lexical", Stopwatch.GetElapsedTime(started).TotalMilliseconds, success, query: query.Query, resultCount: results.Count);
         return Task.FromResult<IReadOnlyList<MemoryRecord>>(results);
     }
 
     public Task<IReadOnlyList<MemoryMetadata>> SearchMetadataAsync(MemorySearchQuery query, CancellationToken cancellationToken)
     {
+        using var operation = StartTelemetryOperation("memory.search.metadata");
+        var started = Stopwatch.GetTimestamp();
+        var success = false;
         cancellationToken.ThrowIfCancellationRequested();
 
         RecordQueryEvent("lexical", query.Query);
@@ -134,12 +147,16 @@ public partial class MemoryApplicationService
             .Take(limit)
             .Select(result => ToMetadata(snapshot.FilteredRecordsById[result.Id], snapshot.AllRecordsById))
             .ToList();
-
+        success = true;
+        LogBenchmark("memory.search.metadata", Stopwatch.GetElapsedTime(started).TotalMilliseconds, success, query: query.Query, resultCount: results.Count);
         return Task.FromResult<IReadOnlyList<MemoryMetadata>>(results);
     }
 
     public Task<IReadOnlyList<MemorySearchResult>> LexicalSearchAsync(MemorySearchQuery query, CancellationToken cancellationToken)
     {
+        using var operation = StartTelemetryOperation("memory.search.lexical.diagnostics");
+        var started = Stopwatch.GetTimestamp();
+        var success = false;
         cancellationToken.ThrowIfCancellationRequested();
 
         RecordQueryEvent("lexical", query.Query);
@@ -154,12 +171,16 @@ public partial class MemoryApplicationService
                 ? result with { Diagnostics = GetDiagnostics(record, snapshot.AllRecordsById) }
                 : result)
             .ToList();
-
+        success = true;
+        LogBenchmark("memory.search.lexical.diagnostics", Stopwatch.GetElapsedTime(started).TotalMilliseconds, success, query: query.Query, resultCount: results.Count);
         return Task.FromResult<IReadOnlyList<MemorySearchResult>>(results);
     }
 
     public Task<IReadOnlyList<MemorySearchResult>> SemanticSearchAsync(SemanticMemorySearchQuery query, CancellationToken cancellationToken)
     {
+        using var operation = StartTelemetryOperation("memory.search.semantic");
+        var started = Stopwatch.GetTimestamp();
+        var success = false;
         cancellationToken.ThrowIfCancellationRequested();
 
         RecordQueryEvent("semantic", query.Query);
@@ -174,12 +195,16 @@ public partial class MemoryApplicationService
                 ? result with { Diagnostics = GetDiagnostics(record, snapshot.AllRecordsById) }
                 : result)
             .ToList();
-
+        success = true;
+        LogBenchmark("memory.search.semantic", Stopwatch.GetElapsedTime(started).TotalMilliseconds, success, query: query.Query, resultCount: results.Count);
         return Task.FromResult<IReadOnlyList<MemorySearchResult>>(results);
     }
 
     public Task<IReadOnlyList<MemorySearchResult>> HybridSearchAsync(HybridMemorySearchQuery query, CancellationToken cancellationToken)
     {
+        using var operation = StartTelemetryOperation("memory.search.hybrid");
+        var started = Stopwatch.GetTimestamp();
+        var success = false;
         cancellationToken.ThrowIfCancellationRequested();
 
         RecordQueryEvent("hybrid", query.Query);
@@ -187,7 +212,8 @@ public partial class MemoryApplicationService
         var limit = Clamp(query.Limit, 1, _options.Limits.MaxSearchLimit, 20);
         var snapshot = CreateSearchSnapshot(query.Status, query.Tags);
         var results = RankHybridResults(snapshot, query.Query, limit);
-
+        success = true;
+        LogBenchmark("memory.search.hybrid", Stopwatch.GetElapsedTime(started).TotalMilliseconds, success, query: query.Query, resultCount: results.Count);
         return Task.FromResult<IReadOnlyList<MemorySearchResult>>(results);
     }
 
@@ -214,6 +240,9 @@ public partial class MemoryApplicationService
 
     public async Task<MemoryContextPack> BuildContextPackAsync(MemoryContextPackQuery query, CancellationToken cancellationToken)
     {
+        using var operation = StartTelemetryOperation("memory.context-pack");
+        var started = Stopwatch.GetTimestamp();
+        var success = false;
         cancellationToken.ThrowIfCancellationRequested();
 
         RecordQueryEvent("context_pack", query.Query);
@@ -305,11 +334,14 @@ public partial class MemoryApplicationService
 
         var diagnosticWarnings = MemoryDiagnosticFormatting.ToWarningSummaries(records);
 
-        return new MemoryContextPack(
+        var pack = new MemoryContextPack(
             query.Query,
             DateTime.UtcNow,
             records,
             warnings.Concat(diagnosticWarnings).Distinct(StringComparer.OrdinalIgnoreCase).ToList());
+        success = true;
+        LogBenchmark("memory.context-pack", Stopwatch.GetElapsedTime(started).TotalMilliseconds, success, query: query.Query, resultCount: pack.Records.Count);
+        return pack;
 
         bool TryAddToPack(MemoryRecord record, string relationship, double? score, string? matchReason, List<MemoryRecord> targetFrontier)
         {
@@ -423,6 +455,9 @@ public partial class MemoryApplicationService
 
     public async Task<MemoryRecord> CreateAsync(MemoryRecord record, CancellationToken cancellationToken)
     {
+        using var operation = StartTelemetryOperation("memory.create");
+        var started = Stopwatch.GetTimestamp();
+        var success = false;
         cancellationToken.ThrowIfCancellationRequested();
 
         record.Id = string.IsNullOrWhiteSpace(record.Id) ? Guid.NewGuid().ToString() : record.Id.Trim();
@@ -447,11 +482,16 @@ public partial class MemoryApplicationService
         }
 
         await AuditAndPublishAsync(record.Id, "Created", "Memory created", cancellationToken);
+        success = true;
+        LogBenchmark("memory.create", Stopwatch.GetElapsedTime(started).TotalMilliseconds, success, recordId: record.Id);
         return record;
     }
 
     public async Task<MemoryRecord?> UpdateAsync(string id, MemoryRecord record, CancellationToken cancellationToken)
     {
+        using var operation = StartTelemetryOperation("memory.update");
+        var started = Stopwatch.GetTimestamp();
+        var success = false;
         cancellationToken.ThrowIfCancellationRequested();
         var before = IsValidId(id) ? _store.Load(id) : null;
         if (before is null)
@@ -483,11 +523,16 @@ public partial class MemoryApplicationService
         }
 
         await AuditAndPublishAsync(record.Id, "Updated", "Memory updated", cancellationToken);
+        success = true;
+        LogBenchmark("memory.update", Stopwatch.GetElapsedTime(started).TotalMilliseconds, success, recordId: record.Id);
         return record;
     }
 
     public async Task<bool> DeleteAsync(string id, CancellationToken cancellationToken)
     {
+        using var operation = StartTelemetryOperation("memory.delete");
+        var started = Stopwatch.GetTimestamp();
+        var success = false;
         cancellationToken.ThrowIfCancellationRequested();
         var before = IsValidId(id) ? _store.Load(id) : null;
         if (before is null)
@@ -512,6 +557,8 @@ public partial class MemoryApplicationService
         }
 
         await AuditAndPublishAsync(id, "Deleted", "Memory deleted", cancellationToken);
+        success = true;
+        LogBenchmark("memory.delete", Stopwatch.GetElapsedTime(started).TotalMilliseconds, success, recordId: id);
         return true;
     }
 
@@ -1234,6 +1281,59 @@ public partial class MemoryApplicationService
             Details = text ?? string.Empty,
             Timestamp = DateTime.UtcNow
         });
+    }
+
+    private void LogBenchmark(string operation, double elapsedMs, bool success, string? query = null, int? resultCount = null, string? recordId = null)
+    {
+        var telemetrySettings = _options.Telemetry;
+        if (telemetrySettings.Enabled && telemetrySettings.MetricsEnabled && telemetrySettings.InstrumentMemoryOperations)
+        {
+            var category = operation.Split('.', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "memory";
+            var isSlowForTelemetry = elapsedMs >= _options.Logging.BenchmarkSlowThresholdMs;
+            MemorySmithTelemetry.RecordOperation(operation, category, elapsedMs, success, isSlowForTelemetry);
+        }
+
+        if (!_options.Logging.BenchmarkLoggingEnabled)
+        {
+            return;
+        }
+
+        var isSlow = elapsedMs >= _options.Logging.BenchmarkSlowThresholdMs;
+        if (isSlow)
+        {
+            _logger.LogWarning(
+                "Benchmark operation={Operation} elapsedMs={ElapsedMs} slow={IsSlow} success={Success} query={Query} resultCount={ResultCount} recordId={RecordId}",
+                operation,
+                elapsedMs,
+                true,
+                success,
+                query,
+                resultCount,
+                recordId);
+            return;
+        }
+
+        _logger.LogInformation(
+            "Benchmark operation={Operation} elapsedMs={ElapsedMs} slow={IsSlow} success={Success} query={Query} resultCount={ResultCount} recordId={RecordId}",
+            operation,
+            elapsedMs,
+            false,
+            success,
+            query,
+            resultCount,
+            recordId);
+    }
+
+    private Activity? StartTelemetryOperation(string operation)
+    {
+        var telemetrySettings = _options.Telemetry;
+        if (!telemetrySettings.Enabled || !telemetrySettings.TracingEnabled || !telemetrySettings.InstrumentMemoryOperations)
+        {
+            return null;
+        }
+
+        var category = operation.Split('.', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "memory";
+        return MemorySmithTelemetry.StartOperation(operation, category);
     }
 
     private sealed record MemorySearchSnapshot(

@@ -1,0 +1,42 @@
+{
+  "Id": "tsk-0110-add-privacy-and-performance-guardrails-to-otel-instrumentation",
+  "Key": "TSK-0110",
+  "Title": "Add privacy and performance guardrails to OTel instrumentation.",
+  "Description": "Apply mandatory guardrails so telemetry does not leak sensitive data or degrade runtime performance. Include bounded path filters, low-cardinality operation tags, configurable sampling percentage, and explicit avoidance of raw prompt/query/content payload attributes. Acceptance criteria: noisy endpoints can be excluded by config, high-cardinality text and identifiers are not emitted as OTel attributes, sampling is configurable and bounded, and default configuration favors low overhead.",
+  "Type": "Task",
+  "Status": "Done",
+  "Priority": "High",
+  "AssigneeMode": "Custom",
+  "AssigneeDirectoryId": null,
+  "AssigneeCustomText": "Copilot",
+  "Reporter": "TheMasonX",
+  "Labels": [
+    "otel",
+    "privacy",
+    "performance",
+    "guardrails",
+    "implemented"
+  ],
+  "Attachments": [],
+  "ExternalLinks": [],
+  "LinkedPages": [
+    "workbench/tasks",
+    "research/otel-local-first-v1-plan-20260524"
+  ],
+  "Comments": [
+    {
+      "Id": "c-0110-1",
+      "Author": "AgentSmith",
+      "Body": "Guardrails task captures anti-pitfall requirements: no sensitive payload tags, bounded dimensions, configurable sampling, and endpoint filters.",
+      "CreatedAtUtc": "2026-05-24T21:06:00.0000000Z"
+    }
+  ],
+  "EpicId": null,
+  "ParentId": null,
+  "DueDateUtc": null,
+  "CreatedAtUtc": "2026-05-24T21:06:00.0000000Z",
+  "UpdatedAtUtc": "2026-05-24T21:06:00.0000000Z",
+  "CompletedAtUtc": "2026-05-24T21:06:00.0000000Z",
+  "Revision": 1,
+  "IsArchived": false
+}

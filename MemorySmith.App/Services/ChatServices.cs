@@ -2294,7 +2294,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
             $"- Provider: {provider.Name}; streaming {(capabilities.SupportsStreaming ? "supported" : "not reported")}; image input {(capabilities.SupportsImageInput ? "supported" : "not reported")}; structured responses {(capabilities.SupportsStructuredResponses ? "native" : "via text JSON only")}; context-window reporting {(capabilities.ReportsContextWindowUsage ? "supported" : "not reported")}.\n" +
             $"- Native tool calls: {(capabilities.SupportsNativeToolCalls ? "supported" : "not available")}. {capabilities.NativeToolCallStatus}\n" +
             $"- Context planner: {contextPlan.Summary}.\n" +
-            $"- Read-only local wiki tools: {(chat.ToolCallsEnabled ? "enabled" : "disabled")}. These tools can only read MemorySmith memories/pages; they cannot write files, create pages, use shell commands, browse the web, or call external MCP tools.\n" +
+            $"- Read-only local wiki search/retrieval tools: {(chat.ToolCallsEnabled ? "enabled" : "disabled")}. These tools can only read MemorySmith memories/pages; they cannot write files, create pages, use shell commands, browse the web, or call external MCP tools.\n" +
             $"- Agent writes: {writeCapability}.\n" +
             $"- Write flow: {writeFlow}\n" +
             "- Never claim that a memory or page was created, updated, deleted, or saved unless the application response includes written memory/page ids. Pending proposals are not changes.";
@@ -2363,7 +2363,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
             ? "The selected provider reports native tool calls, but MemorySmith still keeps the application-intercepted JSON protocol as a deterministic fallback."
             : "The selected provider does not expose native MemorySmith tool registration here, so use the application-intercepted JSON protocol.";
         var toolCallExample = BuildToolCallExample(contextPlan.RecommendedToolName);
-        return "\n\nLocal wiki tools are available through an application-intercepted MCP-compatible protocol. " +
+        return "\n\nLocal wiki search/retrieval tools are available in Chat and Agent mode through an application-intercepted MCP-compatible protocol. " +
             nativeToolStatus + " " +
             $"The context planner recommends {contextPlan.RecommendedToolName} when additional evidence is needed. " +
             "When you need more MemorySmith wiki evidence than the preloaded context provides, respond with only one JSON object and no prose: " +

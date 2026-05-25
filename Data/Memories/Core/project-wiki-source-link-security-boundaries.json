@@ -1,6 +1,6 @@
 {
   "Id": "project-wiki-source-link-security-boundaries",
-  "Content": "Source bundle reads keep the flexible %Variable% source-link workflow, but local file content is only returned when the resolved path is under configured source roots. The default trusted root variable is MemorySmithRepo, and explicit roots can be configured under MemorySmith:SourceLinks:AllowedFileRoots. maxFileBytes is clamped by MemorySmith:SourceLinks:MaxReadBytes, default 65536. FileVarStore records corrupt vars.json reads in StorageDiagnostics and cleans temporary files after failed saves.",
+  "Content": "Source bundle and source-link reads keep the flexible %Variable% source-link workflow, but local file content is returned only when the resolved path is under configured source roots unless MemorySmith:SourceLinks:AllowUnrestrictedSourceReads is deliberately enabled. Deny roots take precedence over allowed roots and broad-read mode through MemorySmith:SourceLinks:DeniedFileRootVariables and DeniedFileRoots. The default trusted root variable is MemorySmithRepo, and explicit roots can be configured under MemorySmith:SourceLinks:AllowedFileRoots. ReadSourceAsync expands requested line windows by MemorySmith:SourceLinks:ReadContextLinesBefore and ReadContextLinesAfter, while maxFileBytes is clamped by MemorySmith:SourceLinks:MaxReadBytes, default 65536. The MCP source bridge tools now flow through ChatToolCatalog as SensitiveRead tools and still require CanReadSourceBundle authorization over MCP. FileVarStore records corrupt vars.json reads in StorageDiagnostics and cleans temporary files after failed saves.",
   "Title": "Source Link Read Boundaries",
   "Status": 2,
   "Confidence": 0.95,
@@ -49,5 +49,5 @@
     }
   ],
   "UsageCount": 0,
-  "LastUpdated": "2026-05-15T05:43:30.6038788Z"
+  "LastUpdated": "2026-05-24T19:57:00Z"
 }

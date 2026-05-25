@@ -71,18 +71,27 @@ public partial class VarResolver
         if (!TryNormalizePath(resolved, out var fullPath))
             return new SourceContent(resolved, "Source link path is invalid.", "file", link.StartLine, link.EndLine, Exists: false);
 
-        if (!IsAllowedSourcePath(fullPath))
-            return new SourceContent(resolved, "Source link path is outside the configured allowed source roots.", "file", link.StartLine, link.EndLine, Exists: false);
+        if (!TryAuthorizeSourcePath(fullPath, out var policyMessage))
+            return new SourceContent(resolved, policyMessage, "file", link.StartLine, link.EndLine, Exists: false);
 
         if (!File.Exists(fullPath))
             return new SourceContent(resolved, null, "file", link.StartLine, link.EndLine, Exists: false);
 
         var lines = await File.ReadAllLinesAsync(fullPath);
 
-        int startIdx = link.StartLine.HasValue ? Math.Max(0, link.StartLine.Value - 1) : 0;
+        var before = Math.Max(0, _options.SourceLinks.ReadContextLinesBefore);
+        var after = Math.Max(0, _options.SourceLinks.ReadContextLinesAfter);
+        var hasRequestedWindow = link.StartLine.HasValue || link.EndLine.HasValue;
+        int startIdx = link.StartLine.HasValue ? Math.Max(0, link.StartLine.Value - 1 - before) : 0;
         int endIdx = link.EndLine.HasValue
-            ? Math.Min(lines.Length - 1, link.EndLine.Value - 1)
-            : (link.StartLine.HasValue ? Math.Min(lines.Length - 1, startIdx + 49) : lines.Length - 1);
+            ? Math.Min(lines.Length - 1, link.EndLine.Value - 1 + after)
+            : (link.StartLine.HasValue ? Math.Min(lines.Length - 1, link.StartLine.Value - 1 + after) : lines.Length - 1);
+
+        if (!hasRequestedWindow && !_options.SourceLinks.AllowUnrestrictedSourceReads)
+        {
+            startIdx = 0;
+            endIdx = lines.Length - 1;
+        }
 
         var content = string.Join('\n', lines[startIdx..(endIdx + 1)]);
 
@@ -141,9 +150,8 @@ public partial class VarResolver
             return false;
         }
 
-        if (!IsAllowedSourcePath(fullPath))
+        if (!TryAuthorizeSourcePath(fullPath, out message))
         {
-            message = "Source link path is outside the configured allowed source roots.";
             return false;
         }
 
@@ -210,10 +218,43 @@ public partial class VarResolver
         return Math.Min(requestedBytes, configuredMax);
     }
 
-    private bool IsAllowedSourcePath(string fullPath)
+    private bool TryAuthorizeSourcePath(string fullPath, out string? message)
     {
+        if (IsDeniedSourcePath(fullPath, out message))
+        {
+            return false;
+        }
+
+        if (_options.SourceLinks.AllowUnrestrictedSourceReads)
+        {
+            message = null;
+            return true;
+        }
+
         var roots = GetAllowedSourceRoots();
-        return roots.Any(root => IsUnderRoot(fullPath, root));
+        if (roots.Any(root => IsUnderRoot(fullPath, root)))
+        {
+            message = null;
+            return true;
+        }
+
+        message = "Source link path is outside the configured allowed source roots.";
+        return false;
+    }
+
+    private bool IsDeniedSourcePath(string fullPath, out string? message)
+    {
+        foreach (var root in GetDeniedSourceRoots())
+        {
+            if (IsUnderRoot(fullPath, root))
+            {
+                message = "Source link path is blocked by the configured denied source roots.";
+                return true;
+            }
+        }
+
+        message = null;
+        return false;
     }
 
     private List<string> GetAllowedSourceRoots()
@@ -230,6 +271,31 @@ public partial class VarResolver
         }
 
         foreach (var configuredRoot in _options.SourceLinks.AllowedFileRoots)
+        {
+            var resolvedRoot = Resolve(configuredRoot);
+            if (TryNormalizePath(resolvedRoot, out var root))
+            {
+                roots.Add(root);
+            }
+        }
+
+        return roots.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
+    private List<string> GetDeniedSourceRoots()
+    {
+        var vars = _varStore.Load();
+        var roots = new List<string>();
+
+        foreach (var variableName in _options.SourceLinks.DeniedFileRootVariables)
+        {
+            if (vars.TryGetValue(variableName, out var value) && TryNormalizePath(value, out var root))
+            {
+                roots.Add(root);
+            }
+        }
+
+        foreach (var configuredRoot in _options.SourceLinks.DeniedFileRoots)
         {
             var resolvedRoot = Resolve(configuredRoot);
             if (TryNormalizePath(resolvedRoot, out var root))

@@ -1,0 +1,45 @@
+{
+  "Id": "tsk-0106-surface-structured-application-logs-in-admin-diagnostics-with-search-and-filtering",
+  "Key": "TSK-0106",
+  "Title": "Surface structured application and Windows Event Logs in admin diagnostics with search and filtering.",
+  "Description": "MemorySmith has a health page and an admin diagnostics endpoint, but neither currently exposes application log events as first-class operational data. Add an admin-safe log surface that can read configured structured sinks and Windows Event Log records relevant to MemorySmith, then support filtering by level, time range, correlation id, area, and free-text query. Windows Event Log ingestion should be on by default on Windows and switchable off from settings. Acceptance criteria: administrators can inspect recent app and event-log records from the product, narrow results without shell access, copy correlation ids or event metadata for debugging and incident triage, and control log-source toggles and retention/query limits from the existing admin configuration interface. Validation: emit sample informational and error events, including an entry that lands in Windows Event Log, retrieve them through the diagnostics surface using structured filters and text search, then disable event-log source reading via admin settings and verify the diagnostics view reflects the change.",
+  "Type": "Task",
+  "Status": "Backlog",
+  "Priority": "Medium",
+  "AssigneeMode": "Custom",
+  "AssigneeDirectoryId": null,
+  "AssigneeCustomText": "Copilot",
+  "Reporter": "TheMasonX",
+  "Labels": [
+    "logging",
+    "admin",
+    "search",
+    "observability",
+    "audit-vetted",
+    "windows-event-log",
+    "error-tracking",
+    "traceability",
+    "admin-config"
+  ],
+  "Attachments": [],
+  "ExternalLinks": [],
+  "LinkedPages": [
+    "workbench/tasks"
+  ],
+  "Comments": [
+    {
+      "Id": "c-0106-1",
+      "Author": "AgentSmith",
+      "Body": "Evidence: `MemorySmith.App/Controllers/DiagnosticsController.cs` exposes operational diagnostics and measurement baseline only, and `MemorySmith.App/Components/Pages/HealthStats.razor` renders stats/configuration cards but no searchable application-log view.",
+      "CreatedAtUtc": "2026-05-25T00:13:00.0000000Z"
+    }
+  ],
+  "EpicId": null,
+  "ParentId": null,
+  "DueDateUtc": null,
+  "CreatedAtUtc": "2026-05-25T00:13:00.0000000Z",
+  "UpdatedAtUtc": "2026-05-25T00:13:00.0000000Z",
+  "CompletedAtUtc": null,
+  "Revision": 1,
+  "IsArchived": false
+}

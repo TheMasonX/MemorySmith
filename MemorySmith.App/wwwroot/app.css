@@ -165,6 +165,62 @@ body {
     min-width: 96px;
 }
 
+.pages-search-main,
+.pages-navigation-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
+.pages-search-main {
+    flex: 1 1 240px;
+}
+
+.pages-search-main .wiki-search-box {
+    flex: 1 1 0;
+    min-width: 180px;
+}
+
+.pages-search-clear,
+.pages-search-submit {
+    flex: 0 0 auto;
+}
+
+.pages-search-strip .pages-search-submit {
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+    border-radius: 4px;
+    background: var(--vscode-accent) !important;
+    color: #fff !important;
+}
+
+.pages-search-strip .pages-search-submit:hover,
+.pages-search-strip .pages-search-submit:focus-visible {
+    background: #0e639c !important;
+}
+
+.pages-search-strip .pages-search-submit .mud-icon-root {
+    color: #fff !important;
+}
+
+.pages-navigation-controls {
+    flex: 0 0 auto;
+    justify-content: flex-end;
+    gap: 3px;
+    margin-left: auto;
+}
+
+.pages-navigation-controls .wiki-mode-toggle {
+    flex: 0 0 auto;
+}
+
+.pages-navigation-controls .wiki-mode-toggle .mud-button-root {
+    min-width: 54px;
+    padding-inline: 10px;
+}
+
 .wiki-body {
     display: grid;
     grid-template-columns: minmax(360px, 42%) minmax(430px, 1fr);
@@ -3435,10 +3491,37 @@ body {
         grid-template-rows: minmax(90px, 32%) minmax(0, 1fr);
     }
 
+    .pages-body.is-nav-hidden {
+        grid-template-rows: minmax(0, 1fr);
+    }
+
+    .pages-body.is-nav-hidden .page-detail-pane {
+        grid-row: 1;
+    }
+
     .wiki-search-box {
         flex: 1 0 100%;
         max-width: none;
         min-width: 0;
+    }
+
+    .pages-search-strip {
+        flex-wrap: wrap;
+    }
+
+    .pages-search-main {
+        flex: 1 1 220px;
+        min-width: 220px;
+    }
+
+    .pages-search-main .wiki-search-box {
+        flex: 1 1 0;
+        min-width: 0;
+    }
+
+    .pages-navigation-controls {
+        flex: 0 0 auto;
+        margin-left: auto;
     }
 
     .wiki-filter {
@@ -3453,6 +3536,10 @@ body {
 
     .wiki-search-strip > .mud-button-root:not(.mud-icon-button) {
         flex: 1 1 112px;
+    }
+
+    .pages-search-strip > .mud-button-root:not(.mud-icon-button) {
+        flex: 0 0 auto;
     }
 
     .wiki-results-pane,

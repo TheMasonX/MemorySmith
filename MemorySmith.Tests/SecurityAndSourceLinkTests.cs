@@ -186,6 +186,100 @@ public class SecurityAndSourceLinkTests
     }
 
     [Test]
+    public async Task VarResolver_ReadSourceAsync_ExpandsConfiguredContextAroundRequestedLines()
+    {
+        var allowedRoot = Path.Combine(_tempRoot, "allowed");
+        Directory.CreateDirectory(allowedRoot);
+        var sourceFile = Path.Combine(allowedRoot, "source.txt");
+        await File.WriteAllTextAsync(sourceFile, string.Join(Environment.NewLine, Enumerable.Range(1, 200).Select(index => $"LINE-{index:000}")));
+
+        var varsPath = Path.Combine(_tempRoot, "vars.json");
+        new FileVarStore(varsPath).Save(new Dictionary<string, string> { ["AllowedRoot"] = allowedRoot + Path.DirectorySeparatorChar });
+        var resolver = new VarResolver(
+            new FileVarStore(varsPath),
+            Options.Create(new MemorySmithOptions
+            {
+                SourceLinks = new SourceLinkOptions
+                {
+                    AllowedFileRootVariables = ["AllowedRoot"],
+                    ReadContextLinesBefore = 20,
+                    ReadContextLinesAfter = 20
+                }
+            }));
+
+        var content = await resolver.ReadSourceAsync(new SourceLink
+        {
+            Uri = sourceFile,
+            StartLine = 100,
+            EndLine = 110
+        });
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(content.Exists, Is.True);
+            Assert.That(content.Content, Does.Contain("LINE-080"));
+            Assert.That(content.Content, Does.Contain("LINE-130"));
+            Assert.That(content.Content, Does.Not.Contain("LINE-079"));
+            Assert.That(content.Content, Does.Not.Contain("LINE-131"));
+        });
+    }
+
+    [Test]
+    public async Task VarResolver_ReadSourceAsync_AllowsBroadReadsWhenOptInIsEnabled()
+    {
+        var broadRoot = Path.Combine(_tempRoot, "broad");
+        Directory.CreateDirectory(broadRoot);
+        var sourceFile = Path.Combine(broadRoot, "source.txt");
+        await File.WriteAllTextAsync(sourceFile, "broad read allowed");
+
+        var resolver = new VarResolver(
+            new FileVarStore(Path.Combine(_tempRoot, "vars.json")),
+            Options.Create(new MemorySmithOptions
+            {
+                SourceLinks = new SourceLinkOptions
+                {
+                    AllowUnrestrictedSourceReads = true
+                }
+            }));
+
+        var content = await resolver.ReadSourceAsync(new SourceLink { Uri = sourceFile });
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(content.Exists, Is.True);
+            Assert.That(content.Content, Does.Contain("broad read allowed"));
+        });
+    }
+
+    [Test]
+    public async Task VarResolver_ReadSourceAsync_DeniedRootsOverrideBroadReads()
+    {
+        var blockedRoot = Path.Combine(_tempRoot, "blocked");
+        Directory.CreateDirectory(blockedRoot);
+        var blockedFile = Path.Combine(blockedRoot, "secret.txt");
+        await File.WriteAllTextAsync(blockedFile, "blocked content");
+
+        var resolver = new VarResolver(
+            new FileVarStore(Path.Combine(_tempRoot, "vars.json")),
+            Options.Create(new MemorySmithOptions
+            {
+                SourceLinks = new SourceLinkOptions
+                {
+                    AllowUnrestrictedSourceReads = true,
+                    DeniedFileRoots = [blockedRoot]
+                }
+            }));
+
+        var content = await resolver.ReadSourceAsync(new SourceLink { Uri = blockedFile });
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(content.Exists, Is.False);
+            Assert.That(content.Content, Does.Contain("blocked by the configured denied source roots"));
+        });
+    }
+
+    [Test]
     public async Task VarResolver_BlocksLocalFilesOutsideAllowedRoots()
     {
         var allowedRoot = Path.Combine(_tempRoot, "allowed");

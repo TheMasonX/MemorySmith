@@ -1,0 +1,43 @@
+{
+  "Id": "tsk-0108-add-performance-benchmark-trace-events-for-critical-memorysmith-flows",
+  "Key": "TSK-0108",
+  "Title": "Add performance benchmark trace events for critical MemorySmith flows.",
+  "Description": "Treat performance benchmarking as a first-class logging capability by emitting structured benchmark and phase-timing events for critical flows (search, memory save/update, page render, chat turn, and maintenance runs). Define a stable event schema with operation name, phase, duration, percentile bucket context, correlation id, and success/failure markers so operators can compare runs over time and quickly identify regressions. Acceptance criteria: benchmark events can be captured in normal logging sinks and queried alongside error events, critical operations include start/stop timing coverage, benchmark sampling and thresholds are configurable in the existing admin configuration, and at least one report path (API or health view) can summarize benchmark trends. Validation: run a repeatable workload, capture benchmark trace events, confirm trend comparisons are available across two runs, and verify benchmark logging controls can be tuned from admin configuration.",
+  "Type": "Task",
+  "Status": "Backlog",
+  "Priority": "High",
+  "AssigneeMode": "Custom",
+  "AssigneeDirectoryId": null,
+  "AssigneeCustomText": "Copilot",
+  "Reporter": "TheMasonX",
+  "Labels": [
+    "logging",
+    "performance",
+    "benchmarking",
+    "latency",
+    "traceability",
+    "audit-vetted",
+    "admin-config"
+  ],
+  "Attachments": [],
+  "ExternalLinks": [],
+  "LinkedPages": [
+    "workbench/tasks"
+  ],
+  "Comments": [
+    {
+      "Id": "c-0108-1",
+      "Author": "AgentSmith",
+      "Body": "Evidence: current health charts focus on memory activity, and the logging review identified no dedicated benchmark-trace schema or first-class latency/percentile event model for critical operations.",
+      "CreatedAtUtc": "2026-05-25T00:14:00.0000000Z"
+    }
+  ],
+  "EpicId": null,
+  "ParentId": null,
+  "DueDateUtc": null,
+  "CreatedAtUtc": "2026-05-25T00:14:00.0000000Z",
+  "UpdatedAtUtc": "2026-05-25T00:14:00.0000000Z",
+  "CompletedAtUtc": null,
+  "Revision": 1,
+  "IsArchived": false
+}

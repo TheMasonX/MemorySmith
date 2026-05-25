@@ -1,0 +1,47 @@
+{
+  "id": "tsk-0115-add-benchmark-regression-budgets-and-ci-summary-checks",
+  "key": "TSK-0115",
+  "title": "Add benchmark regression budgets and CI summary checks",
+  "description": "Problem: MemorySmith has BenchmarkDotNet search benchmarks and NUnit search-quality probes, but CI does not compare current runs against explicit performance budgets or historical baselines. Performance regressions can therefore appear only as anecdotal local observations.\n\nDesired outcome: critical flows have explicit report-only or enforced performance budgets, and CI/local validation emits a concise benchmark summary that shows whether search/context/page/chat latency changed enough to investigate.\n\nScope:\n- In scope: define initial budgets for search/context-pack benchmark smoke paths, add a repeatable summary command, store or compare against baseline data where practical, and document which budgets are blocking versus report-only.\n- Out of scope: optimizing individual slow operations unless the new budget check exposes a confirmed regression.\n\nDependencies:\n- Coordinate with TSK-0108 benchmark trace events and TSK-0069 CI topology.\n\nAcceptance criteria:\n- At least one critical benchmark path has a documented budget and machine-readable summary output.\n- CI or local validation reports benchmark status without requiring a full long-running BenchmarkDotNet suite on every PR.\n- Budget failures or warnings include enough metadata to reproduce locally.\n\nValidation:\n- Run the benchmark smoke command and capture summary output.\n- Run the new budget/report command twice and verify stable comparison behavior.\n- Confirm CI summary output is readable and does not fail on missing optional ONNX model assets unless that gate is explicitly enabled.\n\nRollback:\n- Convert blocking budgets to report-only while retaining summaries if early budgets are too noisy.\n\nRisks:\n- Hardware variance can make strict latency thresholds flaky unless budgets are conservative or trend-based.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "audit",
+    "performance",
+    "benchmarks",
+    "ci",
+    "observability",
+    "sprint-3"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "research/ultra-codebase-audit-20260524",
+    "tasks/sprints/ultra-codebase-audit-sprints-20260524",
+    "council/ultra-codebase-audit-prioritization-council-20260524"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0115-20260524",
+      "author": "AgentSmith",
+      "body": "Created from ultra audit findings F-007 and F-008. Evidence: benchmark commands and search-quality probes exist, but .github/workflows/ci.yml has no benchmark budget comparison lane.",
+      "createdAtUtc": "2026-05-24T19:56:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-24T19:56:00.0000000Z",
+  "updatedAtUtc": "2026-05-24T19:56:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

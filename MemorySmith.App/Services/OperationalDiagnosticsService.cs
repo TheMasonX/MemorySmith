@@ -28,7 +28,8 @@ public sealed record EffectiveMemorySmithConfiguration(
     LimitOptions Limits,
     SourceLinkOptions SourceLinks,
     SemanticSearchOptions SemanticSearch,
-    ChatOptions Chat);
+    ChatOptions Chat,
+    TelemetryOptions Telemetry);
 
 public sealed record StoragePathStatus(
     string Name,
@@ -76,9 +77,14 @@ public class OperationalDiagnosticsService
         var sourceLinks = new SourceLinkOptions
         {
             MaxReadBytes = settings.SourceLinks.MaxReadBytes,
+            AllowUnrestrictedSourceReads = settings.SourceLinks.AllowUnrestrictedSourceReads,
+            ReadContextLinesBefore = settings.SourceLinks.ReadContextLinesBefore,
+            ReadContextLinesAfter = settings.SourceLinks.ReadContextLinesAfter,
             AllowOpenWithDefaultApp = settings.SourceLinks.AllowOpenWithDefaultApp,
             AllowedFileRootVariables = settings.SourceLinks.AllowedFileRootVariables.Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
-            AllowedFileRoots = settings.SourceLinks.AllowedFileRoots.Distinct(StringComparer.OrdinalIgnoreCase).ToList()
+            AllowedFileRoots = settings.SourceLinks.AllowedFileRoots.Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+            DeniedFileRootVariables = settings.SourceLinks.DeniedFileRootVariables.Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+            DeniedFileRoots = settings.SourceLinks.DeniedFileRoots.Distinct(StringComparer.OrdinalIgnoreCase).ToList()
         };
 
         return new OperationalDiagnosticsSnapshot(
@@ -99,7 +105,8 @@ public class OperationalDiagnosticsService
                 settings.Limits,
                 sourceLinks,
                 settings.SemanticSearch,
-                settings.Chat),
+                settings.Chat,
+                settings.Telemetry),
             [
                 GetDirectoryStatus("Memory data", dataPath, "*.json"),
                 GetDirectoryStatus("Pages", pagesPath, "*.md"),
@@ -148,6 +155,8 @@ public class OperationalDiagnosticsService
         new("Chat config", "/api/chat/config", "Current chat provider, default model, and provider model discovery"),
         new("Stats", "/api/stats", "Counts, activity, and maintenance telemetry"),
         new("Diagnostics", "/api/diagnostics", "Redacted runtime configuration and storage diagnostics"),
+        new("Diagnostic logs", "/api/diagnostics/logs", "Structured application log search with optional Windows Event Log source"),
+        new("Diagnostic log metrics", "/api/diagnostics/logs/metrics", "Log-derived error, warning, request, and latency trend metrics"),
         new("MCP", "/mcp", "HTTP JSON-RPC MCP tools")
     ];
 

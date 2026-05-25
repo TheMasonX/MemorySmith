@@ -1,0 +1,42 @@
+{
+  "Id": "tsk-0094-local-profile-wiki-search-regression-tests",
+  "Key": "TSK-0094",
+  "Title": "Add regression coverage for the local-profile wiki-search flow and inline source references.",
+  "Description": "Add focused tests for the exact sequence exercised on the live page: Agent mode, local profile, a generic wiki-search request, context preloading, and inline source-reference output. The regression should prove the turn produces either a final answer or a deterministic tool path, and it should fail if the turn remains pending beyond the expected window. Acceptance criteria: the test covers the local profile path, the trace contains the expected preload/tool events, and the result includes a source reference or explicit fallback. Validation: run the new test and confirm it passes against the local app.",
+  "Type": "Task",
+  "Status": "Backlog",
+  "Priority": "High",
+  "AssigneeMode": "Custom",
+  "AssigneeDirectoryId": null,
+  "AssigneeCustomText": "Copilot",
+  "Reporter": "TheMasonX",
+  "Labels": [
+    "tests",
+    "chat",
+    "agent",
+    "mcp",
+    "audit-vetted"
+  ],
+  "Attachments": [],
+  "ExternalLinks": [],
+  "LinkedPages": [
+    "research/chat-agent-local-profile-mcp-evaluation-20260524",
+    "workbench/tasks"
+  ],
+  "Comments": [
+    {
+      "Id": "c-0094-1",
+      "Author": "AgentSmith",
+      "Body": "Evidence: the app already exposes context-planner and preload events in the trace, but the live turn still stalled before completion, so this needs a deterministic regression around the exact probe flow.",
+      "CreatedAtUtc": "2026-05-24T22:35:00.0000000Z"
+    }
+  ],
+  "EpicId": null,
+  "ParentId": null,
+  "DueDateUtc": null,
+  "CreatedAtUtc": "2026-05-24T22:35:00.0000000Z",
+  "UpdatedAtUtc": "2026-05-24T22:35:00.0000000Z",
+  "CompletedAtUtc": null,
+  "Revision": 1,
+  "IsArchived": false
+}

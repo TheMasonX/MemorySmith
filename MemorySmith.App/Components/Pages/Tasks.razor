@@ -334,7 +334,7 @@
                             {
                                 <div class="proposal-evidence-item">
                                     <strong>Page</strong>
-                                    <span>@slug</span>
+                                    <a href="@ToPageHref(slug)">@slug</a>
                                 </div>
                             }
                             @foreach (var link in _selectedTask.ExternalLinks)
@@ -361,7 +361,7 @@
                             {
                                 <div class="proposal-evidence-item">
                                     <strong>@attachment.Name</strong>
-                                    <span>@attachment.Uri</span>
+                                    <a href="@attachment.Uri" target="_blank" rel="noopener noreferrer">@attachment.Uri</a>
                                     <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
                                         <Authorized>
                                             <MudButton Variant="Variant.Text" Color="Color.Error" Size="Size.Small" OnClick="@(() => RemoveAttachmentAsync(attachment.Id))">Remove</MudButton>
@@ -436,6 +436,9 @@
     {
         await LoadAsync();
     }
+
+    private static string ToPageHref(string slug) =>
+        "/pages/" + string.Join('/', slug.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(Uri.EscapeDataString));
 
     private async Task LoadAsync()
     {

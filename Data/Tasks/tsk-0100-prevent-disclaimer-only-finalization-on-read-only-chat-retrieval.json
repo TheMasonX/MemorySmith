@@ -1,0 +1,53 @@
+{
+  "id": "tsk-0100-prevent-disclaimer-only-finalization-on-read-only-chat-retrieval",
+  "key": "TSK-0100",
+  "title": "Prevent disclaimer-only finalization on read-only chat retrieval",
+  "description": "Read-only retrieval prompts can finalize with only a structured-write disclaimer and no answer body. Add a response-assembly guard so read-only completions must include a non-empty answer payload before disclaimer wrappers are appended.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "chat",
+    "agent",
+    "mcp",
+    "retrieval",
+    "quality"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-24T17:48:00.0000000Z",
+  "updatedAtUtc": "2026-05-24T17:48:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "acceptanceCriteria": [
+    "Read-only retrieval prompts always include a non-empty answer body when the turn reaches assistant finalization.",
+    "Structured-write disclaimers are appended only when relevant and never replace the requested answer content.",
+    "Regression tests cover the provider-architecture single-source prompt shape and fail if output is disclaimer-only.",
+    "Trace or debug logs identify whether a final answer body was present before wrapper augmentation."
+  ],
+  "validation": [
+    "Run targeted chat-agent tests covering read-only retrieval wrapper assembly.",
+    "Replay local-profile prompt: 'Use wiki search and return the single best source for chat tool catalog provider architecture.' and verify answer includes a source sentence plus reference section.",
+    "Confirm JSON/task parsing succeeds for the new task record."
+  ],
+  "links": [
+    {
+      "type": "report",
+      "target": "Data/Pages/research/chat-agent-local-profile-mcp-evaluation-20260524.md"
+    },
+    {
+      "type": "tracker",
+      "target": "logs/agent-smith-20260524-chat-agent-local-profile-mcp-evaluation.md"
+    }
+  ]
+}

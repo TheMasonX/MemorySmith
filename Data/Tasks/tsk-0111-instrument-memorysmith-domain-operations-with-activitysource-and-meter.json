@@ -1,0 +1,42 @@
+{
+  "Id": "tsk-0111-instrument-memorysmith-domain-operations-with-activitysource-and-meter",
+  "Key": "TSK-0111",
+  "Title": "Instrument MemorySmith domain operations with ActivitySource and Meter.",
+  "Description": "Add MemorySmith domain telemetry for key operations (search modes, context pack generation, create/update/delete) using a dedicated ActivitySource and Meter. Metrics should include operation counts, failure counts, and duration histograms with bounded dimensions. Acceptance criteria: domain operation telemetry is emitted for critical flows, tags remain low-cardinality, benchmark/logging behavior remains compatible, and admin-configurable toggles can disable domain instrumentation when needed.",
+  "Type": "Task",
+  "Status": "Done",
+  "Priority": "High",
+  "AssigneeMode": "Custom",
+  "AssigneeDirectoryId": null,
+  "AssigneeCustomText": "Copilot",
+  "Reporter": "TheMasonX",
+  "Labels": [
+    "otel",
+    "metrics",
+    "tracing",
+    "performance",
+    "implemented"
+  ],
+  "Attachments": [],
+  "ExternalLinks": [],
+  "LinkedPages": [
+    "workbench/tasks",
+    "research/otel-local-first-v1-plan-20260524"
+  ],
+  "Comments": [
+    {
+      "Id": "c-0111-1",
+      "Author": "AgentSmith",
+      "Body": "Domain-instrumentation task covers custom ActivitySource/Meter plus critical MemoryApplicationService flow coverage.",
+      "CreatedAtUtc": "2026-05-24T21:07:00.0000000Z"
+    }
+  ],
+  "EpicId": null,
+  "ParentId": null,
+  "DueDateUtc": null,
+  "CreatedAtUtc": "2026-05-24T21:07:00.0000000Z",
+  "UpdatedAtUtc": "2026-05-24T21:07:00.0000000Z",
+  "CompletedAtUtc": "2026-05-24T21:07:00.0000000Z",
+  "Revision": 1,
+  "IsArchived": false
+}

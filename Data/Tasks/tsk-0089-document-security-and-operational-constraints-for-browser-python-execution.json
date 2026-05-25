@@ -1,0 +1,49 @@
+{
+  "id": "tsk-0089-document-security-and-operational-constraints-for-browser-python-execution",
+  "key": "TSK-0089",
+  "title": "Document Security and Operational Constraints for Browser Python Execution",
+  "description": "Document and validate execution boundaries for client-side Python: no server execution path, expected browser sandbox limits, network behavior expectations, and fallback behavior when Pyodide/CDN load fails. Clarify that security defaults are browser-sandbox only and execution features are disabled by default until admins opt in. Document the combined markdown runtime settings model shared with Mermaid and enforce the policy that Viewer-role users cannot run executable code blocks. Align docs and About dependency listing with runtime asset decisions (CDN+SRI default, admin-overridable settings).",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "docs",
+    "security",
+    "pyodide",
+    "operations",
+    "vetted",
+    "config"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [
+    {
+      "id": "cmt-tsk-0089-1",
+      "author": "Agent Smith",
+      "message": "User refinement: security posture remains browser sandbox only by default, with admin-configurable controls documented explicitly.",
+      "createdAtUtc": "2026-05-24T21:05:00.0000000Z"
+    },
+    {
+      "id": "cmt-tsk-0089-2",
+      "author": "Agent Smith",
+      "message": "User refinement: keep provider settings combined for shared markdown renderer behavior and state that viewers are not permitted to execute code blocks.",
+      "createdAtUtc": "2026-05-24T21:15:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-24T20:55:33.9800632Z",
+  "updatedAtUtc": "2026-05-24T21:15:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 3,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

@@ -1,0 +1,31 @@
+﻿{
+  "id": "tsk-0073-share-buttons",
+  "key": "TSK-0073",
+  "title": "Share Buttons",
+  "description": "Share buttons that copy the link to items as an icon badge. For tasks, this would be near the edit icon, and in a similar position for other things like pages and memories. Memories have a copy content button, which would also be useful to add to pages and tasks.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-24T17:38:50.5385854Z",
+  "updatedAtUtc": "2026-05-24T17:41:27.0740874Z",
+  "completedAtUtc": null,
+  "revision": 3,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

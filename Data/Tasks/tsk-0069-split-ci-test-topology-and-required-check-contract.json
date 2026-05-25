@@ -4,7 +4,7 @@
   "title": "Split CI test topology and required check contract",
   "description": "Problem: introducing browser tests into CI without clear topology can obscure failures and inflate runtime unpredictably.\n\nDesired outcome: split CI into clear jobs (dotnet validation and browser validation) with stable check names and branch-protection alignment.\n\nScope:\n- In scope: workflow restructuring, dependency caching strategy, explicit check naming, and branch protection guidance documentation.\n- Out of scope: organization-wide branch protection automation.\n\nDependencies:\n- Browser gate task TSK-0067.\n\nAcceptance criteria:\n- CI reports at least two explicit validation jobs with clear ownership of failures.\n- Required checks are documented and consistent over time.\n- Browser job failures do not suppress .NET test result visibility.\n\nValidation:\n- Run CI with both green and induced-failure scenarios to verify signal clarity.\n\nRollback:\n- Keep split jobs but temporarily make browser job informational if severe flakiness emerges.",
   "type": "Task",
-  "status": "Backlog",
+  "status": "Done",
   "priority": "Medium",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -29,15 +29,21 @@
       "author": "AgentSmith",
       "body": "Created from audit risk R-002 to keep CI signal quality high while adding browser gates.",
       "createdAtUtc": "2026-05-24T18:22:00.0000000Z"
+    },
+    {
+      "id": "c-complete-0069-20260524",
+      "author": "AgentSmith",
+      "body": "Completed by splitting CI into build-and-test and browser-navigation-freeze jobs. README validation guidance now documents the stable check names and ownership: build/test/coverage in build-and-test, Playwright navigation freeze and browser artifacts in browser-navigation-freeze.",
+      "createdAtUtc": "2026-05-24T20:38:00.0000000Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-24T18:22:00.0000000Z",
-  "updatedAtUtc": "2026-05-24T18:22:00.0000000Z",
-  "completedAtUtc": null,
-  "revision": 1,
+  "updatedAtUtc": "2026-05-24T20:38:00.0000000Z",
+  "completedAtUtc": "2026-05-24T20:38:00.0000000Z",
+  "revision": 2,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

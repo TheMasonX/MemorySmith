@@ -1,0 +1,46 @@
+{
+  "Id": "tsk-0107-add-log-derived-health-charts-and-error-trend-surfacing-for-operators",
+  "Key": "TSK-0107",
+  "Title": "Add log-derived health charts for error trends, latency, and throughput.",
+  "Description": "The health workbench already charts memory activity, but it does not visualize structured application logs. Extend the operational surface with log-derived metrics such as errors by day, warnings by subsystem, request latency distributions (p50/p95/p99), throughput, and recent failure bursts so operators can spot regressions without exporting raw files first. Acceptance criteria: at least one health-page chart and one summary panel are derived from structured application logs, latency and throughput are first-class metrics, aggregation windows are configurable from the existing admin configuration, and empty-state behavior is explicit when logs are unavailable. Validation: seed representative informational, warning, error, and high-latency events, verify charts/summary panels show expected counts and percentile buckets, and confirm chart window/threshold settings can be changed in admin configuration without code changes.",
+  "Type": "Task",
+  "Status": "Backlog",
+  "Priority": "High",
+  "AssigneeMode": "Custom",
+  "AssigneeDirectoryId": null,
+  "AssigneeCustomText": "Copilot",
+  "Reporter": "TheMasonX",
+  "Labels": [
+    "logging",
+    "health",
+    "charts",
+    "observability",
+    "audit-vetted",
+    "latency",
+    "performance",
+    "error-tracking",
+    "benchmarking",
+    "admin-config"
+  ],
+  "Attachments": [],
+  "ExternalLinks": [],
+  "LinkedPages": [
+    "workbench/tasks"
+  ],
+  "Comments": [
+    {
+      "Id": "c-0107-1",
+      "Author": "AgentSmith",
+      "Body": "Evidence: `MemorySmith.App/Components/Pages/HealthStats.razor` already charts queries and memory changes, but the review found no chart or summary driven by structured application log events, error counts, or correlation-aware failure trends.",
+      "CreatedAtUtc": "2026-05-25T00:13:30.0000000Z"
+    }
+  ],
+  "EpicId": null,
+  "ParentId": null,
+  "DueDateUtc": null,
+  "CreatedAtUtc": "2026-05-25T00:13:30.0000000Z",
+  "UpdatedAtUtc": "2026-05-25T00:13:30.0000000Z",
+  "CompletedAtUtc": null,
+  "Revision": 1,
+  "IsArchived": false
+}

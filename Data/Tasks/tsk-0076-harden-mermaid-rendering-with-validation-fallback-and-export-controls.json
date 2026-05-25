@@ -1,0 +1,42 @@
+{
+  "id": "tsk-0076-harden-mermaid-rendering-with-validation-fallback-and-export-controls",
+  "key": "TSK-0076",
+  "title": "Harden Mermaid Rendering with Validation, Fallback, and Export Controls",
+  "description": "Upgrade Mermaid support with syntax validation feedback, graceful fallback rendering when diagrams fail, zoom/fit controls, and optional PNG/SVG export support. Keep runtime-provider behavior aligned with admin-configurable defaults shared with Pyodide (disabled by default, CDN+SRI source defaults, browser sandbox only baseline).",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future",
+    "renderer",
+    "markdown",
+    "wiki",
+    "config"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [
+    {
+      "id": "cmt-tsk-0076-1",
+      "author": "Agent Smith",
+      "message": "User refinement alignment: Mermaid should follow the same admin-provider configuration baseline as Pyodide.",
+      "createdAtUtc": "2026-05-24T21:05:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-24T20:52:23.8666954Z",
+  "updatedAtUtc": "2026-05-24T21:05:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

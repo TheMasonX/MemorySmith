@@ -1,0 +1,52 @@
+{
+  "id": "tsk-0114-add-task-key-uniqueness-and-backlog-consistency-validation",
+  "key": "TSK-0114",
+  "title": "Add task-key uniqueness and backlog consistency validation",
+  "description": "Problem: the task tracker currently contains duplicate key TSK-0060 records, and key-based lookup returns the first matching item. That makes audit traceability and /tasks navigation ambiguous even when all JSON files parse.\n\nDesired outcome: task records have enforceable unique keys, a clear migration path for existing collisions, and a consistency check that catches duplicate keys, stale status/evidence mismatches, and non-canonical task JSON before future audit packages rely on them.\n\nScope:\n- In scope: duplicate key detection, a report or validation command for task integrity, migration guidance for the current TSK-0060 collision, regression tests for duplicate-key behavior, and documentation of the canonical task identity contract.\n- Out of scope: redesigning the whole task domain or changing task statuses unrelated to the integrity check.\n\nDependencies:\n- Coordinate with TSK-0053 task JSON canonicalization.\n\nAcceptance criteria:\n- The current duplicate TSK-0060 state is either resolved or reported by an executable check with actionable file identities.\n- Creating or importing a task cannot silently introduce a duplicate key.\n- Key-based lookup behavior is deterministic and documented when a malformed or duplicate record exists.\n- The validation output can be used from local audit workflows and CI without requiring the Blazor app to be running.\n\nValidation:\n- Add focused tests for duplicate key detection and key lookup behavior.\n- Run the task integrity check against Data/Tasks and confirm it reports no unresolved duplicates after migration.\n- Run Scripts/Validate-Repo.ps1 or the narrow task-domain test slice after implementation.\n\nRollback:\n- Revert the validation enforcement while keeping a report-only duplicate detector if migration uncovers unexpected legacy records.\n\nRisks:\n- Existing links that reference the duplicated key may need migration or alias notes.",
+  "type": "Task",
+  "status": "Done",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "audit",
+    "tasks",
+    "governance",
+    "validation",
+    "sprint-1"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "research/ultra-codebase-audit-20260524",
+    "tasks/sprints/ultra-codebase-audit-sprints-20260524",
+    "council/ultra-codebase-audit-prioritization-council-20260524"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0114-20260524",
+      "author": "AgentSmith",
+      "body": "Created from ultra audit finding F-003. Evidence: Data/Tasks currently has two records with key TSK-0060, and TaskDomainService.FindByIdOrKey returns the first matching item.",
+      "createdAtUtc": "2026-05-24T19:55:00.0000000Z"
+    },
+    {
+      "id": "c-complete-0114-20260524",
+      "author": "AgentSmith",
+      "body": "Completed by renumbering the screenshot task from TSK-0060 to TSK-0117 and adding Scripts/Test-TaskRecords.ps1. The validator is wired into Scripts/Validate-Repo.ps1, .github/workflows/ci.yml, and .githooks/pre-commit. Validation: ./Scripts/Test-TaskRecords.ps1 and ./Scripts/Validate-Repo.ps1 -SkipBuild -SkipTests both passed with 114 task records and unique ids/keys.",
+      "createdAtUtc": "2026-05-24T20:36:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-24T19:55:00.0000000Z",
+  "updatedAtUtc": "2026-05-24T20:36:00.0000000Z",
+  "completedAtUtc": "2026-05-24T20:36:00.0000000Z",
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

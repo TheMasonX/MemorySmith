@@ -20,49 +20,55 @@
             <span class="wiki-count">@_pages.Count pages</span>
         </div>
 
-        <div class="wiki-search-strip">
-            <MudTextField @bind-Value="_searchQuery"
-                          Label="Search pages"
-                          Placeholder="Title or markdown"
-                          Variant="Variant.Outlined"
-                          Margin="Margin.Dense"
-                          Adornment="Adornment.Start"
-                          AdornmentIcon="@Icons.Material.Filled.Search"
-                          OnKeyUp="OnSearchKeyUp"
-                          Class="wiki-search-box" />
-            <MudButtonGroup Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" Class="wiki-mode-toggle">
-                <MudButton Variant="@NavigationModeVariant(TreeMode)" OnClick="@(() => SetNavigationModeAsync(TreeMode))">Tree</MudButton>
-                <MudButton Variant="@NavigationModeVariant(FlatMode)" OnClick="@(() => SetNavigationModeAsync(FlatMode))">Flat</MudButton>
-                <MudTooltip Text="@(_selectedPage is null ? "Select a page to view table of contents" : "Table of contents for selected page")">
-                    <span>
-                        <MudButton Variant="@NavigationModeVariant(TocMode)"
-                                   OnClick="@(() => SetNavigationModeAsync(TocMode))"
-                                   Disabled="@(_selectedPage is null)">ToC</MudButton>
-                    </span>
+        <div class="wiki-search-strip pages-search-strip">
+            <div class="pages-search-main">
+                <MudTextField @bind-Value="_searchQuery"
+                              Label="Search pages"
+                              Placeholder="Title or markdown"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              OnKeyUp="OnSearchKeyUp"
+                              Class="wiki-search-box" />
+                <MudTooltip Text="Clear search">
+                    <MudIconButton Icon="@Icons.Material.Filled.Clear" Size="Size.Small" Class="pages-search-clear" OnClick="ClearAsync" aria-label="Clear" />
                 </MudTooltip>
-            </MudButtonGroup>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Search" OnClick="SearchAsync">Search</MudButton>
-            <MudIconButton Icon="@Icons.Material.Filled.Clear" Size="Size.Small" OnClick="ClearAsync" aria-label="Clear" />
-            <MudTooltip Text="@(_isNavigationVisible ? "Hide navigation" : "Show navigation")">
-                <MudIconButton Icon="@(_isNavigationVisible ? Icons.Material.Filled.MenuOpen : Icons.Material.Filled.Menu)"
-                               Size="Size.Small"
-                               OnClick="ToggleNavigationVisibilityAsync"
-                               aria-label="Toggle navigation" />
-            </MudTooltip>
-            <MudTooltip Text="Reset view state for selected page (ToC collapse and section collapse)">
-                <span>
-                    <MudIconButton Icon="@Icons.Material.Filled.RestartAlt"
+                <MudTooltip Text="Search">
+                    <MudIconButton Icon="@Icons.Material.Filled.Search"
+                                   Variant="Variant.Filled"
+                                   Color="Color.Primary"
                                    Size="Size.Small"
-                                   OnClick="ClearSelectedPageViewStateAsync"
-                                   Disabled="@(_selectedPage is null)"
-                                   aria-label="Reset page view state" />
-                </span>
-            </MudTooltip>
-            <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
-                <Authorized>
-                    <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" Color="Color.Success" OnClick="NewPageAsync" aria-label="New" />
-                </Authorized>
-            </AuthorizeView>
+                                   Class="pages-search-submit"
+                                   OnClick="SearchAsync"
+                                   aria-label="Search" />
+                </MudTooltip>
+            </div>
+            <div class="pages-navigation-controls">
+                <MudButtonGroup Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" Class="wiki-mode-toggle">
+                    <MudButton Size="Size.Small" Variant="@NavigationModeVariant(TreeMode)" OnClick="@(() => SetNavigationModeAsync(TreeMode))">Tree</MudButton>
+                    <MudButton Size="Size.Small" Variant="@NavigationModeVariant(FlatMode)" OnClick="@(() => SetNavigationModeAsync(FlatMode))">Flat</MudButton>
+                    <MudTooltip Text="@(_selectedPage is null ? "Select a page to view table of contents" : "Table of contents for selected page")">
+                        <span>
+                            <MudButton Size="Size.Small"
+                                       Variant="@NavigationModeVariant(TocMode)"
+                                       OnClick="@(() => SetNavigationModeAsync(TocMode))"
+                                       Disabled="@(_selectedPage is null)">ToC</MudButton>
+                        </span>
+                    </MudTooltip>
+                </MudButtonGroup>
+                <MudTooltip Text="@(_isNavigationVisible ? "Hide navigation" : "Show navigation")">
+                    <MudIconButton Icon="@(_isNavigationVisible ? Icons.Material.Filled.MenuOpen : Icons.Material.Filled.Menu)"
+                                   Size="Size.Small"
+                                   OnClick="ToggleNavigationVisibilityAsync"
+                                   aria-label="Toggle navigation" />
+                </MudTooltip>
+                <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
+                    <Authorized>
+                        <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" Color="Color.Success" OnClick="NewPageAsync" aria-label="New" />
+                    </Authorized>
+                </AuthorizeView>
+            </div>
         </div>
     </section>
 
@@ -315,7 +321,7 @@
     private const string TreeMode = "tree";
     private const string FlatMode = "flat";
     private const string TocMode = "toc";
-    private const string PagesUiStateStorageKey = "memorysmith.pages.preferences.v1";
+    private const string PagesUiStateStorageKey = "memorysmith.pages.preferences.v2";
     private const string HeadingCollapseStoragePrefix = "memorysmith.pages.headingCollapse.v1:";
 
     [Parameter] public string? Slug { get; set; }
@@ -684,6 +690,9 @@
 
     private async Task SetNavigationModeAsync(string mode)
     {
+        _isNavigationVisible = true;
+        _isFocusMode = false;
+
         if (string.Equals(mode, FlatMode, StringComparison.OrdinalIgnoreCase))
         {
             _navigationMode = FlatMode;
@@ -874,7 +883,6 @@
                 _navigationMode = TreeMode;
             }
 
-            _isNavigationVisible = state.NavigationVisible;
             _isFocusMode = state.FocusMode;
             _expandedTreeKeys.Clear();
             foreach (var key in state.ExpandedKeys ?? [])

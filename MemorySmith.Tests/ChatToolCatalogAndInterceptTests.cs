@@ -59,6 +59,29 @@ public class ChatToolCatalogAndInterceptTests
     }
 
     [Test]
+    public void ChatToolCatalog_ExposesExpectedMcpSourceTools()
+    {
+        var catalog = new ChatToolCatalog();
+        var expectedMcpTools = new[]
+        {
+            "memorysmith_source_bundle",
+            "memorysmith_find_by_source"
+        };
+
+        var actual = catalog.McpTools.Select(tool => tool.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        Assert.Multiple(() =>
+        {
+            foreach (var name in expectedMcpTools)
+            {
+                Assert.That(actual.Contains(name), Is.True, $"Catalog is missing MCP tool '{name}'.");
+                Assert.That(catalog.TryGet(name, out var tool), Is.True);
+                Assert.That(tool.Risk, Is.EqualTo(ChatToolRisk.SensitiveRead), $"Tool '{name}' should be marked as a sensitive read.");
+            }
+        });
+    }
+
+    [Test]
     public async Task PageGetTool_RejectsSlugWithPathTraversal()
     {
         var pages = new FilePageService(_tempDir);
