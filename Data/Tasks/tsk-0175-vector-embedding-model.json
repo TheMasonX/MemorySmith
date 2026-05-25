@@ -1,0 +1,31 @@
+﻿{
+  "id": "tsk-0175-vector-embedding-model",
+  "key": "TSK-0175",
+  "title": "Vector Embedding Model",
+  "description": "Research other vector embedding models. The current one \u0060https://huggingface.co/intfloat/e5-base-v2/tree/main/onnx\u0060 works, and might be better for certain instances, but for a codebase, I was recommended\n\u0060https://huggingface.co/nomic-ai/nomic-embed-text-v1.5/tree/main/onnx\u0060\n\u0060https://huggingface.co/jinaai/jina-embeddings-v2-base-code/blob/main/onnx/model_fp16.onnx\u0060\n\nI downloaded and labeled them in:\n\u0022C:\\Users\\norrt\\source\\repos\\MemorySmith\\Data\\Models\\\u0022\n\nPlease use these when experimenting with improving semantic search",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T20:49:55.1531037Z",
+  "updatedAtUtc": "2026-05-25T21:03:52.8499493Z",
+  "completedAtUtc": null,
+  "revision": 3,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}
