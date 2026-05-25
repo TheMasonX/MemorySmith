@@ -2804,9 +2804,20 @@ body {
     vertical-align: top;
 }
 
+.about-license-chip {
+    min-width: 0;
+    white-space: nowrap;
+}
+
 .about-url-cell {
     max-width: 220px;
+    text-align: right;
     overflow-wrap: anywhere;
+}
+
+.about-table .mud-table-cell:last-child,
+.about-table .mud-table-head .mud-table-cell:last-child {
+    text-align: right;
 }
 
 .about-empty-state {
@@ -2830,6 +2841,50 @@ body {
     color: var(--vscode-text);
     font-family: Consolas, "Liberation Mono", monospace;
     font-size: 0.82rem;
+    white-space: pre-wrap;
+}
+
+.about-license-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1300;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.55);
+}
+
+.about-license-modal {
+    display: flex;
+    flex-direction: column;
+    width: min(920px, 100%);
+    max-height: min(760px, calc(100vh - 40px));
+    overflow: hidden;
+    background: var(--vscode-panel);
+    border: 1px solid var(--vscode-border);
+    border-radius: 6px;
+    box-shadow: 0 22px 70px rgba(0, 0, 0, 0.48);
+}
+
+.about-license-modal-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid var(--vscode-border);
+}
+
+.about-license-modal-text {
+    flex: 1;
+    min-height: 0;
+    margin: 0;
+    padding: 14px 16px 18px;
+    overflow: auto;
+    color: var(--vscode-text);
+    font-family: Consolas, "Liberation Mono", monospace;
+    font-size: 0.82rem;
+    line-height: 1.45;
     white-space: pre-wrap;
 }
 
@@ -3736,6 +3791,18 @@ body {
     .about-filter-row {
         grid-template-columns: 1fr;
         align-items: stretch;
+    }
+
+    .about-license-modal-backdrop {
+        padding: 10px;
+    }
+
+    .about-license-modal {
+        max-height: calc(100vh - 20px);
+    }
+
+    .about-license-modal-header {
+        padding: 12px;
     }
 
     .profile-summary-list div {

@@ -117,9 +117,7 @@ const routes: SmokeRoute[] = [
       await expect(page.getByRole('textbox', { name: 'Search dependencies' })).toBeVisible();
     },
     interact: async (page) => {
-      await page.getByRole('textbox', { name: 'Search dependencies' }).fill('MudBlazor');
-      await expect(page.getByText('MudBlazor', { exact: true })).toBeVisible();
-      await expect(page.getByText('BenchmarkDotNet', { exact: true })).toHaveCount(0);
+      await fillAboutDependencySearch(page, 'MudBlazor');
 
       await page.getByRole('button', { name: 'Clear' }).click();
       await expect(page.getByText('BenchmarkDotNet', { exact: true })).toBeVisible();
@@ -128,9 +126,32 @@ const routes: SmokeRoute[] = [
       await expect(licenseDetails).not.toHaveAttribute('open', '');
       await page.getByText('MemorySmith License (MIT)').click();
       await expect(licenseDetails).toHaveAttribute('open', '');
+
+      await page.getByRole('button', { name: 'Show MIT license text' }).first().click();
+      const mitDialog = page.getByRole('dialog', { name: 'MIT License Text' });
+      await expect(mitDialog).toContainText('Permission is hereby granted');
+      await mitDialog.getByRole('button', { name: 'Close license text' }).click();
+      await expect(mitDialog).toHaveCount(0);
+
+      await page.getByRole('button', { name: 'BSD-2-Clause (1)' }).click();
+      await page.getByRole('button', { name: 'Show BSD-2-Clause license text' }).click();
+      const bsdDialog = page.getByRole('dialog', { name: 'BSD-2-Clause License Text' });
+      await expect(bsdDialog).toContainText('Redistribution and use in source and binary forms');
+      await bsdDialog.getByRole('button', { name: 'Close license text' }).click();
+      await expect(bsdDialog).toHaveCount(0);
     },
   },
 ];
+
+async function fillAboutDependencySearch(page: Page, value: string): Promise<void> {
+  const search = page.getByRole('textbox', { name: 'Search dependencies' });
+  await expect(async () => {
+    await search.fill(value);
+    await expect(search).toHaveValue(value, { timeout: 1_000 });
+    await expect(page.getByText(value, { exact: true })).toBeVisible({ timeout: 1_000 });
+    await expect(page.getByText('BenchmarkDotNet', { exact: true })).toHaveCount(0, { timeout: 1_000 });
+  }).toPass({ timeout: 10_000 });
+}
 
 test.describe('Route smoke', () => {
   test.describe.configure({ mode: 'serial' });
