@@ -2747,6 +2747,56 @@ body {
     margin-bottom: 10px;
 }
 
+.profile-primary-grid {
+    display: grid;
+    grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+    margin-bottom: 10px;
+}
+
+.profile-summary-card {
+    min-width: 0;
+}
+
+.profile-summary-list {
+    display: grid;
+    gap: 8px;
+    margin: 8px 0 0;
+}
+
+.profile-summary-list div {
+    display: grid;
+    grid-template-columns: minmax(90px, 34%) minmax(0, 1fr);
+    gap: 8px;
+    align-items: start;
+}
+
+.profile-summary-list dt {
+    color: var(--vscode-text-muted);
+    font-size: 0.76rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.profile-summary-list dd {
+    margin: 0;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.profile-role-list {
+    gap: 4px;
+}
+
+.profile-account-summary {
+    overflow-wrap: anywhere;
+}
+
+.profile-edit-grid {
+    margin-bottom: 0;
+}
+
 .profile-sectionbar {
     grid-template-columns: minmax(190px, max-content) minmax(220px, 1fr);
     margin: -2px 0 8px;
@@ -2754,6 +2804,10 @@ body {
 
 .profile-signin-card {
     overflow: auto;
+}
+
+.profile-signin-table .mud-table-cell:last-child {
+    white-space: nowrap;
 }
 
 .admin-input-label {
@@ -3464,6 +3518,10 @@ body {
         align-items: center;
     }
 
+    .profile-primary-grid {
+        grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+    }
+
     .chat-composer {
         grid-template-columns: 1fr;
     }
@@ -3562,6 +3620,7 @@ body {
     .profile-commandbar,
     .profile-sectionbar,
     .admin-filter-bar,
+    .profile-primary-grid,
     .profile-panel-grid {
         grid-template-columns: 1fr;
     }
@@ -3569,6 +3628,11 @@ body {
     .profile-commandbar,
     .profile-sectionbar {
         align-items: stretch;
+    }
+
+    .profile-summary-list div {
+        grid-template-columns: 1fr;
+        gap: 2px;
     }
 
     .wiki-body {
