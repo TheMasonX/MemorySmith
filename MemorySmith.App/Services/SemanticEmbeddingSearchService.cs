@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 using MemorySmith.Core.Models;
@@ -24,10 +25,15 @@ public interface ITextEmbeddingProvider
     bool TryEmbed(string text, EmbeddingInputKind kind, out float[] embedding, out string? reason);
 }
 
-public sealed class SemanticEmbeddingSearchService
+public sealed class SemanticEmbeddingSearchService : IDisposable
 {
+    private const int MaxCachedQueryEmbeddings = 256;
+    private const int MaxCachedDocumentEmbeddings = 4096;
+
     private readonly ITextEmbeddingProvider _embeddingProvider;
     private readonly SemanticSearchOptions _options;
+    private readonly MemoryCache _queryEmbeddingCache = new(new MemoryCacheOptions { SizeLimit = MaxCachedQueryEmbeddings });
+    private readonly MemoryCache _documentEmbeddingCache = new(new MemoryCacheOptions { SizeLimit = MaxCachedDocumentEmbeddings });
 
     public SemanticEmbeddingSearchService(ITextEmbeddingProvider embeddingProvider, IOptions<MemorySmithOptions> options)
     {
@@ -61,7 +67,7 @@ public sealed class SemanticEmbeddingSearchService
             return false;
         }
 
-        if (!_embeddingProvider.TryEmbed(query, EmbeddingInputKind.Query, out var queryEmbedding, out _))
+        if (!TryGetQueryEmbedding(query, out var queryEmbedding))
         {
             return false;
         }
@@ -70,7 +76,7 @@ public sealed class SemanticEmbeddingSearchService
         foreach (var record in records)
         {
             var text = BuildEmbeddingText(record, _options.MaxIndexedTextCharacters);
-            if (!_embeddingProvider.TryEmbed(text, EmbeddingInputKind.Document, out var documentEmbedding, out _) || documentEmbedding.Length != queryEmbedding.Length)
+            if (!TryGetDocumentEmbedding(record.Id, text, queryEmbedding.Length, out var documentEmbedding))
             {
                 continue;
             }
@@ -102,6 +108,49 @@ public sealed class SemanticEmbeddingSearchService
             .ToList();
 
         return results.Count > 0;
+    }
+
+    public void Dispose()
+    {
+        _queryEmbeddingCache.Dispose();
+        _documentEmbeddingCache.Dispose();
+    }
+
+    private bool TryGetQueryEmbedding(string query, out float[] embedding)
+    {
+        if (_queryEmbeddingCache.TryGetValue(query, out float[]? cached) && cached is not null)
+        {
+            embedding = cached;
+            return true;
+        }
+
+        if (!_embeddingProvider.TryEmbed(query, EmbeddingInputKind.Query, out embedding, out _))
+        {
+            return false;
+        }
+
+        _queryEmbeddingCache.Set(query, embedding, new MemoryCacheEntryOptions { Size = 1 });
+        return true;
+    }
+
+    private bool TryGetDocumentEmbedding(string recordId, string text, int expectedLength, out float[] embedding)
+    {
+        if (_documentEmbeddingCache.TryGetValue(recordId, out CachedEmbeddingEntry? cached) &&
+            cached is not null &&
+            string.Equals(cached.SourceText, text, StringComparison.Ordinal) &&
+            cached.Embedding.Length == expectedLength)
+        {
+            embedding = cached.Embedding;
+            return true;
+        }
+
+        if (!_embeddingProvider.TryEmbed(text, EmbeddingInputKind.Document, out embedding, out _) || embedding.Length != expectedLength)
+        {
+            return false;
+        }
+
+        _documentEmbeddingCache.Set(recordId, new CachedEmbeddingEntry(text, embedding), new MemoryCacheEntryOptions { Size = 1 });
+        return true;
     }
 
     private static string BuildEmbeddingText(MemoryRecord record, int maxCharacters)
@@ -148,6 +197,8 @@ public sealed class SemanticEmbeddingSearchService
         var suffix = start + length < content.Length ? "..." : string.Empty;
         return prefix + content.Substring(start, length).Trim() + suffix;
     }
+
+    private sealed record CachedEmbeddingEntry(string SourceText, float[] Embedding);
 }
 
 public sealed class OnnxTextEmbeddingProvider : ITextEmbeddingProvider, IDisposable

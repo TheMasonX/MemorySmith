@@ -305,6 +305,43 @@ public class AppApiContractTests
         }
     }
 
+    [Test]
+    public async Task TasksApi_CanSetRejectedStatusWithoutCompletingOrArchivingTask()
+    {
+        var createResponse = await _client.PostAsJsonAsync("/api/tasks", new TaskCreateRequest(
+            Title: "Rejected status probe",
+            Description: "Verify rejected state semantics",
+            Type: "Task",
+            Status: TaskStatuses.Backlog,
+            Priority: TaskPriorities.Medium,
+            AssigneeMode: TaskAssigneeModes.Custom,
+            AssigneeDirectoryId: null,
+            AssigneeCustomText: "Copilot",
+            Reporter: "copilot",
+            Labels: ["tasks"],
+            DueDateUtc: null,
+            EpicId: null,
+            ParentId: null,
+            Slug: "rejected-status-probe"));
+        createResponse.EnsureSuccessStatusCode();
+        var created = await createResponse.Content.ReadFromJsonAsync<TaskItem>();
+
+        var statusResponse = await _client.PostAsJsonAsync($"/api/tasks/{created!.Id}/status", new TaskStatusUpdateRequest(TaskStatuses.Rejected, "human review declined this task"));
+        statusResponse.EnsureSuccessStatusCode();
+        var rejected = await statusResponse.Content.ReadFromJsonAsync<TaskItem>();
+        var history = await _client.GetFromJsonAsync<List<TaskActivityEntry>>($"/api/tasks/{created.Id}/history");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(rejected, Is.Not.Null);
+            Assert.That(rejected!.Status, Is.EqualTo(TaskStatuses.Rejected));
+            Assert.That(rejected.IsArchived, Is.False);
+            Assert.That(rejected.CompletedAtUtc, Is.Null);
+            Assert.That(history, Is.Not.Null);
+            Assert.That(history!.Any(item => item.Action == "status_changed" && item.Note == "human review declined this task"), Is.True);
+        });
+    }
+
         [Test]
         public async Task TasksApi_MalformedTaskFile_DoesNotCrashAndReturnsLoadErrorMetadata()
         {

@@ -1,0 +1,31 @@
+﻿{
+  "id": "tsk-0172-mcp-tool-config",
+  "key": "TSK-0172",
+  "title": "MCP Tool Config",
+  "description": "The unsafe MCP tools need to be able to be enabled/disabled individually. Default on unless very dangerous",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T18:52:18.5398355Z",
+  "updatedAtUtc": "2026-05-25T18:52:18.5398355Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

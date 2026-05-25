@@ -1,0 +1,31 @@
+﻿{
+  "id": "tsk-0170-related-task-attachment",
+  "key": "TSK-0170",
+  "title": "Related Task Attachment",
+  "description": "Support adding other tasks as a first class attachment type. Use drop-down that supports auto complete text search",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T18:25:15.2969523Z",
+  "updatedAtUtc": "2026-05-25T18:25:15.2969523Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

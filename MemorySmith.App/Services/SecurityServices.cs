@@ -198,7 +198,7 @@ public sealed class MemorySmithPermissionHandler : AuthorizationHandler<MemorySm
             return true;
         }
 
-        return roles.Contains(MemorySmithRoles.Viewer) && permission is MemorySmithPermission.View or MemorySmithPermission.UseChat or MemorySmithPermission.ReadSourceBundle;
+        return roles.Contains(MemorySmithRoles.Viewer) && permission is MemorySmithPermission.View or MemorySmithPermission.UseChat;
     }
 }
 

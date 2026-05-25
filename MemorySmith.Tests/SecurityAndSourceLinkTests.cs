@@ -8,7 +8,9 @@ using MemorySmith.Core.Models;
 using MemorySmith.Storage;
 using Microsoft.Data.Sqlite;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
 namespace MemorySmith.Tests;
@@ -16,6 +18,7 @@ namespace MemorySmith.Tests;
 [TestFixture]
 public class SecurityAndSourceLinkTests
 {
+    private const string ValidPassword = "ThisIsAValidPassword123!";
     private string _tempRoot = null!;
 
     [SetUp]
@@ -108,6 +111,79 @@ public class SecurityAndSourceLinkTests
         }, JsonSerializerOptions.Web);
 
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Accepted));
+    }
+
+    [Test]
+    public async Task McpSensitiveRead_DeniesAnonymousAndAuthenticatedViewerCallers()
+    {
+        await using var factory = CreateFactory(new Dictionary<string, string?>
+        {
+            ["MemorySmith:Auth:AnonymousAccess"] = MemorySmithRoles.Viewer,
+            ["MemorySmith:Auth:AuthenticatedDefaultRole"] = MemorySmithRoles.Viewer
+        });
+
+        using var setupClient = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var setupResponse = await setupClient.PostAsJsonAsync("/api/admin/setup", new SetupAdminRequest("Admin User", "admin@example.test", ValidPassword));
+        setupResponse.EnsureSuccessStatusCode();
+
+        using var anonymousClient = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var anonymousText = await CallFindBySourceTextAsync(anonymousClient);
+
+        await CreateLocalUserAsync(factory, "Viewer User", "viewer@example.test", ValidPassword, MemorySmithRoles.Viewer);
+        using var viewerClient = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var loginResponse = await viewerClient.PostAsJsonAsync("/api/auth/login", new LoginRequest("viewer@example.test", ValidPassword));
+        loginResponse.EnsureSuccessStatusCode();
+        var viewerText = await CallFindBySourceTextAsync(viewerClient);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(anonymousText, Does.Contain("not authorized to read source bundles"));
+            Assert.That(viewerText, Does.Contain("not authorized to read source bundles"));
+        });
+    }
+
+    [Test]
+    public async Task McpSensitiveRead_AllowsEditorAdminApiKeyAndAuthDisabledCallers()
+    {
+        await using var roleFactory = CreateFactory(new Dictionary<string, string?>
+        {
+            ["MemorySmith:Auth:AnonymousAccess"] = MemorySmithRoles.Viewer,
+            ["MemorySmith:Auth:AuthenticatedDefaultRole"] = MemorySmithRoles.Viewer
+        });
+
+        using var adminClient = roleFactory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var setupResponse = await adminClient.PostAsJsonAsync("/api/admin/setup", new SetupAdminRequest("Admin User", "admin@example.test", ValidPassword));
+        setupResponse.EnsureSuccessStatusCode();
+        var adminText = await CallFindBySourceTextAsync(adminClient);
+
+        await CreateLocalUserAsync(roleFactory, "Editor User", "editor@example.test", ValidPassword, MemorySmithRoles.Editor);
+        using var editorClient = roleFactory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var loginResponse = await editorClient.PostAsJsonAsync("/api/auth/login", new LoginRequest("editor@example.test", ValidPassword));
+        loginResponse.EnsureSuccessStatusCode();
+        var editorText = await CallFindBySourceTextAsync(editorClient);
+
+        await using var apiKeyFactory = CreateFactory(new Dictionary<string, string?>
+        {
+            ["MemorySmith:ApiKey"] = "secret"
+        });
+        using var apiKeyClient = apiKeyFactory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        apiKeyClient.DefaultRequestHeaders.Add(MemorySmithRequestGuardMiddleware.ApiKeyHeaderName, "secret");
+        var apiKeyText = await CallFindBySourceTextAsync(apiKeyClient);
+
+        await using var authDisabledFactory = CreateFactory(new Dictionary<string, string?>
+        {
+            ["MemorySmith:Auth:Enabled"] = "false"
+        });
+        using var authDisabledClient = authDisabledFactory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var authDisabledText = await CallFindBySourceTextAsync(authDisabledClient);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(adminText, Does.Not.Contain("not authorized to read source bundles"));
+            Assert.That(editorText, Does.Not.Contain("not authorized to read source bundles"));
+            Assert.That(apiKeyText, Does.Not.Contain("not authorized to read source bundles"));
+            Assert.That(authDisabledText, Does.Not.Contain("not authorized to read source bundles"));
+        });
     }
 
     [Test]
@@ -423,6 +499,49 @@ public class SecurityAndSourceLinkTests
                 config.AddInMemoryCollection(values);
             });
         });
+
+    private static async Task CreateLocalUserAsync(WebApplicationFactory<Program> factory, string displayName, string email, string password, string role)
+    {
+        using var scope = factory.Services.CreateScope();
+        var database = scope.ServiceProvider.GetRequiredService<IMemorySmithDatabase>();
+        var now = DateTime.UtcNow;
+        var user = new UserAccount
+        {
+            UserId = Guid.NewGuid().ToString("N"),
+            DisplayName = displayName,
+            NormalizedDisplayName = displayName.Trim().ToUpperInvariant(),
+            Email = email,
+            NormalizedEmail = email.Trim().ToUpperInvariant(),
+            LocalPasswordEnabled = true,
+            SecurityStamp = Guid.NewGuid().ToString("N"),
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now
+        };
+        user.PasswordHash = new PasswordHasher<UserAccount>().HashPassword(user, password);
+
+        await database.Users.CreateAsync(user, CancellationToken.None);
+        await database.Roles.AssignRoleAsync(user.UserId, role, null, CancellationToken.None);
+    }
+
+    private static async Task<string> CallFindBySourceTextAsync(HttpClient client)
+    {
+        var response = await client.PostAsJsonAsync("/mcp", new
+        {
+            JsonRpc = "2.0",
+            Id = "source-auth",
+            Method = "tools/call",
+            Params = new
+            {
+                Name = "memorysmith_find_by_source",
+                Arguments = new
+                {
+                    Pattern = "no-match-source-auth-probe"
+                }
+            }
+        }, JsonSerializerOptions.Web);
+        response.EnsureSuccessStatusCode();
+        return await ExtractFirstToolTextAsync(response);
+    }
 
     private static async Task<string> ExtractFirstToolTextAsync(HttpResponseMessage response)
     {

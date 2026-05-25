@@ -431,8 +431,8 @@
 </div>
 
 @code {
-    private static readonly IReadOnlyList<string> StatusOptions = ["All", TaskStatuses.Backlog, TaskStatuses.Ready, TaskStatuses.InProgress, TaskStatuses.Blocked, TaskStatuses.Done, TaskStatuses.Archived];
-    private static readonly IReadOnlyList<string> TaskStatusOptions = [TaskStatuses.Backlog, TaskStatuses.Ready, TaskStatuses.InProgress, TaskStatuses.Blocked, TaskStatuses.Done, TaskStatuses.Archived];
+    private static readonly IReadOnlyList<string> StatusOptions = ["All", TaskStatuses.Backlog, TaskStatuses.Ready, TaskStatuses.InProgress, TaskStatuses.Blocked, TaskStatuses.Rejected, TaskStatuses.Done, TaskStatuses.Archived];
+    private static readonly IReadOnlyList<string> TaskStatusOptions = [TaskStatuses.Backlog, TaskStatuses.Ready, TaskStatuses.InProgress, TaskStatuses.Blocked, TaskStatuses.Rejected, TaskStatuses.Done, TaskStatuses.Archived];
     private static readonly IReadOnlyList<string> TaskPriorityOptions = [TaskPriorities.Critical, TaskPriorities.High, TaskPriorities.Medium, TaskPriorities.Low];
     private static readonly IReadOnlyList<string> SortOptions = ["updated-desc", "updated-asc", "key-asc", "key-desc", "severity-desc", "severity-asc", "title-asc", "title-desc"];
     private IReadOnlyList<TaskSummary> _tasks = [];

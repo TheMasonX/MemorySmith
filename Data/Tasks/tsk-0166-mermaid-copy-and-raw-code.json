@@ -1,0 +1,31 @@
+﻿{
+  "id": "tsk-0166-mermaid-copy-and-raw-code",
+  "key": "TSK-0166",
+  "title": "Mermaid Copy and Raw Code",
+  "description": "Buttons to copy the raw code or to toggle to it. Ties in with the other tasks to add image export.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T17:41:32.2917456Z",
+  "updatedAtUtc": "2026-05-25T17:41:32.2917456Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

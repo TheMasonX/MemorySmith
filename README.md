@@ -240,7 +240,7 @@ The MCP endpoint is at `http://localhost:5089/mcp`. VS Code config lives in `.vs
 | `memorysmith_page_save` | `markdown`, `slug` (opt), `title` (opt) | Creates or updates a wiki page; returns slug, title, and updated timestamp | **Edit** |
 | `memorysmith_page_delete` | `slug` | Deletes a wiki page; returns success or not-found | **Edit** |
 | `memorysmith_source_bundle` | `ids` or `query`/`tags`/`limit`, `maxFileBytes`, `format` | Records + resolved file content slices for every source link (MCP only) | Source bundle |
-| `memorysmith_find_by_source` | `pattern` | Records whose source link URIs match the substring (MCP only) | View |
+| `memorysmith_find_by_source` | `pattern` | Records whose source link URIs match the substring (MCP only) | Source bundle |
 
 **`memorysmith_context_pack` tips:**
 
@@ -255,7 +255,7 @@ The MCP endpoint is at `http://localhost:5089/mcp`. VS Code config lives in `.vs
 - Memory and page read tools require the normal view policy for the caller.
 - Page tools also respect each page's minimum visibility role, so `memorysmith_page_search`, `memorysmith_page_get`, and `memorysmith_unified_search` omit pages the caller cannot view.
 - `memorysmith_page_save` and `memorysmith_page_delete` require edit permission and still apply page visibility rules, including Admin-only minimum-role restrictions.
-- `memorysmith_source_bundle` and `memorysmith_find_by_source` are MCP-only `SensitiveRead` tools. They require the source-bundle policy because they can resolve local source-link file slices, and they are intentionally not available as chat-requested model tools.
+- `memorysmith_source_bundle` and `memorysmith_find_by_source` are MCP-only `SensitiveRead` tools. They require the source-bundle policy because they can resolve local source-link file slices, and they are intentionally not available as chat-requested model tools. The source-bundle policy is granted to Editor and Admin callers, configured API-key requests, and auth-disabled local installs; Viewer callers, including the default anonymous Viewer role, can list and read normal memory/page content but cannot call source-bundle tools.
 
 **`memorysmith_source_bundle` tips:**
 

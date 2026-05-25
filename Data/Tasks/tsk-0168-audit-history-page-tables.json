@@ -1,0 +1,31 @@
+﻿{
+  "id": "tsk-0168-audit-history-page-tables",
+  "key": "TSK-0168",
+  "title": "Audit History Page Tables",
+  "description": "The audit and history pages should be proper tables, and not use the show/hide icon. They need to be filterable/sortable, etc. like a highend spreadsheet. Screenshot reference: Screenshot 2026-05-25 131330.png (local account path omitted from repo task content; attach or copy a sanitized asset before PR).",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T18:15:58.3290601Z",
+  "updatedAtUtc": "2026-05-25T18:15:58.3290601Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

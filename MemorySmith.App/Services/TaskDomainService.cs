@@ -18,6 +18,7 @@ public static class TaskStatuses
     public const string Ready = "Ready";
     public const string InProgress = "InProgress";
     public const string Blocked = "Blocked";
+    public const string Rejected = "Rejected";
     public const string Done = "Done";
     public const string Archived = "Archived";
 }

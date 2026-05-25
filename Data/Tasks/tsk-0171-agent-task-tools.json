@@ -1,0 +1,31 @@
+﻿{
+  "id": "tsk-0171-agent-task-tools",
+  "key": "TSK-0171",
+  "title": "Agent Task Tools",
+  "description": "Agents should have tools for creating, updating, and commenting on tasks. Change status, priority, add attachments, etc.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T18:49:55.6729806Z",
+  "updatedAtUtc": "2026-05-25T18:49:55.6729806Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

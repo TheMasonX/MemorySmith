@@ -8,7 +8,7 @@ if (-not (Test-Path -LiteralPath $tasksRoot)) {
 }
 
 $allowedStatuses = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::OrdinalIgnoreCase)
-@('Backlog', 'Ready', 'InProgress', 'Blocked', 'Done', 'Archived') | ForEach-Object { [void]$allowedStatuses.Add($_) }
+@('Backlog', 'Ready', 'InProgress', 'Blocked', 'Rejected', 'Done', 'Archived') | ForEach-Object { [void]$allowedStatuses.Add($_) }
 
 $errors = New-Object 'System.Collections.Generic.List[string]'
 $records = New-Object 'System.Collections.Generic.List[object]'
