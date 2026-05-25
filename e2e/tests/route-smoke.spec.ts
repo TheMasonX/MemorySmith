@@ -63,6 +63,7 @@ const routes: SmokeRoute[] = [
       await expect(page.getByRole('complementary', { name: 'Task list' })).toBeVisible();
     },
     interact: async (page) => {
+      await selectFirstTask(page);
       await collapseTaskList(page);
       await reopenTaskList(page);
     },
@@ -172,7 +173,7 @@ async function collapseTaskList(page: Page): Promise<void> {
       return;
     }
 
-    await page.getByRole('button', { name: /Hide List|Show List/ }).click();
+    await page.getByRole('button', { name: 'Toggle task list' }).click();
     await expect(taskList).toHaveCount(0, { timeout: 1_000 });
   }).toPass({ timeout: 10_000 });
 }
@@ -184,9 +185,16 @@ async function reopenTaskList(page: Page): Promise<void> {
       return;
     }
 
-    await page.getByRole('button', { name: /Hide List|Show List/ }).click();
+    await page.getByRole('button', { name: 'Toggle task list' }).click();
     await expect(taskList).toBeVisible({ timeout: 1_000 });
   }).toPass({ timeout: 10_000 });
+}
+
+async function selectFirstTask(page: Page): Promise<void> {
+  const firstTask = page.locator('.tasks-list-pane .proposal-row').first();
+  await expect(firstTask).toBeVisible();
+  await firstTask.click();
+  await expect(page.getByRole('main', { name: 'Task detail' })).toBeVisible();
 }
 
 function escapeRegExp(value: string): string {

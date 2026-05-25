@@ -125,7 +125,8 @@ test.describe('Navigation freeze regression', () => {
 
     await page.goto('/pages');
     await expect(page).toHaveURL(/\/pages(\/.*)?$/);
-    await expect(page.getByRole('heading', { name: 'Pages', exact: true })).toBeVisible();
+    const pageSearch = page.getByRole('region', { name: 'Page search' });
+    await expect(pageSearch.getByRole('heading', { name: 'Pages', exact: true })).toBeVisible();
 
     await page.getByRole('button', { name: 'Tree' }).click();
     const treeItems = page.getByRole('button', { name: /^Open / });
@@ -133,7 +134,7 @@ test.describe('Navigation freeze regression', () => {
     const treeCount = await treeItems.count();
     for (let i = 0; i < Math.min(treeCount, 12); i++) {
       await treeItems.nth(i).click();
-      await expect(page.getByRole('heading', { name: 'Pages', exact: true })).toBeVisible();
+      await expect(pageSearch.getByRole('heading', { name: 'Pages', exact: true })).toBeVisible();
     }
 
     await page.getByRole('button', { name: 'Flat' }).click();
@@ -146,7 +147,7 @@ test.describe('Navigation freeze regression', () => {
       const titleText = ((await flatTitles.nth(i).innerText()) ?? '').trim();
       await expect(titleText.length).toBeGreaterThan(0);
       await pagesPanel.locator('.wiki-result-title', { hasText: titleText }).first().click();
-      await expect(page.getByRole('heading', { name: 'Pages', exact: true })).toBeVisible();
+      await expect(pageSearch.getByRole('heading', { name: 'Pages', exact: true })).toBeVisible();
     }
 
     expect(pageErrors, `Expected no tree/flat click circuit failures, got: ${pageErrors.join(' | ')}`).toEqual([]);
