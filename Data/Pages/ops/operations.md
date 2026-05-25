@@ -73,6 +73,23 @@ The app can run as a Windows Service. When checking a service deployment, verify
 
 For hosted TLS deployment patterns (IIS/reverse proxy/Kestrel cert binding), use [HTTPS Production TLS Guide](https-production-tls.md).
 
+## Remote Access Outside Home
+
+MemorySmith can be reached from outside the home network, but the current recommended pattern is private remote access, not direct public internet exposure.
+
+Preferred approach:
+
+1. Use a VPN or private mesh such as WireGuard or Tailscale.
+2. Keep the app bound behind your home network boundary.
+3. Trust `artifacts/certs/MemorySmith-LAN-Root-CA.cer` on the remote client.
+4. Browse to `https://memorysmith.home.arpa:7090` or `https://192.168.1.8:7090`.
+
+Avoid treating the current local/LAN certificate setup as a public hosting solution. `memorysmith.home.arpa` and the local root CA are appropriate for private network trust, not for public internet clients.
+
+Current repo security planning still treats hardened public remote mode as incomplete. In particular, remote/API guardrails and broader transport/proxy hardening are still tracked as active work, so direct port-forwarding to the internet is not the recommended default posture.
+
+For exact Windows and Android root-CA import steps, use [HTTPS Setup Guide](../guides/https-setup.md).
+
 ## Pages Publishing
 
 GitHub Pages publishing builds a static site from `README.md`, `Data/Pages`, and the structured memory index. The source command is:

@@ -505,7 +505,7 @@ try
             };
             details.Extensions["traceId"] = traceId;
 
-            await context.Response.WriteAsJsonAsync(details);
+            await context.Response.WriteAsJsonAsync(details, options: null, contentType: "application/problem+json");
         });
     });
 

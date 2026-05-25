@@ -1,10 +1,15 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using MemorySmith.App.Controllers;
 using MemorySmith.App.Services;
 using MemorySmith.Core.Models;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Data.Sqlite;
 
 namespace MemorySmith.Tests;
@@ -46,6 +51,7 @@ public class AppApiContractTests
     {
         _client.Dispose();
         _factory.Dispose();
+        Serilog.Log.CloseAndFlush();
         SqliteConnection.ClearAllPools();
         if (Directory.Exists(_tempDir))
         {
@@ -64,6 +70,58 @@ public class AppApiContractTests
             Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
             Assert.That(body, Does.Contain("Tasks"));
         });
+    }
+
+    [Test]
+    public async Task RequestPipeline_EmitsProblemDetailsTraceIdAndStructuredRequestCorrelation()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"memorysmith-request-pipeline-{Guid.NewGuid():N}");
+        var factory = CreateRequestPipelineFactory(tempDir);
+
+        try
+        {
+            using var client = factory.CreateClient();
+            var normalResponse = await client.GetAsync("/api/health/live");
+            normalResponse.EnsureSuccessStatusCode();
+            var normalEntry = await WaitForStructuredLogEntryAsync(tempDir, entry =>
+                GetString(entry, "SourceContext") == "Serilog.AspNetCore.RequestLoggingMiddleware" &&
+                GetString(entry, "RequestPath") == "/api/health/live" &&
+                GetInt32(entry, "StatusCode") == StatusCodes.Status200OK);
+
+            var failureResponse = await client.GetAsync("/api/test-failures/throw");
+            var problemJson = await failureResponse.Content.ReadAsStringAsync();
+            using var problem = JsonDocument.Parse(problemJson);
+            var traceId = GetString(problem.RootElement, "traceId");
+            var requestEntry = await WaitForStructuredLogEntryAsync(tempDir, entry =>
+                GetString(entry, "SourceContext") == "Serilog.AspNetCore.RequestLoggingMiddleware" &&
+                GetString(entry, "RequestPath") == "/api/test-failures/throw" &&
+                GetInt32(entry, "StatusCode") == StatusCodes.Status500InternalServerError);
+            var exceptionEntry = await WaitForStructuredLogEntryAsync(tempDir, entry =>
+                GetString(entry, "@mt") == "Unhandled request failure {Method} {Path} TraceId={TraceId}" &&
+                GetString(entry, "TraceId") == traceId);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(GetString(normalEntry, "TraceId"), Is.Not.Null.And.Not.Empty);
+                Assert.That(GetString(normalEntry, "CorrelationId"), Is.Not.Null.And.Not.Empty);
+                Assert.That(GetString(normalEntry, "RequestMethod"), Is.EqualTo("GET"));
+                Assert.That(GetDouble(normalEntry, "Elapsed"), Is.GreaterThanOrEqualTo(0));
+                Assert.That(GetString(normalEntry, "@l"), Is.EqualTo("Warning"));
+                Assert.That(failureResponse.StatusCode, Is.EqualTo(HttpStatusCode.InternalServerError));
+                Assert.That(failureResponse.Content.Headers.ContentType?.MediaType, Is.EqualTo("application/problem+json"));
+                Assert.That(GetString(problem.RootElement, "title"), Is.EqualTo("An unexpected error occurred."));
+                Assert.That(traceId, Is.Not.Null.And.Not.Empty);
+                Assert.That(problemJson, Does.Not.Contain("Synthetic TSK-0105 test failure"));
+                Assert.That(GetString(requestEntry, "TraceId"), Is.EqualTo(traceId));
+                Assert.That(GetString(requestEntry, "CorrelationId"), Is.Not.Null.And.Not.Empty);
+                Assert.That(GetDouble(requestEntry, "Elapsed"), Is.GreaterThanOrEqualTo(0));
+                Assert.That(GetString(exceptionEntry, "Path"), Is.EqualTo("/api/test-failures/throw"));
+            });
+        }
+        finally
+        {
+            await DisposeFactoryTempDirAsync(factory, tempDir);
+        }
     }
 
     [Test]
@@ -916,16 +974,110 @@ Line two",
                 });
             });
 
+    private static WebApplicationFactory<Program> CreateRequestPipelineFactory(string tempDir) =>
+        CreateIsolatedFactory(tempDir, new Dictionary<string, string?>
+        {
+            ["MemorySmith:Logging:StructuredFilePath"] = Path.Combine(tempDir, "Logs", "structured-.jsonl"),
+            ["MemorySmith:Logging:SlowRequestThresholdMs"] = "0"
+        }).WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureTestServices(services =>
+            {
+                services.AddControllers().AddApplicationPart(typeof(TestFailureController).Assembly);
+            });
+        });
+
     private static bool IsAuthChallenge(HttpStatusCode statusCode) =>
         statusCode is HttpStatusCode.Redirect or HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden;
+
+    private static async Task<JsonElement> WaitForStructuredLogEntryAsync(string tempDir, Func<JsonElement, bool> predicate)
+    {
+        var logDirectory = Path.Combine(tempDir, "Logs");
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        while (DateTime.UtcNow < deadline)
+        {
+            if (Directory.Exists(logDirectory))
+            {
+                foreach (var filePath in Directory.EnumerateFiles(logDirectory, "*.jsonl", SearchOption.TopDirectoryOnly))
+                {
+                    foreach (var line in await ReadSharedLinesAsync(filePath))
+                    {
+                        if (string.IsNullOrWhiteSpace(line))
+                        {
+                            continue;
+                        }
+
+                        using var document = JsonDocument.Parse(line);
+                        if (predicate(document.RootElement))
+                        {
+                            return document.RootElement.Clone();
+                        }
+                    }
+                }
+            }
+
+            await Task.Delay(100);
+        }
+
+        Assert.Fail($"Expected matching structured log entry under {logDirectory}.");
+        return default;
+    }
+
+    private static async Task<List<string>> ReadSharedLinesAsync(string filePath)
+    {
+        var lines = new List<string>();
+        await using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        using var reader = new StreamReader(stream);
+        while (await reader.ReadLineAsync() is { } line)
+        {
+            lines.Add(line);
+        }
+
+        return lines;
+    }
+
+    private static string? GetString(JsonElement element, string propertyName) =>
+        element.TryGetProperty(propertyName, out var property) && property.ValueKind == JsonValueKind.String
+            ? property.GetString()
+            : null;
+
+    private static int? GetInt32(JsonElement element, string propertyName) =>
+        element.TryGetProperty(propertyName, out var property) && property.ValueKind == JsonValueKind.Number && property.TryGetInt32(out var value)
+            ? value
+            : null;
+
+    private static double? GetDouble(JsonElement element, string propertyName) =>
+        element.TryGetProperty(propertyName, out var property) && property.ValueKind == JsonValueKind.Number && property.TryGetDouble(out var value)
+            ? value
+            : null;
 
     private static async Task DisposeFactoryTempDirAsync(WebApplicationFactory<Program> factory, string tempDir)
     {
         await factory.DisposeAsync();
+        Serilog.Log.CloseAndFlush();
         SqliteConnection.ClearAllPools();
-        if (Directory.Exists(tempDir))
+        for (var attempt = 0; attempt < 5; attempt++)
         {
-            Directory.Delete(tempDir, recursive: true);
+            try
+            {
+                if (Directory.Exists(tempDir))
+                {
+                    Directory.Delete(tempDir, recursive: true);
+                }
+
+                return;
+            }
+            catch (IOException) when (attempt < 4)
+            {
+                await Task.Delay(100);
+            }
         }
     }
+}
+
+[ApiController]
+public sealed class TestFailureController : ControllerBase
+{
+    [HttpGet("/api/test-failures/throw")]
+    public IActionResult Throw() => throw new InvalidOperationException("Synthetic TSK-0105 test failure");
 }

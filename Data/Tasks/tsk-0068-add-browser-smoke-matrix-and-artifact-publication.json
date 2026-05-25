@@ -4,7 +4,7 @@
   "title": "Add browser smoke matrix and artifact publication",
   "description": "Problem: critical route smoke coverage (`/memories`, `/pages`, `/chat`, `/tasks`, `/health`) is documented as needed but not enforced by an implementation-quality CI matrix with clear artifacts.\n\nDesired outcome: add a route-smoke browser suite with per-route failure attribution and reliable artifact publication for triage.\n\nScope:\n- In scope: route smoke specs, deterministic selectors/assertions, artifact folder conventions, and CI artifact uploads.\n- Out of scope: deep functional scenario coverage unrelated to route rendering/navigation health.\n\nDependencies:\n- Required browser gate foundation from TSK-0067.\n\nAcceptance criteria:\n- Browser smoke suite exercises the five core routes under one CI run.\n- Failures identify which route assertion failed.\n- Artifacts are published and linked from CI summary.\n\nValidation:\n- Local run of browser smoke suite with artifact generation.\n- CI run verifies upload paths and retention settings.\n\nRollback:\n- Temporarily reduce smoke suite breadth to smallest stable subset while preserving route-hop regression test.",
   "type": "Task",
-  "status": "InProgress",
+  "status": "Done",
   "priority": "High",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -36,15 +36,21 @@
       "author": "AgentSmith",
       "body": "Implemented `browser-route-smoke` in `.github/workflows/ci.yml` with artifact upload, `retention-days: 14`, and step-summary links. Local validation passed via `./Scripts/Validate-Repo.ps1 -SkipBuild -SkipTests -IncludeE2E`; the next pushed CI run should confirm the hosted artifact URLs end to end.",
       "createdAtUtc": "2026-05-25T02:24:56.4938183Z"
+    },
+    {
+      "id": "c-hosted-0068-20260525",
+      "author": "AgentSmith",
+      "body": "Hosted verification complete. CI run `26384577133` passed `build-and-test`, `browser-navigation-freeze`, and `browser-route-smoke`; the run published `browser-route-smoke-artifacts` artifact `7192081051` (478891 bytes, not expired) at `https://api.github.com/repos/TheMasonX/MemorySmith/actions/artifacts/7192081051/zip`. This satisfies the five-route smoke gate and hosted artifact publication criteria.",
+      "createdAtUtc": "2026-05-25T05:25:08.0949583Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-24T18:21:00.0000000Z",
-  "updatedAtUtc": "2026-05-25T02:24:56.4938183Z",
-  "completedAtUtc": null,
-  "revision": 2,
+  "updatedAtUtc": "2026-05-25T05:25:08.0949583Z",
+  "completedAtUtc": "2026-05-25T05:25:08.0949583Z",
+  "revision": 3,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

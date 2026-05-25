@@ -40,6 +40,54 @@ Windows-native certificate artifacts have been generated under `artifacts/certs`
 
 If clients should use the host name instead of the raw IP, make sure `memorysmith.home.arpa` resolves to `192.168.1.8` on those devices through router DNS or a hosts file entry.
 
+## 2b. Trust The LAN Root CA On Windows
+
+Use these exact steps on another Windows machine that should trust the local MemorySmith certificate:
+
+1. Copy `artifacts/certs/MemorySmith-LAN-Root-CA.cer` to the target Windows device.
+2. Double-click the `.cer` file.
+3. Click `Install Certificate...`.
+4. Choose `Current User` if you only need trust for the current signed-in user, or `Local Machine` if you want trust for all users and have administrator rights.
+5. Select `Place all certificates in the following store`.
+6. Click `Browse...`.
+7. Choose `Trusted Root Certification Authorities`.
+8. Click `Next`.
+9. Click `Finish`.
+10. Accept the Windows security warning about importing a root certificate.
+11. Verify that the target device can resolve `memorysmith.home.arpa` to `192.168.1.8`, or browse by IP instead.
+12. Open `https://memorysmith.home.arpa:7090` or `https://192.168.1.8:7090`.
+
+PowerShell alternative on Windows:
+
+```powershell
+Import-Certificate -FilePath .\MemorySmith-LAN-Root-CA.cer -CertStoreLocation Cert:\CurrentUser\Root
+```
+
+If you use the PowerShell path, run it in the same user context that will browse to MemorySmith.
+
+## 2c. Trust The LAN Root CA On Android
+
+Use these exact steps on an Android device that should trust the local MemorySmith certificate:
+
+1. Copy `artifacts/certs/MemorySmith-LAN-Root-CA.cer` to the Android device, usually into `Downloads`.
+2. Open `Settings`.
+3. Open `Security and privacy`.
+4. Open `More security settings`.
+5. Open `Encryption and credentials` or `Credential storage`.
+6. Tap `Install a certificate`.
+7. Choose `CA certificate`.
+8. Accept the Android warning about user-installed certificate authorities.
+9. Select `MemorySmith-LAN-Root-CA.cer` from storage.
+10. If Android asks for a name, use `MemorySmith LAN Root CA`.
+11. Make sure the device can resolve `memorysmith.home.arpa` to `192.168.1.8`, or use `https://192.168.1.8:7090` directly.
+12. Open the MemorySmith URL in Chrome or another normal browser.
+
+Notes for Android:
+
+- Settings labels vary slightly by vendor and Android version, but the path always ends at installing a `CA certificate` from storage.
+- Some work-managed devices block user-installed root CAs.
+- Normal browsers typically trust the user CA for web browsing, but some apps ignore user-installed CAs unless they were built to allow them.
+
 ## 3. Use The Built-In HTTPS Launch Profiles
 
 `MemorySmith.App/Properties/launchSettings.json` now includes two HTTPS paths:
@@ -143,6 +191,38 @@ dotnet dev-certs https --trust
 ## 8. Production TLS
 
 For hosted environments (IIS/reverse proxy/Kestrel cert binding), use [HTTPS Production TLS Guide](../ops/https-production-tls.md).
+
+## 9. Access From Outside Home
+
+Yes, it is possible to reach MemorySmith when you are away from home, but the safe answer depends on how you expose it.
+
+Recommended path right now:
+
+1. Keep MemorySmith private.
+2. Use a VPN or private mesh such as WireGuard or Tailscale to join your home network remotely.
+3. Reach `https://memorysmith.home.arpa:7090` or `https://192.168.1.8:7090` only after the remote device can resolve the host name and trusts `MemorySmith-LAN-Root-CA.cer`.
+
+Not recommended as a default right now:
+
+- Direct router port forwarding of the current home-hosted MemorySmith instance to the public internet.
+- Reusing `MemorySmith-LAN-Root-CA.cer` as an internet-facing trust anchor.
+
+Why this is not a safe default yet:
+
+- MemorySmith is still tracking remote-hardening work in the project wiki.
+- The request guard currently blocks remote traffic only when `MemorySmith:AllowRemoteApi=false`; if you enable remote API access and leave `MemorySmith:ApiKey` empty, that is a warning-level smell rather than a startup-fatal configuration.
+- Current security planning pages still call out transport hardening, proxy/header trust, and remote-safe defaults as active work rather than finished posture.
+
+If you eventually want public internet access instead of VPN-only access, minimum expectations are:
+
+1. Use a real public DNS name, not `memorysmith.home.arpa`.
+2. Use a public CA certificate, typically via a reverse proxy or ACME/Let's Encrypt.
+3. Keep HTTPS-only access.
+4. Finish first-admin setup and use real authentication.
+5. Disable compatibility settings that are only acceptable for local bootstrap scenarios.
+6. If `/api` or `/mcp` must be remotely reachable, set a strong `MemorySmith:ApiKey` and treat that as mandatory, not optional.
+
+Until the remote-hardening tasks and validation matrix are closed, prefer VPN/private-mesh access over direct public exposure.
 
 ## Screenshot Backlog Template
 
