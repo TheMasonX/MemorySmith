@@ -1,0 +1,53 @@
+{
+  "id": "tsk-0116-track-and-remediate-opentelemetry-package-advisories",
+  "key": "TSK-0116",
+  "title": "Track and remediate OpenTelemetry package advisories",
+  "description": "Problem: current restore/test output emits NU1902 moderate vulnerability advisories for OpenTelemetry.Api and OpenTelemetry.Exporter.OpenTelemetryProtocol 1.15.0, but the advisory state is not tracked as an active task or release gate.\n\nDesired outcome: dependency advisory status is explicit, with either an upgraded package set, a documented temporary acceptance decision, or a validation gate that alerts when patched packages are available.\n\nScope:\n- In scope: run package vulnerability listing, identify direct versus transitive OTel advisory sources, evaluate available fixed versions, update packages if compatible, or document a time-boxed acceptance with monitoring.\n- Out of scope: replacing the OTel architecture or removing telemetry unless no safe package path exists.\n\nDependencies:\n- Coordinate with the completed OTel implementation and TSK-0113 validation notes.\n\nAcceptance criteria:\n- A package advisory report is attached or summarized with direct/transitive package source and affected project.\n- If fixed versions exist, package references are updated and validation passes.\n- If no fixed versions exist, the acceptance rationale, risk surface, and next review date are documented.\n- CI/local validation treats advisory warnings consistently rather than normalizing unexplained warnings.\n\nValidation:\n- Run dotnet package vulnerability listing for direct and transitive dependencies.\n- Run Scripts/Validate-Repo.ps1 after any package updates.\n- Confirm restore/test warning output is either clean or explicitly documented as accepted.\n\nRollback:\n- Revert package version changes if runtime telemetry or tests regress, keeping the advisory acceptance note active.\n\nRisks:\n- OTel fixed packages may not exist yet for the .NET 10 package set, requiring temporary acceptance rather than immediate remediation.",
+  "type": "Task",
+  "status": "Done",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "audit",
+    "security",
+    "dependencies",
+    "otel",
+    "validation",
+    "sprint-2"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "research/ultra-codebase-audit-20260524",
+    "tasks/sprints/ultra-codebase-audit-sprints-20260524",
+    "council/ultra-codebase-audit-prioritization-council-20260524"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0116-20260524",
+      "author": "AgentSmith",
+      "body": "Created from ultra audit finding F-009. Evidence: dotnet test --list-tests emitted NU1902 advisories for OpenTelemetry.Api and OpenTelemetry.Exporter.OpenTelemetryProtocol 1.15.0.",
+      "createdAtUtc": "2026-05-24T19:57:00.0000000Z"
+    },
+    {
+      "id": "c-complete-0116-20260524",
+      "author": "AgentSmith",
+      "body": "Completed by updating OpenTelemetry.Exporter.OpenTelemetryProtocol to 1.15.3, OpenTelemetry.Extensions.Hosting to 1.15.3, OpenTelemetry.Instrumentation.AspNetCore to 1.15.2, OpenTelemetry.Instrumentation.Http to 1.15.1, and OpenTelemetry.Instrumentation.Runtime to 1.15.1. Validation: dotnet list MemorySmith.App\\MemorySmith.App.csproj package --vulnerable --include-transitive reports no vulnerable packages from current sources.",
+      "createdAtUtc": "2026-05-24T20:35:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-24T19:57:00.0000000Z",
+  "updatedAtUtc": "2026-05-24T20:35:00.0000000Z",
+  "completedAtUtc": "2026-05-24T20:35:00.0000000Z",
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

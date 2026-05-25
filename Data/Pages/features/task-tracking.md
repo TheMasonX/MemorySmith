@@ -48,6 +48,7 @@ Finite state transition enforcement is intentionally deferred and remains an opt
 
 - Task record files: `Data/Tasks/*.json`
 - Task activity log: `Data/Events/tasks.activity.jsonl`
+- Task record validator: `Scripts/Test-TaskRecords.ps1`
 - Main implementation:
   - `MemorySmith.App/Services/TaskDomainService.cs`
   - `MemorySmith.App/Controllers/TasksController.cs`
@@ -74,5 +75,7 @@ Focused test coverage includes:
 
 - `TasksApi_FullWorkflow_SupportsCrudHistoryAndRelatedArtifacts`
 - `TasksPageRoute_ReturnsSuccessAndContainsTasksHeading`
+
+Repository validation also runs `Scripts/Test-TaskRecords.ps1`, which checks that task JSON parses, required identity fields exist, task ids match file names, statuses are recognized, and task ids/keys are unique.
 
 The workflow test explicitly verifies that invalid linked pages generate warning activity and do not fail the operation.

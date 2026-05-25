@@ -431,6 +431,13 @@ Common optional variants:
 
 The script runs build/test plus markdown/wiki integrity checks by default, then adds optional coverage, browser regression, and docs-site validation when requested.
 
+Default local validation includes task-record integrity, markdown page-link checks, and markdown path-literal checks. The task-record check verifies JSON parseability, required identity fields, filename/id consistency, recognized statuses, and unique task ids/keys.
+
+The CI workflow has two stable validation jobs:
+
+- `build-and-test`: restore, task-record validation, page validators, build, NUnit tests, and Cobertura coverage artifacts.
+- `browser-navigation-freeze`: Playwright navigation-freeze regression with failure screenshots, video, traces, and HTML report artifacts.
+
 Underlying commands (also available individually):
 
 ```powershell
@@ -448,7 +455,7 @@ Run the browser route-hop regression suite (Playwright) for navigation freeze pr
 
 ```powershell
 Set-Location e2e
-npm install
+npm ci
 npx playwright install chromium
 npm run test:nav-freeze
 ```
@@ -465,6 +472,12 @@ Rebuild the GitHub Pages wiki site locally, open the generated site, or trigger 
 .\Scripts\Publish-WikiSite.ps1
 .\Scripts\Publish-WikiSite.ps1 -OpenSite
 .\Scripts\Publish-WikiSite.ps1 -Deploy
+```
+
+Validate task records for parseability and unique ids/keys:
+
+```powershell
+.\Scripts\Test-TaskRecords.ps1
 ```
 
 Validate local markdown page links (relative .md links and existing targets under `Data/Pages`):
@@ -486,7 +499,7 @@ git config core.hooksPath .githooks
 ```
 
 After setting `core.hooksPath`, `git commit` runs the page-link validator automatically.
-After setting `core.hooksPath`, `git commit` runs both validators automatically.
+After setting `core.hooksPath`, `git commit` runs the task-record and page validators automatically.
 
 The script creates or reuses a local Python virtual environment under `artifacts/tools/docs-site-venv`, installs the `markdown` package used by CI, rebuilds `docs/output/wiki`, and with `-Deploy` dispatches `.github/workflows/docs-pages.yml` through GitHub CLI. `-Deploy` requires `gh auth login` and only runs from `main` or `master`.
 

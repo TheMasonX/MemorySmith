@@ -37,6 +37,10 @@ try {
         }
     }
 
+    Invoke-Step -Name "Validate task records" -Action {
+        & (Join-Path $repoRoot "Scripts/Test-TaskRecords.ps1")
+    }
+
     Invoke-Step -Name "Validate markdown page links" -Action {
         & (Join-Path $repoRoot "Scripts/Test-PageLinks.ps1")
     }

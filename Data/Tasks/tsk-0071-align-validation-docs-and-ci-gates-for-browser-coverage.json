@@ -4,7 +4,7 @@
   "title": "Align validation docs and CI gates for browser coverage",
   "description": "Problem: validation guidance can imply stronger coverage than what CI enforces, which reduces trust in delivery safety.\n\nDesired outcome: synchronize README and quality-runbook documentation with actual required CI checks, including browser regression gates and artifact expectations.\n\nScope:\n- In scope: README validation sections, testing runbook references, and explicit mandatory/optional gate annotations.\n- Out of scope: non-testing documentation cleanup unrelated to validation and CI.\n\nDependencies:\n- CI topology finalization from TSK-0069.\n\nAcceptance criteria:\n- Documentation clearly distinguishes required PR gates from optional local checks.\n- Browser regression gate commands and artifact paths are documented and current.\n- Sprint/audit links remain traceable from docs to task records.\n\nValidation:\n- Doc review against live CI workflow definitions and sample run outputs.\n\nRollback:\n- Revert doc changes if workflow naming changes unexpectedly; reissue once CI contract stabilizes.",
   "type": "Task",
-  "status": "Backlog",
+  "status": "Done",
   "priority": "Medium",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -30,15 +30,21 @@
       "author": "AgentSmith",
       "body": "Created from audit finding F-005 to reduce documentation-to-gate drift.",
       "createdAtUtc": "2026-05-24T18:24:00.0000000Z"
+    },
+    {
+      "id": "c-complete-0071-20260524",
+      "author": "AgentSmith",
+      "body": "Completed by updating README validation guidance with default task/page validators, required CI job names, Playwright navigation-freeze command, and browser artifact expectations. Validation: ./Scripts/Validate-Repo.ps1 -SkipBuild -SkipTests passed after the documentation update.",
+      "createdAtUtc": "2026-05-24T20:39:00.0000000Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-24T18:24:00.0000000Z",
-  "updatedAtUtc": "2026-05-24T18:24:00.0000000Z",
-  "completedAtUtc": null,
-  "revision": 1,
+  "updatedAtUtc": "2026-05-24T20:39:00.0000000Z",
+  "completedAtUtc": "2026-05-24T20:39:00.0000000Z",
+  "revision": 2,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

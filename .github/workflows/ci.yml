@@ -20,6 +20,10 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore
 
+      - name: Validate task records
+        shell: pwsh
+        run: ./Scripts/Test-TaskRecords.ps1
+
       - name: Validate page links
         shell: pwsh
         run: ./Scripts/Test-PageLinks.ps1
@@ -66,3 +70,45 @@ jobs:
           name: coverage-html-report
           path: artifacts/coverage-report
           if-no-files-found: error
+
+  browser-navigation-freeze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Install e2e dependencies
+        working-directory: e2e
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        working-directory: e2e
+        run: npx playwright install --with-deps chromium
+
+      - name: Run navigation-freeze browser regression
+        working-directory: e2e
+        run: npm run test:nav-freeze
+
+      - name: Upload browser diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-navigation-freeze-diagnostics
+          path: |
+            e2e/playwright-report
+            e2e/test-results
+          if-no-files-found: ignore

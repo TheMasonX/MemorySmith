@@ -1,0 +1,55 @@
+{
+  "id": "tsk-0088-add-regression-tests-for-python-fences-and-markdown-renderer-compatibility",
+  "key": "TSK-0088",
+  "title": "Add Regression Tests for Python Fences and Markdown Renderer Compatibility",
+  "description": "Extend MemorySmith.Tests markdown tests (currently in PagesAndChatTests.cs) to verify python fence transformation behavior, escaping guarantees, and no regressions for Mermaid, Prism-highlighted blocks, and existing link sanitization rules. Include tests for one combined admin settings model across Pyodide and Mermaid, disabled-by-default behavior, parity across both markdown surfaces that consume the shared renderer path, and explicit Viewer-role denial of executable codeblock actions.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "tests",
+    "markdown",
+    "pyodide",
+    "nunit",
+    "vetted",
+    "config"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [
+    {
+      "id": "cmt-tsk-0088-1",
+      "author": "Agent Smith",
+      "message": "Vetting note: MemorySmith.Markdown.Tests does not exist. Test project is MemorySmith.Tests using NUnit.",
+      "createdAtUtc": "2026-05-24T20:55:33.9800632Z"
+    },
+    {
+      "id": "cmt-tsk-0088-2",
+      "author": "Agent Smith",
+      "message": "User refinement: add explicit regression coverage for disabled-by-default runtime settings and admin-enabled flow for both markdown providers.",
+      "createdAtUtc": "2026-05-24T21:05:00.0000000Z"
+    },
+    {
+      "id": "cmt-tsk-0088-3",
+      "author": "Agent Smith",
+      "message": "User refinement: assert combined settings behavior and verify viewers cannot execute code blocks.",
+      "createdAtUtc": "2026-05-24T21:15:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-24T20:55:33.9800632Z",
+  "updatedAtUtc": "2026-05-24T21:15:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 3,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

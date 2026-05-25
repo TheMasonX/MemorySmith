@@ -151,7 +151,76 @@ test.describe('Navigation freeze regression', () => {
 
     expect(pageErrors, `Expected no tree/flat click circuit failures, got: ${pageErrors.join(' | ')}`).toEqual([]);
   });
+
+  test('pages navigation controls reopen the sidebar and keep reset hidden', async ({ page }) => {
+    await page.setViewportSize({ width: 582, height: 462 });
+    await page.goto('/pages/features/chat-and-agent');
+    await expect(page).toHaveURL(/\/pages\/features\/chat-and-agent$/);
+    await expect(page.getByRole('region', { name: 'Page search' })).toBeVisible();
+    await expect(page.getByRole('complementary', { name: 'Pages' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Reset page view state' })).toHaveCount(0);
+    await expectPagesCommandbarLayout(page);
+
+    await hidePagesNavigation(page);
+    await page.getByRole('button', { name: 'Flat' }).click();
+    await expect(page.getByRole('complementary', { name: 'Pages' })).toBeVisible();
+
+    await hidePagesNavigation(page);
+    await page.getByRole('button', { name: 'Tree' }).click();
+    await expect(page.getByRole('complementary', { name: 'Pages' })).toBeVisible();
+
+    await hidePagesNavigation(page);
+    await page.getByRole('button', { name: 'ToC' }).click();
+    await expect(page.getByRole('complementary', { name: 'Pages' })).toBeVisible();
+  });
 });
+
+async function hidePagesNavigation(page: import('@playwright/test').Page): Promise<void> {
+  await expect(async () => {
+    const pagesPanel = page.getByRole('complementary', { name: 'Pages' });
+    if ((await pagesPanel.count()) === 0) {
+      return;
+    }
+
+    await page.getByRole('button', { name: 'Toggle navigation' }).click();
+    await expect(pagesPanel).toHaveCount(0, { timeout: 1_000 });
+  }).toPass({ timeout: 10_000 });
+}
+
+async function expectPagesCommandbarLayout(page: import('@playwright/test').Page): Promise<void> {
+  const layout = await page.evaluate(() => {
+    const strip = document.querySelector('.pages-search-strip')?.getBoundingClientRect();
+    const searchBox = document.querySelector('.pages-search-main .wiki-search-box')?.getBoundingClientRect();
+    const clearButton = document.querySelector('.pages-search-clear')?.getBoundingClientRect();
+    const searchButton = document.querySelector('.pages-search-submit') as HTMLElement | null;
+    const searchButtonRect = searchButton?.getBoundingClientRect();
+    const modeToggle = document.querySelector('.pages-navigation-controls .wiki-mode-toggle')?.getBoundingClientRect();
+    const navToggle = document.querySelector('.pages-navigation-controls [aria-label="Toggle navigation"]')?.getBoundingClientRect();
+    const searchIcon = searchButton?.querySelector('.mud-icon-root');
+    const searchButtonStyle = searchButton ? getComputedStyle(searchButton) : null;
+    const searchIconStyle = searchIcon ? getComputedStyle(searchIcon) : null;
+
+    return {
+      clearSearchGap: clearButton && searchButtonRect ? searchButtonRect.left - clearButton.right : Number.POSITIVE_INFINITY,
+      clearSearchCenterDelta: clearButton && searchButtonRect ? Math.abs((clearButton.top + clearButton.height / 2) - (searchButtonRect.top + searchButtonRect.height / 2)) : Number.POSITIVE_INFINITY,
+      inputSearchGap: searchBox && searchButtonRect ? searchButtonRect.left - searchBox.right : Number.POSITIVE_INFINITY,
+      modeNavGap: modeToggle && navToggle ? navToggle.left - modeToggle.right : Number.POSITIVE_INFINITY,
+      modeNavCenterDelta: modeToggle && navToggle ? Math.abs((modeToggle.top + modeToggle.height / 2) - (navToggle.top + navToggle.height / 2)) : Number.POSITIVE_INFINITY,
+      navRightGap: strip && navToggle ? strip.right - navToggle.right : Number.POSITIVE_INFINITY,
+      searchBackground: searchButtonStyle?.backgroundColor ?? '',
+      searchIconColor: searchIconStyle?.color ?? '',
+    };
+  });
+
+  expect(layout.clearSearchGap, 'Clear should sit immediately beside the filled Search button').toBeLessThanOrEqual(8);
+  expect(layout.clearSearchCenterDelta, 'Clear and Search should align vertically').toBeLessThanOrEqual(6);
+  expect(layout.inputSearchGap, 'Search controls should stay attached to the search input').toBeLessThanOrEqual(42);
+  expect(layout.modeNavGap, 'Tree/Flat/ToC should sit directly beside the sidebar toggle').toBeLessThanOrEqual(8);
+  expect(layout.modeNavCenterDelta, 'Tree/Flat/ToC and sidebar toggle should align vertically').toBeLessThanOrEqual(6);
+  expect(layout.navRightGap, 'Navigation controls should be right aligned in the Pages commandbar').toBeLessThanOrEqual(8);
+  expect(layout.searchBackground, 'Search button should have a filled background').not.toBe('rgba(0, 0, 0, 0)');
+  expect(layout.searchIconColor, 'Search button icon should be white').toBe('rgb(255, 255, 255)');
+}
 
 async function navigateAndAssert(
   page: import('@playwright/test').Page,
@@ -174,5 +243,8 @@ async function navigateAndAssert(
 }
 
 function appNavigation(page: import('@playwright/test').Page) {
-  return page.getByRole('navigation', { name: /^Primary navigation$/ });
+  return page
+    .getByRole('complementary')
+    .filter({ has: page.getByRole('heading', { name: 'Navigation', exact: true }) })
+    .first();
 }

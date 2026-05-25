@@ -1,0 +1,42 @@
+{
+  "id": "tsk-0085-implement-pyodide-python-code-block-rendering-in-existing-markdown-pipeline",
+  "key": "TSK-0085",
+  "title": "Implement Pyodide Python Code Block Rendering in Existing Markdown Pipeline",
+  "description": "Add Python executable fenced-block support to the current Markdig path in MemorySmith.App by extending ChatMarkdownRenderer, MermaidExtension, and code block renderers so python fences emit py-cell placeholders without regressing Mermaid or Prism behavior.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "feature",
+    "markdown",
+    "pyodide",
+    "wiki",
+    "vetted"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [
+    {
+      "id": "cmt-tsk-0085-1",
+      "author": "Agent Smith",
+      "message": "Vetting note: repository does not contain MemorySmith.Markdown or MemorySmith.Web projects. Real integration points are MemorySmith.App/Services/ChatMarkdownRenderer.cs, MermaidExtension.cs, PrismCodeBlockRenderer.cs, and MermaidBlockRenderer.cs.",
+      "createdAtUtc": "2026-05-24T20:55:33.9800632Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-24T20:55:33.9800632Z",
+  "updatedAtUtc": "2026-05-24T20:55:33.9800632Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

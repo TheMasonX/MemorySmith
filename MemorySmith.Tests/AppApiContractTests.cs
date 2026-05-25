@@ -166,7 +166,7 @@ public class AppApiContractTests
             Assert.That(loaded.LinkedPages, Does.Contain("does/not/exist"));
             Assert.That(history, Is.Not.Null);
             Assert.That(history!.Any(item => item.Action == "created"), Is.True);
-            Assert.That(history.Any(item => item.Action == "page_link_warning" && item.Note!.Contains("does/not/exist", StringComparison.OrdinalIgnoreCase)), Is.True);
+            Assert.That(history!.Any(item => item.Action == "page_link_warning" && item.Note!.Contains("does/not/exist", StringComparison.OrdinalIgnoreCase)), Is.True);
             Assert.That(removeAttachmentResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK));
             Assert.That(softDeleteResponse.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
             Assert.That(archived, Is.Not.Null);
