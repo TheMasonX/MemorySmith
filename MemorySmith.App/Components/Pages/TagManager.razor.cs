@@ -19,6 +19,7 @@ public partial class TagManager
     private List<TagGovernanceSuggestion> _suggestions = [];
     private List<MemoryDiagnostic> _policyDiagnostics = [];
     private List<NamespaceEditRow> _namespaceRows = [];
+    private TagPolicyLoadStatus? _policyLoadStatus;
     private string _policyMode = "warn";
     private string _plainMode = "allowWithSuggestions";
     private string _allowlistText = string.Empty;
@@ -57,6 +58,7 @@ public partial class TagManager
         _blocklistText = string.Join(Environment.NewLine, snapshot.Policy.PlainTags.Blocklist);
         _aliasesText = string.Join(Environment.NewLine, snapshot.Policy.PlainTags.Aliases.Select(alias => $"{alias.Key} = {alias.Value}"));
         _namespaceRows = snapshot.Policy.Namespaces.Select(NamespaceEditRow.FromPolicy).ToList();
+        _policyLoadStatus = snapshot.PolicyLoadStatus;
         _tagUsage = snapshot.Tags.ToList();
         _suggestions = snapshot.Suggestions.ToList();
         _policyDiagnostics = snapshot.PolicyDiagnostics.ToList();
@@ -205,6 +207,18 @@ public partial class TagManager
         "Error" => "is-error",
         _ => "is-info"
     };
+
+    private static string PolicyLoadLabel(TagPolicyLoadStatus? status) => status is null
+        ? "Policy status unknown"
+        : status.LoadedFromFile
+            ? "Loaded from file"
+            : $"Using defaults ({status.Reason})";
+
+    private static string PolicyLoadClass(TagPolicyLoadStatus? status) => status is null || !status.UsingFallback
+        ? "tag-policy-source"
+        : status.Reason == "missing"
+            ? "tag-policy-source is-info"
+            : "tag-policy-source is-warning";
 
     private sealed class NamespaceEditRow
     {

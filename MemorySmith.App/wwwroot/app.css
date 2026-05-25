@@ -804,6 +804,37 @@ body {
     overflow: auto;
 }
 
+.tag-policy-source {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 10px 10px 0;
+    padding: 8px;
+    border: 1px solid var(--vscode-border);
+    border-radius: 3px;
+    background: var(--vscode-panel-soft);
+    color: var(--vscode-text-muted);
+    font-size: 0.78rem;
+}
+
+.tag-policy-source strong {
+    color: var(--vscode-text);
+}
+
+.tag-policy-source small {
+    overflow-wrap: anywhere;
+}
+
+.tag-policy-source.is-info {
+    border-color: rgba(0, 122, 204, 0.5);
+    background: rgba(0, 122, 204, 0.12);
+}
+
+.tag-policy-source.is-warning {
+    border-color: rgba(204, 167, 0, 0.45);
+    background: rgba(204, 167, 0, 0.12);
+}
+
 .tag-policy-subheader {
     display: flex;
     align-items: center;

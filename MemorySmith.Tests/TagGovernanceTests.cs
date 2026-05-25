@@ -1,3 +1,4 @@
+using System.Text.Json;
 using MemorySmith.App.Services;
 using MemorySmith.Core.Models;
 using MemorySmith.Storage;
@@ -24,6 +25,34 @@ public class TagGovernanceTests
         {
             Directory.Delete(_tempRoot, recursive: true);
         }
+    }
+
+    [Test]
+    public void CreateDefault_MatchesRepositoryTagPolicy()
+    {
+        var root = FindRepositoryRoot();
+        var expected = JsonSerializer.Deserialize<TagPolicy>(
+            File.ReadAllText(Path.Combine(root, "Data", "Policies", "tag-policy.json")),
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        var actual = TagPolicy.CreateDefault();
+
+        Assert.That(expected, Is.Not.Null);
+        Assert.Multiple(() =>
+        {
+            Assert.That(actual.Mode, Is.EqualTo(expected!.Mode));
+            Assert.That(
+                actual.Namespaces.Select(item => $"{item.Name}|{item.Cardinality}|{item.ValueKind}|{string.Join(',', item.AllowedValues)}"),
+                Is.EqualTo(expected.Namespaces.Select(item => $"{item.Name}|{item.Cardinality}|{item.ValueKind}|{string.Join(',', item.AllowedValues)}")));
+            Assert.That(actual.PlainTags.Mode, Is.EqualTo(expected.PlainTags.Mode));
+            Assert.That(actual.PlainTags.Allowlist, Is.EquivalentTo(expected.PlainTags.Allowlist));
+            Assert.That(actual.PlainTags.Blocklist, Is.EquivalentTo(expected.PlainTags.Blocklist));
+            Assert.That(actual.PlainTags.Aliases.Count, Is.EqualTo(expected.PlainTags.Aliases.Count));
+            foreach (var pair in expected.PlainTags.Aliases)
+            {
+                Assert.That(actual.PlainTags.Aliases.TryGetValue(pair.Key, out var value), Is.True, $"Missing alias '{pair.Key}'.");
+                Assert.That(value, Is.EqualTo(pair.Value), $"Alias '{pair.Key}' points to the wrong canonical tag.");
+            }
+        });
     }
 
     [Test]

@@ -31,14 +31,13 @@ public sealed class TagPolicy
         PlainTags = new PlainTagPolicy
         {
             Mode = "allowWithSuggestions",
-            Allowlist = ["project-wiki", "search", "semantic-search", "hybrid-search", "chat", "mcp", "pages", "ui", "storage", "tests", "security", "docs", "current-state"],
+            Allowlist = ["admin", "api", "architecture", "benchmarks", "chat", "configuration", "context-pack", "current-state", "deterministic-test", "diagnostics", "documentation", "github", "governance", "graph-fixture", "hybrid-search", "maintenance", "mcp", "memory-system", "ollama", "pages", "project-wiki", "search", "security", "semantic-search", "settings", "source-links", "staleness", "storage", "structured-output", "tag-governance", "test-fixture", "tests", "ui"],
             Blocklist = ["misc", "general", "important", "stuff", "todo", "notes", "old", "new", "core", "working", "deprecated", "unconsolidated"],
             Aliases = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
                 ["retrieval"] = "search",
                 ["semantic-searching"] = "semantic-search",
-                ["model-context-protocol"] = "mcp",
-                ["documentation"] = "docs"
+                ["model-context-protocol"] = "mcp"
             }
         }
     };
@@ -60,6 +59,14 @@ public sealed class PlainTagPolicy
     public Dictionary<string, string> Aliases { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 }
 
+public sealed record TagPolicyLoadStatus(
+    string Path,
+    bool LoadedFromFile,
+    bool UsingFallback,
+    string Reason,
+    string Message,
+    string? ErrorType = null);
+
 public sealed class TagPolicyService
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
@@ -68,6 +75,7 @@ public sealed class TagPolicyService
     private string? _cachedPath;
     private DateTime? _cachedLastWriteUtc;
     private TagPolicy? _cachedPolicy;
+    private TagPolicyLoadStatus? _cachedLoadStatus;
 
     public TagPolicyService(IOptions<MemorySmithOptions> options)
     {
@@ -75,6 +83,15 @@ public sealed class TagPolicyService
     }
 
     public string GetPolicyPath() => Path.GetFullPath(_options.Governance.TagPolicyPath);
+
+    public TagPolicyLoadStatus GetLoadStatus()
+    {
+        _ = GetPolicy();
+        lock (_cacheLock)
+        {
+            return _cachedLoadStatus ?? MissingStatus(GetPolicyPath());
+        }
+    }
 
     public TagPolicy GetPolicy()
     {
@@ -91,15 +108,16 @@ public sealed class TagPolicyService
             }
         }
 
-        var policy = LoadPolicy(path);
+        var result = LoadPolicy(path);
         lock (_cacheLock)
         {
             _cachedPath = path;
             _cachedLastWriteUtc = lastWriteUtc;
-            _cachedPolicy = policy;
+            _cachedPolicy = result.Policy;
+            _cachedLoadStatus = result.Status;
         }
 
-        return policy;
+        return result.Policy;
     }
 
     public void SavePolicy(TagPolicy policy)
@@ -113,26 +131,37 @@ public sealed class TagPolicyService
             _cachedPath = path;
             _cachedLastWriteUtc = File.GetLastWriteTimeUtc(path);
             _cachedPolicy = policy;
+            _cachedLoadStatus = LoadedStatus(path);
         }
     }
 
-    private static TagPolicy LoadPolicy(string path)
+    private static TagPolicyLoadResult LoadPolicy(string path)
     {
         if (!File.Exists(path))
         {
-            return TagPolicy.CreateDefault();
+            return new(TagPolicy.CreateDefault(), MissingStatus(path));
         }
 
         try
         {
             var policy = JsonSerializer.Deserialize<TagPolicy>(File.ReadAllText(path), JsonOptions);
-            return policy ?? TagPolicy.CreateDefault();
+            return policy is null
+                ? new(TagPolicy.CreateDefault(), new TagPolicyLoadStatus(path, false, true, "empty", "Tag policy file did not contain a policy object; using built-in defaults."))
+                : new(policy, LoadedStatus(path));
         }
-        catch
+        catch (Exception ex)
         {
-            return TagPolicy.CreateDefault();
+            return new(TagPolicy.CreateDefault(), new TagPolicyLoadStatus(path, false, true, "failed", $"Tag policy file could not be loaded; using built-in defaults. {ex.Message}", ex.GetType().Name));
         }
     }
+
+    private static TagPolicyLoadStatus LoadedStatus(string path) =>
+        new(path, true, false, "loaded", "Tag policy loaded from the configured file.");
+
+    private static TagPolicyLoadStatus MissingStatus(string path) =>
+        new(path, false, true, "missing", "Tag policy file was not found; using built-in defaults.");
+
+    private sealed record TagPolicyLoadResult(TagPolicy Policy, TagPolicyLoadStatus Status);
 }
 
 public sealed partial class MemoryDiagnosticsService
@@ -178,6 +207,32 @@ public sealed partial class MemoryDiagnosticsService
     {
         var recordsById = MemoryRecordLookup.ToRecordMap(records);
         return recordsById.Values.ToDictionary(record => record.Id, record => Analyze(record, recordsById), StringComparer.OrdinalIgnoreCase);
+    }
+
+    public IReadOnlyList<MemoryDiagnostic> AnalyzePolicy(TagPolicy policy)
+    {
+        var diagnostics = new List<MemoryDiagnostic>();
+        var loadStatus = _tagPolicyService.GetLoadStatus();
+        if (loadStatus.UsingFallback)
+        {
+            diagnostics.Add(new MemoryDiagnostic(
+                loadStatus.Reason == "missing" ? "tag.policy_missing" : "tag.policy_load_failed",
+                loadStatus.Reason == "missing" ? "Info" : "Warning",
+                "tag",
+                loadStatus.Message,
+                loadStatus.Path));
+        }
+
+        var seenNamespaces = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var namespacePolicy in policy.Namespaces.Where(item => !string.IsNullOrWhiteSpace(item.Name)))
+        {
+            if (!seenNamespaces.Add(namespacePolicy.Name))
+            {
+                diagnostics.Add(Warning("tag.policy_duplicate_namespace", "tag", $"Tag policy namespace '{namespacePolicy.Name}' is defined more than once; first definition is used.", namespacePolicy.Name));
+            }
+        }
+
+        return diagnostics;
     }
 
     private static IEnumerable<MemoryDiagnostic> AnalyzeTags(

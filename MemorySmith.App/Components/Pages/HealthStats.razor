@@ -120,6 +120,7 @@
                 <span>Pages Path</span><strong>@_diagnostics.Configuration.PagesPath</strong>
                 <span>Event Log</span><strong>@_diagnostics.Configuration.EventLogPath</strong>
                 <span>Variables</span><strong>@_diagnostics.Configuration.VarsPath</strong>
+                <span>Tag Policy</span><strong>@FormatTagPolicyStatus(_diagnostics.Configuration.TagPolicy)</strong>
                 <span>URLs</span><strong>@FormatUrls(_diagnostics.Configuration.ConfiguredUrls)</strong>
                 <span>Service</span><strong>@_diagnostics.Configuration.WindowsServiceName</strong>
                 <span>API Key</span><strong>@(_diagnostics.Configuration.ApiKeyConfigured ? "Configured" : "Not configured")</strong>
@@ -319,6 +320,9 @@
             .Distinct(StringComparer.OrdinalIgnoreCase);
         return string.Join(", ", roots.DefaultIfEmpty("None"));
     }
+
+    private static string FormatTagPolicyStatus(TagPolicyLoadStatus status) =>
+        status.LoadedFromFile ? $"Loaded / {status.Path}" : $"Fallback ({status.Reason}) / {status.Path}";
 
     private static string FormatChatProvider(ChatOptions chat) =>
         $"{chat.Provider} / Ollama:{chat.OllamaModel} / GitHub:{chat.GitHubModel} / {chat.SystemPromptPath}";

@@ -6,6 +6,7 @@ namespace MemorySmith.App.Services;
 
 public sealed record TagGovernanceSnapshot(
     TagPolicy Policy,
+    TagPolicyLoadStatus PolicyLoadStatus,
     IReadOnlyList<TagUsageSummary> Tags,
     IReadOnlyList<TagGovernanceSuggestion> Suggestions,
     IReadOnlyList<MemoryDiagnostic> PolicyDiagnostics);
@@ -49,13 +50,15 @@ public sealed class TagGovernanceService
     public TagGovernanceSnapshot GetSnapshot()
     {
         var policy = NormalizePolicy(_policyService.GetPolicy());
+        var loadStatus = _policyService.GetLoadStatus();
         var records = MemoryRecordLookup.ToRecordList(_store.LoadAll());
         var tags = BuildTagUsage(records, policy);
         return new TagGovernanceSnapshot(
             policy,
+            loadStatus,
             tags,
             BuildSuggestions(records, tags, policy),
-            BuildPolicyDiagnostics(policy));
+            _diagnostics.AnalyzePolicy(policy));
     }
 
     public TagGovernanceSnapshot SavePolicy(TagPolicy policy)
@@ -230,26 +233,6 @@ public sealed class TagGovernanceService
             .ThenByDescending(suggestion => suggestion.Count)
             .ThenBy(suggestion => suggestion.Tag, StringComparer.OrdinalIgnoreCase)
             .ToList();
-    }
-
-    private static IReadOnlyList<MemoryDiagnostic> BuildPolicyDiagnostics(TagPolicy policy)
-    {
-        var diagnostics = new List<MemoryDiagnostic>();
-        var seenNamespaces = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var namespacePolicy in policy.Namespaces.Where(item => !string.IsNullOrWhiteSpace(item.Name)))
-        {
-            if (!seenNamespaces.Add(namespacePolicy.Name))
-            {
-                diagnostics.Add(new MemoryDiagnostic(
-                    "tag.policy_duplicate_namespace",
-                    "Warning",
-                    "tag",
-                    $"Tag policy namespace '{namespacePolicy.Name}' is defined more than once; first definition is used.",
-                    namespacePolicy.Name));
-            }
-        }
-
-        return diagnostics;
     }
 
     private static TagPolicy NormalizePolicy(TagPolicy? policy)
