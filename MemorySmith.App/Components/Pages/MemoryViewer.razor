@@ -9,7 +9,7 @@
 
 <PageTitle>Memories - MemorySmith</PageTitle>
 
-<div class="wiki-workbench">
+<div class="@MemoryWorkbenchClass">
     <section class="wiki-commandbar" aria-label="Memory search">
         <div class="wiki-title-block">
             <MudText Typo="Typo.h5">Memories</MudText>
@@ -373,6 +373,7 @@
     private bool HasBlockingEditDiagnostics => _editDiagnostics.Any(diagnostic => string.Equals(diagnostic.Severity, "Error", StringComparison.OrdinalIgnoreCase));
 
     private int TotalPages => Math.Max(1, (int)Math.Ceiling((double)_totalCount / _pageSize));
+    private string MemoryWorkbenchClass => _isEditing ? "wiki-workbench memory-workbench is-editing" : "wiki-workbench memory-workbench";
     private string SearchModeLabel => _searchMode.ToString();
     private string SearchLabel => _searchMode switch
     {

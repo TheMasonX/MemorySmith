@@ -3650,6 +3650,32 @@ body {
         grid-row: 1;
     }
 
+    .memory-workbench.is-editing .memory-body {
+        grid-template-rows: minmax(0, 1fr) minmax(72px, 18%);
+    }
+
+    .memory-workbench.is-editing .wiki-detail-pane {
+        grid-row: 1;
+    }
+
+    .memory-workbench.is-editing .wiki-results-pane {
+        grid-row: 2;
+        min-height: 72px;
+    }
+
+    .memory-workbench.is-editing .wiki-detail-pane > .wiki-pane-header {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: var(--vscode-panel);
+        border-bottom: 1px solid var(--vscode-border-soft);
+    }
+
+    .memory-workbench.is-editing .wiki-editor-textarea textarea {
+        max-height: none;
+        min-height: 320px;
+    }
+
     .wiki-filter {
         flex: 1 1 calc(50% - 6px);
         max-width: none;
