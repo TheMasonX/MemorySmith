@@ -493,9 +493,43 @@ body {
 
 .wiki-diagnostics-panel {
     margin: 10px 12px 0;
-    padding: 10px;
     border: 1px solid rgba(204, 167, 0, 0.42);
     background: rgba(204, 167, 0, 0.08);
+}
+
+.wiki-diagnostics-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 10px;
+    color: var(--vscode-text-muted);
+    cursor: pointer;
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.wiki-diagnostics-summary::marker {
+    color: var(--vscode-yellow);
+}
+
+.wiki-diagnostics-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    min-height: 20px;
+    border: 1px solid rgba(204, 167, 0, 0.45);
+    border-radius: 3px;
+    background: rgba(204, 167, 0, 0.12);
+    color: var(--vscode-yellow);
+    font-size: 0.72rem;
+}
+
+.wiki-diagnostics-list {
+    border-top: 1px solid rgba(204, 167, 0, 0.28);
+    padding: 6px 10px 8px;
 }
 
 .wiki-diagnostic-row {

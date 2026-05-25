@@ -241,16 +241,21 @@
 
                 @if (_editDiagnostics.Count > 0)
                 {
-                    <div class="wiki-diagnostics-panel wiki-edit-diagnostics">
-                        <div class="wiki-section-title">Draft Diagnostics</div>
-                        @foreach (var diagnostic in _editDiagnostics)
-                        {
-                            <div class="wiki-diagnostic-row @DiagnosticClass(diagnostic)">
-                                <strong>@diagnostic.Code</strong>
-                                <span>@diagnostic.Message</span>
-                            </div>
-                        }
-                    </div>
+                    <details class="wiki-diagnostics-panel wiki-edit-diagnostics">
+                        <summary class="wiki-diagnostics-summary">
+                            <span>Draft Diagnostics</span>
+                            <span class="wiki-diagnostics-count">@_editDiagnostics.Count</span>
+                        </summary>
+                        <div class="wiki-diagnostics-list">
+                            @foreach (var diagnostic in _editDiagnostics)
+                            {
+                                <div class="wiki-diagnostic-row @DiagnosticClass(diagnostic)">
+                                    <strong>@diagnostic.Code</strong>
+                                    <span>@diagnostic.Message</span>
+                                </div>
+                            }
+                        </div>
+                    </details>
                 }
 
                 <MudTextField @bind-Value="_editRecord.Content"
@@ -299,16 +304,21 @@
 
                 @if (_selectedDiagnostics.Count > 0)
                 {
-                    <div class="wiki-diagnostics-panel">
-                        <div class="wiki-section-title">Diagnostics</div>
-                        @foreach (var diagnostic in _selectedDiagnostics)
-                        {
-                            <div class="wiki-diagnostic-row @DiagnosticClass(diagnostic)">
-                                <strong>@diagnostic.Code</strong>
-                                <span>@diagnostic.Message</span>
-                            </div>
-                        }
-                    </div>
+                    <details class="wiki-diagnostics-panel">
+                        <summary class="wiki-diagnostics-summary">
+                            <span>Diagnostics</span>
+                            <span class="wiki-diagnostics-count">@_selectedDiagnostics.Count</span>
+                        </summary>
+                        <div class="wiki-diagnostics-list">
+                            @foreach (var diagnostic in _selectedDiagnostics)
+                            {
+                                <div class="wiki-diagnostic-row @DiagnosticClass(diagnostic)">
+                                    <strong>@diagnostic.Code</strong>
+                                    <span>@diagnostic.Message</span>
+                                </div>
+                            }
+                        </div>
+                    </details>
                 }
 
                 <div class="wiki-tag-line wiki-detail-tags">
