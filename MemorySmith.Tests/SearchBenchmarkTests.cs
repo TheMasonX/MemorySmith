@@ -51,6 +51,10 @@ public class SearchBenchmarkTests
         new("github free gpt claude haiku sonnet model preference", MustContainId: "project-wiki-chat-agent-provider", MaxMs: 200),
         new("chat context window usage rate limits mcp tools role", MustContainId: "project-wiki-chat-agent-provider", MaxMs: 200),
         new("chat intercepts mcp tool calls hybrid search same prompt", MustContainId: "project-wiki-chat-agent-provider", MaxMs: 200),
+        new("copied screenshot html img data url clipboard", MustContainId: "project-wiki-chat-image-attachments", MaxMs: 200),
+        new("json rpc tool calls local wiki search intercept", MustContainId: "project-wiki-mcp-search-tools-current", MaxMs: 200),
+        new("single deployable host removed worker dashboard", MustContainId: "project-wiki-active-architecture", MaxMs: 200),
+        new("percent var tokens vars json source bundle line ranges", MustContainId: "project-wiki-source-links-feature", MaxMs: 200),
     ];
 
     private static readonly SearchProbe[] HybridProbes =
@@ -67,6 +71,9 @@ public class SearchBenchmarkTests
         new("github copilot auth model unavailable haiku before sonnet", MustContainId: "project-wiki-chat-agent-provider", MaxMs: 300),
         new("application intercepted wiki tool calls context pack get search", MustContainId: "project-wiki-mcp-search-tools-current", MaxMs: 300),
         new("ctrl v copied image paste html data url clipboard", MustContainId: "project-wiki-chat-image-attachments", MaxMs: 300),
+        new("json rpc tool calls local wiki search intercept", MustContainId: "project-wiki-mcp-search-tools-current", MaxMs: 300),
+        new("single deployable host removed worker dashboard", MustContainId: "project-wiki-active-architecture", MaxMs: 300),
+        new("percent var tokens vars json source bundle line ranges", MustContainId: "project-wiki-source-links-feature", MaxMs: 300),
     ];
 
     // ── Setup / Teardown ──────────────────────────────────────────────────────
@@ -158,6 +165,71 @@ public class SearchBenchmarkTests
         Assert.That(sw.ElapsedMilliseconds, Is.LessThan(5000),
             $"20 hybrid queries took {sw.ElapsedMilliseconds} ms; expected under 5 000 ms.");
         TestContext.Out.WriteLine($"20 hybrid queries: {sw.ElapsedMilliseconds} ms ({sw.ElapsedMilliseconds / queries.Length} ms avg)");
+    }
+
+    [Test]
+    public async Task Semantic_ThroughputBaseline_20QueriesUnder3s()
+    {
+        var queries = new[]
+        {
+            "model context protocol tool calling", "vector embeddings semantic gap local scoring", "context pack agent readiness knowledge base",
+            "search architecture roadmap improvements", "blazor server ui single host deployment", "chat model used stop generating streaming",
+            "github free gpt claude haiku sonnet model preference", "chat context window usage rate limits mcp tools role",
+            "chat intercepts mcp tool calls hybrid search same prompt", "copied screenshot html img data url clipboard",
+            "json rpc tool calls local wiki search intercept", "single deployable host removed worker dashboard",
+            "percent var tokens vars json source bundle line ranges", "scope boundary generalization friction",
+            "application intercepted wiki tool calls context pack get search", "ctrl v copied image paste html data url clipboard",
+            "storage data folder json lifecycle", "source links file references path variables",
+            "chat compact history titles model metadata local storage", "chat stop button cancellation partial response model used"
+        };
+
+        var sw = Stopwatch.StartNew();
+        foreach (var q in queries)
+        {
+            await _service.SemanticSearchAsync(
+                new SemanticMemorySearchQuery(q, Status: null, Tags: null, Limit: 5),
+                CancellationToken.None);
+        }
+        sw.Stop();
+
+        Assert.That(sw.ElapsedMilliseconds, Is.LessThan(3000),
+            $"20 semantic queries took {sw.ElapsedMilliseconds} ms; expected under 3 000 ms.");
+        TestContext.Out.WriteLine($"20 semantic queries: {sw.ElapsedMilliseconds} ms ({sw.ElapsedMilliseconds / queries.Length} ms avg)");
+    }
+
+    [Test]
+    public async Task SemanticAndHybrid_NoiseQueriesStayEmptyWithinBudget()
+    {
+        var queries = new[]
+        {
+            "zzqvflorp qwxn sentinel",
+            "nonesuch token lattice 9f4b7c"
+        };
+
+        foreach (var query in queries)
+        {
+            var semanticWatch = Stopwatch.StartNew();
+            var semanticResults = await _service.SemanticSearchAsync(
+                new SemanticMemorySearchQuery(query, Status: null, Tags: "project-wiki", Limit: 5),
+                CancellationToken.None);
+            semanticWatch.Stop();
+
+            var hybridWatch = Stopwatch.StartNew();
+            var hybridResults = await _service.HybridSearchAsync(
+                new HybridMemorySearchQuery(query, Status: null, Tags: "project-wiki", Limit: 5),
+                CancellationToken.None);
+            hybridWatch.Stop();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(semanticResults, Is.Empty, $"Semantic search should stay empty for noise query '{query}'.");
+                Assert.That(hybridResults, Is.Empty, $"Hybrid search should stay empty for noise query '{query}'.");
+                Assert.That(semanticWatch.ElapsedMilliseconds, Is.LessThanOrEqualTo(150),
+                    $"Semantic noise query '{query}' took {semanticWatch.ElapsedMilliseconds} ms.");
+                Assert.That(hybridWatch.ElapsedMilliseconds, Is.LessThanOrEqualTo(200),
+                    $"Hybrid noise query '{query}' took {hybridWatch.ElapsedMilliseconds} ms.");
+            });
+        }
     }
 
     [Test]

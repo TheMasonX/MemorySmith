@@ -1,0 +1,45 @@
+{
+  "id": "tsk-0159-clarify-and-tighten-source-bundle-permission-granularity",
+  "key": "TSK-0159",
+  "title": "Clarify and tighten source-bundle permission granularity",
+  "description": "Problem: MCP source bridge tools are labeled SensitiveRead and are separately gated through CanReadSourceBundle, but the current permission mapper grants ReadSourceBundle to Viewer roles. Because the default configuration uses Auth:AnonymousAccess=Viewer, a signed-out local caller can satisfy the source-bundle policy after normal view access is allowed. That may be intentional for local-first development, but it is too implicit for a tool class that can resolve source-linked local file slices.\n\nEvidence from the 2026-05-25 deepdive:\n- MemorySmith.App/Services/SecurityServices.cs Allows() returns true for Viewer when permission is View, UseChat, or ReadSourceBundle.\n- MemorySmith.App/appsettings.json defaults MemorySmith:Auth:AnonymousAccess to Viewer.\n- MemorySmith.App/Controllers/McpController.cs gates ChatToolRisk.SensitiveRead through CanReadSourceBundleAsync.\n- README.md and Data/Pages/features/api-and-mcp.md document source_bundle/find_by_source as SensitiveRead/source-bundle policy tools, but do not spell out that Viewer/anonymous Viewer currently satisfies that policy.\n\nDesired outcome: make the source-bundle trust boundary explicit and least-surprising. Either keep Viewer access as an intentional local-first policy with docs/tests that state it clearly, or split source-bundle permission away from default Viewer/anonymous access so only Editor/Admin or a dedicated source-read grant can call source file tools.\n\nScope:\n- In scope: role/permission decision, docs matrix update, regression tests for anonymous Viewer, authenticated Viewer, Editor, Admin, API-key, and auth-disabled behavior.\n- In scope: compatibility notes for local development and MCP clients.\n- Out of scope: making source tools chat-requestable or redesigning source-link allow/deny root enforcement.\n\nAcceptance criteria:\n- The intended CanReadSourceBundle role mapping is written in README or Data/Pages/features/api-and-mcp.md.\n- Tests prove the chosen behavior for anonymous Viewer and authenticated Viewer callers.\n- SensitiveRead naming, policy behavior, and operator docs no longer leave the role grant implicit.\n- If Viewer access is retained, the docs explain the local-first risk and how to disable anonymous/source access.\n\nValidation:\n- Run targeted security/MCP tests covering source-bundle authorization.\n- Run ./Scripts/Test-PageLinks.ps1 and ./Scripts/Test-TaskRecords.ps1 after doc/task changes.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "security",
+    "mcp",
+    "source-links",
+    "authorization",
+    "audit"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "features/api-and-mcp",
+    "guides/search-and-chat"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0159-20260525",
+      "author": "AgentSmith",
+      "body": "Created during 2026-05-25 deepdive audit after tracing SensitiveRead MCP source tools through McpController.CanReadSourceBundleAsync and SecurityServices.Allows. This is related to TSK-0151's documentation/test matrix, but specifically tracks whether Viewer/anonymous Viewer should satisfy source-bundle reads.",
+      "createdAtUtc": "2026-05-25T16:25:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T16:25:00.0000000Z",
+  "updatedAtUtc": "2026-05-25T16:25:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

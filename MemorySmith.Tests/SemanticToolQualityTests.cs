@@ -23,7 +23,11 @@ public class SemanticToolQualityTests
         new("context pack agent readiness knowledge base", "project-wiki-mcp-context-pack", 3),
         new("vector embeddings semantic gap local scoring", "project-wiki-semantic-search-gap", 3),
         new("source links file references path variables", "project-wiki-source-link-configuration-current", 3),
-        new("blazor server UI single host deployment", "project-wiki-active-architecture", 5)
+        new("blazor server UI single host deployment", "project-wiki-active-architecture", 5),
+        new("copied screenshot html img data url clipboard", "project-wiki-chat-image-attachments", 4),
+        new("json rpc tool calls local wiki search intercept", "project-wiki-mcp-search-tools-current", 4),
+        new("single deployable host removed worker dashboard", "project-wiki-active-architecture", 4),
+        new("percent var tokens vars json source bundle line ranges", "project-wiki-source-links-feature", 4)
     ];
 
     private static readonly SearchQualityProbe[] HybridProbes =
@@ -31,7 +35,11 @@ public class SemanticToolQualityTests
         new("hybrid search lucene rrf fusion", "project-wiki-hybrid-search-rrf", 1),
         new("mcp context pack format json markdown", "project-wiki-mcp-context-pack", 1),
         new("source links allowed roots max read bytes var resolver", "project-wiki-source-link-security-boundaries", 2),
-        new("single host blazor app architecture deployment", "project-wiki-active-architecture", 3)
+        new("single host blazor app architecture deployment", "project-wiki-active-architecture", 3),
+        new("copied screenshot html img data url clipboard", "project-wiki-chat-image-attachments", 3),
+        new("json rpc tool calls local wiki search intercept", "project-wiki-mcp-search-tools-current", 3),
+        new("single deployable host removed worker dashboard", "project-wiki-active-architecture", 2),
+        new("percent var tokens vars json source bundle line ranges", "project-wiki-source-links-feature", 3)
     ];
 
     [SetUp]
@@ -117,6 +125,32 @@ public class SemanticToolQualityTests
             CancellationToken.None);
 
         Assert.That(second.Select(result => result.Id), Is.EqualTo(first.Select(result => result.Id)));
+    }
+
+    [Test]
+    public async Task SemanticAndHybridSearch_NoiseQueriesStayEmpty()
+    {
+        var queries = new[]
+        {
+            "zzqvflorp qwxn sentinel",
+            "nonesuch token lattice 9f4b7c"
+        };
+
+        foreach (var query in queries)
+        {
+            var semanticResults = await _service.SemanticSearchAsync(
+                new SemanticMemorySearchQuery(query, Tags: "project-wiki", Limit: 5),
+                CancellationToken.None);
+            var hybridResults = await _service.HybridSearchAsync(
+                new HybridMemorySearchQuery(query, Tags: "project-wiki", Limit: 5),
+                CancellationToken.None);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(semanticResults, Is.Empty, $"Semantic search should stay empty for noise query '{query}'.");
+                Assert.That(hybridResults, Is.Empty, $"Hybrid search should stay empty for noise query '{query}'.");
+            });
+        }
     }
 
     [Test]

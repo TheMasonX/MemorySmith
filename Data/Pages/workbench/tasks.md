@@ -2,6 +2,8 @@
 
 This page tracks user-facing work in plain language. Completed items stay here as a lightweight product history; open items should describe the outcome a person would notice, not only the internal implementation detail.
 
+> Current task state lives in `/tasks` and the JSON records under `Data/Tasks`. This page is a human-readable seed list and product-history view; verify status, owner, comments, and acceptance criteria against the task records before planning implementation.
+
 ## How To Use This Page
 
 - Keep the visible owner on each future task so dogfood is obvious.

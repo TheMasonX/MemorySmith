@@ -35,6 +35,17 @@ This feature makes MemorySmith usable by scripts, local tools, and AI agents wit
 - Edit-gated page save and delete MCP operations.
 - Local-first operational defaults with optional API hardening controls.
 
+## MCP Authorization Contract
+
+| Tool family | Contract |
+| --- | --- |
+| Memory search, semantic, hybrid, context-pack, and get | Requires the caller to satisfy the MemorySmith view policy. |
+| Page search, page get, and unified page results | Requires view access and filters by page minimum visibility: Anonymous, Authenticated, or Admin. |
+| Page save and delete | Requires edit permission; Admin-only page visibility remains limited to Admin callers. |
+| Source bundle and find-by-source | Requires the source-bundle policy because resolved source links may include local file content. These tools are MCP-only, not chat-requested model tools. |
+
+For external agents, use `memorysmith_context_pack` to narrow evidence before calling `memorysmith_source_bundle`. Treat missing page hits or source entries as a possible permission/filtering outcome, not only as absent content.
+
 > [!NOTE]
 > Screenshot placeholder [FEAT-API-02]: MCP tool list and endpoint details.
 > [!NOTE]

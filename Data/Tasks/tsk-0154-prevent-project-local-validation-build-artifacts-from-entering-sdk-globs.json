@@ -1,0 +1,50 @@
+{
+  "id": "tsk-0154-prevent-project-local-validation-build-artifacts-from-entering-sdk-globs",
+  "key": "TSK-0154",
+  "title": "Prevent project-local validation build artifacts from entering SDK globs",
+  "description": "Problem: custom validation builds that set relative BaseOutputPath/BaseIntermediateOutputPath can create generated artifacts under each SDK project, for example MemorySmith.Core/artifacts/validation/obj/*.cs. SDK default item globs may then compile those generated files as source and produce duplicate assembly attribute errors. App/Core now exclude nested artifacts/**, but Storage/Tests do not and there is no shared repository-level guardrail.\n\nDesired outcome: validation and workaround commands can use isolated outputs without polluting project directories or breaking later builds.\n\nScope:\n- In scope: document safe custom build-output practices, move or duplicate MSBuild DefaultItemExcludes consistently across SDK projects, and add a hygiene check that flags generated artifacts/validation trees under project roots.\n- Out of scope: changing normal bin/obj output behavior or deleting root-level artifacts used for reports.\n\nAcceptance criteria:\n- Repository guidance tells agents to use temp-directory absolute output paths for ad hoc isolated builds.\n- A local validation or hygiene check reports project-local artifacts/validation directories under SDK projects.\n- MSBuild exclusion is consistent across App/Core/Storage/Tests, preferably through a shared Directory.Build.props or equivalent, and excludes project-local artifacts from Compile/Content globs without hiding legitimate source files.\n- The fix is validated by recreating an isolated-output scenario and confirming no duplicate compile inputs remain.\n\nValidation:\n- Run dotnet build MemorySmith.Core/MemorySmith.Core.csproj --nologo after cleanup.\n- Run the new hygiene check if implemented.\n- Run ./Scripts/Test-TaskRecords.ps1 after task metadata changes.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "audit",
+    "build",
+    "validation",
+    "repo-hygiene",
+    "tooling"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "ops/wiki-health-and-validation"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0154-20260525",
+      "author": "AgentSmith",
+      "body": "Created during 2026-05-25 deepdive audit after an isolated-output test command created project-local artifacts/validation trees. Evidence: MemorySmith.Core/artifacts/validation/obj contained generated .cs files and a build previously failed with duplicate TargetFramework/AssemblyInfo attributes; cleanup removed MemorySmith.Core/App/Storage/Tests artifacts/validation and dotnet build MemorySmith.Core/MemorySmith.Core.csproj --nologo then passed. Renumbered from initial TSK-0153 because a user-created health-page task already owned that key.",
+      "createdAtUtc": "2026-05-25T15:45:00.0000000Z"
+    },
+    {
+      "id": "c-scope-refine-0154-20260525",
+      "author": "AgentSmith",
+      "body": "Scope refined after verification: MemorySmith.App.csproj and MemorySmith.Core.csproj already set DefaultItemExcludes for nested artifacts/**, but MemorySmith.Storage.csproj and MemorySmith.Tests.csproj do not. Remaining value is consistency, centralization, and a validator/hygiene check rather than treating App/Core as wholly uncovered.",
+      "createdAtUtc": "2026-05-25T15:52:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T15:45:00.0000000Z",
+  "updatedAtUtc": "2026-05-25T15:52:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

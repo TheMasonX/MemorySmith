@@ -12,6 +12,8 @@ MemorySmith now treats governance as visible diagnostics before behavioral enfor
 
 The active tag policy is file-backed at `Data/Policies/tag-policy.json` by default. The first policy is warning-oriented and local to this wiki instance.
 
+If the policy file is missing or malformed, MemorySmith falls back to its built-in default policy so local startup and diagnostics can continue. Treat that fallback as a resilience path, not as proof that the configured policy is healthy. `TSK-0150` tracks making fallback use visible in diagnostics and the `/tags` workflow.
+
 Supported namespaces:
 
 | Namespace | Form | Notes |

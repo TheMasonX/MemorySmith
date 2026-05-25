@@ -279,6 +279,32 @@ public class MaintenanceAgentWorkflowTests
     }
 
     [Test]
+    public void ConfigService_RebasesStandardRootEntriesAgainstOverriddenWikiPaths()
+    {
+        var dataPath = Path.Combine(_tempDir, "PublishedWiki", "Memories");
+        var pagesPath = Path.Combine(_tempDir, "PublishedWiki", "Pages");
+        var options = new MemorySmithOptions
+        {
+            DataPath = dataPath,
+            PagesPath = pagesPath,
+            MaintenanceAgent = new MaintenanceAgentOptions
+            {
+                Read = [Path.Combine("..", "Data", "Memories"), Path.Combine("..", "Data", "Pages")],
+                Write = [Path.Combine("..", "Data", "Memories", "Working"), Path.Combine("..", "Data", "Pages")]
+            }
+        };
+        var service = new MaintenanceAgentConfigService(new StaticOptionsMonitor<MemorySmithOptions>(options));
+
+        var loaded = service.GetCurrent();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(loaded.Read, Is.EqualTo(new[] { dataPath, pagesPath }));
+            Assert.That(loaded.Write, Is.EqualTo(new[] { Path.Combine(dataPath, "Working"), pagesPath }));
+        });
+    }
+
+    [Test]
     public void ConfigService_UsesAssignedModelProfilesForAgentPurposes()
     {
         var options = new MemorySmithOptions

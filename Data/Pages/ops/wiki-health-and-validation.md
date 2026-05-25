@@ -29,6 +29,8 @@ That command runs build and tests plus the wiki/task validators already wired in
 | `.\Scripts\Test-PagePathLiterals.ps1` | Path-literal hygiene for markdown links |
 | `dotnet test MemorySmith.slnx -v minimal` | Runtime behavior, API contracts, UI/service logic, search quality, auth, and storage tests |
 
+When the app is already running and a build output is locked, prefer stopping the app or using an absolute temporary output directory outside the repository. Avoid relative `BaseOutputPath` or `BaseIntermediateOutputPath` values under an SDK project, because generated `obj/*.cs` files can be picked up by default compile globs. `TSK-0154` tracks adding a guardrail for this.
+
 ## What The Current Validators Cover Well
 
 - Broken markdown links in `Data/Pages`
@@ -74,6 +76,8 @@ When diagnostics look wrong:
 2. Check the `/tags` policy and suggestion views.
 3. Re-test through app/runtime surfaces instead of assuming the stored page or memory is wrong.
 4. If retrieval results still report allowlisted tags as unknown, treat that as a freshness or policy-mismatch issue worth investigation.
+
+Known audit gap: the runtime currently preserves a default tag policy fallback for missing or malformed policy files. That is useful for first-run resilience, but policy-load failures need clearer diagnostics so a corrupt file cannot look like an intentional default. This is tracked by `TSK-0150`.
 
 ## Source-Link Health
 

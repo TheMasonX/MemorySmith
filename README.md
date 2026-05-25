@@ -80,7 +80,8 @@ User-created markdown files under `Data/Pages/` are valid project wiki content a
 | `ai-memory-suite-implementation-plan-20260520` | Current implementation status snapshot for the AI Memory Suite planning work |
 | `project-wiki-benchmarkdotnet-suite` | BenchmarkDotNet project: smoke validation and full benchmark commands |
 | `project-wiki-semantic-tool-quality-suite` | Search relevance probes, aggregate MRR, and MCP tool output quality assertions |
-| `project-wiki-current-validation-146-tests` | Historical validation baseline: 146 NUnit tests across the solution |
+| `project-wiki-current-validation-baseline` | Stable current validation anchor for test inventory and KB-health checks |
+| `project-wiki-current-validation-146-tests` | Historical alias retained so older references can resolve to the stable validation record |
 | `project-wiki-wiki-validation-current` | Current validation coverage for pages, tasks, and the remaining live-memory validator gap |
 | `project-wiki-github-actions-artifacts` | CI Cobertura coverage artifacts and Doxygen GitHub Pages export |
 | `project-wiki-logging-telemetry-current` | Logging and OpenTelemetry settings, runtime endpoints, and local-first defaults |
@@ -248,6 +249,13 @@ The MCP endpoint is at `http://localhost:5089/mcp`. VS Code config lives in `.vs
 - `includeBacklinks=true` adds records that reference the roots.
 - `format=json` returns structured JSON for agent parsing; the default is Markdown prose.
 - The tool reports warnings for missing roots, missing links, or records omitted after hitting `maxRecords`.
+
+**Authorization notes:**
+
+- Memory and page read tools require the normal view policy for the caller.
+- Page tools also respect each page's minimum visibility role, so `memorysmith_page_search`, `memorysmith_page_get`, and `memorysmith_unified_search` omit pages the caller cannot view.
+- `memorysmith_page_save` and `memorysmith_page_delete` require edit permission and still apply page visibility rules, including Admin-only minimum-role restrictions.
+- `memorysmith_source_bundle` and `memorysmith_find_by_source` are MCP-only `SensitiveRead` tools. They require the source-bundle policy because they can resolve local source-link file slices, and they are intentionally not available as chat-requested model tools.
 
 **`memorysmith_source_bundle` tips:**
 
@@ -435,10 +443,10 @@ Arguments after `--` are still passed as runtime args to the service process for
 
 `Redeploy-MemorySmithService.ps1` keeps the current HTTP path on `5089` and can optionally add HTTPS with `-UseHttps`. The current repo example uses a certificate whose SAN matches both `memorysmith.home.arpa` and `192.168.1.8`, with HTTPS served on port `7090`.
 
-For this repository's live project wiki, the target memory directory is `C:\Users\norrt\source\repos\MemorySmith\Data\Memories`. A local service install on port 5089 would be:
+For this repository's live project wiki, the target memory directory is `<repo>\Data\Memories`. A local service install on port 5089 would be:
 
 ```powershell
-.\MemorySmith.App.exe install --memory-directory C:\Users\norrt\source\repos\MemorySmith\Data\Memories --port 5089
+.\MemorySmith.App.exe install --memory-directory C:\Path\To\MemorySmith\Data\Memories --port 5089
 ```
 
 After installation, start the service from `services.msc` or PowerShell, then open `http://localhost:5089/health` for runtime configuration, storage diagnostics, activity, and maintenance telemetry.

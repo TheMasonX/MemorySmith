@@ -6,7 +6,7 @@ MemorySmith configuration is rooted under `MemorySmith` in appsettings and is sp
 2. Admin-edited overrides in `appsettings.LocalDevelopment.json` or the file referenced by `MemorySmith:SettingsOverridePath`.
 3. Structured model profile management in `/admin` on the Models tab.
 
-This page is the operator and agent-oriented map of what settings exist, where they are edited, and how to verify the running result.
+This page is the operator and agent-oriented map of the configuration groups, where they are edited, and how to verify the running result. It is intentionally grouped for readability rather than an exhaustive per-key table; `TSK-0158` tracks a generated inventory/coverage check for every editable admin setting key.
 
 ## Editing Rules
 

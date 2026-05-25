@@ -2,10 +2,10 @@
   "Id": "tsk-0019-enforce-that-every-chat-mutation-uses-the-existing-server-backed-proposal-system-no-direct-write-path-with-regression-coverage-proving-no-page-memory-mutation-occurs-before-approval",
   "Key": "TSK-0019",
   "Title": "Enforce that every chat mutation uses the existing server-backed proposal system (no direct write path), with regression coverage proving no page/memory mutation occurs before approval.",
-  "Description": "This is the key governance rule for future work.\r\n\r\nImported from Data/Pages/workbench/tasks.md",
+  "Description": "Problem: chat Agent mutation governance says every memory/page mutation should go through the server-backed proposal workflow before any file changes are applied, but MemoryChatAgent still has a direct-save fallback when MaintenanceProposalWorkflow is null. Production DI currently supplies MaintenanceProposalWorkflow, so normal app wiring should submit proposals, but the invariant depends on optional construction rather than being enforced by design.\r\n\r\nEvidence from 2026-05-25 deepdive: MemorySmith.App/Services/ChatServices.cs ApplyAgentWritesAsync submits through SubmitAgentWriteProposalsAsync only when _proposalWorkflow is not null; otherwise it calls SaveMemoryProposalAsync and SavePageProposalAsync directly. PagesAndChatTests includes MemoryChatAgent_SubmitsApprovedWritesAsMaintenanceProposalWhenWorkflowIsAvailable, which verifies the wired workflow path, but the fallback path remains present and earlier direct-apply tests use it.\r\n\r\nDesired outcome: every chat Agent write path is proposal-first, with no optional direct mutation fallback in production or test construction.\r\n\r\nScope:\r\n- In scope: make proposal workflow a required dependency for Agent write application, remove or isolate direct-save helpers behind explicit non-production test fixtures, and add regression coverage proving no page/memory mutation occurs before proposal approval.\r\n- In scope: update prompt/runtime capability copy so it cannot claim direct writes are possible.\r\n- Out of scope: changing maintenance-agent DirectWrite semantics unless they share the same chat mutation path.\r\n\r\nAcceptance criteria:\r\n- MemoryChatAgent cannot apply chat Agent memory/page writes directly when AgentWritesEnabled=true.\r\n- Tests prove proposed writes create maintenance proposals and leave memory/page stores unchanged until proposal approval.\r\n- Tests cover construction without a proposal workflow failing closed instead of falling back to direct writes.\r\n- Runtime capability messages describe proposal-first behavior only.\r\n\r\nValidation:\r\n- Run focused PagesAndChatTests covering Agent write proposal and viewer-denial paths.\r\n- Run MaintenanceAgentWorkflowTests for proposal approval/revision behavior.\r\n- Run ./Scripts/Test-TaskRecords.ps1 after task metadata changes.",
   "Type": "Task",
   "Status": "Backlog",
-  "Priority": "Medium",
+  "Priority": "High",
   "AssigneeMode": "Custom",
   "AssigneeDirectoryId": null,
   "AssigneeCustomText": "Copilot",
@@ -13,7 +13,11 @@
   "Labels": [
     "tracker-import",
     "workbench",
-    "future"
+    "future",
+    "security",
+    "chat",
+    "agent-writes",
+    "proposal-governance"
   ],
   "Attachments": [],
   "ExternalLinks": [],
@@ -26,6 +30,12 @@
       "Author": "tracker-import",
       "Body": "This is the key governance rule for future work.",
       "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z"
+    },
+    {
+      "Id": "c-deepdive-0019-20260525",
+      "Author": "AgentSmith",
+      "Body": "Deepdive refresh: elevated to High. Production DI supplies MaintenanceProposalWorkflow, but ChatServices.cs still has a direct-save fallback when the workflow dependency is null. The proposal-first invariant should fail closed rather than depend on optional constructor wiring.",
+      "CreatedAtUtc": "2026-05-25T16:45:00.0000000Z"
     }
   ],
   "EpicId": null,

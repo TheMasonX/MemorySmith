@@ -1,0 +1,31 @@
+﻿{
+  "id": "tsk-0161-memories-ui-layout",
+  "key": "TSK-0161",
+  "title": "Memories UI Layout",
+  "description": "The Title can go off the screen and cause layout issues like overlap\nThe Conflicts is usually none, so move it around where it\u0027s:\nReferences      Source Links\nConflicts (but only if there are any since it\u0027s so rare)\n\u0022C:\\Users\\norrt\\OneDrive\\Pictures\\Screenshots\\Screenshot 2026-05-25 104537.png\u0022",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T15:46:13.4380791Z",
+  "updatedAtUtc": "2026-05-25T15:47:53.7986161Z",
+  "completedAtUtc": null,
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

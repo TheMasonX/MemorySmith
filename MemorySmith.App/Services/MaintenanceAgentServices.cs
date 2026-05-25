@@ -213,6 +213,9 @@ public sealed record MaintenanceResourceSnapshot(bool IsBusy, IReadOnlyList<stri
 
 public sealed class MaintenanceAgentConfigService
 {
+    private static readonly string DefaultReadMemoriesRoot = Path.Combine("..", "Data", "Memories");
+    private static readonly string DefaultReadPagesRoot = Path.Combine("..", "Data", "Pages");
+    private static readonly string DefaultWriteWorkingRoot = Path.Combine("..", "Data", "Memories", "Working");
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
         PropertyNameCaseInsensitive = true,
@@ -243,15 +246,23 @@ public sealed class MaintenanceAgentConfigService
     {
         var appOptions = _options.CurrentValue;
         ApplyAssignedModelProfile(config, appOptions, purpose);
-        if (config.Read.Count == 0)
-        {
-            config.Read = [appOptions.DataPath, appOptions.PagesPath];
-        }
+        config.Read = NormalizeRoots(
+            config.Read,
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                [DefaultReadMemoriesRoot] = appOptions.DataPath,
+                [DefaultReadPagesRoot] = appOptions.PagesPath
+            },
+            [appOptions.DataPath, appOptions.PagesPath]);
 
-        if (config.Write.Count == 0)
-        {
-            config.Write = [Path.Combine(appOptions.DataPath, "Working"), appOptions.PagesPath];
-        }
+        config.Write = NormalizeRoots(
+            config.Write,
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                [DefaultWriteWorkingRoot] = Path.Combine(appOptions.DataPath, "Working"),
+                [DefaultReadPagesRoot] = appOptions.PagesPath
+            },
+            [Path.Combine(appOptions.DataPath, "Working"), appOptions.PagesPath]);
 
         if (string.IsNullOrWhiteSpace(config.Provider))
         {
@@ -272,6 +283,18 @@ public sealed class MaintenanceAgentConfigService
         {
             config.AgentVersion = "maintenance-agent.v1";
         }
+    }
+
+    private static List<string> NormalizeRoots(List<string> configuredRoots, IReadOnlyDictionary<string, string> defaultMappings, IReadOnlyList<string> fallbackRoots)
+    {
+        if (configuredRoots.Count == 0)
+        {
+            return fallbackRoots.ToList();
+        }
+
+        return configuredRoots
+            .Select(root => defaultMappings.TryGetValue(root, out var mappedRoot) ? mappedRoot : root)
+            .ToList();
     }
 
     private static void ApplyAssignedModelProfile(MaintenanceAgentOptions config, MemorySmithOptions appOptions, MaintenanceAgentModelPurpose purpose)

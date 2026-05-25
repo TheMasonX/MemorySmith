@@ -47,6 +47,17 @@ The MCP endpoint is available at `/mcp` and exposes local tools over the wiki. T
 
 Use `context_pack` before `source_bundle` when researching code changes. The context pack tells you which records matter; the source bundle pulls the concrete source evidence for those records.
 
+MCP tool authorization is part of the retrieval contract:
+
+| Tool family | Access rule |
+| --- | --- |
+| Memory search/get/context tools | Require the normal MemorySmith view policy. |
+| Page search/get/unified page results | Require view access and filter pages by each page's minimum visibility role. |
+| Page save/delete | Require edit permission and still respect page minimum-role rules. |
+| Source bundle and find-by-source | Require the source-bundle policy because they can expose source-link file slices; they are MCP-only and not chat-requested model tools. |
+
+When testing an MCP client, verify both tool availability and role-filtered output. A successful tool call should not be treated as proof that every matching page or source link was visible to that caller.
+
 ## Chat Mode
 
 Chat mode answers questions with wiki context. It can use memory search, page search, provider/model selection, attachments, streaming responses, safe Markdown-rendered message bodies, context chips, and local chat history.
