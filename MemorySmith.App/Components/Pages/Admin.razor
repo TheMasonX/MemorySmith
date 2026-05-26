@@ -373,10 +373,23 @@
                         <MudSelectItem T="string" Value="@targetKind">@targetKind</MudSelectItem>
                     }
                 </MudSelect>
+                <MudSelect T="string" Value="@_auditSort" ValueChanged="@((string value) => _auditSort = value)" Label="Sort audit by" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="admin-filter-select">
+                    @foreach (var option in AuditSortOptions)
+                    {
+                        <MudSelectItem T="string" Value="@option">@AuditSortLabel(option)</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudSelect T="string" Value="@_auditSortDirection" ValueChanged="@((string value) => _auditSortDirection = value)" Label="Direction" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="admin-filter-select">
+                    @foreach (var option in SortDirectionOptions)
+                    {
+                        <MudSelectItem T="string" Value="@option">@option</MudSelectItem>
+                    }
+                </MudSelect>
             </div>
-            <MudTable Items="@FilteredAudit" Dense="true" Class="health-table">
+            <MudTable Items="@FilteredAudit" Dense="true" Hover="true" Breakpoint="Breakpoint.None" RowsPerPage="25" Class="health-table admin-grid-table">
                 <HeaderContent>
                     <MudTh>Time</MudTh>
+                    <MudTh>Seq</MudTh>
                     <MudTh>Actor</MudTh>
                     <MudTh>Action</MudTh>
                     <MudTh>Target</MudTh>
@@ -384,14 +397,31 @@
                 </HeaderContent>
                 <RowTemplate>
                     <MudTd>@context.OccurredAtUtc.ToLocalTime().ToString("g")</MudTd>
-                    <MudTd>@context.ActorDisplay</MudTd>
+                    <MudTd>@context.Sequence</MudTd>
+                    <MudTd>@AuditActorDisplay(context)</MudTd>
                     <MudTd>@context.Action</MudTd>
                     <MudTd>
-                        <span>@context.TargetKind:</span>
-                        <SensitiveValue Value="@context.TargetId" Summary="@SummarizeIdentifier(context.TargetId)" Label="@($"{context.TargetKind} target ID")" Class="admin-sensitive-inline" EmptyText="-" />
+                        <div class="admin-table-stack">
+                            <span class="admin-table-meta">@context.TargetKind</span>
+                            <div class="admin-copy-cell">
+                                <span class="admin-copy-text" title="@AuditTargetDisplay(context)">@AuditTargetDisplay(context)</span>
+                                <MudTooltip Text="Copy target ID.">
+                                    <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
+                                                   Size="Size.Small"
+                                                   Color="Color.Secondary"
+                                                   Disabled="@string.IsNullOrWhiteSpace(context.TargetId)"
+                                                   OnClick="@(() => CopyAdminValueAsync(context.TargetId, $"{context.TargetKind} target ID"))"
+                                                   aria-label="Copy target ID"
+                                                   title="Copy target ID" />
+                                </MudTooltip>
+                            </div>
+                        </div>
                     </MudTd>
                     <MudTd>@context.Outcome</MudTd>
                 </RowTemplate>
+                <PagerContent>
+                    <MudTablePager />
+                </PagerContent>
             </MudTable>
         </MudTabPanel>
         <MudTabPanel Text="History" Icon="@Icons.Material.Filled.History">
@@ -411,25 +441,68 @@
                         <MudSelectItem T="string" Value="@format">@format</MudSelectItem>
                     }
                 </MudSelect>
+                <MudSelect T="string" Value="@_historySort" ValueChanged="@((string value) => _historySort = value)" Label="Sort history by" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="admin-filter-select">
+                    @foreach (var option in HistorySortOptions)
+                    {
+                        <MudSelectItem T="string" Value="@option">@HistorySortLabel(option)</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudSelect T="string" Value="@_historySortDirection" ValueChanged="@((string value) => _historySortDirection = value)" Label="Direction" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="admin-filter-select">
+                    @foreach (var option in SortDirectionOptions)
+                    {
+                        <MudSelectItem T="string" Value="@option">@option</MudSelectItem>
+                    }
+                </MudSelect>
             </div>
-            <MudTable Items="@FilteredHistory" Dense="true" Class="health-table">
+            <MudTable Items="@FilteredHistory" Dense="true" Hover="true" Breakpoint="Breakpoint.None" RowsPerPage="25" Class="health-table admin-grid-table">
                 <HeaderContent>
                     <MudTh>Target</MudTh>
                     <MudTh>Version</MudTh>
                     <MudTh>Created</MudTh>
                     <MudTh>Format</MudTh>
+                    <MudTh>Size</MudTh>
                     <MudTh>Artifact</MudTh>
                 </HeaderContent>
                 <RowTemplate>
                     <MudTd>
-                        <span>@context.TargetKind:</span>
-                        <SensitiveValue Value="@context.TargetId" Summary="@SummarizeIdentifier(context.TargetId)" Label="@($"{context.TargetKind} target ID")" Class="admin-sensitive-inline" EmptyText="-" />
+                        <div class="admin-table-stack">
+                            <span class="admin-table-meta">@context.TargetKind</span>
+                            <div class="admin-copy-cell">
+                                <span class="admin-copy-text" title="@HistoryTargetDisplay(context)">@HistoryTargetDisplay(context)</span>
+                                <MudTooltip Text="Copy target ID.">
+                                    <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
+                                                   Size="Size.Small"
+                                                   Color="Color.Secondary"
+                                                   Disabled="@string.IsNullOrWhiteSpace(context.TargetId)"
+                                                   OnClick="@(() => CopyAdminValueAsync(context.TargetId, $"{context.TargetKind} target ID"))"
+                                                   aria-label="Copy target ID"
+                                                   title="Copy target ID" />
+                                </MudTooltip>
+                            </div>
+                        </div>
                     </MudTd>
                     <MudTd>@context.VersionNumber</MudTd>
                     <MudTd>@context.CreatedAtUtc.ToLocalTime().ToString("g")</MudTd>
                     <MudTd>@context.Format</MudTd>
-                    <MudTd><SensitiveValue Value="@context.HistoryPath" Summary="@MaskOperationalValue(context.HistoryPath)" Label="version history artifact path" Class="admin-sensitive-value" EmptyText="-" /></MudTd>
+                    <MudTd>@FormatByteSize(context.ByteSize)</MudTd>
+                    <MudTd>
+                        <div class="admin-copy-cell">
+                            <span class="admin-copy-text" title="@HistoryArtifactDisplay(context)">@HistoryArtifactDisplay(context)</span>
+                            <MudTooltip Text="Copy artifact path.">
+                                <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
+                                               Size="Size.Small"
+                                               Color="Color.Secondary"
+                                               Disabled="@string.IsNullOrWhiteSpace(context.HistoryPath)"
+                                               OnClick="@(() => CopyAdminValueAsync(context.HistoryPath, "version history artifact path"))"
+                                               aria-label="Copy artifact path"
+                                               title="Copy artifact path" />
+                            </MudTooltip>
+                        </div>
+                    </MudTd>
                 </RowTemplate>
+                <PagerContent>
+                    <MudTablePager />
+                </PagerContent>
             </MudTable>
         </MudTabPanel>
     </MudTabs>
@@ -437,9 +510,26 @@
 
 @code {
     private const string AllFilterValue = "__all__";
+    private const string AscendingSortDirection = "Ascending";
+    private const string DescendingSortDirection = "Descending";
+    private const string AuditSortTimeValue = "time";
+    private const string AuditSortSequenceValue = "sequence";
+    private const string AuditSortActorValue = "actor";
+    private const string AuditSortActionValue = "action";
+    private const string AuditSortTargetValue = "target";
+    private const string AuditSortOutcomeValue = "outcome";
+    private const string HistorySortCreatedValue = "created";
+    private const string HistorySortTargetValue = "target";
+    private const string HistorySortVersionValue = "version";
+    private const string HistorySortFormatValue = "format";
+    private const string HistorySortSizeValue = "size";
+    private const string HistorySortArtifactValue = "artifact";
     private const string VariablesTabName = "variables";
     private const int VariablesTabIndex = 4;
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly IReadOnlyList<string> SortDirectionOptions = [DescendingSortDirection, AscendingSortDirection];
+    private static readonly IReadOnlyList<string> AuditSortOptions = [AuditSortTimeValue, AuditSortSequenceValue, AuditSortActorValue, AuditSortActionValue, AuditSortTargetValue, AuditSortOutcomeValue];
+    private static readonly IReadOnlyList<string> HistorySortOptions = [HistorySortCreatedValue, HistorySortTargetValue, HistorySortVersionValue, HistorySortFormatValue, HistorySortSizeValue, HistorySortArtifactValue];
     private IReadOnlyList<UserAdminRow> _userRows = [];
     private IReadOnlyList<RoleRecord> _roles = [];
     private IReadOnlyList<RoleRecord> _assignableRoles = [];
@@ -459,9 +549,13 @@
     private string _auditSearch = string.Empty;
     private string _auditOutcomeFilter = AllFilterValue;
     private string _auditTargetKindFilter = AllFilterValue;
+    private string _auditSort = AuditSortTimeValue;
+    private string _auditSortDirection = DescendingSortDirection;
     private string _historySearch = string.Empty;
     private string _historyTargetKindFilter = AllFilterValue;
     private string _historyFormatFilter = AllFilterValue;
+    private string _historySort = HistorySortCreatedValue;
+    private string _historySortDirection = DescendingSortDirection;
     private string? _modelProfileModelError;
     private ModelProfileEditor _modelProfileEditor = ModelProfileEditor.New();
     private List<VarRow> _variableRows = [];
@@ -500,13 +594,9 @@
                 ? "No models were returned by this provider."
                 : $"{_modelProfileModelOptions.Count} provider model(s) available.";
 
-    private IReadOnlyList<AuditLogEntry> FilteredAudit => _audit
-        .Where(MatchesAuditFilter)
-        .ToList();
+    private IReadOnlyList<AuditLogEntry> FilteredAudit => ApplyAuditSort(_audit.Where(MatchesAuditFilter)).ToList();
 
-    private IReadOnlyList<VersionHistoryEntry> FilteredHistory => _recentVersions
-        .Where(MatchesHistoryFilter)
-        .ToList();
+    private IReadOnlyList<VersionHistoryEntry> FilteredHistory => ApplyHistorySort(_recentVersions.Where(MatchesHistoryFilter)).ToList();
 
     protected override async Task OnInitializedAsync()
     {
@@ -1151,7 +1241,69 @@
         return IsSearchMatch(_historySearch, entry.TargetKind, entry.TargetId, entry.VersionId, entry.ParentVersionId, entry.Format, entry.HistoryPath, entry.CreatedByUserId, entry.AuditId);
     }
 
+    private IEnumerable<AuditLogEntry> ApplyAuditSort(IEnumerable<AuditLogEntry> entries)
+    {
+        var descending = IsDescendingSort(_auditSortDirection);
+        return (_auditSort, descending) switch
+        {
+            (AuditSortSequenceValue, true) => entries.OrderByDescending(entry => entry.Sequence),
+            (AuditSortSequenceValue, false) => entries.OrderBy(entry => entry.Sequence),
+            (AuditSortActorValue, true) => entries.OrderByDescending(entry => AuditActorDisplay(entry), StringComparer.OrdinalIgnoreCase),
+            (AuditSortActorValue, false) => entries.OrderBy(entry => AuditActorDisplay(entry), StringComparer.OrdinalIgnoreCase),
+            (AuditSortActionValue, true) => entries.OrderByDescending(entry => entry.Action, StringComparer.OrdinalIgnoreCase),
+            (AuditSortActionValue, false) => entries.OrderBy(entry => entry.Action, StringComparer.OrdinalIgnoreCase),
+            (AuditSortTargetValue, true) => entries.OrderByDescending(entry => AuditTargetSortKey(entry), StringComparer.OrdinalIgnoreCase),
+            (AuditSortTargetValue, false) => entries.OrderBy(entry => AuditTargetSortKey(entry), StringComparer.OrdinalIgnoreCase),
+            (AuditSortOutcomeValue, true) => entries.OrderByDescending(entry => entry.Outcome, StringComparer.OrdinalIgnoreCase),
+            (AuditSortOutcomeValue, false) => entries.OrderBy(entry => entry.Outcome, StringComparer.OrdinalIgnoreCase),
+            (_, true) => entries.OrderByDescending(entry => entry.OccurredAtUtc),
+            _ => entries.OrderBy(entry => entry.OccurredAtUtc)
+        };
+    }
+
+    private IEnumerable<VersionHistoryEntry> ApplyHistorySort(IEnumerable<VersionHistoryEntry> entries)
+    {
+        var descending = IsDescendingSort(_historySortDirection);
+        return (_historySort, descending) switch
+        {
+            (HistorySortTargetValue, true) => entries.OrderByDescending(entry => HistoryTargetSortKey(entry), StringComparer.OrdinalIgnoreCase),
+            (HistorySortTargetValue, false) => entries.OrderBy(entry => HistoryTargetSortKey(entry), StringComparer.OrdinalIgnoreCase),
+            (HistorySortVersionValue, true) => entries.OrderByDescending(entry => entry.VersionNumber),
+            (HistorySortVersionValue, false) => entries.OrderBy(entry => entry.VersionNumber),
+            (HistorySortFormatValue, true) => entries.OrderByDescending(entry => entry.Format, StringComparer.OrdinalIgnoreCase),
+            (HistorySortFormatValue, false) => entries.OrderBy(entry => entry.Format, StringComparer.OrdinalIgnoreCase),
+            (HistorySortSizeValue, true) => entries.OrderByDescending(entry => entry.ByteSize),
+            (HistorySortSizeValue, false) => entries.OrderBy(entry => entry.ByteSize),
+            (HistorySortArtifactValue, true) => entries.OrderByDescending(entry => entry.HistoryPath, StringComparer.OrdinalIgnoreCase),
+            (HistorySortArtifactValue, false) => entries.OrderBy(entry => entry.HistoryPath, StringComparer.OrdinalIgnoreCase),
+            (_, true) => entries.OrderByDescending(entry => entry.CreatedAtUtc),
+            _ => entries.OrderBy(entry => entry.CreatedAtUtc)
+        };
+    }
+
     private static bool IsAllFilter(string value) => string.IsNullOrWhiteSpace(value) || string.Equals(value, AllFilterValue, StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsDescendingSort(string direction) => string.Equals(direction, DescendingSortDirection, StringComparison.OrdinalIgnoreCase);
+
+    private static string AuditSortLabel(string value) => value switch
+    {
+        AuditSortSequenceValue => "Sequence",
+        AuditSortActorValue => "Actor",
+        AuditSortActionValue => "Action",
+        AuditSortTargetValue => "Target",
+        AuditSortOutcomeValue => "Outcome",
+        _ => "Time"
+    };
+
+    private static string HistorySortLabel(string value) => value switch
+    {
+        HistorySortTargetValue => "Target",
+        HistorySortVersionValue => "Version",
+        HistorySortFormatValue => "Format",
+        HistorySortSizeValue => "Size",
+        HistorySortArtifactValue => "Artifact",
+        _ => "Created"
+    };
 
     private static bool IsSearchMatch(string search, params string?[] values)
     {
@@ -1330,6 +1482,55 @@
 
         return value.Length <= 10 ? value : $"{value[..4]}...{value[^4..]}";
     }
+
+    private static string AuditActorDisplay(AuditLogEntry entry) => FirstMeaningful(entry.ActorDisplay, entry.ActorUserId, entry.ActorKind);
+
+    private static string AuditTargetDisplay(AuditLogEntry entry) => DisplayTableValue(entry.TargetId);
+
+    private static string AuditTargetSortKey(AuditLogEntry entry) => $"{entry.TargetKind}:{entry.TargetId}";
+
+    private static string HistoryTargetDisplay(VersionHistoryEntry entry) => DisplayTableValue(entry.TargetId);
+
+    private static string HistoryTargetSortKey(VersionHistoryEntry entry) => $"{entry.TargetKind}:{entry.TargetId}";
+
+    private static string HistoryArtifactDisplay(VersionHistoryEntry entry) => DisplayTableValue(entry.HistoryPath);
+
+    private static string DisplayTableValue(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value.Trim();
+
+    private static string FirstMeaningful(params string?[] values) => values.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value))?.Trim() ?? "-";
+
+    private static string FormatByteSize(long value)
+    {
+        if (value < 1024)
+        {
+            return $"{value} B";
+        }
+
+        var units = new[] { "KB", "MB", "GB", "TB" };
+        double size = value;
+        var unitIndex = -1;
+        while (size >= 1024 && unitIndex < units.Length - 1)
+        {
+            size /= 1024;
+            unitIndex++;
+        }
+
+        return unitIndex < 0 ? $"{value} B" : $"{size:0.#} {units[unitIndex]}";
+    }
+
+    private async Task CopyAdminValueAsync(string? value, string label)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            Snackbar.Add($"No {label} to copy.", Severity.Info);
+            return;
+        }
+
+        var copied = await SafeJsInterop.TryInvokeVoidAsync(JS, "navigator.clipboard.writeText", value);
+        Snackbar.Add(copied ? $"{CapitalizeLabel(label)} copied." : "Clipboard unavailable. Copy it manually from the table.", copied ? Severity.Success : Severity.Warning);
+    }
+
+    private static string CapitalizeLabel(string value) => string.IsNullOrWhiteSpace(value) ? "Value" : char.ToUpperInvariant(value[0]) + value[1..];
 
     private async Task<IReadOnlyList<VersionHistoryEntry>> LoadRecentVersionsAsync()
     {

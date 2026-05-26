@@ -2667,6 +2667,40 @@ body {
     border-top: 1px solid var(--vscode-border);
 }
 
+.admin-grid-table .mud-table-cell {
+    vertical-align: top;
+}
+
+.admin-table-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.admin-table-meta {
+    color: var(--vscode-text-muted);
+    font-size: 0.74rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+
+.admin-copy-cell {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    min-width: 0;
+}
+
+.admin-copy-text {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 0.8rem;
+    line-height: 1.35;
+}
+
 .admin-models-layout {
     display: grid;
     grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
