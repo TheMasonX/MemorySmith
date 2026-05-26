@@ -4,7 +4,7 @@
   "title": "Make Admin history and audit tables scannable on narrow viewports",
   "description": "Problem: the deeper `/admin` History review showed the active tab strip scrolled so far that the visible top area mostly displayed arrows instead of the current section label. History rows then rendered as raw value stacks with long page IDs, versions, timestamps, formats, and file paths, but without compact labels or grouping.\n\nDesired outcome: Admin history/audit views should make the current section obvious and let operators scan snapshots/events without decoding unlabeled raw columns.\n\nScope:\n- In scope: History and Audit tab responsive layout, active-section label, row/card formatting, path truncation/copy affordances, filters density, and tab navigation state.\n- Out of scope: changing history retention, snapshot storage, or audit event schema.\n\nAcceptance criteria:\n- The active Admin section remains visible even when the tab strip is scrolled.\n- History/Audit rows use labeled compact fields or cards at narrow widths.\n- Long IDs and paths truncate with copy/reveal affordances instead of dominating rows.\n- Filters remain useful without consuming excessive first-viewport space.\n\nValidation:\n- Capture `/admin` History and Audit states at narrow and desktop widths.\n- Run focused browser checks for tab navigation, filter entry, and row copy/reveal affordances.",
   "type": "Task",
-  "status": "Backlog",
+  "status": "Done",
   "priority": "Medium",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -28,15 +28,21 @@
       "author": "AgentSmith",
       "body": "Created from 2026-05-25 deeper live review: Admin History hid the active tab context behind the horizontal tab scroller and rendered dense unlabeled raw values on narrow width.",
       "createdAtUtc": "2026-05-25T00:00:00.0000000Z"
+    },
+    {
+      "id": "c-0133-2",
+      "author": "AgentSmith",
+      "body": "Completed by adding an always-visible active-section summary tied to the existing admin tab index and switching Audit/History to responsive `MudTable` data labels at `Breakpoint.Sm`. Focused validation: `runTests` on `MemorySmith.Tests/TagGovernanceTests.cs` passed `20 passed, 0 failed`. Browser validation in sandbox `artifacts/browser-validation/tsk-0133/20260526-113314-fresh/` at `http://127.0.0.1:5115/admin` confirmed the active section banner stayed visible at narrow width, Audit showed labeled stacked cells for a live `auth.setup.completed` row, and History showed labeled stacked cells plus copy affordances for a disposable page-history artifact after creating `browser-validation/tsk-0133-history-sample` through `api/pages`. Screenshots: `admin-audit-narrow.png`, `admin-history-narrow.png`.",
+      "createdAtUtc": "2026-05-26T16:34:55.4719637Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-25T00:00:00.0000000Z",
-  "updatedAtUtc": "2026-05-25T00:00:00.0000000Z",
-  "completedAtUtc": null,
-  "revision": 1,
+  "updatedAtUtc": "2026-05-26T16:34:55.4719637Z",
+  "completedAtUtc": "2026-05-26T16:34:55.4719637Z",
+  "revision": 2,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

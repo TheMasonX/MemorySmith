@@ -3348,6 +3348,31 @@ body {
     min-height: 0;
 }
 
+.admin-section-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 8px;
+    padding: 10px 12px;
+    border: 1px solid var(--vscode-border);
+    border-radius: 4px;
+    background: linear-gradient(135deg, var(--vscode-panel-soft), color-mix(in srgb, var(--vscode-panel) 84%, var(--vscode-accent) 16%));
+}
+
+.admin-section-summary-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
+.admin-section-summary-text {
+    color: var(--vscode-text-muted);
+    font-size: 0.84rem;
+    line-height: 1.35;
+}
+
 .nav-auth-form {
     margin: 0;
 }
@@ -4126,6 +4151,34 @@ body {
     .profile-primary-grid,
     .profile-panel-grid {
         grid-template-columns: 1fr;
+    }
+
+    .admin-section-summary {
+        padding: 9px 10px;
+    }
+
+    .admin-grid-table .mud-table-cell {
+        padding-inline: 10px;
+    }
+
+    .admin-grid-table .mud-table-cell::before {
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        color: var(--vscode-text-muted);
+    }
+
+    .admin-grid-table .mud-table-cell:last-child {
+        padding-bottom: 12px;
+    }
+
+    .admin-copy-cell {
+        align-items: center;
+    }
+
+    .admin-copy-cell .mud-button-root {
+        align-self: flex-start;
     }
 
     .profile-commandbar,

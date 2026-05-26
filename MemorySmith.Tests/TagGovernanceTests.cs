@@ -309,12 +309,19 @@ public class TagGovernanceTests
             Assert.That(historyMarkup, Does.Contain("Label=\"Sort history by\""));
             Assert.That(auditMarkup, Does.Contain("RowsPerPage=\"25\""));
             Assert.That(historyMarkup, Does.Contain("RowsPerPage=\"25\""));
+            Assert.That(auditMarkup, Does.Contain("Breakpoint=\"Breakpoint.Sm\""));
+            Assert.That(historyMarkup, Does.Contain("Breakpoint=\"Breakpoint.Sm\""));
+            Assert.That(auditMarkup, Does.Contain("DataLabel=\"Time\""));
+            Assert.That(historyMarkup, Does.Contain("DataLabel=\"Artifact\""));
             Assert.That(auditMarkup, Does.Contain("MudTablePager"));
             Assert.That(historyMarkup, Does.Contain("MudTablePager"));
             Assert.That(auditMarkup, Does.Not.Contain("<SensitiveValue"));
             Assert.That(historyMarkup, Does.Not.Contain("<SensitiveValue"));
+            Assert.That(markup, Does.Contain("Active admin section"));
+            Assert.That(markup, Does.Contain("ActiveAdminSectionTitle"));
             Assert.That(markup, Does.Contain("CopyAdminValueAsync"));
             Assert.That(css, Does.Contain(".admin-grid-table .mud-table-cell"));
+            Assert.That(css, Does.Contain(".admin-section-summary"));
             Assert.That(css, Does.Contain(".admin-copy-cell"));
         });
     }

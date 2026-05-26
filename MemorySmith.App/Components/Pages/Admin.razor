@@ -31,6 +31,14 @@
         <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync">Refresh</MudButton>
     </section>
 
+    <section class="admin-section-summary" aria-label="Active admin section" aria-live="polite">
+        <div class="admin-section-summary-copy">
+            <span class="admin-table-meta">Active section</span>
+            <MudText Typo="Typo.subtitle2">@ActiveAdminSectionTitle</MudText>
+            <span class="admin-section-summary-text">@ActiveAdminSectionDescription</span>
+        </div>
+    </section>
+
     <MudTabs Rounded="false" Elevation="0" Class="admin-tabs" ActivePanelIndex="@_activeAdminTabIndex" ActivePanelIndexChanged="OnAdminTabChanged">
         <MudTabPanel Text="Users" Icon="@Icons.Material.Filled.People">
             <MudTable Items="@_userRows" Dense="true" Class="health-table">
@@ -394,7 +402,7 @@
                     }
                 </MudSelect>
             </div>
-            <MudTable Items="@FilteredAudit" Dense="true" Hover="true" Breakpoint="Breakpoint.None" RowsPerPage="25" Class="health-table admin-grid-table">
+            <MudTable Items="@FilteredAudit" Dense="true" Hover="true" Breakpoint="Breakpoint.Sm" RowsPerPage="25" Class="health-table admin-grid-table">
                 <HeaderContent>
                     <MudTh>Time</MudTh>
                     <MudTh>Seq</MudTh>
@@ -404,11 +412,11 @@
                     <MudTh>Outcome</MudTh>
                 </HeaderContent>
                 <RowTemplate>
-                    <MudTd>@context.OccurredAtUtc.ToLocalTime().ToString("g")</MudTd>
-                    <MudTd>@context.Sequence</MudTd>
-                    <MudTd>@AuditActorDisplay(context)</MudTd>
-                    <MudTd>@context.Action</MudTd>
-                    <MudTd>
+                    <MudTd DataLabel="Time">@context.OccurredAtUtc.ToLocalTime().ToString("g")</MudTd>
+                    <MudTd DataLabel="Seq">@context.Sequence</MudTd>
+                    <MudTd DataLabel="Actor">@AuditActorDisplay(context)</MudTd>
+                    <MudTd DataLabel="Action">@context.Action</MudTd>
+                    <MudTd DataLabel="Target">
                         <div class="admin-table-stack">
                             <span class="admin-table-meta">@context.TargetKind</span>
                             <div class="admin-copy-cell">
@@ -425,7 +433,7 @@
                             </div>
                         </div>
                     </MudTd>
-                    <MudTd>@context.Outcome</MudTd>
+                    <MudTd DataLabel="Outcome">@context.Outcome</MudTd>
                 </RowTemplate>
                 <PagerContent>
                     <MudTablePager />
@@ -462,7 +470,7 @@
                     }
                 </MudSelect>
             </div>
-            <MudTable Items="@FilteredHistory" Dense="true" Hover="true" Breakpoint="Breakpoint.None" RowsPerPage="25" Class="health-table admin-grid-table">
+            <MudTable Items="@FilteredHistory" Dense="true" Hover="true" Breakpoint="Breakpoint.Sm" RowsPerPage="25" Class="health-table admin-grid-table">
                 <HeaderContent>
                     <MudTh>Target</MudTh>
                     <MudTh>Version</MudTh>
@@ -472,7 +480,7 @@
                     <MudTh>Artifact</MudTh>
                 </HeaderContent>
                 <RowTemplate>
-                    <MudTd>
+                    <MudTd DataLabel="Target">
                         <div class="admin-table-stack">
                             <span class="admin-table-meta">@context.TargetKind</span>
                             <div class="admin-copy-cell">
@@ -489,11 +497,11 @@
                             </div>
                         </div>
                     </MudTd>
-                    <MudTd>@context.VersionNumber</MudTd>
-                    <MudTd>@context.CreatedAtUtc.ToLocalTime().ToString("g")</MudTd>
-                    <MudTd>@context.Format</MudTd>
-                    <MudTd>@FormatByteSize(context.ByteSize)</MudTd>
-                    <MudTd>
+                    <MudTd DataLabel="Version">@context.VersionNumber</MudTd>
+                    <MudTd DataLabel="Created">@context.CreatedAtUtc.ToLocalTime().ToString("g")</MudTd>
+                    <MudTd DataLabel="Format">@context.Format</MudTd>
+                    <MudTd DataLabel="Size">@FormatByteSize(context.ByteSize)</MudTd>
+                    <MudTd DataLabel="Artifact">
                         <div class="admin-copy-cell">
                             <span class="admin-copy-text" title="@HistoryArtifactDisplay(context)">@HistoryArtifactDisplay(context)</span>
                             <MudTooltip Text="Copy artifact path.">
@@ -532,8 +540,14 @@
     private const string HistorySortFormatValue = "format";
     private const string HistorySortSizeValue = "size";
     private const string HistorySortArtifactValue = "artifact";
+    private const int UsersTabIndex = 0;
+    private const int OAuthTabIndex = 1;
+    private const int ModelsTabIndex = 2;
+    private const int ConfigurationTabIndex = 3;
     private const string VariablesTabName = "variables";
     private const int VariablesTabIndex = 4;
+    private const int AuditTabIndex = 5;
+    private const int HistoryTabIndex = 6;
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private static readonly IReadOnlyList<string> SortDirectionOptions = [DescendingSortDirection, AscendingSortDirection];
     private static readonly IReadOnlyList<string> AuditSortOptions = [AuditSortTimeValue, AuditSortSequenceValue, AuditSortActorValue, AuditSortActionValue, AuditSortTargetValue, AuditSortOutcomeValue];
@@ -602,6 +616,30 @@
             : _modelProfileModelOptions.Count == 0
                 ? "No models were returned by this provider."
                 : $"{_modelProfileModelOptions.Count} provider model(s) available.";
+
+    private string ActiveAdminSectionTitle => _activeAdminTabIndex switch
+    {
+        UsersTabIndex => "Users",
+        OAuthTabIndex => "OAuth",
+        ModelsTabIndex => "Models",
+        ConfigurationTabIndex => "Configuration",
+        VariablesTabIndex => "Variables",
+        AuditTabIndex => "Audit",
+        HistoryTabIndex => "History",
+        _ => "Admin"
+    };
+
+    private string ActiveAdminSectionDescription => _activeAdminTabIndex switch
+    {
+        UsersTabIndex => "Manage accounts, roles, and last-login state without exposing raw identifiers by default.",
+        OAuthTabIndex => "Review configured providers, runtime support, and provider-link usage at a glance.",
+        ModelsTabIndex => "Manage named chat model profiles, provider metadata, and defaults.",
+        ConfigurationTabIndex => "Review or edit allowlisted operational settings and grouped configuration values.",
+        VariablesTabIndex => "Manage variable keys and values used across prompts and workflows.",
+        AuditTabIndex => "Filter recent audit events by actor, outcome, and target without relying on the scrolled tab strip.",
+        HistoryTabIndex => "Scan recent version artifacts, formats, and targets with compact labeled rows on small screens.",
+        _ => "Review admin-only operational data and controls."
+    };
 
     private IReadOnlyList<AuditLogEntry> FilteredAudit => ApplyAuditSort(_audit.Where(MatchesAuditFilter)).ToList();
 
