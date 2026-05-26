@@ -768,11 +768,45 @@ public class PagesAndChatTests
         Assert.Multiple(() =>
         {
             Assert.That(options.MaintenanceAgent.Write, Does.Not.Contain(options.PagesPath));
+            Assert.That(options.Chat.AgentWriteRoots, Does.Contain(options.PagesPath));
             Assert.That(result.WrittenPages, Is.Empty);
             Assert.That(result.SubmittedProposalIds, Has.Count.EqualTo(1));
             Assert.That(approved.Status, Is.EqualTo(MaintenanceProposalStatuses.Approved));
             Assert.That(writtenPage, Is.Not.Null);
             Assert.That(writtenPage!.Markdown, Does.Contain("Safe chat page body."));
+        });
+    }
+
+    [Test]
+    public async Task MemoryChatAgent_BlocksPageProposalOutsideConfiguredChatWriteRoots()
+    {
+        var memoryStore = new InMemoryMemoryStore();
+        var eventStore = new RecordingEventStore();
+        var publisher = new RecordingMemoryChangePublisher();
+        var memories = TestServiceFactory.CreateMemoryApplicationService(memoryStore, eventStore, publisher);
+        var (options, workflow) = CreateChatProposalWorkflowOptions(includePagesMaintenanceWriteRoot: false, includePagesChatWriteRoot: false);
+        var pages = new FilePageService(options.PagesPath);
+        var provider = new FakeChatProvider("""
+        {
+            "reply": "Ready to record.",
+            "memoryWrites": [],
+            "pageWrites": [
+                { "slug": "blocked-chat-page", "title": "Blocked Chat Page", "markdown": "Blocked chat page body." }
+            ]
+        }
+        """);
+        var agent = new MemoryChatAgent([provider], memories, pages, Options.Create(options), new FakeCurrentUserContext("editor-1", "Editor User", [MemorySmithRoles.Editor]), proposalWorkflow: workflow);
+
+        var response = await agent.SendAsync(new MemoryChatRequest("Create a page", MemoryChatMode.Agent, RequireAgentWriteApproval: true), CancellationToken.None);
+        var ex = Assert.ThrowsAsync<InvalidOperationException>(() => agent.ApplyAgentWritesAsync(response.ProposedMemoryWrites!, response.ProposedPageWrites!, CancellationToken.None));
+        var proposals = await workflow.ListAsync(CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(options.MaintenanceAgent.Write, Does.Not.Contain(options.PagesPath));
+            Assert.That(options.Chat.AgentWriteRoots, Does.Not.Contain(options.PagesPath));
+            Assert.That(ex!.Message, Does.Contain("outside the configured maintenance write directories"));
+            Assert.That(proposals, Is.Empty);
         });
     }
 
@@ -1779,10 +1813,12 @@ public class PagesAndChatTests
 
     private (MemorySmithOptions Options, MaintenanceProposalWorkflow Workflow) CreateChatProposalWorkflowOptions(
         string approvalMode = AgentWriteApprovalModes.Manual,
-        bool includePagesMaintenanceWriteRoot = true)
+        bool includePagesMaintenanceWriteRoot = true,
+        bool includePagesChatWriteRoot = true)
     {
         var dataPath = Path.Combine(_tempDir, "Memories");
         var pagesPath = Path.Combine(_tempDir, "Pages");
+        var workingPath = Path.Combine(dataPath, "Working");
         var options = new MemorySmithOptions
         {
             DataPath = dataPath,
@@ -1790,12 +1826,13 @@ public class PagesAndChatTests
             Chat = new ChatOptions
             {
                 AgentWritesEnabled = true,
-                AgentWriteApprovalMode = approvalMode
+                AgentWriteApprovalMode = approvalMode,
+                AgentWriteRoots = includePagesChatWriteRoot ? [workingPath, pagesPath] : [workingPath]
             },
             MaintenanceAgent = new MaintenanceAgentOptions
             {
                 Read = [dataPath, pagesPath],
-                Write = includePagesMaintenanceWriteRoot ? [Path.Combine(dataPath, "Working"), pagesPath] : [Path.Combine(dataPath, "Working")],
+                Write = includePagesMaintenanceWriteRoot ? [workingPath, pagesPath] : [workingPath],
                 Storage = new MaintenanceAgentStorageOptions
                 {
                     ProposalsPath = Path.Combine(_tempDir, "Proposals")

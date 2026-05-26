@@ -155,6 +155,7 @@ Existing MCP tools default on unless they are listed in `DisabledTools`; `Disabl
 | `MaxAttachmentCharacters`, `MaxAttachmentBytes` | Attachment input limits | attachment uploads |
 | `ToolCallsEnabled`, `MaxToolIterations`, `MaxToolCallsPerTurn`, `MaxToolResultCharacters` | Bounded read-only tool loop | tool traces and retrieval behavior |
 | `AgentWritesEnabled` | Enables approval-gated Agent write proposals | `/chat` Agent mode and `/proposals` |
+| `AgentWriteRoots` | Paths approved chat-agent memory/page proposals may target | `/chat` approvals and `/proposals`; separate from `MaintenanceAgent:Write` |
 
 Important exception: `Chat:ModelProfiles`, `DefaultModelProfileId`, and maintenance-agent model assignment IDs are edited from the Models tab, not the generic settings table.
 

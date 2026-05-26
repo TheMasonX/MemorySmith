@@ -219,6 +219,8 @@ public sealed class MaintenanceAgentConfigService
     private static readonly string DefaultReadMemoriesRoot = Path.Combine("..", "Data", "Memories");
     private static readonly string DefaultReadPagesRoot = Path.Combine("..", "Data", "Pages");
     private static readonly string DefaultWriteWorkingRoot = Path.Combine("..", "Data", "Memories", "Working");
+    private static readonly string DefaultChatWriteWorkingRoot = Path.Combine("..", "Data", "Memories", "Working");
+    private static readonly string DefaultChatWritePagesRoot = Path.Combine("..", "Data", "Pages");
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
         PropertyNameCaseInsensitive = true,
@@ -243,7 +245,14 @@ public sealed class MaintenanceAgentConfigService
     public IReadOnlyList<string> GetChatProposalWriteRoots()
     {
         var appOptions = _options.CurrentValue;
-        return [Path.Combine(appOptions.DataPath, "Working"), appOptions.PagesPath];
+        return NormalizeRoots(
+            appOptions.Chat.AgentWriteRoots,
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                [DefaultChatWriteWorkingRoot] = Path.Combine(appOptions.DataPath, "Working"),
+                [DefaultChatWritePagesRoot] = appOptions.PagesPath
+            },
+            [Path.Combine(appOptions.DataPath, "Working"), appOptions.PagesPath]);
     }
 
     public string ResolvePath(string path) => Path.GetFullPath(path);

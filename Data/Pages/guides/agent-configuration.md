@@ -90,11 +90,12 @@ Admin maintenance chat resolves in this order:
 | Setting | Effect | Important boundary |
 | --- | --- | --- |
 | `MemorySmith:Chat:AgentWritesEnabled` | Allows Agent mode to submit write proposals | Does not bypass approval or RBAC. |
+| `MemorySmith:Chat:AgentWriteRoots` | Allows approved chat-agent memory/page proposals only inside these roots | Separate from `MaintenanceAgent:Write`; defaults to Working memories and Pages. |
 | `MemorySmith:MaintenanceAgent:DirectWrite` | Allows maintenance agent direct writes in configured write roots | Should remain false for normal proposal-first governance. |
 | `MemorySmith:MaintenanceAgent:Write` | Limits where maintenance-agent writes may land | Affects proposal/direct-write validation. |
 | User role | Controls who can approve or apply writes | Chat mode alone remains read-only. |
 
-Agent write rule: enabling `AgentWritesEnabled` allows structured write proposals to be created, but durable file changes still require the existing approval flow and sufficient role.
+Agent write rule: enabling `AgentWritesEnabled` allows structured write proposals to be created, but durable file changes still require the existing approval flow, sufficient role, and a target path under `Chat:AgentWriteRoots`.
 
 ## Provider Defaults And Discovery
 
@@ -147,7 +148,8 @@ That is expected unless all of these are true:
 1. Agent mode is active.
 2. `Chat:AgentWritesEnabled` is true.
 3. The current user has sufficient role.
-4. The proposed write still goes through approval.
+4. The proposed memory/page path is inside `Chat:AgentWriteRoots`.
+5. The proposed write still goes through approval.
 
 ### Proposal review uses a different model from chat
 

@@ -315,6 +315,23 @@ public class TagGovernanceTests
     }
 
     [Test]
+    public void AdminSettings_ExposeSeparateChatAgentWriteRoots()
+    {
+        var source = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "Services", "AdminSettingsService.cs"));
+        var appsettings = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "appsettings.json"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(source, Does.Contain("MemorySmith:Chat:AgentWriteRoots"));
+            Assert.That(source, Does.Contain("Chat proposal write roots"));
+            Assert.That(source, Does.Contain("intentionally separate from MaintenanceAgent:Write"));
+            Assert.That(appsettings, Does.Contain("\"AgentWriteRoots\""));
+            Assert.That(appsettings, Does.Contain("../Data/Memories/Working"));
+            Assert.That(appsettings, Does.Contain("../Data/Pages"));
+        });
+    }
+
+    [Test]
     public void ChatMarkup_ReconcilesApproveAllBatchOutcomesAndPendingState()
     {
         var markup = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "Components", "Pages", "Chat.razor"));

@@ -246,6 +246,7 @@ public class ChatOptions
     public int MaxToolResultCharacters { get; set; } = 12000;
     public bool AgentWritesEnabled { get; set; }
     public string AgentWriteApprovalMode { get; set; } = AgentWriteApprovalModes.Manual;
+    public List<string> AgentWriteRoots { get; set; } = [];
 }
 
 public static class AgentWriteApprovalModes

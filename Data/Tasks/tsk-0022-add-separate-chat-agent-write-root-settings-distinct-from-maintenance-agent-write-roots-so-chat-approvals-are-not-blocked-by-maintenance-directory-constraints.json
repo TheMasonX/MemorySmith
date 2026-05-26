@@ -4,7 +4,7 @@
   "Title": "Add separate chat-agent write root settings (distinct from maintenance-agent write roots) so chat approvals are not blocked by maintenance directory constraints.",
   "Description": "Keep this scoped and well documented.\r\n\r\nImported from Data/Pages/workbench/tasks.md",
   "Type": "Task",
-  "Status": "Backlog",
+  "Status": "Done",
   "Priority": "Medium",
   "AssigneeMode": "Custom",
   "AssigneeDirectoryId": null,
@@ -26,14 +26,20 @@
       "Author": "tracker-import",
       "Body": "Keep this scoped and well documented.",
       "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z"
+    },
+    {
+      "Id": "c-completed-0022-20260526",
+      "Author": "Copilot",
+      "Body": "Added separate `Chat:AgentWriteRoots` configuration, exposed it in Admin settings as Chat proposal write roots, documented the boundary, and validated that chat page proposals can be allowed independently from `MaintenanceAgent:Write` while excluded chat roots still block proposals.",
+      "CreatedAtUtc": "2026-05-26T06:53:17.1408246Z"
     }
   ],
   "EpicId": null,
   "ParentId": null,
   "DueDateUtc": null,
   "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z",
-  "UpdatedAtUtc": "2026-05-23T23:36:10.0439283Z",
-  "CompletedAtUtc": null,
-  "Revision": 1,
+  "UpdatedAtUtc": "2026-05-26T06:53:17.1408246Z",
+  "CompletedAtUtc": "2026-05-26T06:53:17.1408246Z",
+  "Revision": 2,
   "IsArchived": false
 }
