@@ -577,8 +577,8 @@ public class PagesAndChatTests
         var eventStore = new RecordingEventStore();
         var publisher = new RecordingMemoryChangePublisher();
         var memories = TestServiceFactory.CreateMemoryApplicationService(memoryStore, eventStore, publisher);
-                var (options, workflow) = CreateChatProposalWorkflowOptions(AgentWriteApprovalModes.AutoAccept);
-                var pages = new FilePageService(options.PagesPath);
+        var (options, workflow) = CreateChatProposalWorkflowOptions(AgentWriteApprovalModes.AutoAccept);
+        var pages = new FilePageService(options.PagesPath);
         var provider = new FakeChatProvider("""
         {
           "reply": null,
@@ -704,6 +704,42 @@ public class PagesAndChatTests
             Assert.That(proposals[0].RelatedRecords, Does.Contain("agent-proposal-note"));
             Assert.That(memoryStore.Load("agent-proposal-note"), Is.Null);
             Assert.That(missingPageAfterSubmission, Is.Null);
+        });
+    }
+
+    [Test]
+    public async Task MemoryChatAgent_ApprovesSafePageProposalWhenMaintenanceWriteRootsExcludePages()
+    {
+        var memoryStore = new InMemoryMemoryStore();
+        var eventStore = new RecordingEventStore();
+        var publisher = new RecordingMemoryChangePublisher();
+        var memories = TestServiceFactory.CreateMemoryApplicationService(memoryStore, eventStore, publisher);
+        var (options, workflow) = CreateChatProposalWorkflowOptions(includePagesMaintenanceWriteRoot: false);
+        var pages = new FilePageService(options.PagesPath);
+        var provider = new FakeChatProvider("""
+        {
+            "reply": "Ready to record.",
+            "memoryWrites": [],
+            "pageWrites": [
+                { "slug": "safe-chat-page", "title": "Safe Chat Page", "markdown": "Safe chat page body." }
+            ]
+        }
+        """);
+        var agent = new MemoryChatAgent([provider], memories, pages, Options.Create(options), new FakeCurrentUserContext("editor-1", "Editor User", [MemorySmithRoles.Editor]), proposalWorkflow: workflow);
+
+        var response = await agent.SendAsync(new MemoryChatRequest("Create a page", MemoryChatMode.Agent, RequireAgentWriteApproval: true), CancellationToken.None);
+        var result = await agent.ApplyAgentWritesAsync(response.ProposedMemoryWrites!, response.ProposedPageWrites!, CancellationToken.None);
+        var approved = await workflow.ApproveAsync(result.SubmittedProposalIds!.Single(), "Approved safe chat page proposal.", CancellationToken.None);
+        var writtenPage = await pages.GetAsync("safe-chat-page", CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(options.MaintenanceAgent.Write, Does.Not.Contain(options.PagesPath));
+            Assert.That(result.WrittenPages, Is.Empty);
+            Assert.That(result.SubmittedProposalIds, Has.Count.EqualTo(1));
+            Assert.That(approved.Status, Is.EqualTo(MaintenanceProposalStatuses.Approved));
+            Assert.That(writtenPage, Is.Not.Null);
+            Assert.That(writtenPage!.Markdown, Does.Contain("Safe chat page body."));
         });
     }
 
@@ -1708,7 +1744,9 @@ public class PagesAndChatTests
         });
     }
 
-    private (MemorySmithOptions Options, MaintenanceProposalWorkflow Workflow) CreateChatProposalWorkflowOptions(string approvalMode = AgentWriteApprovalModes.Manual)
+    private (MemorySmithOptions Options, MaintenanceProposalWorkflow Workflow) CreateChatProposalWorkflowOptions(
+        string approvalMode = AgentWriteApprovalModes.Manual,
+        bool includePagesMaintenanceWriteRoot = true)
     {
         var dataPath = Path.Combine(_tempDir, "Memories");
         var pagesPath = Path.Combine(_tempDir, "Pages");
@@ -1724,7 +1762,7 @@ public class PagesAndChatTests
             MaintenanceAgent = new MaintenanceAgentOptions
             {
                 Read = [dataPath, pagesPath],
-                Write = [Path.Combine(dataPath, "Working"), pagesPath],
+                Write = includePagesMaintenanceWriteRoot ? [Path.Combine(dataPath, "Working"), pagesPath] : [Path.Combine(dataPath, "Working")],
                 Storage = new MaintenanceAgentStorageOptions
                 {
                     ProposalsPath = Path.Combine(_tempDir, "Proposals")

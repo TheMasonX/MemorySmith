@@ -237,6 +237,12 @@ public sealed class MaintenanceAgentConfigService
         return options;
     }
 
+    public IReadOnlyList<string> GetChatProposalWriteRoots()
+    {
+        var appOptions = _options.CurrentValue;
+        return [Path.Combine(appOptions.DataPath, "Working"), appOptions.PagesPath];
+    }
+
     public string ResolvePath(string path) => Path.GetFullPath(path);
 
     private MaintenanceAgentOptions Clone(MaintenanceAgentOptions source) =>
@@ -456,7 +462,7 @@ public sealed class MaintenanceWritePermissionService
         _config = config;
     }
 
-    public string ValidateWritablePath(string path)
+    public string ValidateWritablePath(string path, IEnumerable<string>? additionalAllowedRoots = null)
     {
         var config = _config.GetCurrent();
         var fullPath = Path.GetFullPath(path);
@@ -465,7 +471,7 @@ public sealed class MaintenanceWritePermissionService
             throw new InvalidOperationException("Maintenance proposals cannot modify schema or configuration files.");
         }
 
-        var allowedRoots = config.Write.Select(_config.ResolvePath).ToList();
+        var allowedRoots = config.Write.Concat(additionalAllowedRoots ?? []).Select(_config.ResolvePath).ToList();
         if (!allowedRoots.Any(root => IsUnderPath(fullPath, root)))
         {
             throw new InvalidOperationException($"Path '{path}' is outside the configured maintenance write directories.");
@@ -580,10 +586,11 @@ public sealed class FileMaintenanceProposalStore : IMaintenanceProposalStore
             Changes = proposal.Changes.Select(_diff.WithDiff).ToList(),
             UpdatedAtUtc = DateTimeOffset.UtcNow
         };
+        var additionalWriteRoots = AdditionalWriteRootsFor(normalized);
 
         foreach (var change in normalized.Changes)
         {
-            _permissions.ValidateWritablePath(change.Path);
+            _permissions.ValidateWritablePath(change.Path, additionalWriteRoots);
         }
 
         lock (_lock)
@@ -600,8 +607,9 @@ public sealed class FileMaintenanceProposalStore : IMaintenanceProposalStore
         cancellationToken.ThrowIfCancellationRequested();
         lock (_lock)
         {
+            var additionalWriteRoots = AdditionalWriteRootsFor(proposal);
             var validatedChanges = proposal.Changes
-                .Select(change => (Change: change, FullPath: _permissions.ValidateWritablePath(change.Path)))
+                .Select(change => (Change: change, FullPath: _permissions.ValidateWritablePath(change.Path, additionalWriteRoots)))
                 .ToList();
 
             foreach (var item in validatedChanges)
@@ -624,6 +632,12 @@ public sealed class FileMaintenanceProposalStore : IMaintenanceProposalStore
 
         return Task.CompletedTask;
     }
+
+    private IReadOnlyList<string> AdditionalWriteRootsFor(MaintenanceWriteProposal proposal) =>
+        IsChatAgentProposal(proposal) ? _config.GetChatProposalWriteRoots() : [];
+
+    private static bool IsChatAgentProposal(MaintenanceWriteProposal proposal) =>
+        proposal.Metadata.AgentVersion.StartsWith("chat-agent.", StringComparison.OrdinalIgnoreCase);
 
     private string ProposalsPath => _config.ResolvePath(_config.GetCurrent().Storage.ProposalsPath);
 
