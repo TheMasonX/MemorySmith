@@ -3034,12 +3034,57 @@ body {
 .maintenance-panel {
     border: 1px solid var(--vscode-border-soft);
     background: var(--vscode-panel);
+    overflow: hidden;
+}
+
+.maintenance-panel-scroll {
+    display: grid;
+    gap: 10px;
+    padding: 10px;
+    min-height: 190px;
     overflow: auto;
+    scrollbar-gutter: stable;
+}
+
+.maintenance-panel-scroll-trace,
+.maintenance-panel-scroll-actions {
+    max-height: 28vh;
+}
+
+.maintenance-panel-scroll-transcripts {
+    max-height: 32vh;
 }
 
 .maintenance-page-activity-list,
 .maintenance-action-list {
-    padding: 10px;
+    padding: 0;
+}
+
+.maintenance-activity-list,
+.admin-maintenance-transcript-list {
+    display: grid;
+    gap: 10px;
+}
+
+.maintenance-activity-main {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.maintenance-activity-proposals {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.maintenance-proposal-link {
+    display: inline-flex;
+    align-items: center;
+    min-width: 0;
+    color: var(--vscode-text-muted);
+    overflow-wrap: anywhere;
 }
 
 .maintenance-action-row {
@@ -3051,9 +3096,9 @@ body {
 }
 
 .maintenance-action-row header {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
-    justify-content: space-between;
     gap: 8px;
 }
 
@@ -3065,6 +3110,7 @@ body {
 .maintenance-action-row small,
 .maintenance-action-row a {
     color: var(--vscode-text-muted);
+    overflow-wrap: anywhere;
 }
 
 .admin-provider-grid {
@@ -4351,6 +4397,24 @@ body {
 
     .admin-settings-group-caption {
         width: 100%;
+    }
+
+    .maintenance-panel-scroll-trace,
+    .maintenance-panel-scroll-actions,
+    .maintenance-panel-scroll-transcripts {
+        min-height: 220px;
+        max-height: 40vh;
+    }
+
+    .maintenance-action-row header,
+    .admin-maintenance-transcript header,
+    .admin-maintenance-actions {
+        grid-template-columns: 1fr;
+        align-items: flex-start;
+    }
+
+    .maintenance-activity-proposals {
+        flex-direction: column;
     }
 
     .admin-user-primary strong {

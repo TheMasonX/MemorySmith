@@ -4,7 +4,7 @@
   "title": "Tighten Maintenance workbench responsive spacing and scroll affordances",
   "description": "Problem: the live narrow-viewport audit of `/maintenance` showed the Maintenance route stacks correctly, but the task trace and proposal action history panels are cramped with nested scrollbars and clipped dense content. The chat pane itself remains reachable, but the route reads as visually crowded and some important history text is easy to miss.\n\nEvidence: 2026-05-25 browser screenshot and DOM sweep showed `Task trace history` and `Proposal action history` using short fixed-height scrolling panels above the Maintenance agent chat, with long proposal IDs and explanatory text clipped in the first viewport.\n\nDesired outcome: Maintenance remains compact but gives operators clearer reading space, better scroll affordances, and no ambiguous overlap between history panels and chat controls on narrow screens.\n\nScope:\n- In scope: responsive spacing, history panel max/min heights, long ID wrapping/truncation with tooltips, and chat action alignment on narrow viewports.\n- Out of scope: changing maintenance run behavior, proposal action semantics, or transcript data contracts.\n\nAcceptance criteria:\n- At mobile/narrow widths, history panels and the Maintenance chat area do not visually crowd each other or obscure controls.\n- Long proposal IDs/history messages wrap or expose full text through tooltips without horizontal overflow.\n- Nested scroll areas have enough visible height and clear affordance to be usable.\n- Desktop layout remains dense and operator-focused.\n\nValidation:\n- Capture `/maintenance` screenshots at narrow and desktop widths.\n- Confirm there is no horizontal overflow and all primary controls are reachable by keyboard and pointer.",
   "type": "Task",
-  "status": "Backlog",
+  "status": "Done",
   "priority": "Medium",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -28,15 +28,21 @@
       "author": "AgentSmith",
       "body": "Created from 2026-05-25 live browser audit and screenshot: no hard route break, but the narrow Maintenance view has cramped nested history panels and clipped long text above the chat controls.",
       "createdAtUtc": "2026-05-25T00:00:00.0000000Z"
+    },
+    {
+      "id": "c-0121-2",
+      "author": "AgentSmith",
+      "body": "Completed by moving Maintenance history/transcript scrolling into explicit panel-body containers, increasing readable narrow-width panel height, and wrapping long proposal ids behind visible links with tooltips instead of leaving them as raw cramped header text. Validation: `dotnet test .\\MemorySmith.Tests\\MemorySmith.Tests.csproj -c Release --filter \"Name~MaintenanceMarkup_ExposesStandaloneTraceChatAndActionHistoryPage\" --logger \"console;verbosity=minimal\"` passed 1/1. Browser validation in sandbox `artifacts/browser-validation/tsk-0121/20260526-115543-fresh/` at `http://127.0.0.1:5118/maintenance` confirmed narrow-width trace and proposal history panels had clearer scrollable reading space, long proposal ids remained readable without horizontal overflow, and the Maintenance chat controls stayed reachable below the history panels. Screenshots: `maintenance-narrow.png`, `maintenance-desktop.png`.",
+      "createdAtUtc": "2026-05-26T16:55:48.0000000Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-25T00:00:00.0000000Z",
-  "updatedAtUtc": "2026-05-25T00:00:00.0000000Z",
-  "completedAtUtc": null,
-  "revision": 1,
+  "updatedAtUtc": "2026-05-26T16:55:48.0000000Z",
+  "completedAtUtc": "2026-05-26T16:55:48.0000000Z",
+  "revision": 2,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

@@ -292,7 +292,12 @@ public class TagGovernanceTests
             Assert.That(markup, Does.Contain("ListRecentActivityAsync(50"));
             Assert.That(markup, Does.Contain("ListRecentTranscriptsAsync(50"));
             Assert.That(markup, Does.Contain("ProposalActionRows"));
+            Assert.That(markup, Does.Contain("maintenance-panel-scroll maintenance-panel-scroll-trace"));
+            Assert.That(markup, Does.Contain("maintenance-proposal-link"));
+            Assert.That(markup, Does.Contain("MudTooltip Text=\"@proposalId\""));
             Assert.That(css, Does.Contain(".maintenance-body"));
+            Assert.That(css, Does.Contain(".maintenance-panel-scroll"));
+            Assert.That(css, Does.Contain(".maintenance-proposal-link"));
             Assert.That(css, Does.Contain(".maintenance-action-row"));
             Assert.That(css, Does.Contain(".maintenance-active-run"));
         });

@@ -25,6 +25,7 @@ flowchart LR
 | Status | Owner | Task | Notes | Screenshot |
 | --- | --- | --- | --- | --- |
 | Backlog | Copilot | Vars.json should not be a loose file | Add validation so the variable store behaves like a managed config surface, not an ad hoc file. | Pending |
+| Done | Copilot | Tighten Maintenance workbench responsive spacing and scroll affordances | `/maintenance` now uses clearer scroll bodies for trace/action/transcript history, wraps long proposal ids with tooltip-backed links, and preserves readable chat controls on narrow screens. | `artifacts/browser-validation/tsk-0121/` |
 | Done | Copilot | Restructure Admin Configuration for category navigation and dirty state | `/admin` Configuration now surfaces category-jump buttons, dirty counts, a changed-only filter, and responsive labeled setting rows so operators can narrow and review pending changes without scanning the entire settings catalog. | `artifacts/browser-validation/tsk-0139/` |
 | Done | Copilot | Make Admin users and tabs responsive and privacy-conscious | `/admin` now keeps section context visible while the Users tab renders labeled narrow-width rows with masked identifiers and working reveal/copy affordances. | `artifacts/browser-validation/tsk-0128/` |
 | Done | Copilot | Make Admin History and Audit views readable on narrow screens | `/admin` now keeps the active section visible outside the scrolled tab strip and renders Audit/History rows as labeled stacked cells with copy affordances at narrow widths. | `artifacts/browser-validation/tsk-0133/` |
