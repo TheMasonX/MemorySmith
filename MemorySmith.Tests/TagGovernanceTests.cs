@@ -219,6 +219,12 @@ public class TagGovernanceTests
             Assert.That(markup, Does.Contain("DataLabel=\"Last login\""));
             Assert.That(markup, Does.Contain("admin-user-primary"));
             Assert.That(markup, Does.Contain("admin-user-action-cell"));
+            Assert.That(markup, Does.Contain("admin-config-summary"));
+            Assert.That(markup, Does.Contain("admin-settings-nav"));
+            Assert.That(markup, Does.Contain("_settingsDirtyOnly"));
+            Assert.That(markup, Does.Contain("admin-setting-dirty-indicator"));
+            Assert.That(markup, Does.Contain("DataLabel=\"Setting\""));
+            Assert.That(markup, Does.Contain("ResetFilteredSettings"));
             Assert.That(navMarkup, Does.Contain("Href=\"/tags\""));
             Assert.That(navMarkup, Does.Contain("Tags"));
             Assert.That(navMarkup, Does.Contain("Href=\"/maintenance\""));

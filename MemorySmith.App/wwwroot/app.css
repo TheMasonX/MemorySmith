@@ -2664,6 +2664,75 @@ body {
     min-width: 0;
 }
 
+.admin-config-summary {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+    border: 1px solid color-mix(in srgb, var(--vscode-accent) 30%, var(--vscode-border));
+    border-radius: 6px;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--vscode-panel) 86%, var(--vscode-accent) 14%), var(--vscode-panel));
+}
+
+.admin-config-summary-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.admin-config-summary-kicker {
+    color: var(--vscode-text-muted);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.admin-config-summary-copy strong {
+    font-size: 0.98rem;
+}
+
+.admin-config-summary-copy span:last-child {
+    color: var(--vscode-text-muted);
+    font-size: 0.84rem;
+    line-height: 1.45;
+}
+
+.admin-config-summary-actions {
+    display: flex;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.admin-settings-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.admin-settings-nav-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.admin-settings-nav-count {
+    color: var(--vscode-text-muted);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+
+.admin-settings-dirty-toggle {
+    margin-inline-start: auto;
+}
+
 .admin-settings-groups {
     display: flex;
     flex-direction: column;
@@ -2698,6 +2767,35 @@ body {
 
 .admin-settings-table {
     border-top: 1px solid var(--vscode-border);
+}
+
+.admin-settings-group-toolbar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 10px;
+    border-top: 1px solid var(--vscode-border);
+    background: color-mix(in srgb, var(--vscode-panel) 90%, var(--vscode-panel-soft) 10%);
+}
+
+.admin-settings-group-caption {
+    color: var(--vscode-text-muted);
+    font-size: 0.8rem;
+    line-height: 1.4;
+}
+
+.admin-settings-group-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--vscode-warning) 18%, transparent);
+    color: var(--vscode-warning);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
 }
 
 .admin-grid-table .mud-table-cell {
@@ -2736,6 +2834,27 @@ body {
 
 .admin-users-table .mud-table-cell:last-child {
     min-width: 130px;
+}
+
+.admin-setting-heading-text {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-width: 0;
+}
+
+.admin-setting-dirty-indicator {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 6px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--vscode-warning) 18%, transparent);
+    color: var(--vscode-warning);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
 }
 
 .admin-user-primary,
@@ -4178,6 +4297,25 @@ body {
         padding: 9px 10px;
     }
 
+    .admin-config-summary {
+        padding: 10px;
+    }
+
+    .admin-config-summary,
+    .admin-settings-group-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .admin-config-summary-actions,
+    .admin-settings-nav {
+        width: 100%;
+    }
+
+    .admin-settings-dirty-toggle {
+        margin-inline-start: 0;
+    }
+
     .admin-grid-table .mud-table-cell {
         padding-inline: 10px;
     }
@@ -4200,6 +4338,19 @@ body {
 
     .admin-users-table .mud-table-cell {
         gap: 4px;
+    }
+
+    .admin-settings-nav-button {
+        justify-content: space-between;
+        width: 100%;
+    }
+
+    .admin-settings-nav-count {
+        margin-inline-start: auto;
+    }
+
+    .admin-settings-group-caption {
+        width: 100%;
     }
 
     .admin-user-primary strong {

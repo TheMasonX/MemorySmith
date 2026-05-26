@@ -43,6 +43,7 @@ MemorySmith needs local-first convenience without losing governance. Admin and a
 ## Current Operator Notes
 
 - `/admin` Configuration edits allowlisted scalar and list settings through `AdminSettingsService`. Sensitive values stay write-only, show `Configured` or `Not configured`, and provide an explicit `Clear secret` action rather than echoing stored secrets.
+- The Admin Configuration workbench now surfaces category-jump buttons, visible dirty counts, a changed-only filter, and responsive labeled rows so operators can narrow to the setting they are editing before save or reset, instead of scanning one long settings table.
 - The Admin Users view now defaults to masked user IDs and contact fields, keeps reveal/copy controls available when operators need them, and switches to labeled stacked rows on narrow screens so account metadata does not dominate the layout.
 - `/admin` keeps the active admin section visible outside the scrollable tab strip and renders Audit/History rows as labeled stacked cells on narrow screens so operators can still scan targets, artifacts, and copy actions without decoding a dense desktop table.
 - Admin audit and history views are the operator surface for auth and mutation evidence. Persisted entries carry request IDs and privacy-reviewed request metadata hashes without storing raw IP or user-agent values.

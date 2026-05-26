@@ -228,6 +228,34 @@
             </div>
         </MudTabPanel>
         <MudTabPanel Text="Configuration" Icon="@Icons.Material.Filled.Tune">
+            <section class="admin-config-summary" aria-label="Configuration workbench status">
+                <div class="admin-config-summary-copy">
+                    <span class="admin-config-summary-kicker">SETTINGS WORKBENCH</span>
+                    <strong>@ConfigurationWorkbenchHeadline</strong>
+                    <span>@ConfigurationWorkbenchDescription</span>
+                </div>
+                <div class="admin-config-summary-actions">
+                    <MudTooltip Text="Reset pending changes in the current filtered settings view.">
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.RestartAlt" Disabled="@(_isBusy || FilteredDirtySettingCount == 0)" OnClick="ResetFilteredSettings">Reset visible</MudButton>
+                    </MudTooltip>
+                </div>
+            </section>
+
+            <div class="admin-settings-nav" aria-label="Setting categories">
+                <MudButton Variant="@(IsAllFilter(_settingsCategory) ? Variant.Filled : Variant.Outlined)" Color="Color.Primary" Size="Size.Small" Class="admin-settings-nav-button" OnClick="@(() => SelectSettingsCategory(AllFilterValue))">All categories</MudButton>
+                @foreach (var category in SettingCategories)
+                {
+                    var dirtyCount = GetDirtySettingCount(category);
+                    <MudButton Variant="@(string.Equals(_settingsCategory, category, StringComparison.OrdinalIgnoreCase) ? Variant.Filled : Variant.Outlined)" Color="Color.Primary" Size="Size.Small" Class="admin-settings-nav-button" OnClick="@(() => SelectSettingsCategory(category))">
+                        <span>@category</span>
+                        @if (dirtyCount > 0)
+                        {
+                            <span class="admin-settings-nav-count">@dirtyCount changed</span>
+                        }
+                    </MudButton>
+                }
+            </div>
+
             <div class="admin-filter-bar" aria-label="Editable settings filters">
                 <MudTextField T="string" Value="@_settingsSearch" ValueChanged="@((string value) => _settingsSearch = value)" Immediate="true" Label="Search settings" Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Class="admin-filter-input" />
                 <MudSelect T="string" Value="@_settingsCategory" ValueChanged="@((string value) => _settingsCategory = value)" Label="Category" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="admin-filter-select">
@@ -237,53 +265,80 @@
                         <MudSelectItem T="string" Value="@category">@category</MudSelectItem>
                     }
                 </MudSelect>
+                <MudSwitch T="bool" Value="@_settingsDirtyOnly" ValueChanged="@((bool value) => _settingsDirtyOnly = value)" Label="Changed only" Color="Color.Primary" Class="admin-settings-dirty-toggle" />
             </div>
 
-            <div class="admin-settings-groups">
-                @foreach (var group in FilteredEditableSettingGroups)
-                {
-                    <details class="admin-settings-expander" open="@IsSettingGroupExpanded(group.Category)">
-                        <summary @onclick="@(() => ToggleSettingGroupExpanded(group.Category))" @onclick:preventDefault>
-                            <span>@group.Category</span>
-                            <small>@group.Items.Count setting(s)</small>
-                        </summary>
-                        <MudTable Items="@group.Items" Dense="true" Class="health-table admin-settings-table" RowsPerPage="25">
-                            <HeaderContent>
-                                <MudTh>Setting</MudTh>
-                                <MudTh>Value</MudTh>
-                                <MudTh>Action</MudTh>
-                            </HeaderContent>
-                            <RowTemplate>
-                                <MudTd>
-                                    <div class="admin-setting-heading">
-                                        <strong>@context.Item.Label</strong>
-                                        <MudTooltip Text="@context.Item.HelpText" Placement="Placement.Right">
-                                            <span class="admin-help-icon" aria-label="Help for @context.Item.Label" tabindex="0">
-                                                <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" />
-                                            </span>
-                                        </MudTooltip>
-                                    </div>
-                                    <small class="admin-setting-key">@context.Item.Key</small>
-                                    @if (context.Item.IsSensitive)
-                                    {
-                                        <small class="admin-sensitive-hint">@context.Item.DisplayValue; enter a replacement value to configure or rotate it, or clear the saved value explicitly.</small>
-                                    }
-                                </MudTd>
-                                <MudTd>@SettingEditor(context)</MudTd>
-                                <MudTd>
-                                    <div class="admin-setting-actions">
-                                        <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" Disabled="@(_isBusy || !context.IsDirty)" OnClick="@(() => SaveSettingAsync(context))">Save</MudButton>
-                                        @if (context.CanClearSensitiveSetting)
+            @if (FilteredEditableSettingGroups.Count == 0)
+            {
+                <div class="wiki-empty-state">No editable settings match the current filters.</div>
+            }
+            else
+            {
+                <div class="admin-settings-groups">
+                    @foreach (var group in FilteredEditableSettingGroups)
+                    {
+                        var dirtyCount = group.Items.Count(item => item.IsDirty);
+                        <details class="admin-settings-expander" open="@IsSettingGroupExpanded(group.Category)">
+                            <summary @onclick="@(() => ToggleSettingGroupExpanded(group.Category))" @onclick:preventDefault>
+                                <span>@group.Category</span>
+                                <small>@group.Items.Count setting(s)</small>
+                            </summary>
+                            <div class="admin-settings-group-toolbar">
+                                <span class="admin-settings-group-caption">@group.Items.Count setting(s) in this category.</span>
+                                @if (dirtyCount > 0)
+                                {
+                                    <span class="admin-settings-group-pill">@dirtyCount changed</span>
+                                }
+                                <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small" Disabled="@(_isBusy || dirtyCount == 0)" OnClick="@(() => ResetGroupSettings(group))">Reset group</MudButton>
+                            </div>
+                            <MudTable Items="@group.Items" Dense="true" Breakpoint="Breakpoint.Sm" Class="health-table admin-grid-table admin-settings-table" RowsPerPage="25">
+                                <HeaderContent>
+                                    <MudTh>Setting</MudTh>
+                                    <MudTh>Value</MudTh>
+                                    <MudTh>Action</MudTh>
+                                </HeaderContent>
+                                <RowTemplate>
+                                    <MudTd DataLabel="Setting">
+                                        <div class="admin-setting-heading">
+                                            <div class="admin-setting-heading-text">
+                                                <strong>@context.Item.Label</strong>
+                                                @if (context.IsDirty)
+                                                {
+                                                    <span class="admin-setting-dirty-indicator">Changed</span>
+                                                }
+                                            </div>
+                                            <MudTooltip Text="@context.Item.HelpText" Placement="Placement.Right">
+                                                <span class="admin-help-icon" aria-label="Help for @context.Item.Label" tabindex="0">
+                                                    <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" />
+                                                </span>
+                                            </MudTooltip>
+                                        </div>
+                                        <small class="admin-setting-key">@context.Item.Key</small>
+                                        @if (context.Item.IsSensitive)
                                         {
-                                            <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error" Disabled="@_isBusy" OnClick="@(() => ClearSensitiveSettingAsync(context))">Clear secret</MudButton>
+                                            <small class="admin-sensitive-hint">@context.Item.DisplayValue; enter a replacement value to configure or rotate it, or clear the saved value explicitly.</small>
                                         }
-                                    </div>
-                                </MudTd>
-                            </RowTemplate>
-                        </MudTable>
-                    </details>
-                }
-            </div>
+                                    </MudTd>
+                                    <MudTd DataLabel="Value">@SettingEditor(context)</MudTd>
+                                    <MudTd DataLabel="Action">
+                                        <div class="admin-setting-actions">
+                                            @if (context.IsDirty)
+                                            {
+                                                <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" Disabled="@_isBusy" OnClick="@(() => SaveSettingAsync(context))">Save setting</MudButton>
+                                                <MudButton Size="Size.Small" Variant="Variant.Text" Disabled="@_isBusy" OnClick="@(() => ResetSetting(context))">Reset</MudButton>
+                                            }
+                                            @if (context.CanClearSensitiveSetting)
+                                            {
+                                                <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error" Disabled="@_isBusy" OnClick="@(() => ClearSensitiveSettingAsync(context))">Clear secret</MudButton>
+                                            }
+                                        </div>
+                                    </MudTd>
+                                </RowTemplate>
+                            </MudTable>
+                        </details>
+                    }
+                </div>
+            }
 
             <div class="admin-filter-bar" aria-label="Effective configuration filters">
                 <MudTextField T="string" Value="@_configurationSearch" ValueChanged="@((string value) => _configurationSearch = value)" Immediate="true" Label="Search effective configuration" Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Class="admin-filter-input" />
@@ -574,6 +629,7 @@
     private Dictionary<string, int> _providerLinkCounts = new(StringComparer.OrdinalIgnoreCase);
     private string _settingsSearch = string.Empty;
     private string _settingsCategory = AllFilterValue;
+    private bool _settingsDirtyOnly;
     private HashSet<string> _expandedSettingGroups = new(StringComparer.OrdinalIgnoreCase);
     private HashSet<string> _knownSettingCategories = new(StringComparer.OrdinalIgnoreCase);
     private string _configurationSearch = string.Empty;
@@ -607,6 +663,22 @@
         .OrderBy(group => group.Key, StringComparer.OrdinalIgnoreCase)
         .Select(group => new SettingCategoryGroup(group.Key, group.OrderBy(row => row.Item.Label, StringComparer.OrdinalIgnoreCase).ToList()))
         .ToList();
+
+    private IReadOnlyList<EditableConfigurationRow> FilteredEditableSettings => FilteredEditableSettingGroups
+        .SelectMany(group => group.Items)
+        .ToList();
+
+    private int DirtySettingCount => _editableSettings.Count(row => row.IsDirty);
+
+    private int FilteredDirtySettingCount => FilteredEditableSettings.Count(row => row.IsDirty);
+
+    private string ConfigurationWorkbenchHeadline => FilteredEditableSettingGroups.Count == 0
+        ? "No editable settings match the current filters."
+        : $"{FilteredEditableSettingGroups.Count} visible categor{(FilteredEditableSettingGroups.Count == 1 ? "y" : "ies")}; {FilteredDirtySettingCount} changed setting{(FilteredDirtySettingCount == 1 ? string.Empty : "s")} in view.";
+
+    private string ConfigurationWorkbenchDescription => _settingsDirtyOnly
+        ? "Changed-only filtering is active; reset visible values or save individual rows from the narrowed view."
+        : $"Use category shortcuts and search to narrow {FilteredEditableSettings.Count} visible setting{(FilteredEditableSettings.Count == 1 ? string.Empty : "s")} without scanning the full catalog.";
 
     private IReadOnlyList<ConfigurationItem> FilteredConfigurationItems => _configurationItems
         .Where(item => IsSearchMatch(_configurationSearch, item.Key, item.DisplayValue, item.ExactValue))
@@ -995,6 +1067,38 @@
         row.PendingValue = value ?? string.Empty;
     }
 
+    private static void ResetSetting(EditableConfigurationRow row)
+    {
+        row.Reset();
+    }
+
+    private void ResetFilteredSettings()
+    {
+        foreach (var row in FilteredEditableSettings.Where(item => item.IsDirty))
+        {
+            row.Reset();
+        }
+
+        Snackbar.Add("Visible pending setting changes reset.", Severity.Info);
+    }
+
+    private void ResetGroupSettings(SettingCategoryGroup group)
+    {
+        foreach (var row in group.Items.Where(item => item.IsDirty))
+        {
+            row.Reset();
+        }
+
+        Snackbar.Add($"{group.Category} pending changes reset.", Severity.Info);
+    }
+
+    private void SelectSettingsCategory(string category)
+    {
+        _settingsCategory = category;
+    }
+
+    private int GetDirtySettingCount(string category) => _editableSettings.Count(row => row.IsDirty && string.Equals(row.Item.Category, category, StringComparison.OrdinalIgnoreCase));
+
     private async Task SaveSettingAsync(EditableConfigurationRow row)
     {
         _isBusy = true;
@@ -1324,6 +1428,11 @@
     private bool MatchesSettingFilter(EditableConfigurationRow row)
     {
         if (!IsAllFilter(_settingsCategory) && !string.Equals(row.Item.Category, _settingsCategory, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (_settingsDirtyOnly && !row.IsDirty)
         {
             return false;
         }
@@ -1690,6 +1799,11 @@
         public string PendingValue { get; set; }
         public bool IsDirty => !string.Equals(PendingValue, Item.Value, StringComparison.Ordinal);
         public bool CanClearSensitiveSetting => Item.IsSensitive && string.Equals(Item.DisplayValue, "Configured", StringComparison.OrdinalIgnoreCase);
+
+        public void Reset()
+        {
+            PendingValue = Item.Value;
+        }
     }
 
     private sealed record SettingCategoryGroup(string Category, IReadOnlyList<EditableConfigurationRow> Items);
