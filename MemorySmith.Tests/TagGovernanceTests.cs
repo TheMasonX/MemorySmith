@@ -304,6 +304,29 @@ public class TagGovernanceTests
     }
 
     [Test]
+    public void TasksMarkup_PrioritizesSelectedTaskSummaryAndFocusAction()
+    {
+        var root = FindRepositoryRoot();
+        var markup = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "Components", "Pages", "Tasks.razor"));
+        var css = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "wwwroot", "app.css"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(markup, Does.Contain("tasks-detail-summary"));
+            Assert.That(markup, Does.Contain("tasks-focus-button"));
+            Assert.That(markup, Does.Contain("TaskListHeaderActionText"));
+            Assert.That(markup, Does.Contain("tasks-detail-overview"));
+            Assert.That(markup, Does.Contain("tasks-edit-shell"));
+            Assert.That(markup, Does.Contain("tasks-read-shell"));
+            Assert.That(css, Does.Contain(".tasks-detail-summary"));
+            Assert.That(css, Does.Contain(".tasks-focus-button"));
+            Assert.That(css, Does.Contain(".tasks-detail-overview"));
+            Assert.That(css, Does.Contain(".tasks-edit-shell"));
+            Assert.That(css, Does.Contain(".tasks-detail-description"));
+        });
+    }
+
+    [Test]
     public void AdminMarkup_UsesSortableAuditAndHistoryTablesWithoutRevealIcons()
     {
         var root = FindRepositoryRoot();

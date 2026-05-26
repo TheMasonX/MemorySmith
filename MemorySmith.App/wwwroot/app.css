@@ -3999,6 +3999,68 @@ body {
     overflow: auto;
 }
 
+.tasks-detail-summary,
+.tasks-edit-section,
+.tasks-read-shell {
+    display: grid;
+    gap: 10px;
+    margin-top: 8px;
+    padding: 10px 12px;
+    border: 1px solid var(--vscode-border-soft);
+    border-radius: 10px;
+    background: var(--vscode-panel-soft);
+}
+
+.tasks-detail-status-panel {
+    display: grid;
+    gap: 6px;
+}
+
+.tasks-detail-summary-toolbar {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.tasks-detail-section-label,
+.tasks-detail-overview-label {
+    color: var(--vscode-text-muted);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.tasks-detail-overview {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 8px;
+}
+
+.tasks-detail-overview-item {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+    padding: 8px 10px;
+    border: 1px solid var(--vscode-border-soft);
+    border-radius: 8px;
+    background: var(--vscode-panel);
+}
+
+.tasks-detail-overview-item strong {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.tasks-detail-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.tasks-focus-button {
+    white-space: nowrap;
+}
+
 .tasks-sidebar-toggle {
     display: flex;
     margin-left: auto;
@@ -4103,6 +4165,10 @@ body {
     line-height: 1.2;
 }
 
+.tasks-detail-status-line {
+    align-items: center;
+}
+
 .tasks-status-combobox {
     min-width: 160px;
 }
@@ -4112,8 +4178,27 @@ body {
     margin-top: 6px;
 }
 
+.tasks-edit-shell {
+    display: grid;
+    gap: 12px;
+}
+
+.tasks-edit-grid-primary {
+    grid-template-columns: minmax(0, 1fr) minmax(160px, 220px);
+}
+
+.tasks-edit-grid-secondary {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
 .tasks-description-field {
     grid-column: 1 / -1;
+}
+
+.tasks-detail-description {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    line-height: 1.55;
 }
 
 .tasks-workbench .proposal-tabs,
@@ -4247,7 +4332,7 @@ body {
 
     .tasks-body {
         grid-template-columns: minmax(0, 1fr);
-        grid-template-rows: minmax(170px, 36%) minmax(0, 1fr);
+        grid-template-rows: minmax(136px, 28vh) minmax(0, 1fr);
     }
 
     .tasks-body.is-list-collapsed {
@@ -4255,7 +4340,7 @@ body {
     }
 
     .tasks-list-pane {
-        max-height: 38vh;
+        max-height: 30vh;
     }
 
     .tasks-detail-header {
@@ -4284,6 +4369,12 @@ body {
             "slug"
             "description"
             "actions";
+    }
+
+    .tasks-detail-overview,
+    .tasks-edit-grid-primary,
+    .tasks-edit-grid-secondary {
+        grid-template-columns: 1fr;
     }
 
     .tasks-quick-create-actions {
@@ -4605,12 +4696,16 @@ body {
         overflow: auto;
     }
 
+    .tasks-body,
+    .tasks-body.is-list-collapsed {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
     .tasks-body {
-        grid-template-columns: minmax(280px, 34%) minmax(0, 1fr);
+        grid-template-rows: minmax(112px, 24vh) minmax(0, 1fr);
     }
 
     .tasks-body.is-list-collapsed {
-        grid-template-columns: minmax(0, 1fr);
         grid-template-rows: minmax(0, 1fr);
     }
 
@@ -4620,6 +4715,7 @@ body {
     }
 
     .tasks-list-pane {
+        max-height: 26vh;
         overflow: hidden;
     }
 
@@ -4634,8 +4730,9 @@ body {
     .tasks-detail-header {
         position: relative;
         display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
+        flex-direction: column;
+        justify-content: flex-start;
+        align-items: stretch;
         gap: 10px;
         overflow: visible;
     }
@@ -4649,12 +4746,12 @@ body {
 
     .tasks-detail-title-text {
         color: var(--vscode-text);
-        font-size: 1.2rem;
+        font-size: 1.08rem;
         font-weight: 700;
-        line-height: 1.2;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        line-height: 1.25;
+        white-space: normal;
+        overflow: visible;
+        text-overflow: clip;
     }
 
     .tasks-detail-meta {
@@ -4665,19 +4762,35 @@ body {
 
     .tasks-detail-actions {
         position: static;
-        margin-left: auto;
+        width: 100%;
+        margin-left: 0;
+        justify-content: flex-end;
+        flex-wrap: wrap;
     }
 
     .tasks-status-combobox {
-        min-width: 160px;
+        min-width: 0;
+        max-width: none;
+        width: 100%;
+    }
+
+    .tasks-detail-summary-toolbar {
+        justify-content: stretch;
+    }
+
+    .tasks-focus-button {
+        flex: 1 1 160px;
+        justify-content: center;
     }
 
     .tasks-editor-grid {
         align-items: start;
     }
 
-    .tasks-description-field {
-        grid-column: 1 / -1;
+    .tasks-detail-summary,
+    .tasks-edit-section,
+    .tasks-read-shell {
+        padding: 10px;
     }
 
     .tasks-workbench .proposal-tabs,
@@ -4695,44 +4808,6 @@ body {
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-    }
-
-    @media (max-width: 1200px) {
-        .tasks-body {
-            grid-template-columns: minmax(240px, 38%) minmax(0, 1fr);
-        }
-
-        .tasks-status-combobox {
-            min-width: 132px;
-        }
-    }
-
-    @media (max-width: 1024px) {
-        .tasks-body,
-        .tasks-body.is-list-collapsed {
-            grid-template-columns: minmax(0, 1fr);
-        }
-
-        .tasks-body.is-list-collapsed {
-            grid-template-rows: minmax(0, 1fr);
-        }
-
-        .tasks-list-pane {
-            max-height: 36vh;
-        }
-
-        .tasks-detail-header {
-            gap: 8px;
-        }
-
-        .tasks-detail-title-text {
-            font-size: 1.05rem;
-        }
-
-        .tasks-status-combobox {
-            min-width: 128px;
-            max-width: 160px;
-        }
     }
 
     .wiki-detail-header,

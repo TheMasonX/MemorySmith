@@ -165,20 +165,11 @@
                 <div class="wiki-pane-header wiki-detail-header tasks-detail-header">
                     <div class="tasks-detail-header-main">
                         <div class="tasks-detail-title-text">@_selectedTask.Key - @_selectedTask.Title</div>
-                        <div class="wiki-result-meta tasks-detail-meta">
+                        <div class="wiki-result-meta tasks-detail-meta tasks-detail-status-line">
                             <span class="wiki-status">@_selectedTask.Status</span>
                             <span class="wiki-status" title="Severity">@_selectedTask.Priority</span>
                             <span>@GetAssigneeDisplay(_selectedTask)</span>
                         </div>
-                        @if (_selectedTask.Labels.Count > 0)
-                        {
-                            <div class="wiki-tag-line">
-                                @foreach (var label in _selectedTask.Labels)
-                                {
-                                    <span class="wiki-tag">@label</span>
-                                }
-                            </div>
-                        }
                         @if (_selectedTask.HasLoadError)
                         {
                             <MudAlert Severity="Severity.Warning" Dense="true" Variant="Variant.Outlined" Class="tasks-load-error-alert">
@@ -239,79 +230,146 @@
                     </div>
                 </div>
 
-                <div class="wiki-editor-grid tasks-editor-grid">
-                    <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
-                        <Authorized>
-                            @if (_selectedTask.HasLoadError)
-                            {
+                <section class="tasks-detail-summary" aria-label="Selected task summary">
+                    <div class="tasks-detail-summary-toolbar">
+                        <MudTooltip Text="@TaskListHeaderActionTooltip">
+                            <MudButton Variant="Variant.Outlined"
+                                       Color="Color.Default"
+                                       Size="Size.Small"
+                                       StartIcon="@(IsTaskListCollapsed ? Icons.Material.Filled.ViewSidebar : Icons.Material.Filled.CenterFocusStrong)"
+                                       Class="tasks-focus-button"
+                                       OnClick="ToggleListCollapse">
+                                @TaskListHeaderActionText
+                            </MudButton>
+                        </MudTooltip>
+                    </div>
+
+                    <div class="tasks-detail-status-panel">
+                        <span class="tasks-detail-section-label">Status</span>
+                        <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
+                            <Authorized>
+                                @if (_selectedTask.HasLoadError)
+                                {
+                                    <MudTextField T="string" Value="@_selectedTask.Status" Label="Status" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                                }
+                                else
+                                {
+                                    <MudSelect T="string"
+                                               Value="@_selectedStatus"
+                                               ValueChanged="OnTaskStatusChanged"
+                                               Label="Status"
+                                               Variant="Variant.Outlined"
+                                               Margin="Margin.Dense"
+                                               Dense="true"
+                                               Class="tasks-status-combobox">
+                                        @foreach (var option in TaskStatusOptions)
+                                        {
+                                            <MudSelectItem Value="@option">@option</MudSelectItem>
+                                        }
+                                    </MudSelect>
+                                }
+                            </Authorized>
+                            <NotAuthorized>
                                 <MudTextField T="string" Value="@_selectedTask.Status" Label="Status" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
-                            }
-                            else
+                            </NotAuthorized>
+                        </AuthorizeView>
+                    </div>
+
+                    <div class="tasks-detail-overview">
+                        <div class="tasks-detail-overview-item">
+                            <span class="tasks-detail-overview-label">Assignee</span>
+                            <strong>@GetAssigneeDisplay(_selectedTask)</strong>
+                        </div>
+                        <div class="tasks-detail-overview-item">
+                            <span class="tasks-detail-overview-label">Type</span>
+                            <strong>@_selectedTask.Type</strong>
+                        </div>
+                        <div class="tasks-detail-overview-item">
+                            <span class="tasks-detail-overview-label">Reporter</span>
+                            <strong>@_selectedTask.Reporter</strong>
+                        </div>
+                        <div class="tasks-detail-overview-item">
+                            <span class="tasks-detail-overview-label">Updated</span>
+                            <strong>@_selectedTask.UpdatedAtUtc.ToLocalTime().ToString("g")</strong>
+                        </div>
+                    </div>
+
+                    @if (_selectedTask.Labels.Count > 0)
+                    {
+                        <div class="tasks-detail-tags" aria-label="Task labels">
+                            @foreach (var label in _selectedTask.Labels)
                             {
-                                <MudSelect T="string"
-                                           Value="@_selectedStatus"
-                                           ValueChanged="OnTaskStatusChanged"
-                                           Label="Status"
-                                           Variant="Variant.Outlined"
-                                           Margin="Margin.Dense"
-                                           Dense="true"
-                                           Class="tasks-status-combobox">
-                                    @foreach (var option in TaskStatusOptions)
+                                <span class="wiki-tag">@label</span>
+                            }
+                        </div>
+                    }
+                </section>
+
+                @if (_isEditingTask)
+                {
+                    <div class="tasks-edit-shell">
+                        <section class="tasks-edit-section">
+                            <span class="tasks-detail-section-label">Task details</span>
+                            <div class="wiki-editor-grid tasks-editor-grid tasks-edit-grid-primary">
+                                <MudTextField T="string" Value="@_editTitle" ValueChanged="OnEditTitleChanged" Label="Title" Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" />
+                                <MudSelect T="string" Value="@_editPriority" ValueChanged="OnEditPriorityChanged" Label="Severity" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                                    @foreach (var option in TaskPriorityOptions)
                                     {
                                         <MudSelectItem Value="@option">@option</MudSelectItem>
                                     }
                                 </MudSelect>
-                            }
-                        </Authorized>
-                        <NotAuthorized>
-                            <MudTextField T="string" Value="@_selectedTask.Status" Label="Status" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
-                        </NotAuthorized>
-                    </AuthorizeView>
-                    @if (_isEditingTask)
-                    {
-                        <MudTextField T="string" Value="@_editTitle" ValueChanged="OnEditTitleChanged" Label="Title" Variant="Variant.Outlined" Margin="Margin.Dense" Required="true" />
-                        <MudSelect T="string" Value="@_editPriority" ValueChanged="OnEditPriorityChanged" Label="Severity" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
-                            @foreach (var option in TaskPriorityOptions)
-                            {
-                                <MudSelectItem Value="@option">@option</MudSelectItem>
-                            }
-                        </MudSelect>
-                        <MudSelect T="string" Value="@_editAssigneeMode" ValueChanged="OnEditAssigneeModeChanged" Label="Assignee Mode" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
-                            <MudSelectItem Value="@TaskAssigneeModes.Directory">@TaskAssigneeModes.Directory</MudSelectItem>
-                            <MudSelectItem Value="@TaskAssigneeModes.Custom">@TaskAssigneeModes.Custom</MudSelectItem>
-                        </MudSelect>
-                        @if (string.Equals(_editAssigneeMode, TaskAssigneeModes.Directory, StringComparison.OrdinalIgnoreCase))
+                                <MudTextField T="string" Value="@_editDescription" ValueChanged="OnEditDescriptionChanged" Label="Description" Lines="5" Variant="Variant.Outlined" Margin="Margin.Dense" Class="tasks-description-field" />
+                            </div>
+                        </section>
+
+                        <section class="tasks-edit-section">
+                            <span class="tasks-detail-section-label">Assignment and labels</span>
+                            <div class="wiki-editor-grid tasks-editor-grid tasks-edit-grid-secondary">
+                                <MudSelect T="string" Value="@_editAssigneeMode" ValueChanged="OnEditAssigneeModeChanged" Label="Assignee Mode" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                                    <MudSelectItem Value="@TaskAssigneeModes.Directory">@TaskAssigneeModes.Directory</MudSelectItem>
+                                    <MudSelectItem Value="@TaskAssigneeModes.Custom">@TaskAssigneeModes.Custom</MudSelectItem>
+                                </MudSelect>
+                                @if (string.Equals(_editAssigneeMode, TaskAssigneeModes.Directory, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    <MudAutocomplete T="UserAccount"
+                                                     Value="@_editAssigneeUser"
+                                                     ValueChanged="OnEditAssigneeUserChanged"
+                                                     SearchFunc="SearchAssignableUsersAsync"
+                                                     ToStringFunc="FormatAssigneeUser"
+                                                     Label="Assignee Username"
+                                                     Variant="Variant.Outlined"
+                                                     Margin="Margin.Dense"
+                                                     Dense="true"
+                                                     Clearable="true"
+                                                     HelperText="Type a display name or email and choose a matching user." />
+                                    @if (!string.IsNullOrWhiteSpace(_editAssigneeDirectoryId) && _editAssigneeUser is null)
+                                    {
+                                        <MudText Typo="Typo.caption" Class="mud-secondary-text">Current assignee could not be resolved. Saving will keep the existing assignment unless you choose a different user.</MudText>
+                                    }
+                                }
+                                else
+                                {
+                                    <MudTextField T="string" Value="@_editAssigneeCustomText" ValueChanged="OnEditAssigneeCustomTextChanged" Label="Assignee (Custom)" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                                }
+                                <MudTextField T="string" Value="@_editLabelsText" ValueChanged="OnEditLabelsTextChanged" Label="Task Tags" Placeholder="governance, tasks" Variant="Variant.Outlined" Margin="Margin.Dense" HelperText="Comma-separated labels." />
+                            </div>
+                        </section>
+                    </div>
+                }
+                else
+                {
+                    <section class="tasks-read-shell" aria-label="Task description">
+                        <span class="tasks-detail-section-label">Description</span>
+                        @if (string.IsNullOrWhiteSpace(_selectedTask.Description))
                         {
-                            <MudAutocomplete T="UserAccount"
-                                             Value="@_editAssigneeUser"
-                                             ValueChanged="OnEditAssigneeUserChanged"
-                                             SearchFunc="SearchAssignableUsersAsync"
-                                             ToStringFunc="FormatAssigneeUser"
-                                             Label="Assignee Username"
-                                             Variant="Variant.Outlined"
-                                             Margin="Margin.Dense"
-                                             Dense="true"
-                                             Clearable="true"
-                                             HelperText="Type a display name or email and choose a matching user." />
-                            @if (!string.IsNullOrWhiteSpace(_editAssigneeDirectoryId) && _editAssigneeUser is null)
-                            {
-                                <MudText Typo="Typo.caption" Class="mud-secondary-text">Current assignee could not be resolved. Saving will keep the existing assignment unless you choose a different user.</MudText>
-                            }
+                            <div class="wiki-empty-state">No description yet.</div>
                         }
                         else
                         {
-                            <MudTextField T="string" Value="@_editAssigneeCustomText" ValueChanged="OnEditAssigneeCustomTextChanged" Label="Assignee (Custom)" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                            <div class="tasks-detail-description">@_selectedTask.Description</div>
                         }
-                        <MudTextField T="string" Value="@_editLabelsText" ValueChanged="OnEditLabelsTextChanged" Label="Task Tags" Placeholder="governance, tasks" Variant="Variant.Outlined" Margin="Margin.Dense" HelperText="Comma-separated labels." />
-                        <MudTextField T="string" Value="@_editDescription" ValueChanged="OnEditDescriptionChanged" Label="Description" Lines="5" Variant="Variant.Outlined" Margin="Margin.Dense" Class="tasks-description-field" />
-                    }
-                    else
-                    {
-                        <MudTextField T="string" Value="@_selectedTask.Type" Label="Type" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
-                        <MudTextField T="string" Value="@_selectedTask.Reporter" Label="Reporter" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
-                        <MudTextField T="string" Value="@_selectedTask.Description" Label="Description" Lines="5" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" Class="tasks-description-field" />
-                    }
-                </div>
+                    </section>
+                }
 
                 @if (!_selectedTask.HasLoadError && IsImportedTask(_selectedTask))
                 {
@@ -516,6 +574,10 @@
         : IsTaskListCollapsed
             ? "Show task list"
             : "Hide task list";
+    private string TaskListHeaderActionText => IsTaskListCollapsed ? "Show list" : "Focus detail";
+    private string TaskListHeaderActionTooltip => IsTaskListCollapsed
+        ? "Show the task list beside the selected task."
+        : "Hide the task list so the selected task gets more reading space.";
     private string TasksBodyClass => string.Join(' ', new[]
     {
         "wiki-body",
