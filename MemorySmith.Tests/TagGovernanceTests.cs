@@ -324,6 +324,7 @@ public class TagGovernanceTests
             Assert.That(markup, Does.Contain("Approve all results"));
             Assert.That(markup, Does.Contain("RemoveAttemptedProposals(turn, memories, pages);"));
             Assert.That(markup, Does.Contain("-> approved (submitted"));
+            Assert.That(markup, Does.Contain("lineage: batchId="));
             Assert.That(markup, Does.Contain("-> rejected (no changes needed)"));
             Assert.That(markup, Does.Contain("IsBlockedApprovalException(ex) ? \"blocked\" : \"failed\""));
             Assert.That(markup, Does.Contain("PendingWriteCount(ChatSessionState session)"));
@@ -353,6 +354,9 @@ public class TagGovernanceTests
             Assert.That(markup, Does.Contain("Quick summary"));
             Assert.That(markup, Does.Contain("ProposalQuickSummary"));
             Assert.That(markup, Does.Contain("SummarizeChange"));
+            Assert.That(markup, Does.Contain("LineageValue(_selectedProposal.Metadata.BatchId)"));
+            Assert.That(markup, Does.Contain("LineageValue(_selectedProposal.Metadata.ParentProposalId)"));
+            Assert.That(markup, Does.Contain("LineageAttempt(_selectedProposal.Metadata.Attempt)"));
             Assert.That(markup, Does.Not.Contain("Approval applies the diff to disk; use Respond"));
             Assert.That(markup, Does.Contain("proposal-comment-row"));
             Assert.That(markup, Does.Contain("proposal-action-row"));

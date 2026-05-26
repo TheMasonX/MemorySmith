@@ -127,7 +127,10 @@ public sealed record MaintenanceProposalMetadata(
     [property: JsonPropertyName("related_records")] IReadOnlyList<string> RelatedRecords,
     [property: JsonPropertyName("supersedes")] IReadOnlyList<string> Supersedes,
     [property: JsonPropertyName("superseded_by")] IReadOnlyList<string> SupersededBy,
-    [property: JsonPropertyName("agent_version")] string AgentVersion);
+    [property: JsonPropertyName("agent_version")] string AgentVersion,
+    [property: JsonPropertyName("batchId")] string? BatchId = null,
+    [property: JsonPropertyName("parentProposalId")] string? ParentProposalId = null,
+    [property: JsonPropertyName("attempt")] int Attempt = 1);
 
 public sealed record MaintenanceProposalHistoryEntry(
     string Action,
@@ -679,15 +682,17 @@ public sealed class MaintenanceProposalWorkflow
     public async Task<MaintenanceWriteProposal> SubmitAsync(MaintenanceWriteProposal proposal, CancellationToken cancellationToken)
     {
         var now = DateTimeOffset.UtcNow;
+        var metadata = NormalizeLineage(proposal.Metadata, proposal.ProposalId);
         var history = proposal.History.ToList();
         if (history.Count == 0)
         {
-            history.Add(new MaintenanceProposalHistoryEntry("open", Actor(), now, "Proposal submitted."));
+            history.Add(new MaintenanceProposalHistoryEntry("open", Actor(), now, ProposalSubmittedComment(metadata)));
         }
 
         var normalized = proposal with
         {
             Status = MaintenanceProposalStatuses.Open,
+            Metadata = metadata,
             History = history,
             CreatedAtUtc = proposal.CreatedAtUtc == default ? now : proposal.CreatedAtUtc,
             UpdatedAtUtc = now
@@ -760,13 +765,17 @@ public sealed class MaintenanceProposalWorkflow
     {
         var original = await LoadRequiredAsync(originalProposalId, cancellationToken);
         EnsureActionable(original);
+        var revisionMetadata = revisedProposal.Metadata with
+        {
+            BatchId = string.IsNullOrWhiteSpace(revisedProposal.Metadata.BatchId) ? LineageBatchId(original) : revisedProposal.Metadata.BatchId.Trim(),
+            ParentProposalId = string.IsNullOrWhiteSpace(revisedProposal.Metadata.ParentProposalId) ? original.ProposalId : revisedProposal.Metadata.ParentProposalId.Trim(),
+            Attempt = NextLineageAttempt(original, revisedProposal.Metadata.Attempt),
+            Supersedes = revisedProposal.Metadata.Supersedes.Append(original.ProposalId).Distinct(StringComparer.OrdinalIgnoreCase).ToList()
+        };
         var revision = revisedProposal with
         {
-            Metadata = revisedProposal.Metadata with
-            {
-                Supersedes = revisedProposal.Metadata.Supersedes.Append(original.ProposalId).Distinct(StringComparer.OrdinalIgnoreCase).ToList()
-            },
-            History = revisedProposal.History.Append(new MaintenanceProposalHistoryEntry("open", "Maintenance agent", DateTimeOffset.UtcNow, "Agent review proposed this revision.")).ToList()
+            Metadata = revisionMetadata,
+            History = revisedProposal.History.Append(new MaintenanceProposalHistoryEntry("open", "Maintenance agent", DateTimeOffset.UtcNow, $"Agent review proposed this revision. Lineage: {FormatProposalLineage(revisionMetadata)}.")).ToList()
         };
         var savedRevision = await SubmitAsync(revision, cancellationToken);
         var updatedOriginal = original with
@@ -775,7 +784,7 @@ public sealed class MaintenanceProposalWorkflow
             {
                 SupersededBy = original.Metadata.SupersededBy.Append(savedRevision.ProposalId).Distinct(StringComparer.OrdinalIgnoreCase).ToList()
             },
-            History = original.History.Append(new MaintenanceProposalHistoryEntry("agent_revision_proposed", "Maintenance agent", DateTimeOffset.UtcNow, $"Revision proposed as {savedRevision.ProposalId}.")).ToList(),
+            History = original.History.Append(new MaintenanceProposalHistoryEntry("agent_revision_proposed", "Maintenance agent", DateTimeOffset.UtcNow, $"Revision proposed as {savedRevision.ProposalId}. Lineage: {FormatProposalLineage(savedRevision.Metadata)}.")).ToList(),
             UpdatedAtUtc = DateTimeOffset.UtcNow
         };
         var savedOriginal = await _store.SaveAsync(updatedOriginal, cancellationToken);
@@ -809,6 +818,9 @@ public sealed class MaintenanceProposalWorkflow
         {
             Metadata = revisedProposal.Metadata with
             {
+                BatchId = string.IsNullOrWhiteSpace(revisedProposal.Metadata.BatchId) ? LineageBatchId(original) : revisedProposal.Metadata.BatchId.Trim(),
+                ParentProposalId = string.IsNullOrWhiteSpace(revisedProposal.Metadata.ParentProposalId) ? original.ProposalId : revisedProposal.Metadata.ParentProposalId.Trim(),
+                Attempt = NextLineageAttempt(original, revisedProposal.Metadata.Attempt),
                 Supersedes = revisedProposal.Metadata.Supersedes.Append(original.ProposalId).Distinct(StringComparer.OrdinalIgnoreCase).ToList()
             }
         };
@@ -819,7 +831,7 @@ public sealed class MaintenanceProposalWorkflow
             {
                 SupersededBy = original.Metadata.SupersededBy.Append(savedRevision.ProposalId).Distinct(StringComparer.OrdinalIgnoreCase).ToList()
             },
-            History = original.History.Append(new MaintenanceProposalHistoryEntry("superseded", Actor(), DateTimeOffset.UtcNow, $"Revision submitted as {savedRevision.ProposalId}.")).ToList(),
+            History = original.History.Append(new MaintenanceProposalHistoryEntry("superseded", Actor(), DateTimeOffset.UtcNow, $"Revision submitted as {savedRevision.ProposalId}. Lineage: {FormatProposalLineage(savedRevision.Metadata)}.")).ToList(),
             UpdatedAtUtc = DateTimeOffset.UtcNow
         };
         await _store.SaveAsync(updatedOriginal, cancellationToken);
@@ -846,6 +858,35 @@ public sealed class MaintenanceProposalWorkflow
             throw new InvalidOperationException(message);
         }
     }
+
+    private static MaintenanceProposalMetadata NormalizeLineage(MaintenanceProposalMetadata metadata, string proposalId)
+    {
+        var batchId = string.IsNullOrWhiteSpace(metadata.BatchId) ? proposalId : metadata.BatchId.Trim();
+        var parentProposalId = string.IsNullOrWhiteSpace(metadata.ParentProposalId) ? null : metadata.ParentProposalId.Trim();
+        var attempt = metadata.Attempt <= 0 ? 1 : metadata.Attempt;
+        return metadata with { BatchId = batchId, ParentProposalId = parentProposalId, Attempt = attempt };
+    }
+
+    private static string LineageBatchId(MaintenanceWriteProposal proposal) =>
+        string.IsNullOrWhiteSpace(proposal.Metadata.BatchId) ? proposal.ProposalId : proposal.Metadata.BatchId.Trim();
+
+    private static int NextLineageAttempt(MaintenanceWriteProposal original, int requestedAttempt)
+    {
+        if (requestedAttempt > 1)
+        {
+            return requestedAttempt;
+        }
+
+        return Math.Max(original.Metadata.Attempt, 1) + 1;
+    }
+
+    private static string ProposalSubmittedComment(MaintenanceProposalMetadata metadata) =>
+        $"Proposal submitted. Lineage: {FormatProposalLineage(metadata)}.";
+
+    private static string FormatProposalLineage(MaintenanceProposalMetadata metadata) =>
+        $"batchId={LineageValue(metadata.BatchId)}; parentProposalId={LineageValue(metadata.ParentProposalId)}; attempt={Math.Max(metadata.Attempt, 1)}";
+
+    private static string LineageValue(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value.Trim();
 
     private MaintenanceWriteProposal AppendHistory(MaintenanceWriteProposal proposal, string status, string action, string? comment, string? actor = null)
     {

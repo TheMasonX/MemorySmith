@@ -171,6 +171,9 @@
                         <span>Confidence</span><strong>@_selectedProposal.Confidence.ToString("P0")</strong>
                         <span>Related</span><strong>@(_selectedProposal.RelatedRecords.Count == 0 ? "-" : string.Join(", ", _selectedProposal.RelatedRecords))</strong>
                         <span>Supersedes</span><strong>@(_selectedProposal.Metadata.Supersedes.Count == 0 ? "-" : string.Join(", ", _selectedProposal.Metadata.Supersedes))</strong>
+                        <span>Batch</span><strong>@LineageValue(_selectedProposal.Metadata.BatchId)</strong>
+                        <span>Parent</span><strong>@LineageValue(_selectedProposal.Metadata.ParentProposalId)</strong>
+                        <span>Attempt</span><strong>@LineageAttempt(_selectedProposal.Metadata.Attempt)</strong>
                         <span>Updated</span><strong>@_selectedProposal.UpdatedAtUtc.ToLocalTime().ToString("g")</strong>
                     </div>
 
@@ -488,6 +491,8 @@
 
     private static string StatusLabel(string status) => status.Replace('_', ' ');
     private static string TaskLabel(string task) => task.Replace('_', ' ');
+    private static string LineageValue(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value.Trim();
+    private static string LineageAttempt(int attempt) => attempt <= 0 ? "-" : attempt.ToString();
     private static string StatusClass(string status) => "is-" + status.Replace('_', '-');
     private static string RiskClass(string risk) => "is-" + risk.ToLowerInvariant();
     private static string ProposalQuickSummary(MaintenanceWriteProposal proposal)

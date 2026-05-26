@@ -210,7 +210,10 @@ public sealed record AgentPageWriteProposal(string Slug, string Title, string Ma
 public sealed record AgentWriteApplyResult(
     IReadOnlyList<string> WrittenMemories,
     IReadOnlyList<string> WrittenPages,
-    IReadOnlyList<string>? SubmittedProposalIds = null);
+    IReadOnlyList<string>? SubmittedProposalIds = null,
+    string? BatchId = null,
+    string? ParentProposalId = null,
+    int Attempt = 1);
 
 public sealed record MemoryChatResponse(
     string Reply,
@@ -1627,9 +1630,12 @@ public sealed partial class MemoryChatAgent : IChatAgent
         }
 
         var confidence = confidences.Count == 0 ? 0.7 : confidences.Average();
+        var submittedAt = DateTimeOffset.UtcNow;
+        var proposalId = $"chat-agent-{submittedAt:yyyyMMddHHmmss}-{Guid.NewGuid():N}"[..54];
+        var batchId = $"chat-agent-batch-{submittedAt:yyyyMMddHHmmss}-{Guid.NewGuid():N}"[..60];
         var submitted = await _proposalWorkflow!.SubmitAsync(new MaintenanceWriteProposal
         {
-            ProposalId = $"chat-agent-{DateTimeOffset.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid():N}"[..54],
+            ProposalId = proposalId,
             Changes = changes,
             Evidence =
             [
@@ -1648,10 +1654,12 @@ public sealed partial class MemoryChatAgent : IChatAgent
                 relatedRecords.Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
                 [],
                 [],
-                "chat-agent.proposal-gated.v1")
+                "chat-agent.proposal-gated.v1",
+                BatchId: batchId,
+                Attempt: 1)
         }, cancellationToken);
 
-        return new AgentWriteApplyResult([], [], [submitted.ProposalId]);
+            return new AgentWriteApplyResult([], [], [submitted.ProposalId], submitted.Metadata.BatchId, submitted.Metadata.ParentProposalId, submitted.Metadata.Attempt);
     }
 
     private async Task<(MaintenanceProposalChange Change, string RecordId)?> BuildMemoryProposalChangeAsync(AgentMemoryWriteProposal proposal, CancellationToken cancellationToken)

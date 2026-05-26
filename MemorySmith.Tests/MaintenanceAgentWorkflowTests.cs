@@ -117,7 +117,15 @@ public class MaintenanceAgentWorkflowTests
             Assert.That(needsRevision.Comments.Single().Comment, Is.EqualTo("Please cite the source page."));
             Assert.That(needsRevision.History.Single(item => item.Action == "respond").Comment, Is.Null);
             Assert.That(approveError!.Message, Does.Contain("Only open"));
+            Assert.That(submitted.Metadata.BatchId, Is.EqualTo(submitted.ProposalId));
+            Assert.That(submitted.Metadata.ParentProposalId, Is.Null);
+            Assert.That(submitted.Metadata.Attempt, Is.EqualTo(1));
+            Assert.That(submitted.History.Single(item => item.Action == "open").Comment, Does.Contain("batchId="));
             Assert.That(revised.Metadata.Supersedes, Does.Contain(submitted.ProposalId));
+            Assert.That(revised.Metadata.BatchId, Is.EqualTo(submitted.Metadata.BatchId));
+            Assert.That(revised.Metadata.ParentProposalId, Is.EqualTo(submitted.ProposalId));
+            Assert.That(revised.Metadata.Attempt, Is.EqualTo(2));
+            Assert.That(revised.History.Single(item => item.Action == "open").Comment, Does.Contain($"parentProposalId={submitted.ProposalId}"));
             Assert.That(approved.Status, Is.EqualTo(MaintenanceProposalStatuses.Approved));
             Assert.That(approved.History.Select(item => item.Action), Does.Contain("approve"));
             Assert.That(applied, Is.EqualTo("# Proposal\n\nAfter"));
@@ -696,6 +704,10 @@ public class MaintenanceAgentWorkflowTests
             Assert.That(original.Metadata.SupersededBy, Does.Contain(result.RevisedProposal!.ProposalId));
             Assert.That(original.History.Select(item => item.Action), Does.Contain("agent_revision_proposed"));
             Assert.That(result.RevisedProposal.Metadata.Supersedes, Does.Contain(original.ProposalId));
+            Assert.That(result.RevisedProposal.Metadata.BatchId, Is.EqualTo(original.Metadata.BatchId));
+            Assert.That(result.RevisedProposal.Metadata.ParentProposalId, Is.EqualTo(original.ProposalId));
+            Assert.That(result.RevisedProposal.Metadata.Attempt, Is.EqualTo(2));
+            Assert.That(result.RevisedProposal.History.Single(item => item.Action == "open").Comment, Does.Contain("Lineage: batchId="));
             Assert.That(result.RevisedProposal.Changes.Single().After, Is.EqualTo("after revised"));
         });
     }

@@ -4,7 +4,7 @@
   "Title": "Add explicit proposal linkage metadata for related batches and resubmissions using `batchId` + `parentProposalId` + `attempt`, and surface these references in chat/proposal history for automated auditing.",
   "Description": "Notes should include the lineage chain.\r\n\r\nImported from Data/Pages/workbench/tasks.md",
   "Type": "Task",
-  "Status": "Backlog",
+  "Status": "Done",
   "Priority": "Medium",
   "AssigneeMode": "Custom",
   "AssigneeDirectoryId": null,
@@ -26,14 +26,20 @@
       "Author": "tracker-import",
       "Body": "Notes should include the lineage chain.",
       "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z"
+    },
+    {
+      "Id": "c-completed-0020-20260526",
+      "Author": "Copilot",
+      "Body": "Implemented explicit proposal lineage metadata (`batchId`, `parentProposalId`, `attempt`) for proposal submissions and revisions, surfaced lineage in chat trace summaries and proposal details/history, and validated chat/workflow/UI guards.",
+      "CreatedAtUtc": "2026-05-26T06:41:30.4044052Z"
     }
   ],
   "EpicId": null,
   "ParentId": null,
   "DueDateUtc": null,
   "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z",
-  "UpdatedAtUtc": "2026-05-23T23:36:10.0439283Z",
-  "CompletedAtUtc": null,
-  "Revision": 1,
+  "UpdatedAtUtc": "2026-05-26T06:41:30.4044052Z",
+  "CompletedAtUtc": "2026-05-26T06:41:30.4044052Z",
+  "Revision": 2,
   "IsArchived": false
 }

@@ -698,9 +698,15 @@ public class PagesAndChatTests
             Assert.That(result.WrittenMemories, Is.Empty);
             Assert.That(result.WrittenPages, Is.Empty);
             Assert.That(result.SubmittedProposalIds, Has.Count.EqualTo(1));
+            Assert.That(result.BatchId, Does.StartWith("chat-agent-batch-"));
+            Assert.That(result.ParentProposalId, Is.Null);
+            Assert.That(result.Attempt, Is.EqualTo(1));
             Assert.That(proposals, Has.Count.EqualTo(1));
             Assert.That(proposals[0].Changes, Has.Count.EqualTo(2));
             Assert.That(proposals[0].Metadata.AgentVersion, Is.EqualTo("chat-agent.proposal-gated.v1"));
+            Assert.That(proposals[0].Metadata.BatchId, Is.EqualTo(result.BatchId));
+            Assert.That(proposals[0].Metadata.Attempt, Is.EqualTo(result.Attempt));
+            Assert.That(proposals[0].History.Single(item => item.Action == "open").Comment, Does.Contain("Lineage: batchId="));
             Assert.That(proposals[0].RelatedRecords, Does.Contain("agent-proposal-note"));
             Assert.That(memoryStore.Load("agent-proposal-note"), Is.Null);
             Assert.That(missingPageAfterSubmission, Is.Null);

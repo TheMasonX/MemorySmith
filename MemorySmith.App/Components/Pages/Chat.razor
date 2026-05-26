@@ -2142,8 +2142,15 @@
     private static string FormatSubmittedProposalSummary(AgentWriteApplyResult result)
     {
         var lines = result.SubmittedProposalIds?.Select(id => $"- proposal:{id}").ToList() ?? [];
+        if (!string.IsNullOrWhiteSpace(result.BatchId) || !string.IsNullOrWhiteSpace(result.ParentProposalId) || result.Attempt > 1)
+        {
+            lines.Add($"- lineage: batchId={LineageValue(result.BatchId)}; parentProposalId={LineageValue(result.ParentProposalId)}; attempt={Math.Max(result.Attempt, 1)}");
+        }
+
         return lines.Count == 0 ? "No proposals were submitted." : string.Join(Environment.NewLine, lines);
     }
+
+    private static string LineageValue(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value.Trim();
 
     private static MarkupString RenderTurnContent(ChatTurnState turn)
     {
