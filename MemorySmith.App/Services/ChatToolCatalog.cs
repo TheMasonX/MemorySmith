@@ -861,8 +861,7 @@ public sealed class ChatToolCatalog
 
                 var saved = await ctx.Pages.SaveAsync(new PageSaveRequest(slug, title, markdown, resolvedMinimumRole), ct);
                 return new ChatToolExecutionResult($"Page saved. Slug: {saved.Slug}  Title: {saved.Title}  Updated: {saved.LastUpdatedUtc:O}");
-            },
-            AvailableInAgent: true);
+            });
 
         yield return new ChatToolDescriptor(
             "memorysmith_page_delete",
@@ -896,8 +895,7 @@ public sealed class ChatToolCatalog
                 return new ChatToolExecutionResult(deleted
                     ? $"Page '{slug}' deleted."
                     : $"No page found with slug '{slug}'.");
-            },
-            AvailableInAgent: true);
+            });
     }
 
     // ---------- Schema builders ----------

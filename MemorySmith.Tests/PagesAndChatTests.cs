@@ -531,13 +531,14 @@ public class PagesAndChatTests
     }
 
     [Test]
-    public async Task MemoryChatAgent_AgentModeWritesMemoriesAndPagesFromProviderJson()
+    public async Task MemoryChatAgent_AgentModeAutoAcceptSubmitsProviderJsonAsMaintenanceProposal()
     {
         var memoryStore = new InMemoryMemoryStore();
         var eventStore = new RecordingEventStore();
         var publisher = new RecordingMemoryChangePublisher();
         var memories = TestServiceFactory.CreateMemoryApplicationService(memoryStore, eventStore, publisher);
-        var pages = new FilePageService(_tempDir);
+        var (options, workflow) = CreateChatProposalWorkflowOptions(AgentWriteApprovalModes.AutoAccept);
+        var pages = new FilePageService(options.PagesPath);
         var provider = new FakeChatProvider("""
         {
           "reply": "Recorded.",
@@ -549,24 +550,22 @@ public class PagesAndChatTests
           ]
         }
         """);
-        var agent = new MemoryChatAgent([provider], memories, pages, Options.Create(new MemorySmithOptions
-        {
-            Chat = new ChatOptions { AgentWritesEnabled = true, AgentWriteApprovalMode = AgentWriteApprovalModes.AutoAccept }
-        }), new FakeCurrentUserContext("editor-1", "Editor User", [MemorySmithRoles.Editor]));
+        var agent = new MemoryChatAgent([provider], memories, pages, Options.Create(options), new FakeCurrentUserContext("editor-1", "Editor User", [MemorySmithRoles.Editor]), proposalWorkflow: workflow);
 
         var response = await agent.SendAsync(new MemoryChatRequest("Capture this", MemoryChatMode.Agent), CancellationToken.None);
         var writtenMemory = memoryStore.Load("agent-note");
         var writtenPage = await pages.GetAsync("agent-page", CancellationToken.None);
+        var proposals = await workflow.ListAsync(CancellationToken.None);
 
         Assert.Multiple(() =>
         {
             Assert.That(response.Reply, Is.EqualTo("Recorded."));
-            Assert.That(response.WrittenMemories, Is.EqualTo(new[] { "agent-note" }));
-            Assert.That(response.WrittenPages, Is.EqualTo(new[] { "agent-page" }));
-            Assert.That(writtenMemory, Is.Not.Null);
-            Assert.That(writtenMemory!.Status, Is.EqualTo(MemoryStatus.Core));
-            Assert.That(writtenPage, Is.Not.Null);
-            Assert.That(writtenPage!.Html, Does.Contain(">Agent Page</h1>"));
+            Assert.That(response.WrittenMemories, Is.Empty);
+            Assert.That(response.WrittenPages, Is.Empty);
+            Assert.That(proposals, Has.Count.EqualTo(1));
+            Assert.That(proposals[0].Changes, Has.Count.EqualTo(2));
+            Assert.That(writtenMemory, Is.Null);
+            Assert.That(writtenPage, Is.Null);
             Assert.That(provider.LastRequest!.Messages.Any(message => message.Content.Contains("Local MemorySmith context", StringComparison.Ordinal)), Is.True);
         });
     }
@@ -578,7 +577,8 @@ public class PagesAndChatTests
         var eventStore = new RecordingEventStore();
         var publisher = new RecordingMemoryChangePublisher();
         var memories = TestServiceFactory.CreateMemoryApplicationService(memoryStore, eventStore, publisher);
-        var pages = new FilePageService(_tempDir);
+                var (options, workflow) = CreateChatProposalWorkflowOptions(AgentWriteApprovalModes.AutoAccept);
+                var pages = new FilePageService(options.PagesPath);
         var provider = new FakeChatProvider("""
         {
           "reply": null,
@@ -588,17 +588,18 @@ public class PagesAndChatTests
           ]
         }
         """);
-        var agent = new MemoryChatAgent([provider], memories, pages, Options.Create(new MemorySmithOptions
-        {
-            Chat = new ChatOptions { AgentWritesEnabled = true, AgentWriteApprovalMode = AgentWriteApprovalModes.AutoAccept }
-        }), new FakeCurrentUserContext("editor-1", "Editor User", [MemorySmithRoles.Editor]));
+        var agent = new MemoryChatAgent([provider], memories, pages, Options.Create(options), new FakeCurrentUserContext("editor-1", "Editor User", [MemorySmithRoles.Editor]), proposalWorkflow: workflow);
 
         var response = await agent.SendAsync(new MemoryChatRequest("Create a page", MemoryChatMode.Agent), CancellationToken.None);
+        var writtenPage = await pages.GetAsync("agent-page", CancellationToken.None);
+        var proposals = await workflow.ListAsync(CancellationToken.None);
 
         Assert.Multiple(() =>
         {
-            Assert.That(response.Reply, Is.EqualTo("Created or updated page agent-page."));
-            Assert.That(response.WrittenPages, Is.EqualTo(new[] { "agent-page" }));
+            Assert.That(response.Reply, Is.EqualTo("Submitted 1 maintenance proposal for review."));
+            Assert.That(response.WrittenPages, Is.Empty);
+            Assert.That(proposals, Has.Count.EqualTo(1));
+            Assert.That(writtenPage, Is.Null);
         });
     }
 
@@ -628,8 +629,8 @@ public class PagesAndChatTests
 
         var response = await agent.SendAsync(new MemoryChatRequest("Capture this", MemoryChatMode.Agent, RequireAgentWriteApproval: true), CancellationToken.None);
         var missingBeforeApproval = await pages.GetAsync("agent-approval-page", CancellationToken.None);
-        var applied = await agent.ApplyAgentWritesAsync(response.ProposedMemoryWrites!, response.ProposedPageWrites!, CancellationToken.None);
-        var writtenPage = await pages.GetAsync("agent-approval-page", CancellationToken.None);
+        var ex = Assert.ThrowsAsync<InvalidOperationException>(() => agent.ApplyAgentWritesAsync(response.ProposedMemoryWrites!, response.ProposedPageWrites!, CancellationToken.None));
+        var missingAfterFailedApproval = await pages.GetAsync("agent-approval-page", CancellationToken.None);
 
         Assert.Multiple(() =>
         {
@@ -638,11 +639,10 @@ public class PagesAndChatTests
             Assert.That(response.WrittenPages, Is.Empty);
             Assert.That(response.ProposedMemoryWrites, Has.Count.EqualTo(1));
             Assert.That(response.ProposedPageWrites, Has.Count.EqualTo(1));
-            Assert.That(memoryStore.Load("agent-approval-note"), Is.Not.Null);
+            Assert.That(memoryStore.Load("agent-approval-note"), Is.Null);
             Assert.That(missingBeforeApproval, Is.Null);
-            Assert.That(applied.WrittenMemories, Is.EqualTo(new[] { "agent-approval-note" }));
-            Assert.That(applied.WrittenPages, Is.EqualTo(new[] { "agent-approval-page" }));
-            Assert.That(writtenPage, Is.Not.Null);
+            Assert.That(missingAfterFailedApproval, Is.Null);
+            Assert.That(ex!.Message, Does.Contain("requires the maintenance proposal workflow"));
         });
     }
 
@@ -1706,6 +1706,36 @@ public class PagesAndChatTests
                 "Viewer calling ApplyAgentWritesAsync should throw");
             Assert.That(memoryStore.Load("viewer-note"), Is.Null, "No memory should be written");
         });
+    }
+
+    private (MemorySmithOptions Options, MaintenanceProposalWorkflow Workflow) CreateChatProposalWorkflowOptions(string approvalMode = AgentWriteApprovalModes.Manual)
+    {
+        var dataPath = Path.Combine(_tempDir, "Memories");
+        var pagesPath = Path.Combine(_tempDir, "Pages");
+        var options = new MemorySmithOptions
+        {
+            DataPath = dataPath,
+            PagesPath = pagesPath,
+            Chat = new ChatOptions
+            {
+                AgentWritesEnabled = true,
+                AgentWriteApprovalMode = approvalMode
+            },
+            MaintenanceAgent = new MaintenanceAgentOptions
+            {
+                Read = [dataPath, pagesPath],
+                Write = [Path.Combine(dataPath, "Working"), pagesPath],
+                Storage = new MaintenanceAgentStorageOptions
+                {
+                    ProposalsPath = Path.Combine(_tempDir, "Proposals")
+                }
+            }
+        };
+        var config = new MaintenanceAgentConfigService(new StaticOptionsMonitor<MemorySmithOptions>(options));
+        var workflow = new MaintenanceProposalWorkflow(
+            new FileMaintenanceProposalStore(config, new MaintenanceWritePermissionService(config), new MaintenanceDiffService()),
+            new FakeCurrentUserContext("editor-1", "Editor User", [MemorySmithRoles.Editor]));
+        return (options, workflow);
     }
 
     private sealed class FakeChatProvider : IChatProvider

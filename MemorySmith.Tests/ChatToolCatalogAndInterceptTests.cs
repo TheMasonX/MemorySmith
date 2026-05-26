@@ -79,8 +79,8 @@ public class ChatToolCatalogAndInterceptTests
             Assert.That(agentTools.Contains("memorysmith_task_set_status"), Is.True);
             Assert.That(agentTools.Contains("memorysmith_task_add_comment"), Is.True);
             Assert.That(agentTools.Contains("memorysmith_task_add_attachment"), Is.True);
-            Assert.That(agentTools.Contains("memorysmith_page_save"), Is.True);
-            Assert.That(agentTools.Contains("memorysmith_page_delete"), Is.True);
+            Assert.That(agentTools.Contains("memorysmith_page_save"), Is.False);
+            Assert.That(agentTools.Contains("memorysmith_page_delete"), Is.False);
         });
     }
 

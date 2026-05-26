@@ -1583,32 +1583,12 @@ public sealed partial class MemoryChatAgent : IChatAgent
             throw new InvalidOperationException("Your current MemorySmith role cannot approve agent writes; no memories or pages were changed.");
         }
 
-        if (_proposalWorkflow is not null)
+        if (_proposalWorkflow is null)
         {
-            return await SubmitAgentWriteProposalsAsync(memoryWrites, pageWrites, cancellationToken);
+            throw new InvalidOperationException("Agent write approval requires the maintenance proposal workflow; no memories or pages were changed.");
         }
 
-        var writtenMemories = new List<string>();
-        foreach (var proposal in memoryWrites)
-        {
-            var written = await SaveMemoryProposalAsync(proposal, cancellationToken);
-            if (!string.IsNullOrWhiteSpace(written))
-            {
-                writtenMemories.Add(written);
-            }
-        }
-
-        var writtenPages = new List<string>();
-        foreach (var proposal in pageWrites)
-        {
-            var written = await SavePageProposalAsync(proposal, cancellationToken);
-            if (!string.IsNullOrWhiteSpace(written))
-            {
-                writtenPages.Add(written);
-            }
-        }
-
-        return new AgentWriteApplyResult(writtenMemories, writtenPages);
+        return await SubmitAgentWriteProposalsAsync(memoryWrites, pageWrites, cancellationToken);
     }
 
     private async Task<AgentWriteApplyResult> SubmitAgentWriteProposalsAsync(
@@ -2460,7 +2440,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
             ? approvalRequired
                 ? "Agent write proposals require explicit user approval before changes are applied. Direct Agent mutation tool calls are disabled while approval mode is manual."
                 : canApplyWrites
-                    ? "The app may apply valid Agent write JSON and Agent-only mutation tool calls directly because Agent write approval mode is auto_accept."
+                    ? "The app submits valid Agent memory/page write JSON through the proposal workflow; task mutation tools may run directly because Agent write approval mode is auto_accept."
                     : !chat.AgentWritesEnabled
                         ? "Agent writes are disabled by configuration; no writes will be applied."
                         : "The current user's role does not permit applying Agent writes."
@@ -2484,7 +2464,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
             : "none";
         var mutationToolLine = request.Mode == MemoryChatMode.Agent
             ? !string.IsNullOrWhiteSpace(writeToolNames)
-                ? $"- Agent-only local mutation tools: enabled for explicit task/page changes in auto_accept mode ({writeToolNames}).\n"
+                ? $"- Agent-only local mutation tools: enabled for explicit task changes in auto_accept mode ({writeToolNames}).\n"
                 : approvalRequired
                     ? "- Agent-only local mutation tools: unavailable while Agent write approval mode is manual.\n"
                     : "- Agent-only local mutation tools: unavailable for this request.\n"
@@ -2585,7 +2565,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
             : string.Empty;
         var writeToolInstruction = mode == MemoryChatMode.Agent
             ? !string.IsNullOrWhiteSpace(writeToolNames)
-                ? $"Agent-only mutation tools are also available for explicit user-requested task/page changes: {writeToolNames}. Do not use mutation tools for ordinary lookup questions. "
+                ? $"Agent-only mutation tools are also available for explicit user-requested task changes: {writeToolNames}. Do not use mutation tools for ordinary lookup questions. "
                 : approvalRequired
                     ? "Mutation tool calls are not available because Agent write approval mode is manual; propose memory/page writes through strict Agent JSON instead, and ask the user to approve or use the task UI for task changes. "
                     : "No mutation tools are available for this request. "
@@ -2749,9 +2729,17 @@ public sealed partial class MemoryChatAgent : IChatAgent
             return plan;
         }
 
+        if (plan.ProposedMemoryWrites.Count == 0 && plan.ProposedPageWrites.Count == 0)
+        {
+            return plan;
+        }
+
         var applied = await ApplyAgentWritesAsync(plan.ProposedMemoryWrites, plan.ProposedPageWrites, cancellationToken);
+        var appliedReply = applied.SubmittedProposalIds is { Count: > 0 }
+            ? ResolveProposalSubmittedReply(plan.Reply, applied.SubmittedProposalIds.Count)
+            : ResolveAgentReply(plan.Reply, applied.WrittenMemories, applied.WrittenPages, providerContent);
         return new AgentActionResult(
-            ResolveAgentReply(plan.Reply, applied.WrittenMemories, applied.WrittenPages, providerContent),
+            appliedReply,
             applied.WrittenMemories,
             applied.WrittenPages,
             [],
@@ -2889,6 +2877,18 @@ public sealed partial class MemoryChatAgent : IChatAgent
             : providerContent;
     }
 
+    private static string ResolveProposalSubmittedReply(string? reply, int proposalCount)
+    {
+        if (!string.IsNullOrWhiteSpace(reply))
+        {
+            return reply;
+        }
+
+        return proposalCount == 1
+            ? "Submitted 1 maintenance proposal for review."
+            : $"Submitted {proposalCount} maintenance proposals for review.";
+    }
+
     private AgentMemoryWriteProposal? ReadMemoryWriteProposal(JsonObject item)
     {
         var title = ReadString(item, "title");
@@ -2922,54 +2922,6 @@ public sealed partial class MemoryChatAgent : IChatAgent
         ValidatePageProposalSlug(slug);
         var title = ReadString(item, "title") ?? slug ?? "Agent Page";
         return new AgentPageWriteProposal(slug ?? string.Empty, title, markdown);
-    }
-
-    private async Task<string?> SaveMemoryProposalAsync(AgentMemoryWriteProposal proposal, CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrWhiteSpace(proposal.Content))
-        {
-            return null;
-        }
-
-        ValidateMemoryProposalId(proposal.Id);
-        var id = NormalizeMemoryId(string.IsNullOrWhiteSpace(proposal.Id) ? proposal.Title : proposal.Id);
-        var existing = await _memories.GetAsync(id, cancellationToken);
-        var record = new MemoryRecord
-        {
-            Id = id,
-            Title = string.IsNullOrWhiteSpace(proposal.Title) ? existing?.Title ?? id : proposal.Title,
-            Content = proposal.Content,
-            Status = proposal.Status,
-            Confidence = proposal.Confidence,
-            Tags = proposal.Tags.Count == 0 ? ["agent", "chat"] : proposal.Tags.ToList(),
-            References = existing?.References.ToList() ?? [],
-            Conflicts = existing?.Conflicts.ToList() ?? [],
-            SourceLinks = existing?.SourceLinks.ToList() ?? [],
-            UsageCount = existing?.UsageCount ?? 0
-        };
-
-        if (existing is null)
-        {
-            await _memories.CreateAsync(record, cancellationToken);
-        }
-        else
-        {
-            await _memories.UpdateAsync(id, record, cancellationToken);
-        }
-
-        return id;
-    }
-
-    private async Task<string?> SavePageProposalAsync(AgentPageWriteProposal proposal, CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrWhiteSpace(proposal.Markdown))
-        {
-            return null;
-        }
-
-        ValidatePageProposalSlug(proposal.Slug);
-        var page = await _pages.SaveAsync(new PageSaveRequest(proposal.Slug, proposal.Title, proposal.Markdown), cancellationToken);
-        return page.Slug;
     }
 
     private static string AppendRejectedProposalNotice(string reply, IReadOnlyList<string> rejectedProposals)

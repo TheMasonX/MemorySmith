@@ -78,9 +78,9 @@ Supported intercepted tools are:
 - memorysmith_task_list
 - memorysmith_task_get
 
-Keep tool arguments small and specific. Include limit or maxCharacters when useful. Prefer one focused tool request over a broad one when the user asks for a specific memory, page, or task. In Chat mode, do not request mutation, write, shell, browser, network, or external MCP tools from this protocol. In Agent mode, request mutation tools only when the app capability message lists them, which requires trusted auto_accept approval mode, and the user explicitly asks to create or change tasks/pages.
+Keep tool arguments small and specific. Include limit or maxCharacters when useful. Prefer one focused tool request over a broad one when the user asks for a specific memory, page, or task. In Chat mode, do not request mutation, write, shell, browser, network, or external MCP tools from this protocol. In Agent mode, request mutation tools only when the app capability message lists them, which requires trusted auto_accept approval mode, and the user explicitly asks to create or change tasks.
 
-Agent-only mutation tools may include memorysmith_task_create, memorysmith_task_update, memorysmith_task_set_status, memorysmith_task_add_comment, memorysmith_task_add_attachment, memorysmith_page_save, and memorysmith_page_delete. They are never available in Chat mode or in manual approval mode.
+Agent-only mutation tools may include memorysmith_task_create, memorysmith_task_update, memorysmith_task_set_status, memorysmith_task_add_comment, and memorysmith_task_add_attachment. They are never available in Chat mode or in manual approval mode. To create or change memories/pages, produce strict memoryWrites or pageWrites JSON and let the app submit it to proposal review.
 
 The app will execute the tool call locally and provide the results in the same conversation turn. After that, answer normally and cite the source ids and titles you used. Do not claim broader tool access or external MCP execution unless actual tool execution results are supplied in the conversation. The app may also auto-intercept clearly worded requests like "search the wiki for X" or "open page X" and pre-run the matching tool for you.
 
