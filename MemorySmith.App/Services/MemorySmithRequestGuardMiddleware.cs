@@ -19,11 +19,19 @@ public class MemorySmithRequestGuardMiddleware
     public async Task InvokeAsync(HttpContext context, IOptions<MemorySmithOptions> options)
     {
         var settings = options.Value;
+        var isLoopback = IsLoopback(context.Connection.RemoteIpAddress);
 
-        if (!settings.AllowRemoteApi && !IsLoopback(context.Connection.RemoteIpAddress))
+        if (!settings.AllowRemoteApi && !isLoopback)
         {
             context.Response.StatusCode = StatusCodes.Status403Forbidden;
             await context.Response.WriteAsync("Remote requests are disabled. Set MemorySmith:AllowRemoteApi=true to allow non-localhost callers.");
+            return;
+        }
+
+        if (settings.AllowRemoteApi && !isLoopback && RequiresApiKey(context.Request.Path) && string.IsNullOrWhiteSpace(settings.ApiKey))
+        {
+            context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+            await context.Response.WriteAsync("Remote API requests require MemorySmith:ApiKey when MemorySmith:AllowRemoteApi=true. Configure a shared API key before exposing /api or /mcp beyond localhost.");
             return;
         }
 

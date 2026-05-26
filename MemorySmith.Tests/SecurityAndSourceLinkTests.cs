@@ -6,6 +6,7 @@ using System.Text.Json;
 using MemorySmith.App.Services;
 using MemorySmith.Core.Models;
 using MemorySmith.Storage;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Data.Sqlite;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.Identity;
@@ -95,6 +96,32 @@ public class SecurityAndSourceLinkTests
             Assert.That(MemorySmithRequestGuardMiddleware.IsLoopback(IPAddress.Loopback), Is.True);
             Assert.That(MemorySmithRequestGuardMiddleware.IsLoopback(IPAddress.IPv6Loopback), Is.True);
             Assert.That(MemorySmithRequestGuardMiddleware.IsLoopback(IPAddress.Parse("192.168.1.10")), Is.False);
+        });
+    }
+
+    [TestCase("/api/health/live")]
+    [TestCase("/mcp")]
+    public async Task RequestGuard_BlocksRemoteApiWhenRemoteApiIsAllowedWithoutConfiguredApiKey(string path)
+    {
+        var blocked = CreateRemoteApiContext(path);
+        var allowed = CreateRemoteApiContext(path);
+        allowed.Request.Headers.Add(MemorySmithRequestGuardMiddleware.ApiKeyHeaderName, "secret");
+        var nextCalls = 0;
+        var middleware = new MemorySmithRequestGuardMiddleware(_ =>
+        {
+            nextCalls++;
+            return Task.CompletedTask;
+        });
+
+        await middleware.InvokeAsync(blocked, Options.Create(new MemorySmithOptions { AllowRemoteApi = true }));
+        await middleware.InvokeAsync(allowed, Options.Create(new MemorySmithOptions { AllowRemoteApi = true, ApiKey = "secret" }));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(blocked.Response.StatusCode, Is.EqualTo(StatusCodes.Status503ServiceUnavailable));
+            Assert.That(ReadResponseBody(blocked), Does.Contain("MemorySmith:ApiKey"));
+            Assert.That(allowed.Response.StatusCode, Is.EqualTo(StatusCodes.Status200OK));
+            Assert.That(nextCalls, Is.EqualTo(1));
         });
     }
 
@@ -200,7 +227,11 @@ public class SecurityAndSourceLinkTests
 
         var body = await client.GetStringAsync("/api/diagnostics");
 
-        Assert.That(body, Does.Contain("remote-api-without-api-key"));
+        Assert.Multiple(() =>
+        {
+            Assert.That(body, Does.Contain("remote-api-without-api-key"));
+            Assert.That(body, Does.Contain("blocked until MemorySmith:ApiKey"));
+        });
     }
 
     [Test]
@@ -499,6 +530,18 @@ public class SecurityAndSourceLinkTests
                 config.AddInMemoryCollection(values);
             });
         });
+
+    private static DefaultHttpContext CreateRemoteApiContext(string path)
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Path = path;
+        context.Connection.RemoteIpAddress = IPAddress.Parse("203.0.113.10");
+        context.Response.Body = new MemoryStream();
+        return context;
+    }
+
+    private static string ReadResponseBody(DefaultHttpContext context) =>
+        Encoding.UTF8.GetString(((MemoryStream)context.Response.Body).ToArray());
 
     private static async Task CreateLocalUserAsync(WebApplicationFactory<Program> factory, string displayName, string email, string password, string role)
     {

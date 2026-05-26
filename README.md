@@ -393,8 +393,8 @@ Override via `appsettings.LocalOverrides.json`, a custom `SettingsOverridePath`,
 
 For an operator-facing map of the active settings, see [`Data/Pages/guides/configuration-reference.md`](Data/Pages/guides/configuration-reference.md). For chat model profile routing and maintenance-agent assignments, see [`Data/Pages/guides/agent-configuration.md`](Data/Pages/guides/agent-configuration.md).
 
-- **`ApiKey`** — if set, all API and MCP requests must include `X-Api-Key: &lt;value&gt;`. Leave `null` for local use. The shared API key can satisfy non-admin API/MCP policies; it does not grant admin, user-management, settings, audit, diagnostics, or restore access.
-- **`AllowRemoteApi`** — set `true` to allow non-localhost callers. Off by default.
+- **`ApiKey`** — if set, all API and MCP requests must include `X-Api-Key: &lt;value&gt;`. Leave `null` for loopback local use only. Non-loopback API/MCP requests are blocked when `AllowRemoteApi=true` until an API key is configured. The shared API key can satisfy non-admin API/MCP policies; it does not grant admin, user-management, settings, audit, diagnostics, or restore access.
+- **`AllowRemoteApi`** — set `true` to allow non-localhost API/MCP callers after `ApiKey` is configured. Off by default.
 - **`DataProtectionKeysPath`** — stores ASP.NET Core cookie/data-protection keys outside build output so local sign-in cookies survive app restarts. MemorySmith also keeps the local HMAC key for persisted audit/login request metadata here; audit and login history store hashed IP/user-agent values, never raw values.
 - **`Database:*`** — controls the SQLite metadata database used for users, roles, provider links, login history, audit metadata, version metadata, token metadata, admin settings, and semantic-index metadata. Content files remain in `Data/Memories` and `Data/Pages`.
 - **`SettingsOverridePath`** — optional path for admin-edited local settings. Defaults to `appsettings.LocalOverrides.json` beside the running app.

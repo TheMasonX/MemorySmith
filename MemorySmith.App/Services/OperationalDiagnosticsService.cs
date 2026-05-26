@@ -133,7 +133,7 @@ public class OperationalDiagnosticsService
             warnings.Add(new OperationalWarning(
                 "remote-api-without-api-key",
                 "High",
-                "Remote API access is enabled without MemorySmith:ApiKey. Configure an API key before exposing the service beyond localhost."));
+                "Remote API access is enabled without MemorySmith:ApiKey. Non-loopback API/MCP requests are blocked until MemorySmith:ApiKey is configured."));
         }
 
             if (tagPolicyStatus.UsingFallback && tagPolicyStatus.Reason != "missing")

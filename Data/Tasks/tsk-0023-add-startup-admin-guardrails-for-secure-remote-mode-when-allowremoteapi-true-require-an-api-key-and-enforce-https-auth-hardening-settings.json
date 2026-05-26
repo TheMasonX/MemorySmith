@@ -4,7 +4,7 @@
   "Title": "Add startup/admin guardrails for secure remote mode: when `AllowRemoteApi=true`, require an API key and enforce HTTPS/auth hardening settings.",
   "Description": "Problem: remote API access is guarded and diagnosed, but current behavior is still warning-first when `AllowRemoteApi=true` and no API key is configured. The operator can reach an insecure configuration that the system warns about but does not block.\r\n\r\nDesired outcome:\r\n- Secure remote mode becomes harder to misconfigure than local development mode.\r\n- Admin guidance and runtime enforcement align around remote exposure requirements.\r\n\r\nAcceptance criteria:\r\n- Remote-enable workflows require or strongly gate `MemorySmith:ApiKey` before the instance is considered ready for remote use.\r\n- Diagnostics and admin UX explain the requirement clearly.\r\n- Tests cover remote-enabled without-key behavior and the approved hardened path.\r\n\r\nValidation:\r\n- Run focused security tests for API-key and remote-access combinations.\r\n- Verify diagnostics/admin surfaces present the hardened guidance.\r\n\r\nAudit note: vetted on 2026-05-24; still relevant because current code warns on insecure remote exposure but does not strictly enforce a hardened remote profile.",
   "Type": "Task",
-  "Status": "Backlog",
+  "Status": "Done",
   "Priority": "High",
   "AssigneeMode": "Custom",
   "AssigneeDirectoryId": null,
@@ -52,14 +52,20 @@
       "Author": "AgentSmith",
       "Body": "Security audit refresh: elevated as Sprint 1 committed work under the safe-by-default, opt-in compatibility stance. This task remains the primary vehicle for remote guardrail enforcement.",
       "CreatedAtUtc": "2026-05-23T18:15:00.0000000Z"
+    },
+    {
+      "Id": "c-completed-0023-20260526",
+      "Author": "AgentSmith",
+      "Body": "Completed: remote /api and /mcp requests now fail closed when AllowRemoteApi=true but MemorySmith:ApiKey is missing; diagnostics/admin help/docs explain the blocked remote-readiness state. Focused security validation passed 3/3, and a sandbox UI sweep verified the Admin help text plus diagnostics warning.",
+      "CreatedAtUtc": "2026-05-26T11:18:36.7075929Z"
     }
   ],
   "EpicId": null,
   "ParentId": null,
   "DueDateUtc": null,
   "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z",
-  "UpdatedAtUtc": "2026-05-24T05:15:00.0000000Z",
-  "CompletedAtUtc": null,
-  "Revision": 4,
+  "UpdatedAtUtc": "2026-05-26T11:18:36.7075929Z",
+  "CompletedAtUtc": "2026-05-26T11:18:36.7075929Z",
+  "Revision": 5,
   "IsArchived": false
 }

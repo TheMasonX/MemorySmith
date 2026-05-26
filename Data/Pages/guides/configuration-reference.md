@@ -59,10 +59,10 @@ Agent note: if behavior looks wrong across multiple routes, check the effective 
 
 | Key | Purpose | Verify |
 | --- | --- | --- |
-| `MemorySmith:AllowRemoteApi` | Allows non-loopback API and MCP traffic | `/api/diagnostics` warning list |
-| `MemorySmith:ApiKey` | Shared API/MCP key via `X-Api-Key` | configured state in `/admin`, guarded API requests |
+| `MemorySmith:AllowRemoteApi` | Allows non-loopback API and MCP traffic after an API key is configured | `/api/diagnostics` warning list |
+| `MemorySmith:ApiKey` | Shared API/MCP key via `X-Api-Key`; required for non-loopback API/MCP when remote API is enabled | configured state in `/admin`, guarded API requests |
 
-Safe default: keep `AllowRemoteApi=false` unless the instance is intentionally exposed and an API key plus transport/auth posture are already in place.
+Safe default: keep `AllowRemoteApi=false` unless the instance is intentionally exposed and an API key plus transport/auth posture are already in place. With `AllowRemoteApi=true` and no API key, non-loopback `/api` and `/mcp` requests are blocked until the key is configured.
 
 ## Database
 
@@ -193,7 +193,7 @@ Telemetry defaults are local-first: telemetry is enabled, exporter is off, sampl
 ## Agent Assistance Notes
 
 - Start with runtime verification, not only file inspection. MemorySmith reloads config after admin saves, so `/api/diagnostics` is often the fastest truth surface.
-- Treat `AllowRemoteApi=true` with no API key as a configuration smell immediately.
+- Treat `AllowRemoteApi=true` with no API key as a blocked remote-readiness state, not just a warning.
 - Remember that model profiles and generic settings are intentionally split.
 - When a setting looks missing from `/admin`, check whether it is intentionally file-managed rather than assuming the docs are stale.
 
