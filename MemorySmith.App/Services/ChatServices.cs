@@ -1583,7 +1583,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
 
         if (!CanApplyAgentWrites())
         {
-            throw new InvalidOperationException("Your current MemorySmith role cannot approve agent writes; no memories or pages were changed.");
+            throw new InvalidOperationException("Your current MemorySmith role cannot accept agent writes; no memories or pages were changed.");
         }
 
         if (_proposalWorkflow is null)
@@ -1641,8 +1641,8 @@ public sealed partial class MemoryChatAgent : IChatAgent
             [
                 new MaintenanceEvidenceItem(
                     "chat-agent",
-                    "Approved chat-agent write proposal",
-                    Excerpt: "A chat Agent response proposed memory/page writes. The user approved submission to the maintenance proposal workflow; no file changes are applied until this proposal is approved.")
+                    "Accepted chat-agent write proposal",
+                    Excerpt: "A chat Agent response proposed memory/page writes. The user accepted submission to the maintenance proposal workflow; no file changes are applied until the proposal is approved.")
             ],
             RelatedRecords = relatedRecords.Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
             RiskLevel = changes.Count > 1 ? MaintenanceProposalRiskLevels.Medium : MaintenanceProposalRiskLevels.Low,
@@ -2729,7 +2729,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
         {
             if (plan.ProposedMemoryWrites.Count > 0 || plan.ProposedPageWrites.Count > 0)
             {
-                var deniedNotice = "Your current MemorySmith role cannot approve agent writes; no memories or pages were changed.";
+                var deniedNotice = "Your current MemorySmith role cannot accept agent writes; no memories or pages were changed.";
                 var reply = string.IsNullOrWhiteSpace(plan.Reply) ? deniedNotice : $"{plan.Reply.TrimEnd()}\n\n{deniedNotice}";
                 return plan with { Reply = reply, ProposedMemoryWrites = [], ProposedPageWrites = [] };
             }
@@ -2785,7 +2785,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
         {
             return result with
             {
-                Reply = "Your current MemorySmith role cannot approve agent writes; no memories or pages were changed.",
+                Reply = "Your current MemorySmith role cannot accept agent writes; no memories or pages were changed.",
                 ProposedMemoryWrites = [],
                 ProposedPageWrites = []
             };
@@ -2794,7 +2794,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
         var plural = proposalCount == 1 ? "proposal is" : "proposals are";
         return result with
         {
-            Reply = $"{proposalCount} write {plural} ready for review. No memories or pages have been changed yet; approve the proposed write(s) in MemorySmith to apply them."
+            Reply = $"{proposalCount} write {plural} ready for review. No memories or pages have been changed yet; accept or respond to the proposed write(s) in MemorySmith to continue."
         };
     }
 

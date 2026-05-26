@@ -375,9 +375,9 @@ public class TagGovernanceTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(markup, Does.Contain("Approve all results"));
+            Assert.That(markup, Does.Contain("Accept all results"));
             Assert.That(markup, Does.Contain("RemoveAttemptedProposals(turn, memories, pages);"));
-            Assert.That(markup, Does.Contain("-> approved (submitted"));
+            Assert.That(markup, Does.Contain("-> accepted (submitted"));
             Assert.That(markup, Does.Contain("lineage: batchId="));
             Assert.That(markup, Does.Contain("-> rejected (no changes needed)"));
             Assert.That(markup, Does.Contain("IsBlockedApprovalException(ex) ? \"blocked\" : \"failed\""));
@@ -386,6 +386,12 @@ public class TagGovernanceTests
             Assert.That(markup, Does.Contain("UpdatePendingWriteStatus(active, \"Ready\")"));
             Assert.That(markup, Does.Contain("UpdatePendingWriteStatus(session, _mode == MemoryChatMode.Agent ? \"Agent ready\" : \"Chat ready\")"));
             Assert.That(markup, Does.Contain("var pendingWriteCount = PendingWriteCount(ActiveSession);"));
+            Assert.That(markup, Does.Contain("RespondMemoryWriteAsync"));
+            Assert.That(markup, Does.Contain("RespondPageWriteAsync"));
+            Assert.That(markup, Does.Contain("Respond requires a revision note."));
+            Assert.That(markup, Does.Contain("Agent writes sent back for revision"));
+            Assert.That(markup, Does.Contain("ResponseCommentDraft"));
+            Assert.That(markup, Does.Contain("Respond keeps the proposal diff and records this note in proposal history"));
         });
     }
 

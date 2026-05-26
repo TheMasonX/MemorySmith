@@ -2143,6 +2143,39 @@ body {
     font-weight: 600;
 }
 
+.chat-approval-comment-row {
+    display: grid;
+    gap: 6px;
+    padding: 8px;
+    border-bottom: 1px solid var(--vscode-border-soft);
+}
+
+.chat-approval-comment-row label,
+.chat-approval-comment-row small {
+    color: var(--vscode-text-muted);
+}
+
+.chat-approval-comment-row label {
+    font-size: 0.72rem;
+    font-weight: 600;
+}
+
+.chat-approval-comment-input {
+    min-height: 64px;
+    resize: vertical;
+    border: 1px solid var(--vscode-border-soft);
+    border-radius: 4px;
+    background: var(--vscode-panel-strong);
+    color: var(--vscode-text);
+    padding: 6px 8px;
+    font: inherit;
+}
+
+.chat-approval-comment-input:focus {
+    outline: 1px solid var(--vscode-accent);
+    border-color: var(--vscode-accent);
+}
+
 .chat-approval-panel button,
 .chat-tool-rerun button {
     border: 1px solid var(--vscode-border-soft);

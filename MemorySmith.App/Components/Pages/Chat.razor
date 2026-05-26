@@ -19,6 +19,7 @@
 @inject ICurrentUserContext CurrentUser
 @inject IDialogService Dialogs
 @inject ILogger<Chat> Logger
+@inject MaintenanceProposalWorkflow ProposalWorkflow
 
 <PageTitle>Chat - MemorySmith</PageTitle>
 <NavigationLock ConfirmExternalNavigation="@HasPendingDraft" OnBeforeInternalNavigation="ConfirmInternalNavigation" />
@@ -322,16 +323,28 @@
                             <section class="chat-approval-panel">
                                 <header>
                                     <span>Pending writes</span>
-                                    <button type="button" disabled="@_isApprovingWrites" @onclick="@(() => ApproveAllWritesAsync(selectedTurn.Id))">Approve all</button>
+                                    <button type="button" title="Accept all pending writes in this turn" disabled="@_isApprovingWrites" @onclick="@(() => ApproveAllWritesAsync(selectedTurn.Id))">Accept all</button>
                                 </header>
+                                <div class="chat-approval-comment-row">
+                                    <label for="@($"chat-response-note-{selectedTurn.Id}")">Revision note</label>
+                                    <textarea id="@($"chat-response-note-{selectedTurn.Id}")"
+                                              class="chat-approval-comment-input"
+                                              rows="2"
+                                              placeholder="Required for Respond. Example: keep the change, but add the source page."
+                                              aria-label="Revision note for respond actions"
+                                              value="@selectedTurn.ResponseCommentDraft"
+                                              @oninput="@(args => OnResponseCommentInput(selectedTurn, args))"></textarea>
+                                    <small>Respond keeps the proposal diff and records this note in proposal history. Accept and Reject do not use it.</small>
+                                </div>
                                 @foreach (var proposal in selectedTurn.ProposedMemoryWrites)
                                 {
                                     <div class="chat-approval-item">
                                         <strong>memory:@proposal.Id</strong>
                                         <span>@proposal.Title</span>
                                         <div>
-                                            <button type="button" @onclick="@(() => ApproveMemoryWriteAsync(selectedTurn.Id, proposal.Id))">Approve</button>
-                                            <button type="button" @onclick="@(() => RejectMemoryWriteAsync(selectedTurn.Id, proposal.Id))">Reject</button>
+                                            <button type="button" title="Accept memory write proposal" @onclick="@(() => ApproveMemoryWriteAsync(selectedTurn.Id, proposal.Id))">Accept</button>
+                                            <button type="button" title="Request a revision for this memory write proposal" @onclick="@(() => RespondMemoryWriteAsync(selectedTurn.Id, proposal.Id))">Respond</button>
+                                            <button type="button" title="Reject memory write proposal" @onclick="@(() => RejectMemoryWriteAsync(selectedTurn.Id, proposal.Id))">Reject</button>
                                         </div>
                                     </div>
                                 }
@@ -341,8 +354,9 @@
                                         <strong>page:@proposal.Slug</strong>
                                         <span>@proposal.Title</span>
                                         <div>
-                                            <button type="button" @onclick="@(() => ApprovePageWriteAsync(selectedTurn.Id, proposal.Slug))">Approve</button>
-                                            <button type="button" @onclick="@(() => RejectPageWriteAsync(selectedTurn.Id, proposal.Slug))">Reject</button>
+                                            <button type="button" title="Accept page write proposal" @onclick="@(() => ApprovePageWriteAsync(selectedTurn.Id, proposal.Slug))">Accept</button>
+                                            <button type="button" title="Request a revision for this page write proposal" @onclick="@(() => RespondPageWriteAsync(selectedTurn.Id, proposal.Slug))">Respond</button>
+                                            <button type="button" title="Reject page write proposal" @onclick="@(() => RejectPageWriteAsync(selectedTurn.Id, proposal.Slug))">Reject</button>
                                         </div>
                                     </div>
                                 }
@@ -707,6 +721,7 @@
             Context = ReadJsonObjects(item, "context").Select(ParseStoredContextItem).ToList(),
             ProposedMemoryWrites = ReadJsonObjects(item, "proposedMemoryWrites").Select(ParseStoredMemoryWriteProposal).Where(proposal => proposal is not null).Select(proposal => proposal!).ToList(),
             ProposedPageWrites = ReadJsonObjects(item, "proposedPageWrites").Select(ParseStoredPageWriteProposal).Where(proposal => proposal is not null).Select(proposal => proposal!).ToList(),
+            ResponseCommentDraft = ReadJsonString(item, "responseCommentDraft") ?? string.Empty,
             WrittenMemories = ReadJsonStrings(item, "writtenMemories"),
             WrittenPages = ReadJsonStrings(item, "writtenPages"),
             SubmittedProposalIds = ReadJsonStrings(item, "submittedProposalIds"),
@@ -1148,6 +1163,13 @@
         await SaveSessionsAsync();
     }
 
+    private async Task OnResponseCommentInput(ChatTurnState turn, ChangeEventArgs args)
+    {
+        turn.ResponseCommentDraft = args.Value?.ToString() ?? string.Empty;
+        ActiveSession.UpdatedUtc = DateTimeOffset.UtcNow;
+        await SaveSessionsAsync();
+    }
+
     private async Task SetSendOnEnterAsync(bool enabled)
     {
         _sendOnEnter = enabled;
@@ -1474,7 +1496,7 @@
                 AddTraceEntry(
                     turn,
                     ChatTraceKinds.Write,
-                    "Approve all results",
+                    "Accept all results",
                     string.Join(Environment.NewLine, results.Select(result => $"- {result}")),
                     IsError: results.Any(result => result.Contains("blocked", StringComparison.OrdinalIgnoreCase) || result.Contains("failed", StringComparison.OrdinalIgnoreCase)));
             }
@@ -1505,6 +1527,28 @@
         }
     }
 
+    private async Task RespondMemoryWriteAsync(string turnId, string memoryId)
+    {
+        if (FindTurn(turnId) is not { } turn)
+        {
+            return;
+        }
+
+        var proposal = turn.ProposedMemoryWrites.FirstOrDefault(item => string.Equals(item.Id, memoryId, StringComparison.OrdinalIgnoreCase));
+        if (proposal is not null)
+        {
+            var outcome = await RespondProposalWithOutcomeAsync(turn, [proposal], [], $"memory:{proposal.Id}");
+            if (outcome is null)
+            {
+                return;
+            }
+
+            UpdatePendingWriteStatus();
+            ActiveSession.UpdatedUtc = DateTimeOffset.UtcNow;
+            await SaveSessionsAsync();
+        }
+    }
+
     private async Task ApprovePageWriteAsync(string turnId, string slug)
     {
         if (FindTurn(turnId) is not { } turn)
@@ -1522,6 +1566,28 @@
         }
     }
 
+    private async Task RespondPageWriteAsync(string turnId, string slug)
+    {
+        if (FindTurn(turnId) is not { } turn)
+        {
+            return;
+        }
+
+        var proposal = turn.ProposedPageWrites.FirstOrDefault(item => string.Equals(item.Slug, slug, StringComparison.OrdinalIgnoreCase));
+        if (proposal is not null)
+        {
+            var outcome = await RespondProposalWithOutcomeAsync(turn, [], [proposal], $"page:{proposal.Slug}");
+            if (outcome is null)
+            {
+                return;
+            }
+
+            UpdatePendingWriteStatus();
+            ActiveSession.UpdatedUtc = DateTimeOffset.UtcNow;
+            await SaveSessionsAsync();
+        }
+    }
+
     private async Task<string> ApproveProposalWithOutcomeAsync(ChatTurnState turn, IReadOnlyList<AgentMemoryWriteProposal> memories, IReadOnlyList<AgentPageWriteProposal> pages, string proposalKey)
     {
         try
@@ -1533,7 +1599,7 @@
                 RemoveAttemptedProposals(turn, memories, pages);
                 AddTraceEntry(turn, ChatTraceKinds.Write, "Agent writes submitted for proposal review", FormatSubmittedProposalSummary(result), IsError: false);
                 _agentStatus = $"Submitted {result.SubmittedProposalIds.Count} proposal(s) for review";
-                return $"{proposalKey} -> approved (submitted {string.Join(", ", result.SubmittedProposalIds)})";
+                return $"{proposalKey} -> accepted (submitted {string.Join(", ", result.SubmittedProposalIds)})";
             }
 
             turn.WrittenMemories.AddRange(result.WrittenMemories.Where(id => !turn.WrittenMemories.Contains(id, StringComparer.OrdinalIgnoreCase)));
@@ -1548,9 +1614,9 @@
                 return $"{proposalKey} -> rejected (no changes needed)";
             }
 
-            AddTraceEntry(turn, ChatTraceKinds.Write, "Agent writes approved", FormatAppliedWriteSummary(result), IsError: false);
-            _agentStatus = $"Applied {result.WrittenMemories.Count + result.WrittenPages.Count} approved write(s)";
-            return $"{proposalKey} -> approved";
+            AddTraceEntry(turn, ChatTraceKinds.Write, "Agent writes accepted", FormatAppliedWriteSummary(result), IsError: false);
+            _agentStatus = $"Applied {result.WrittenMemories.Count + result.WrittenPages.Count} accepted write(s)";
+            return $"{proposalKey} -> accepted";
         }
         catch (Exception ex)
         {
@@ -1561,6 +1627,71 @@
             Snackbar.Add(ex.Message, Severity.Error);
             return $"{proposalKey} -> {outcome} ({ex.Message})";
         }
+    }
+
+    private async Task<string?> RespondProposalWithOutcomeAsync(ChatTurnState turn, IReadOnlyList<AgentMemoryWriteProposal> memories, IReadOnlyList<AgentPageWriteProposal> pages, string proposalKey)
+    {
+        if (!TryGetResponseComment(turn, out var comment))
+        {
+            return null;
+        }
+
+        try
+        {
+            var result = await ChatAgent.ApplyAgentWritesAsync(memories, pages, CancellationToken.None);
+            if (result.SubmittedProposalIds?.Count > 0)
+            {
+                foreach (var proposalId in result.SubmittedProposalIds)
+                {
+                    var responded = await ProposalWorkflow.RespondAsync(proposalId, comment, CancellationToken.None);
+                    if (!turn.SubmittedProposalIds.Contains(responded.ProposalId, StringComparer.OrdinalIgnoreCase))
+                    {
+                        turn.SubmittedProposalIds.Add(responded.ProposalId);
+                    }
+                }
+
+                RemoveAttemptedProposals(turn, memories, pages);
+                AddTraceEntry(turn, ChatTraceKinds.Write, "Agent writes sent back for revision", FormatRespondedProposalSummary(result.SubmittedProposalIds, comment), IsError: false);
+                _agentStatus = $"Requested revisions for {result.SubmittedProposalIds.Count} proposal(s)";
+                return $"{proposalKey} -> responded ({string.Join(", ", result.SubmittedProposalIds)})";
+            }
+
+            RemoveAttemptedProposals(turn, memories, pages);
+            AddTraceEntry(turn, ChatTraceKinds.Write, "Agent write response skipped", $"{proposalKey} response skipped: no file changes were needed.", IsError: false);
+            _agentStatus = "No file changes were needed";
+            return $"{proposalKey} -> response skipped (no changes needed)";
+        }
+        catch (Exception ex)
+        {
+            RemoveAttemptedProposals(turn, memories, pages);
+            var outcome = IsBlockedApprovalException(ex) ? "blocked" : "failed";
+            AddTraceEntry(turn, ChatTraceKinds.Write, $"Agent write response {outcome}", $"{proposalKey} response {outcome}: {ex.Message}", IsError: true);
+            Snackbar.Add(ex.Message, Severity.Error);
+            return $"{proposalKey} -> response {outcome} ({ex.Message})";
+        }
+    }
+
+    private bool TryGetResponseComment(ChatTurnState turn, out string comment)
+    {
+        comment = turn.ResponseCommentDraft.Trim();
+        if (!string.IsNullOrWhiteSpace(comment))
+        {
+            return true;
+        }
+
+        Snackbar.Add("Respond requires a revision note.", Severity.Warning);
+        return false;
+    }
+
+    private static string FormatRespondedProposalSummary(IReadOnlyList<string> proposalIds, string comment)
+    {
+        var lines = new List<string>
+        {
+            $"Revision note: {comment}"
+        };
+
+        lines.AddRange(proposalIds.Select(id => $"- proposal:{id} -> needs_revision"));
+        return string.Join(Environment.NewLine, lines);
     }
 
     private static void RemoveAttemptedProposals(ChatTurnState turn, IReadOnlyList<AgentMemoryWriteProposal> memories, IReadOnlyList<AgentPageWriteProposal> pages)
@@ -1913,6 +2044,7 @@
             ProposedPageWrites = turn.ProposedPageWrites
                 .Select(proposal => proposal with { Markdown = TrimForStorage(proposal.Markdown, MaxStoredTurnCharacters) })
                 .ToList(),
+            ResponseCommentDraft = TrimForStorage(turn.ResponseCommentDraft, MaxStoredTurnCharacters),
             TraceEntries = turn.TraceEntries
                 .TakeLast(MaxStoredTraceEntries)
                 .Select(entry => new ChatTraceEntryState
@@ -2656,6 +2788,7 @@
         public List<ChatContextItem> Context { get; set; } = [];
         public List<AgentMemoryWriteProposal> ProposedMemoryWrites { get; set; } = [];
         public List<AgentPageWriteProposal> ProposedPageWrites { get; set; } = [];
+        public string ResponseCommentDraft { get; set; } = string.Empty;
         public List<ChatTraceEntryState> TraceEntries { get; set; } = [];
         public bool TraceDrawerOpen { get; set; }
         public List<string> WrittenMemories { get; set; } = [];

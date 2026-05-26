@@ -634,7 +634,7 @@ public class PagesAndChatTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(response.Reply, Is.EqualTo("2 write proposals are ready for review. No memories or pages have been changed yet; approve the proposed write(s) in MemorySmith to apply them."));
+            Assert.That(response.Reply, Is.EqualTo("2 write proposals are ready for review. No memories or pages have been changed yet; accept or respond to the proposed write(s) in MemorySmith to continue."));
             Assert.That(response.WrittenMemories, Is.Empty);
             Assert.That(response.WrittenPages, Is.Empty);
             Assert.That(response.ProposedMemoryWrites, Has.Count.EqualTo(1));
@@ -710,6 +710,44 @@ public class PagesAndChatTests
             Assert.That(proposals[0].RelatedRecords, Does.Contain("agent-proposal-note"));
             Assert.That(memoryStore.Load("agent-proposal-note"), Is.Null);
             Assert.That(missingPageAfterSubmission, Is.Null);
+        });
+    }
+
+    [Test]
+    public async Task MemoryChatAgent_SubmitsProposalThenRespondsWithRevisionNote()
+    {
+        var memoryStore = new InMemoryMemoryStore();
+        var eventStore = new RecordingEventStore();
+        var publisher = new RecordingMemoryChangePublisher();
+        var memories = TestServiceFactory.CreateMemoryApplicationService(memoryStore, eventStore, publisher);
+        var (options, workflow) = CreateChatProposalWorkflowOptions(includePagesMaintenanceWriteRoot: false);
+        var pages = new FilePageService(options.PagesPath);
+        var provider = new FakeChatProvider("""
+        {
+            "reply": "Ready to record.",
+            "memoryWrites": [],
+            "pageWrites": [
+                { "slug": "revision-chat-page", "title": "Revision Chat Page", "markdown": "Draft page body." }
+            ]
+        }
+        """);
+        var agent = new MemoryChatAgent([provider], memories, pages, Options.Create(options), new FakeCurrentUserContext("editor-1", "Editor User", [MemorySmithRoles.Editor]), proposalWorkflow: workflow);
+
+        var response = await agent.SendAsync(new MemoryChatRequest("Create a page", MemoryChatMode.Agent, RequireAgentWriteApproval: true), CancellationToken.None);
+        var result = await agent.ApplyAgentWritesAsync(response.ProposedMemoryWrites!, response.ProposedPageWrites!, CancellationToken.None);
+        var responded = await workflow.RespondAsync(result.SubmittedProposalIds!.Single(), "Keep the draft, but cite the source page before acceptance.", CancellationToken.None);
+        var proposals = await workflow.ListAsync(CancellationToken.None);
+        var writtenPage = await pages.GetAsync("revision-chat-page", CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.WrittenPages, Is.Empty);
+            Assert.That(result.SubmittedProposalIds, Has.Count.EqualTo(1));
+            Assert.That(responded.Status, Is.EqualTo(MaintenanceProposalStatuses.NeedsRevision));
+            Assert.That(responded.Comments.Single().Comment, Is.EqualTo("Keep the draft, but cite the source page before acceptance."));
+            Assert.That(responded.History.Single(item => item.Action == "respond").User, Is.EqualTo("Editor User"));
+            Assert.That(proposals.Single().Status, Is.EqualTo(MaintenanceProposalStatuses.NeedsRevision));
+            Assert.That(writtenPage, Is.Null);
         });
     }
 
@@ -1803,7 +1841,7 @@ public class PagesAndChatTests
         Assert.Multiple(() =>
         {
             Assert.That(response.ProposedMemoryWrites, Has.Count.EqualTo(0), "Viewer should not receive proposals");
-            Assert.That(response.Reply, Does.Contain("cannot approve"), "Reply should explain role restriction");
+            Assert.That(response.Reply, Does.Contain("cannot accept"), "Reply should explain role restriction");
             Assert.ThrowsAsync<InvalidOperationException>(() =>
                 agent.ApplyAgentWritesAsync([], [], CancellationToken.None),
                 "Viewer calling ApplyAgentWritesAsync should throw");
