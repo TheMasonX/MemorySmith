@@ -4,7 +4,7 @@
   "title": "Populate or prune audit and login request metadata fields",
   "description": "Problem: audit and login-history models, schema, and admin search surface include request metadata fields that the current write paths do not populate. `AuditLogEntry` and `LoginHistoryEntry` both define `IpHash` and `UserAgentHash`, and audit entries also define `CorrelationId`. SQLite persists and indexes those columns, and `Admin.razor` search includes `CorrelationId`, but `AuditLogService.RecordAsync()` currently sets only `RequestId` and leaves `CorrelationId`, `IpHash`, and `UserAgentHash` null. `SecurityServices.SignInAsync()` records login history with `RequestId` only. This creates a misleading observability contract: the schema suggests correlation/forensic metadata is available, while the queryable records usually do not carry it.\n\nEvidence from the 2026-05-25 deepdive:\n- `MemorySmith.Core/Models/SecurityModels.cs` defines `LoginHistoryEntry.IpHash`, `LoginHistoryEntry.UserAgentHash`, `AuditLogEntry.CorrelationId`, `AuditLogEntry.IpHash`, and `AuditLogEntry.UserAgentHash`.\n- `MemorySmith.Storage/SqliteMemorySmithDatabase.cs` stores those columns in `LoginHistory` and `AuditMetadata`, and creates an audit correlation index.\n- `MemorySmith.App/Services/SecurityServices.cs` `AuditLogService.RecordAsync()` sets `RequestId` and `DetailsJson`, but not `CorrelationId`, `IpHash`, or `UserAgentHash`.\n- `MemorySmith.App/Services/SecurityServices.cs` `SignInAsync()` records `LoginHistoryEntry` with `RequestId` only.\n- `MemorySmith.Tests/AppApiContractTests.cs` validates correlation ids in structured request logs, not in persisted audit/login metadata.\n\nDesired outcome: MemorySmith either captures privacy-conscious request metadata consistently in audit/login persistence, or removes the dead fields from contracts/UI/search so operators are not misled about available forensic signals.\n\nScope:\n- In scope: define the intended contract for persisted request metadata, including whether correlation id should mirror the request pipeline trace id and whether IP/user agent should be hashed before storage.\n- In scope: implement the chosen behavior in audit/log-in write paths, or remove/hide unused fields from schema/UI/search if the privacy posture intentionally excludes them.\n- In scope: keep raw IP addresses and raw user-agent strings out of durable storage; only hashed or otherwise privacy-reviewed values are acceptable if retained.\n- Out of scope: redesigning the full logging pipeline or replacing existing request-log correlation work already covered by TSK-0105.\n\nAcceptance criteria:\n- The intended persisted metadata contract for audit and login history is explicit in code/tests/docs.\n- Audit records either populate `CorrelationId` and approved hashed request metadata when available, or the unused fields are removed from operator-facing search/UI and data contracts.\n- Login history either populates approved hashed request metadata or no longer exposes dead fields that imply it does.\n- Tests prove the chosen behavior for a normal authenticated request path without storing raw IP/user-agent values.\n\nValidation:\n- Add focused tests for audit/log-in metadata persistence behavior.\n- Run the affected auth/admin/storage test slice.\n- Run ./Scripts/Test-TaskRecords.ps1 after task metadata changes.",
   "type": "Task",
-  "status": "Backlog",
+  "status": "Done",
   "priority": "Medium",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -29,15 +29,21 @@
       "author": "AgentSmith",
       "body": "Created during 2026-05-25 deepdive audit. Structured request logs carry correlation ids, but the persisted audit/login metadata path leaves correlation and hashed request metadata fields empty even though the schema and admin search surface expose them.",
       "createdAtUtc": "2026-05-25T17:40:00.0000000Z"
+    },
+    {
+      "id": "c-complete-0173-20260526",
+      "author": "AgentSmith",
+      "body": "Implemented the populate path. Persisted audit records now capture RequestId, CorrelationId, IpHash, and UserAgentHash via a shared request metadata helper; local and GitHub login-history records capture hashed IP and user-agent metadata with RequestId. Raw IP and user-agent values stay out of durable storage. Validation: focused request-metadata and request-pipeline tests passed; SqliteMetadataStoreTests passed 5/5; disposable browser sweep confirmed /tasks quick-add and /admin audit search by persisted correlation id; Scripts/Validate-Repo.ps1 passed with 344/344 tests.",
+      "createdAtUtc": "2026-05-26T05:43:40.1173434Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-25T17:40:00.0000000Z",
-  "updatedAtUtc": "2026-05-25T17:40:00.0000000Z",
-  "completedAtUtc": null,
-  "revision": 1,
+  "updatedAtUtc": "2026-05-26T05:43:40.1173434Z",
+  "completedAtUtc": "2026-05-26T05:43:40.1173434Z",
+  "revision": 2,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

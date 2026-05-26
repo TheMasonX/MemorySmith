@@ -50,7 +50,7 @@ This page is the operator and agent-oriented map of the configuration groups, wh
 | `MemorySmith:PagesPath` | Root for markdown wiki pages and page assets | `/pages`, `/page-assets`, `/api/diagnostics` |
 | `MemorySmith:EventLogPath` | Legacy file-backed event log path | `/health` and filesystem |
 | `MemorySmith:VarsPath` | Variable map used by `%VarName%` source links | `/variables`, source-link actions |
-| `MemorySmith:DataProtectionKeysPath` | ASP.NET Core data protection keys directory | sign-in persistence across restarts |
+| `MemorySmith:DataProtectionKeysPath` | ASP.NET Core data protection keys directory plus the local HMAC key used for hashed audit/login request metadata | sign-in persistence across restarts; audit/login metadata contains hashes, not raw IP or user-agent values |
 | `MemorySmith:SettingsOverridePath` | Optional override file location | file-managed; not edited from `/admin` |
 
 Agent note: if behavior looks wrong across multiple routes, check the effective path set first. Path drift is the fastest way to end up testing the wrong wiki.

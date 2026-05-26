@@ -4,6 +4,8 @@ using MemorySmith.Storage;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 using Microsoft.Data.Sqlite;
+using System.Diagnostics;
+using System.Net;
 
 namespace MemorySmith.Tests;
 
@@ -138,6 +140,7 @@ public class SqliteMetadataStoreTests
     {
         var options = new MemorySmithOptions
         {
+            DataProtectionKeysPath = Path.Combine(_tempDir, "Keys"),
             Audit = new AuditOptions
             {
                 JsonlPath = Path.Combine(_tempDir, "Events", "audit-{yyyy}-W{week}.jsonl"),
@@ -166,6 +169,54 @@ public class SqliteMetadataStoreTests
             Assert.That(versions.Single().Format, Is.EqualTo("memorysmith.page-snapshot.v1"));
             Assert.That(File.Exists(Path.Combine(options.History.RootPath, versions.Single().HistoryPath.Replace('/', Path.DirectorySeparatorChar))), Is.True);
             Assert.That(Directory.EnumerateFiles(Path.Combine(_tempDir, "Events"), "audit-*.jsonl").Single(), Does.Exist);
+        });
+    }
+
+    [Test]
+    public async Task AuditAndLoginServices_PersistRequestMetadataWithoutRawIpOrUserAgent()
+    {
+        var options = new MemorySmithOptions
+        {
+            DataProtectionKeysPath = Path.Combine(_tempDir, "Keys"),
+            Audit = new AuditOptions
+            {
+                JsonlEnabled = false
+            }
+        };
+        var monitor = new TestOptionsMonitor<MemorySmithOptions>(options);
+        await SeedUserAsync("admin-user", "Admin User", "ADMIN USER");
+        var currentUser = new FakeCurrentUserContext();
+        var httpContext = new DefaultHttpContext
+        {
+            TraceIdentifier = "request-0173"
+        };
+        httpContext.Connection.RemoteIpAddress = IPAddress.Parse("203.0.113.24");
+        httpContext.Request.Headers.UserAgent = "MemorySmith.Tests/0173";
+        var httpContextAccessor = new HttpContextAccessor { HttpContext = httpContext };
+        var audit = new AuditLogService(_database, currentUser, httpContextAccessor, monitor);
+        var auth = new MemorySmithLocalAuthService(_database, httpContextAccessor, audit, monitor);
+
+        using var activity = new Activity("request-metadata-test");
+        activity.Start();
+        var expectedCorrelationId = activity.TraceId.ToString();
+
+        await auth.SignInAsync(new LoginRequest("missing@example.test", "wrong-password"), CancellationToken.None);
+        var loginHistory = await _database.LoginHistory.QueryAsync(new LoginHistoryQuery(ProviderName: MemorySmithProviders.LocalPassword), CancellationToken.None);
+        var audits = await _database.AuditLogs.QueryAsync(new AuditLogQuery(Action: "auth.login.failed"), CancellationToken.None);
+        var login = loginHistory.Data.Single();
+        var auditEntry = audits.Data.Single();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(login.RequestId, Is.EqualTo("request-0173"));
+            Assert.That(login.IpHash, Does.Match("^[a-f0-9]{64}$"));
+            Assert.That(login.UserAgentHash, Does.Match("^[a-f0-9]{64}$"));
+            Assert.That(login.IpHash, Is.Not.EqualTo("203.0.113.24"));
+            Assert.That(login.UserAgentHash, Is.Not.EqualTo("MemorySmith.Tests/0173"));
+            Assert.That(auditEntry.RequestId, Is.EqualTo("request-0173"));
+            Assert.That(auditEntry.CorrelationId, Is.EqualTo(expectedCorrelationId));
+            Assert.That(auditEntry.IpHash, Is.EqualTo(login.IpHash));
+            Assert.That(auditEntry.UserAgentHash, Is.EqualTo(login.UserAgentHash));
         });
     }
 

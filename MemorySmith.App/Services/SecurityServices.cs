@@ -358,6 +358,7 @@ public sealed class MemorySmithLocalAuthService
             }
         }
 
+        var requestMetadata = RequestMetadata.Capture(_httpContextAccessor.HttpContext, _options.CurrentValue);
         await _database.LoginHistory.RecordAsync(new LoginHistoryEntry
         {
             LoginId = Guid.NewGuid().ToString("N"),
@@ -367,7 +368,9 @@ public sealed class MemorySmithLocalAuthService
             OccurredAtUtc = DateTime.UtcNow,
             Succeeded = success,
             FailureCode = success ? null : failureCode,
-            RequestId = _httpContextAccessor.HttpContext?.TraceIdentifier
+            IpHash = requestMetadata.IpHash,
+            UserAgentHash = requestMetadata.UserAgentHash,
+            RequestId = requestMetadata.RequestId
         }, cancellationToken);
 
         if (!success || user is null)
@@ -663,6 +666,7 @@ public sealed class AuditLogService
         var latest = _options.CurrentValue.Audit.HashChainEnabled
             ? await _database.AuditLogs.GetLatestAsync(cancellationToken)
             : null;
+        var requestMetadata = RequestMetadata.Capture(_httpContextAccessor.HttpContext, _options.CurrentValue);
         var entry = new AuditLogEntry
         {
             AuditId = Guid.NewGuid().ToString("N"),
@@ -682,7 +686,10 @@ public sealed class AuditLogService
             BeforeHash = beforeHash,
             AfterHash = afterHash,
             DiffRef = diffRef,
-            RequestId = _httpContextAccessor.HttpContext?.TraceIdentifier,
+            RequestId = requestMetadata.RequestId,
+            CorrelationId = requestMetadata.CorrelationId,
+            IpHash = requestMetadata.IpHash,
+            UserAgentHash = requestMetadata.UserAgentHash,
             DetailsJson = details is null ? null : JsonSerializer.Serialize(details, JsonOptions),
             PreviousAuditHash = latest?.AuditHash
         };

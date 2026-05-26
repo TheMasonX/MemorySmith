@@ -237,6 +237,7 @@ try
                     resolvedUser.LastLoginAtUtc = loginAtUtc;
                     resolvedUser.UpdatedAtUtc = loginAtUtc;
                     await db.Users.UpdateAsync(resolvedUser, ct);
+                    var requestMetadata = RequestMetadata.Capture(ctx.HttpContext, msOpts);
                     await db.LoginHistory.RecordAsync(new LoginHistoryEntry
                     {
                         LoginId = Guid.NewGuid().ToString("N"),
@@ -245,7 +246,9 @@ try
                         ProviderSubject = githubSubject,
                         OccurredAtUtc = loginAtUtc,
                         Succeeded = true,
-                        RequestId = ctx.HttpContext.TraceIdentifier
+                        IpHash = requestMetadata.IpHash,
+                        UserAgentHash = requestMetadata.UserAgentHash,
+                        RequestId = requestMetadata.RequestId
                     }, ct);
                     ctx.Identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, internalUserId, ClaimValueTypes.String, ctx.Options.ClaimsIssuer));
                     ctx.Identity.AddClaim(new Claim(ClaimTypes.Name, resolvedUser.DisplayName, ClaimValueTypes.String, ctx.Options.ClaimsIssuer));
@@ -531,19 +534,20 @@ try
 
             options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
             {
-                diagnosticContext.Set("TraceId", Activity.Current?.TraceId.ToString() ?? httpContext.TraceIdentifier);
+                var correlationId = RequestMetadata.ResolveCorrelationId(httpContext);
+                diagnosticContext.Set("TraceId", correlationId);
                 diagnosticContext.Set("RequestPath", httpContext.Request.Path.ToString());
                 diagnosticContext.Set("RequestHost", httpContext.Request.Host.Value);
                 diagnosticContext.Set("RequestScheme", httpContext.Request.Scheme);
                 diagnosticContext.Set("UserAgent", httpContext.Request.Headers.UserAgent.ToString());
-                diagnosticContext.Set("CorrelationId", httpContext.TraceIdentifier);
+                diagnosticContext.Set("CorrelationId", correlationId);
             };
         });
     }
 
     app.Use(async (context, next) =>
     {
-        context.Response.Headers["X-Correlation-Id"] = Activity.Current?.TraceId.ToString() ?? context.TraceIdentifier;
+        context.Response.Headers["X-Correlation-Id"] = RequestMetadata.ResolveCorrelationId(context);
         await next();
     });
 

@@ -394,7 +394,7 @@ For an operator-facing map of the active settings, see [`Data/Pages/guides/confi
 
 - **`ApiKey`** — if set, all API and MCP requests must include `X-Api-Key: &lt;value&gt;`. Leave `null` for local use. The shared API key can satisfy non-admin API/MCP policies; it does not grant admin, user-management, settings, audit, diagnostics, or restore access.
 - **`AllowRemoteApi`** — set `true` to allow non-localhost callers. Off by default.
-- **`DataProtectionKeysPath`** — stores ASP.NET Core cookie/data-protection keys outside build output so local sign-in cookies survive app restarts.
+- **`DataProtectionKeysPath`** — stores ASP.NET Core cookie/data-protection keys outside build output so local sign-in cookies survive app restarts. MemorySmith also keeps the local HMAC key for persisted audit/login request metadata here; audit and login history store hashed IP/user-agent values, never raw values.
 - **`Database:*`** — controls the SQLite metadata database used for users, roles, provider links, login history, audit metadata, version metadata, token metadata, admin settings, and semantic-index metadata. Content files remain in `Data/Memories` and `Data/Pages`.
 - **`SettingsOverridePath`** — optional path for admin-edited local settings. Defaults to `appsettings.LocalOverrides.json` beside the running app.
 - **`Blazor:MaximumReceiveMessageSizeBytes`** — maximum SignalR payload size for interactive server circuits. The Admin settings UI exposes this, but changing it typically requires reconnecting or restarting the app to affect existing circuits.
