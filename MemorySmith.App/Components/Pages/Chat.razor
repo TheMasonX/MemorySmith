@@ -1529,17 +1529,24 @@
             if (result.SubmittedProposalIds?.Count > 0)
             {
                 turn.SubmittedProposalIds.AddRange(result.SubmittedProposalIds.Where(id => !turn.SubmittedProposalIds.Contains(id, StringComparer.OrdinalIgnoreCase)));
-                turn.ProposedMemoryWrites.RemoveAll(proposal => memories.Any(memory => string.Equals(memory.Id, proposal.Id, StringComparison.OrdinalIgnoreCase)));
-                turn.ProposedPageWrites.RemoveAll(proposal => pages.Any(page => string.Equals(page.Slug, proposal.Slug, StringComparison.OrdinalIgnoreCase)));
+                RemoveAttemptedProposals(turn, memories, pages);
                 AddTraceEntry(turn, ChatTraceKinds.Write, "Agent writes submitted for proposal review", FormatSubmittedProposalSummary(result), IsError: false);
                 _agentStatus = $"Submitted {result.SubmittedProposalIds.Count} proposal(s) for review";
-                return $"{proposalKey} -> submitted ({string.Join(", ", result.SubmittedProposalIds)})";
+                return $"{proposalKey} -> approved (submitted {string.Join(", ", result.SubmittedProposalIds)})";
             }
 
             turn.WrittenMemories.AddRange(result.WrittenMemories.Where(id => !turn.WrittenMemories.Contains(id, StringComparer.OrdinalIgnoreCase)));
             turn.WrittenPages.AddRange(result.WrittenPages.Where(slug => !turn.WrittenPages.Contains(slug, StringComparer.OrdinalIgnoreCase)));
             turn.ProposedMemoryWrites.RemoveAll(proposal => result.WrittenMemories.Contains(proposal.Id, StringComparer.OrdinalIgnoreCase));
             turn.ProposedPageWrites.RemoveAll(proposal => result.WrittenPages.Contains(proposal.Slug, StringComparer.OrdinalIgnoreCase));
+            if (result.WrittenMemories.Count == 0 && result.WrittenPages.Count == 0)
+            {
+                RemoveAttemptedProposals(turn, memories, pages);
+                AddTraceEntry(turn, ChatTraceKinds.Write, "Agent write rejected", $"{proposalKey} rejected: no file changes were needed.", IsError: false);
+                _agentStatus = "No file changes were needed";
+                return $"{proposalKey} -> rejected (no changes needed)";
+            }
+
             AddTraceEntry(turn, ChatTraceKinds.Write, "Agent writes approved", FormatAppliedWriteSummary(result), IsError: false);
             _agentStatus = $"Applied {result.WrittenMemories.Count + result.WrittenPages.Count} approved write(s)";
             return $"{proposalKey} -> approved";
@@ -1547,13 +1554,22 @@
         catch (Exception ex)
         {
             // Blocked/failed approvals are terminal for this attempt; remove pending item and retain auditable trace.
-            turn.ProposedMemoryWrites.RemoveAll(proposal => memories.Any(memory => string.Equals(memory.Id, proposal.Id, StringComparison.OrdinalIgnoreCase)));
-            turn.ProposedPageWrites.RemoveAll(proposal => pages.Any(page => string.Equals(page.Slug, proposal.Slug, StringComparison.OrdinalIgnoreCase)));
-            AddTraceEntry(turn, ChatTraceKinds.Write, "Agent write blocked", $"{proposalKey} blocked: {ex.Message}", IsError: true);
+            RemoveAttemptedProposals(turn, memories, pages);
+            var outcome = IsBlockedApprovalException(ex) ? "blocked" : "failed";
+            AddTraceEntry(turn, ChatTraceKinds.Write, $"Agent write {outcome}", $"{proposalKey} {outcome}: {ex.Message}", IsError: true);
             Snackbar.Add(ex.Message, Severity.Error);
-            return $"{proposalKey} -> blocked ({ex.Message})";
+            return $"{proposalKey} -> {outcome} ({ex.Message})";
         }
     }
+
+    private static void RemoveAttemptedProposals(ChatTurnState turn, IReadOnlyList<AgentMemoryWriteProposal> memories, IReadOnlyList<AgentPageWriteProposal> pages)
+    {
+        turn.ProposedMemoryWrites.RemoveAll(proposal => memories.Any(memory => string.Equals(memory.Id, proposal.Id, StringComparison.OrdinalIgnoreCase)));
+        turn.ProposedPageWrites.RemoveAll(proposal => pages.Any(page => string.Equals(page.Slug, proposal.Slug, StringComparison.OrdinalIgnoreCase)));
+    }
+
+    private static bool IsBlockedApprovalException(Exception ex) =>
+        ex is InvalidOperationException or UnauthorizedAccessException or ArgumentException;
 
     private void UpdatePendingWriteStatus(ChatTurnState turn)
     {

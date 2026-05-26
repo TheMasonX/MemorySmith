@@ -708,6 +708,33 @@ public class PagesAndChatTests
     }
 
     [Test]
+    public async Task MemoryChatAgent_ApplyAgentWritesReturnsEmptyResultForNoChangeProposals()
+    {
+        var memoryStore = new InMemoryMemoryStore();
+        var eventStore = new RecordingEventStore();
+        var publisher = new RecordingMemoryChangePublisher();
+        var memories = TestServiceFactory.CreateMemoryApplicationService(memoryStore, eventStore, publisher);
+        var (options, workflow) = CreateChatProposalWorkflowOptions(AgentWriteApprovalModes.AutoAccept);
+        var pages = new FilePageService(options.PagesPath);
+        var agent = new MemoryChatAgent([new FakeChatProvider("{}")], memories, pages, Options.Create(options), new FakeCurrentUserContext("editor-1", "Editor User", [MemorySmithRoles.Editor]), proposalWorkflow: workflow);
+
+        var result = await agent.ApplyAgentWritesAsync(
+            [new AgentMemoryWriteProposal("blank-note", "Blank Note", string.Empty, [], MemoryStatus.Working, 0.7)],
+            [new AgentPageWriteProposal("blank-page", "Blank Page", string.Empty)],
+            CancellationToken.None);
+        var proposals = await workflow.ListAsync(CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.WrittenMemories, Is.Empty);
+            Assert.That(result.WrittenPages, Is.Empty);
+            Assert.That(result.SubmittedProposalIds, Is.Empty);
+            Assert.That(proposals, Is.Empty);
+            Assert.That(memoryStore.Load("blank-note"), Is.Null);
+        });
+    }
+
+    [Test]
     public async Task MemoryChatAgent_ApprovesSafePageProposalWhenMaintenanceWriteRootsExcludePages()
     {
         var memoryStore = new InMemoryMemoryStore();

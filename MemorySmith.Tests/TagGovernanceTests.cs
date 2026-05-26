@@ -315,6 +315,22 @@ public class TagGovernanceTests
     }
 
     [Test]
+    public void ChatMarkup_ReconcilesApproveAllBatchOutcomesAndPendingState()
+    {
+        var markup = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "Components", "Pages", "Chat.razor"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(markup, Does.Contain("Approve all results"));
+            Assert.That(markup, Does.Contain("RemoveAttemptedProposals(turn, memories, pages);"));
+            Assert.That(markup, Does.Contain("-> approved (submitted"));
+            Assert.That(markup, Does.Contain("-> rejected (no changes needed)"));
+            Assert.That(markup, Does.Contain("IsBlockedApprovalException(ex) ? \"blocked\" : \"failed\""));
+            Assert.That(markup, Does.Contain("UpdatePendingWriteStatus(turn);"));
+        });
+    }
+
+    [Test]
     public void ProposalsMarkup_ShowsActiveRunAndKeepsActionBarHorizontalAtDesktopScale()
     {
         var root = FindRepositoryRoot();
