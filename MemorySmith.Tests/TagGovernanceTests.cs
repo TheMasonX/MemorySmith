@@ -366,13 +366,15 @@ public class TagGovernanceTests
         Assert.Multiple(() =>
         {
             Assert.That(markup, Does.Contain("tasks-detail-summary"));
-            Assert.That(markup, Does.Contain("tasks-focus-button"));
+            Assert.That(markup, Does.Contain("tasks-detail-actions"));
+            Assert.That(markup, Does.Contain("tasks-header-icon-action"));
             Assert.That(markup, Does.Contain("TaskListHeaderActionText"));
             Assert.That(markup, Does.Contain("tasks-detail-overview"));
             Assert.That(markup, Does.Contain("tasks-edit-shell"));
             Assert.That(markup, Does.Contain("tasks-read-shell"));
             Assert.That(css, Does.Contain(".tasks-detail-summary"));
-            Assert.That(css, Does.Contain(".tasks-focus-button"));
+            Assert.That(css, Does.Contain(".tasks-detail-actions"));
+            Assert.That(css, Does.Contain(".tasks-header-icon-action"));
             Assert.That(css, Does.Contain(".tasks-detail-overview"));
             Assert.That(css, Does.Contain(".tasks-edit-shell"));
             Assert.That(css, Does.Contain(".tasks-detail-description"));

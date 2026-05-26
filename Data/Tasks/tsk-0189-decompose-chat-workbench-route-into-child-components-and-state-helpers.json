@@ -1,0 +1,46 @@
+{
+  "id": "tsk-0189-decompose-chat-workbench-route-into-child-components-and-state-helpers",
+  "key": "TSK-0189",
+  "title": "Decompose Chat workbench route into child components and state helpers",
+  "description": "Problem: `MemorySmith.App/Components/Pages/Chat.razor` is now 2,511 lines and combines top-level route markup with transcript rendering, history/trace sidebar UI, browser storage/session parsing, attachment lifecycle, JS interop, and send/approval orchestration in one file. The architecture backlog owns `ChatServices.cs`, but no task currently owns the route component hotspot itself.\n\nEvidence from 2026-05-26 audit:\n- Largest-file scan listed `MemorySmith.App/Components/Pages/Chat.razor` at 2,511 lines.\n- `Chat.razor` switches into a large `@code` block at line 392 and retains local storage, trace, attachment, JS interop, and session-state responsibilities there.\n- Search of `Data/Tasks` found no first-class decomposition task for `Chat.razor` or route-level chat component boundaries.\n- Recent chat tasks such as `TSK-0163` and `TSK-0188` continue to land in this same route file.\n\nDesired outcome: preserve current chat and agent behavior while splitting the route into bounded child components and focused state/serialization helpers.\n\nScope:\n- In scope: transcript rendering, sidebar/history/trace panels, composer/attachment UI, stored-session parsing helpers, and route-owned state helpers.\n- In scope: characterization coverage needed before or during extraction.\n- Out of scope: changing provider semantics, chat product behavior, or write-approval policy.\n\nDependencies:\n- Coordinate with `TSK-0042` and `TSK-0049` so UI and service extraction boundaries stay aligned.\n\nAcceptance criteria:\n- `Chat.razor` is materially reduced and no longer owns transcript rendering, sidebar/trace UI, composer/attachments, and storage parsing in one file.\n- Existing chat behavior remains compatible under focused tests and route smoke coverage.\n- Future chat UI tasks can target bounded child components rather than the top-level route file.\n\nValidation:\n- Run focused chat markup/component tests and affected `PagesAndChatTests` or successor fixtures.\n- Run route-smoke or equivalent browser checks for `/chat`.\n- Run `./Scripts/Test-TaskRecords.ps1` after task creation/update.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "AgentSmith",
+  "labels": [
+    "architecture",
+    "blazor",
+    "chat",
+    "complexity",
+    "ui"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "research/codebase-untracked-task-audit-20260526",
+    "council/untracked-task-prioritization-council-20260526",
+    "tasks/sprints/untracked-codebase-gap-sprints-20260526"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0189-20260526",
+      "author": "AgentSmith",
+      "body": "Created during the 2026-05-26 untracked-gap audit after confirming the active architecture backlog still does not own the `Chat.razor` route hotspot even though the route remains the largest file in the app.",
+      "createdAtUtc": "2026-05-26T21:25:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-26T21:25:00.0000000Z",
+  "updatedAtUtc": "2026-05-26T21:25:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

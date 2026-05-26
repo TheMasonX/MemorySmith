@@ -21,7 +21,9 @@
   "externalLinks": [],
   "linkedPages": [
     "research/security-architecture-convergence-audit-20260523",
-    "tasks/sprints/security-architecture-convergence-sprint-20260523"
+    "tasks/sprints/security-architecture-convergence-sprint-20260523",
+    "research/codebase-untracked-task-audit-20260526",
+    "tasks/sprints/untracked-codebase-gap-sprints-20260526"
   ],
   "comments": [
     {
@@ -29,13 +31,19 @@
       "author": "AgentSmith",
       "body": "Created from continued audit finding C-006 on task contract drift (PascalCase and camelCase coexistence).",
       "createdAtUtc": "2026-05-23T23:35:00.0000000Z"
+    },
+    {
+      "id": "c-audit-refresh-0053-20260526",
+      "author": "AgentSmith",
+      "body": "Audit refresh on 2026-05-26: this task still matters. Current evidence shows legacy PascalCase task records such as TSK-0177 still persist alongside camelCase records, and imported tasks TSK-0026 through TSK-0028 still retain `*-new-task` ids even after later title/status normalization. The runtime tolerates both, but canonicalization and migration guidance are still incomplete.",
+      "createdAtUtc": "2026-05-26T21:29:00.0000000Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-23T23:35:00.0000000Z",
-  "updatedAtUtc": "2026-05-23T23:35:00.0000000Z",
+  "updatedAtUtc": "2026-05-26T21:29:00.0000000Z",
   "completedAtUtc": null,
   "revision": 1,
   "isArchived": false

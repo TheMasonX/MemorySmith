@@ -186,6 +186,15 @@
                         }
                     </div>
                     <div class="tasks-detail-actions">
+                        <MudTooltip Text="@TaskListHeaderActionTooltip">
+                            <MudIconButton Icon="@(IsTaskListCollapsed ? Icons.Material.Filled.ViewSidebar : Icons.Material.Filled.CenterFocusStrong)"
+                                           Color="Color.Default"
+                                           Size="Size.Small"
+                                           Disabled="@(!CanToggleTaskListCollapse)"
+                                           Class="tasks-header-icon-action"
+                                           OnClick="ToggleListCollapse"
+                                           aria-label="@TaskListHeaderActionText" />
+                        </MudTooltip>
                         <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
                             <Authorized>
                                 @if (_selectedTask.HasLoadError)
@@ -231,19 +240,6 @@
                 </div>
 
                 <section class="tasks-detail-summary" aria-label="Selected task summary">
-                    <div class="tasks-detail-summary-toolbar">
-                        <MudTooltip Text="@TaskListHeaderActionTooltip">
-                            <MudButton Variant="Variant.Outlined"
-                                       Color="Color.Default"
-                                       Size="Size.Small"
-                                       StartIcon="@(IsTaskListCollapsed ? Icons.Material.Filled.ViewSidebar : Icons.Material.Filled.CenterFocusStrong)"
-                                       Class="tasks-focus-button"
-                                       OnClick="ToggleListCollapse">
-                                @TaskListHeaderActionText
-                            </MudButton>
-                        </MudTooltip>
-                    </div>
-
                     <div class="tasks-detail-status-panel">
                         <span class="tasks-detail-section-label">Status</span>
                         <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
