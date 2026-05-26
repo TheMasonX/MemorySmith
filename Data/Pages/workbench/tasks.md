@@ -65,7 +65,7 @@ flowchart LR
 | Done | Copilot | Add separate chat-agent write root settings (distinct from maintenance-agent write roots) so chat approvals are not blocked by maintenance directory constraints. | Keep this scoped and well documented. | Completed |
 | Done | Copilot | Add startup/admin guardrails for secure remote mode: when `AllowRemoteApi=true`, require an API key and enforce HTTPS/auth hardening settings. | Remote /api and /mcp requests fail closed without `MemorySmith:ApiKey`; Admin help and diagnostics now describe the blocked remote-readiness state. | Completed |
 | Done | Copilot | Add a security profile preset system (`local-dev`, `secure-local`, `remote-hardened`) to make safe user-spec configuration easier than hand-editing many flags. | `secure-local` is the recommended dogfood/local posture; `remote-hardened` applies exposed-instance defaults while the request guard still requires an API key. | Completed |
-| Open | Copilot | Add explicit configuration for agent mutation action UX (`accept/reject/respond` visibility, default action policy, and revision-required policy) so behavior matches operator governance intent. | Track the exact action labels in the screenshot notes. | Pending |
+| Done | Copilot | Add explicit configuration for agent mutation action UX (`accept/reject/respond` visibility, default action policy, and revision-required policy) so behavior matches operator governance intent. | `/admin` now exposes `MaintenanceAgent:ActionUx`, `/proposals` uses `Accept/Respond/Reject`, and the revision gate is configurable. | Completed |
 
 ## Pages
 

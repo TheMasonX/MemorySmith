@@ -46,7 +46,7 @@ public class MaintenanceAgentWorkflowTests
         _diff = new MaintenanceDiffService();
         _permissions = new MaintenanceWritePermissionService(_config);
         var store = new FileMaintenanceProposalStore(_config, _permissions, _diff);
-        _workflow = new MaintenanceProposalWorkflow(store, new TestCurrentUserContext());
+        _workflow = new MaintenanceProposalWorkflow(store, new TestCurrentUserContext(), options: Options.Create(options));
     }
 
     [TearDown]
@@ -133,6 +133,32 @@ public class MaintenanceAgentWorkflowTests
     }
 
     [Test]
+    public async Task ProposalLifecycle_ActionUxCanAcceptNeedsRevisionProposalWithoutReplacement()
+    {
+        var workflow = CreateWorkflow(new MaintenanceAgentActionUxOptions
+        {
+            RevisionRequired = false
+        });
+        var targetPath = Path.Combine(_tempDir, "Pages", "proposal-note-accept-without-revision.md");
+        Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
+        await File.WriteAllTextAsync(targetPath, "# Proposal\n\nBefore");
+        var proposal = CreateProposal(targetPath, "# Proposal\n\nBefore", "# Proposal\n\nAfter");
+
+        var submitted = await workflow.SubmitAsync(proposal, CancellationToken.None);
+        var needsRevision = await workflow.RespondAsync(submitted.ProposalId, "Keep the diff, but adjust the note later.", CancellationToken.None);
+        var accepted = await workflow.ApproveAsync(needsRevision.ProposalId, "Accepting without a replacement proposal.", CancellationToken.None);
+        var applied = await File.ReadAllTextAsync(targetPath);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(needsRevision.Status, Is.EqualTo(MaintenanceProposalStatuses.NeedsRevision));
+            Assert.That(accepted.Status, Is.EqualTo(MaintenanceProposalStatuses.Approved));
+            Assert.That(accepted.History.Select(item => item.Action), Does.Contain("approve"));
+            Assert.That(applied, Is.EqualTo("# Proposal\n\nAfter"));
+        });
+    }
+
+    [Test]
     public async Task RequestAgentReview_PreservesStatusAndRecordsReviewRequest()
     {
         var targetPath = Path.Combine(_tempDir, "Pages", "review-note.md");
@@ -176,6 +202,33 @@ public class MaintenanceAgentWorkflowTests
             Assert.That(() => _permissions.ValidateWritablePath(outside), Throws.InvalidOperationException.With.Message.Contains("outside"));
             Assert.That(() => _permissions.ValidateWritablePath(configPath), Throws.InvalidOperationException.With.Message.Contains("schema or configuration"));
         });
+    }
+
+    private MaintenanceProposalWorkflow CreateWorkflow(MaintenanceAgentActionUxOptions? actionUx = null)
+    {
+        var options = new MemorySmithOptions
+        {
+            MaintenanceAgent = new MaintenanceAgentOptions
+            {
+                Read = [Path.Combine(_tempDir, "Memories"), Path.Combine(_tempDir, "Pages")],
+                Write = [Path.Combine(_tempDir, "Memories", "Working"), Path.Combine(_tempDir, "Pages")],
+                UseLlm = false,
+                ActionUx = actionUx ?? new MaintenanceAgentActionUxOptions(),
+                Storage = new MaintenanceAgentStorageOptions
+                {
+                    ProposalsPath = Path.Combine(_tempDir, "Proposals"),
+                    TopicMapCachePath = Path.Combine(_tempDir, "Graph", "topic-map-cache.json"),
+                    LastRunPath = Path.Combine(_tempDir, "Events", "maintenance-agent-last-run.json"),
+                    ActivityLogPath = Path.Combine(_tempDir, "Events", "maintenance-agent-runs.jsonl"),
+                    TranscriptLogPath = Path.Combine(_tempDir, "Events", "maintenance-agent-transcript.jsonl")
+                }
+            }
+        };
+
+        var config = new MaintenanceAgentConfigService(new StaticOptionsMonitor<MemorySmithOptions>(options));
+        var permissions = new MaintenanceWritePermissionService(config);
+        var store = new FileMaintenanceProposalStore(config, permissions, _diff);
+        return new MaintenanceProposalWorkflow(store, new TestCurrentUserContext(), options: Options.Create(options));
     }
 
     [Test]

@@ -674,12 +674,14 @@ public sealed class MaintenanceProposalWorkflow
     private readonly IMaintenanceProposalStore _store;
     private readonly ICurrentUserContext _currentUser;
     private readonly AuditLogService? _audit;
+    private readonly MaintenanceAgentActionUxOptions _actionUx;
 
-    public MaintenanceProposalWorkflow(IMaintenanceProposalStore store, ICurrentUserContext currentUser, AuditLogService? audit = null)
+    public MaintenanceProposalWorkflow(IMaintenanceProposalStore store, ICurrentUserContext currentUser, AuditLogService? audit = null, IOptions<MemorySmithOptions>? options = null)
     {
         _store = store;
         _currentUser = currentUser;
         _audit = audit;
+        _actionUx = options?.Value.MaintenanceAgent.ActionUx ?? new MaintenanceAgentActionUxOptions();
     }
 
     public Task<IReadOnlyList<MaintenanceWriteProposal>> ListAsync(CancellationToken cancellationToken) =>
@@ -714,7 +716,7 @@ public sealed class MaintenanceProposalWorkflow
     public async Task<MaintenanceWriteProposal> ApproveAsync(string proposalId, string? comment, CancellationToken cancellationToken)
     {
         var proposal = await LoadRequiredAsync(proposalId, cancellationToken);
-        EnsureOpen(proposal, "Only open proposals can be approved.");
+        EnsureAcceptAllowed(proposal);
         await _store.ApplyAsync(proposal, cancellationToken);
         var updated = AppendHistory(proposal, MaintenanceProposalStatuses.Approved, "approve", comment);
         var saved = await _store.SaveAsync(updated, cancellationToken);
@@ -866,6 +868,23 @@ public sealed class MaintenanceProposalWorkflow
         {
             throw new InvalidOperationException(message);
         }
+    }
+
+    private void EnsureAcceptAllowed(MaintenanceWriteProposal proposal)
+    {
+        if (string.Equals(proposal.Status, MaintenanceProposalStatuses.Open, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        if (!_actionUx.RevisionRequired && string.Equals(proposal.Status, MaintenanceProposalStatuses.NeedsRevision, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        throw new InvalidOperationException(_actionUx.RevisionRequired
+            ? "Only open proposals can be approved."
+            : "Only open or needs-revision proposals can be approved.");
     }
 
     private static MaintenanceProposalMetadata NormalizeLineage(MaintenanceProposalMetadata metadata, string proposalId)

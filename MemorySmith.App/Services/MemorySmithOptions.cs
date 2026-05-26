@@ -346,6 +346,9 @@ public class MaintenanceAgentOptions
         ["embedding_chunking_maintenance"] = true
     };
 
+    [JsonPropertyName("action_ux")]
+    public MaintenanceAgentActionUxOptions ActionUx { get; set; } = new();
+
     [JsonPropertyName("schedule")]
     public MaintenanceAgentScheduleOptions Schedule { get; set; } = new();
 
@@ -354,6 +357,62 @@ public class MaintenanceAgentOptions
 
     [JsonPropertyName("storage")]
     public MaintenanceAgentStorageOptions Storage { get; set; } = new();
+}
+
+public class MaintenanceAgentActionUxOptions
+{
+    [JsonPropertyName("show_accept")]
+    public bool ShowAccept { get; set; } = true;
+
+    [JsonPropertyName("show_respond")]
+    public bool ShowRespond { get; set; } = true;
+
+    [JsonPropertyName("show_reject")]
+    public bool ShowReject { get; set; } = true;
+
+    [JsonPropertyName("default_action")]
+    public string DefaultAction { get; set; } = MaintenanceProposalActionUx.Accept;
+
+    [JsonPropertyName("revision_required")]
+    public bool RevisionRequired { get; set; } = true;
+}
+
+public static class MaintenanceProposalActionUx
+{
+    public const string Accept = "accept";
+    public const string Respond = "respond";
+    public const string Reject = "reject";
+
+    public static readonly IReadOnlyList<string> All = [Accept, Respond, Reject];
+
+    public static string Normalize(string? action) =>
+        All.FirstOrDefault(candidate => string.Equals(candidate, action, StringComparison.OrdinalIgnoreCase)) ?? Accept;
+
+    public static bool IsVisible(MaintenanceAgentActionUxOptions? options, string action)
+    {
+        var requested = Normalize(action);
+        var snapshot = options ?? new MaintenanceAgentActionUxOptions();
+
+        return requested switch
+        {
+            Accept => snapshot.ShowAccept,
+            Respond => snapshot.ShowRespond,
+            Reject => snapshot.ShowReject,
+            _ => false
+        };
+    }
+
+    public static string NormalizeDefaultAction(MaintenanceAgentActionUxOptions? options)
+    {
+        var snapshot = options ?? new MaintenanceAgentActionUxOptions();
+        var requested = Normalize(snapshot.DefaultAction);
+        if (IsVisible(snapshot, requested))
+        {
+            return requested;
+        }
+
+        return All.FirstOrDefault(action => IsVisible(snapshot, action)) ?? Accept;
+    }
 }
 
 public class MaintenanceAgentScheduleOptions

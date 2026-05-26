@@ -93,6 +93,7 @@ Admin maintenance chat resolves in this order:
 | `MemorySmith:Chat:AgentWriteRoots` | Allows approved chat-agent memory/page proposals only inside these roots | Separate from `MaintenanceAgent:Write`; defaults to Working memories and Pages. |
 | `MemorySmith:MaintenanceAgent:DirectWrite` | Allows maintenance agent direct writes in configured write roots | Should remain false for normal proposal-first governance. |
 | `MemorySmith:MaintenanceAgent:Write` | Limits where maintenance-agent writes may land | Affects proposal/direct-write validation. |
+| `MemorySmith:MaintenanceAgent:ActionUx:*` | Controls whether Accept, Respond, and Reject appear on `/proposals`, which one is highlighted, and whether `NeedsRevision` proposals can later be accepted without a replacement revision | Governs human review UX, not chat tool permissions. |
 | User role | Controls who can approve or apply writes | Chat mode alone remains read-only. |
 
 Agent write rule: enabling `AgentWritesEnabled` allows structured write proposals to be created, but durable file changes still require the existing approval flow, sufficient role, and a target path under `Chat:AgentWriteRoots`.

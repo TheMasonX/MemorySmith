@@ -4,6 +4,7 @@
 @inject MaintenanceProposalWorkflow ProposalWorkflow
 @inject MaintenanceAgentService Agent
 @inject MaintenanceTopicMapService TopicMapService
+@inject Microsoft.Extensions.Options.IOptionsMonitor<MemorySmithOptions> Options
 @inject ISnackbar Snackbar
 
 <PageTitle>Proposals - MemorySmith</PageTitle>
@@ -228,9 +229,18 @@
                     </div>
                     <div class="proposal-action-row">
                         <MudButton Variant="Variant.Outlined" Color="Color.Info" StartIcon="@Icons.Material.Filled.RateReview" Disabled="@(_isBusy || IsClosed(_selectedProposal))" OnClick="RequestAgentReviewAsync">Request Agent Review</MudButton>
-                        <MudButton Variant="Variant.Filled" Color="Color.Success" StartIcon="@Icons.Material.Filled.Check" Disabled="@(_isBusy || !IsOpen(_selectedProposal))" OnClick="ApproveAsync">Approve</MudButton>
-                        <MudButton Variant="Variant.Outlined" Color="Color.Warning" StartIcon="@Icons.Material.Filled.Reply" Disabled="@(_isBusy || !IsOpen(_selectedProposal))" OnClick="RespondAsync">Respond</MudButton>
-                        <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.Close" Disabled="@(_isBusy || IsClosed(_selectedProposal))" OnClick="RejectAsync">Reject</MudButton>
+                        @if (ShowAcceptAction)
+                        {
+                            <MudButton Variant="@ActionVariant(MaintenanceProposalActionUx.Accept)" Color="Color.Success" StartIcon="@Icons.Material.Filled.Check" Disabled="@(_isBusy || !CanAccept(_selectedProposal))" OnClick="ApproveAsync">Accept</MudButton>
+                        }
+                        @if (ShowRespondAction)
+                        {
+                            <MudButton Variant="@ActionVariant(MaintenanceProposalActionUx.Respond)" Color="Color.Warning" StartIcon="@Icons.Material.Filled.Reply" Disabled="@(_isBusy || !IsOpen(_selectedProposal))" OnClick="RespondAsync">Respond</MudButton>
+                        }
+                        @if (ShowRejectAction)
+                        {
+                            <MudButton Variant="@ActionVariant(MaintenanceProposalActionUx.Reject)" Color="Color.Error" StartIcon="@Icons.Material.Filled.Close" Disabled="@(_isBusy || IsClosed(_selectedProposal))" OnClick="RejectAsync">Reject</MudButton>
+                        }
                     </div>
                 </div>
             }
@@ -242,6 +252,11 @@
     private const string AllFilterValue = "__all__";
     private static readonly IReadOnlyList<string> StatusOptions = [MaintenanceProposalStatuses.Open, MaintenanceProposalStatuses.NeedsRevision, MaintenanceProposalStatuses.Approved, MaintenanceProposalStatuses.Rejected];
     private static readonly IReadOnlyList<string> TaskOptions = ["staleness_scan", "relationship_integrity", "topic_map", "embedding_chunking_maintenance", "spot_checks", "consistency_checks", "synthesis"];
+    private MaintenanceAgentActionUxOptions ActionUx => Options.CurrentValue.MaintenanceAgent.ActionUx;
+    private string DefaultProposalAction => MaintenanceProposalActionUx.NormalizeDefaultAction(ActionUx);
+    private bool ShowAcceptAction => ActionUx.ShowAccept;
+    private bool ShowRespondAction => ActionUx.ShowRespond;
+    private bool ShowRejectAction => ActionUx.ShowReject;
     private IReadOnlyList<MaintenanceWriteProposal> _proposals = [];
     private MaintenanceWriteProposal? _selectedProposal;
     private TopicMapDocument? _topicMap;
@@ -488,6 +503,15 @@
 
     private static bool IsOpen(MaintenanceWriteProposal proposal) =>
         string.Equals(proposal.Status, MaintenanceProposalStatuses.Open, StringComparison.OrdinalIgnoreCase);
+
+    private bool CanAccept(MaintenanceWriteProposal proposal) =>
+        string.Equals(proposal.Status, MaintenanceProposalStatuses.Open, StringComparison.OrdinalIgnoreCase) ||
+        (!ActionUx.RevisionRequired && string.Equals(proposal.Status, MaintenanceProposalStatuses.NeedsRevision, StringComparison.OrdinalIgnoreCase));
+
+    private Variant ActionVariant(string action) =>
+        string.Equals(DefaultProposalAction, action, StringComparison.OrdinalIgnoreCase)
+            ? Variant.Filled
+            : Variant.Outlined;
 
     private static string StatusLabel(string status) => status.Replace('_', ' ');
     private static string TaskLabel(string task) => task.Replace('_', ' ');

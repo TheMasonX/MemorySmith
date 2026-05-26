@@ -168,6 +168,7 @@ Important exception: `Chat:ModelProfiles`, `DefaultModelProfileId`, and maintena
 | --- | --- | --- |
 | `MemorySmith:MaintenanceAgent:Read` / `Write` | Allowed read and write roots | `/maintenance`, proposal behavior |
 | `DirectWrite` | Allows direct writes instead of proposal-first workflow | should remain off for normal governance |
+| `ActionUx:ShowAccept`, `ShowRespond`, `ShowReject`, `DefaultAction`, `RevisionRequired` | Proposal action visibility, primary-action emphasis, and revision gate policy | `/proposals`, Admin Configuration |
 | `UseLlm`, `Provider`, `OllamaEndpoint`, `Model` | Legacy provider/model path | maintenance runs when model profiles are not assigned |
 | `ModelProfileId`, `ProposalReviewModelProfileId`, `AdminChatModelProfileId` | Structured model routing | Models tab and maintenance/chat behavior |
 | `AgentVersion` | Prompt contract version label | maintenance result metadata |

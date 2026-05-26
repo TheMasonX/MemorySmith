@@ -348,6 +348,27 @@ public class TagGovernanceTests
     }
 
     [Test]
+    public void AdminSettings_ExposeProposalActionUxSettings()
+    {
+        var source = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "Services", "AdminSettingsService.cs"));
+        var appsettings = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "appsettings.json"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(source, Does.Contain("MemorySmith:MaintenanceAgent:ActionUx:ShowAccept"));
+            Assert.That(source, Does.Contain("MemorySmith:MaintenanceAgent:ActionUx:ShowRespond"));
+            Assert.That(source, Does.Contain("MemorySmith:MaintenanceAgent:ActionUx:ShowReject"));
+            Assert.That(source, Does.Contain("MemorySmith:MaintenanceAgent:ActionUx:DefaultAction"));
+            Assert.That(source, Does.Contain("MemorySmith:MaintenanceAgent:ActionUx:RevisionRequired"));
+            Assert.That(source, Does.Contain("Proposal default action"));
+            Assert.That(source, Does.Contain("Revision required before accept"));
+            Assert.That(appsettings, Does.Contain("\"ActionUx\""));
+            Assert.That(appsettings, Does.Contain("\"DefaultAction\": \"accept\""));
+            Assert.That(appsettings, Does.Contain("\"RevisionRequired\": true"));
+        });
+    }
+
+    [Test]
     public void ChatMarkup_ReconcilesApproveAllBatchOutcomesAndPendingState()
     {
         var markup = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "Components", "Pages", "Chat.razor"));
@@ -393,6 +414,10 @@ public class TagGovernanceTests
             Assert.That(markup, Does.Not.Contain("Approval applies the diff to disk; use Respond"));
             Assert.That(markup, Does.Contain("proposal-comment-row"));
             Assert.That(markup, Does.Contain("proposal-action-row"));
+            Assert.That(markup, Does.Contain("IOptionsMonitor<MemorySmithOptions> Options"));
+            Assert.That(markup, Does.Contain("MaintenanceProposalActionUx.Accept"));
+            Assert.That(markup, Does.Contain("CanAccept(_selectedProposal)"));
+            Assert.That(markup, Does.Contain(">Accept</MudButton>"));
             Assert.That(markup, Does.Contain("Recent task activity"));
             Assert.That(markup, Does.Contain("ListRecentActivityAsync"));
             Assert.That(markup, Does.Contain("SelectProposalByIdAsync"));
