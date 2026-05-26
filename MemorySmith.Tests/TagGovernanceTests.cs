@@ -551,6 +551,29 @@ public class TagGovernanceTests
         });
     }
 
+    [Test]
+    public void ProposalsMarkup_CollapsesMaintenanceContextForProposalFirstReview()
+    {
+        var root = FindRepositoryRoot();
+        var markup = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "Components", "Pages", "Proposals.razor"));
+        var css = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "wwwroot", "app.css"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(markup, Does.Contain("proposal-context-panel"));
+            Assert.That(markup, Does.Contain("Maintenance context"));
+            Assert.That(markup, Does.Contain("MaintenanceContextSummaryText"));
+            Assert.That(markup, Does.Contain("MaintenanceContextActionText"));
+            Assert.That(markup, Does.Contain("ToggleMaintenanceContext"));
+            Assert.That(markup, Does.Contain("Open maintenance context"));
+            Assert.That(markup, Does.Contain("_isMaintenanceContextExpanded = false;"));
+            Assert.That(css, Does.Contain(".proposal-context-panel"));
+            Assert.That(css, Does.Contain(".proposal-context-body"));
+            Assert.That(css, Does.Contain(".proposal-context-actions"));
+            Assert.That(css, Does.Contain(".proposal-context-toggle"));
+        });
+    }
+
     private TagGovernanceService CreateTagGovernanceService(IMemoryStore store, TagPolicy policy)
     {
         var diagnostics = CreateDiagnosticsService(store, policy, out var policyService);

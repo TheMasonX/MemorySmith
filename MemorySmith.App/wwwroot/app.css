@@ -3576,6 +3576,57 @@ body {
     grid-template-columns: 180px minmax(0, 1fr);
 }
 
+.proposal-context-panel {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 8px;
+    padding: 10px 12px;
+    border: 1px solid var(--vscode-border);
+    border-radius: 4px;
+    background: linear-gradient(180deg, var(--vscode-panel-soft), var(--vscode-panel));
+}
+
+.proposal-context-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.proposal-context-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
+.proposal-context-summary span {
+    color: var(--vscode-text-muted);
+    font-size: 0.84rem;
+    line-height: 1.35;
+}
+
+.proposal-context-body {
+    display: grid;
+    gap: 10px;
+}
+
+.proposal-context-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.proposal-context-active-run {
+    justify-self: start;
+}
+
+.proposal-context-toggle {
+    flex-shrink: 0;
+}
+
 .proposals-body {
     display: grid;
     grid-template-columns: minmax(260px, 31%) minmax(0, 1fr);
@@ -3906,7 +3957,8 @@ body {
     display: grid;
     gap: 8px;
     padding: 10px;
-    border-bottom: 1px solid var(--vscode-border-soft);
+    border: 1px solid var(--vscode-border-soft);
+    border-radius: 4px;
     background: var(--vscode-panel-soft);
     font-size: 0.8rem;
 }
@@ -4442,6 +4494,20 @@ body {
 }
 
 @media (max-width: 700px) {
+    .proposal-context-header {
+        align-items: flex-start;
+    }
+
+    .proposal-context-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+
+    .proposal-context-actions > .mud-button-root,
+    .proposal-context-toggle {
+        width: 100%;
+    }
+
     .proposals-body {
         grid-template-columns: 1fr;
         grid-template-rows: minmax(190px, 34vh) minmax(0, 1fr);

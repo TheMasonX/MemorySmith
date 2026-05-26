@@ -30,18 +30,92 @@
                 }
             </MudSelect>
             <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" Disabled="@_isBusy" OnClick="LoadAsync">Refresh</MudButton>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Psychology" Disabled="@_isBusy" OnClick="RunNowAsync">Run Now</MudButton>
-            <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PlayArrow" Disabled="@_isBusy" OnClick="RunTaskAsync">Run Task</MudButton>
-            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.AccountTree" Disabled="@_isBusy" OnClick="RefreshTopicMapAsync">Topic Map</MudButton>
-            @if (CurrentActiveRun is not null)
-            {
-                <div class="proposal-active-run" role="status" aria-live="polite">
-                    <MudIcon Icon="@Icons.Material.Filled.HourglassTop" Size="Size.Small" />
-                    <span>@ActiveRunLabel(CurrentActiveRun) started @CurrentActiveRun.StartedAtUtc.ToLocalTime().ToString("t")</span>
-                    <small>@ActiveRunDetail(CurrentActiveRun)</small>
-                </div>
-            }
         </div>
+    </section>
+
+    <section class="proposal-context-panel @(_isMaintenanceContextExpanded ? "is-expanded" : "is-collapsed")" aria-label="Maintenance context">
+        <div class="proposal-context-header">
+            <div class="proposal-context-summary">
+                <strong>Maintenance context</strong>
+                <span>@MaintenanceContextSummaryText</span>
+            </div>
+            <MudTooltip Text="@MaintenanceContextActionTooltip" Placement="Placement.Top">
+                <MudButton Variant="Variant.Outlined"
+                           StartIcon="@MaintenanceContextActionIcon"
+                           Disabled="@_isBusy"
+                           OnClick="ToggleMaintenanceContext"
+                           Class="proposal-context-toggle">@MaintenanceContextActionText</MudButton>
+            </MudTooltip>
+        </div>
+        @if (_isMaintenanceContextExpanded)
+        {
+            <div class="proposal-context-body">
+                @if (CurrentActiveRun is not null)
+                {
+                    <div class="proposal-active-run proposal-context-active-run" role="status" aria-live="polite">
+                        <MudIcon Icon="@Icons.Material.Filled.HourglassTop" Size="Size.Small" />
+                        <span>@ActiveRunLabel(CurrentActiveRun) started @CurrentActiveRun.StartedAtUtc.ToLocalTime().ToString("t")</span>
+                        <small>@ActiveRunDetail(CurrentActiveRun)</small>
+                    </div>
+                }
+                <div class="proposal-context-actions">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Psychology" Disabled="@_isBusy" OnClick="RunNowAsync">Run Now</MudButton>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PlayArrow" Disabled="@_isBusy" OnClick="RunTaskAsync">Run Task</MudButton>
+                    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.AccountTree" Disabled="@_isBusy" OnClick="RefreshTopicMapAsync">Topic Map</MudButton>
+                </div>
+                @if (_lastRun?.Warnings.Count > 0)
+                {
+                    <div class="proposal-run-warnings">
+                        @foreach (var warning in _lastRun.Warnings.Take(3))
+                        {
+                            <span>@warning</span>
+                        }
+                    </div>
+                }
+                <div class="maintenance-activity-panel" aria-label="Recent maintenance task activity">
+                    <header>
+                        <strong>Recent task activity</strong>
+                        <span>@_activity.Count logged</span>
+                    </header>
+                    @if (_activity.Count == 0)
+                    {
+                        <span class="wiki-muted">No maintenance task activity has been logged yet.</span>
+                    }
+                    else
+                    {
+                        <div class="maintenance-activity-list">
+                            @foreach (var activity in _activity.Take(6))
+                            {
+                                <div class="maintenance-activity-row @(activity.Skipped ? "is-skipped" : null)">
+                                    <span class="maintenance-activity-main">
+                                        <strong>@ActivitySummary(activity)</strong>
+                                        <small>@activity.FinishedAtUtc.ToLocalTime().ToString("g")</small>
+                                    </span>
+                                    <span>@activity.FindingCount finding(s) - @activity.ProposalCount proposal(s)</span>
+                                    @if (activity.ProposalIds.Count > 0)
+                                    {
+                                        <div class="maintenance-activity-proposals" aria-label="Maintenance proposals from this run">
+                                            @foreach (var proposalId in activity.ProposalIds.Take(5))
+                                            {
+                                                <button type="button" @onclick="@(() => SelectProposalByIdAsync(proposalId))">@proposalId</button>
+                                            }
+                                            @if (activity.ProposalIds.Count > 5)
+                                            {
+                                                <small>+@(activity.ProposalIds.Count - 5) more</small>
+                                            }
+                                        </div>
+                                    }
+                                    @if (activity.Warnings.Count > 0)
+                                    {
+                                        <small class="maintenance-activity-warning">@activity.Warnings.First()</small>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        }
     </section>
 
     <section class="proposals-body @(_isListPaneCollapsed ? "is-list-collapsed" : string.Empty)">
@@ -59,57 +133,6 @@
                                    OnClick="CollapseListPane"
                                    aria-label="Collapse proposal list" />
                 </MudTooltip>
-            </div>
-            @if (_lastRun?.Warnings.Count > 0)
-            {
-                <div class="proposal-run-warnings">
-                    @foreach (var warning in _lastRun.Warnings.Take(3))
-                    {
-                        <span>@warning</span>
-                    }
-                </div>
-            }
-            <div class="maintenance-activity-panel" aria-label="Recent maintenance task activity">
-                <header>
-                    <strong>Recent task activity</strong>
-                    <span>@_activity.Count logged</span>
-                </header>
-                @if (_activity.Count == 0)
-                {
-                    <span class="wiki-muted">No maintenance task activity has been logged yet.</span>
-                }
-                else
-                {
-                    <div class="maintenance-activity-list">
-                        @foreach (var activity in _activity.Take(6))
-                        {
-                            <div class="maintenance-activity-row @(activity.Skipped ? "is-skipped" : null)">
-                                <span class="maintenance-activity-main">
-                                    <strong>@ActivitySummary(activity)</strong>
-                                    <small>@activity.FinishedAtUtc.ToLocalTime().ToString("g")</small>
-                                </span>
-                                <span>@activity.FindingCount finding(s) - @activity.ProposalCount proposal(s)</span>
-                                @if (activity.ProposalIds.Count > 0)
-                                {
-                                    <div class="maintenance-activity-proposals" aria-label="Maintenance proposals from this run">
-                                        @foreach (var proposalId in activity.ProposalIds.Take(5))
-                                        {
-                                            <button type="button" @onclick="@(() => SelectProposalByIdAsync(proposalId))">@proposalId</button>
-                                        }
-                                        @if (activity.ProposalIds.Count > 5)
-                                        {
-                                            <small>+@(activity.ProposalIds.Count - 5) more</small>
-                                        }
-                                    </div>
-                                }
-                                @if (activity.Warnings.Count > 0)
-                                {
-                                    <small class="maintenance-activity-warning">@activity.Warnings.First()</small>
-                                }
-                            </div>
-                        }
-                    </div>
-                }
             </div>
             <div class="wiki-results-list">
                 @foreach (var proposal in FilteredProposals)
@@ -134,7 +157,11 @@
             {
                 <div class="proposal-empty-state">
                     <MudIcon Icon="@Icons.Material.Filled.RuleFolder" Size="Size.Large" />
-                    <span>Select a proposal or run maintenance.</span>
+                    <span>@ProposalEmptyStateText</span>
+                    @if (!_isMaintenanceContextExpanded)
+                    {
+                        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Tune" OnClick="ExpandMaintenanceContext">Open maintenance context</MudButton>
+                    }
                 </div>
             }
             else
@@ -300,10 +327,26 @@
     private string _comment = string.Empty;
     private bool _isBusy;
     private bool _isListPaneCollapsed;
+    private bool _isMaintenanceContextExpanded;
     private MaintenanceActiveRunSnapshot? _activeRun;
     private MaintenanceActiveRunSnapshot? _localActiveRun;
 
     private MaintenanceActiveRunSnapshot? CurrentActiveRun => _activeRun ?? _localActiveRun;
+    private string MaintenanceContextActionText => _isMaintenanceContextExpanded ? "Hide context" : "Show context";
+    private string MaintenanceContextActionTooltip => _isMaintenanceContextExpanded
+        ? "Collapse maintenance run controls and recent activity"
+        : "Show maintenance run controls and recent activity";
+    private string MaintenanceContextActionIcon => _isMaintenanceContextExpanded
+        ? Icons.Material.Filled.UnfoldLess
+        : Icons.Material.Filled.UnfoldMore;
+    private string MaintenanceContextSummaryText => CurrentActiveRun is not null
+        ? $"{ActiveRunLabel(CurrentActiveRun)} in progress. {RecentActivitySummaryText()}"
+        : _activity.Count == 0
+            ? "Run maintenance, refresh the topic map, and review recent task activity here."
+            : RecentActivitySummaryText();
+    private string ProposalEmptyStateText => FilteredProposals.Count == 0
+        ? "No proposals match the current filters. Open maintenance context to run maintenance or review recent activity."
+        : "Select a proposal to review or open maintenance context for recent runs.";
 
     private IReadOnlyList<MaintenanceWriteProposal> FilteredProposals => _proposals
         .Where(proposal => _statusFilter == AllFilterValue || string.Equals(proposal.Status, _statusFilter, StringComparison.OrdinalIgnoreCase))
@@ -339,6 +382,7 @@
     {
         _selectedProposal = proposal;
         _comment = string.Empty;
+        _isMaintenanceContextExpanded = false;
     }
 
     private async Task SelectProposalByIdAsync(string proposalId)
@@ -362,6 +406,10 @@
     private void CollapseListPane() => _isListPaneCollapsed = true;
 
     private void ExpandListPane() => _isListPaneCollapsed = false;
+
+    private void ToggleMaintenanceContext() => _isMaintenanceContextExpanded = !_isMaintenanceContextExpanded;
+
+    private void ExpandMaintenanceContext() => _isMaintenanceContextExpanded = true;
 
     private async Task RunNowAsync()
     {
@@ -685,6 +733,13 @@
     private static string LineageAttempt(int attempt) => attempt <= 0 ? "-" : attempt.ToString();
     private static string StatusClass(string status) => "is-" + status.Replace('_', '-');
     private static string RiskClass(string risk) => "is-" + risk.ToLowerInvariant();
+    private string RecentActivitySummaryText() => _activity.Count switch
+    {
+        0 => "No recent maintenance runs are available.",
+        1 => "1 recent maintenance run is available.",
+        _ => $"{_activity.Count} recent maintenance runs are available."
+    };
+
     private static string ProposalQuickSummary(MaintenanceWriteProposal proposal)
     {
         var distinctPaths = proposal.Changes
