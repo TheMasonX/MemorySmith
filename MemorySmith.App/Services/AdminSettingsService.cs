@@ -78,10 +78,22 @@ public sealed class AdminSettingsService
             "Setting",
             descriptor.Key,
             MemorySmithAuditOutcomes.Success,
-            details: new { descriptor.Key, Value = descriptor.IsSensitive ? "Configured" : Convert.ToString(convertedValue, CultureInfo.InvariantCulture) },
+            details: new { descriptor.Key, Value = RedactedSettingValue(descriptor, convertedValue) },
             cancellationToken: cancellationToken);
 
         return new AdminSettingUpdateResult(true, null);
+    }
+
+    private static string? RedactedSettingValue(EditableSettingDescriptor descriptor, object convertedValue)
+    {
+        if (!descriptor.IsSensitive)
+        {
+            return Convert.ToString(convertedValue, CultureInfo.InvariantCulture);
+        }
+
+        return string.IsNullOrWhiteSpace(Convert.ToString(convertedValue, CultureInfo.InvariantCulture))
+            ? "Cleared"
+            : "Configured";
     }
 
     private async Task<JsonObject> LoadSettingsRootAsync(CancellationToken cancellationToken)

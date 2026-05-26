@@ -248,12 +248,18 @@
                                     <small class="admin-setting-key">@context.Item.Key</small>
                                     @if (context.Item.IsSensitive)
                                     {
-                                        <small class="admin-sensitive-hint">@context.Item.DisplayValue; enter a replacement value only when configuring or rotating it.</small>
+                                        <small class="admin-sensitive-hint">@context.Item.DisplayValue; enter a replacement value to configure or rotate it, or clear the saved value explicitly.</small>
                                     }
                                 </MudTd>
                                 <MudTd>@SettingEditor(context)</MudTd>
                                 <MudTd>
-                                    <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" Disabled="@(_isBusy || !context.IsDirty)" OnClick="@(() => SaveSettingAsync(context))">Save</MudButton>
+                                    <div class="admin-setting-actions">
+                                        <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" Disabled="@(_isBusy || !context.IsDirty)" OnClick="@(() => SaveSettingAsync(context))">Save</MudButton>
+                                        @if (context.CanClearSensitiveSetting)
+                                        {
+                                            <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error" Disabled="@_isBusy" OnClick="@(() => ClearSensitiveSettingAsync(context))">Clear secret</MudButton>
+                                        }
+                                    </div>
                                 </MudTd>
                             </RowTemplate>
                         </MudTable>
@@ -955,6 +961,35 @@
         _isBusy = false;
     }
 
+    private async Task ClearSensitiveSettingAsync(EditableConfigurationRow row)
+    {
+        if (!row.CanClearSensitiveSetting)
+        {
+            return;
+        }
+
+        if (!await Dialogs.ConfirmDestructiveActionAsync(
+            $"Clear {row.Item.Label}?",
+            $"This removes the configured value for {row.Item.Key}. Paste a replacement later if this setting is still required.",
+            "Clear secret"))
+        {
+            return;
+        }
+
+        _isBusy = true;
+        var result = await Settings.UpdateAsync(new AdminSettingUpdateRequest(row.Item.Key, string.Empty), CancellationToken.None);
+        if (result.Succeeded)
+        {
+            Snackbar.Add($"{row.Item.Label} cleared.", Severity.Success);
+            _isBusy = false;
+            await LoadAsync();
+            return;
+        }
+
+        Snackbar.Add(result.Error ?? "Setting could not be cleared.", Severity.Error);
+        _isBusy = false;
+    }
+
     private int ProviderLinkCount(string providerName) => _providerLinkCounts.TryGetValue(providerName, out var count) ? count : 0;
 
     private static string ProviderStatusClass(AuthProviderRecord provider) => provider.IsEnabled ? "wiki-status is-core" : "wiki-status";
@@ -1569,6 +1604,7 @@
         public AdminSettingItem Item { get; }
         public string PendingValue { get; set; }
         public bool IsDirty => !string.Equals(PendingValue, Item.Value, StringComparison.Ordinal);
+        public bool CanClearSensitiveSetting => Item.IsSensitive && string.Equals(Item.DisplayValue, "Configured", StringComparison.OrdinalIgnoreCase);
     }
 
     private sealed record SettingCategoryGroup(string Category, IReadOnlyList<EditableConfigurationRow> Items);

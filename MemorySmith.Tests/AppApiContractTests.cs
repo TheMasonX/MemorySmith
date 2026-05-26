@@ -884,6 +884,10 @@ Line two",
             var defaultVisibilityResponse = await adminClient.PutAsJsonAsync("/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:Pages:DefaultMinimumRole", PageAccessLevels.Authenticated));
             var sourceRootsResponse = await adminClient.PutAsJsonAsync("/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:SourceLinks:AllowedFileRoots", $"{Path.Combine(tempDir, "allowed-one")}\n{Path.Combine(tempDir, "allowed-two")}"));
             var nullableContextResponse = await adminClient.PutAsJsonAsync("/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:Chat:OllamaContextWindowTokens", string.Empty));
+            var configureApiKeyResponse = await adminClient.PutAsJsonAsync("/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:ApiKey", "contract-secret"));
+            adminClient.DefaultRequestHeaders.Add(MemorySmithRequestGuardMiddleware.ApiKeyHeaderName, "contract-secret");
+            var clearApiKeyResponse = await adminClient.PutAsJsonAsync("/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:ApiKey", string.Empty));
+            var apiKeyAudit = await adminClient.GetFromJsonAsync<PagedResult<AuditLogEntry>>("/api/admin/audit?action=settings.updated&targetKind=Setting&targetId=MemorySmith%3AApiKey&pageSize=10");
 
             Assert.Multiple(() =>
             {
@@ -899,6 +903,11 @@ Line two",
                 Assert.That(defaultVisibilityResponse.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
                 Assert.That(sourceRootsResponse.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
                 Assert.That(nullableContextResponse.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
+                Assert.That(configureApiKeyResponse.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
+                Assert.That(clearApiKeyResponse.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
+                Assert.That(apiKeyAudit?.Data.Select(item => item.DetailsJson), Has.Some.Contains("Configured"));
+                Assert.That(apiKeyAudit?.Data.Select(item => item.DetailsJson), Has.Some.Contains("Cleared"));
+                Assert.That(apiKeyAudit?.Data.Select(item => item.DetailsJson), Has.None.Contains("contract-secret"));
                 Assert.That(File.Exists(settingsPath), Is.True);
             });
 
@@ -907,6 +916,8 @@ Line two",
             Assert.That(json, Does.Contain("\"DefaultMinimumRole\": \"Authenticated\""));
             Assert.That(json, Does.Contain("\"AllowedFileRoots\": ["));
             Assert.That(json, Does.Contain("\"OllamaContextWindowTokens\": null"));
+            Assert.That(json, Does.Contain("\"ApiKey\": \"\""));
+            Assert.That(json, Does.Not.Contain("contract-secret"));
         }
         finally
         {

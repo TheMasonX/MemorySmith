@@ -2984,6 +2984,12 @@ body {
     overflow-wrap: anywhere;
 }
 
+.admin-setting-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
 .admin-help-icon {
     display: inline-flex;
     align-items: center;

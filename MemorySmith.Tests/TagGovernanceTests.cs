@@ -278,6 +278,23 @@ public class TagGovernanceTests
     }
 
     [Test]
+    public void AdminMarkup_ExposesExplicitSensitiveSettingClearFlow()
+    {
+        var root = FindRepositoryRoot();
+        var markup = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "Components", "Pages", "Admin.razor"));
+        var css = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "wwwroot", "app.css"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(markup, Does.Contain("Clear secret"));
+            Assert.That(markup, Does.Contain("ClearSensitiveSettingAsync"));
+            Assert.That(markup, Does.Contain("CanClearSensitiveSetting"));
+            Assert.That(markup, Does.Contain("ConfirmDestructiveActionAsync"));
+            Assert.That(css, Does.Contain(".admin-setting-actions"));
+        });
+    }
+
+    [Test]
     public void ChatMarkup_UsesAdminDefinedModelProfilesForSelection()
     {
         var root = FindRepositoryRoot();
