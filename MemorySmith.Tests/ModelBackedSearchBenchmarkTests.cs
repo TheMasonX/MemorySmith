@@ -229,8 +229,14 @@ public sealed class ModelBackedSearchBenchmarkTests
         var dataRoot = Path.GetDirectoryName(memoriesPath) ?? tempRoot;
         Directory.CreateDirectory(Path.Combine(dataRoot, "Events"));
         Directory.CreateDirectory(Path.Combine(dataRoot, "Graph"));
+        Directory.CreateDirectory(Path.Combine(dataRoot, "Models"));
         Directory.CreateDirectory(Path.Combine(dataRoot, "Pages"));
-        CopyDirectory(Path.Combine(FindRepositoryRoot(), "Data", "Models"), Path.Combine(dataRoot, "Models"));
+        var modelsSource = Path.Combine(FindRepositoryRoot(), "Data", "Models");
+        if (Directory.Exists(modelsSource))
+        {
+            CopyDirectory(modelsSource, Path.Combine(dataRoot, "Models"));
+        }
+
         return memoriesPath;
     }
 

@@ -1,5 +1,7 @@
 # Comprehensive Codebase Audit Report - Security Focus (2026-05-23)
 
+> Historical note: this page captures the 2026-05-23 security posture snapshot, not guaranteed current state. Some findings were later addressed by follow-up work such as `TSK-0023` (remote hardening) and `TSK-0055` (task read authorization). Verify current behavior against current code, README, and canonical task records before planning from this audit.
+
 ## Safety Stance
 
 MemorySmith should preserve functionality while enforcing a safe-by-default posture, with explicit opt-in switches for elevated risk capabilities. Security controls should fail closed where practical and expose clear operator guidance where strict blocking would disrupt expected local workflows.
@@ -31,7 +33,8 @@ MemorySmith should preserve functionality while enforcing a safe-by-default post
 - MemorySmith.App/Controllers/PagesController.cs
 - MemorySmith.App/Controllers/SourceLinksController.cs
 - MemorySmith.App/appsettings.json
-- MemorySmith.App/appsettings.LocalDevelopment.json
+- MemorySmith.App/Services/MemorySmithLocalDevelopmentPostConfigure.cs
+- MemorySmith.App/Properties/launchSettings.json
 - MemorySmith.Tests/SecurityAndSourceLinkTests.cs
 - MemorySmith.Tests/AppApiContractTests.cs
 - Data/Tasks/tsk-0023-add-startup-admin-guardrails-for-secure-remote-mode-when-allowremoteapi-true-require-an-api-key-and-enforce-https-auth-hardening-settings.json
@@ -44,7 +47,7 @@ MemorySmith should preserve functionality while enforcing a safe-by-default post
 | F-002 | Transport/cookie security | High | 87% | Cookie auth sets SameSite and sliding expiration, but no explicit secure cookie policy or HSTS policy is configured. In HTTP deployments this can weaken transport guarantees. | MemorySmith.App/Program.cs |
 | F-003 | Proxy/trust boundary | Medium | 82% | Loopback and HTTPS-sensitive decisions rely on Connection.RemoteIpAddress and Request.IsHttps without explicit forwarded-header trust configuration, creating risk in reverse-proxy deployments. | MemorySmith.App/Services/MemorySmithRequestGuardMiddleware.cs, MemorySmith.App/Services/SecurityServices.cs, MemorySmith.App/Controllers/AuthController.cs |
 | F-004 | Setup/auth CSRF resilience | Medium | 76% | Setup and login form endpoints are anonymous form posts and currently rely on ambient browser protections and deployment context rather than explicit anti-forgery enforcement at those endpoints. | MemorySmith.App/Controllers/AdminController.cs, MemorySmith.App/Controllers/AuthController.cs, MemorySmith.App/Program.cs |
-| F-005 | Risky-local profile drift | Medium | 90% | LocalDevelopment overrides intentionally relax multiple controls (remote API, raw HTML pages, larger limits, agent writes), but no first-class profile gate prevents accidental carryover into less-trusted environments. | MemorySmith.App/appsettings.LocalDevelopment.json, MemorySmith.App/Services/AdminSettingsService.cs |
+| F-005 | Risky-local profile drift | Medium | 90% | LocalDevelopment post-configuration intentionally relaxes multiple controls (remote API, raw HTML pages, larger limits, agent writes), but no first-class profile gate prevents accidental carryover into less-trusted environments. | MemorySmith.App/Services/MemorySmithLocalDevelopmentPostConfigure.cs, MemorySmith.App/Properties/launchSettings.json, MemorySmith.App/Services/AdminSettingsService.cs |
 | F-006 | Positive control: source-link file boundaries | Low | 95% | Source-link access is constrained to configured roots and uses path normalization; open-with-default-app is gated by setting and root checks. | MemorySmith.App/Services/VarResolver.cs, MemorySmith.Tests/SecurityAndSourceLinkTests.cs |
 | F-007 | Positive control: bootstrap token and strong password floor | Low | 94% | First-admin setup enforces bootstrap token path for non-loopback setup and uses strong password minimum, with token hash checked in fixed time compare. | MemorySmith.App/Services/SecurityServices.cs |
 

@@ -35,7 +35,7 @@
     },
     {
       "Label": "Memory Governance Guide",
-      "Uri": "%MemorySmithRepo%Data/Pages/memory-governance-guide.md"
+      "Uri": "%MemorySmithRepo%Data/Pages/guides/memory-governance-guide.md"
     }
   ],
   "UsageCount": 0,

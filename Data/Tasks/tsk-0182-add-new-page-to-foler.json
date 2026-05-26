@@ -1,0 +1,31 @@
+﻿{
+  "id": "tsk-0182-add-new-page-to-foler",
+  "key": "TSK-0182",
+  "title": "Add New Page To Foler",
+  "description": "When adding a new page, it should have a way to select the folder. Additional tasks would be button to add/rename/remove folder (can\u0027t remove if not empty) and to support moving files between folders",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-26T19:15:24.6212105Z",
+  "updatedAtUtc": "2026-05-26T19:15:24.6212105Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

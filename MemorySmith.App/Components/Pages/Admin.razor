@@ -54,12 +54,12 @@
                     <MudTd DataLabel="User">
                         <div class="admin-user-primary">
                             <strong>@context.User.DisplayName</strong>
-                            <SensitiveValue Value="@context.User.UserId" Summary="@SummarizeIdentifier(context.User.UserId)" Label="@($"{context.User.DisplayName} user ID")" Class="admin-sensitive-value admin-sensitive-compact" />
+                            <SensitiveValue Value="@context.User.UserId" Summary="@SummarizeIdentifier(context.User.UserId)" Label="@($"{context.User.DisplayName} user ID")" Class="admin-sensitive-value admin-sensitive-compact" AllowReveal="false" />
                         </div>
                     </MudTd>
                     <MudTd DataLabel="Email">
                         <div class="admin-user-secondary">
-                            <SensitiveValue Value="@context.User.Email" Summary="@MaskEmail(context.User.Email)" Label="@($"{context.User.DisplayName} email")" Class="admin-sensitive-value" EmptyText="-" />
+                            <SensitiveValue Value="@context.User.Email" Summary="@MaskEmail(context.User.Email)" Label="@($"{context.User.DisplayName} email")" Class="admin-sensitive-value" EmptyText="-" AllowReveal="false" />
                         </div>
                     </MudTd>
                     <MudTd DataLabel="Status">@(context.User.IsDisabled ? "Disabled" : "Active")</MudTd>
@@ -358,7 +358,7 @@
                         }
                         else
                         {
-                            <SensitiveValue Value="@context.ExactValue" Summary="@context.DisplayValue" Label="@($"{context.Key} value")" Class="admin-sensitive-value" />
+                            <SensitiveValue Value="@context.ExactValue" Summary="@context.DisplayValue" Label="@($"{context.Key} value")" Class="admin-sensitive-value" AllowReveal="false" />
                         }
                     </MudTd>
                 </RowTemplate>

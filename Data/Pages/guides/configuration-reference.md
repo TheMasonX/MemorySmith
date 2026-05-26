@@ -3,7 +3,7 @@
 MemorySmith configuration is rooted under `MemorySmith` in appsettings and is split across three operator surfaces:
 
 1. Base app settings in `MemorySmith.App/appsettings.json`.
-2. Admin-edited overrides in `appsettings.LocalDevelopment.json` or the file referenced by `MemorySmith:SettingsOverridePath`.
+2. Admin-edited overrides in `appsettings.LocalOverrides.json` or the file referenced by `MemorySmith:SettingsOverridePath`.
 3. Structured model profile management in `/admin` on the Models tab.
 
 This page is the operator and agent-oriented map of the configuration groups, where they are edited, and how to verify the running result. It is intentionally grouped for readability rather than an exhaustive per-key table; `TSK-0158` tracks a generated inventory/coverage check for every editable admin setting key.
@@ -20,7 +20,7 @@ This page is the operator and agent-oriented map of the configuration groups, wh
 ## Configuration Storage Model
 
 - Base defaults live in `MemorySmith.App/appsettings.json`.
-- The admin UI writes edited settings into `appsettings.LocalDevelopment.json` beside the running app unless `MemorySmith:SettingsOverridePath` points somewhere else.
+- The admin UI writes edited settings into `appsettings.LocalOverrides.json` beside the running app unless `MemorySmith:SettingsOverridePath` points somewhere else.
 - Sensitive values are write-only in the admin UI. The app reports `Configured` or `Not configured` instead of echoing secrets, and configured secrets are cleared through the explicit `Clear secret` action rather than a blank replacement field.
 - List settings are edited one value per line.
 - Nullable integers such as `MemorySmith:Chat:OllamaContextWindowTokens` accept a blank value to clear the override.
@@ -66,6 +66,22 @@ Agent note: if behavior looks wrong across multiple routes, check the effective 
 Recommended dogfood default: leave explicit settings in their secure-local posture, or set `MemorySmith:SecurityProfile=secure-local` when you want the preset recorded in configuration.
 
 Safe default: keep `AllowRemoteApi=false` unless the instance is intentionally exposed and an API key plus transport/auth posture are already in place. With `AllowRemoteApi=true` and no API key, non-loopback `/api` and `/mcp` requests are blocked until the key is configured.
+
+Runtime note: `MemorySmith:SecurityProfile=local-dev` and `ASPNETCORE_ENVIRONMENT=LocalDevelopment` are related but not identical. The security profile applies a small preset under any environment; the `LocalDevelopment` environment also runs `MemorySmithLocalDevelopmentPostConfigure`, which applies additional dogfood-friendly defaults only when those keys are not already overridden in `appsettings.LocalOverrides.json` or the configured `SettingsOverridePath` file.
+
+Representative `LocalDevelopment` post-configuration defaults when keys are missing:
+
+| Key | LocalDevelopment default | Why it matters |
+| --- | --- | --- |
+| `MemorySmith:AllowRemoteApi` | `true` | Makes non-loopback API/MCP exposure possible once an API key is configured. |
+| `MemorySmith:Auth:RequireHttpsForRemoteAuth` | `false` | Permits local HTTP auth flows for dogfood/debug use. |
+| `MemorySmith:Auth:OpenLocalEditorCompatibility` | `false` | Prefers the stricter local-editor compatibility posture unless explicitly overridden. |
+| `MemorySmith:Pages:AllowRawHtml` | `true` | Trusted local pages can render raw HTML. |
+| `MemorySmith:Chat:AgentWritesEnabled` | `true` | Agent mode can create approval-gated proposals by default. |
+| `MemorySmith:Chat:*` limits | larger timeout, context, attachment, and tool-loop caps | Local dogfood runs allow bigger chat/tool payloads than the secure-local baseline. |
+| `MemorySmith:Limits:*` and `MemorySmith:SourceLinks:MaxReadBytes` | higher content/search/source-link ceilings | Large local wiki and source-bundle workflows work without immediate tuning. |
+
+Operator check: when environment behavior does not match the intended profile, verify both the active ASP.NET Core environment and whether the key is explicitly present in the override file. `TSK-0181` tracks the current malformed-override caveat in this path.
 
 ## Database
 
@@ -194,7 +210,8 @@ Telemetry defaults are local-first: telemetry is enabled, exporter is off, sampl
 1. Check `/health` for path state, semantic provider status, maintenance state, and runtime configuration clues.
 2. Check `/api/diagnostics` for effective paths, source-link roots, telemetry config visibility, configured URLs, and warnings.
 3. Check `/chat`, `/maintenance`, `/proposals`, `/tags`, `/tasks`, and `/variables` when the suspected drift is feature-specific.
-4. Inspect `appsettings.LocalDevelopment.json` or the configured override file when UI behavior and expected values disagree.
+4. Inspect `appsettings.LocalOverrides.json` or the configured override file when UI behavior and expected values disagree.
+5. If `LocalDevelopment` behavior looks unexpectedly permissive, validate that the override file parses cleanly. Current known risk `TSK-0181` tracks malformed or unreadable override files being treated like missing overrides during LocalDevelopment post-configuration.
 
 ## Agent Assistance Notes
 

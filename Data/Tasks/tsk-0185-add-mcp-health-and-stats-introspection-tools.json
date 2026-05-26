@@ -1,0 +1,44 @@
+{
+  "id": "tsk-0185-add-mcp-health-and-stats-introspection-tools",
+  "key": "TSK-0185",
+  "title": "Add MCP health and stats introspection tools",
+  "description": "Problem: external agents currently have no first-class MCP tool for checking MemorySmith service readiness, stats, or bounded operational diagnostics. The app already exposes `/health`, `/api/stats`, and `/api/diagnostics` through `HealthController`, `StatsController`, and `DiagnosticsController`, and the wiki documents those surfaces, but MCP callers must infer system state indirectly from search behavior and tool failures. That makes it harder for external agents to distinguish an empty result set from a degraded embedding provider, disabled feature surface, or broader runtime issue.\n\nEvidence from 2026-05-26 audit:\n- `MemorySmith.App/Controllers/HealthController.cs`, `StatsController.cs`, and `DiagnosticsController.cs` already expose health/diagnostic information over HTTP.\n- `MemorySmith.App/Services/OperationalDiagnosticsService.cs` builds the redacted operational snapshot behind those surfaces.\n- `Data/Pages/features/health-and-diagnostics.md` and `README.md` document the health/stats endpoints for humans, but `Data/Tasks` contains no MCP-facing task for exposing an equivalent bounded read-only surface to agents.\n\nDesired outcome: external MCP agents can query a small, explicit health/stats surface before or after retrieval work without scraping human-oriented pages or guessing from downstream failures.\n\nScope:\n- In scope: one or more read-only MCP tools that expose bounded health, stats, and safe operational-diagnostics summaries appropriate for agent consumption.\n- In scope: defining the authorization contract, redaction boundaries, and output shape for those tools.\n- Out of scope: exposing secrets, raw logs, or full admin-only diagnostics dumps without redaction.\n\nAcceptance criteria:\n- MCP exposes a bounded read-only health/stats surface backed by the existing runtime services.\n- The tool output clearly distinguishes readiness, counts/activity, and any degraded-provider or diagnostics summary fields that are safe to expose.\n- The authorization contract is explicit and tested.\n- Documentation explains when agents should use the MCP health/stats tools versus the existing UI/REST surfaces.\n\nValidation:\n- Add focused tests for the new MCP tool surface and authorization behavior.\n- Run the affected MCP/diagnostics test slice.\n- Run `./Scripts/Test-TaskRecords.ps1` after task creation/update.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "AgentSmith",
+  "labels": [
+    "diagnostics",
+    "health",
+    "mcp",
+    "observability"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "features/api-and-mcp",
+    "features/health-and-diagnostics"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0185-20260526",
+      "author": "AgentSmith",
+      "body": "Created during Claude benchmark triage after verifying that MemorySmith already has human/REST health and stats surfaces but no equivalent MCP tool for external agents.",
+      "createdAtUtc": "2026-05-26T19:21:08.5835278Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-26T19:21:08.5835278Z",
+  "updatedAtUtc": "2026-05-26T19:21:08.5835278Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

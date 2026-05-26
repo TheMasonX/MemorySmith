@@ -1,0 +1,46 @@
+{
+  "id": "tsk-0183-characterize-and-regression-test-mcp-write-tool-denial-path",
+  "key": "TSK-0183",
+  "title": "Characterize and regression-test MCP write-tool denial path",
+  "description": "Problem: the Claude MCP benchmark report from 2026-05-26 observed that edit-gated MCP write tools appeared to stall for several minutes for a Viewer-level caller instead of returning prompt unauthorized feedback. Current code in `MemorySmith.App/Controllers/McpController.cs` appears to deny `ChatToolRisk.Write` tools immediately through `CanEditMemorySmithAsync()`, and `MemorySmith.Tests/McpAndSemanticSearchTests.cs` covers authorized mutation, but there is no focused regression coverage for unauthorized write calls over `/mcp` under auth-enabled, admin-provisioned profiles. `MemorySmith.App/Services/SecurityServices.cs` also retains loopback bootstrap compatibility before first-admin setup, so local smoke results can differ from external-agent behavior in non-obvious ways.\n\nEvidence from 2026-05-26 audit:\n- `Data/Pages/audits/claude-mcp-benchmark-report-5-26-26.md` reports multi-minute silent timeouts for edit-gated write tools.\n- `MemorySmith.App/Controllers/McpController.cs` currently checks `tool.Risk == ChatToolRisk.Write` and returns `The caller is not authorized to perform write operations.` when `CanEditMemorySmithAsync()` fails.\n- `MemorySmith.App/Services/SecurityServices.cs` grants loopback edit compatibility before the first Admin exists, which can mask denial-path behavior during local testing.\n- Search of `Data/Tasks` found no existing task owning external unauthorized MCP write-tool behavior or denial-path regression coverage.\n\nDesired outcome: unauthorized callers to MCP write tools should receive deterministic immediate feedback, and MemorySmith should have regression coverage for the relevant auth profiles and bootstrap edge cases so external agent behavior matches the documented contract.\n\nScope:\n- In scope: `/mcp` write-tool denial behavior for task and page mutation tools, auth-enabled profile setup, first-admin bootstrap edge cases, and focused regression tests.\n- In scope: documenting the actual JSON-RPC denial contract if current docs are ambiguous.\n- Out of scope: redesigning the overall RBAC model or changing chat-side tool policy.\n\nAcceptance criteria:\n- The external timeout report is either reproduced and fixed or decisively falsified against a documented auth-enabled test profile.\n- Unauthorized callers receive an immediate structured denial for MCP write tools rather than a multi-minute stall.\n- Focused tests cover the relevant anonymous/viewer/editor/admin and loopback-bootstrap cases.\n- MCP documentation reflects the actual denial behavior if the current wording is incomplete.\n\nValidation:\n- Add focused MCP authorization regression tests around unauthorized write-tool calls.\n- Run the affected `McpAndSemanticSearchTests` slice or equivalent focused coverage.\n- Run `./Scripts/Test-TaskRecords.ps1` after task creation/update.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "AgentSmith",
+  "labels": [
+    "audit",
+    "external-agents",
+    "mcp",
+    "security",
+    "tests"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "audits/claude-mcp-benchmark-report-5-26-26",
+    "features/api-and-mcp",
+    "guides/search-and-chat"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0183-20260526",
+      "author": "AgentSmith",
+      "body": "Created during Claude benchmark triage. Current controller code looks fail-fast, so this task explicitly owns reproducing or falsifying the reported timeout under an auth-enabled profile and locking the result in focused regression tests.",
+      "createdAtUtc": "2026-05-26T19:21:06.5835278Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-26T19:21:06.5835278Z",
+  "updatedAtUtc": "2026-05-26T19:21:06.5835278Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

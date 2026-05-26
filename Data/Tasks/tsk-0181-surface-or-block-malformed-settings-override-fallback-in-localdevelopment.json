@@ -1,0 +1,45 @@
+{
+  "id": "tsk-0181-surface-or-block-malformed-settings-override-fallback-in-localdevelopment",
+  "key": "TSK-0181",
+  "title": "Surface or block malformed settings override fallback in LocalDevelopment",
+  "description": "Problem: `MemorySmithLocalDevelopmentPostConfigure` currently treats an unreadable or malformed settings override file as if no overrides exist. `LoadOverrideKeys()` catches `JsonException`, `IOException`, and `UnauthorizedAccessException` and returns an empty set, then `PostConfigure()` applies permissive LocalDevelopment defaults such as `AllowRemoteApi=true`, `RequireHttpsForRemoteAuth=false`, `Pages:AllowRawHtml=true`, larger limits, and `Chat:AgentWritesEnabled=true` whenever those keys appear missing. This means a broken `appsettings.LocalOverrides.json` or custom `SettingsOverridePath` can silently widen the effective local-dev posture instead of preserving the operator's intended overrides or surfacing a configuration fault.\n\nEvidence from 2026-05-26 audit:\n- `MemorySmith.App/Services/MemorySmithLocalDevelopmentPostConfigure.cs` `LoadOverrideKeys()` returns an empty set on parse/read/access failures.\n- The same class applies permissive LocalDevelopment defaults through `ApplyIfMissing(...)` when override keys are absent.\n- The runtime uses `MemorySmithConfigurationPaths.ResolveSettingsOverridePath(...)` in startup and admin settings paths, so a malformed override file can affect both operator-edited settings and LocalDevelopment post-configuration behavior.\n- No focused task or test coverage was found for malformed settings override fallback behavior.\n\nDesired outcome: malformed or unreadable settings override files should not silently re-enable permissive LocalDevelopment defaults. Operators and agents should get an explicit signal, and the app should either fail fast or fall back in a privacy/security-conscious direction.\n\nScope:\n- In scope: LocalDevelopment post-configuration, override-file parse/read failure handling, startup or diagnostics surfacing, and focused tests for malformed override behavior.\n- In scope: define whether malformed override files should block startup, suppress permissive defaults, or surface a high-severity diagnostics warning with deterministic safe behavior.\n- Out of scope: redesigning the entire settings system or replacing the local override file model.\n\nAcceptance criteria:\n- A malformed or unreadable settings override file does not silently widen the effective LocalDevelopment posture.\n- Operators can see a clear startup/diagnostics signal that the override file failed to load, including which path failed and why, subject to existing redaction posture.\n- The chosen fallback behavior is explicit and covered by tests.\n- Focused tests prove malformed override files do not quietly re-enable permissive defaults such as remote API, raw HTML, or agent writes.\n\nValidation:\n- Add focused tests around `MemorySmithLocalDevelopmentPostConfigure` with malformed and unreadable override files.\n- Run the affected security/configuration test slice.\n- Run `./Scripts/Test-TaskRecords.ps1` after task creation/update.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "AgentSmith",
+  "labels": [
+    "configuration",
+    "diagnostics",
+    "localdevelopment",
+    "security",
+    "startup"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "guides/configuration-reference",
+    "features/health-and-diagnostics"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0181-20260526",
+      "author": "AgentSmith",
+      "body": "Created during 2026-05-26 audit after verifying that LocalDevelopment post-configuration silently treats malformed settings override files as missing and can reapply permissive defaults without surfacing an operator-visible fault.",
+      "createdAtUtc": "2026-05-26T17:39:18.9727231Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-26T17:39:18.9727231Z",
+  "updatedAtUtc": "2026-05-26T17:39:18.9727231Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

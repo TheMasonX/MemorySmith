@@ -263,6 +263,7 @@ public class TagGovernanceTests
             Assert.That(markup, Does.Not.Contain("_maintenanceTranscriptSearch"));
             Assert.That(markup, Does.Not.Contain("title=\"@context.Item.HelpText\""));
             Assert.That(markup, Does.Contain("admin-users-table"));
+            Assert.That(CountOccurrences(markup, "AllowReveal=\"false\""), Is.EqualTo(3));
             Assert.That(markup, Does.Contain("DataLabel=\"User\""));
             Assert.That(markup, Does.Contain("DataLabel=\"Last login\""));
             Assert.That(markup, Does.Contain("admin-user-primary"));
@@ -427,6 +428,21 @@ public class TagGovernanceTests
             Assert.That(markup, Does.Contain("CanClearSensitiveSetting"));
             Assert.That(markup, Does.Contain("ConfirmDestructiveActionAsync"));
             Assert.That(css, Does.Contain(".admin-setting-actions"));
+        });
+    }
+
+    [Test]
+    public void SensitiveValueMarkup_RevealsWithoutRenderingHideActions()
+    {
+        var markup = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "Components", "SensitiveValue.razor"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(markup, Does.Contain("[Parameter] public bool AllowReveal { get; set; } = true;"));
+            Assert.That(markup, Does.Contain("@if (AllowReveal && !_isRevealed)"));
+            Assert.That(markup, Does.Contain("private void Reveal()"));
+            Assert.That(markup, Does.Not.Contain("VisibilityOff"));
+            Assert.That(markup, Does.Not.Contain("ToggleReveal"));
         });
     }
 
@@ -661,5 +677,19 @@ public class TagGovernanceTests
         }
 
         throw new DirectoryNotFoundException("Could not locate MemorySmith.slnx from the test output directory.");
+    }
+
+    private static int CountOccurrences(string source, string value)
+    {
+        var count = 0;
+        var startIndex = 0;
+
+        while ((startIndex = source.IndexOf(value, startIndex, StringComparison.Ordinal)) >= 0)
+        {
+            count++;
+            startIndex += value.Length;
+        }
+
+        return count;
     }
 }
