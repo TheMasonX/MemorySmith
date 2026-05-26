@@ -156,6 +156,30 @@ public class TagGovernanceTests
     }
 
     [Test]
+    public void MemoryViewerMarkup_CollapsesSecondaryFiltersAndRelatedContextByDefault()
+    {
+        var root = FindRepositoryRoot();
+        var markup = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "Components", "Pages", "MemoryViewer.razor"));
+        var css = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "wwwroot", "app.css"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(markup, Does.Contain("wiki-commandbar-main"));
+            Assert.That(markup, Does.Contain("wiki-secondary-filters"));
+            Assert.That(markup, Does.Contain("Search options"));
+            Assert.That(markup, Does.Contain("SecondaryFiltersSummary"));
+            Assert.That(markup, Does.Contain("wiki-related-panel"));
+            Assert.That(markup, Does.Contain("Related context"));
+            Assert.That(markup, Does.Contain("RelatedContextSummary(_selectedRecord)"));
+            Assert.That(css, Does.Contain(".wiki-secondary-filters"));
+            Assert.That(css, Does.Contain(".wiki-secondary-filters-body"));
+            Assert.That(css, Does.Contain(".wiki-related-panel"));
+            Assert.That(css, Does.Contain(".wiki-related-panel[open] > .wiki-related-body"));
+            Assert.That(css, Does.Not.Contain("max-height: 32%;"));
+        });
+    }
+
+    [Test]
     public void TagManagerMarkup_ExposesPolicyEditingUsageAndSuggestionReview()
     {
         var markup = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "Components", "Pages", "TagManager.razor"));

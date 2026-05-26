@@ -16,73 +16,83 @@
             <span class="wiki-count">@_totalCount records</span>
         </div>
 
-        <div class="wiki-search-strip">
-            <div class="wiki-search-main">
-                <MudTextField @bind-Value="_searchQuery"
-                              Label="@SearchLabel"
-                              Placeholder="@SearchPlaceholder"
-                              Variant="Variant.Outlined"
-                              Margin="Margin.Dense"
-                              Adornment="Adornment.Start"
-                              AdornmentIcon="@Icons.Material.Filled.Search"
-                              OnKeyUp="OnSearchKeyUp"
-                              Class="wiki-search-box" />
-                <MudTooltip Text="Clear search">
-                    <MudIconButton Icon="@Icons.Material.Filled.Clear"
-                                   Size="Size.Small"
-                                   Class="wiki-search-clear"
-                                   OnClick="ClearAsync"
-                                   aria-label="Clear"
-                                   title="Clear search" />
-                </MudTooltip>
-                <MudTooltip Text="Search">
-                    <MudIconButton Icon="@Icons.Material.Filled.Search"
-                                   Variant="Variant.Filled"
-                                   Color="Color.Primary"
-                                   Size="Size.Small"
-                                   Class="wiki-search-submit"
-                                   OnClick="SearchAsync"
-                                   aria-label="Search"
-                                   title="Search" />
-                </MudTooltip>
+        <div class="wiki-commandbar-main">
+            <div class="wiki-search-strip">
+                <div class="wiki-search-main">
+                    <MudTextField @bind-Value="_searchQuery"
+                                  Label="@SearchLabel"
+                                  Placeholder="@SearchPlaceholder"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.Search"
+                                  OnKeyUp="OnSearchKeyUp"
+                                  Class="wiki-search-box" />
+                    <MudTooltip Text="Clear search">
+                        <MudIconButton Icon="@Icons.Material.Filled.Clear"
+                                       Size="Size.Small"
+                                       Class="wiki-search-clear"
+                                       OnClick="ClearAsync"
+                                       aria-label="Clear"
+                                       title="Clear search" />
+                    </MudTooltip>
+                    <MudTooltip Text="Search">
+                        <MudIconButton Icon="@Icons.Material.Filled.Search"
+                                       Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       Size="Size.Small"
+                                       Class="wiki-search-submit"
+                                       OnClick="SearchAsync"
+                                       aria-label="Search"
+                                       title="Search" />
+                    </MudTooltip>
+                </div>
+
+                <div class="wiki-navigation-controls">
+                    <MudTooltip Text="@(_isResultsPaneCollapsed ? "Show memory results list" : "Hide memory results list")">
+                        <MudIconButton Icon="@(_isResultsPaneCollapsed ? Icons.Material.Filled.Menu : Icons.Material.Filled.MenuOpen)"
+                                       Size="Size.Small"
+                                       OnClick="ToggleResultsPane"
+                                       aria-label="Toggle memory results list"
+                                       title="Toggle memory results list" />
+                    </MudTooltip>
+                    <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
+                        <Authorized>
+                            <MudTooltip Text="New memory">
+                                <MudIconButton Icon="@Icons.Material.Filled.Add"
+                                               Size="Size.Small"
+                                               Color="Color.Success"
+                                               OnClick="NewRecord"
+                                               aria-label="New"
+                                               title="New memory" />
+                            </MudTooltip>
+                        </Authorized>
+                    </AuthorizeView>
+                </div>
             </div>
 
-            <MudSelect T="MemoryStatus?" @bind-Value="_statusFilter" Label="Status" Clearable="true" Variant="Variant.Outlined" Margin="Margin.Dense" Class="wiki-filter">
-                @foreach (MemoryStatus status in Enum.GetValues(typeof(MemoryStatus)))
-                {
-                    <MudSelectItem T="MemoryStatus?" Value="@((MemoryStatus?)status)">@status</MudSelectItem>
-                }
-            </MudSelect>
+            <details class="wiki-secondary-filters">
+                <summary>
+                    <span>Search options</span>
+                    <span class="wiki-secondary-filters-summary-text">@SecondaryFiltersSummary</span>
+                </summary>
+                <div class="wiki-secondary-filters-body">
+                    <MudSelect T="MemoryStatus?" @bind-Value="_statusFilter" Label="Status" Clearable="true" Variant="Variant.Outlined" Margin="Margin.Dense" Class="wiki-filter">
+                        @foreach (MemoryStatus status in Enum.GetValues(typeof(MemoryStatus)))
+                        {
+                            <MudSelectItem T="MemoryStatus?" Value="@((MemoryStatus?)status)">@status</MudSelectItem>
+                        }
+                    </MudSelect>
 
-            <MudTextField @bind-Value="_tagsFilter" Label="Tags" Placeholder="project-wiki, search" Variant="Variant.Outlined" Margin="Margin.Dense" Class="wiki-filter" />
+                    <MudTextField @bind-Value="_tagsFilter" Label="Tags" Placeholder="project-wiki, search" Variant="Variant.Outlined" Margin="Margin.Dense" Class="wiki-filter" />
 
-            <MudButtonGroup Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" Class="wiki-mode-toggle">
-                <MudButton Variant="@(_searchMode == SearchMode.Lexical ? Variant.Filled : Variant.Outlined)" OnClick="@(() => SetSearchMode(SearchMode.Lexical))">Lexical</MudButton>
-                <MudButton Variant="@(_searchMode == SearchMode.Semantic ? Variant.Filled : Variant.Outlined)" OnClick="@(() => SetSearchMode(SearchMode.Semantic))">Semantic</MudButton>
-                <MudButton Variant="@(_searchMode == SearchMode.Hybrid ? Variant.Filled : Variant.Outlined)" OnClick="@(() => SetSearchMode(SearchMode.Hybrid))">Hybrid</MudButton>
-            </MudButtonGroup>
-
-            <div class="wiki-navigation-controls">
-                <MudTooltip Text="@(_isResultsPaneCollapsed ? "Show memory results list" : "Hide memory results list")">
-                    <MudIconButton Icon="@(_isResultsPaneCollapsed ? Icons.Material.Filled.Menu : Icons.Material.Filled.MenuOpen)"
-                                   Size="Size.Small"
-                                   OnClick="ToggleResultsPane"
-                                   aria-label="Toggle memory results list"
-                                   title="Toggle memory results list" />
-                </MudTooltip>
-                <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
-                    <Authorized>
-                        <MudTooltip Text="New memory">
-                            <MudIconButton Icon="@Icons.Material.Filled.Add"
-                                           Size="Size.Small"
-                                           Color="Color.Success"
-                                           OnClick="NewRecord"
-                                           aria-label="New"
-                                           title="New memory" />
-                        </MudTooltip>
-                    </Authorized>
-                </AuthorizeView>
-            </div>
+                    <MudButtonGroup Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" Class="wiki-mode-toggle">
+                        <MudButton Variant="@(_searchMode == SearchMode.Lexical ? Variant.Filled : Variant.Outlined)" OnClick="@(() => SetSearchMode(SearchMode.Lexical))">Lexical</MudButton>
+                        <MudButton Variant="@(_searchMode == SearchMode.Semantic ? Variant.Filled : Variant.Outlined)" OnClick="@(() => SetSearchMode(SearchMode.Semantic))">Semantic</MudButton>
+                        <MudButton Variant="@(_searchMode == SearchMode.Hybrid ? Variant.Filled : Variant.Outlined)" OnClick="@(() => SetSearchMode(SearchMode.Hybrid))">Hybrid</MudButton>
+                    </MudButtonGroup>
+                </div>
+            </details>
         </div>
     </section>
 
@@ -331,23 +341,29 @@
 
                 <div class="wiki-content-scroll markdown-rendered" @ref="_memoryContentPane">@((MarkupString)RenderMemoryContent(_selectedRecord.Content))</div>
 
-                <div class="wiki-link-grid">
-                    <section>
-                        <div class="wiki-section-title">References</div>
-                        @RenderMemoryLinks(_selectedRecord.References)
-                    </section>
-                    <section>
-                        <div class="wiki-section-title">Source Links</div>
-                        @RenderSourceLinks(_selectedRecord.SourceLinks)
-                    </section>
-                    @if (_selectedRecord.Conflicts.Count > 0)
-                    {
-                        <section class="wiki-conflicts-section">
-                            <div class="wiki-section-title">Conflicts</div>
-                            @RenderMemoryLinks(_selectedRecord.Conflicts)
+                <details class="wiki-related-panel">
+                    <summary class="wiki-related-summary">
+                        <span>Related context</span>
+                        <span class="wiki-related-summary-text">@RelatedContextSummary(_selectedRecord)</span>
+                    </summary>
+                    <div class="wiki-link-grid wiki-related-body">
+                        <section>
+                            <div class="wiki-section-title">References</div>
+                            @RenderMemoryLinks(_selectedRecord.References)
                         </section>
-                    }
-                </div>
+                        <section>
+                            <div class="wiki-section-title">Source Links</div>
+                            @RenderSourceLinks(_selectedRecord.SourceLinks)
+                        </section>
+                        @if (_selectedRecord.Conflicts.Count > 0)
+                        {
+                            <section class="wiki-conflicts-section">
+                                <div class="wiki-section-title">Conflicts</div>
+                                @RenderMemoryLinks(_selectedRecord.Conflicts)
+                            </section>
+                        }
+                    </div>
+                </details>
             }
         </main>
     </section>
@@ -401,6 +417,12 @@
         SearchMode.Hybrid => "Lexical terms plus related concepts",
         _ => "Lucene terms, title, content, or tag"
     };
+    private string SecondaryFiltersSummary => string.Join(" • ",
+    [
+        $"Mode: {SearchModeLabel}",
+        _statusFilter is null ? "Any status" : $"Status: {_statusFilter}",
+        string.IsNullOrWhiteSpace(_tagsFilter) ? "All tags" : $"Tags: {_tagsFilter.Trim()}"
+    ]);
 
     protected override async Task OnInitializedAsync()
     {
@@ -852,6 +874,34 @@
         string.Equals(_selectedRecord?.Id, memory.Id, StringComparison.OrdinalIgnoreCase)
             ? "wiki-result-row is-selected"
             : "wiki-result-row";
+
+    private static string RelatedContextSummary(MemoryRecord? record)
+    {
+        if (record is null)
+        {
+            return "No references, source links, or conflicts";
+        }
+
+        var segments = new List<string>();
+        if (record.References.Count > 0)
+        {
+            segments.Add($"{record.References.Count} reference{(record.References.Count == 1 ? string.Empty : "s")}");
+        }
+
+        if (record.SourceLinks.Count > 0)
+        {
+            segments.Add($"{record.SourceLinks.Count} source link{(record.SourceLinks.Count == 1 ? string.Empty : "s")}");
+        }
+
+        if (record.Conflicts.Count > 0)
+        {
+            segments.Add($"{record.Conflicts.Count} conflict{(record.Conflicts.Count == 1 ? string.Empty : "s")}");
+        }
+
+        return segments.Count == 0
+            ? "No references, source links, or conflicts"
+            : string.Join(" • ", segments);
+    }
 
     private static MemoryMetadata ToMetadata(MemorySearchResult result) => new()
     {
