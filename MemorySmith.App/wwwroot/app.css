@@ -3592,6 +3592,22 @@ body {
     display: none;
 }
 
+.proposals-list-pane,
+.proposals-detail-pane {
+    min-width: 0;
+    min-height: 0;
+}
+
+.proposals-list-pane {
+    overflow: hidden;
+}
+
+.proposals-detail-pane {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
 .proposal-active-run {
     display: inline-flex;
     align-items: center;
@@ -3677,6 +3693,9 @@ body {
 }
 
 .proposal-detail-header {
+    align-items: flex-start;
+    gap: 8px;
+    flex-wrap: wrap;
     justify-content: space-between;
 }
 
@@ -3730,6 +3749,42 @@ body {
     padding: 2px 7px;
     border: 1px solid var(--vscode-border-soft);
     border-radius: 4px;
+    color: var(--vscode-text-muted);
+    font-size: 0.75rem;
+}
+
+.proposal-review-state-card {
+    display: grid;
+    gap: 8px;
+    margin-bottom: 10px;
+    padding: 10px;
+    border: 1px solid var(--vscode-border-soft);
+    border-radius: 8px;
+    background: var(--vscode-panel-soft);
+}
+
+.proposal-review-state-card p {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.proposal-review-state-header,
+.proposal-review-state-badges,
+.proposal-review-state-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.proposal-review-state-header {
+    justify-content: space-between;
+}
+
+.proposal-review-state-actions span {
+    padding: 2px 7px;
+    border: 1px solid var(--vscode-border-soft);
+    border-radius: 999px;
     color: var(--vscode-text-muted);
     font-size: 0.75rem;
 }
@@ -3828,6 +3883,10 @@ body {
     flex-wrap: wrap;
     gap: 8px;
     justify-content: flex-end;
+}
+
+.proposal-action-button-shell {
+    display: inline-flex;
 }
 
 .proposal-comment-input {
@@ -4385,14 +4444,33 @@ body {
 @media (max-width: 700px) {
     .proposals-body {
         grid-template-columns: 1fr;
+        grid-template-rows: minmax(190px, 34vh) minmax(0, 1fr);
     }
 
     .proposals-body.is-list-collapsed {
         grid-template-columns: 1fr;
+        grid-template-rows: minmax(0, 1fr);
+    }
+
+    .proposals-list-pane {
+        max-height: 34vh;
     }
 
     .proposal-action-row {
         justify-content: stretch;
+    }
+
+    .proposal-review-state-header,
+    .proposal-review-state-badges {
+        align-items: flex-start;
+    }
+
+    .proposal-action-button-shell {
+        flex: 1 1 160px;
+    }
+
+    .proposal-action-button-shell > .mud-button-root {
+        width: 100%;
     }
 
     .tag-manager-body {

@@ -526,6 +526,31 @@ public class TagGovernanceTests
         });
     }
 
+    [Test]
+    public void ProposalsMarkup_ExplainsDisabledActionsAndPrioritizesReviewState()
+    {
+        var root = FindRepositoryRoot();
+        var markup = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "Components", "Pages", "Proposals.razor"));
+        var css = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "wwwroot", "app.css"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(markup, Does.Contain("proposal-review-state-card"));
+            Assert.That(markup, Does.Contain("ProposalStateHeading(_selectedProposal)"));
+            Assert.That(markup, Does.Contain("ProposalStateExplanation(_selectedProposal)"));
+            Assert.That(markup, Does.Contain("ProposalAvailableActions(_selectedProposal)"));
+            Assert.That(markup, Does.Contain("RequestReviewActionHelp(_selectedProposal)"));
+            Assert.That(markup, Does.Contain("AcceptActionHelp(_selectedProposal)"));
+            Assert.That(markup, Does.Contain("RespondActionHelp(_selectedProposal)"));
+            Assert.That(markup, Does.Contain("RejectActionHelp(_selectedProposal)"));
+            Assert.That(markup, Does.Contain("Generate a revised draft before accepting"));
+            Assert.That(css, Does.Contain(".proposal-review-state-card"));
+            Assert.That(css, Does.Contain(".proposal-action-button-shell"));
+            Assert.That(css, Does.Contain(".proposals-detail-pane"));
+            Assert.That(css, Does.Contain("grid-template-rows: minmax(190px, 34vh) minmax(0, 1fr);"));
+        });
+    }
+
     private TagGovernanceService CreateTagGovernanceService(IMemoryStore store, TagPolicy policy)
     {
         var diagnostics = CreateDiagnosticsService(store, policy, out var policyService);

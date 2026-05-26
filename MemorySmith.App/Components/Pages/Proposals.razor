@@ -168,6 +168,23 @@
                         </div>
                     </section>
 
+                    <section class="proposal-review-state-card" aria-label="Proposal review state">
+                        <div class="proposal-review-state-header">
+                            <strong>@ProposalStateHeading(_selectedProposal)</strong>
+                            <div class="proposal-review-state-badges">
+                                <span class="proposal-status @StatusClass(_selectedProposal.Status)">@StatusLabel(_selectedProposal.Status)</span>
+                                <span class="proposal-risk @RiskClass(_selectedProposal.RiskLevel)">@_selectedProposal.RiskLevel</span>
+                            </div>
+                        </div>
+                        <p>@ProposalStateExplanation(_selectedProposal)</p>
+                        <div class="proposal-review-state-actions">
+                            @foreach (var action in ProposalAvailableActions(_selectedProposal))
+                            {
+                                <span>@action</span>
+                            }
+                        </div>
+                    </section>
+
                     <div class="proposal-metadata-grid">
                         <span>Confidence</span><strong>@_selectedProposal.Confidence.ToString("P0")</strong>
                         <span>Related</span><strong>@(_selectedProposal.RelatedRecords.Count == 0 ? "-" : string.Join(", ", _selectedProposal.RelatedRecords))</strong>
@@ -228,18 +245,34 @@
                         <MudTextField T="string" Value="@_comment" ValueChanged="@((string value) => _comment = value)" Placeholder="Comment for respond/reject/approve history" Variant="Variant.Outlined" Margin="Margin.Dense" Lines="2" Class="proposal-comment-input" />
                     </div>
                     <div class="proposal-action-row">
-                        <MudButton Variant="Variant.Outlined" Color="Color.Info" StartIcon="@Icons.Material.Filled.RateReview" Disabled="@(_isBusy || IsClosed(_selectedProposal))" OnClick="RequestAgentReviewAsync">Request Agent Review</MudButton>
+                        <MudTooltip Text="@RequestReviewActionHelp(_selectedProposal)">
+                            <span class="proposal-action-button-shell">
+                                <MudButton Variant="Variant.Outlined" Color="Color.Info" StartIcon="@Icons.Material.Filled.RateReview" Disabled="@(_isBusy || IsClosed(_selectedProposal))" OnClick="RequestAgentReviewAsync">Request Agent Review</MudButton>
+                            </span>
+                        </MudTooltip>
                         @if (ShowAcceptAction)
                         {
-                            <MudButton Variant="@ActionVariant(MaintenanceProposalActionUx.Accept)" Color="Color.Success" StartIcon="@Icons.Material.Filled.Check" Disabled="@(_isBusy || !CanAccept(_selectedProposal))" OnClick="ApproveAsync">Accept</MudButton>
+                            <MudTooltip Text="@AcceptActionHelp(_selectedProposal)">
+                                <span class="proposal-action-button-shell">
+                                    <MudButton Variant="@ActionVariant(MaintenanceProposalActionUx.Accept)" Color="Color.Success" StartIcon="@Icons.Material.Filled.Check" Disabled="@(_isBusy || !CanAccept(_selectedProposal))" OnClick="ApproveAsync">Accept</MudButton>
+                                </span>
+                            </MudTooltip>
                         }
                         @if (ShowRespondAction)
                         {
-                            <MudButton Variant="@ActionVariant(MaintenanceProposalActionUx.Respond)" Color="Color.Warning" StartIcon="@Icons.Material.Filled.Reply" Disabled="@(_isBusy || !IsOpen(_selectedProposal))" OnClick="RespondAsync">Respond</MudButton>
+                            <MudTooltip Text="@RespondActionHelp(_selectedProposal)">
+                                <span class="proposal-action-button-shell">
+                                    <MudButton Variant="@ActionVariant(MaintenanceProposalActionUx.Respond)" Color="Color.Warning" StartIcon="@Icons.Material.Filled.Reply" Disabled="@(_isBusy || !IsOpen(_selectedProposal))" OnClick="RespondAsync">Respond</MudButton>
+                                </span>
+                            </MudTooltip>
                         }
                         @if (ShowRejectAction)
                         {
-                            <MudButton Variant="@ActionVariant(MaintenanceProposalActionUx.Reject)" Color="Color.Error" StartIcon="@Icons.Material.Filled.Close" Disabled="@(_isBusy || IsClosed(_selectedProposal))" OnClick="RejectAsync">Reject</MudButton>
+                            <MudTooltip Text="@RejectActionHelp(_selectedProposal)">
+                                <span class="proposal-action-button-shell">
+                                    <MudButton Variant="@ActionVariant(MaintenanceProposalActionUx.Reject)" Color="Color.Error" StartIcon="@Icons.Material.Filled.Close" Disabled="@(_isBusy || IsClosed(_selectedProposal))" OnClick="RejectAsync">Reject</MudButton>
+                                </span>
+                            </MudTooltip>
                         }
                     </div>
                 </div>
@@ -507,6 +540,139 @@
     private bool CanAccept(MaintenanceWriteProposal proposal) =>
         string.Equals(proposal.Status, MaintenanceProposalStatuses.Open, StringComparison.OrdinalIgnoreCase) ||
         (!ActionUx.RevisionRequired && string.Equals(proposal.Status, MaintenanceProposalStatuses.NeedsRevision, StringComparison.OrdinalIgnoreCase));
+
+    private IReadOnlyList<string> ProposalAvailableActions(MaintenanceWriteProposal proposal)
+    {
+        var actions = new List<string>();
+        if (!IsClosed(proposal))
+        {
+            actions.Add("Agent review available");
+            actions.Add("Reject available");
+        }
+
+        if (CanAccept(proposal))
+        {
+            actions.Add("Accept available");
+        }
+
+        if (IsOpen(proposal))
+        {
+            actions.Add("Respond available");
+        }
+
+        if (actions.Count == 0)
+        {
+            actions.Add("No further review actions");
+        }
+
+        return actions;
+    }
+
+    private string ProposalStateHeading(MaintenanceWriteProposal proposal)
+    {
+        if (string.Equals(proposal.Status, MaintenanceProposalStatuses.Approved, StringComparison.OrdinalIgnoreCase))
+        {
+            return "Accepted and closed";
+        }
+
+        if (string.Equals(proposal.Status, MaintenanceProposalStatuses.Rejected, StringComparison.OrdinalIgnoreCase))
+        {
+            return "Rejected and closed";
+        }
+
+        if (string.Equals(proposal.Status, MaintenanceProposalStatuses.NeedsRevision, StringComparison.OrdinalIgnoreCase))
+        {
+            return ActionUx.RevisionRequired
+                ? "Revision requested"
+                : "Revision requested, accept still available";
+        }
+
+        return "Ready for review";
+    }
+
+    private string ProposalStateExplanation(MaintenanceWriteProposal proposal)
+    {
+        if (string.Equals(proposal.Status, MaintenanceProposalStatuses.Approved, StringComparison.OrdinalIgnoreCase))
+        {
+            return "This proposal has already been accepted. Review history, diff, and evidence remain available below for audit follow-up.";
+        }
+
+        if (string.Equals(proposal.Status, MaintenanceProposalStatuses.Rejected, StringComparison.OrdinalIgnoreCase))
+        {
+            return "This proposal is closed because it was rejected. Use the history and evidence tabs to understand the decision, then generate or select a replacement proposal if needed.";
+        }
+
+        if (string.Equals(proposal.Status, MaintenanceProposalStatuses.NeedsRevision, StringComparison.OrdinalIgnoreCase))
+        {
+            return ActionUx.RevisionRequired
+                ? "A reviewer requested changes and acceptance is paused until a revised proposal is generated or selected."
+                : "A reviewer requested changes, but acceptance is still allowed because revision-required mode is disabled for this environment.";
+        }
+
+        return "Review the summary, diff, and evidence, then choose whether to accept, respond with revision guidance, reject, or request an agent review.";
+    }
+
+    private string RequestReviewActionHelp(MaintenanceWriteProposal proposal) =>
+        IsClosed(proposal)
+            ? "Closed proposals cannot request another agent review. Select an open proposal or generate a new revision instead."
+            : "Ask the maintenance agent to review this proposal and optionally produce a revised follow-up proposal.";
+
+    private string AcceptActionHelp(MaintenanceWriteProposal proposal)
+    {
+        if (CanAccept(proposal))
+        {
+            return "Apply the diff and mark this proposal accepted.";
+        }
+
+        if (string.Equals(proposal.Status, MaintenanceProposalStatuses.NeedsRevision, StringComparison.OrdinalIgnoreCase))
+        {
+            return "Accept is disabled because this proposal needs revision and revision-required mode is enabled. Generate a revised draft before accepting.";
+        }
+
+        if (string.Equals(proposal.Status, MaintenanceProposalStatuses.Approved, StringComparison.OrdinalIgnoreCase))
+        {
+            return "Accept is unavailable because this proposal was already accepted.";
+        }
+
+        if (string.Equals(proposal.Status, MaintenanceProposalStatuses.Rejected, StringComparison.OrdinalIgnoreCase))
+        {
+            return "Accept is unavailable because rejected proposals are closed. Select another proposal or generate a replacement draft.";
+        }
+
+        return "Accept is currently unavailable for this proposal state.";
+    }
+
+    private string RespondActionHelp(MaintenanceWriteProposal proposal)
+    {
+        if (IsOpen(proposal))
+        {
+            return "Keep the diff, add a review note, and mark the proposal as needing revision.";
+        }
+
+        if (string.Equals(proposal.Status, MaintenanceProposalStatuses.NeedsRevision, StringComparison.OrdinalIgnoreCase))
+        {
+            return "Respond is unavailable because this proposal already awaits revision.";
+        }
+
+        if (string.Equals(proposal.Status, MaintenanceProposalStatuses.Approved, StringComparison.OrdinalIgnoreCase))
+        {
+            return "Respond is unavailable because accepted proposals are already closed.";
+        }
+
+        if (string.Equals(proposal.Status, MaintenanceProposalStatuses.Rejected, StringComparison.OrdinalIgnoreCase))
+        {
+            return "Respond is unavailable because rejected proposals are closed.";
+        }
+
+        return "Respond is currently unavailable for this proposal state.";
+    }
+
+    private string RejectActionHelp(MaintenanceWriteProposal proposal) =>
+        IsClosed(proposal)
+            ? string.Equals(proposal.Status, MaintenanceProposalStatuses.Approved, StringComparison.OrdinalIgnoreCase)
+                ? "Reject is unavailable because this proposal has already been accepted."
+                : "Reject is unavailable because this proposal has already been rejected."
+            : "Close this proposal without applying the diff.";
 
     private Variant ActionVariant(string action) =>
         string.Equals(DefaultProposalAction, action, StringComparison.OrdinalIgnoreCase)
