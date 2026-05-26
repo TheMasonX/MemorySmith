@@ -4,7 +4,7 @@
   "Title": "Add a security profile preset system (`local-dev`, `secure-local`, `remote-hardened`) to make safe user-spec configuration easier than hand-editing many flags.",
   "Description": "Document which preset is the recommended default for dogfood.\r\n\r\nImported from Data/Pages/workbench/tasks.md",
   "Type": "Task",
-  "Status": "Backlog",
+  "Status": "Done",
   "Priority": "Medium",
   "AssigneeMode": "Custom",
   "AssigneeDirectoryId": null,
@@ -26,14 +26,20 @@
       "Author": "tracker-import",
       "Body": "Document which preset is the recommended default for dogfood.",
       "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z"
+    },
+    {
+      "Id": "c-completed-0024-20260526",
+      "Author": "AgentSmith",
+      "Body": "Completed: added optional SecurityProfile presets local-dev, secure-local, and remote-hardened; exposed the choice in Admin Configuration and diagnostics; documented secure-local as the recommended dogfood/local posture. Focused profile/admin validation passed.",
+      "CreatedAtUtc": "2026-05-26T11:31:29.5921671Z"
     }
   ],
   "EpicId": null,
   "ParentId": null,
   "DueDateUtc": null,
   "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z",
-  "UpdatedAtUtc": "2026-05-23T23:36:10.0439283Z",
-  "CompletedAtUtc": null,
-  "Revision": 1,
+  "UpdatedAtUtc": "2026-05-26T11:31:29.5921671Z",
+  "CompletedAtUtc": "2026-05-26T11:31:29.5921671Z",
+  "Revision": 2,
   "IsArchived": false
 }

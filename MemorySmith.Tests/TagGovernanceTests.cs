@@ -332,6 +332,22 @@ public class TagGovernanceTests
     }
 
     [Test]
+    public void AdminSettings_ExposeSecurityProfilePreset()
+    {
+        var source = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "Services", "AdminSettingsService.cs"));
+        var appsettings = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "appsettings.json"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(source, Does.Contain("MemorySmith:SecurityProfile"));
+            Assert.That(source, Does.Contain("Security profile"));
+            Assert.That(source, Does.Contain("remote-hardened"));
+            Assert.That(source, Does.Contain("secure-local for dogfood"));
+            Assert.That(appsettings, Does.Contain("\"SecurityProfile\": null"));
+        });
+    }
+
+    [Test]
     public void ChatMarkup_ReconcilesApproveAllBatchOutcomesAndPendingState()
     {
         var markup = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "Components", "Pages", "Chat.razor"));

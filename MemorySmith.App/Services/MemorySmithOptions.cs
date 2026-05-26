@@ -11,6 +11,7 @@ public class MemorySmithOptions
     public string VarsPath { get; set; } = Path.Combine("..", "Data", "vars.json");
     public string DataProtectionKeysPath { get; set; } = Path.Combine("..", "Data", "Keys");
     public string? SettingsOverridePath { get; set; }
+    public string? SecurityProfile { get; set; }
     public string? ApiKey { get; set; }
     public bool AllowRemoteApi { get; set; }
     public BlazorOptions Blazor { get; set; } = new();
@@ -31,6 +32,18 @@ public class MemorySmithOptions
     public MaintenanceAgentOptions MaintenanceAgent { get; set; } = new();
     public LoggingOptions Logging { get; set; } = new();
     public TelemetryOptions Telemetry { get; set; } = new();
+}
+
+public static class MemorySmithSecurityProfiles
+{
+    public const string LocalDev = "local-dev";
+    public const string SecureLocal = "secure-local";
+    public const string RemoteHardened = "remote-hardened";
+
+    public static readonly IReadOnlyList<string> All = [LocalDev, SecureLocal, RemoteHardened];
+
+    public static string Normalize(string? profile) =>
+        All.FirstOrDefault(candidate => string.Equals(candidate, profile, StringComparison.OrdinalIgnoreCase)) ?? SecureLocal;
 }
 
 public class BlazorOptions

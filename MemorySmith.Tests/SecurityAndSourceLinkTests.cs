@@ -12,6 +12,8 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
 namespace MemorySmith.Tests;
@@ -105,7 +107,7 @@ public class SecurityAndSourceLinkTests
     {
         var blocked = CreateRemoteApiContext(path);
         var allowed = CreateRemoteApiContext(path);
-        allowed.Request.Headers.Add(MemorySmithRequestGuardMiddleware.ApiKeyHeaderName, "secret");
+        allowed.Request.Headers[MemorySmithRequestGuardMiddleware.ApiKeyHeaderName] = "secret";
         var nextCalls = 0;
         var middleware = new MemorySmithRequestGuardMiddleware(_ =>
         {
@@ -231,6 +233,57 @@ public class SecurityAndSourceLinkTests
         {
             Assert.That(body, Does.Contain("remote-api-without-api-key"));
             Assert.That(body, Does.Contain("blocked until MemorySmith:ApiKey"));
+        });
+    }
+
+    [Test]
+    public void SecurityProfile_RemoteHardenedAppliesRemoteSafeDefaults()
+    {
+        var options = new MemorySmithOptions
+        {
+            SecurityProfile = MemorySmithSecurityProfiles.RemoteHardened,
+            AllowRemoteApi = false,
+            Auth = new AuthOptions
+            {
+                Enabled = false,
+                AnonymousAccess = MemorySmithRoles.Viewer,
+                AutoEditorForAuthenticatedUsers = true,
+                RequireHttpsForRemoteAuth = false,
+                OpenLocalEditorCompatibility = true,
+                Setup = new AuthSetupOptions { AllowLoopbackBootstrap = true }
+            }
+        };
+        var postConfigure = CreatePostConfigure("Production");
+
+        postConfigure.PostConfigure(null, options);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(options.SecurityProfile, Is.EqualTo(MemorySmithSecurityProfiles.RemoteHardened));
+            Assert.That(options.AllowRemoteApi, Is.True);
+            Assert.That(options.Auth.Enabled, Is.True);
+            Assert.That(options.Auth.RequireHttpsForRemoteAuth, Is.True);
+            Assert.That(options.Auth.AnonymousAccess, Is.EqualTo("None"));
+            Assert.That(options.Auth.AutoEditorForAuthenticatedUsers, Is.False);
+            Assert.That(options.Auth.OpenLocalEditorCompatibility, Is.False);
+            Assert.That(options.Auth.Setup.AllowLoopbackBootstrap, Is.False);
+        });
+    }
+
+    [Test]
+    public void SecurityProfile_LocalDevelopmentEnvironmentPreservesDogfoodOverrides()
+    {
+        var options = new MemorySmithOptions();
+        var postConfigure = CreatePostConfigure("LocalDevelopment");
+
+        postConfigure.PostConfigure(null, options);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(options.AllowRemoteApi, Is.True);
+            Assert.That(options.Auth.RequireHttpsForRemoteAuth, Is.False);
+            Assert.That(options.Chat.AgentWritesEnabled, Is.True);
+            Assert.That(options.SourceLinks.MaxReadBytes, Is.EqualTo(262144));
         });
     }
 
@@ -531,6 +584,18 @@ public class SecurityAndSourceLinkTests
             });
         });
 
+    private MemorySmithLocalDevelopmentPostConfigure CreatePostConfigure(string environmentName)
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["MemorySmith:SettingsOverridePath"] = Path.Combine(_tempRoot, "missing-overrides.json")
+            })
+            .Build();
+
+        return new MemorySmithLocalDevelopmentPostConfigure(new TestHostEnvironment(environmentName), configuration);
+    }
+
     private static DefaultHttpContext CreateRemoteApiContext(string path)
     {
         var context = new DefaultHttpContext();
@@ -542,6 +607,14 @@ public class SecurityAndSourceLinkTests
 
     private static string ReadResponseBody(DefaultHttpContext context) =>
         Encoding.UTF8.GetString(((MemoryStream)context.Response.Body).ToArray());
+
+    private sealed class TestHostEnvironment(string environmentName) : IHostEnvironment
+    {
+        public string EnvironmentName { get; set; } = environmentName;
+        public string ApplicationName { get; set; } = "MemorySmith.Tests";
+        public string ContentRootPath { get; set; } = AppContext.BaseDirectory;
+        public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
+    }
 
     private static async Task CreateLocalUserAsync(WebApplicationFactory<Program> factory, string displayName, string email, string password, string role)
     {

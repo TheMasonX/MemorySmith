@@ -59,8 +59,11 @@ Agent note: if behavior looks wrong across multiple routes, check the effective 
 
 | Key | Purpose | Verify |
 | --- | --- | --- |
+| `MemorySmith:SecurityProfile` | Optional preset: `local-dev`, `secure-local`, or `remote-hardened` | Admin Configuration and `/api/diagnostics` |
 | `MemorySmith:AllowRemoteApi` | Allows non-loopback API and MCP traffic after an API key is configured | `/api/diagnostics` warning list |
 | `MemorySmith:ApiKey` | Shared API/MCP key via `X-Api-Key`; required for non-loopback API/MCP when remote API is enabled | configured state in `/admin`, guarded API requests |
+
+Recommended dogfood default: leave explicit settings in their secure-local posture, or set `MemorySmith:SecurityProfile=secure-local` when you want the preset recorded in configuration.
 
 Safe default: keep `AllowRemoteApi=false` unless the instance is intentionally exposed and an API key plus transport/auth posture are already in place. With `AllowRemoteApi=true` and no API key, non-loopback `/api` and `/mcp` requests are blocked until the key is configured.
 

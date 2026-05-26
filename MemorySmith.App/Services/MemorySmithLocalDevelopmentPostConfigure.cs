@@ -1,4 +1,5 @@
 using System.Text.Json;
+using MemorySmith.Core.Models;
 using Microsoft.Extensions.Options;
 
 namespace MemorySmith.App.Services;
@@ -16,12 +17,16 @@ public sealed class MemorySmithLocalDevelopmentPostConfigure : IPostConfigureOpt
 
     public void PostConfigure(string? name, MemorySmithOptions options)
     {
+        var overrides = LoadOverrideKeys();
+        if (!string.IsNullOrWhiteSpace(options.SecurityProfile))
+        {
+            ApplySecurityProfile(options, overrides);
+        }
+
         if (!string.Equals(_environment.EnvironmentName, "LocalDevelopment", StringComparison.OrdinalIgnoreCase))
         {
             return;
         }
-
-        var overrides = LoadOverrideKeys();
 
         ApplyIfMissing(overrides, "MemorySmith:AllowRemoteApi", () => options.AllowRemoteApi = true);
         ApplyIfMissing(overrides, "MemorySmith:Auth:RequireHttpsForRemoteAuth", () => options.Auth.RequireHttpsForRemoteAuth = false);
@@ -49,6 +54,42 @@ public sealed class MemorySmithLocalDevelopmentPostConfigure : IPostConfigureOpt
         ApplyIfMissing(overrides, "MemorySmith:Limits:MaxTags", () => options.Limits.MaxTags = 100);
         ApplyIfMissing(overrides, "MemorySmith:Limits:MaxReferences", () => options.Limits.MaxReferences = 500);
         ApplyIfMissing(overrides, "MemorySmith:SourceLinks:MaxReadBytes", () => options.SourceLinks.MaxReadBytes = 262144);
+    }
+
+    private static void ApplySecurityProfile(MemorySmithOptions options, IReadOnlySet<string> overrides)
+    {
+        var profile = MemorySmithSecurityProfiles.Normalize(options.SecurityProfile);
+        options.SecurityProfile = profile;
+
+        switch (profile)
+        {
+            case MemorySmithSecurityProfiles.LocalDev:
+                ApplyIfMissing(overrides, "MemorySmith:AllowRemoteApi", () => options.AllowRemoteApi = true);
+                ApplyIfMissing(overrides, "MemorySmith:Auth:RequireHttpsForRemoteAuth", () => options.Auth.RequireHttpsForRemoteAuth = false);
+                ApplyIfMissing(overrides, "MemorySmith:Auth:AnonymousAccess", () => options.Auth.AnonymousAccess = MemorySmithRoles.Viewer);
+                ApplyIfMissing(overrides, "MemorySmith:Auth:AutoEditorForAuthenticatedUsers", () => options.Auth.AutoEditorForAuthenticatedUsers = true);
+                ApplyIfMissing(overrides, "MemorySmith:Auth:Setup:AllowLoopbackBootstrap", () => options.Auth.Setup.AllowLoopbackBootstrap = true);
+                ApplyIfMissing(overrides, "MemorySmith:Auth:OpenLocalEditorCompatibility", () => options.Auth.OpenLocalEditorCompatibility = true);
+                break;
+            case MemorySmithSecurityProfiles.RemoteHardened:
+                ApplyIfMissing(overrides, "MemorySmith:AllowRemoteApi", () => options.AllowRemoteApi = true);
+                ApplyIfMissing(overrides, "MemorySmith:Auth:Enabled", () => options.Auth.Enabled = true);
+                ApplyIfMissing(overrides, "MemorySmith:Auth:RequireHttpsForRemoteAuth", () => options.Auth.RequireHttpsForRemoteAuth = true);
+                ApplyIfMissing(overrides, "MemorySmith:Auth:AnonymousAccess", () => options.Auth.AnonymousAccess = "None");
+                ApplyIfMissing(overrides, "MemorySmith:Auth:AutoEditorForAuthenticatedUsers", () => options.Auth.AutoEditorForAuthenticatedUsers = false);
+                ApplyIfMissing(overrides, "MemorySmith:Auth:Setup:AllowLoopbackBootstrap", () => options.Auth.Setup.AllowLoopbackBootstrap = false);
+                ApplyIfMissing(overrides, "MemorySmith:Auth:OpenLocalEditorCompatibility", () => options.Auth.OpenLocalEditorCompatibility = false);
+                break;
+            default:
+                ApplyIfMissing(overrides, "MemorySmith:AllowRemoteApi", () => options.AllowRemoteApi = false);
+                ApplyIfMissing(overrides, "MemorySmith:Auth:Enabled", () => options.Auth.Enabled = true);
+                ApplyIfMissing(overrides, "MemorySmith:Auth:RequireHttpsForRemoteAuth", () => options.Auth.RequireHttpsForRemoteAuth = true);
+                ApplyIfMissing(overrides, "MemorySmith:Auth:AnonymousAccess", () => options.Auth.AnonymousAccess = MemorySmithRoles.Viewer);
+                ApplyIfMissing(overrides, "MemorySmith:Auth:AutoEditorForAuthenticatedUsers", () => options.Auth.AutoEditorForAuthenticatedUsers = false);
+                ApplyIfMissing(overrides, "MemorySmith:Auth:Setup:AllowLoopbackBootstrap", () => options.Auth.Setup.AllowLoopbackBootstrap = true);
+                ApplyIfMissing(overrides, "MemorySmith:Auth:OpenLocalEditorCompatibility", () => options.Auth.OpenLocalEditorCompatibility = true);
+                break;
+        }
     }
 
     private static void ApplyIfMissing(IReadOnlySet<string> overrides, string key, Action apply)
