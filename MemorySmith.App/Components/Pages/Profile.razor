@@ -2,11 +2,13 @@
 @rendermode InteractiveServer
 @attribute [Authorize]
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IAuthenticationSchemeProvider SchemeProvider
 @inject IMemorySmithDatabase Database
 @inject MemorySmithLocalAuthService Auth
 @inject IOptionsMonitor<MemorySmithOptions> Options
 @inject ISnackbar Snackbar
 @inject IDialogService Dialogs
+@using Microsoft.AspNetCore.Authentication
 @using Microsoft.Extensions.Options
 @using System.Security.Claims
 
@@ -146,6 +148,7 @@
     private IReadOnlyList<ProviderLink> _links = [];
     private IReadOnlyList<RoleRecord> _roles = [];
     private IReadOnlyList<AuthProviderRecord> _providers = [];
+    private HashSet<string> _supportedExternalProviders = new(StringComparer.OrdinalIgnoreCase);
     private string? _userId;
     private string _displayName = string.Empty;
     private string _email = string.Empty;
@@ -172,6 +175,7 @@
     private async Task LoadAsync()
     {
         _isLoading = true;
+        _supportedExternalProviders = await MemorySmithExternalAuthSupport.GetSupportedExternalProvidersAsync(SchemeProvider, Options.CurrentValue.Auth, CancellationToken.None);
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         _userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (!string.IsNullOrWhiteSpace(_userId))
@@ -254,8 +258,7 @@
         }
 
         var provider = _providers.FirstOrDefault(provider => string.Equals(provider.ProviderName, MemorySmithProviders.GitHub, StringComparison.OrdinalIgnoreCase));
-        var options = Options.CurrentValue.Auth.Providers.GitHub;
-        return provider?.IsEnabled == true && options.Enabled && !string.IsNullOrWhiteSpace(options.ClientId);
+        return provider?.IsEnabled == true && IsConfiguredRuntimeExternalProvider(MemorySmithProviders.GitHub);
     }
 
     private bool CanRemoveLink(ProviderLink link) => UsableSignInMethodCount(excludingLinkId: link.LinkId) > 0;
@@ -276,12 +279,14 @@
         return link.ProviderName switch
         {
             MemorySmithProviders.LocalPassword => auth.LocalPasswordEnabled && _user.LocalPasswordEnabled,
-            MemorySmithProviders.GitHub => auth.Providers.GitHub.Enabled && !string.IsNullOrWhiteSpace(auth.Providers.GitHub.ClientId),
-            MemorySmithProviders.Google => auth.Providers.Google.Enabled && !string.IsNullOrWhiteSpace(auth.Providers.Google.ClientId),
-            MemorySmithProviders.Microsoft => auth.Providers.Microsoft.Enabled && !string.IsNullOrWhiteSpace(auth.Providers.Microsoft.ClientId),
+            MemorySmithProviders.GitHub or MemorySmithProviders.Google or MemorySmithProviders.Microsoft => IsConfiguredRuntimeExternalProvider(link.ProviderName),
             _ => false
         };
     }
+
+    private bool IsConfiguredRuntimeExternalProvider(string providerName) =>
+        MemorySmithExternalAuthSupport.IsConfiguredExternalProvider(providerName, Options.CurrentValue.Auth)
+        && MemorySmithExternalAuthSupport.IsRuntimeSupportedExternalProvider(providerName, _supportedExternalProviders);
 
     private string ProviderDisplay(string providerName) => _providers.FirstOrDefault(provider => string.Equals(provider.ProviderName, providerName, StringComparison.OrdinalIgnoreCase))?.DisplayName ?? providerName;
 

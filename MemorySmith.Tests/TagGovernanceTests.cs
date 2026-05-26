@@ -223,6 +223,28 @@ public class TagGovernanceTests
     }
 
     [Test]
+    public void AuthProviderSurfaces_UseRuntimeSchemeSupportForAvailability()
+    {
+        var root = FindRepositoryRoot();
+        var adminMarkup = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "Components", "Pages", "Admin.razor"));
+        var profileMarkup = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "Components", "Pages", "Profile.razor"));
+        var authController = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "Controllers", "AuthController.cs"));
+        var securitySource = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "Services", "SecurityServices.cs"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(adminMarkup, Does.Contain("@inject IAuthenticationSchemeProvider SchemeProvider"));
+            Assert.That(adminMarkup, Does.Contain("MemorySmithExternalAuthSupport.GetSupportedExternalProvidersAsync"));
+            Assert.That(adminMarkup, Does.Contain("Configured in settings, but no runtime auth handler is registered"));
+            Assert.That(profileMarkup, Does.Contain("@inject IAuthenticationSchemeProvider SchemeProvider"));
+            Assert.That(profileMarkup, Does.Contain("IsConfiguredRuntimeExternalProvider"));
+            Assert.That(authController, Does.Contain("MemorySmithExternalAuthSupport.IsConfiguredExternalProvider"));
+            Assert.That(securitySource, Does.Contain("MemorySmithExternalAuthSupport.GetSupportedExternalProvidersAsync"));
+            Assert.That(securitySource, Does.Contain("MemorySmithExternalAuthSupport.IsRuntimeSupportedExternalProvider"));
+        });
+    }
+
+    [Test]
     public void MaintenanceMarkup_ExposesStandaloneTraceChatAndActionHistoryPage()
     {
         var root = FindRepositoryRoot();

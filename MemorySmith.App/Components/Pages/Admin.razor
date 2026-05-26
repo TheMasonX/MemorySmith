@@ -1,7 +1,9 @@
 @page "/admin"
 @rendermode InteractiveServer
 @attribute [Authorize(Policy = MemorySmithPolicies.CanAdminMemorySmith)]
+@using Microsoft.AspNetCore.Authentication
 @inject IMemorySmithDatabase Database
+@inject IAuthenticationSchemeProvider SchemeProvider
 @inject IOptionsMonitor<MemorySmithOptions> Options
 @inject ICurrentUserContext CurrentUser
 @inject AuditLogService Audit
@@ -84,7 +86,7 @@
                                     </a>
                                 }
                             </div>
-                            <span class="@ProviderStatusClass(provider)">@(provider.IsEnabled ? "Enabled" : "Disabled")</span>
+                            <span class="@ProviderStatusClass(provider)">@ProviderStatusText(provider)</span>
                         </div>
                         <dl class="admin-provider-meta">
                             <div>
@@ -540,6 +542,7 @@
     private IReadOnlyList<RoleRecord> _roles = [];
     private IReadOnlyList<RoleRecord> _assignableRoles = [];
     private IReadOnlyList<AuthProviderRecord> _providers = [];
+    private HashSet<string> _supportedExternalProviders = new(StringComparer.OrdinalIgnoreCase);
     private IReadOnlyList<ChatModelProfileView> _modelProfiles = [];
     private IReadOnlyList<AuditLogEntry> _audit = [];
     private IReadOnlyList<VersionHistoryEntry> _recentVersions = [];
@@ -634,6 +637,7 @@
 
     private async Task LoadAsync()
     {
+        _supportedExternalProviders = await MemorySmithExternalAuthSupport.GetSupportedExternalProvidersAsync(SchemeProvider, Options.CurrentValue.Auth, CancellationToken.None);
         var users = (await Database.Users.ListAsync(new UserQuery(PageSize: 100), CancellationToken.None)).Data;
         _roles = await Database.Roles.ListRolesAsync(CancellationToken.None);
         _assignableRoles = _roles.Where(role => !string.Equals(role.Name, MemorySmithRoles.Admin, StringComparison.OrdinalIgnoreCase)).ToList();
@@ -992,7 +996,18 @@
 
     private int ProviderLinkCount(string providerName) => _providerLinkCounts.TryGetValue(providerName, out var count) ? count : 0;
 
-    private static string ProviderStatusClass(AuthProviderRecord provider) => provider.IsEnabled ? "wiki-status is-core" : "wiki-status";
+    private string ProviderStatusClass(AuthProviderRecord provider) =>
+        provider.IsEnabled && !IsUnavailableExternalProvider(provider.ProviderName) ? "wiki-status is-core" : "wiki-status";
+
+    private string ProviderStatusText(AuthProviderRecord provider)
+    {
+        if (IsUnavailableExternalProvider(provider.ProviderName))
+        {
+            return "Unsupported";
+        }
+
+        return provider.IsEnabled ? "Enabled" : "Disabled";
+    }
 
     private static string ProviderToggleText(AuthProviderRecord provider) => provider.IsEnabled ? "Disable" : "Enable";
 
@@ -1005,6 +1020,13 @@
         if (IsSystemProvider(provider))
         {
             return "Built-in system providers are managed by the app and cannot be toggled here.";
+        }
+
+        if (IsUnavailableExternalProvider(provider.ProviderName))
+        {
+            return provider.IsEnabled
+                ? $"Disable {provider.DisplayName}; the app is not registering a runtime auth handler for this provider."
+                : $"{provider.DisplayName} is configured in settings, but no runtime auth handler is registered in this build.";
         }
 
         if (!provider.IsEnabled && !IsProviderConfiguredForUse(provider.ProviderName))
@@ -1024,6 +1046,11 @@
             return "Built-in provider; no manual action is available.";
         }
 
+        if (IsUnavailableExternalProvider(provider.ProviderName))
+        {
+            return "Configured in settings, but no runtime auth handler is registered, so users cannot sign in with this provider.";
+        }
+
         if (!provider.IsEnabled && !IsProviderConfiguredForUse(provider.ProviderName))
         {
             return "Configuration is incomplete, so enabling is blocked until prerequisites are set.";
@@ -1038,6 +1065,11 @@
     private string ProviderToggleConfirmation(AuthProviderRecord provider, bool enabled)
     {
         var links = ProviderLinkCount(provider.ProviderName);
+        if (!enabled && IsUnavailableExternalProvider(provider.ProviderName))
+        {
+            return $"Disable {provider.DisplayName} sign-in. This provider is already unavailable because no runtime auth handler is registered.";
+        }
+
         return enabled
             ? $"Enable {provider.DisplayName} sign-in. This makes the configured provider available to users."
             : $"Disable {provider.DisplayName} sign-in. {links:N0} linked account(s) will be unable to use this provider until it is re-enabled.";
@@ -1055,9 +1087,9 @@
             MemorySmithProviders.LocalPassword => auth.LocalPasswordEnabled,
             MemorySmithProviders.ApiToken => !string.IsNullOrWhiteSpace(Options.CurrentValue.ApiKey),
             MemorySmithProviders.System => true,
-            MemorySmithProviders.GitHub => auth.Providers.GitHub.Enabled && !string.IsNullOrWhiteSpace(auth.Providers.GitHub.ClientId),
-            MemorySmithProviders.Google => auth.Providers.Google.Enabled && !string.IsNullOrWhiteSpace(auth.Providers.Google.ClientId),
-            MemorySmithProviders.Microsoft => auth.Providers.Microsoft.Enabled && !string.IsNullOrWhiteSpace(auth.Providers.Microsoft.ClientId),
+            MemorySmithProviders.GitHub or MemorySmithProviders.Google or MemorySmithProviders.Microsoft =>
+                MemorySmithExternalAuthSupport.IsConfiguredExternalProvider(providerName, auth)
+                && MemorySmithExternalAuthSupport.IsRuntimeSupportedExternalProvider(providerName, _supportedExternalProviders),
             _ => false
         };
     }
@@ -1219,12 +1251,19 @@
             MemorySmithProviders.LocalPassword => auth.LocalPasswordEnabled ? "Configured" : "Not configured",
             MemorySmithProviders.ApiToken => string.IsNullOrWhiteSpace(Options.CurrentValue.ApiKey) ? "No shared key" : "Shared key configured",
             MemorySmithProviders.System => "Built-in",
-            MemorySmithProviders.GitHub => auth.Providers.GitHub.Enabled && !string.IsNullOrWhiteSpace(auth.Providers.GitHub.ClientId) ? "Configured" : "Not configured",
-            MemorySmithProviders.Google => auth.Providers.Google.Enabled && !string.IsNullOrWhiteSpace(auth.Providers.Google.ClientId) ? "Configured" : "Not configured",
-            MemorySmithProviders.Microsoft => auth.Providers.Microsoft.Enabled && !string.IsNullOrWhiteSpace(auth.Providers.Microsoft.ClientId) ? "Configured" : "Not configured",
+            MemorySmithProviders.GitHub or MemorySmithProviders.Google or MemorySmithProviders.Microsoft =>
+                MemorySmithExternalAuthSupport.IsConfiguredExternalProvider(providerName, auth)
+                    ? MemorySmithExternalAuthSupport.IsRuntimeSupportedExternalProvider(providerName, _supportedExternalProviders)
+                        ? "Configured"
+                        : "Configured in settings, but no runtime auth handler is registered"
+                    : "Not configured",
             _ => "Unknown"
         };
     }
+
+    private bool IsUnavailableExternalProvider(string providerName) =>
+        MemorySmithExternalAuthSupport.IsConfiguredExternalProvider(providerName, Options.CurrentValue.Auth)
+        && !MemorySmithExternalAuthSupport.IsRuntimeSupportedExternalProvider(providerName, _supportedExternalProviders);
 
     private bool IsSettingGroupExpanded(string category) => _expandedSettingGroups.Contains(category);
 

@@ -12,7 +12,7 @@ This page is the operator and agent-oriented map of the configuration groups, wh
 
 | Surface | Use it for | Notes |
 | --- | --- | --- |
-| `/admin` Configuration tab | Allowlisted scalar and list settings | Uses `AdminSettingsService`; reloads configuration after save. |
+| `/admin` Configuration tab | Allowlisted scalar and list settings | Uses `AdminSettingsService`; reloads configuration after save. Sensitive values remain write-only and configured secrets can be removed only through the explicit `Clear secret` action. |
 | `/admin` Models tab | `MemorySmith:Chat:ModelProfiles`, `DefaultModelProfileId`, maintenance-agent model assignments | Managed separately because profiles are a structured collection with workflow/default semantics. |
 | App settings files | Bootstrap defaults, non-editable complex settings, deployment-specific paths | `SettingsOverridePath` itself and complex `GitHubModels` entries remain file-managed. |
 | `/health` and `/api/diagnostics` | Runtime verification | Confirms effective paths, warnings, embeddings state, and telemetry-related config visibility. |
@@ -21,7 +21,7 @@ This page is the operator and agent-oriented map of the configuration groups, wh
 
 - Base defaults live in `MemorySmith.App/appsettings.json`.
 - The admin UI writes edited settings into `appsettings.LocalDevelopment.json` beside the running app unless `MemorySmith:SettingsOverridePath` points somewhere else.
-- Sensitive values are write-only in the admin UI. The app reports `Configured` or `Not configured` instead of echoing secrets.
+- Sensitive values are write-only in the admin UI. The app reports `Configured` or `Not configured` instead of echoing secrets, and configured secrets are cleared through the explicit `Clear secret` action rather than a blank replacement field.
 - List settings are edited one value per line.
 - Nullable integers such as `MemorySmith:Chat:OllamaContextWindowTokens` accept a blank value to clear the override.
 
@@ -61,7 +61,7 @@ Agent note: if behavior looks wrong across multiple routes, check the effective 
 | --- | --- | --- |
 | `MemorySmith:SecurityProfile` | Optional preset: `local-dev`, `secure-local`, or `remote-hardened` | Admin Configuration and `/api/diagnostics` |
 | `MemorySmith:AllowRemoteApi` | Allows non-loopback API and MCP traffic after an API key is configured | `/api/diagnostics` warning list |
-| `MemorySmith:ApiKey` | Shared API/MCP key via `X-Api-Key`; required for non-loopback API/MCP when remote API is enabled | configured state in `/admin`, guarded API requests |
+| `MemorySmith:ApiKey` | Shared API/MCP key via `X-Api-Key`; required for non-loopback API/MCP when remote API is enabled | configured state in `/admin` (replace or use `Clear secret` to remove), guarded API requests |
 
 Recommended dogfood default: leave explicit settings in their secure-local posture, or set `MemorySmith:SecurityProfile=secure-local` when you want the preset recorded in configuration.
 
@@ -91,9 +91,11 @@ Safe default: keep `AllowRemoteApi=false` unless the instance is intentionally e
 | `Setup:AllowLoopbackBootstrap` | Allows anonymous first-admin setup from loopback | `/admin/setup` |
 | `Setup:BootstrapTokenHash` | Token-gated setup alternative | write-only secret state |
 | `RateLimits:*` | Local auth throttling and lockout | local login error behavior |
-| `Providers:{GitHub|Google|Microsoft}:*` | OAuth provider enablement and credentials | provider rows in `/admin`, sign-in flow |
+| `Providers:{GitHub|Google|Microsoft}:*` | OAuth provider enablement and credentials | provider rows in `/admin`; only runtime-registered providers are advertised as active sign-in methods |
 
 Clamp rule: Admin access is not granted by broad anonymous/default-role settings. Admin routes still require an authenticated Admin claim.
+
+Current runtime note: startup currently registers GitHub OAuth at `/signin-github`. Google and Microsoft credentials can still be stored for future rollout, but `/admin` marks those providers as unsupported and `/login` plus `/profile` do not treat them as active sign-in methods until matching auth handlers and callback routes are registered.
 
 ## Audit, History, And Pages
 

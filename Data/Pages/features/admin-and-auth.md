@@ -25,7 +25,7 @@ flowchart TD
 ## What It Does
 
 - Provides first-admin bootstrap through `/admin/setup`.
-- Supports login and profile workflows at `/login` and `/profile`.
+- Supports local login plus the currently wired external-provider flow at `/login` and `/profile`.
 - Enforces role-based access for UI, API, and MCP actions.
 - Exposes admin controls for users, providers, settings, audit, and history.
 
@@ -36,9 +36,15 @@ MemorySmith needs local-first convenience without losing governance. Admin and a
 ## Key Capabilities
 
 - Roles: Viewer, Editor, Admin.
-- Local password authentication and provider administration.
+- Local password authentication, GitHub external sign-in, and provider administration.
 - Admin-only views for settings, audit, and change history.
 - Compatibility path for first-run local editing before first admin exists.
+
+## Current Operator Notes
+
+- `/admin` Configuration edits allowlisted scalar and list settings through `AdminSettingsService`. Sensitive values stay write-only, show `Configured` or `Not configured`, and provide an explicit `Clear secret` action rather than echoing stored secrets.
+- Admin audit and history views are the operator surface for auth and mutation evidence. Persisted entries carry request IDs and privacy-reviewed request metadata hashes without storing raw IP or user-agent values.
+- External provider runtime is partial today: GitHub is wired into the startup auth pipeline. Google and Microsoft can still be preconfigured for future use, but `/admin` marks them `Unsupported` and `/login` plus `/profile` do not treat them as active sign-in methods until matching auth handlers are registered.
 
 > [!NOTE]
 > Screenshot placeholder [FEAT-ADMIN-02]: `/admin` settings and role-management surface.

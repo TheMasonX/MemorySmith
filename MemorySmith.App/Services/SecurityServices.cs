@@ -32,6 +32,38 @@ public static class MemorySmithAuthProperties
     public const string LinkUserId = "MemorySmith.LinkUserId";
 }
 
+public static class MemorySmithExternalAuthSupport
+{
+    public static async Task<HashSet<string>> GetSupportedExternalProvidersAsync(
+        IAuthenticationSchemeProvider schemeProvider,
+        AuthOptions auth,
+        CancellationToken cancellationToken)
+    {
+        var supported = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var scheme in await schemeProvider.GetAllSchemesAsync())
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (IsConfiguredExternalProvider(scheme.Name, auth))
+            {
+                supported.Add(scheme.Name);
+            }
+        }
+
+        return supported;
+    }
+
+    public static bool IsConfiguredExternalProvider(string providerName, AuthOptions auth) => providerName switch
+    {
+        MemorySmithProviders.GitHub => auth.Providers.GitHub.Enabled && !string.IsNullOrWhiteSpace(auth.Providers.GitHub.ClientId),
+        MemorySmithProviders.Google => auth.Providers.Google.Enabled && !string.IsNullOrWhiteSpace(auth.Providers.Google.ClientId),
+        MemorySmithProviders.Microsoft => auth.Providers.Microsoft.Enabled && !string.IsNullOrWhiteSpace(auth.Providers.Microsoft.ClientId),
+        _ => false
+    };
+
+    public static bool IsRuntimeSupportedExternalProvider(string providerName, ISet<string> supportedExternalProviders) =>
+        supportedExternalProviders.Contains(providerName);
+}
+
 public enum MemorySmithPermission
 {
     View,
@@ -248,17 +280,20 @@ public sealed class MemorySmithLocalAuthService
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly AuditLogService _audit;
     private readonly IOptionsMonitor<MemorySmithOptions> _options;
+    private readonly IAuthenticationSchemeProvider _schemeProvider;
 
     public MemorySmithLocalAuthService(
         IMemorySmithDatabase database,
         IHttpContextAccessor httpContextAccessor,
         AuditLogService audit,
-        IOptionsMonitor<MemorySmithOptions> options)
+        IOptionsMonitor<MemorySmithOptions> options,
+        IAuthenticationSchemeProvider schemeProvider)
     {
         _database = database;
         _httpContextAccessor = httpContextAccessor;
         _audit = audit;
         _options = options;
+        _schemeProvider = schemeProvider;
     }
 
     public async Task<bool> NeedsSetupAsync(CancellationToken cancellationToken) =>
@@ -572,12 +607,13 @@ public sealed class MemorySmithLocalAuthService
     private async Task<bool> HasUsableSignInMethodAfterRemovingAsync(UserAccount user, IReadOnlyList<ProviderLink> links, ISet<string> removedLinkIds, CancellationToken cancellationToken)
     {
         var providers = await _database.ProviderLinks.ListProvidersAsync(cancellationToken);
+        var supportedExternalProviders = await MemorySmithExternalAuthSupport.GetSupportedExternalProvidersAsync(_schemeProvider, _options.CurrentValue.Auth, cancellationToken);
         return links
             .Where(link => !removedLinkIds.Contains(link.LinkId))
-            .Any(link => IsUsableSignInMethod(user, link, providers));
+            .Any(link => IsUsableSignInMethod(user, link, providers, supportedExternalProviders));
     }
 
-    private bool IsUsableSignInMethod(UserAccount user, ProviderLink link, IReadOnlyList<AuthProviderRecord> providers)
+    private bool IsUsableSignInMethod(UserAccount user, ProviderLink link, IReadOnlyList<AuthProviderRecord> providers, ISet<string> supportedExternalProviders)
     {
         var providerRecord = providers.FirstOrDefault(provider => string.Equals(provider.ProviderName, link.ProviderName, StringComparison.OrdinalIgnoreCase));
         if (providerRecord?.IsEnabled != true)
@@ -589,9 +625,9 @@ public sealed class MemorySmithLocalAuthService
         return link.ProviderName switch
         {
             MemorySmithProviders.LocalPassword => auth.LocalPasswordEnabled && user.LocalPasswordEnabled && !string.IsNullOrWhiteSpace(user.PasswordHash),
-            MemorySmithProviders.GitHub => auth.Providers.GitHub.Enabled && !string.IsNullOrWhiteSpace(auth.Providers.GitHub.ClientId),
-            MemorySmithProviders.Google => auth.Providers.Google.Enabled && !string.IsNullOrWhiteSpace(auth.Providers.Google.ClientId),
-            MemorySmithProviders.Microsoft => auth.Providers.Microsoft.Enabled && !string.IsNullOrWhiteSpace(auth.Providers.Microsoft.ClientId),
+            MemorySmithProviders.GitHub or MemorySmithProviders.Google or MemorySmithProviders.Microsoft =>
+                MemorySmithExternalAuthSupport.IsConfiguredExternalProvider(link.ProviderName, auth)
+                && MemorySmithExternalAuthSupport.IsRuntimeSupportedExternalProvider(link.ProviderName, supportedExternalProviders),
             _ => false
         };
     }

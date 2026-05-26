@@ -1,6 +1,7 @@
 using MemorySmith.App.Services;
 using MemorySmith.Core.Models;
 using MemorySmith.Storage;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 using Microsoft.Data.Sqlite;
@@ -194,7 +195,7 @@ public class SqliteMetadataStoreTests
         httpContext.Request.Headers.UserAgent = "MemorySmith.Tests/0173";
         var httpContextAccessor = new HttpContextAccessor { HttpContext = httpContext };
         var audit = new AuditLogService(_database, currentUser, httpContextAccessor, monitor);
-        var auth = new MemorySmithLocalAuthService(_database, httpContextAccessor, audit, monitor);
+        var auth = new MemorySmithLocalAuthService(_database, httpContextAccessor, audit, monitor, new StaticAuthenticationSchemeProvider([MemorySmithProviders.GitHub]));
 
         using var activity = new Activity("request-metadata-test");
         activity.Start();
@@ -220,6 +221,86 @@ public class SqliteMetadataStoreTests
         });
     }
 
+    [Test]
+    public async Task ExternalAuthSupport_ReturnsOnlyRegisteredConfiguredProviders()
+    {
+        var auth = new AuthOptions
+        {
+            Providers = new AuthProviderOptions
+            {
+                GitHub = new ExternalProviderOption { Enabled = true, ClientId = "github-client" },
+                Google = new ExternalProviderOption { Enabled = true, ClientId = "google-client" },
+                Microsoft = new ExternalProviderOption { Enabled = false, ClientId = "microsoft-client" }
+            }
+        };
+
+        var supported = await MemorySmithExternalAuthSupport.GetSupportedExternalProvidersAsync(
+            new StaticAuthenticationSchemeProvider([MemorySmithProviders.GitHub]),
+            auth,
+            CancellationToken.None);
+
+        Assert.That(supported, Is.EquivalentTo(new[] { MemorySmithProviders.GitHub }));
+    }
+
+    [Test]
+    public async Task RemoveLocalPasswordAsync_DoesNotTreatConfiguredButUnregisteredProviderAsFallback()
+    {
+        var options = new MemorySmithOptions
+        {
+            DataProtectionKeysPath = Path.Combine(_tempDir, "Keys"),
+            Audit = new AuditOptions
+            {
+                JsonlEnabled = false
+            },
+            Auth = new AuthOptions
+            {
+                LocalPasswordEnabled = true,
+                Providers = new AuthProviderOptions
+                {
+                    Google = new ExternalProviderOption
+                    {
+                        Enabled = true,
+                        ClientId = "google-client"
+                    }
+                }
+            }
+        };
+        var monitor = new TestOptionsMonitor<MemorySmithOptions>(options);
+        await SeedUserAsync("admin-user", "Admin User", "ADMIN USER");
+        await SeedUserAsync("editor-user", "Editor User", "EDITOR USER");
+        var currentUser = new FakeCurrentUserContext();
+        var httpContextAccessor = new HttpContextAccessor { HttpContext = new DefaultHttpContext() };
+        var audit = new AuditLogService(_database, currentUser, httpContextAccessor, monitor);
+        var auth = new MemorySmithLocalAuthService(_database, httpContextAccessor, audit, monitor, new StaticAuthenticationSchemeProvider([MemorySmithProviders.GitHub]));
+
+        var setPassword = await auth.SetLocalPasswordAsync("editor-user", null, "ThisIsAValidPassword123!", CancellationToken.None);
+        Assert.That(setPassword.Succeeded, Is.True);
+
+        await _database.ProviderLinks.SetProviderEnabledAsync(MemorySmithProviders.Google, true, currentUser.UserId, CancellationToken.None);
+        await _database.ProviderLinks.LinkAsync(new ProviderLink
+        {
+            LinkId = "google-link",
+            UserId = "editor-user",
+            ProviderName = MemorySmithProviders.Google,
+            ProviderSubject = "google-subject",
+            ProviderDisplayName = "Editor User",
+            ProviderEmail = "editor@example.test",
+            LinkedAtUtc = DateTime.UtcNow
+        }, CancellationToken.None);
+
+        var removeResult = await auth.RemoveLocalPasswordAsync("editor-user", CancellationToken.None);
+        var user = await _database.Users.GetByIdAsync("editor-user", CancellationToken.None);
+        var links = await _database.ProviderLinks.GetLinksForUserAsync("editor-user", CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(removeResult.Succeeded, Is.False);
+            Assert.That(removeResult.Error, Is.EqualTo("Add another working sign-in method before removing local password sign-in."));
+            Assert.That(user?.LocalPasswordEnabled, Is.True);
+            Assert.That(links.Select(link => link.ProviderName), Does.Contain(MemorySmithProviders.LocalPassword));
+        });
+    }
+
     private sealed class FakeCurrentUserContext : ICurrentUserContext
     {
         public string? UserId => "admin-user";
@@ -229,6 +310,38 @@ public class SqliteMetadataStoreTests
         public bool IsAuthenticated => true;
         public IReadOnlyList<string> Roles => [MemorySmithRoles.Admin];
         public string ActorKind => MemorySmithActorKinds.User;
+    }
+
+    private sealed class StaticAuthenticationSchemeProvider : IAuthenticationSchemeProvider
+    {
+        private readonly Dictionary<string, AuthenticationScheme> _schemes;
+
+        public StaticAuthenticationSchemeProvider(IEnumerable<string> schemeNames)
+        {
+            _schemes = schemeNames.ToDictionary(
+                name => name,
+                name => new AuthenticationScheme(name, name, typeof(StaticAuthenticationHandler)),
+                StringComparer.OrdinalIgnoreCase);
+        }
+
+        public Task<IEnumerable<AuthenticationScheme>> GetAllSchemesAsync() => Task.FromResult<IEnumerable<AuthenticationScheme>>(_schemes.Values);
+        public Task<AuthenticationScheme?> GetSchemeAsync(string name) => Task.FromResult(_schemes.TryGetValue(name, out var scheme) ? scheme : null);
+        public Task<AuthenticationScheme?> GetDefaultAuthenticateSchemeAsync() => Task.FromResult<AuthenticationScheme?>(null);
+        public Task<AuthenticationScheme?> GetDefaultChallengeSchemeAsync() => Task.FromResult<AuthenticationScheme?>(null);
+        public Task<AuthenticationScheme?> GetDefaultForbidSchemeAsync() => Task.FromResult<AuthenticationScheme?>(null);
+        public Task<AuthenticationScheme?> GetDefaultSignInSchemeAsync() => Task.FromResult<AuthenticationScheme?>(null);
+        public Task<AuthenticationScheme?> GetDefaultSignOutSchemeAsync() => Task.FromResult<AuthenticationScheme?>(null);
+        public Task<IEnumerable<AuthenticationScheme>> GetRequestHandlerSchemesAsync() => Task.FromResult<IEnumerable<AuthenticationScheme>>([]);
+        public void AddScheme(AuthenticationScheme scheme) => _schemes[scheme.Name] = scheme;
+        public void RemoveScheme(string name) => _schemes.Remove(name);
+    }
+
+    private sealed class StaticAuthenticationHandler : IAuthenticationHandler
+    {
+        public Task InitializeAsync(AuthenticationScheme scheme, HttpContext context) => Task.CompletedTask;
+        public Task<AuthenticateResult> AuthenticateAsync() => Task.FromResult(AuthenticateResult.NoResult());
+        public Task ChallengeAsync(AuthenticationProperties? properties) => Task.CompletedTask;
+        public Task ForbidAsync(AuthenticationProperties? properties) => Task.CompletedTask;
     }
 
     private async Task SeedUserAsync(string userId, string displayName, string normalizedDisplayName)
