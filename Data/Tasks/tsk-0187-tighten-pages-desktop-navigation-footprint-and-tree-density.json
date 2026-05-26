@@ -1,0 +1,50 @@
+{
+  "id": "tsk-0187-tighten-pages-desktop-navigation-footprint-and-tree-density",
+  "key": "TSK-0187",
+  "title": "Tighten Pages desktop navigation footprint and tree density",
+  "description": "Problem: after the narrow-viewport rebalance, live `/pages` review still showed the desktop tree/navigation pane consuming more width than necessary, and the tree rows themselves were visually roomy enough that long page titles dominated the first viewport. That left less horizontal room for the rendered page than the route really needed.\n\nDesired outcome: `/pages` should keep navigation visible and scannable while giving the selected page more of the desktop reading area by default.\n\nScope:\n- In scope: desktop navigation/detail proportions, tree row density, and compact folder-count styling.\n- Out of scope: changing page storage, page search semantics, or Tree/Flat/ToC behavior.\n\nAcceptance criteria:\n- Desktop `/pages` uses a smaller navigation footprint by default while keeping the tree usable.\n- Tree rows remain readable and clickable, but consume less visual space.\n- The selected page gets measurably more horizontal room on a typical desktop viewport.\n\nValidation:\n- Run the focused Pages layout source guard.\n- Browser-verify `/pages` on a fresh app host and measure navigation/detail widths.",
+  "type": "Task",
+  "status": "Done",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "ui",
+    "pages",
+    "screen-real-estate",
+    "navigation",
+    "audit-vetted"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "workbench/tasks"
+  ],
+  "comments": [
+    {
+      "id": "c-0187-1",
+      "author": "AgentSmith",
+      "body": "Created from the 2026-05-26 live `/pages` sweep after the narrow-layout work: the tree still consumed more desktop width than necessary, and long labels plus roomy tree rows pushed too much visual weight into navigation instead of reading.",
+      "createdAtUtc": "2026-05-26T20:43:58.5097010Z"
+    },
+    {
+      "id": "c-0187-2",
+      "author": "AgentSmith",
+      "body": "Completed by tightening `MemorySmith.App/wwwroot/app.css` for desktop `/pages`: `.pages-body` now uses `minmax(272px, 30%)`, the tree list padding is smaller, tree rows are denser, and folder counts render with lighter compact styling. Focused guard `PagesMarkup_RebalancesNavigationAndReadingSpaceOnNarrowViewports` passed via `dotnet test .\\MemorySmith.Tests\\MemorySmith.Tests.csproj -c Release --filter \"Name~PagesMarkup_RebalancesNavigationAndReadingSpaceOnNarrowViewports\" --logger \"console;verbosity=minimal\"`. Fresh-host browser verification on `http://127.0.0.1:5126/pages` measured roughly `269px` for navigation and `564px` for the reading pane at `window.innerWidth = 890`.",
+      "createdAtUtc": "2026-05-26T20:44:58.5097010Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-26T20:43:58.5097010Z",
+  "updatedAtUtc": "2026-05-26T20:44:58.5097010Z",
+  "completedAtUtc": "2026-05-26T20:44:58.5097010Z",
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

@@ -4,7 +4,7 @@ This page reviews [Claude MCP Benchmark Report - 2026-05-25](claude-mcp-benchmar
 
 ## Summary
 
-The reports were useful and specific, especially where they named exact memory IDs and stale source-link paths. Several findings were still actionable and have been converted into task records. Several others were already stale by the time of this review because the repo, docs, and tag policy had already moved forward.
+The reports were useful and specific, especially where they named exact memory IDs and stale source-link paths. Several findings were still actionable and were converted into task records; the public search-contract documentation item was completed the same day. Several others were already stale by the time of this review because the repo, docs, and tag policy had already moved forward.
 
 I also fixed the concrete KB-health drift that the report identified where the repair was obvious and low risk.
 
@@ -15,7 +15,7 @@ I also fixed the concrete KB-health drift that the report identified where the r
 | Edit-gated MCP write tools appear to hang for Viewer callers | Accepted for investigation | `MemorySmith.App/Controllers/McpController.cs` currently looks fail-fast for `ChatToolRisk.Write`, but there is no focused unauthorized denial-path regression coverage and loopback bootstrap compatibility can mask behavior differences. | `TSK-0183` |
 | Public docs do not explain MCP write permissions | Closed as stale | `README.md` and `Data/Pages/features/api-and-mcp.md` already document View, Edit, and Source bundle boundaries for the current tool set. | No new task |
 | Per-tool MCP disable/enable controls are missing | Closed as stale | `MemorySmith:EnabledTools` and `DisabledTools` are already exposed in admin settings and documented. | No new task |
-| `format=envelope` and advanced search contract are undocumented for public users | Accepted | Runtime supports `envelope`, but current public docs still emphasize basic tool purpose and do not explain the richer structured format or practical lexical-query boundaries. | `TSK-0184` |
+| `format=envelope` and advanced search contract are undocumented for public users | Completed | Runtime supported `envelope`, and the public docs were expanded on 2026-05-26 across README, `guides/search-and-chat`, `features/api-and-mcp`, `features/search-system`, and the structured wiki memory for MCP search tools. | `TSK-0184` done |
 | `project-wiki` and fixture-tag governance noise should be exempted or suppressed | Closed as stale | Current `Data/Policies/tag-policy.json` allowlists `project-wiki` and does not blocklist the fixture tags called out in the report. | No new task |
 | External agents need a first-class MCP health/stats surface | Accepted | Runtime already has `/health`, `/api/stats`, and `/api/diagnostics`, but no equivalent MCP tool exists. | `TSK-0185` |
 | External agents need better server-side search ergonomics such as recency filters, thresholds, and paging | Accepted | Current search surfaces expose only the core filters and bounded limits; the ergonomics gap is real and unowned. | `TSK-0186` |

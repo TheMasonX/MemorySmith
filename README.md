@@ -221,7 +221,34 @@ Three search modes are available in the UI (`/memories` search bar) and the REST
 | Semantic | `POST /api/memories/search/semantic` | ONNX embedding cosine ranking when `SemanticSearch` model and vocabulary files are available; otherwise local token/tag/title/reference/alias scoring with match explanations. |
 | Hybrid | `POST /api/memories/search/hybrid` | Lucene.NET lexical analysis + the active semantic ranker, fused with Reciprocal Rank Fusion (RRF). Best for discovery. |
 
-All three accept `query`, `tags` (comma-separated, filter by any match), `status`, and `limit`.
+All three accept `query`, `tags`, `status`, and `limit`.
+
+Search input contract:
+
+- `query` is plain text, not a Lucene query-parser expression. MemorySmith tokenizes text and scores title, tags, references, and content. Do not rely on field targeting such as `title:mcp`, boolean syntax such as `foo AND bar`, wildcard or fuzzy syntax such as `auth*` or `auth~`, or date/range syntax.
+- `tags` is a comma-separated, case-insensitive exact-match filter with any-match semantics. `kind:rule,audience:agent` matches records that have either tag. Namespaced tags are matched literally; they are not parsed as operators.
+- `status` accepts `Unconsolidated`, `Working`, `Core`, or `Deprecated`.
+- `limit` is bounded by the server-side search limit configuration.
+- Empty or whitespace `query` returns deterministic recency ordering by `LastUpdated`, then title and id.
+- If phrase weighting matters, send the phrase text itself. The service adds extra weight when the raw query text appears verbatim in title or content, but quoted parser syntax is not special.
+
+Structured REST output contract:
+
+- `POST /api/memories/search`, `/api/memories/search/semantic`, and `/api/memories/search/hybrid` return the long-standing compatible result arrays by default.
+- Adding `?format=envelope` or `?format=json-v2` returns `memorysmith.retrieval-results.v1` with `schemaVersion`, `mode`, `provider`, `results`, and `warnings`.
+- `GET /api/pages` returns the compatible page list by default; `?format=json`, `?format=envelope`, and `?format=json-v2` return `memorysmith.page-results.v1` for page list/search responses.
+- Lexical and semantic numeric scores are only meaningful within their own mode. Hybrid scores are Reciprocal Rank Fusion values used for ranking, not confidence percentages.
+
+Example memory-search body:
+
+```json
+{
+  "query": "mcp authorization matrix",
+  "tags": "project-wiki,kind:rule",
+  "status": "Core",
+  "limit": 5
+}
+```
 
 The embedding path uses ONNX Runtime, a local WordPiece vocabulary, E5-style `query:`/`passage:` prefixes, and an exact in-memory cosine scan over the filtered memory set. It intentionally falls back to the existing token scorer when model assets are missing or unusable, so fresh clones still work without redistributing model binaries.
 
@@ -231,14 +258,14 @@ The MCP endpoint is at `http://localhost:5089/mcp`. VS Code config lives in `.vs
 
 | Tool | Key args | Returns | Permission |
 | --- | --- | --- | --- |
-| `memorysmith_search` | `query`, `tags`, `status`, `limit` | Lexical results | View |
-| `memorysmith_semantic_search` | `query`, `tags`, `status`, `limit` | Scored results with match reasons | View |
-| `memorysmith_hybrid_search` | `query`, `tags`, `status`, `limit` | RRF-ranked results | View |
-| `memorysmith_context_pack` | `query` or `ids`, `tags`, `referenceDepth`, `includeBacklinks`, `maxRecords`, `maxContentChars`, `format` | Search results + linked references/conflicts in one response | View |
-| `memorysmith_get` | `id` | Single read-only record by ID | View |
+| `memorysmith_search` | `query`, `tags`, `status`, `limit`, `format` | Markdown by default, or `memorysmith.retrieval-results.v1` when `format=json` or `format=envelope` | View |
+| `memorysmith_semantic_search` | `query`, `tags`, `status`, `limit`, `format` | Markdown by default, or `memorysmith.retrieval-results.v1` when `format=json` or `format=envelope` | View |
+| `memorysmith_hybrid_search` | `query`, `tags`, `status`, `limit`, `format` | Markdown by default, or `memorysmith.retrieval-results.v1` when `format=json` or `format=envelope` | View |
+| `memorysmith_context_pack` | `query` or `ids`, `tags`, `referenceDepth`, `includeBacklinks`, `maxRecords`, `maxContentChars`, `format` | Markdown by default, or `memorysmith.context-pack.v1` when `format=json` | View |
+| `memorysmith_get` | `id` | Fixed structured JSON memory record | View |
 | `memorysmith_page_search` | `query`, `limit` | Markdown page summaries from `Data/Pages` | View |
 | `memorysmith_page_get` | `slug`, `maxCharacters` | One markdown page body, bounded for safe context inclusion | View |
-| `memorysmith_unified_search` | `query`, `memoryLimit`, `pageLimit`, `tags`, `status` | One call across memories + pages, returning separate memory and page result sections | View |
+| `memorysmith_unified_search` | `query`, `memoryLimit`, `pageLimit`, `tags`, `status`, `format` | Markdown by default, or `memorysmith.unified-search.v1` when `format=json` or `format=envelope` | View |
 | `memorysmith_task_list` | `query`, `status`, `assignee`, `limit` | Task summaries from `Data/Tasks` | View |
 | `memorysmith_task_get` | `idOrKey` | One full task record by id or key | View |
 | `memorysmith_task_create` | `title`, `description`, `priority`, `labels`, `slug` | Creates a task and records task activity | **Edit** |
@@ -248,8 +275,36 @@ The MCP endpoint is at `http://localhost:5089/mcp`. VS Code config lives in `.vs
 | `memorysmith_task_add_attachment` | `idOrKey`, `name`, `kind`, `uri` | Adds an http/https, local file artifact, or `task:` related-task attachment | **Edit** |
 | `memorysmith_page_save` | `markdown`, `slug` (opt), `title` (opt) | Creates or updates a wiki page; returns slug, title, and updated timestamp | **Edit** |
 | `memorysmith_page_delete` | `slug` | Deletes a wiki page; returns success or not-found | **Edit** |
-| `memorysmith_source_bundle` | `ids` or `query`/`tags`/`limit`, `maxFileBytes`, `format` | Records + resolved file content slices for every source link (MCP only) | Source bundle |
-| `memorysmith_find_by_source` | `pattern` | Records whose source link URIs match the substring (MCP only) | Source bundle |
+| `memorysmith_source_bundle` | `ids` or `query`/`tags`/`limit`, `maxFileBytes`, `format` | JSON by default, or JSONL when `format=jsonl`, with records + resolved file content slices for every source link (MCP only) | Source bundle |
+| `memorysmith_find_by_source` | `pattern` | Fixed structured JSON records whose source link URIs match the substring (MCP only) | Source bundle |
+
+MCP search contract:
+
+- `memorysmith_search`, `memorysmith_semantic_search`, `memorysmith_hybrid_search`, and `memorysmith_unified_search` use the same plain-text query contract as the REST search endpoints.
+- Public MCP docs and prompts should use the advertised `format` values `markdown`, `json`, and `envelope`. The current parser also accepts `json-v2` as a compatibility alias for structured retrieval, but it is not the primary documented MCP value.
+- `memorysmith_page_search` and `memorysmith_page_get` do not currently expose a `format` switch. Use `memorysmith_unified_search` when you need pages plus structured memory results in one payload.
+- `json` and `envelope` currently produce the same structured payload for the search tools. Prefer `envelope` in human-facing docs and prompts when you want to emphasize the richer retrieval contract.
+- Lexical and semantic raw scores are mode-specific ranking signals. Hybrid `Score` is an RRF value assembled from lexical and semantic ranks, so it should not be treated as confidence.
+
+Example MCP request with a namespaced tag and structured envelope output:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "hybrid-1",
+  "method": "tools/call",
+  "params": {
+    "name": "memorysmith_hybrid_search",
+    "arguments": {
+      "query": "mcp authorization matrix",
+      "tags": "project-wiki,kind:rule",
+      "status": "Core",
+      "limit": 5,
+      "format": "envelope"
+    }
+  }
+}
+```
 
 **`memorysmith_context_pack` tips:**
 

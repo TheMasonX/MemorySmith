@@ -4,7 +4,7 @@
   "title": "Document MCP search contract and supported query syntax",
   "description": "Problem: public MemorySmith docs explain the purpose of the search tools and their basic arguments, but they do not clearly document the richer structured formats and query-syntax boundaries that external agents actually need. The runtime already supports `format=envelope` for REST and MCP retrieval surfaces, and `ChatToolCatalog` exposes `markdown`, `json`, and `envelope` for several search tools, but the operator-facing pages do not spell out when to use each format, what extra diagnostics/scores the envelope exposes, how Lucene-style lexical search differs from unsupported fielded or fuzzy-query assumptions, or how namespaced tags should be used in practice. This forces external agents to guess, then rediscover the contract by trial and error.\n\nEvidence from 2026-05-26 audit:\n- `MemorySmith.App/Controllers/MemoriesController.cs` and `MemorySmith.App/Controllers/PagesController.cs` implement `format=envelope`.\n- `MemorySmith.App/Services/ChatToolCatalog.cs` advertises `markdown`, `json`, and `envelope` for relevant search tools.\n- `README.md` and `Data/Pages/guides/search-and-chat.md` cover basic search modes, tool purpose, and permissions, but not the richer structured format guidance or supported lexical syntax boundaries.\n- Search of `Data/Tasks` found no existing task that owns the public search-contract documentation gap.\n\nDesired outcome: external agents and maintainers can use MemorySmith search tools correctly without probing undocumented formats or unsupported query patterns.\n\nScope:\n- In scope: `README.md`, `Data/Pages/guides/search-and-chat.md`, `Data/Pages/features/api-and-mcp.md`, and related structured wiki updates that document search output formats and supported query syntax.\n- In scope: examples for `markdown`, `json`, and `envelope`; notes about when score interpretation is meaningful; and clear guidance on namespaced tags and common lexical-query patterns.\n- Out of scope: adding new search features such as date filters, pagination, or page semantic ranking.\n\nAcceptance criteria:\n- Public docs describe which search surfaces support `markdown`, `json`, and `envelope`, and what each format is for.\n- Public docs explain the supported lexical-query habits and call out notable unsupported assumptions that external agents are likely to try.\n- Public docs give at least one concrete example using namespaced tags and one using structured envelope output.\n- The updated docs are linked from the main search/MCP guidance surfaces.\n\nValidation:\n- Run `./Scripts/Test-PageLinks.ps1` after doc changes.\n- Run `./Scripts/Test-PagePathLiterals.ps1` after doc changes.\n- Run `./Scripts/Test-TaskRecords.ps1` after task creation/update.",
   "type": "Task",
-  "status": "Backlog",
+  "status": "Done",
   "priority": "Medium",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -20,7 +20,8 @@
   "externalLinks": [],
   "linkedPages": [
     "features/api-and-mcp",
-    "guides/search-and-chat"
+    "guides/search-and-chat",
+    "features/search-system"
   ],
   "comments": [
     {
@@ -28,15 +29,21 @@
       "author": "AgentSmith",
       "body": "Created during Claude benchmark triage after verifying that the public docs cover permissions and basic search behavior but still omit the richer `envelope` guidance and practical lexical-syntax boundaries external agents are currently reverse-engineering.",
       "createdAtUtc": "2026-05-26T19:21:07.5835278Z"
+    },
+    {
+      "id": "c-done-0184-20260526",
+      "author": "AgentSmith",
+      "body": "Completed on 2026-05-26 by updating README.md, Data/Pages/guides/search-and-chat.md, Data/Pages/features/api-and-mcp.md, Data/Pages/features/search-system.md, and Data/Memories/Core/project-wiki-mcp-search-tools-current.json to document the exact plain-text query contract, namespaced tag filtering, structured format matrix, score interpretation, and concrete MCP/REST examples. Validation passed: ./Scripts/Test-PageLinks.ps1, ./Scripts/Test-PagePathLiterals.ps1, and targeted JSON parse of Data/Memories/Core/project-wiki-mcp-search-tools-current.json.",
+      "createdAtUtc": "2026-05-26T20:36:43.3337793Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-26T19:21:07.5835278Z",
-  "updatedAtUtc": "2026-05-26T19:21:07.5835278Z",
-  "completedAtUtc": null,
-  "revision": 1,
+  "updatedAtUtc": "2026-05-26T20:36:43.3337793Z",
+  "completedAtUtc": "2026-05-26T20:36:43.3337793Z",
+  "revision": 2,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

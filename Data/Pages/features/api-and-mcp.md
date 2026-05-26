@@ -37,6 +37,32 @@ This feature makes MemorySmith usable by scripts, local tools, and AI agents wit
 - Per-tool MCP enable/disable configuration for local deployment risk controls.
 - Local-first operational defaults with optional API hardening controls.
 
+## Search Contract
+
+MemorySmith search APIs and MCP tools accept plain text plus explicit filters. They do not expose a full Lucene query-parser language.
+
+- `query` is plain text. The lexical path uses `StandardAnalyzer` tokenization and weighted field scoring; semantic fallback uses token overlap plus aliases and phrase boosts.
+- `tags` is a comma-separated, case-insensitive exact-match filter with any-match semantics. Namespaced tags such as `kind:rule`, `audience:agent`, and `scope:configuration` are literal tag values, not operators.
+- `status` is an optional memory status filter: `Unconsolidated`, `Working`, `Core`, or `Deprecated`.
+- Empty query returns recency ordering rather than parse errors.
+- Do not rely on fielded, boolean, wildcard, fuzzy, or date-range syntax such as `title:mcp`, `foo AND bar`, `auth*`, or `updated:[2026 TO *]`.
+
+## Structured Search Output
+
+| Surface | Structured options | Notes |
+| --- | --- | --- |
+| `POST /api/memories/search*` | `format=envelope`, `format=json-v2` | Returns `memorysmith.retrieval-results.v1`. Default remains the compatible result array. |
+| `GET /api/pages` | `format=json`, `format=envelope`, `format=json-v2` | Returns `memorysmith.page-results.v1` for list/search responses. |
+| `memorysmith_search`, `memorysmith_semantic_search`, `memorysmith_hybrid_search` | `format=json`, `format=envelope` | Both currently return the same structured retrieval envelope. |
+| `memorysmith_context_pack` | `format=json` | Returns `memorysmith.context-pack.v1`. |
+| `memorysmith_unified_search` | `format=json`, `format=envelope` | Returns `memorysmith.unified-search.v1`. |
+
+Score contract:
+
+- Lexical and semantic numeric scores are mode-specific ranking signals.
+- Hybrid `Score` is Reciprocal Rank Fusion and should not be interpreted as confidence.
+- Public MCP docs should use the advertised format values `markdown`, `json`, and `envelope`. The current parser also accepts `json-v2` as a compatibility alias for structured retrieval, but that alias is not the primary MCP contract.
+
 ## MCP Authorization Contract
 
 | Tool family | Contract |
@@ -51,6 +77,8 @@ This feature makes MemorySmith usable by scripts, local tools, and AI agents wit
 `MemorySmith:Mcp:DisabledTools` removes named tools from MCP discovery and direct execution; `MemorySmith:Mcp:EnabledTools` opts in descriptor-level default-off tools. Disabled wins if both lists name the same tool.
 
 For external agents, use `memorysmith_context_pack` to narrow evidence before calling `memorysmith_source_bundle`. Treat missing page hits or source entries as a possible permission/filtering outcome, not only as absent content.
+
+For the full search format matrix and concrete examples, use [Search and Chat](../guides/search-and-chat.md). For the search-engine behavior itself, use [Search System](search-system.md).
 
 > [!NOTE]
 > Screenshot placeholder [FEAT-API-02]: MCP tool list and endpoint details.

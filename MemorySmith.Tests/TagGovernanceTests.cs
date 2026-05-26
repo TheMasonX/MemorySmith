@@ -195,6 +195,10 @@ public class TagGovernanceTests
             Assert.That(markup, Does.Contain("Toggle focus reading"));
             Assert.That(markup, Does.Contain("PagesBodyClass"));
             Assert.That(css, Does.Contain(".pages-body"));
+            Assert.That(css, Does.Contain("grid-template-columns: minmax(272px, 30%) minmax(0, 1fr);"));
+            Assert.That(css, Does.Contain(".pages-tree-row"));
+            Assert.That(css, Does.Contain("min-height: 32px;"));
+            Assert.That(css, Does.Contain(".pages-tree-folder .wiki-count"));
             Assert.That(css, Does.Contain("grid-template-rows: minmax(72px, 22%) minmax(0, 1fr);"));
             Assert.That(css, Does.Contain(".pages-navigation-pane .wiki-pane-header"));
             Assert.That(css, Does.Contain(".page-rendered pre"));
@@ -544,6 +548,21 @@ public class TagGovernanceTests
             Assert.That(markup, Does.Contain("Agent writes sent back for revision"));
             Assert.That(markup, Does.Contain("ResponseCommentDraft"));
             Assert.That(markup, Does.Contain("Respond keeps the proposal diff and records this note in proposal history"));
+        });
+    }
+
+    [Test]
+    public void ChatMarkup_DefaultsSidebarClosedUntilHistoryOrTraceIsRequested()
+    {
+        var markup = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "Components", "Pages", "Chat.razor"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(markup, Does.Contain("private bool _sidebarOpen;"));
+            Assert.That(markup, Does.Contain("private void ToggleSidebar()"));
+            Assert.That(markup, Does.Contain("private void ShowSidebarTab(ChatSidebarTab tab)"));
+            Assert.That(markup, Does.Contain("_sidebarOpen = true;"));
+            Assert.That(markup, Does.Contain("CollapseSidebarOnNarrowViewportAsync"));
         });
     }
 
