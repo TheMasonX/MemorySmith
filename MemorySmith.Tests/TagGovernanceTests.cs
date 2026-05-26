@@ -214,6 +214,11 @@ public class TagGovernanceTests
             Assert.That(markup, Does.Not.Contain("Search transcripts"));
             Assert.That(markup, Does.Not.Contain("_maintenanceTranscriptSearch"));
             Assert.That(markup, Does.Not.Contain("title=\"@context.Item.HelpText\""));
+            Assert.That(markup, Does.Contain("admin-users-table"));
+            Assert.That(markup, Does.Contain("DataLabel=\"User\""));
+            Assert.That(markup, Does.Contain("DataLabel=\"Last login\""));
+            Assert.That(markup, Does.Contain("admin-user-primary"));
+            Assert.That(markup, Does.Contain("admin-user-action-cell"));
             Assert.That(navMarkup, Does.Contain("Href=\"/tags\""));
             Assert.That(navMarkup, Does.Contain("Tags"));
             Assert.That(navMarkup, Does.Contain("Href=\"/maintenance\""));

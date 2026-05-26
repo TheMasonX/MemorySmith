@@ -43,6 +43,7 @@ MemorySmith needs local-first convenience without losing governance. Admin and a
 ## Current Operator Notes
 
 - `/admin` Configuration edits allowlisted scalar and list settings through `AdminSettingsService`. Sensitive values stay write-only, show `Configured` or `Not configured`, and provide an explicit `Clear secret` action rather than echoing stored secrets.
+- The Admin Users view now defaults to masked user IDs and contact fields, keeps reveal/copy controls available when operators need them, and switches to labeled stacked rows on narrow screens so account metadata does not dominate the layout.
 - `/admin` keeps the active admin section visible outside the scrollable tab strip and renders Audit/History rows as labeled stacked cells on narrow screens so operators can still scan targets, artifacts, and copy actions without decoding a dense desktop table.
 - Admin audit and history views are the operator surface for auth and mutation evidence. Persisted entries carry request IDs and privacy-reviewed request metadata hashes without storing raw IP or user-agent values.
 - GitHub external-auth callbacks now use the same durable evidence contract as local password sign-in: successful callbacks write `auth.login.succeeded` plus login history, and callback failures write `auth.login.failed` plus a failure login-history row before redirecting back to `/login` or `/profile`.

@@ -2734,6 +2734,27 @@ body {
     line-height: 1.35;
 }
 
+.admin-users-table .mud-table-cell:last-child {
+    min-width: 130px;
+}
+
+.admin-user-primary,
+.admin-user-secondary,
+.admin-user-action-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.admin-user-secondary {
+    color: var(--vscode-text-muted);
+}
+
+.admin-user-action-cell {
+    align-items: flex-start;
+}
+
 .admin-models-layout {
     display: grid;
     grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
@@ -4171,6 +4192,18 @@ body {
 
     .admin-grid-table .mud-table-cell:last-child {
         padding-bottom: 12px;
+    }
+
+    .admin-users-table .mud-table-cell:last-child {
+        min-width: 0;
+    }
+
+    .admin-users-table .mud-table-cell {
+        gap: 4px;
+    }
+
+    .admin-user-primary strong {
+        font-size: 0.92rem;
     }
 
     .admin-copy-cell {

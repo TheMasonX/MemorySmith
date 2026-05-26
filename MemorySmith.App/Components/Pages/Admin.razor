@@ -41,7 +41,7 @@
 
     <MudTabs Rounded="false" Elevation="0" Class="admin-tabs" ActivePanelIndex="@_activeAdminTabIndex" ActivePanelIndexChanged="OnAdminTabChanged">
         <MudTabPanel Text="Users" Icon="@Icons.Material.Filled.People">
-            <MudTable Items="@_userRows" Dense="true" Class="health-table">
+            <MudTable Items="@_userRows" Dense="true" Breakpoint="Breakpoint.Sm" Class="health-table admin-grid-table admin-users-table">
                 <HeaderContent>
                     <MudTh>User</MudTh>
                     <MudTh>Email</MudTh>
@@ -51,13 +51,19 @@
                     <MudTh>Action</MudTh>
                 </HeaderContent>
                 <RowTemplate>
-                    <MudTd>
-                        <strong>@context.User.DisplayName</strong><br />
-                        <SensitiveValue Value="@context.User.UserId" Summary="@SummarizeIdentifier(context.User.UserId)" Label="@($"{context.User.DisplayName} user ID")" Class="admin-sensitive-value admin-sensitive-compact" />
+                    <MudTd DataLabel="User">
+                        <div class="admin-user-primary">
+                            <strong>@context.User.DisplayName</strong>
+                            <SensitiveValue Value="@context.User.UserId" Summary="@SummarizeIdentifier(context.User.UserId)" Label="@($"{context.User.DisplayName} user ID")" Class="admin-sensitive-value admin-sensitive-compact" />
+                        </div>
                     </MudTd>
-                    <MudTd><SensitiveValue Value="@context.User.Email" Summary="@MaskEmail(context.User.Email)" Label="@($"{context.User.DisplayName} email")" Class="admin-sensitive-value" EmptyText="-" /></MudTd>
-                    <MudTd>@(context.User.IsDisabled ? "Disabled" : "Active")</MudTd>
-                    <MudTd>
+                    <MudTd DataLabel="Email">
+                        <div class="admin-user-secondary">
+                            <SensitiveValue Value="@context.User.Email" Summary="@MaskEmail(context.User.Email)" Label="@($"{context.User.DisplayName} email")" Class="admin-sensitive-value" EmptyText="-" />
+                        </div>
+                    </MudTd>
+                    <MudTd DataLabel="Status">@(context.User.IsDisabled ? "Disabled" : "Active")</MudTd>
+                    <MudTd DataLabel="Role">
                         @if (context.IsAdmin)
                         {
                             <span class="wiki-status is-core">Admin</span>
@@ -72,9 +78,11 @@
                             </MudSelect>
                         }
                     </MudTd>
-                    <MudTd>@(context.User.LastLoginAtUtc?.ToLocalTime().ToString("g") ?? "-")</MudTd>
-                    <MudTd>
-                        <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error" Disabled="@(_isBusy || context.IsAdmin || context.User.IsDisabled)" OnClick="@(() => DisableUserAsync(context))">Disable</MudButton>
+                    <MudTd DataLabel="Last login">@(context.User.LastLoginAtUtc?.ToLocalTime().ToString("g") ?? "-")</MudTd>
+                    <MudTd DataLabel="Action">
+                        <div class="admin-user-action-cell">
+                            <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error" Disabled="@(_isBusy || context.IsAdmin || context.User.IsDisabled)" OnClick="@(() => DisableUserAsync(context))">Disable</MudButton>
+                        </div>
                     </MudTd>
                 </RowTemplate>
             </MudTable>
