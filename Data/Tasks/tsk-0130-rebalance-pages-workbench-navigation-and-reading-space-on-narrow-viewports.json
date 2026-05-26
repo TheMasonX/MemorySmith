@@ -4,7 +4,7 @@
   "title": "Rebalance Pages navigation and reading space on narrow viewports",
   "description": "Problem: the live `/pages` review showed both the navigation tree and rendered page fighting for vertical space on narrow viewports. The navigation tree shows only a few rows, the reader pane has its own short scroll area, and code blocks add another horizontal scroller inside the already constrained content area.\n\nDesired outcome: Pages should preserve always-available navigation while giving the selected page enough reading/editing space to feel usable.\n\nScope:\n- In scope: responsive navigation/detail proportions, compact tree header, optional navigation drawer/peek mode, code-block overflow treatment, and focus-reading transitions that preserve discoverability.\n- Out of scope: changing page storage or markdown parsing semantics.\n\nAcceptance criteria:\n- Narrow-width Pages view shows a useful amount of selected page content without forcing users through multiple small nested scroll areas.\n- Navigation remains discoverable and quick to reopen.\n- Code blocks do not dominate or awkwardly trap horizontal scrolling in the first viewport.\n- Existing Tree/Flat/ToC modes remain reachable and understandable.\n\nValidation:\n- Capture `/pages` screenshots for Tree, Flat, ToC, and focus-reading states.\n- Run Pages route-smoke/navigation-freeze checks after layout changes.",
   "type": "Task",
-  "status": "Backlog",
+  "status": "Done",
   "priority": "Medium",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -28,15 +28,21 @@
       "author": "AgentSmith",
       "body": "Created from 2026-05-25 live visual review: `/pages` keeps navigation visible, but the narrow view leaves both the tree and reader in short nested scroll regions with limited reading room.",
       "createdAtUtc": "2026-05-25T00:00:00.0000000Z"
+    },
+    {
+      "id": "c-0130-2",
+      "author": "AgentSmith",
+      "body": "Completed the `/pages` narrow-layout rebalance by shrinking the compact navigation row, tightening rendered-page chrome, and wrapping code blocks at the narrow breakpoint so page content keeps more of the first viewport without losing Tree/Flat/ToC/focus-reading affordances. Focused guard `PagesMarkup_RebalancesNavigationAndReadingSpaceOnNarrowViewports` passed in `MemorySmith.Tests/TagGovernanceTests.cs`. Browser verification on `http://127.0.0.1:5125/pages` confirmed Tree, Flat, ToC, and focus-reading states remained usable; screenshots are under `artifacts/browser-validation/tsk-0130/20260526-140123-interactive/`. Regression checks also passed against the same host: `npm run test:route-smoke` 6/6 and `npm run test:nav-freeze` 5/5.",
+      "createdAtUtc": "2026-05-26T19:04:56.4826528Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-25T00:00:00.0000000Z",
-  "updatedAtUtc": "2026-05-25T00:00:00.0000000Z",
-  "completedAtUtc": null,
-  "revision": 1,
+  "updatedAtUtc": "2026-05-26T19:04:56.4826528Z",
+  "completedAtUtc": "2026-05-26T19:04:56.4826528Z",
+  "revision": 2,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

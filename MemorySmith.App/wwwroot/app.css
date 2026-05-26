@@ -4781,15 +4781,36 @@ body {
     .pages-body,
     .pages-body.is-nav-hidden {
         grid-template-columns: 1fr;
-        grid-template-rows: minmax(90px, 32%) minmax(0, 1fr);
+        grid-template-rows: minmax(72px, 22%) minmax(0, 1fr);
     }
 
     .pages-body.is-nav-hidden {
         grid-template-rows: minmax(0, 1fr);
     }
 
+    .pages-navigation-pane .wiki-pane-header {
+        min-height: 42px;
+        padding: 8px 10px;
+    }
+
+    .pages-tree-list,
+    .pages-toc-list {
+        padding: 4px;
+    }
+
     .pages-body.is-nav-hidden .page-detail-pane {
         grid-row: 1;
+    }
+
+    .page-rendered {
+        margin: 8px 10px 10px;
+        padding: 16px;
+    }
+
+    .page-rendered pre {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        word-break: break-word;
     }
 
     .pages-workbench.is-editing .pages-body {

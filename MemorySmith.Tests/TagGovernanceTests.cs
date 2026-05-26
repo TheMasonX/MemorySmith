@@ -180,6 +180,30 @@ public class TagGovernanceTests
     }
 
     [Test]
+    public void PagesMarkup_RebalancesNavigationAndReadingSpaceOnNarrowViewports()
+    {
+        var root = FindRepositoryRoot();
+        var markup = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "Components", "Pages", "Pages.razor"));
+        var css = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "wwwroot", "app.css"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(markup, Does.Contain("SetNavigationModeAsync(TreeMode)"));
+            Assert.That(markup, Does.Contain("SetNavigationModeAsync(FlatMode)"));
+            Assert.That(markup, Does.Contain("SetNavigationModeAsync(TocMode)"));
+            Assert.That(markup, Does.Contain("ToggleNavigationVisibilityAsync"));
+            Assert.That(markup, Does.Contain("Toggle focus reading"));
+            Assert.That(markup, Does.Contain("PagesBodyClass"));
+            Assert.That(css, Does.Contain(".pages-body"));
+            Assert.That(css, Does.Contain("grid-template-rows: minmax(72px, 22%) minmax(0, 1fr);"));
+            Assert.That(css, Does.Contain(".pages-navigation-pane .wiki-pane-header"));
+            Assert.That(css, Does.Contain(".page-rendered pre"));
+            Assert.That(css, Does.Contain("white-space: pre-wrap;"));
+            Assert.That(css, Does.Contain("overflow-wrap: anywhere;"));
+        });
+    }
+
+    [Test]
     public void TagManagerMarkup_ExposesPolicyEditingUsageAndSuggestionReview()
     {
         var markup = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "Components", "Pages", "TagManager.razor"));
