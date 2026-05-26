@@ -4,7 +4,7 @@
   "Title": "Reject unsafe page/memory proposal identifiers at proposal time (for example path traversal like `../`) instead of waiting for apply-time failures.",
   "Description": "Add a red/green example when implemented.\r\n\r\nImported from Data/Pages/workbench/tasks.md",
   "Type": "Task",
-  "Status": "Backlog",
+  "Status": "Done",
   "Priority": "Medium",
   "AssigneeMode": "Custom",
   "AssigneeDirectoryId": null,
@@ -26,14 +26,20 @@
       "Author": "tracker-import",
       "Body": "Add a red/green example when implemented.",
       "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z"
+    },
+    {
+      "Id": "c-verified-0021-20260526",
+      "Author": "AgentSmith",
+      "Body": "Verified complete: `ReadMemoryWriteProposal` and `ReadPageWriteProposal` call `ValidateMemoryProposalId` / `ValidatePageProposalSlug`, which reject rooted paths, `..`, `.`, drive-style `:`, leading slashes, and memory-id hierarchy before proposals become actionable. Existing regression coverage includes `MemoryChatAgent_RejectsUnsafeProposalIdentifiersBeforeApproval` and `MemoryChatAgent_RejectsUnsafeProposalPathBeforeMaintenanceProposalSubmission`; full validation passed 348/348 after adjacent chat-governance work.",
+      "CreatedAtUtc": "2026-05-26T18:12:00.0000000Z"
     }
   ],
   "EpicId": null,
   "ParentId": null,
   "DueDateUtc": null,
   "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z",
-  "UpdatedAtUtc": "2026-05-23T23:36:10.0439283Z",
-  "CompletedAtUtc": null,
-  "Revision": 1,
+  "UpdatedAtUtc": "2026-05-26T18:12:00.0000000Z",
+  "CompletedAtUtc": "2026-05-26T18:12:00.0000000Z",
+  "Revision": 2,
   "IsArchived": false
 }
