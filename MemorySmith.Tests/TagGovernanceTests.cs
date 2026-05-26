@@ -326,7 +326,11 @@ public class TagGovernanceTests
             Assert.That(markup, Does.Contain("-> approved (submitted"));
             Assert.That(markup, Does.Contain("-> rejected (no changes needed)"));
             Assert.That(markup, Does.Contain("IsBlockedApprovalException(ex) ? \"blocked\" : \"failed\""));
-            Assert.That(markup, Does.Contain("UpdatePendingWriteStatus(turn);"));
+            Assert.That(markup, Does.Contain("PendingWriteCount(ChatSessionState session)"));
+            Assert.That(markup, Does.Contain("UpdatePendingWriteStatus(ActiveSession"));
+            Assert.That(markup, Does.Contain("UpdatePendingWriteStatus(active, \"Ready\")"));
+            Assert.That(markup, Does.Contain("UpdatePendingWriteStatus(session, _mode == MemoryChatMode.Agent ? \"Agent ready\" : \"Chat ready\")"));
+            Assert.That(markup, Does.Contain("var pendingWriteCount = PendingWriteCount(ActiveSession);"));
         });
     }
 

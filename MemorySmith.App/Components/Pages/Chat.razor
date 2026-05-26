@@ -598,7 +598,7 @@
             RestoreSessionDraft(active);
             SelectDefaultTraceTurn(active);
             _currentUsage = null;
-            _agentStatus = "Ready";
+            UpdatePendingWriteStatus(active, "Ready");
             _scrollPending = true;
         }
 
@@ -994,6 +994,7 @@
             RestoreSessionDraft(session);
             SelectDefaultTraceTurn(session);
             _currentUsage = null;
+            UpdatePendingWriteStatus(session, _mode == MemoryChatMode.Agent ? "Agent ready" : "Chat ready");
             _scrollPending = true;
             await SaveSessionsAsync();
             await SavePreferencesAsync();
@@ -1033,7 +1034,7 @@
         }
 
         LogAttachmentCleanupResult("session-delete", ChatAttachmentFiles.DeleteTempFiles(pendingAttachments, RetainedPendingAttachments()));
-        _agentStatus = "Chat deleted";
+        UpdatePendingWriteStatus(ActiveSession, "Chat deleted");
         Snackbar.Add("Chat deleted.", Severity.Success);
         await SaveSessionsAsync();
         await SavePreferencesAsync();
@@ -1317,7 +1318,7 @@
                     EstimatedTokens = EstimateTraceTokens(FormatPendingWriteSummary(pendingTurn))
                 });
                 ShowSidebarTab(ChatSidebarTab.Trace);
-                _agentStatus = $"{pendingTurn.ProposedMemoryWrites.Count + pendingTurn.ProposedPageWrites.Count} write approval(s) pending";
+                _agentStatus = $"{PendingWriteCount(pendingTurn)} write approval(s) pending";
             }
             if (!string.IsNullOrWhiteSpace(response.Thinking) && !pendingTurn.TraceEntries.Any(entry => string.Equals(entry.Kind, ChatTraceKinds.Reasoning, StringComparison.OrdinalIgnoreCase)))
             {
@@ -1345,7 +1346,7 @@
             pendingTurn.DurationMilliseconds = (long)Math.Max(0, (DateTimeOffset.UtcNow - (_responseStartedUtc ?? DateTimeOffset.UtcNow)).TotalMilliseconds);
             session.History.Add(new ChatMessage("assistant", response.Reply));
             session.UpdatedUtc = DateTimeOffset.UtcNow;
-            var pendingWriteCount = pendingTurn.ProposedMemoryWrites.Count + pendingTurn.ProposedPageWrites.Count;
+            var pendingWriteCount = PendingWriteCount(ActiveSession);
             _agentStatus = pendingWriteCount > 0
                 ? $"{response.ProviderName} / {response.Model}: {response.Context.Count} resource(s), {pendingWriteCount} approval(s) pending"
                 : $"{response.ProviderName} / {response.Model}: {response.Context.Count} resource(s), {response.WrittenMemories.Count + response.WrittenPages.Count} write(s)";
@@ -1467,7 +1468,7 @@
                 results.Add(await ApproveProposalWithOutcomeAsync(turn, [], [proposal], $"page:{proposal.Slug}"));
             }
 
-            UpdatePendingWriteStatus(turn);
+            UpdatePendingWriteStatus();
             if (results.Count > 0)
             {
                 AddTraceEntry(
@@ -1498,7 +1499,7 @@
         if (proposal is not null)
         {
             _ = await ApproveProposalWithOutcomeAsync(turn, [proposal], [], $"memory:{proposal.Id}");
-            UpdatePendingWriteStatus(turn);
+            UpdatePendingWriteStatus();
             ActiveSession.UpdatedUtc = DateTimeOffset.UtcNow;
             await SaveSessionsAsync();
         }
@@ -1515,7 +1516,7 @@
         if (proposal is not null)
         {
             _ = await ApproveProposalWithOutcomeAsync(turn, [], [proposal], $"page:{proposal.Slug}");
-            UpdatePendingWriteStatus(turn);
+            UpdatePendingWriteStatus();
             ActiveSession.UpdatedUtc = DateTimeOffset.UtcNow;
             await SaveSessionsAsync();
         }
@@ -1571,12 +1572,21 @@
     private static bool IsBlockedApprovalException(Exception ex) =>
         ex is InvalidOperationException or UnauthorizedAccessException or ArgumentException;
 
-    private void UpdatePendingWriteStatus(ChatTurnState turn)
+    private static int PendingWriteCount(ChatTurnState turn) =>
+        turn.ProposedMemoryWrites.Count + turn.ProposedPageWrites.Count;
+
+    private static int PendingWriteCount(ChatSessionState session) =>
+        session.Turns.Sum(PendingWriteCount);
+
+    private void UpdatePendingWriteStatus(string emptyStatus = "No pending write approvals") =>
+        UpdatePendingWriteStatus(ActiveSession, emptyStatus);
+
+    private void UpdatePendingWriteStatus(ChatSessionState session, string emptyStatus = "No pending write approvals")
     {
-        var pendingCount = turn.ProposedMemoryWrites.Count + turn.ProposedPageWrites.Count;
+        var pendingCount = PendingWriteCount(session);
         _agentStatus = pendingCount > 0
             ? $"{pendingCount} write approval(s) pending"
-            : "No pending write approvals";
+            : emptyStatus;
     }
 
     private static Color TraceFilterColor(bool enabled, Color accent = Color.Primary) => enabled ? accent : Color.Default;
@@ -1605,7 +1615,7 @@
 
         turn.ProposedMemoryWrites.RemoveAll(item => string.Equals(item.Id, memoryId, StringComparison.OrdinalIgnoreCase));
         AddTraceEntry(turn, ChatTraceKinds.Write, "Agent memory write rejected", $"Rejected memory:{memoryId}.");
-        UpdatePendingWriteStatus(turn);
+        UpdatePendingWriteStatus();
         await SaveSessionsAsync();
     }
 
@@ -1618,7 +1628,7 @@
 
         turn.ProposedPageWrites.RemoveAll(item => string.Equals(item.Slug, slug, StringComparison.OrdinalIgnoreCase));
         AddTraceEntry(turn, ChatTraceKinds.Write, "Agent page write rejected", $"Rejected page:{slug}.");
-        UpdatePendingWriteStatus(turn);
+        UpdatePendingWriteStatus();
         await SaveSessionsAsync();
     }
 
