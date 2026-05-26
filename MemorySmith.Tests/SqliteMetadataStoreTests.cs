@@ -301,6 +301,134 @@ public class SqliteMetadataStoreTests
         });
     }
 
+    [Test]
+    public async Task ExternalAuthOutcomeRecorder_SuccessRecordsLoginHistoryAndAudit()
+    {
+        var options = new MemorySmithOptions
+        {
+            DataProtectionKeysPath = Path.Combine(_tempDir, "Keys"),
+            Audit = new AuditOptions
+            {
+                JsonlEnabled = false
+            }
+        };
+        var monitor = new TestOptionsMonitor<MemorySmithOptions>(options);
+        await SeedUserAsync("admin-user", "Admin User", "ADMIN USER");
+        await SeedUserAsync("github-user", "GitHub User", "GITHUB USER");
+        await _database.Roles.AssignRoleAsync("github-user", MemorySmithRoles.Editor, null, CancellationToken.None);
+        var currentUser = new FakeCurrentUserContext();
+        var httpContext = new DefaultHttpContext
+        {
+            TraceIdentifier = "request-ext-success"
+        };
+        httpContext.Connection.RemoteIpAddress = IPAddress.Parse("203.0.113.25");
+        httpContext.Request.Headers.UserAgent = "MemorySmith.Tests/ext-success";
+        var httpContextAccessor = new HttpContextAccessor { HttpContext = httpContext };
+        var audit = new AuditLogService(_database, currentUser, httpContextAccessor, monitor);
+        var recorder = new ExternalAuthOutcomeRecorder(_database, audit, monitor);
+        var user = await _database.Users.GetByIdAsync("github-user", CancellationToken.None);
+
+        Assert.That(user, Is.Not.Null);
+
+        await recorder.RecordSuccessAsync(
+            httpContext,
+            MemorySmithProviders.GitHub,
+            "github-subject",
+            user!,
+            [new RoleRecord { Name = MemorySmithRoles.Editor }],
+            requestedLink: false,
+            CancellationToken.None);
+
+        var loginHistory = await _database.LoginHistory.QueryAsync(new LoginHistoryQuery(ProviderName: MemorySmithProviders.GitHub), CancellationToken.None);
+        var audits = await _database.AuditLogs.QueryAsync(new AuditLogQuery(Action: "auth.login.succeeded", TargetId: "github-user"), CancellationToken.None);
+        var login = loginHistory.Data.Single();
+        var auditEntry = audits.Data.Single();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(login.Succeeded, Is.True);
+            Assert.That(login.UserId, Is.EqualTo("github-user"));
+            Assert.That(login.ProviderSubject, Is.EqualTo("github-subject"));
+            Assert.That(login.RequestId, Is.EqualTo("request-ext-success"));
+            Assert.That(auditEntry.ActorUserId, Is.EqualTo("github-user"));
+            Assert.That(auditEntry.Action, Is.EqualTo("auth.login.succeeded"));
+            Assert.That(auditEntry.ProviderName, Is.EqualTo(MemorySmithProviders.GitHub));
+            Assert.That(auditEntry.AuthScheme, Is.EqualTo(MemorySmithProviders.GitHub));
+            Assert.That(auditEntry.TargetKind, Is.EqualTo("User"));
+            Assert.That(auditEntry.TargetId, Is.EqualTo("github-user"));
+            Assert.That(auditEntry.RequestId, Is.EqualTo("request-ext-success"));
+            Assert.That(auditEntry.IpHash, Is.EqualTo(login.IpHash));
+            Assert.That(auditEntry.UserAgentHash, Is.EqualTo(login.UserAgentHash));
+            Assert.That(auditEntry.RoleSnapshotJson, Does.Contain(MemorySmithRoles.Editor));
+        });
+    }
+
+    [Test]
+    public async Task ExternalAuthOutcomeRecorder_FailureRecordsLoginHistoryAndAuditOnce()
+    {
+        var options = new MemorySmithOptions
+        {
+            DataProtectionKeysPath = Path.Combine(_tempDir, "Keys"),
+            Audit = new AuditOptions
+            {
+                JsonlEnabled = false
+            }
+        };
+        var monitor = new TestOptionsMonitor<MemorySmithOptions>(options);
+        await SeedUserAsync("admin-user", "Admin User", "ADMIN USER");
+        var currentUser = new FakeCurrentUserContext();
+        var httpContext = new DefaultHttpContext
+        {
+            TraceIdentifier = "request-ext-failure"
+        };
+        httpContext.Connection.RemoteIpAddress = IPAddress.Parse("203.0.113.26");
+        httpContext.Request.Headers.UserAgent = "MemorySmith.Tests/ext-failure";
+        var httpContextAccessor = new HttpContextAccessor { HttpContext = httpContext };
+        var audit = new AuditLogService(_database, currentUser, httpContextAccessor, monitor);
+        var recorder = new ExternalAuthOutcomeRecorder(_database, audit, monitor);
+
+        await recorder.RecordFailureIfNeededAsync(
+            httpContext,
+            MemorySmithProviders.GitHub,
+            providerSubject: null,
+            targetUserId: null,
+            failureCode: "remote_failure",
+            message: "External sign-in failed.",
+            requestedLink: false,
+            cancellationToken: CancellationToken.None);
+
+        await recorder.RecordFailureIfNeededAsync(
+            httpContext,
+            MemorySmithProviders.GitHub,
+            providerSubject: null,
+            targetUserId: null,
+            failureCode: "remote_failure",
+            message: "External sign-in failed.",
+            requestedLink: false,
+            cancellationToken: CancellationToken.None);
+
+        var loginHistory = await _database.LoginHistory.QueryAsync(new LoginHistoryQuery(ProviderName: MemorySmithProviders.GitHub), CancellationToken.None);
+        var audits = await _database.AuditLogs.QueryAsync(new AuditLogQuery(Action: "auth.login.failed", TargetKind: "Provider", TargetId: MemorySmithProviders.GitHub), CancellationToken.None);
+        var login = loginHistory.Data.Single();
+        var auditEntry = audits.Data.Single();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(loginHistory.Data, Has.Count.EqualTo(1));
+            Assert.That(audits.Data, Has.Count.EqualTo(1));
+            Assert.That(login.Succeeded, Is.False);
+            Assert.That(login.FailureCode, Is.EqualTo("remote_failure"));
+            Assert.That(login.RequestId, Is.EqualTo("request-ext-failure"));
+            Assert.That(auditEntry.Action, Is.EqualTo("auth.login.failed"));
+            Assert.That(auditEntry.Outcome, Is.EqualTo(MemorySmithAuditOutcomes.Failure));
+            Assert.That(auditEntry.Reason, Is.EqualTo("remote_failure"));
+            Assert.That(auditEntry.ActorKind, Is.EqualTo(MemorySmithActorKinds.Anonymous));
+            Assert.That(auditEntry.ProviderName, Is.EqualTo(MemorySmithProviders.GitHub));
+            Assert.That(auditEntry.TargetKind, Is.EqualTo("Provider"));
+            Assert.That(auditEntry.TargetId, Is.EqualTo(MemorySmithProviders.GitHub));
+        });
+    }
+
     private sealed class FakeCurrentUserContext : ICurrentUserContext
     {
         public string? UserId => "admin-user";

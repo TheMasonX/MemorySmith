@@ -245,6 +245,26 @@ public class TagGovernanceTests
     }
 
     [Test]
+    public void ExternalAuthCallbacks_RecordDurableSuccessAndFailureEvidence()
+    {
+        var root = FindRepositoryRoot();
+        var program = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "Program.cs"));
+        var securitySource = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "Services", "SecurityServices.cs"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(program, Does.Contain("ExternalAuthOutcomeRecorder"));
+            Assert.That(program, Does.Contain("RecordSuccessAsync"));
+            Assert.That(program, Does.Contain("RecordFailureIfNeededAsync"));
+            Assert.That(program, Does.Contain("OnRemoteFailure = async ctx =>"));
+            Assert.That(securitySource, Does.Contain("RecordWithActorAsync"));
+            Assert.That(securitySource, Does.Contain("FailurePersistedKey"));
+            Assert.That(securitySource, Does.Contain("auth.login.succeeded"));
+            Assert.That(securitySource, Does.Contain("auth.login.failed"));
+        });
+    }
+
+    [Test]
     public void MaintenanceMarkup_ExposesStandaloneTraceChatAndActionHistoryPage()
     {
         var root = FindRepositoryRoot();

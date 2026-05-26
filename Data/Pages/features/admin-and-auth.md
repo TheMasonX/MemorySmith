@@ -44,6 +44,7 @@ MemorySmith needs local-first convenience without losing governance. Admin and a
 
 - `/admin` Configuration edits allowlisted scalar and list settings through `AdminSettingsService`. Sensitive values stay write-only, show `Configured` or `Not configured`, and provide an explicit `Clear secret` action rather than echoing stored secrets.
 - Admin audit and history views are the operator surface for auth and mutation evidence. Persisted entries carry request IDs and privacy-reviewed request metadata hashes without storing raw IP or user-agent values.
+- GitHub external-auth callbacks now use the same durable evidence contract as local password sign-in: successful callbacks write `auth.login.succeeded` plus login history, and callback failures write `auth.login.failed` plus a failure login-history row before redirecting back to `/login` or `/profile`.
 - External provider runtime is partial today: GitHub is wired into the startup auth pipeline. Google and Microsoft can still be preconfigured for future use, but `/admin` marks them `Unsupported` and `/login` plus `/profile` do not treat them as active sign-in methods until matching auth handlers are registered.
 
 > [!NOTE]

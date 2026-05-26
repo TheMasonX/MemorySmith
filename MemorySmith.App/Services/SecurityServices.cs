@@ -64,6 +64,149 @@ public static class MemorySmithExternalAuthSupport
         supportedExternalProviders.Contains(providerName);
 }
 
+public sealed record AuditActorContext(
+    string? UserId,
+    string DisplayName,
+    string AuthScheme,
+    string? ProviderName,
+    string ActorKind,
+    IReadOnlyList<string> Roles);
+
+public sealed class ExternalAuthOutcomeRecorder
+{
+    private const string FailurePersistedKey = "MemorySmith.ExternalAuthFailurePersisted";
+    private readonly IMemorySmithDatabase _database;
+    private readonly AuditLogService _audit;
+    private readonly IOptionsMonitor<MemorySmithOptions> _options;
+
+    public ExternalAuthOutcomeRecorder(
+        IMemorySmithDatabase database,
+        AuditLogService audit,
+        IOptionsMonitor<MemorySmithOptions> options)
+    {
+        _database = database;
+        _audit = audit;
+        _options = options;
+    }
+
+    public async Task RecordSuccessAsync(
+        HttpContext httpContext,
+        string providerName,
+        string? providerSubject,
+        UserAccount user,
+        IReadOnlyList<RoleRecord> roles,
+        bool requestedLink,
+        CancellationToken cancellationToken)
+    {
+        var occurredAtUtc = DateTime.UtcNow;
+        var requestMetadata = RequestMetadata.Capture(httpContext, _options.CurrentValue);
+        await _database.LoginHistory.RecordAsync(new LoginHistoryEntry
+        {
+            LoginId = Guid.NewGuid().ToString("N"),
+            UserId = user.UserId,
+            ProviderName = providerName,
+            ProviderSubject = providerSubject,
+            OccurredAtUtc = occurredAtUtc,
+            Succeeded = true,
+            IpHash = requestMetadata.IpHash,
+            UserAgentHash = requestMetadata.UserAgentHash,
+            RequestId = requestMetadata.RequestId
+        }, cancellationToken);
+
+        await _audit.RecordWithActorAsync(
+            new AuditActorContext(
+                user.UserId,
+                user.DisplayName,
+                providerName,
+                providerName,
+                MemorySmithActorKinds.User,
+                roles.Select(role => role.Name).Distinct(StringComparer.OrdinalIgnoreCase).ToList()),
+            "auth.login.succeeded",
+            "User",
+            user.UserId,
+            MemorySmithAuditOutcomes.Success,
+            details: new { providerName, requestedLink },
+            httpContext: httpContext,
+            cancellationToken: cancellationToken);
+    }
+
+    public async Task RecordFailureIfNeededAsync(
+        HttpContext httpContext,
+        string providerName,
+        string? providerSubject,
+        string? targetUserId,
+        string failureCode,
+        string message,
+        bool requestedLink,
+        object? details = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (FailureAlreadyPersisted(httpContext))
+        {
+            return;
+        }
+
+        MarkFailurePersisted(httpContext);
+        var occurredAtUtc = DateTime.UtcNow;
+        var requestMetadata = RequestMetadata.Capture(httpContext, _options.CurrentValue);
+        await _database.LoginHistory.RecordAsync(new LoginHistoryEntry
+        {
+            LoginId = Guid.NewGuid().ToString("N"),
+            UserId = targetUserId,
+            ProviderName = providerName,
+            ProviderSubject = providerSubject,
+            OccurredAtUtc = occurredAtUtc,
+            Succeeded = false,
+            FailureCode = failureCode,
+            IpHash = requestMetadata.IpHash,
+            UserAgentHash = requestMetadata.UserAgentHash,
+            RequestId = requestMetadata.RequestId
+        }, cancellationToken);
+
+        await _audit.RecordWithActorAsync(
+            ResolveAttemptActor(httpContext, providerName),
+            "auth.login.failed",
+            targetUserId is null ? "Provider" : "User",
+            targetUserId ?? providerName,
+            MemorySmithAuditOutcomes.Failure,
+            reason: failureCode,
+            details: details is null
+                ? new { providerName, requestedLink, message }
+                : new { providerName, requestedLink, message, details },
+            httpContext: httpContext,
+            cancellationToken: cancellationToken);
+    }
+
+    private static AuditActorContext ResolveAttemptActor(HttpContext httpContext, string providerName)
+    {
+        var principal = httpContext.User;
+        if (principal.Identity?.IsAuthenticated == true)
+        {
+            return new AuditActorContext(
+                principal.FindFirstValue(ClaimTypes.NameIdentifier),
+                principal.FindFirstValue(ClaimTypes.Name) ?? "Authenticated user",
+                principal.Identity.AuthenticationType ?? providerName,
+                principal.FindFirstValue("provider") ?? providerName,
+                MemorySmithActorKinds.User,
+                principal.FindAll(ClaimTypes.Role).Select(claim => claim.Value).Distinct(StringComparer.OrdinalIgnoreCase).ToList());
+        }
+
+        return new AuditActorContext(
+            null,
+            "Anonymous",
+            providerName,
+            providerName,
+            MemorySmithActorKinds.Anonymous,
+            []);
+    }
+
+    private static bool FailureAlreadyPersisted(HttpContext httpContext) =>
+        httpContext.Items.TryGetValue(FailurePersistedKey, out var value) && value is true;
+
+    private static void MarkFailurePersisted(HttpContext httpContext) =>
+        httpContext.Items[FailurePersistedKey] = true;
+}
+
 public enum MemorySmithPermission
 {
     View,
@@ -699,21 +842,56 @@ public sealed class AuditLogService
         object? details = null,
         CancellationToken cancellationToken = default)
     {
+        return await RecordWithActorAsync(
+            new AuditActorContext(
+                _currentUser.UserId,
+                _currentUser.DisplayName,
+                _currentUser.AuthScheme,
+                _currentUser.Provider,
+                _currentUser.ActorKind,
+                _currentUser.Roles),
+            action,
+            targetKind,
+            targetId,
+            outcome,
+            beforeHash,
+            afterHash,
+            diffRef,
+            reason,
+            details,
+            _httpContextAccessor.HttpContext,
+            cancellationToken);
+    }
+
+    public async Task<AuditLogEntry> RecordWithActorAsync(
+        AuditActorContext actor,
+        string action,
+        string targetKind,
+        string? targetId,
+        string outcome,
+        string? beforeHash = null,
+        string? afterHash = null,
+        string? diffRef = null,
+        string? reason = null,
+        object? details = null,
+        HttpContext? httpContext = null,
+        CancellationToken cancellationToken = default)
+    {
         var latest = _options.CurrentValue.Audit.HashChainEnabled
             ? await _database.AuditLogs.GetLatestAsync(cancellationToken)
             : null;
-        var requestMetadata = RequestMetadata.Capture(_httpContextAccessor.HttpContext, _options.CurrentValue);
+        var requestMetadata = RequestMetadata.Capture(httpContext ?? _httpContextAccessor.HttpContext, _options.CurrentValue);
         var entry = new AuditLogEntry
         {
             AuditId = Guid.NewGuid().ToString("N"),
             OccurredAtUtc = DateTime.UtcNow,
             RecordedAtUtc = DateTime.UtcNow,
-            ActorUserId = _currentUser.UserId,
-            ActorDisplay = _currentUser.DisplayName,
-            ActorKind = _currentUser.ActorKind,
-            AuthScheme = _currentUser.AuthScheme,
-            ProviderName = _currentUser.Provider,
-            RoleSnapshotJson = JsonSerializer.Serialize(_currentUser.Roles, JsonOptions),
+            ActorUserId = actor.UserId,
+            ActorDisplay = actor.DisplayName,
+            ActorKind = actor.ActorKind,
+            AuthScheme = actor.AuthScheme,
+            ProviderName = actor.ProviderName,
+            RoleSnapshotJson = JsonSerializer.Serialize(actor.Roles, JsonOptions),
             Action = action,
             TargetKind = targetKind,
             TargetId = targetId,
