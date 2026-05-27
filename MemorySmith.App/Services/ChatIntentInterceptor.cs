@@ -22,6 +22,9 @@ public sealed partial class ChatIntentInterceptor
     [GeneratedRegex(@"^\s*(?:semantic(?:ally)?|vector|embedding)\s+search\s+(?:for|about)?\s*[:\-]?\s*(?<q>.+?)\s*[.?!]*\s*$", RegexOptions.IgnoreCase | RegexOptions.Compiled)]
     private static partial Regex SemanticSearchRegex();
 
+    [GeneratedRegex(@"^\s*(?:please\s+)?(?:search|find|look\s*up|query)\s+(?:the\s+)?(?:code|codebase|repo(?:sitory)?|source)\s+(?:for|about|regarding)?\s*[:\-]?\s*(?<q>.+?)\s*[.?!]*\s*$", RegexOptions.IgnoreCase | RegexOptions.Compiled)]
+    private static partial Regex CodeSearchRegex();
+
     [GeneratedRegex(@"^\s*(?:hybrid|rrf)\s+search\s+(?:for|about)?\s*[:\-]?\s*(?<q>.+?)\s*[.?!]*\s*$", RegexOptions.IgnoreCase | RegexOptions.Compiled)]
     private static partial Regex HybridSearchRegex();
 
@@ -60,6 +63,14 @@ public sealed partial class ChatIntentInterceptor
                 "memorysmith_semantic_search",
                 new JsonObject { ["query"] = sem.Groups["q"].Value.Trim(), ["limit"] = 5 },
                 "Detected explicit 'semantic search' intent.");
+        }
+
+        if (CodeSearchRegex().Match(message) is { Success: true } code)
+        {
+            return new ChatIntentMatch(
+                "memorysmith_code_search",
+                new JsonObject { ["query"] = code.Groups["q"].Value.Trim(), ["limit"] = 5 },
+                "Detected explicit 'search the codebase' intent.");
         }
 
         if (HybridSearchRegex().Match(message) is { Success: true } hyb)

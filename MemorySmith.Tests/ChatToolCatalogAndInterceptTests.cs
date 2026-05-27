@@ -40,6 +40,8 @@ public class ChatToolCatalogAndInterceptTests
             "memorysmith_hybrid_search",
             "memorysmith_context_pack",
             "memorysmith_get",
+            "memorysmith_code_search",
+            "memorysmith_code_search_status",
             "memorysmith_page_search",
             "memorysmith_page_get",
             "memorysmith_unified_search",
@@ -268,6 +270,7 @@ public class ChatToolCatalogAndInterceptTests
     }
 
     [TestCase("search the wiki for durable evidence", "memorysmith_unified_search")]
+    [TestCase("search the codebase for widget parser", "memorysmith_code_search")]
     [TestCase("find records about caching layer", "memorysmith_unified_search")]
     [TestCase("semantic search for vector embeddings", "memorysmith_semantic_search")]
     [TestCase("hybrid search for chat tools", "memorysmith_hybrid_search")]

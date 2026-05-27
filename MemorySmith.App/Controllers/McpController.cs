@@ -33,6 +33,7 @@ public class McpController : ControllerBase
     private readonly ChatToolCatalog _toolCatalog;
     private readonly IPageService _pages;
     private readonly ITaskService _tasks;
+    private readonly CodeSearchService _codeSearch;
 
     public McpController(
         MemoryApplicationService memories,
@@ -41,7 +42,8 @@ public class McpController : ControllerBase
         IAuthorizationService authorization,
         ChatToolCatalog toolCatalog,
         IPageService pages,
-        ITaskService tasks)
+        ITaskService tasks,
+        CodeSearchService codeSearch)
     {
         _memories = memories;
         _vars = vars;
@@ -50,6 +52,7 @@ public class McpController : ControllerBase
         _toolCatalog = toolCatalog;
         _pages = pages;
         _tasks = tasks;
+        _codeSearch = codeSearch;
     }
 
     [HttpGet]
@@ -147,7 +150,7 @@ public class McpController : ControllerBase
             ? JsonNode.Parse(argumentsElement.GetRawText()) as JsonObject ?? new JsonObject()
             : new JsonObject();
         var options = _options.CurrentValue;
-        var ctx = new ChatToolExecutionContext(_memories, _pages, Transport: "mcp", User: User, Auth: options.Auth, DefaultPageMinimumRole: options.Pages.DefaultMinimumRole, Vars: _vars, Tasks: _tasks);
+        var ctx = new ChatToolExecutionContext(_memories, _pages, Transport: "mcp", User: User, Auth: options.Auth, DefaultPageMinimumRole: options.Pages.DefaultMinimumRole, Vars: _vars, Tasks: _tasks, CodeSearch: _codeSearch);
         var result = await tool.Execute(args, ctx, cancellationToken);
         return ToolText(result.Text, isError: result.IsError);
     }

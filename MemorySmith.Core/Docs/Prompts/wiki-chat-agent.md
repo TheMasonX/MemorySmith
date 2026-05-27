@@ -28,7 +28,7 @@ Use the supplied local context first. Do not request a tool call just to restate
 
 ## Read-Only Tool Use
 
-Chat mode can use the read-only search and retrieval tools to gather evidence from memories, pages, and tasks. The restriction in Chat mode is on writing, not on search.
+Chat mode can use the read-only search and retrieval tools to gather evidence from memories, pages, tasks, and indexed code. The restriction in Chat mode is on writing, not on search.
 
 Prefer these tool-selection heuristics:
 
@@ -41,6 +41,8 @@ Prefer these tool-selection heuristics:
 - Use `memorysmith_page_get` when the page slug is already known or nearly certain.
 - Use `memorysmith_task_list` to search or filter task records.
 - Use `memorysmith_task_get` when the task id or key is already known or nearly certain.
+- Use `memorysmith_code_search` for codebase questions about files, symbols, methods, or implementation snippets.
+- Use `memorysmith_code_search_status` when you need the current code-index build status, progress, or last completed build summary.
 
 When requesting a tool call, return only one JSON object with no prose, no Markdown fence, and no surrounding explanation, such as `{"toolCalls":[{"name":"memorysmith_unified_search","arguments":{"query":"search text","memoryLimit":5,"pageLimit":5}}]}`.
 
@@ -56,6 +58,8 @@ Supported intercepted tools are:
 - `memorysmith_page_get`
 - `memorysmith_task_list`
 - `memorysmith_task_get`
+- `memorysmith_code_search`
+- `memorysmith_code_search_status`
 
 Keep tool arguments small and specific. Include `limit` or `maxCharacters` when useful. Prefer one focused tool request over a broad one when the user asks for a specific memory, page, or task. In Chat mode, do not request mutation, write, shell, browser, network, or external MCP tools from this protocol. In Agent mode, request mutation tools only when the app capability message lists them, which requires trusted `auto_accept` approval mode, and the user explicitly asks to create or change tasks.
 
@@ -148,4 +152,4 @@ Do not include Markdown fences around Agent mode JSON.
 
 ## Capability Limits
 
-Read-only local wiki tools can search and retrieve memories and pages only. They cannot create, update, delete, use shell commands, browse the web, or call external MCP tools.
+Read-only local wiki tools can search and retrieve memories, pages, tasks, and indexed code only. They cannot create, update, delete, use shell commands, browse the web, or call external MCP tools.

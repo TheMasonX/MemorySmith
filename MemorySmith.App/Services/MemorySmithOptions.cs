@@ -21,6 +21,7 @@ public class MemorySmithOptions
     public HistoryOptions History { get; set; } = new();
     public PageOptions Pages { get; set; } = new();
     public SemanticSearchOptions SemanticSearch { get; set; } = new();
+    public CodeSearchOptions CodeSearch { get; set; } = new();
     public TaskSearchOptions TaskSearch { get; set; } = new();
     public TaskAttachmentOptions TaskAttachments { get; set; } = new();
     public GovernanceOptions Governance { get; set; } = new();
@@ -173,6 +174,45 @@ public class SemanticSearchOptions
     public int MaxIndexedTextCharacters { get; set; } = 6000;
     public string QueryPrefix { get; set; } = "query: ";
     public string DocumentPrefix { get; set; } = "passage: ";
+}
+
+public class CodeSearchOptions
+{
+    public bool Enabled { get; set; } = true;
+    public string RepositoryRootPath { get; set; } = "..";
+    public bool WarmMetadataReuseEnabled { get; set; } = true;
+    public List<string> TargetDirectories { get; set; } =
+    [
+        "MemorySmith.App",
+        "MemorySmith.Core",
+        "MemorySmith.Storage",
+        "MemorySmith.Tests",
+        "MemorySmith.Benchmarks"
+    ];
+    public List<string> IncludedFileExtensions { get; set; } =
+    [
+        ".cs",
+        ".razor",
+        ".csproj",
+        ".js",
+        ".ts",
+        ".tsx",
+        ".jsx",
+        ".json",
+        ".md",
+        ".ps1",
+        ".yml",
+        ".yaml"
+    ];
+    public List<string> IncludePatterns { get; set; } = [];
+    public List<string> ExcludePatterns { get; set; } = [];
+    public int ChunkLineCount { get; set; } = 40;
+    public int ChunkOverlapLineCount { get; set; } = 8;
+    public int IndexWriteBatchSize { get; set; } = 25;
+    public int StatusUpdateIntervalDocuments { get; set; } = 25;
+    public int MaxFileBytes { get; set; } = 512 * 1024;
+    public int MaxChunkCharacters { get; set; } = 4000;
+    public int MaxResults { get; set; } = 10;
 }
 
 public class GovernanceOptions

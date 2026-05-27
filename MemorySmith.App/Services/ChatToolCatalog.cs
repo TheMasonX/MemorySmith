@@ -39,7 +39,8 @@ public sealed record ChatToolExecutionContext(
     AuthOptions? Auth = null,
     string? DefaultPageMinimumRole = null,
     VarResolver? Vars = null,
-    ITaskService? Tasks = null)
+    ITaskService? Tasks = null,
+    CodeSearchService? CodeSearch = null)
 {
     public bool CanViewPage(string minimumRole) =>
         CurrentUser is not null
@@ -368,6 +369,74 @@ public sealed class ChatToolCatalog
                 }).ToList();
 
                 return new ChatToolExecutionResult(JsonSerializer.Serialize(result, ToolJsonOptions), ContextItems: matches.Select(ToMemoryContextItem).ToList());
+            });
+
+        yield return new ChatToolDescriptor(
+            "memorysmith_code_search",
+            "Search the indexed MemorySmith codebase for files, symbols, and implementation snippets using vector similarity with lexical fallback.",
+            BuildCodeSearchSchema(),
+            ChatToolRisk.ReadOnly,
+            AvailableInChat: true,
+            AvailableInMcp: true,
+            Execute: async (args, ctx, ct) =>
+            {
+                if (ctx.CodeSearch is null)
+                {
+                    return MissingCodeSearchServiceResult("memorysmith_code_search");
+                }
+
+                var query = ReadString(args, "query");
+                if (string.IsNullOrWhiteSpace(query))
+                {
+                    return new ChatToolExecutionResult("The memorysmith_code_search tool requires a query argument.", IsError: true);
+                }
+
+                var limit = Math.Clamp(ReadInt(args, "limit", 10), 1, 50);
+                var targets = ReadStringList(args, "targets");
+                var rebuildIfStale = ReadBool(args, "rebuildIfStale", true);
+                var forceRebuild = ReadBool(args, "forceRebuild", false);
+                var results = await ctx.CodeSearch.SearchAsync(new CodeSearchQuery(query, targets, limit, rebuildIfStale, forceRebuild), ct);
+                var status = await ctx.CodeSearch.GetStatusAsync(ct);
+                var payload = new
+                {
+                    Query = query,
+                    ResultCount = results.Count,
+                    Status = status,
+                    Results = results.Select(result => new
+                    {
+                        result.Target,
+                        result.DocumentPath,
+                        result.AbsolutePath,
+                        result.StartLine,
+                        result.EndLine,
+                        result.Score,
+                        result.Snippet,
+                        result.MatchReason,
+                        result.IndexedAtUtc
+                    }).ToList()
+                };
+                var structured = JsonSerializer.SerializeToNode(payload, ToolJsonOptions);
+                return new ChatToolExecutionResult(
+                    structured!.ToJsonString(ToolJsonOptions),
+                    ContextItems: results.Select(ToCodeContextItem).ToList(),
+                    Structured: structured);
+            });
+
+        yield return new ChatToolDescriptor(
+            "memorysmith_code_search_status",
+            "Get the current MemorySmith code-search index status, including live build progress and the last completed build summary.",
+            BuildCodeSearchStatusSchema(),
+            ChatToolRisk.ReadOnly,
+            AvailableInChat: true,
+            AvailableInMcp: true,
+            Execute: async (args, ctx, ct) =>
+            {
+                if (ctx.CodeSearch is null)
+                {
+                    return MissingCodeSearchServiceResult("memorysmith_code_search_status");
+                }
+
+                return JsonToolResult(await ctx.CodeSearch.GetStatusAsync(ct));
             });
 
         // ---------- New tools (Phase 2 of ChatCapabilityImprovements plan) ----------
@@ -970,6 +1039,31 @@ public sealed class ChatToolCatalog
         ["required"] = new JsonArray { "pattern" }
     };
 
+    private static JsonObject BuildCodeSearchSchema() => new()
+    {
+        ["type"] = "object",
+        ["properties"] = new JsonObject
+        {
+            ["query"] = new JsonObject { ["type"] = "string", ["description"] = "Search text for code symbols, files, or implementation details." },
+            ["targets"] = new JsonObject
+            {
+                ["type"] = "array",
+                ["description"] = "Optional target directories to limit the search, such as MemorySmith.App or MemorySmith.Core.",
+                ["items"] = new JsonObject { ["type"] = "string" }
+            },
+            ["limit"] = new JsonObject { ["type"] = "integer", ["description"] = "Maximum number of results to return. Clamped 1-50, default 10." },
+            ["rebuildIfStale"] = new JsonObject { ["type"] = "boolean", ["description"] = "Re-scan the configured repo targets and refresh changed code chunks before searching. Defaults to true." },
+            ["forceRebuild"] = new JsonObject { ["type"] = "boolean", ["description"] = "Ignore warm incremental reuse and rebuild all configured code-search documents from source before searching. Defaults to false." }
+        },
+        ["required"] = new JsonArray { "query" }
+    };
+
+    private static JsonObject BuildCodeSearchStatusSchema() => new()
+    {
+        ["type"] = "object",
+        ["properties"] = new JsonObject()
+    };
+
     private static JsonObject BuildTaskListSchema() => new()
     {
         ["type"] = "object",
@@ -1210,6 +1304,9 @@ public sealed class ChatToolCatalog
     private static ChatContextItem ToPageContextItem(PageDocument page, string markdown) =>
         new("page", page.Slug, page.Title, Truncate(markdown, 320), ChatContextOrigins.Tool);
 
+    private static ChatContextItem ToCodeContextItem(CodeSearchResult result) =>
+        new("code", $"{result.DocumentPath}:{result.StartLine}-{result.EndLine}", result.DocumentPath, Truncate(result.Snippet, 320), ChatContextOrigins.Tool);
+
     private static ChatToolExecutionResult BuildRetrievalToolResult(RetrievalResultEnvelope<MemorySearchResult> envelope)
     {
         var contextItems = envelope.Results.Select(ToMemoryContextItem).ToList();
@@ -1225,6 +1322,9 @@ public sealed class ChatToolCatalog
 
     private static ChatToolExecutionResult MissingTaskServiceResult(string toolName) =>
         new($"The {toolName} tool requires the task service.", IsError: true);
+
+    private static ChatToolExecutionResult MissingCodeSearchServiceResult(string toolName) =>
+        new($"The {toolName} tool requires the code search service.", IsError: true);
 
     private static string Actor(ChatToolExecutionContext ctx)
     {

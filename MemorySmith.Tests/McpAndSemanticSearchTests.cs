@@ -112,6 +112,8 @@ public class McpAndSemanticSearchTests
         Assert.That(toolNames, Does.Contain("memorysmith_hybrid_search"));
         Assert.That(toolNames, Does.Contain("memorysmith_context_pack"));
         Assert.That(toolNames, Does.Contain("memorysmith_get"));
+        Assert.That(toolNames, Does.Contain("memorysmith_code_search"));
+        Assert.That(toolNames, Does.Contain("memorysmith_code_search_status"));
 
         var contextPackTool = document.RootElement
             .GetProperty("result")
@@ -340,6 +342,104 @@ public class McpAndSemanticSearchTests
             Assert.That(task.GetProperty("comments").GetArrayLength(), Is.EqualTo(1));
             Assert.That(task.GetProperty("attachments").GetArrayLength(), Is.EqualTo(1));
             Assert.That(task.GetProperty("attachments")[0].GetProperty("uri").GetString(), Is.EqualTo("https://example.test/artifacts/task-tool-smoke.txt"));
+        });
+    }
+
+    [Test]
+    public async Task McpCodeSearchTool_ReturnsIndexedRepoMatches()
+    {
+        var dataPath = ProjectWikiFixture.CopyToTemp(_tempRoot);
+        var repoRoot = Directory.GetParent(Directory.GetParent(dataPath)!.FullName)!.FullName;
+        Directory.CreateDirectory(Path.Combine(repoRoot, "MemorySmith.App", "Services"));
+        await File.WriteAllTextAsync(Path.Combine(repoRoot, ".gitignore"), "obj/\n");
+        await File.WriteAllTextAsync(
+            Path.Combine(repoRoot, "MemorySmith.App", "Services", "WidgetParser.cs"),
+            "namespace MemorySmith.App.Services;\npublic static class WidgetParser\n{\n    public static string ParseWidgetTokens(string input) => input.Trim().ToUpperInvariant();\n}\n");
+
+        await using var factory = CreateFactory(dataPath);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/mcp", new
+        {
+            JsonRpc = "2.0",
+            Id = "code-search",
+            Method = "tools/call",
+            Params = new
+            {
+                Name = "memorysmith_code_search",
+                Arguments = new
+                {
+                    Query = "widget parser",
+                    Targets = new[] { "MemorySmith.App" },
+                    Limit = 5
+                }
+            }
+        }, JsonSerializerOptions.Web);
+
+        response.EnsureSuccessStatusCode();
+        var text = await ExtractFirstToolTextAsync(response);
+        Assert.Multiple(() =>
+        {
+            Assert.That(text, Does.Contain("WidgetParser.cs"));
+            Assert.That(text, Does.Contain("ParseWidgetTokens"));
+        });
+    }
+
+    [Test]
+    public async Task McpCodeSearchStatusTool_ReturnsBuildSummary()
+    {
+        var dataPath = ProjectWikiFixture.CopyToTemp(_tempRoot);
+        var repoRoot = Directory.GetParent(Directory.GetParent(dataPath)!.FullName)!.FullName;
+        Directory.CreateDirectory(Path.Combine(repoRoot, "MemorySmith.App", "Services"));
+        await File.WriteAllTextAsync(Path.Combine(repoRoot, ".gitignore"), "obj/\n");
+        await File.WriteAllTextAsync(
+            Path.Combine(repoRoot, "MemorySmith.App", "Services", "WidgetParser.cs"),
+            "namespace MemorySmith.App.Services;\npublic static class WidgetParser\n{\n    public static string ParseWidgetTokens(string input) => input.Trim().ToUpperInvariant();\n}\n");
+
+        await using var factory = CreateFactory(dataPath);
+        using var client = factory.CreateClient();
+
+        var searchResponse = await client.PostAsJsonAsync("/mcp", new
+        {
+            JsonRpc = "2.0",
+            Id = "code-search-seed",
+            Method = "tools/call",
+            Params = new
+            {
+                Name = "memorysmith_code_search",
+                Arguments = new
+                {
+                    Query = "widget parser",
+                    Targets = new[] { "MemorySmith.App" },
+                    Limit = 5
+                }
+            }
+        }, JsonSerializerOptions.Web);
+
+        searchResponse.EnsureSuccessStatusCode();
+
+        var statusResponse = await client.PostAsJsonAsync("/mcp", new
+        {
+            JsonRpc = "2.0",
+            Id = "code-search-status",
+            Method = "tools/call",
+            Params = new
+            {
+                Name = "memorysmith_code_search_status",
+                Arguments = new { }
+            }
+        }, JsonSerializerOptions.Web);
+
+        statusResponse.EnsureSuccessStatusCode();
+        using var document = JsonDocument.Parse(await ExtractFirstToolTextAsync(statusResponse));
+        var build = document.RootElement.GetProperty("build");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(document.RootElement.GetProperty("indexedFileCount").GetInt32(), Is.EqualTo(1));
+            Assert.That(build.GetProperty("state").GetString(), Is.EqualTo("completed"));
+            Assert.That(build.GetProperty("processedFileCount").GetInt32(), Is.EqualTo(1));
+            Assert.That(build.GetProperty("updatedFileCount").GetInt32(), Is.EqualTo(1));
         });
     }
 

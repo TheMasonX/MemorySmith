@@ -1236,6 +1236,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
     private readonly ChatIntentInterceptor _intentInterceptor;
     private readonly MaintenanceProposalWorkflow? _proposalWorkflow;
     private readonly ITaskService? _tasks;
+    private readonly CodeSearchService? _codeSearch;
 
     public MemoryChatAgent(
         IEnumerable<IChatProvider> providers,
@@ -1246,7 +1247,8 @@ public sealed partial class MemoryChatAgent : IChatAgent
         ChatToolCatalog? toolCatalog = null,
         ChatIntentInterceptor? intentInterceptor = null,
         MaintenanceProposalWorkflow? proposalWorkflow = null,
-        ITaskService? tasks = null)
+        ITaskService? tasks = null,
+        CodeSearchService? codeSearch = null)
     {
         _providers = providers.ToList();
         if (_providers.Count == 0)
@@ -1262,6 +1264,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
         _currentUser = currentUser;
         _proposalWorkflow = proposalWorkflow;
         _tasks = tasks;
+        _codeSearch = codeSearch;
     }
 
     public async Task<MemoryChatResponse> SendAsync(MemoryChatRequest request, CancellationToken cancellationToken)
@@ -2007,7 +2010,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
             return new ChatToolExecutionResult($"MemorySmith tool '{toolCall.Name}' requires Agent auto_accept mode; direct mutation tool calls are disabled while Agent write approval is manual.", IsError: true);
         }
 
-        var executionContext = new ChatToolExecutionContext(_memories, _pages, Transport: "chat", CurrentUser: _currentUser, Auth: _options.Value.Auth, DefaultPageMinimumRole: _options.Value.Pages.DefaultMinimumRole, Tasks: _tasks);
+        var executionContext = new ChatToolExecutionContext(_memories, _pages, Transport: "chat", CurrentUser: _currentUser, Auth: _options.Value.Auth, DefaultPageMinimumRole: _options.Value.Pages.DefaultMinimumRole, Tasks: _tasks, CodeSearch: _codeSearch);
         return await tool.Execute(toolCall.Arguments, executionContext, cancellationToken);
     }
 
@@ -2483,7 +2486,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
             $"- Provider: {provider.Name}; streaming {(capabilities.SupportsStreaming ? "supported" : "not reported")}; image input {(capabilities.SupportsImageInput ? "supported" : "not reported")}; structured responses {(capabilities.SupportsStructuredResponses ? "native" : "via text JSON only")}; context-window reporting {(capabilities.ReportsContextWindowUsage ? "supported" : "not reported")}.\n" +
             $"- Native tool calls: {(capabilities.SupportsNativeToolCalls ? "supported" : "not available")}. {capabilities.NativeToolCallStatus}\n" +
             $"- Context planner: {contextPlan.Summary}.\n" +
-            $"- Read-only local MemorySmith tools: {(chat.ToolCallsEnabled ? "enabled" : "disabled")}. Available read tools in this mode: {readToolDisplay}. These tools can only read MemorySmith memories/pages/tasks; they cannot use shell commands, browse the web, or call external MCP tools.\n" +
+            $"- Read-only local MemorySmith tools: {(chat.ToolCallsEnabled ? "enabled" : "disabled")}. Available read tools in this mode: {readToolDisplay}. These tools can only read MemorySmith memories, pages, tasks, and indexed code; they cannot use shell commands, browse the web, or call external MCP tools.\n" +
             mutationToolLine +
             $"- Agent writes: {writeCapability}.\n" +
             $"- Agent write approval mode: {AgentWriteApprovalModes.Normalize(chat.AgentWriteApprovalMode)}.\n" +
@@ -2581,7 +2584,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
         return "\n\nLocal MemorySmith tools are available in Chat and Agent mode through an application-intercepted MCP-compatible protocol. " +
             nativeToolStatus + " " +
             $"The context planner recommends {contextPlan.RecommendedToolName} when additional evidence is needed. " +
-            "When you need more MemorySmith wiki evidence than the preloaded context provides, respond with only one JSON object and no prose: " +
+            "When you need more MemorySmith wiki or codebase evidence than the preloaded context provides, respond with only one JSON object and no prose: " +
             toolCallExample + ". " +
             $"Available read-only tools: {readOnlyToolNames}. " +
             writeToolInstruction +
@@ -2594,6 +2597,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
         var arguments = toolName switch
         {
             "memorysmith_get" => "{\"id\":\"record-id\"}",
+            "memorysmith_code_search" => "{\"query\":\"WidgetParser symbol\",\"targets\":[\"MemorySmith.App\"],\"limit\":5}",
             "memorysmith_page_get" => "{\"slug\":\"page-slug\"}",
             "memorysmith_task_get" => "{\"idOrKey\":\"TSK-0001\"}",
             "memorysmith_task_list" => "{\"query\":\"search text\",\"limit\":10}",

@@ -386,6 +386,7 @@ try
     builder.Services.AddSingleton<MemoryIndex>();
     builder.Services.AddSingleton<ITextEmbeddingProvider, OnnxTextEmbeddingProvider>();
     builder.Services.AddSingleton<SemanticEmbeddingSearchService>();
+    builder.Services.AddSingleton<CodeSearchService>();
     builder.Services.AddSingleton<BackgroundServiceTelemetryTracker>();
     builder.Services.AddSingleton<IMemoryChangePublisher, MemoryChangePublisher>();
     builder.Services.AddSingleton<TagPolicyService>();
