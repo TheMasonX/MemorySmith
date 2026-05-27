@@ -916,6 +916,7 @@ CREATE INDEX IF NOT EXISTS IX_CodeSearchChunks_DocumentPath ON CodeSearchChunks(
     private void InvalidateQueryCaches()
     {
         Interlocked.Increment(ref _resultCacheGeneration);
+        _queryEmbeddingCache.Compact(1.0);
         _queryResultCache.Compact(1.0);
     }
 

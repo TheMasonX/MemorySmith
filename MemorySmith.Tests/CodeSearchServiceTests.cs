@@ -136,6 +136,28 @@ public class CodeSearchServiceTests
     }
 
     [Test]
+    public async Task SearchAsync_ForceRebuildClearsWarmQueryCacheAndReembedsDocuments()
+    {
+        await File.WriteAllTextAsync(Path.Combine(_repoRoot, ".gitignore"), string.Empty);
+        await File.WriteAllTextAsync(
+            Path.Combine(_repoRoot, "MemorySmith.App", "Services", "Planner.cs"),
+            "namespace MemorySmith.App.Services;\npublic static class Planner\n{\n    public static string BuildPlan(string input) => input + \" plan\";\n}\n");
+
+        var provider = new CountingHashEmbeddingProvider();
+        var service = CreateService(provider);
+
+        await service.SearchAsync(new CodeSearchQuery("build plan", Limit: 5), CancellationToken.None);
+        await service.SearchAsync(new CodeSearchQuery("build plan", Limit: 5), CancellationToken.None);
+        await service.SearchAsync(new CodeSearchQuery("build plan", Limit: 5, ForceRebuild: true), CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(provider.QueryEmbeddingsRequested, Is.EqualTo(2), "forceRebuild should clear the cached query embedding before rerunning the search.");
+            Assert.That(provider.DocumentEmbeddingsRequested, Is.EqualTo(2), "forceRebuild should bypass warm document reuse and re-embed indexed documents.");
+        });
+    }
+
+    [Test]
     public async Task GetStatusAsync_ReportsInProgressBuildWhileIndexing()
     {
         await File.WriteAllTextAsync(Path.Combine(_repoRoot, ".gitignore"), string.Empty);
