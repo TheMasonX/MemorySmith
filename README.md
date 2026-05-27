@@ -254,7 +254,7 @@ The embedding path uses ONNX Runtime, a local WordPiece vocabulary, E5-style `qu
 
 ## MCP Tools
 
-The MCP endpoint is at `http://localhost:5089/mcp`. VS Code config lives in `.vscode/mcp.json`. Up to nineteen tools are exposed by default (eight read-only chat-allowlisted, seven task tools, two page write tools requiring edit permission, plus two source-aware tools available only over MCP):
+The MCP endpoint is at `http://localhost:5089/mcp` for the default local HTTP launch profile, and the HTTPS/LAN path is `https://memorysmith.home.arpa:7090/mcp` when you follow the repo's private-network certificate setup. The checked-in VS Code workspace config in `.vscode/mcp.json` intentionally targets `https://memorysmith.home.arpa:7090/mcp` so the workspace uses the same private alias as the LAN HTTPS guidance. To make that work on another machine, keep the alias, make `memorysmith.home.arpa` resolve to the MemorySmith host, and trust a certificate whose SAN includes `memorysmith.home.arpa`; see `Data/Pages/guides/https-setup.md` for the concrete certificate and hosts-file steps. If you need a one-off local override, change `.vscode/mcp.json` in your working copy and keep that override uncommitted. Up to nineteen tools are exposed by default (eight read-only chat-allowlisted, seven task tools, two page write tools requiring edit permission, plus two source-aware tools available only over MCP):
 
 | Tool | Key args | Returns | Permission |
 | --- | --- | --- | --- |
@@ -507,7 +507,7 @@ Current LAN certificate example for this repo:
 - HTTPS port: `7090`
 - Trust anchor for other devices: `artifacts/certs/MemorySmith-LAN-Root-CA.cer`
 
-If clients should browse by name, make `memorysmith.home.arpa` resolve to `192.168.1.8` on the LAN.
+If clients should browse by name, make `memorysmith.home.arpa` resolve to `192.168.1.8` on the LAN. The repo-standard MCP workspace config also expects that host name, so when your LAN IP differs, keep the `memorysmith.home.arpa` alias and regenerate the certificate with your own IP in the SAN rather than changing the checked-in alias.
 
 Publish the app, then from an elevated PowerShell session:
 

@@ -23,9 +23,19 @@ Expected result: check returns success for a valid trusted certificate.
 > [!NOTE]
 > Screenshot placeholder [HTTPS-SETUP-01]: terminal showing successful `dotnet dev-certs https --check`.
 
-## 2a. LAN Certificate Example For This Repository
+## 2a. Repository Alias And LAN Certificate Example
 
-For the current local-network setup, the concrete LAN certificate target is:
+This repository standardizes on the private-network host name `memorysmith.home.arpa` for the HTTPS MCP endpoint. The checked-in `.vscode/mcp.json` expects `https://memorysmith.home.arpa:7090/mcp`.
+
+That alias is intentional, but it only works broadly when contributors reproduce three pieces locally:
+
+1. `memorysmith.home.arpa` resolves to the machine running MemorySmith, using router DNS or a hosts-file entry.
+2. The HTTPS certificate served on port `7090` includes `memorysmith.home.arpa` in the SAN.
+3. Any client that will browse to MemorySmith or call the MCP endpoint trusts the issuing root CA.
+
+If your LAN IP is different from the example below, keep the `memorysmith.home.arpa` alias and regenerate the certificate with your own IP in the SAN. The durable repo contract is the alias plus port, not one specific private IP.
+
+For the current local-network setup, the concrete certificate target is:
 
 - Host name: `memorysmith.home.arpa`
 - LAN IP: `192.168.1.8`
@@ -39,6 +49,67 @@ Windows-native certificate artifacts have been generated under `artifacts/certs`
 - Generated PFX password file: `artifacts/certs/memorysmith.home.arpa-7090-password.txt`
 
 If clients should use the host name instead of the raw IP, make sure `memorysmith.home.arpa` resolves to `192.168.1.8` on those devices through router DNS or a hosts file entry.
+
+Windows hosts-file example when local DNS is not available:
+
+```text
+192.168.1.8 memorysmith.home.arpa
+```
+
+Edit `C:\Windows\System32\drivers\etc\hosts` as Administrator. Replace `192.168.1.8` with the actual address of the machine hosting MemorySmith.
+
+### Generate Matching Windows Certificates For `memorysmith.home.arpa`
+
+If you are setting up a new machine and do not already have the certificate artifacts under `artifacts/certs`, this Windows-native example creates a private root CA plus a server certificate whose SAN covers `memorysmith.home.arpa` and one LAN IP.
+
+Update `$lanIp` before running it:
+
+```powershell
+$certDir = Join-Path (Resolve-Path .) 'artifacts/certs'
+New-Item -ItemType Directory -Force -Path $certDir | Out-Null
+
+$lanIp = '192.168.1.8'
+
+$root = New-SelfSignedCertificate `
+	-Type Custom `
+	-Subject 'CN=MemorySmith LAN Root CA' `
+	-KeyAlgorithm RSA `
+	-KeyLength 4096 `
+	-HashAlgorithm sha256 `
+	-CertStoreLocation 'Cert:\CurrentUser\My' `
+	-KeyExportPolicy Exportable `
+	-KeyUsage CertSign,CRLSign,DigitalSignature `
+	-TextExtension @('2.5.29.19={text}CA=true&pathlength=1') `
+	-NotAfter (Get-Date).AddYears(10)
+
+$server = New-SelfSignedCertificate `
+	-Type Custom `
+	-Subject 'CN=memorysmith.home.arpa' `
+	-DnsName 'memorysmith.home.arpa' `
+	-Signer $root `
+	-KeyAlgorithm RSA `
+	-KeyLength 2048 `
+	-HashAlgorithm sha256 `
+	-CertStoreLocation 'Cert:\CurrentUser\My' `
+	-KeyExportPolicy Exportable `
+	-TextExtension @(
+		'2.5.29.37={text}1.3.6.1.5.5.7.3.1',
+		"2.5.29.17={text}DNS=memorysmith.home.arpa&IPAddress=$lanIp"
+	) `
+	-NotAfter (Get-Date).AddYears(2)
+
+Export-Certificate -Cert $root -FilePath (Join-Path $certDir 'MemorySmith-LAN-Root-CA.cer') | Out-Null
+Export-Certificate -Cert $server -FilePath (Join-Path $certDir 'memorysmith.home.arpa-7090.cer') | Out-Null
+
+$password = [guid]::NewGuid().ToString('N')
+$password | Set-Content (Join-Path $certDir 'memorysmith.home.arpa-7090-password.txt')
+$securePassword = ConvertTo-SecureString $password -AsPlainText -Force
+
+Export-PfxCertificate -Cert $server -FilePath (Join-Path $certDir 'memorysmith.home.arpa-7090.pfx') -Password $securePassword | Out-Null
+Import-Certificate -FilePath (Join-Path $certDir 'MemorySmith-LAN-Root-CA.cer') -CertStoreLocation 'Cert:\CurrentUser\Root' | Out-Null
+```
+
+This produces the same file names referenced elsewhere in this guide and by the HTTPS-first service redeploy workflow. If you prefer another PKI tool such as `mkcert` or an internal CA, that is fine too; the important part is that the exported server certificate covers `memorysmith.home.arpa` and the client trusts the issuing root.
 
 ## 2b. Trust The LAN Root CA On Windows
 
@@ -119,6 +190,8 @@ Open:
 - `https://localhost:7090`
 - `https://memorysmith.home.arpa:7090`
 - `https://192.168.1.8:7090`
+
+Once the alias resolves and the certificate is trusted, the checked-in `.vscode/mcp.json` should also be able to reach `https://memorysmith.home.arpa:7090/mcp` without a local edit.
 
 If prompted by the browser, verify certificate details and confirm it is the local ASP.NET Core development certificate.
 
