@@ -329,8 +329,13 @@
 
     private static string FormatSemanticSearch(SemanticSearchOptions semanticSearch, EmbeddingProviderStatus status) =>
         semanticSearch.EmbeddingsEnabled
-            ? $"{(status.Available ? "Embeddings available" : "Token fallback")} / {status.Reason}"
+            ? status.Available
+                ? $"Embeddings available / active {FormatExecutionProvider(status.ActiveExecutionProvider, status.ActiveExecutionDevice)} / {status.Reason}"
+                : $"Token fallback / requested {FormatExecutionProvider(status.RequestedExecutionProvider, status.RequestedExecutionDevice)} / {status.Reason}"
             : "Token scoring only";
+
+    private static string FormatExecutionProvider(string provider, string? device) =>
+        string.IsNullOrWhiteSpace(device) ? provider : $"{provider} ({device})";
 
     private static string FormatTelemetryExport(TelemetryOptions telemetry)
     {

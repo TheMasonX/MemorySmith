@@ -1148,7 +1148,7 @@ internal sealed class CountingVarStore : IVarStore
 
 internal sealed class FakeTextEmbeddingProvider : ITextEmbeddingProvider
 {
-    public EmbeddingProviderStatus GetStatus() => new(true, "Fake embedding provider is available.", null, null, 2);
+    public EmbeddingProviderStatus GetStatus() => new(true, "Fake embedding provider is available.", null, null, 2, "Cpu", "Cpu", null, null);
 
     public bool TryEmbed(string text, EmbeddingInputKind kind, out float[] embedding, out string? reason)
     {
@@ -1165,7 +1165,7 @@ internal sealed class CountingTextEmbeddingProvider : ITextEmbeddingProvider
     public int QueryEmbeddingsRequested { get; private set; }
     public int DocumentEmbeddingsRequested { get; private set; }
 
-    public EmbeddingProviderStatus GetStatus() => new(true, "Counting embedding provider is available.", null, null, 2);
+    public EmbeddingProviderStatus GetStatus() => new(true, "Counting embedding provider is available.", null, null, 2, "Cpu", "Cpu", null, null);
 
     public bool TryEmbed(string text, EmbeddingInputKind kind, out float[] embedding, out string? reason)
     {

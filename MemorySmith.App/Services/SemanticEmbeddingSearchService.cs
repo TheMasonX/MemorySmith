@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -7,6 +8,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 using MemorySmith.Core.Models;
+using OnnxSessionOptions = Microsoft.ML.OnnxRuntime.SessionOptions;
 
 namespace MemorySmith.App.Services;
 
@@ -21,7 +23,11 @@ public sealed record EmbeddingProviderStatus(
     string Reason,
     string? ModelPath,
     string? VocabularyPath,
-    int? Dimension);
+    int? Dimension,
+    string RequestedExecutionProvider,
+    string ActiveExecutionProvider,
+    string? RequestedExecutionDevice,
+    string? ActiveExecutionDevice);
 
 public interface ITextEmbeddingProvider
 {
@@ -62,11 +68,50 @@ internal static class OnnxEmbeddingModelConventions
         };
     }
 
+    public static string CanonicalizeExecutionProvider(string? executionProvider)
+    {
+        var normalized = executionProvider?.Trim();
+        if (string.IsNullOrWhiteSpace(normalized))
+        {
+            return "cpu";
+        }
+
+        return normalized.ToLowerInvariant() switch
+        {
+            "cpu" => "cpu",
+            "cuda" or "gpu" => "cuda",
+            "openvino" or "open-vino" or "open_vino" => "openvino",
+            "none" => "none",
+            _ => normalized.ToLowerInvariant()
+        };
+    }
+
+    public static string DisplayExecutionProvider(string? executionProvider)
+    {
+        var normalized = executionProvider?.Trim();
+        if (string.IsNullOrWhiteSpace(normalized))
+        {
+            return "Cpu";
+        }
+
+        return CanonicalizeExecutionProvider(normalized) switch
+        {
+            "cpu" => "Cpu",
+            "cuda" => "Cuda",
+            "openvino" => "OpenVino",
+            "none" => "None",
+            _ => normalized
+        };
+    }
+
     public static string GetUnsupportedTokenizerMessage(string? tokenizerKind) =>
         $"Tokenizer kind '{tokenizerKind ?? string.Empty}' is not supported. Supported kinds: WordPiece.";
 
     public static string GetUnsupportedPoolingMessage(string? poolingMode) =>
         $"Pooling mode '{poolingMode ?? string.Empty}' is not supported. Supported modes: Mean, Cls.";
+
+    public static string GetUnsupportedExecutionProviderMessage(string? executionProvider) =>
+        $"Execution provider '{executionProvider ?? string.Empty}' is not supported. Supported providers: Cpu, Cuda, OpenVino.";
 }
 
 internal static class OnnxEmbeddingVectorProjector
@@ -348,13 +393,19 @@ public sealed class SemanticEmbeddingSearchService : IDisposable
     {
         var modelPath = ResolveSemanticPath(_options.ModelPath);
         var vocabularyPath = ResolveSemanticPath(_options.VocabularyPath);
+        var onnxRuntimeVersion = typeof(InferenceSession).Assembly.GetName().Version?.ToString() ?? "unknown";
         var payload = string.Join('|',
             modelPath,
             File.Exists(modelPath) ? File.GetLastWriteTimeUtc(modelPath).Ticks.ToString() : "missing",
             vocabularyPath,
             File.Exists(vocabularyPath) ? File.GetLastWriteTimeUtc(vocabularyPath).Ticks.ToString() : "missing",
+            onnxRuntimeVersion,
             OnnxEmbeddingModelConventions.CanonicalizeTokenizerKind(_options.TokenizerKind),
             OnnxEmbeddingModelConventions.CanonicalizePoolingMode(_options.PoolingMode),
+            OnnxEmbeddingModelConventions.CanonicalizeExecutionProvider(_options.ExecutionProvider),
+            _options.CpuFallbackEnabled,
+            _options.CudaDeviceId,
+            _options.OpenVinoDeviceId,
             _options.QueryPrefix,
             _options.DocumentPrefix,
             _options.MaxInputTokens,
@@ -486,6 +537,10 @@ public sealed class OnnxTextEmbeddingProvider : ITextEmbeddingProvider, IDisposa
     private string? _vocabularyPath;
     private string _statusReason = "Embedding provider has not been initialized.";
     private int? _dimension;
+    private string _requestedExecutionProvider = "cpu";
+    private string _activeExecutionProvider = "none";
+    private string? _requestedExecutionDevice;
+    private string? _activeExecutionDevice;
 
     public OnnxTextEmbeddingProvider(IOptions<MemorySmithOptions> options)
     {
@@ -495,8 +550,19 @@ public sealed class OnnxTextEmbeddingProvider : ITextEmbeddingProvider, IDisposa
 
     public EmbeddingProviderStatus GetStatus()
     {
+        _requestedExecutionProvider = OnnxEmbeddingModelConventions.CanonicalizeExecutionProvider(_options.ExecutionProvider);
+        _requestedExecutionDevice = GetExecutionDevice(_requestedExecutionProvider);
         var available = EnsureInitialized();
-        return new EmbeddingProviderStatus(available, _statusReason, _modelPath, _vocabularyPath, _dimension);
+        return new EmbeddingProviderStatus(
+            available,
+            _statusReason,
+            _modelPath,
+            _vocabularyPath,
+            _dimension,
+            OnnxEmbeddingModelConventions.DisplayExecutionProvider(_options.ExecutionProvider),
+            OnnxEmbeddingModelConventions.DisplayExecutionProvider(_activeExecutionProvider),
+            _requestedExecutionDevice,
+            _activeExecutionDevice);
     }
 
     public bool TryEmbed(string text, EmbeddingInputKind kind, out float[] embedding, out string? reason)
@@ -544,6 +610,10 @@ public sealed class OnnxTextEmbeddingProvider : ITextEmbeddingProvider, IDisposa
             _initialized = true;
             _modelPath = ResolvePath(_options.ModelPath);
             _vocabularyPath = ResolvePath(_options.VocabularyPath);
+            _requestedExecutionProvider = OnnxEmbeddingModelConventions.CanonicalizeExecutionProvider(_options.ExecutionProvider);
+            _requestedExecutionDevice = GetExecutionDevice(_requestedExecutionProvider);
+            _activeExecutionProvider = "none";
+            _activeExecutionDevice = null;
 
             if (!_options.EmbeddingsEnabled)
             {
@@ -566,8 +636,7 @@ public sealed class OnnxTextEmbeddingProvider : ITextEmbeddingProvider, IDisposa
             try
             {
                 _tokenizer = CreateTokenizer(_options.TokenizerKind, _vocabularyPath);
-                _session = new InferenceSession(_modelPath);
-                _statusReason = "ONNX embedding provider is available.";
+                _session = CreateSession(_modelPath);
                 return true;
             }
             catch (Exception ex)
@@ -575,10 +644,118 @@ public sealed class OnnxTextEmbeddingProvider : ITextEmbeddingProvider, IDisposa
                 _session?.Dispose();
                 _session = null;
                 _tokenizer = null;
+                _activeExecutionProvider = "none";
+                _activeExecutionDevice = null;
                 _statusReason = $"ONNX embedding provider failed to initialize: {ex.Message}";
                 return false;
             }
         }
+    }
+
+    private InferenceSession CreateSession(string modelPath)
+    {
+        var allowCpuFallback = _options.CpuFallbackEnabled && _requestedExecutionProvider is "cuda" or "openvino";
+        if (TryCreateSession(modelPath, _requestedExecutionProvider, out var session, out var failure))
+        {
+            return session!;
+        }
+
+        if (!allowCpuFallback)
+        {
+            throw failure ?? new InvalidOperationException($"Execution provider '{OnnxEmbeddingModelConventions.DisplayExecutionProvider(_requestedExecutionProvider)}' failed to initialize.");
+        }
+
+        var requestedProviderLabel = OnnxEmbeddingModelConventions.DisplayExecutionProvider(_requestedExecutionProvider);
+        var requestedDevice = FormatExecutionProviderWithDevice(_requestedExecutionProvider, _requestedExecutionDevice);
+        var requestedFailure = failure?.Message ?? "unknown error";
+
+        if (TryCreateSession(modelPath, "cpu", out session, out var cpuFailure))
+        {
+            _statusReason = $"Requested {requestedDevice} was unavailable; fell back to CPU. Requested provider error: {requestedFailure}";
+            return session!;
+        }
+
+        throw new InvalidOperationException(
+            $"Requested {requestedProviderLabel} execution provider failed to initialize ({requestedFailure}) and CPU fallback also failed ({cpuFailure?.Message ?? "unknown error"}).");
+    }
+
+    private bool TryCreateSession(string modelPath, string executionProvider, out InferenceSession? session, out Exception? failure)
+    {
+        try
+        {
+            using var sessionOptions = CreateSessionOptions(executionProvider);
+            session = new InferenceSession(modelPath, sessionOptions);
+            _activeExecutionProvider = executionProvider;
+            _activeExecutionDevice = GetExecutionDevice(executionProvider);
+            if (string.IsNullOrWhiteSpace(_statusReason) || string.Equals(_statusReason, "Embedding provider has not been initialized.", StringComparison.Ordinal))
+            {
+                _statusReason = $"ONNX embedding provider is available via {FormatExecutionProviderWithDevice(executionProvider, _activeExecutionDevice)}.";
+            }
+
+            failure = null;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            session = null;
+            failure = ex;
+            return false;
+        }
+    }
+
+    private OnnxSessionOptions CreateSessionOptions(string executionProvider)
+    {
+        var sessionOptions = new OnnxSessionOptions();
+        try
+        {
+            ConfigureExecutionProvider(sessionOptions, executionProvider);
+            return sessionOptions;
+        }
+        catch
+        {
+            sessionOptions.Dispose();
+            throw;
+        }
+    }
+
+    private void ConfigureExecutionProvider(OnnxSessionOptions sessionOptions, string executionProvider)
+    {
+        switch (executionProvider)
+        {
+            case "cpu":
+                return;
+            case "cuda":
+                sessionOptions.AppendExecutionProvider_CUDA(_options.CudaDeviceId);
+                return;
+            case "openvino":
+                if (!OperatingSystem.IsWindows())
+                {
+                    throw new PlatformNotSupportedException("OpenVino execution provider requires a supported Windows host.");
+                }
+
+                sessionOptions.AppendExecutionProvider_OpenVINO(_options.OpenVinoDeviceId ?? string.Empty);
+                return;
+            default:
+                throw new NotSupportedException(OnnxEmbeddingModelConventions.GetUnsupportedExecutionProviderMessage(_options.ExecutionProvider));
+        }
+    }
+
+    private string? GetExecutionDevice(string executionProvider)
+    {
+        return executionProvider switch
+        {
+            "cuda" => _options.CudaDeviceId.ToString(CultureInfo.InvariantCulture),
+            "openvino" => string.IsNullOrWhiteSpace(_options.OpenVinoDeviceId) ? null : _options.OpenVinoDeviceId.Trim(),
+            _ => null
+        };
+    }
+
+    private static string FormatExecutionProviderWithDevice(string executionProvider, string? executionDevice)
+    {
+        var provider = OnnxEmbeddingModelConventions.DisplayExecutionProvider(executionProvider);
+        return string.IsNullOrWhiteSpace(executionDevice)
+            ? provider
+            : $"{provider} ({executionDevice})";
     }
 
     private string ResolvePath(string path)

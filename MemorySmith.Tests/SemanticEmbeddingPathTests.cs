@@ -51,6 +51,8 @@ public class SemanticEmbeddingPathTests
         {
             Assert.That(status.ModelPath, Is.EqualTo(Path.Combine(dataRoot, "Models", "embedding-model.onnx")));
             Assert.That(status.VocabularyPath, Is.EqualTo(Path.Combine(dataRoot, "Models", "vocab.txt")));
+            Assert.That(status.RequestedExecutionProvider, Is.EqualTo("Cpu"));
+            Assert.That(status.ActiveExecutionProvider, Is.EqualTo("None"));
             Assert.That(status.Reason, Does.Contain(Path.Combine(dataRoot, "Models", "embedding-model.onnx")));
         });
     }
@@ -79,6 +81,8 @@ public class SemanticEmbeddingPathTests
         {
             Assert.That(status.ModelPath, Is.EqualTo(Path.Combine(dataRoot, "Models", "embedding-model.onnx")));
             Assert.That(status.VocabularyPath, Is.EqualTo(Path.Combine(dataRoot, "Models", "vocab.txt")));
+            Assert.That(status.RequestedExecutionProvider, Is.EqualTo("Cpu"));
+            Assert.That(status.ActiveExecutionProvider, Is.EqualTo("None"));
         });
     }
 
@@ -109,8 +113,44 @@ public class SemanticEmbeddingPathTests
         Assert.Multiple(() =>
         {
             Assert.That(status.Available, Is.False);
+            Assert.That(status.RequestedExecutionProvider, Is.EqualTo("Cpu"));
+            Assert.That(status.ActiveExecutionProvider, Is.EqualTo("None"));
             Assert.That(status.Reason, Does.Contain("Tokenizer kind 'SentencePiece' is not supported"));
             Assert.That(status.Reason, Does.Contain("WordPiece"));
+        });
+    }
+
+    [Test]
+    public void GetStatus_RejectsUnsupportedExecutionProviderBeforeOpeningOnnxSession()
+    {
+        var dataRoot = CreateDataDeploymentRoot("ExecutionProvider");
+        var unrelatedWorkingDirectory = Path.Combine(_tempRoot, "unsupported-provider");
+        Directory.CreateDirectory(unrelatedWorkingDirectory);
+        Directory.SetCurrentDirectory(unrelatedWorkingDirectory);
+
+        File.WriteAllBytes(Path.Combine(dataRoot, "Models", "embedding-model.onnx"), new byte[] { 0x00 });
+        File.WriteAllLines(Path.Combine(dataRoot, "Models", "vocab.txt"), ["[UNK]", "[CLS]", "[SEP]"]);
+
+        using var provider = new OnnxTextEmbeddingProvider(Options.Create(new MemorySmithOptions
+        {
+            DataPath = Path.Combine(dataRoot, "Memories"),
+            SemanticSearch = new SemanticSearchOptions
+            {
+                ModelPath = Path.Combine("Models", "embedding-model.onnx"),
+                VocabularyPath = Path.Combine("Models", "vocab.txt"),
+                ExecutionProvider = "TensorRt"
+            }
+        }));
+
+        var status = provider.GetStatus();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(status.Available, Is.False);
+            Assert.That(status.RequestedExecutionProvider, Is.EqualTo("TensorRt"));
+            Assert.That(status.ActiveExecutionProvider, Is.EqualTo("None"));
+            Assert.That(status.Reason, Does.Contain("Execution provider 'TensorRt' is not supported"));
+            Assert.That(status.Reason, Does.Contain("Cpu, Cuda, OpenVino"));
         });
     }
 

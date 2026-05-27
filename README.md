@@ -252,6 +252,8 @@ Example memory-search body:
 
 The embedding path uses ONNX Runtime, a local WordPiece vocabulary, E5-style `query:`/`passage:` prefixes, and an exact in-memory cosine scan over the filtered memory set. It intentionally falls back to the existing token scorer when model assets are missing or unusable, so fresh clones still work without redistributing model binaries.
 
+By default the app builds against the CPU ONNX Runtime package. If you want hardware execution providers, build `MemorySmith.App` with `-p:MemorySmithOnnxRuntimeFlavor=Cuda` or `-p:MemorySmithOnnxRuntimeFlavor=OpenVino`, then set `MemorySmith:SemanticSearch:ExecutionProvider` to the matching provider. `Cuda` and `OpenVino` can also fall back to CPU at runtime when `CpuFallbackEnabled=true`.
+
 ## MCP Tools
 
 The MCP endpoint is at `http://localhost:5089/mcp` for the default local HTTP launch profile, and the HTTPS/LAN path is `https://memorysmith.home.arpa:7090/mcp` when you follow the repo's private-network certificate setup. The checked-in VS Code workspace config in `.vscode/mcp.json` intentionally targets `https://memorysmith.home.arpa:7090/mcp` so the workspace uses the same private alias as the LAN HTTPS guidance. To make that work on another machine, keep the alias, make `memorysmith.home.arpa` resolve to the MemorySmith host, and trust a certificate whose SAN includes `memorysmith.home.arpa`; see `Data/Pages/guides/https-setup.md` for the concrete certificate and hosts-file steps. If you need a one-off local override, change `.vscode/mcp.json` in your working copy and keep that override uncommitted. Up to twenty-one tools are exposed by default (twelve read-only chat-allowlisted tools, seven task tools, two page write tools requiring edit permission, plus two source-aware tools available only over MCP):
@@ -383,6 +385,10 @@ All settings live under `MemorySmith` in `appsettings.json`:
       "VocabularyPath": "Models/vocab.txt",
       "TokenizerKind": "WordPiece",
       "PoolingMode": "Mean",
+      "ExecutionProvider": "Cpu",
+      "CpuFallbackEnabled": true,
+      "CudaDeviceId": 0,
+      "OpenVinoDeviceId": "",
       "MaxInputTokens": 512,
       "MaxIndexedTextCharacters": 6000,
       "QueryPrefix": "query: ",
@@ -467,7 +473,7 @@ For an operator-facing map of the active settings, see [`Data/Pages/guides/confi
 - **`History:*`** — controls version-history artifact storage for memory and page mutations.
 - **`Pages:DefaultMinimumRole`** — default minimum visibility for newly saved pages. Use `Anonymous`, `Authenticated`, or `Admin`; the admin settings UI exposes this as default page visibility.
 - **`Pages:AllowRawHtml`** — enables trusted raw HTML rendering in markdown pages. Off by default; leave disabled for agent-written or unreviewed pages.
-- **`SemanticSearch:*`** — controls optional ONNX embedding ranking. Relative model and vocabulary paths resolve from the configured data deployment root: the folder that contains `Memories`, `Events`, `Graph`, `Models`, and `Pages`. The default model path is `Models/embedding-model.onnx`; ONNX/model artifacts are ignored by Git, and a matching WordPiece `vocab.txt` is required before embeddings activate. `TokenizerKind` currently supports `WordPiece`; `PoolingMode` supports `Mean` and `Cls` for compatible sequence-output models. Legacy `../Data/Models/...` values are also interpreted relative to that data root.
+- **`SemanticSearch:*`** — controls optional ONNX embedding ranking. Relative model and vocabulary paths resolve from the configured data deployment root: the folder that contains `Memories`, `Events`, `Graph`, `Models`, and `Pages`. The default model path is `Models/embedding-model.onnx`; ONNX/model artifacts are ignored by Git, and a matching WordPiece `vocab.txt` is required before embeddings activate. `TokenizerKind` currently supports `WordPiece`; `PoolingMode` supports `Mean` and `Cls` for compatible sequence-output models. `ExecutionProvider` accepts `Cpu`, `Cuda`, or `OpenVino`; `CudaDeviceId` and `OpenVinoDeviceId` select the accelerator target when those providers are enabled, and `CpuFallbackEnabled` keeps semantic search online by falling back to CPU if the requested hardware provider cannot initialize. Hardware providers also require a matching app build flavor through `MemorySmithOnnxRuntimeFlavor` (`Cpu`, `Cuda`, or `OpenVino`). Legacy `../Data/Models/...` values are also interpreted relative to that data root.
 - **`TaskSearch:*` / `TaskAttachments:*`** — controls task search ranking and task attachment storage. Uploaded task files are stored under `TaskAttachments:StoragePath`, served from `/artifacts/task-attachments/...` behind task view authorization, and capped by `TaskAttachments:MaxFileBytes`. Related-task attachments use `kind=task` and `task:<idOrKey>` URIs.
 - **`Mcp:*`** — controls per-tool MCP exposure. `DisabledTools` hides named tools from `tools/list` and rejects direct `tools/call`; `EnabledTools` opts in descriptor-level default-off tools. Existing MCP tools default on unless disabled.
 - **`DataPath`** — root of the memory store. Subdirectories (`Unconsolidated/`, `Working/`, `Core/`, `Deprecated/`) are created automatically.

@@ -232,7 +232,7 @@ public class MeasurementBaselineTests
 
     private sealed class UnavailableEmbeddingProvider : ITextEmbeddingProvider
     {
-        public EmbeddingProviderStatus GetStatus() => new(false, "Test provider unavailable; semantic search uses token fallback.", null, null, null);
+        public EmbeddingProviderStatus GetStatus() => new(false, "Test provider unavailable; semantic search uses token fallback.", null, null, null, "Cpu", "None", null, null);
 
         public bool TryEmbed(string text, EmbeddingInputKind kind, out float[] embedding, out string? reason)
         {

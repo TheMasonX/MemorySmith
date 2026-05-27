@@ -170,6 +170,10 @@ public class SemanticSearchOptions
     public string VocabularyPath { get; set; } = Path.Combine("Models", "vocab.txt");
     public string TokenizerKind { get; set; } = "WordPiece";
     public string PoolingMode { get; set; } = "Mean";
+    public string ExecutionProvider { get; set; } = "Cpu";
+    public bool CpuFallbackEnabled { get; set; } = true;
+    public int CudaDeviceId { get; set; }
+    public string OpenVinoDeviceId { get; set; } = string.Empty;
     public int MaxInputTokens { get; set; } = 512;
     public int MaxIndexedTextCharacters { get; set; } = 6000;
     public string QueryPrefix { get; set; } = "query: ";

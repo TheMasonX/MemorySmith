@@ -6,6 +6,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
     <DefaultItemExcludes>$(DefaultItemExcludes);artifacts/**</DefaultItemExcludes>
+    <MemorySmithOnnxRuntimeFlavor Condition="'$(MemorySmithOnnxRuntimeFlavor)' == ''">Cpu</MemorySmithOnnxRuntimeFlavor>
+    <MemorySmithOnnxRuntimeVersion>1.24.1</MemorySmithOnnxRuntimeVersion>
   </PropertyGroup>
 
   <ItemGroup>
@@ -13,7 +15,6 @@
     <PackageReference Include="Lucene.Net" Version="4.8.0-beta00017" />
     <PackageReference Include="Lucene.Net.Analysis.Common" Version="4.8.0-beta00017" />
     <PackageReference Include="Markdig" Version="0.38.0" />
-    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.20.1" />
     <PackageReference Include="Nerdbank.MessagePack" Version="1.1.62" />
     <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.15.3" />
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.15.3" />
@@ -28,6 +29,23 @@
     <PackageReference Include="Serilog.Sinks.EventLog" Version="4.0.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.7" />
   </ItemGroup>
+
+  <ItemGroup Condition="'$(MemorySmithOnnxRuntimeFlavor)' == 'Cpu'">
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="$(MemorySmithOnnxRuntimeVersion)" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(MemorySmithOnnxRuntimeFlavor)' == 'Cuda'">
+    <PackageReference Include="Microsoft.ML.OnnxRuntime.Gpu" Version="$(MemorySmithOnnxRuntimeVersion)" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(MemorySmithOnnxRuntimeFlavor)' == 'OpenVino'">
+    <PackageReference Include="Intel.ML.OnnxRuntime.OpenVino" Version="$(MemorySmithOnnxRuntimeVersion)" />
+  </ItemGroup>
+
+  <Target Name="ValidateMemorySmithOnnxRuntimeFlavor" BeforeTargets="CollectPackageReferences">
+    <Error Condition="'$(MemorySmithOnnxRuntimeFlavor)' != 'Cpu' and '$(MemorySmithOnnxRuntimeFlavor)' != 'Cuda' and '$(MemorySmithOnnxRuntimeFlavor)' != 'OpenVino'"
+           Text="MemorySmithOnnxRuntimeFlavor must be one of: Cpu, Cuda, OpenVino." />
+  </Target>
 
   <ItemGroup>
     <ProjectReference Include="..\MemorySmith.Core\MemorySmith.Core.csproj" />

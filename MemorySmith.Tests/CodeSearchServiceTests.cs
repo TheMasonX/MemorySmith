@@ -234,7 +234,7 @@ public class CodeSearchServiceTests
 
     private class HashEmbeddingProvider : ITextEmbeddingProvider
     {
-        public EmbeddingProviderStatus GetStatus() => new(true, "Hash embedding provider available.", null, null, 512);
+        public EmbeddingProviderStatus GetStatus() => new(true, "Hash embedding provider available.", null, null, 512, "Cpu", "Cpu", null, null);
 
         public virtual bool TryEmbed(string text, EmbeddingInputKind kind, out float[] embedding, out string? reason)
         {
