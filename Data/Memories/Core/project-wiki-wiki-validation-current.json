@@ -1,7 +1,7 @@
 {
   "Id": "project-wiki-wiki-validation-current",
   "Title": "Wiki Validation Current State",
-  "Content": "MemorySmith validation has a strong page and task baseline but still has a dedicated live-memory validation gap. `Scripts/Validate-Repo.ps1` runs solution build and tests plus `Test-TaskRecords.ps1`, `Test-PageLinks.ps1`, and `Test-PagePathLiterals.ps1`. Those checks catch task-record JSON drift, markdown link issues, and path-literal hygiene problems, and the NUnit suite exercises many wiki-backed behaviors by copying the live data into temp storage. The remaining gap is that the repository still lacks a first-class whole-corpus validator focused only on `Data/Memories` required fields, filename or id alignment, and other memory record invariants; that gap is already tracked in task TSK-0003. Operators and agents should therefore treat page-link and task-record scripts as cheap mandatory gates, but still verify live memory behavior through runtime surfaces such as `/memories`, `/chat`, `/health`, and `/api/diagnostics` when the issue could be data-shape rather than link-shape drift.",
+  "Content": "MemorySmith validation now has first-class whole-corpus coverage for pages, tasks, and live memory records. `Scripts/Validate-Repo.ps1` runs solution build and tests plus `Test-TaskRecords.ps1`, `Test-MemoryRecords.ps1`, `Test-PageLinks.ps1`, and `Test-PagePathLiterals.ps1`. `Test-MemoryRecords.ps1` executes `LiveMemoryRecordValidationTests`, which copy the live `Data/Memories` corpus into temp storage and verify JSON deserialization, filename or id alignment, folder or status alignment, corrupt-file detection, and application-level validation contracts. Operators and agents should treat these scripts as cheap mandatory gates, but still verify live behavior through runtime surfaces such as `/memories`, `/chat`, `/health`, and `/api/diagnostics` when an issue could be runtime access, rendering, or workflow behavior rather than stored data-shape drift.",
   "Status": 2,
   "Confidence": 0.93,
   "Tags": [
@@ -31,6 +31,10 @@
       "Uri": "%MemorySmithRepo%Scripts/Test-TaskRecords.ps1"
     },
     {
+      "Label": "Test-MemoryRecords.ps1",
+      "Uri": "%MemorySmithRepo%Scripts/Test-MemoryRecords.ps1"
+    },
+    {
       "Label": "Test-PageLinks.ps1",
       "Uri": "%MemorySmithRepo%Scripts/Test-PageLinks.ps1"
     },
@@ -44,5 +48,5 @@
     }
   ],
   "UsageCount": 0,
-  "LastUpdated": "2026-05-24T22:40:00Z"
+  "LastUpdated": "2026-05-27T00:00:00Z"
 }

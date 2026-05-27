@@ -123,7 +123,7 @@
                         var semantic = _semanticMatches.TryGetValue(memory.Id, out var match) ? match : null;
                         <article class="@ResultRowClass(memory)" @onclick="@(() => SelectAsync(memory.Id))">
                             <div class="wiki-result-main">
-                                <div class="wiki-result-title">@(string.IsNullOrWhiteSpace(memory.Title) ? "(untitled)" : memory.Title)</div>
+                                <div class="wiki-result-title" title="@(string.IsNullOrWhiteSpace(memory.Title) ? "(untitled)" : memory.Title)">@(string.IsNullOrWhiteSpace(memory.Title) ? "(untitled)" : memory.Title)</div>
                                 <div class="wiki-result-meta">
                                     <span class="wiki-status @StatusClass(memory.Status)">@memory.Status</span>
                                     <span>@memory.UsageCount uses</span>

@@ -8,6 +8,14 @@ namespace MemorySmith.App.Services;
 public class MemorySmithRequestGuardMiddleware
 {
     public const string ApiKeyHeaderName = "X-Api-Key";
+    private static readonly PathString[] ApiKeyExemptUiPaths =
+    [
+        new PathString("/api/auth/me"),
+        new PathString("/api/auth/login"),
+        new PathString("/api/auth/logout"),
+        new PathString("/api/auth/challenge"),
+        new PathString("/api/admin/setup")
+    ];
 
     private readonly RequestDelegate _next;
 
@@ -61,8 +69,21 @@ public class MemorySmithRequestGuardMiddleware
     }
 
     public static bool RequiresApiKey(PathString path) =>
-        path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase) ||
-        path.StartsWithSegments("/mcp", StringComparison.OrdinalIgnoreCase);
+        path.StartsWithSegments("/mcp", StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase) && !IsApiKeyExemptUiPath(path);
+
+    private static bool IsApiKeyExemptUiPath(PathString path)
+    {
+        foreach (var exemptPath in ApiKeyExemptUiPaths)
+        {
+            if (path.StartsWithSegments(exemptPath, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     private static bool HasValidApiKey(HttpContext context, string expectedApiKey)
     {

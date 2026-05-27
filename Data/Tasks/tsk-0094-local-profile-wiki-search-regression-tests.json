@@ -4,7 +4,7 @@
   "Title": "Add regression coverage for the local-profile wiki-search flow and inline source references.",
   "Description": "Add focused tests for the exact sequence exercised on the live page: Agent mode, local profile, a generic wiki-search request, context preloading, and inline source-reference output. The regression should prove the turn produces either a final answer or a deterministic tool path, and it should fail if the turn remains pending beyond the expected window. Acceptance criteria: the test covers the local profile path, the trace contains the expected preload/tool events, and the result includes a source reference or explicit fallback. Validation: run the new test and confirm it passes against the local app.",
   "Type": "Task",
-  "Status": "Backlog",
+  "Status": "Done",
   "Priority": "High",
   "AssigneeMode": "Custom",
   "AssigneeDirectoryId": null,
@@ -29,14 +29,20 @@
       "Author": "AgentSmith",
       "Body": "Evidence: the app already exposes context-planner and preload events in the trace, but the live turn still stalled before completion, so this needs a deterministic regression around the exact probe flow.",
       "CreatedAtUtc": "2026-05-24T22:35:00.0000000Z"
+    },
+    {
+      "Id": "c-0094-2",
+      "Author": "AgentSmith",
+      "Body": "Completed by adding `MemoryChatAgent_AgentModeLocalWikiSearchFlowStreamsPreloadAndInlineSourceReference` in `MemorySmith.Tests/PagesAndChatTests.cs`. The regression exercises Agent mode with a local-model-style JSON tool-call path, asserts context-planner preload/tool trace events, and verifies inline source references render into clickable memory links through `ChatReferenceLinkPolicy`. Focused validation passed via `dotnet test .\\MemorySmith.Tests\\MemorySmith.Tests.csproj -c Release --filter \"Name~MemoryChatAgent_AgentModeLocalWikiSearchFlowStreamsPreloadAndInlineSourceReference|Name~MemoryChatAgent_StreamsToolCallStatusWithoutLeakingToolJson|Name~ChatReferenceLinkPolicy_LinkifiesInlineCodeSourceReferences|Name~MemoryChatAgent_StreamTraceShowsContextPlannerSkipReason\" --logger \"console;verbosity=minimal\"` (4/4).",
+      "CreatedAtUtc": "2026-05-27T13:39:49.8255805Z"
     }
   ],
   "EpicId": null,
   "ParentId": null,
   "DueDateUtc": null,
   "CreatedAtUtc": "2026-05-24T22:35:00.0000000Z",
-  "UpdatedAtUtc": "2026-05-24T22:35:00.0000000Z",
-  "CompletedAtUtc": null,
-  "Revision": 1,
+  "UpdatedAtUtc": "2026-05-27T13:39:49.8255805Z",
+  "CompletedAtUtc": "2026-05-27T13:39:49.8255805Z",
+  "Revision": 2,
   "IsArchived": false
 }

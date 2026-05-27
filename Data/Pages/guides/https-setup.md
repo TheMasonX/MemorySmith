@@ -218,7 +218,7 @@ Not recommended as a default right now:
 Why this is not a safe default yet:
 
 - MemorySmith is still tracking remote-hardening work in the project wiki.
-- The request guard currently blocks remote traffic only when `MemorySmith:AllowRemoteApi=false`; if you enable remote API access and leave `MemorySmith:ApiKey` empty, that is a warning-level smell rather than a startup-fatal configuration.
+- The request guard blocks guarded remote API/MCP traffic when `MemorySmith:AllowRemoteApi=false`; if you enable remote API access and leave `MemorySmith:ApiKey` empty, guarded non-loopback `/api` and `/mcp` requests fail closed even though browser auth/setup routes remain reachable for LAN UI sign-in and bootstrap.
 - Current security planning pages still call out transport hardening, proxy/header trust, and remote-safe defaults as active work rather than finished posture.
 
 If you eventually want public internet access instead of VPN-only access, minimum expectations are:
@@ -228,7 +228,7 @@ If you eventually want public internet access instead of VPN-only access, minimu
 3. Keep HTTPS-only access.
 4. Finish first-admin setup and use real authentication.
 5. Disable compatibility settings that are only acceptable for local bootstrap scenarios.
-6. If `/api` or `/mcp` must be remotely reachable, set a strong `MemorySmith:ApiKey` and treat that as mandatory, not optional.
+6. If guarded `/api` or `/mcp` traffic must be remotely reachable, set a strong `MemorySmith:ApiKey` and treat that as mandatory, not optional. Browser auth/setup routes are intentionally exempt so remote UI login still works.
 
 Until the remote-hardening tasks and validation matrix are closed, prefer VPN/private-mesh access over direct public exposure.
 

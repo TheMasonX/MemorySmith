@@ -143,7 +143,50 @@
                                 </div>
                             </details>
                         }
-                        <div class="chat-message-body chat-message-markdown">@RenderTurnContent(turn)</div>
+                        <div class="chat-message-body chat-message-markdown">
+                            @if (TryParseQuestionCard(turn.Content) is { } questionCard)
+                            {
+                                <div class="chat-question-card">
+                                    <div class="chat-question-card-title">@questionCard.Question</div>
+                                    @if (!string.IsNullOrWhiteSpace(questionCard.DetailsMarkdown))
+                                    {
+                                        <div class="chat-question-card-details chat-message-markdown">@RenderQuestionCardDetails(questionCard)</div>
+                                    }
+                                    <div class="chat-question-card-options">
+                                        @foreach (var option in questionCard.Options)
+                                        {
+                                            <MudButton Variant="Variant.Outlined"
+                                                       Color="Color.Primary"
+                                                       Size="Size.Small"
+                                                       Disabled="@_isSending"
+                                                       OnClick="@(() => SendQuestionOptionAsync(turn, questionCard, option))">@option</MudButton>
+                                        }
+                                    </div>
+                                    @if (questionCard.AllowOther)
+                                    {
+                                        <div class="chat-question-card-other">
+                                            <MudTextField T="string"
+                                                          Value="@turn.QuestionOtherDraft"
+                                                          ValueChanged="@((string value) => OnQuestionOtherDraftChanged(turn, value))"
+                                                          Label="@questionCard.OtherLabel"
+                                                          Placeholder="@questionCard.OtherPlaceholder"
+                                                          Variant="Variant.Outlined"
+                                                          Margin="Margin.Dense"
+                                                          Disabled="@_isSending" />
+                                            <MudButton Variant="Variant.Filled"
+                                                       Color="Color.Primary"
+                                                       Size="Size.Small"
+                                                       Disabled="@(_isSending || string.IsNullOrWhiteSpace(turn.QuestionOtherDraft))"
+                                                       OnClick="@(() => SendQuestionOtherAsync(turn, questionCard))">Send other</MudButton>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                @RenderTurnContent(turn)
+                            }
+                        </div>
 
                         @if (turn.Attachments.Count > 0)
                         {
@@ -722,6 +765,7 @@
             ProposedMemoryWrites = ReadJsonObjects(item, "proposedMemoryWrites").Select(ParseStoredMemoryWriteProposal).Where(proposal => proposal is not null).Select(proposal => proposal!).ToList(),
             ProposedPageWrites = ReadJsonObjects(item, "proposedPageWrites").Select(ParseStoredPageWriteProposal).Where(proposal => proposal is not null).Select(proposal => proposal!).ToList(),
             ResponseCommentDraft = ReadJsonString(item, "responseCommentDraft") ?? string.Empty,
+            QuestionOtherDraft = ReadJsonString(item, "questionOtherDraft") ?? string.Empty,
             WrittenMemories = ReadJsonStrings(item, "writtenMemories"),
             WrittenPages = ReadJsonStrings(item, "writtenPages"),
             SubmittedProposalIds = ReadJsonStrings(item, "submittedProposalIds"),
@@ -1366,7 +1410,7 @@
 
             FinalizeActiveTraceEntries(pendingTurn);
             pendingTurn.DurationMilliseconds = (long)Math.Max(0, (DateTimeOffset.UtcNow - (_responseStartedUtc ?? DateTimeOffset.UtcNow)).TotalMilliseconds);
-            session.History.Add(new ChatMessage("assistant", response.Reply));
+            session.History.Add(new ChatMessage("assistant", BuildAssistantHistoryContent(response.Reply)));
             session.UpdatedUtc = DateTimeOffset.UtcNow;
             var pendingWriteCount = PendingWriteCount(ActiveSession);
             _agentStatus = pendingWriteCount > 0
@@ -2045,6 +2089,7 @@
                 .Select(proposal => proposal with { Markdown = TrimForStorage(proposal.Markdown, MaxStoredTurnCharacters) })
                 .ToList(),
             ResponseCommentDraft = TrimForStorage(turn.ResponseCommentDraft, MaxStoredTurnCharacters),
+            QuestionOtherDraft = TrimForStorage(turn.QuestionOtherDraft, MaxStoredTurnCharacters),
             TraceEntries = turn.TraceEntries
                 .TakeLast(MaxStoredTraceEntries)
                 .Select(entry => new ChatTraceEntryState
@@ -2567,6 +2612,127 @@
     private static int TurnReferenceCount(ChatTurnState turn) =>
         turn.Context.Count + turn.WrittenMemories.Count + turn.WrittenPages.Count + turn.SubmittedProposalIds.Count;
 
+    private static string BuildAssistantHistoryContent(string content)
+    {
+        if (TryParseQuestionCard(content) is not { } questionCard)
+        {
+            return content;
+        }
+
+        var lines = new List<string>
+        {
+            questionCard.Question,
+            $"Options: {string.Join("; ", questionCard.Options)}{(questionCard.AllowOther ? "; Other: freeform" : string.Empty)}"
+        };
+
+        if (!string.IsNullOrWhiteSpace(questionCard.DetailsMarkdown))
+        {
+            lines.Add(questionCard.DetailsMarkdown);
+        }
+
+        return string.Join(Environment.NewLine, lines);
+    }
+
+    private static ChatQuestionCard? TryParseQuestionCard(string? content)
+    {
+        var candidate = content?.Trim();
+        if (string.IsNullOrWhiteSpace(candidate) || candidate[0] != '{' || !candidate.Contains("\"questionCard\"", StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        JsonObject? root;
+        try
+        {
+            root = JsonNode.Parse(candidate) as JsonObject;
+        }
+        catch
+        {
+            return null;
+        }
+
+        if (root?["questionCard"] is not JsonObject questionCard)
+        {
+            return null;
+        }
+
+        var question = ReadJsonString(questionCard, "question");
+        var options = ReadQuestionCardOptions(questionCard);
+        if (string.IsNullOrWhiteSpace(question) || options.Count == 0)
+        {
+            return null;
+        }
+
+        var other = questionCard["other"] as JsonObject;
+        return new ChatQuestionCard(
+            question.Trim(),
+            ReadJsonString(questionCard, "detailsMarkdown") ?? ReadJsonString(questionCard, "details"),
+            options,
+            ReadJsonString(questionCard, "responsePrefix") ?? "Answer to follow-up question",
+            other is not null,
+            ReadJsonString(other ?? new JsonObject(), "label") ?? "Other",
+            ReadJsonString(other ?? new JsonObject(), "placeholder") ?? "Type your answer");
+    }
+
+    private static IReadOnlyList<string> ReadQuestionCardOptions(JsonObject questionCard)
+    {
+        if (GetJsonArray(questionCard, "options") is not { } options)
+        {
+            return [];
+        }
+
+        var labels = new List<string>();
+        foreach (var option in options)
+        {
+            switch (option)
+            {
+                case JsonValue value when value.TryGetValue<string>(out var text) && !string.IsNullOrWhiteSpace(text):
+                    labels.Add(text.Trim());
+                    break;
+                case JsonObject optionObject:
+                    var label = ReadJsonString(optionObject, "label") ?? ReadJsonString(optionObject, "value");
+                    if (!string.IsNullOrWhiteSpace(label))
+                    {
+                        labels.Add(label.Trim());
+                    }
+                    break;
+            }
+        }
+
+        return labels;
+    }
+
+    private static MarkupString RenderQuestionCardDetails(ChatQuestionCard questionCard) =>
+        new(ChatMarkdownRenderer.RenderHtml(questionCard.DetailsMarkdown ?? string.Empty));
+
+    private Task OnQuestionOtherDraftChanged(ChatTurnState turn, string value)
+    {
+        turn.QuestionOtherDraft = value;
+        return Task.CompletedTask;
+    }
+
+    private async Task SendQuestionOptionAsync(ChatTurnState turn, ChatQuestionCard questionCard, string option)
+    {
+        turn.QuestionOtherDraft = string.Empty;
+        await SendAsync(BuildQuestionCardResponse(questionCard, option));
+    }
+
+    private async Task SendQuestionOtherAsync(ChatTurnState turn, ChatQuestionCard questionCard)
+    {
+        var answer = turn.QuestionOtherDraft.Trim();
+        if (string.IsNullOrWhiteSpace(answer))
+        {
+            Snackbar.Add("Enter an answer first.", Severity.Warning);
+            return;
+        }
+
+        turn.QuestionOtherDraft = string.Empty;
+        await SendAsync(BuildQuestionCardResponse(questionCard, answer));
+    }
+
+    private static string BuildQuestionCardResponse(ChatQuestionCard questionCard, string answer) =>
+        $"{questionCard.ResponsePrefix}\nQuestion: {questionCard.Question}\nAnswer: {answer}";
+
     private static string PageHref(string slug) =>
         "/pages/" + string.Join('/', slug.Split('/', StringSplitOptions.RemoveEmptyEntries).Select(Uri.EscapeDataString));
 
@@ -2789,6 +2955,7 @@
         public List<AgentMemoryWriteProposal> ProposedMemoryWrites { get; set; } = [];
         public List<AgentPageWriteProposal> ProposedPageWrites { get; set; } = [];
         public string ResponseCommentDraft { get; set; } = string.Empty;
+        public string QuestionOtherDraft { get; set; } = string.Empty;
         public List<ChatTraceEntryState> TraceEntries { get; set; } = [];
         public bool TraceDrawerOpen { get; set; }
         public List<string> WrittenMemories { get; set; } = [];
@@ -2819,4 +2986,12 @@
     }
 
     private sealed record TraceGraphNode(string Label, string ClassName);
+    private sealed record ChatQuestionCard(
+        string Question,
+        string? DetailsMarkdown,
+        IReadOnlyList<string> Options,
+        string ResponsePrefix,
+        bool AllowOther,
+        string OtherLabel,
+        string OtherPlaceholder);
 }

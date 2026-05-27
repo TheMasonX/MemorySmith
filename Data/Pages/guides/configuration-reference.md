@@ -60,12 +60,12 @@ Agent note: if behavior looks wrong across multiple routes, check the effective 
 | Key | Purpose | Verify |
 | --- | --- | --- |
 | `MemorySmith:SecurityProfile` | Optional preset: `local-dev`, `secure-local`, or `remote-hardened` | Admin Configuration and `/api/diagnostics` |
-| `MemorySmith:AllowRemoteApi` | Allows non-loopback API and MCP traffic after an API key is configured | `/api/diagnostics` warning list |
-| `MemorySmith:ApiKey` | Shared API/MCP key via `X-Api-Key`; required for non-loopback API/MCP when remote API is enabled | configured state in `/admin` (replace or use `Clear secret` to remove), guarded API requests |
+| `MemorySmith:AllowRemoteApi` | Allows guarded non-loopback API and MCP traffic after an API key is configured | `/api/diagnostics` warning list |
+| `MemorySmith:ApiKey` | Shared API/MCP key via `X-Api-Key`; required for guarded non-loopback API/MCP when remote API is enabled | configured state in `/admin` (replace or use `Clear secret` to remove), guarded API requests |
 
 Recommended dogfood default: leave explicit settings in their secure-local posture, or set `MemorySmith:SecurityProfile=secure-local` when you want the preset recorded in configuration.
 
-Safe default: keep `AllowRemoteApi=false` unless the instance is intentionally exposed and an API key plus transport/auth posture are already in place. With `AllowRemoteApi=true` and no API key, non-loopback `/api` and `/mcp` requests are blocked until the key is configured.
+Safe default: keep `AllowRemoteApi=false` unless the instance is intentionally exposed and an API key plus transport/auth posture are already in place. With `AllowRemoteApi=true` and no API key, guarded non-loopback `/api` and `/mcp` requests are blocked until the key is configured. Browser-facing auth/setup routes remain exempt so LAN UI sign-in and first-admin bootstrap can still reach their existing auth/bootstrap checks.
 
 Runtime note: `MemorySmith:SecurityProfile=local-dev` and `ASPNETCORE_ENVIRONMENT=LocalDevelopment` are related but not identical. The security profile applies a small preset under any environment; the `LocalDevelopment` environment also runs `MemorySmithLocalDevelopmentPostConfigure`, which applies additional dogfood-friendly defaults only when those keys are not already overridden in `appsettings.LocalOverrides.json` or the configured `SettingsOverridePath` file.
 

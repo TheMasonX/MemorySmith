@@ -139,43 +139,54 @@ public sealed class LoggingObservabilityService
                 continue;
             }
 
-            string[] lines;
+            IEnumerable<string> lines;
             try
             {
-                lines = File.ReadAllLines(file);
+                lines = File.ReadLines(file);
             }
             catch
             {
                 continue;
             }
 
-            for (var index = lines.Length - 1; index >= 0; index--)
+            foreach (var line in lines)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                if (!TryParseStructuredLog(lines[index], out var entry))
+                if (!TryParseStructuredLog(line, out var entry) || !Matches(entry, sinceUtc, query.Text, query.Level))
                 {
                     continue;
                 }
 
-                if (entry.TimestampUtc < sinceUtc)
-                {
-                    break;
-                }
-
-                if (!Matches(entry, sinceUtc, query.Text, query.Level))
-                {
-                    continue;
-                }
-
-                results.Add(entry);
-                if (results.Count >= limit)
-                {
-                    return results;
-                }
+                InsertByTimestamp(results, entry, limit);
             }
         }
 
         return results;
+    }
+
+    private static void InsertByTimestamp(List<LogEntryDto> results, LogEntryDto entry, int limit)
+    {
+        if (limit <= 0)
+        {
+            return;
+        }
+
+        var insertIndex = 0;
+        while (insertIndex < results.Count && results[insertIndex].TimestampUtc >= entry.TimestampUtc)
+        {
+            insertIndex++;
+        }
+
+        if (insertIndex >= limit)
+        {
+            return;
+        }
+
+        results.Insert(insertIndex, entry);
+        if (results.Count > limit)
+        {
+            results.RemoveAt(results.Count - 1);
+        }
     }
 
     private static bool IsError(string level) => string.Equals(level, "Error", StringComparison.OrdinalIgnoreCase)

@@ -382,6 +382,44 @@ public class TagGovernanceTests
     }
 
     [Test]
+    public void TasksMarkup_UnifiesArtifactsAndShareableDeepLinks()
+    {
+        var root = FindRepositoryRoot();
+        var markup = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "Components", "Pages", "Tasks.razor"));
+        var css = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "wwwroot", "app.css"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(markup, Does.Contain("[SupplyParameterFromQuery(Name = \"task\")]"));
+            Assert.That(markup, Does.Contain("CopyTaskLinkAsync"));
+            Assert.That(markup, Does.Contain("SearchRelatedPagesAsync"));
+            Assert.That(markup, Does.Contain("<MudTabPanel Text=\"Artifacts\""));
+            Assert.That(markup, Does.Not.Contain("<MudTabPanel Text=\"Links\""));
+            Assert.That(markup, Does.Not.Contain("<MudTabPanel Text=\"Attachments\""));
+            Assert.That(markup, Does.Contain("Legacy External Links"));
+            Assert.That(css, Does.Contain(".tasks-artifact-section"));
+            Assert.That(css, Does.Contain(".tasks-artifacts-grid"));
+        });
+    }
+
+    [Test]
+    public void WorkbenchMarkup_ExposesFullTitlesForClippedPageTaskAndMemoryRows()
+    {
+        var root = FindRepositoryRoot();
+        var pagesMarkup = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "Components", "Pages", "Pages.razor"));
+        var tasksMarkup = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "Components", "Pages", "Tasks.razor"));
+        var memoriesMarkup = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "Components", "Pages", "MemoryViewer.razor"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(pagesMarkup, Does.Contain("title=\"@row.Node.Label\""));
+            Assert.That(pagesMarkup, Does.Contain("<div class=\"wiki-result-title\" title=\"@summary.Title\">"));
+            Assert.That(tasksMarkup, Does.Contain("title=\"@($\"{task.Key} - {task.Title}\")\""));
+            Assert.That(memoriesMarkup, Does.Contain("<div class=\"wiki-result-title\" title=\"@(string.IsNullOrWhiteSpace(memory.Title) ? \"(untitled)\" : memory.Title)\">"));
+        });
+    }
+
+    [Test]
     public void AdminMarkup_UsesSortableAuditAndHistoryTablesWithoutRevealIcons()
     {
         var root = FindRepositoryRoot();
@@ -565,6 +603,46 @@ public class TagGovernanceTests
             Assert.That(markup, Does.Contain("private void ShowSidebarTab(ChatSidebarTab tab)"));
             Assert.That(markup, Does.Contain("_sidebarOpen = true;"));
             Assert.That(markup, Does.Contain("CollapseSidebarOnNarrowViewportAsync"));
+        });
+    }
+
+    [Test]
+    public void PagesMarkup_UsesHeaderShareActionsForSelectedPages()
+    {
+        var root = FindRepositoryRoot();
+        var markup = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "Components", "Pages", "Pages.razor"));
+        var css = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "wwwroot", "app.css"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(markup, Does.Contain("CopySelectedPageLinkAsync"));
+            Assert.That(markup, Does.Contain("page-detail-actions"));
+            Assert.That(markup, Does.Contain("Copy page link"));
+            Assert.That(css, Does.Contain(".page-detail-actions"));
+        });
+    }
+
+    [Test]
+    public void ChatMarkup_SupportsQuestionCardsWithOtherResponses()
+    {
+        var root = FindRepositoryRoot();
+        var markup = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "Components", "Pages", "Chat.razor"));
+        var css = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "wwwroot", "app.css"));
+        var prompt = File.ReadAllText(Path.Combine(root, "MemorySmith.Core", "Docs", "Prompts", "wiki-chat-agent.md"));
+        var modelfile = File.ReadAllText(Path.Combine(root, "MemorySmith.Core", "Docs", "Prompts", "wiki-chat-agent.modelfile"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(markup, Does.Contain("\"questionCard\""));
+            Assert.That(markup, Does.Contain("TryParseQuestionCard"));
+            Assert.That(markup, Does.Contain("SendQuestionOptionAsync"));
+            Assert.That(markup, Does.Contain("QuestionOtherDraft"));
+            Assert.That(markup, Does.Contain("chat-question-card"));
+            Assert.That(css, Does.Contain(".chat-question-card"));
+            Assert.That(css, Does.Contain(".chat-question-card-other"));
+            Assert.That(prompt, Does.Contain("\"questionCard\""));
+            Assert.That(prompt, Does.Contain("\"responsePrefix\""));
+            Assert.That(modelfile, Does.Contain("\"questionCard\""));
         });
     }
 

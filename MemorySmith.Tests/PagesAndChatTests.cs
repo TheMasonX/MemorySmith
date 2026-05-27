@@ -1454,6 +1454,70 @@ public class PagesAndChatTests
     }
 
     [Test]
+    public async Task MemoryChatAgent_AgentModeLocalWikiSearchFlowStreamsPreloadAndInlineSourceReference()
+    {
+        var memoryStore = new InMemoryMemoryStore();
+        var eventStore = new RecordingEventStore();
+        var publisher = new RecordingMemoryChangePublisher();
+        var memories = TestServiceFactory.CreateMemoryApplicationService(memoryStore, eventStore, publisher);
+        memoryStore.Save(new MemoryRecord
+        {
+            Id = "project-wiki-chat-tool-catalog",
+            Title = "Chat Tool Catalog",
+            Status = MemoryStatus.Core,
+            Content = "The MemorySmith chat tool catalog is documented here with searchable source-link guidance.",
+            Tags = ["project-wiki", "chat", "tooling"]
+        });
+        var pages = new FilePageService(_tempDir);
+        var provider = new SequencedChatProvider(
+            """
+            {"toolCalls":[{"name":"memorysmith_hybrid_search","arguments":{"query":"chat tool catalog source links","limit":5}}]}
+            """,
+            "The best match is `memory:project-wiki-chat-tool-catalog - Chat Tool Catalog`."
+        );
+        var agent = new MemoryChatAgent([provider], memories, pages, Options.Create(new MemorySmithOptions
+        {
+            Chat = new ChatOptions
+            {
+                MaxContextRecords = 3,
+                MaxPreloadedContextRecords = 1,
+                MaxContextPages = 1,
+                MaxPreloadedContextPages = 1
+            }
+        }));
+
+        var updates = new List<MemoryChatStreamUpdate>();
+        await foreach (var update in agent.StreamAsync(new MemoryChatRequest("Summarize the MemorySmith wiki memory records about chat tool catalog source links and cite the best source.", MemoryChatMode.Agent), CancellationToken.None))
+        {
+            updates.Add(update);
+        }
+
+        var final = updates.Single(update => update.IsFinal).Response!;
+        var traceEvents = updates
+            .SelectMany(update => update.TraceEvents ?? [])
+            .ToList();
+        var plannerTrace = traceEvents.Single(trace => trace.Title == "Context planner");
+        var linkedHtml = ChatReferenceLinkPolicy.LinkifyInlineCodeReferences(
+            ChatMarkdownRenderer.RenderHtml(final.Reply),
+            allowedPageSlugs: final.Context.Where(item => item.Kind == "page").Select(item => item.Id),
+            allowedMemoryIds: final.Context.Where(item => item.Kind == "memory").Select(item => item.Id));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(provider.Requests, Has.Count.EqualTo(2));
+            Assert.That(plannerTrace.Content, Does.Contain("Preload memories: 1"));
+            Assert.That(plannerTrace.Content, Does.Contain("Preload pages: 0"));
+            Assert.That(plannerTrace.Content, Does.Contain("Recommended tool: memorysmith_hybrid_search"));
+            Assert.That(traceEvents.Any(trace => trace.Kind == ChatTraceKinds.ToolCall && trace.Title.Contains("memorysmith_hybrid_search", StringComparison.Ordinal)), Is.True);
+            Assert.That(traceEvents.Any(trace => trace.Kind == ChatTraceKinds.ToolResult && trace.Title.Contains("memorysmith_hybrid_search", StringComparison.Ordinal)), Is.True);
+            Assert.That(final.Context.Select(item => item.Id), Does.Contain("project-wiki-chat-tool-catalog"));
+            Assert.That(final.Reply, Does.Contain("memory:project-wiki-chat-tool-catalog - Chat Tool Catalog"));
+            Assert.That(linkedHtml, Does.Contain("chat-inline-ref"));
+            Assert.That(linkedHtml, Does.Contain("href=\"/api/memories/project-wiki-chat-tool-catalog\""));
+        });
+    }
+
+    [Test]
     public async Task MemoryChatAgent_ExecutesTaskListToolInChatMode()
     {
         var memoryStore = new InMemoryMemoryStore();

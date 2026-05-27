@@ -103,7 +103,8 @@
                                     class="pages-tree-row pages-tree-folder"
                                     style="@TreeIndentStyle(row.Depth)"
                                     @onclick="@(() => ToggleFolderAsync(row.Node.Key))"
-                                    aria-label="Toggle folder @row.Node.Label">
+                                    aria-label="Toggle folder @row.Node.Label"
+                                    title="@row.Node.Label">
                                 <MudIcon Icon="@(row.IsExpanded ? Icons.Material.Filled.ExpandMore : Icons.Material.Filled.ChevronRight)" Size="Size.Small" Class="pages-tree-icon" />
                                 <span class="pages-tree-label">@row.Node.Label</span>
                                 <span class="wiki-count">@row.Node.PageCount page@(row.Node.PageCount == 1 ? string.Empty : "s")</span>
@@ -115,7 +116,8 @@
                                     class="@TreePageRowClass(row.Node)"
                                     style="@TreeIndentStyle(row.Depth)"
                                     @onclick="@(() => SelectAsync(row.Node.Slug, navigate: true))"
-                                    aria-label="Open @row.Node.Label">
+                                    aria-label="Open @row.Node.Label"
+                                    title="@row.Node.Label">
                                 <MudIcon Icon="@Icons.Material.Filled.Description" Size="Size.Small" Class="pages-tree-icon" />
                                 <span class="pages-tree-label">@row.Node.Label</span>
                             </button>
@@ -179,7 +181,7 @@
                     {
                         <article class="@PageRowClass(summary)" @onclick="@(() => SelectAsync(summary.Slug, navigate: true))">
                             <div class="wiki-result-main">
-                                <div class="wiki-result-title">@summary.Title</div>
+                                <div class="wiki-result-title" title="@summary.Title">@summary.Title</div>
                                 <div class="wiki-result-meta">
                                     <span class="wiki-status">Markdown</span>
                                     <span class="wiki-status">@VisibilityLabel(summary.MinimumRole)</span>
@@ -214,6 +216,17 @@
                                            aria-label="Toggle focus reading"
                                            title="Toggle focus reading" />
                         </MudTooltip>
+                        @if (_editingExisting && _selectedPage is not null)
+                        {
+                            <MudTooltip Text="Copy page link">
+                                <MudIconButton Icon="@Icons.Material.Filled.Share"
+                                               Size="Size.Small"
+                                               Color="Color.Primary"
+                                               OnClick="CopySelectedPageLinkAsync"
+                                               aria-label="Copy page link"
+                                               title="Copy page link" />
+                            </MudTooltip>
+                        }
                         <MudCheckBox T="bool"
                                      Value="_livePreview"
                                      ValueChanged="SetLivePreviewAsync"
@@ -343,21 +356,30 @@
                             <span>@_selectedPage.LastUpdatedUtc.ToLocalTime().ToString("g")</span>
                         </div>
                     </div>
-                    <MudSpacer />
-                    <MudTooltip Text="@(_isFocusMode ? "Exit focus reading" : "Focus reading")">
-                        <MudIconButton Icon="@(_isFocusMode ? Icons.Material.Filled.FullscreenExit : Icons.Material.Filled.Fullscreen)"
-                                       Size="Size.Small"
-                                       Color="Color.Primary"
-                                       OnClick="ToggleFocusModeAsync"
-                                       aria-label="Toggle focus reading"
-                                       title="Toggle focus reading" />
-                    </MudTooltip>
-                    <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
-                        <Authorized>
-                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="EditSelected" aria-label="Edit" title="Edit" />
-                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="DeleteSelectedAsync" aria-label="Delete" title="Delete" />
-                        </Authorized>
-                    </AuthorizeView>
+                    <div class="page-detail-actions">
+                        <MudTooltip Text="@(_isFocusMode ? "Exit focus reading" : "Focus reading")">
+                            <MudIconButton Icon="@(_isFocusMode ? Icons.Material.Filled.FullscreenExit : Icons.Material.Filled.Fullscreen)"
+                                           Size="Size.Small"
+                                           Color="Color.Primary"
+                                           OnClick="ToggleFocusModeAsync"
+                                           aria-label="Toggle focus reading"
+                                           title="Toggle focus reading" />
+                        </MudTooltip>
+                        <MudTooltip Text="Copy page link">
+                            <MudIconButton Icon="@Icons.Material.Filled.Share"
+                                           Size="Size.Small"
+                                           Color="Color.Primary"
+                                           OnClick="CopySelectedPageLinkAsync"
+                                           aria-label="Copy page link"
+                                           title="Copy page link" />
+                        </MudTooltip>
+                        <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
+                            <Authorized>
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="EditSelected" aria-label="Edit" title="Edit" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="DeleteSelectedAsync" aria-label="Delete" title="Delete" />
+                            </Authorized>
+                        </AuthorizeView>
+                    </div>
                 </div>
                 <div class="page-rendered" @key="_selectedPage.Slug" @ref="_renderedPagePane">@((MarkupString)_selectedPage.Html)</div>
             }
@@ -608,6 +630,17 @@
         }
 
         await SelectAsync(_pages[0].Slug, navigate: true);
+    }
+
+    private async Task CopySelectedPageLinkAsync()
+    {
+        if (_selectedPage is null)
+        {
+            return;
+        }
+
+        var copied = await TryInvokeVoidAsync("navigator.clipboard.writeText", BuildPageShareUri(_selectedPage.Slug));
+        Snackbar.Add(copied ? $"{_selectedPage.Title} link copied." : "Clipboard unavailable. Copy the page URL from the address bar.", copied ? Severity.Success : Severity.Warning);
     }
 
     private void SetMissingPage(string slug)
@@ -1103,6 +1136,9 @@
 
     private static string EncodePageSlug(string slug) =>
         string.Join('/', slug.Split('/', StringSplitOptions.RemoveEmptyEntries).Select(Uri.EscapeDataString));
+
+    private string BuildPageShareUri(string slug) =>
+        Navigation.ToAbsoluteUri($"/pages/{EncodePageSlug(slug)}").ToString();
 
     private static string NormalizePageSlug(string? slug) =>
         string.Join('/', (slug ?? string.Empty).Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));

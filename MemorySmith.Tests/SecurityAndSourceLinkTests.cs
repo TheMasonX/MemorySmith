@@ -127,6 +127,32 @@ public class SecurityAndSourceLinkTests
         });
     }
 
+    [TestCase("/api/auth/me")]
+    [TestCase("/api/auth/login")]
+    [TestCase("/api/auth/logout")]
+    [TestCase("/api/auth/challenge")]
+    [TestCase("/api/admin/setup")]
+    [TestCase("/api/admin/setup/status")]
+    public async Task RequestGuard_AllowsRemoteBrowserAuthAndSetupEndpointsWithoutApiKey(string path)
+    {
+        var context = CreateRemoteApiContext(path);
+        var nextCalls = 0;
+        var middleware = new MemorySmithRequestGuardMiddleware(_ =>
+        {
+            nextCalls++;
+            return Task.CompletedTask;
+        });
+
+        await middleware.InvokeAsync(context, Options.Create(new MemorySmithOptions { AllowRemoteApi = true, ApiKey = "secret" }));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(context.Response.StatusCode, Is.EqualTo(StatusCodes.Status200OK));
+            Assert.That(ReadResponseBody(context), Is.Empty);
+            Assert.That(nextCalls, Is.EqualTo(1));
+        });
+    }
+
     [Test]
     public async Task McpInitializedNotification_DoesNotReturnJsonRpcError()
     {

@@ -4,26 +4,38 @@
   "title": "Share Buttons",
   "description": "Share buttons that copy the link to items as an icon badge. For tasks, this would be near the edit icon, and in a similar position for other things like pages and memories. Memories have a copy content button, which would also be useful to add to pages and tasks.",
   "type": "Task",
-  "status": "Backlog",
+  "status": "Done",
   "priority": "Medium",
   "assigneeMode": "Directory",
   "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
   "assigneeCustomText": null,
   "reporter": "TheMasonX",
   "labels": [
-    "future"
+    "ui",
+    "share",
+    "tasks",
+    "pages"
   ],
   "attachments": [],
   "externalLinks": [],
-  "linkedPages": [],
-  "comments": [],
+  "linkedPages": [
+    "workbench/tasks"
+  ],
+  "comments": [
+    {
+      "id": "c-0073-1",
+      "author": "AgentSmith",
+      "body": "Completed by adding header-bar share buttons for `/tasks` and `/pages`. `MemorySmith.App/Components/Pages/Tasks.razor` now supports `?task=` deep links plus clipboard copy from the selected-task header, and `MemorySmith.App/Components/Pages/Pages.razor` now exposes the same clipboard share affordance in both the selected-page and edit headers. Focused guard coverage passed via `dotnet test .\\MemorySmith.Tests\\MemorySmith.Tests.csproj -c Release --filter \"Name~TasksMarkup_PrioritizesSelectedTaskSummaryAndFocusAction|Name~TasksMarkup_UnifiesArtifactsAndShareableDeepLinks|Name~PagesMarkup_RebalancesNavigationAndReadingSpaceOnNarrowViewports|Name~PagesMarkup_UsesHeaderShareActionsForSelectedPages|Name~ChatMarkup_UsesAdminDefinedModelProfilesForSelection|Name~ChatMarkup_ReconcilesApproveAllBatchOutcomesAndPendingState|Name~ChatMarkup_DefaultsSidebarClosedUntilHistoryOrTraceIsRequested|Name~ChatMarkup_SupportsQuestionCardsWithOtherResponses\" --logger \"console;verbosity=minimal\"`, which passed 8/8 after the share-link changes.",
+      "createdAtUtc": "2026-05-27T13:26:38.5618243Z"
+    }
+  ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-24T17:38:50.5385854Z",
-  "updatedAtUtc": "2026-05-24T17:41:27.0740874Z",
-  "completedAtUtc": null,
-  "revision": 3,
+  "updatedAtUtc": "2026-05-27T13:26:38.5618243Z",
+  "completedAtUtc": "2026-05-27T13:26:38.5618243Z",
+  "revision": 4,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,
