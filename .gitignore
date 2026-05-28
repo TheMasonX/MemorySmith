@@ -64,6 +64,7 @@ BenchmarkDotNet.Artifacts/
 # Local embedding/model artifacts
 Data/Models/
 *.onnx
+.venv*/
 
 # .NET Core
 project.lock.json

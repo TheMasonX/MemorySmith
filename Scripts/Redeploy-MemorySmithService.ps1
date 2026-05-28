@@ -275,8 +275,8 @@ function Write-SemanticSettingsOverride {
         [Parameter(Mandatory = $true)]
         [int]$CudaDeviceId,
 
-        [Parameter(Mandatory = $true)]
-        [string]$OpenVinoDeviceId
+        [AllowEmptyString()]
+        [string]$OpenVinoDeviceId = ''
     )
 
     $root = @{}

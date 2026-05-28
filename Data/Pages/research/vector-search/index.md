@@ -6,8 +6,9 @@ This page is the coordination hub for the current MemorySmith vector-search and 
 
 - [Codebase Vector Search Whitepaper Notes](../codebase-vector-search-whitepaper.md)
 - [Code Search Benchmark Breakdown: CPU Fallback vs CUDA](../code-search-benchmark-cpu-vs-cuda-20260528.md)
+- [Code Search Benchmark: E5 vs Nomic Embed Text v1.5](e5-vs-nomic-embed-text-20260528.md)
 - [Deep Research Prompt: MemorySmith Codebase Vector Search And Embedding Stack](../codebase-vector-search-deep-research-prompt.md)
-- [Vector Search General Codebase Report (2026-05-28)](../../audits/vector-search-general-codebase-report_5-28-26.md)
+- [Vector Search General Codebase Report (Research Copy, 2026-05-28)](vector-search-general-codebase-report-20260528.md)
 
 ## Benchmarks
 
