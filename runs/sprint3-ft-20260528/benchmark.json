@@ -1,0 +1,32 @@
+{
+  "runId": "sprint3-ft-20260528",
+  "records": 2,
+  "estimatedTokens": 90,
+  "train": {
+    "steps": 10,
+    "finalLoss": 1.6747,
+    "mode": "simulated"
+  },
+  "timingsSeconds": {
+    "export": 0.006,
+    "train": 0.001,
+    "eval": 0.001,
+    "total": 0.012
+  },
+  "throughput": {
+    "recordsPerSecond": 293.785,
+    "tokensPerSecondEstimate": 13220.324
+  },
+  "environment": {
+    "python": "3.14.3 (tags/v3.14.3:323c59a, Feb  3 2026, 16:04:56) [MSC v.1944 64 bit (AMD64)]",
+    "argv": [
+      "C:\\Users\\norrt\\source\\repos\\MemorySmith\\MemorySmith.Training\\harness.py",
+      "--run-id",
+      "sprint3-ft-20260528",
+      "--request",
+      "C:\\Users\\norrt\\source\\repos\\MemorySmith\\runs\\sprint3-ft-20260528\\request.json",
+      "--workdir",
+      "C:\\Users\\norrt\\source\\repos\\MemorySmith\\runs\\sprint3-ft-20260528"
+    ]
+  }
+}
