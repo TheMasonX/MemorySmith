@@ -63,3 +63,4 @@ Search quality determines whether the right memory is available at the right tim
 - [Chat and Agent](chat-and-agent.md)
 - [Search and Chat](../guides/search-and-chat.md)
 - [API and MCP Integration](api-and-mcp.md)
+- [Codebase Vector Search Whitepaper Notes](../research/codebase-vector-search-whitepaper.md)

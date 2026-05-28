@@ -66,6 +66,48 @@ public class LoggingObservabilityServiceTests
         });
     }
 
+    [Test]
+    public async Task SearchAsync_AddsWarningWhenStructuredLogFileCannotBeRead()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            Assert.Ignore("Exclusive file-lock read failures are only deterministic on Windows in this regression test.");
+        }
+
+        var logPath = Path.Combine(_tempRoot, "locked-memorysmith.log");
+        await File.WriteAllTextAsync(logPath, CreateStructuredLine(DateTime.UtcNow, "Information", "locked"));
+
+        var options = new MemorySmithOptions
+        {
+            Logging = new LoggingOptions
+            {
+                StructuredFilePath = logPath,
+                MaxDiagnosticsLogResults = 10,
+                WindowsEventLogEnabled = false
+            }
+        };
+
+        using var lockHandle = new FileStream(logPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+        var service = new LoggingObservabilityService(new StaticOptionsMonitor<MemorySmithOptions>(options));
+
+        var results = await service.SearchAsync(new LogSearchQuery(
+            Text: null,
+            Level: null,
+            Hours: 1,
+            Limit: 5,
+            IncludeWindowsEventLog: false,
+            IncludeStructuredLogs: true), CancellationToken.None);
+
+        Assert.That(results, Has.Count.EqualTo(1));
+        Assert.Multiple(() =>
+        {
+            Assert.That(results[0].Level, Is.EqualTo("Warning"));
+            Assert.That(results[0].Message, Does.Contain("could not be read"));
+            Assert.That(results[0].Message, Does.Contain("locked-memorysmith.log"));
+            Assert.That(results[0].Properties.TryGetValue("ExceptionType", out var exceptionType) ? exceptionType : null, Is.EqualTo("IOException"));
+        });
+    }
+
     private static string CreateStructuredLine(DateTime timestampUtc, string level, string message)
     {
         return JsonSerializer.Serialize(new Dictionary<string, object?>

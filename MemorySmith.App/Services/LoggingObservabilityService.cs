@@ -144,33 +144,54 @@ public sealed class LoggingObservabilityService
             {
                 lines = File.ReadLines(file);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                results.Add(new LogEntryDto(
-                    TimestampUtc: DateTime.UtcNow,
-                    Level: "Warning",
-                    Message: $"[Diagnostics] Could not read structured log file '{Path.GetFileName(file)}': {ex.Message}",
-                    Source: "LoggingObservabilityService",
-                    TraceId: null,
-                    CorrelationId: null,
-                    ElapsedMs: null,
-                    Properties: new Dictionary<string, string> { ["file"] = Path.GetFileName(file), ["error"] = ex.GetType().Name }));
+                InsertStructuredReadFailure(results, file, ex, query, sinceUtc, limit);
                 continue;
             }
 
-            foreach (var line in lines)
+            try
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                if (!TryParseStructuredLog(line, out var entry) || !Matches(entry, sinceUtc, query.Text, query.Level))
+                foreach (var line in lines)
                 {
-                    continue;
-                }
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (!TryParseStructuredLog(line, out var entry) || !Matches(entry, sinceUtc, query.Text, query.Level))
+                    {
+                        continue;
+                    }
 
-                InsertByTimestamp(results, entry, limit);
+                    InsertByTimestamp(results, entry, limit);
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                InsertStructuredReadFailure(results, file, ex, query, sinceUtc, limit);
             }
         }
 
         return results;
+    }
+
+    private static void InsertStructuredReadFailure(List<LogEntryDto> results, string file, Exception ex, LogSearchQuery query, DateTime sinceUtc, int limit)
+    {
+        var entry = new LogEntryDto(
+            DateTime.UtcNow,
+            "Warning",
+            $"Structured log file '{Path.GetFileName(file)}' could not be read: {ex.Message}",
+            "StructuredFile",
+            null,
+            null,
+            null,
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["FilePath"] = file,
+                ["ExceptionType"] = ex.GetType().Name
+            });
+
+        if (Matches(entry, sinceUtc, query.Text, query.Level))
+        {
+            InsertByTimestamp(results, entry, limit);
+        }
     }
 
     private static void InsertByTimestamp(List<LogEntryDto> results, LogEntryDto entry, int limit)

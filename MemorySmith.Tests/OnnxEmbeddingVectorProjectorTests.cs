@@ -19,7 +19,7 @@ public sealed class OnnxEmbeddingVectorProjectorTests
     }
 
     [Test]
-    public void ProjectSequenceOutput_ExplicitMeanPoolingMatchesDefault()
+    public void ProjectSequenceOutput_UsesMeanPoolingWhenExplicitlyConfigured()
     {
         var projected = OnnxEmbeddingVectorProjector.ProjectSequenceOutput(
             [1f, 2f, 3f, 4f, 99f, 100f],
