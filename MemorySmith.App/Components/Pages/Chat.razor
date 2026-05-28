@@ -5,6 +5,7 @@
 @using System.Text.Json
 @using System.Text.Json.Nodes
 @using MemorySmith.Core.Models
+@using MemorySmith.App.Services.Training
 @using Microsoft.Extensions.Options
 @inject IChatAgent ChatAgent
 @inject ChatToolCatalog ToolCatalog
@@ -20,6 +21,7 @@
 @inject IDialogService Dialogs
 @inject ILogger<Chat> Logger
 @inject MaintenanceProposalWorkflow ProposalWorkflow
+@inject IChatFeedbackStore FeedbackStore
 
 <PageTitle>Chat - MemorySmith</PageTitle>
 <NavigationLock ConfirmExternalNavigation="@HasPendingDraft" OnBeforeInternalNavigation="ConfirmInternalNavigation" />
@@ -117,6 +119,29 @@
                                 }
                                 <span>@turn.CreatedUtc.ToLocalTime().ToString("HH:mm")@if (turn.DurationMilliseconds is not null) { <span> · @FormatDuration(TimeSpan.FromMilliseconds(turn.DurationMilliseconds.Value))</span> }</span>
                             </span>
+                            @if (FeedbackEnabled && string.Equals(turn.Role, "assistant", StringComparison.OrdinalIgnoreCase))
+                            {
+                                <span class="chat-message-feedback">
+                                    <MudTooltip Text="Helpful response">
+                                        <MudIconButton Icon="@Icons.Material.Filled.ThumbUp"
+                                                       Size="Size.Small"
+                                                       Color="@FeedbackButtonColor(turn, 1)"
+                                                       Disabled="@_isSending"
+                                                       OnClick="@(() => SetFeedbackAsync(turn, 1))"
+                                                       aria-label="Thumbs up"
+                                                       title="Thumbs up" />
+                                    </MudTooltip>
+                                    <MudTooltip Text="Needs improvement">
+                                        <MudIconButton Icon="@Icons.Material.Filled.ThumbDown"
+                                                       Size="Size.Small"
+                                                       Color="@FeedbackButtonColor(turn, -1)"
+                                                       Disabled="@_isSending"
+                                                       OnClick="@(() => SetFeedbackAsync(turn, -1))"
+                                                       aria-label="Thumbs down"
+                                                       title="Thumbs down" />
+                                    </MudTooltip>
+                                </span>
+                            }
                         </div>
                         @if (!string.IsNullOrWhiteSpace(turn.Thinking))
                         {
@@ -510,6 +535,7 @@
     private bool HasDefaultModelProfile => DefaultModelProfile is not null;
     private bool CanSelectModelProfile => HasDefaultModelProfile && _modelProfiles.Count > 0 && !_isSending;
     private bool CanSendChat => !_isSending && HasDefaultModelProfile && SelectedModelProfile is not null && !string.IsNullOrWhiteSpace(_selectedModel);
+    private bool FeedbackEnabled => Options.CurrentValue.Training.FeedbackEnabled;
     private string? ModelSetupMessage => HasDefaultModelProfile ? null : "Chat is disabled until an Admin defines an enabled default model profile.";
     private ChatTurnState? SelectedTraceTurn =>
         ActiveSession.Turns.FirstOrDefault(turn => string.Equals(turn.Id, _selectedTraceTurnId, StringComparison.Ordinal))
@@ -567,7 +593,12 @@
             await TryInvokeVoidAsync("memorySmith.chat.scrollToBottom", _tracePanelList);
         }
 
-        await TryInvokeVoidAsync("memorySmith.markdown.renderEnhancements", _transcriptPane, new { skipMermaid = _isSending });
+        await TryInvokeVoidAsync("memorySmith.markdown.renderEnhancements", _transcriptPane, new
+        {
+            skipMermaid = _isSending,
+            mermaidEnabled = Options.CurrentValue.Markdown.MermaidEnabled,
+            mermaidRestrictionMode = Options.CurrentValue.Markdown.MermaidRestrictionMode
+        });
     }
 
     private async Task TryInvokeVoidAsync(string identifier, params object?[] args)
@@ -1299,7 +1330,7 @@
         try
         {
             MemoryChatResponse? finalResponse = null;
-            await foreach (var update in ChatAgent.StreamAsync(new MemoryChatRequest(message, _mode, historyForRequest, requestModel, attachments, requestProvider, runControl, RequireAgentWriteApproval: _mode == MemoryChatMode.Agent), sendCts.Token))
+            await foreach (var update in ChatAgent.StreamAsync(new MemoryChatRequest(message, _mode, historyForRequest, requestModel, attachments, requestProvider, runControl, RequireAgentWriteApproval: _mode == MemoryChatMode.Agent, SessionId: session.Id), sendCts.Token))
             {
                 var turnChanged = false;
                 if (!string.IsNullOrEmpty(update.Status))
@@ -1362,6 +1393,10 @@
 
             var response = finalResponse ?? throw new InvalidOperationException("The provider stream completed without a final response.");
             pendingTurn.Role = "assistant";
+            if (!string.IsNullOrWhiteSpace(response.TurnId))
+            {
+                pendingTurn.Id = response.TurnId;
+            }
             pendingTurn.Content = response.Reply;
             pendingTurn.Thinking = response.Thinking;
             pendingTurn.ThinkingActive = false;
@@ -1511,6 +1546,41 @@
         }
 
         return InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SetFeedbackAsync(ChatTurnState turn, int rating)
+    {
+        if (!FeedbackEnabled || string.IsNullOrWhiteSpace(turn.Id))
+        {
+            return;
+        }
+
+        var feedbackRating = rating > 0 ? FeedbackRating.ThumbsUp : FeedbackRating.ThumbsDown;
+        var principalId = string.IsNullOrWhiteSpace(CurrentUser.UserId) ? "anonymous" : CurrentUser.UserId!;
+        var sessionId = string.IsNullOrWhiteSpace(ActiveSession.Id) ? "session-unknown" : ActiveSession.Id;
+
+        try
+        {
+            var saved = await FeedbackStore.UpsertAsync(turn.Id, sessionId, principalId, feedbackRating, null, CancellationToken.None);
+            turn.FeedbackRating = (int)saved.Rating;
+            Snackbar.Add(saved.Rating == FeedbackRating.ThumbsUp ? "Marked helpful" : "Marked needs improvement", Severity.Success);
+            await SaveSessionsAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to persist chat feedback for turn {TurnId}", turn.Id);
+            Snackbar.Add("Could not save feedback.", Severity.Warning);
+        }
+    }
+
+    private Color FeedbackButtonColor(ChatTurnState turn, int rating)
+    {
+        if (turn.FeedbackRating == rating)
+        {
+            return rating > 0 ? Color.Success : Color.Error;
+        }
+
+        return Color.Default;
     }
 
     private async Task ApproveAllWritesAsync(string turnId)
@@ -2967,6 +3037,7 @@
         public ChatUsageSummary? Usage { get; set; }
         public long? DurationMilliseconds { get; set; }
         public bool ThinkingActive { get; set; }
+        public int FeedbackRating { get; set; }
     }
 
     private sealed class ChatTraceEntryState

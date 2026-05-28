@@ -1,6 +1,8 @@
 using MemorySmith.App.Services;
+using MemorySmith.App.Services.Training;
 using MemorySmith.App.Controllers;
 using MemorySmith.Core.Models;
+using MemorySmith.Storage;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -1764,6 +1766,27 @@ public class PagesAndChatTests
     }
 
     [Test]
+    public async Task OllamaChatProvider_IncludesNumCtxOptionWhenConfigured()
+    {
+        var handler = new CapturingHandler();
+        var provider = new OllamaChatProvider(new HttpClient(handler), new StaticOptionsMonitor<MemorySmithOptions>(new MemorySmithOptions
+        {
+            Chat = new ChatOptions
+            {
+                OllamaEndpoint = "http://localhost:11434",
+                OllamaModel = "llama3.1",
+                OllamaContextWindowTokens = 8192
+            }
+        }));
+
+        await provider.CompleteAsync(new ChatProviderRequest(
+            [new ChatMessage("user", "hello")],
+            MemoryChatMode.Chat), CancellationToken.None);
+
+        Assert.That(handler.Body, Does.Contain("\"num_ctx\":8192"));
+    }
+
+    [Test]
     public async Task OllamaChatProvider_StreamsLiveChunks()
     {
         var handler = new CapturingHandler("""
@@ -1815,6 +1838,85 @@ public class PagesAndChatTests
             Attachments: [new ChatAttachment("image.png", "image/png", "image", 3, IsImage: true, LocalPath: tempPath)]), CancellationToken.None);
 
         Assert.That(handler.Body, Does.Contain("\"images\":[\"AQID\"]"));
+    }
+
+    [Test]
+    public async Task MemoryChatAgent_WritesTranscriptAndContent_WhenTrainingCaptureEnabled()
+    {
+        var memoryStore = new InMemoryMemoryStore();
+        var eventStore = new RecordingEventStore();
+        var publisher = new RecordingMemoryChangePublisher();
+        var memories = TestServiceFactory.CreateMemoryApplicationService(memoryStore, eventStore, publisher);
+        var pages = new FilePageService(_tempDir);
+        var options = new MemorySmithOptions
+        {
+            Training = new TrainingOptions
+            {
+                ChatTranscriptEnabled = true,
+                StoreChatContent = true,
+                TranscriptRedactionEnabled = true,
+                TranscriptDirectory = Path.Combine(_tempDir, "transcripts")
+            }
+        };
+        var transcriptWriter = new ChatTranscriptWriter(new StaticOptionsMonitor<MemorySmithOptions>(options), NullLogger<ChatTranscriptWriter>.Instance);
+        var agent = new MemoryChatAgent(
+            [new FakeChatProvider("assistant transcript reply")],
+            memories,
+            pages,
+            Options.Create(options),
+            new FakeCurrentUserContext("editor-1", "Editor User", [MemorySmithRoles.Editor]),
+            transcriptWriter: transcriptWriter);
+
+        var response = await agent.SendAsync(new MemoryChatRequest("capture token=abc123", SessionId: "session-123"), CancellationToken.None);
+
+        var transcriptDir = Path.Combine(_tempDir, "transcripts");
+        var metaPath = Directory.GetFiles(transcriptDir, "*.jsonl").Single(path => !path.EndsWith(".content.jsonl", StringComparison.OrdinalIgnoreCase));
+        var contentPath = Directory.GetFiles(transcriptDir, "*.content.jsonl").Single();
+        var metadata = await File.ReadAllTextAsync(metaPath);
+        var content = await File.ReadAllTextAsync(contentPath);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(response.TurnId, Is.Not.Null.And.Not.Empty);
+            Assert.That(metadata, Does.Contain("\"SessionId\":\"session-123\""));
+            Assert.That(metadata, Does.Contain(response.TurnId));
+            Assert.That(content, Does.Contain("assistant transcript reply"));
+            Assert.That(content, Does.Contain("token=[REDACTED]"));
+            Assert.That(content, Does.Not.Contain("abc123"));
+        });
+    }
+
+    [Test]
+    public async Task SqliteChatFeedbackStore_UpsertAndReplaceRating()
+    {
+        var dbPath = Path.Combine(_tempDir, "feedback.db");
+        var options = new MemorySmithOptions
+        {
+            Database = new DatabaseOptions
+            {
+                ConnectionString = $"Data Source={dbPath};Pooling=False"
+            }
+        };
+        var store = new SqliteChatFeedbackStore(new StaticOptionsMonitor<MemorySmithOptions>(options));
+
+        var up = await store.UpsertAsync("turn-1", "session-a", "user-1", FeedbackRating.ThumbsUp, "good", CancellationToken.None);
+        var down = await store.UpsertAsync("turn-1", "session-a", "user-1", FeedbackRating.ThumbsDown, "bad", CancellationToken.None);
+        var loaded = await store.GetForTurnAsync("turn-1", "user-1", CancellationToken.None);
+        var rows = new List<ChatFeedbackRecord>();
+        await foreach (var row in store.EnumerateAsync(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(1), CancellationToken.None))
+        {
+            rows.Add(row);
+        }
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(up.Rating, Is.EqualTo(FeedbackRating.ThumbsUp));
+            Assert.That(down.Rating, Is.EqualTo(FeedbackRating.ThumbsDown));
+            Assert.That(loaded, Is.Not.Null);
+            Assert.That(loaded!.Rating, Is.EqualTo(FeedbackRating.ThumbsDown));
+            Assert.That(rows, Has.Count.EqualTo(1));
+            Assert.That(rows[0].Note, Is.EqualTo("bad"));
+        });
     }
 
     [Test]

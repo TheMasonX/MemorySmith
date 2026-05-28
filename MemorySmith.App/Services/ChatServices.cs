@@ -8,6 +8,7 @@ using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using System.Threading.Channels;
 using GitHub.Copilot.SDK;
+using MemorySmith.App.Services.Training;
 using MemorySmith.Core.Models;
 using Microsoft.Extensions.Options;
 using SdkCopilotClient = GitHub.Copilot.SDK.CopilotClient;
@@ -151,7 +152,8 @@ public sealed record MemoryChatRequest(
     IReadOnlyList<ChatAttachment>? Attachments = null,
     string? Provider = null,
     ChatRunControl? RunControl = null,
-    bool RequireAgentWriteApproval = false);
+    bool RequireAgentWriteApproval = false,
+    string? SessionId = null);
 
 public sealed class ChatRunControl
 {
@@ -225,7 +227,8 @@ public sealed record MemoryChatResponse(
     IReadOnlyList<string> WrittenPages,
     ChatUsageSummary? Usage = null,
     IReadOnlyList<AgentMemoryWriteProposal>? ProposedMemoryWrites = null,
-    IReadOnlyList<AgentPageWriteProposal>? ProposedPageWrites = null);
+    IReadOnlyList<AgentPageWriteProposal>? ProposedPageWrites = null,
+    string? TurnId = null);
 
 public sealed record MemoryChatStreamUpdate(
     string ContentDelta = "",
@@ -465,12 +468,17 @@ public sealed partial class OllamaChatProvider : IChatProvider
 
         var model = string.IsNullOrWhiteSpace(request.Model) ? chatOptions.OllamaModel : request.Model.Trim();
         var endpoint = new Uri(new Uri(chatOptions.OllamaEndpoint.TrimEnd('/') + "/"), "api/chat");
-        var payload = new
+        var payload = new Dictionary<string, object?>
         {
-            model,
-            stream = false,
-            messages = BuildOllamaMessages(request)
+            ["model"] = model,
+            ["stream"] = false,
+            ["messages"] = BuildOllamaMessages(request)
         };
+        var requestOptions = BuildOllamaRequestOptions(chatOptions);
+        if (requestOptions is not null)
+        {
+            payload["options"] = requestOptions;
+        }
 
         using var response = await _httpClient.PostAsJsonAsync(endpoint, payload, timeout.Token);
         var body = await response.Content.ReadAsStringAsync(timeout.Token);
@@ -492,12 +500,17 @@ public sealed partial class OllamaChatProvider : IChatProvider
 
         var model = string.IsNullOrWhiteSpace(request.Model) ? chatOptions.OllamaModel : request.Model.Trim();
         var endpoint = new Uri(new Uri(chatOptions.OllamaEndpoint.TrimEnd('/') + "/"), "api/chat");
-        var payload = new
+        var payload = new Dictionary<string, object?>
         {
-            model,
-            stream = true,
-            messages = BuildOllamaMessages(request)
+            ["model"] = model,
+            ["stream"] = true,
+            ["messages"] = BuildOllamaMessages(request)
         };
+        var requestOptions = BuildOllamaRequestOptions(chatOptions);
+        if (requestOptions is not null)
+        {
+            payload["options"] = requestOptions;
+        }
 
         using var httpRequest = new HttpRequestMessage(HttpMethod.Post, endpoint)
         {
@@ -598,6 +611,17 @@ public sealed partial class OllamaChatProvider : IChatProvider
             Content = message.Content,
             Images = index == lastUserIndex && imagePayloads.Length > 0 ? imagePayloads : null
         }).ToList();
+    }
+
+    private static Dictionary<string, object>? BuildOllamaRequestOptions(ChatOptions chatOptions)
+    {
+        var options = new Dictionary<string, object>();
+        if (chatOptions.OllamaContextWindowTokens is int contextWindowTokens && contextWindowTokens > 0)
+        {
+            options["num_ctx"] = contextWindowTokens;
+        }
+
+        return options.Count == 0 ? null : options;
     }
 
     private static string ReadOllamaDelta(JsonElement root, out string? thinkingDelta)
@@ -1237,6 +1261,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
     private readonly MaintenanceProposalWorkflow? _proposalWorkflow;
     private readonly ITaskService? _tasks;
     private readonly CodeSearchService? _codeSearch;
+    private readonly IChatTranscriptWriter? _transcriptWriter;
 
     public MemoryChatAgent(
         IEnumerable<IChatProvider> providers,
@@ -1248,7 +1273,8 @@ public sealed partial class MemoryChatAgent : IChatAgent
         ChatIntentInterceptor? intentInterceptor = null,
         MaintenanceProposalWorkflow? proposalWorkflow = null,
         ITaskService? tasks = null,
-        CodeSearchService? codeSearch = null)
+        CodeSearchService? codeSearch = null,
+        IChatTranscriptWriter? transcriptWriter = null)
     {
         _providers = providers.ToList();
         if (_providers.Count == 0)
@@ -1265,6 +1291,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
         _proposalWorkflow = proposalWorkflow;
         _tasks = tasks;
         _codeSearch = codeSearch;
+        _transcriptWriter = transcriptWriter;
     }
 
     public async Task<MemoryChatResponse> SendAsync(MemoryChatRequest request, CancellationToken cancellationToken)
@@ -1539,6 +1566,8 @@ public sealed partial class MemoryChatAgent : IChatAgent
         IReadOnlyList<ChatContextItem> context,
         CancellationToken cancellationToken)
     {
+        var turnId = Guid.NewGuid().ToString("N");
+        MemoryChatResponse response;
         if (request.Mode == MemoryChatMode.Agent)
         {
             var approvalRequired = RequiresAgentWriteApproval(request);
@@ -1550,7 +1579,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
                 agentResult = PrepareApprovalRequiredResult(agentResult);
             }
 
-            return new MemoryChatResponse(
+            response = new MemoryChatResponse(
                 agentResult.Reply,
                 providerResponse.ProviderName,
                 providerResponse.Model,
@@ -1560,18 +1589,101 @@ public sealed partial class MemoryChatAgent : IChatAgent
                 agentResult.WrittenPages,
                 providerResponse.Usage,
                 agentResult.ProposedMemoryWrites,
-                agentResult.ProposedPageWrites);
+                agentResult.ProposedPageWrites,
+                turnId);
+        }
+        else
+        {
+            response = new MemoryChatResponse(
+                providerResponse.Content,
+                providerResponse.ProviderName,
+                providerResponse.Model,
+                providerResponse.Thinking,
+                context,
+                [],
+                [],
+                providerResponse.Usage,
+                TurnId: turnId);
         }
 
-        return new MemoryChatResponse(
-            providerResponse.Content,
-            providerResponse.ProviderName,
-            providerResponse.Model,
-            providerResponse.Thinking,
-            context,
-            [],
-                [],
-                providerResponse.Usage);
+        await TryWriteTranscriptAsync(turnId, request, response, providerResponse, context, cancellationToken);
+        return response;
+    }
+
+    private async Task TryWriteTranscriptAsync(
+        string turnId,
+        MemoryChatRequest request,
+        MemoryChatResponse response,
+        ChatProviderResponse providerResponse,
+        IReadOnlyList<ChatContextItem> context,
+        CancellationToken cancellationToken)
+    {
+        if (_transcriptWriter is null || !_options.Value.Training.ChatTranscriptEnabled)
+        {
+            return;
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        var principalId = string.IsNullOrWhiteSpace(_currentUser?.UserId) ? "anonymous" : _currentUser!.UserId!;
+        var displayName = string.IsNullOrWhiteSpace(_currentUser?.DisplayName) ? "Anonymous" : _currentUser.DisplayName;
+        var content = response.Reply ?? string.Empty;
+        var sessionId = string.IsNullOrWhiteSpace(request.SessionId) ? $"session-{now:yyyyMMdd}" : request.SessionId!;
+        var systemPromptHash = ComputeSystemPromptHash(request, providerResponse.ProviderName);
+
+        var record = new ChatTurnRecord
+        {
+            Id = turnId,
+            Timestamp = now,
+            SessionId = sessionId,
+            User = new TurnUser(principalId, displayName),
+            Model = new TurnModel(providerResponse.Model, providerResponse.ProviderName),
+            TemplateVersion = "wiki-chat-agent.v1",
+            ModeIntent = request.Mode.ToString(),
+            SystemPromptHash = systemPromptHash,
+            Request = new TurnRequest
+            {
+                MessageHash = ChatTranscriptWriter.Sha256Hex(request.Message),
+                HistoryTurnCount = request.History?.Count ?? 0,
+                PreloadedMemoryIds = context.Where(item => string.Equals(item.Kind, "memory", StringComparison.OrdinalIgnoreCase)).Select(item => item.Id).Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+                PreloadedPageSlugs = context.Where(item => string.Equals(item.Kind, "page", StringComparison.OrdinalIgnoreCase)).Select(item => item.Id).Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+                AttachmentTypes = request.Attachments?.Select(attachment => attachment.ContentType).Where(type => !string.IsNullOrWhiteSpace(type)).Distinct(StringComparer.OrdinalIgnoreCase).ToList() ?? []
+            },
+            Execution = new TurnExecution
+            {
+                ToolCalls = [],
+                IterationsUsed = 0,
+                PromptTokens = providerResponse.Usage?.InputTokens,
+                CompletionTokens = providerResponse.Usage?.OutputTokens,
+                TotalTokens = providerResponse.Usage is null ? null : providerResponse.Usage.InputTokens + providerResponse.Usage.OutputTokens,
+                FirstTokenMs = 0,
+                TotalMs = 0
+            },
+            Response = new TurnResponse
+            {
+                FinishReason = "stop",
+                ContentSha256 = ChatTranscriptWriter.Sha256Hex(content),
+                ContentBytes = Encoding.UTF8.GetByteCount(content)
+            }
+        };
+
+        var contentRecord = _options.Value.Training.StoreChatContent
+            ? new ChatTurnContent
+            {
+                Id = turnId,
+                UserMessage = request.Message,
+                AssistantMessage = content
+            }
+            : null;
+
+        await _transcriptWriter.WriteAsync(record, contentRecord, cancellationToken);
+    }
+
+    private string ComputeSystemPromptHash(MemoryChatRequest request, string providerName)
+    {
+        var provider = ResolveProvider(providerName);
+        var contextPlan = BuildContextPlan(request);
+        var systemPrompt = BuildSystemPrompt(request, provider.Capabilities, contextPlan);
+        return ChatTranscriptWriter.Sha256Hex(systemPrompt);
     }
 
     public async Task<AgentWriteApplyResult> ApplyAgentWritesAsync(

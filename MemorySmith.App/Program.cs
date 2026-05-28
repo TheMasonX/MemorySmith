@@ -1,5 +1,6 @@
 using MemorySmith.App.Components;
 using MemorySmith.App.Services;
+using MemorySmith.App.Services.Training;
 using MemorySmith.Core.Indexing;
 using MemorySmith.Core.Models;
 using MemorySmith.Storage;
@@ -493,6 +494,8 @@ try
     builder.Services.AddScoped<IChatProvider>(sp => sp.GetRequiredService<GitHubCopilotChatProvider>());
     builder.Services.AddSingleton<ChatToolCatalog>();
     builder.Services.AddSingleton<ChatIntentInterceptor>();
+    builder.Services.AddSingleton<IChatTranscriptWriter, ChatTranscriptWriter>();
+    builder.Services.AddSingleton<IChatFeedbackStore, SqliteChatFeedbackStore>();
     builder.Services.AddScoped<IChatAgent, MemoryChatAgent>();
 
     var maintenanceEnabled = builder.Configuration.GetValue("MemorySmith:Maintenance:Enabled", true);

@@ -544,6 +544,45 @@ public class TagGovernanceTests
     }
 
     [Test]
+    public void AdminSettings_ExposeMermaidPolicyControls()
+    {
+        var source = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "Services", "AdminSettingsService.cs"));
+        var appsettings = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "appsettings.json"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(source, Does.Contain("MemorySmith:Markdown:MermaidEnabled"));
+            Assert.That(source, Does.Contain("MemorySmith:Markdown:MermaidRestrictionMode"));
+            Assert.That(source, Does.Contain("Mermaid restriction mode"));
+            Assert.That(appsettings, Does.Contain("\"Markdown\""));
+            Assert.That(appsettings, Does.Contain("\"MermaidEnabled\": true"));
+            Assert.That(appsettings, Does.Contain("\"MermaidRestrictionMode\": \"restricted\""));
+        });
+    }
+
+    [Test]
+    public void AdminSettings_ExposeTrainingHarnessControls()
+    {
+        var source = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "Services", "AdminSettingsService.cs"));
+        var appsettings = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "appsettings.json"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(source, Does.Contain("MemorySmith:Training:ChatTranscriptEnabled"));
+            Assert.That(source, Does.Contain("MemorySmith:Training:StoreChatContent"));
+            Assert.That(source, Does.Contain("MemorySmith:Training:TranscriptRetentionDays"));
+            Assert.That(source, Does.Contain("MemorySmith:Training:TranscriptRedactionEnabled"));
+            Assert.That(source, Does.Contain("MemorySmith:Training:FeedbackEnabled"));
+            Assert.That(source, Does.Contain("MemorySmith:Training:PreferenceFormat"));
+            Assert.That(appsettings, Does.Contain("\"Training\""));
+            Assert.That(appsettings, Does.Contain("\"ChatTranscriptEnabled\": false"));
+            Assert.That(appsettings, Does.Contain("\"TranscriptRetentionDays\": 90"));
+            Assert.That(appsettings, Does.Contain("\"TranscriptRedactionEnabled\": true"));
+            Assert.That(appsettings, Does.Contain("\"FeedbackEnabled\": false"));
+        });
+    }
+
+    [Test]
     public void AdminSettings_ExposeProposalActionUxSettings()
     {
         var source = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "Services", "AdminSettingsService.cs"));
