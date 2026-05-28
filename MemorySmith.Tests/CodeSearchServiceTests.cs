@@ -472,6 +472,208 @@ public class CodeSearchServiceTests
         });
     }
 
+    [Test]
+    public async Task BuildIndex_ResumesInterruptedBuildAndSkipsAlreadyEmbeddedDocuments()
+    {
+        await File.WriteAllTextAsync(Path.Combine(_repoRoot, ".gitignore"), string.Empty);
+        await File.WriteAllTextAsync(
+            Path.Combine(_repoRoot, "MemorySmith.App", "Services", "FileA.cs"),
+            "namespace MemorySmith.App.Services;\npublic static class FileA\n{\n    public static string MethodA(string input) => input + \" A\";\n}\n");
+        await File.WriteAllTextAsync(
+            Path.Combine(_repoRoot, "MemorySmith.Core", "Services", "FileB.cs"),
+            "namespace MemorySmith.Core.Services;\npublic static class FileB\n{\n    public static string MethodB(string input) => input + \" B\";\n}\n");
+
+        // Step 1: build a complete index so both files are embedded and in the DB
+        var firstProvider = new CountingHashEmbeddingProvider();
+        var firstService = CreateService(firstProvider, options =>
+        {
+            options.CodeSearch.ResumableBuildsEnabled = true;
+        });
+        await firstService.SearchAsync(new CodeSearchQuery("MethodA MethodB", Limit: 5), CancellationToken.None);
+
+        var indexDbPath = Path.Combine(_repoRoot, "Data", "Graph", "code-search", "code-search.db");
+        Assert.That(File.Exists(indexDbPath), Is.True, "Index DB should exist after first build.");
+        Assert.That(firstProvider.DocumentEmbeddingsRequested, Is.EqualTo(2));
+
+        // Step 2: manipulate the build log to simulate an interrupted build:
+        //   - rewrite the completed entry as in-progress
+        //   - remove FileA from the document log, keeping FileB (so FileA looks already-embedded)
+        await using (var editConn = new SqliteConnection(new SqliteConnectionStringBuilder
+        {
+            DataSource = indexDbPath,
+            Mode = SqliteOpenMode.ReadWrite,
+            Pooling = false
+        }.ToString()))
+        {
+            await editConn.OpenAsync();
+            await using var tx = editConn.BeginTransaction();
+            await using (var updateLog = editConn.CreateCommand())
+            {
+                updateLog.Transaction = tx;
+                updateLog.CommandText = "UPDATE CodeSearchBuildLog SET State = 'in-progress', CompletedAtUtc = NULL WHERE State = 'completed';";
+                await updateLog.ExecuteNonQueryAsync();
+            }
+
+            await using (var deleteDoc = editConn.CreateCommand())
+            {
+                deleteDoc.Transaction = tx;
+                // Keep only FileB in the log; FileA will be treated as not-yet-embedded
+                deleteDoc.CommandText = "DELETE FROM CodeSearchBuildLogDocument WHERE DocumentPath NOT LIKE '%FileB.cs';";
+                await deleteDoc.ExecuteNonQueryAsync();
+            }
+
+            // Also remove FileA's chunks from the index so warm-reuse cannot skip it:
+            // this isolates the resume-log skip from the warm-reuse path.
+            await using (var deleteChunks = editConn.CreateCommand())
+            {
+                deleteChunks.Transaction = tx;
+                deleteChunks.CommandText = "DELETE FROM CodeSearchChunks WHERE DocumentPath LIKE '%FileA.cs';";
+                await deleteChunks.ExecuteNonQueryAsync();
+            }
+
+            await tx.CommitAsync();
+        }
+
+        SqliteConnection.ClearAllPools();
+
+        // Step 3: new service instance picks up the interrupted build and resumes
+        var resumeProvider = new CountingHashEmbeddingProvider();
+        var resumeService = CreateService(resumeProvider, options =>
+        {
+            options.CodeSearch.ResumableBuildsEnabled = true;
+        });
+        await resumeService.SearchAsync(new CodeSearchQuery("MethodA MethodB", Limit: 5), CancellationToken.None);
+        var resumeStatus = await resumeService.GetStatusAsync(CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            // FileA was not in the build log, so it must be re-embedded (1 embedding)
+            // FileB was already in the build log, so it should be reused (0 embeddings for B)
+            Assert.That(resumeProvider.DocumentEmbeddingsRequested, Is.EqualTo(1), "Only the non-logged file should be re-embedded on resume.");
+            Assert.That(resumeStatus.Build.State, Is.EqualTo("completed"));
+        });
+    }
+
+    [Test]
+    public async Task MergeShardAsync_ThrowsWhenShardFileDoesNotExist()
+    {
+        var service = CreateService(new HashEmbeddingProvider());
+        var nonExistentPath = Path.Combine(_repoRoot, "nonexistent-shard.db");
+
+        Assert.ThrowsAsync<FileNotFoundException>(
+            async () => await service.MergeShardAsync(nonExistentPath, preferNewer: true, CancellationToken.None));
+    }
+
+    [Test]
+    public async Task MergeShardAsync_InsertsNewChunksFromShard()
+    {
+        // Build main index with FileA only
+        await File.WriteAllTextAsync(Path.Combine(_repoRoot, ".gitignore"), string.Empty);
+        await File.WriteAllTextAsync(
+            Path.Combine(_repoRoot, "MemorySmith.App", "Services", "MainFile.cs"),
+            "namespace MemorySmith.App.Services;\npublic static class MainFile\n{\n    public static string MainMethod(string input) => input + \" main\";\n}\n");
+        var mainService = CreateService(new HashEmbeddingProvider());
+        await mainService.SearchAsync(new CodeSearchQuery("MainMethod main file", Limit: 5), CancellationToken.None);
+
+        // Build shard index with FileB only (separate data dir)
+        var shardDataPath = Path.Combine(Path.GetTempPath(), $"memorysmith-shard-{Guid.NewGuid():N}", "Data", "Memories");
+        Directory.CreateDirectory(shardDataPath);
+        var shardRepoRoot = Path.Combine(Path.GetTempPath(), $"memorysmith-shard-repo-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(Path.Combine(shardRepoRoot, "MemorySmith.App", "Services"));
+        Directory.CreateDirectory(Path.Combine(shardRepoRoot, "MemorySmith.Core", "Services"));
+        await File.WriteAllTextAsync(Path.Combine(shardRepoRoot, ".gitignore"), string.Empty);
+        await File.WriteAllTextAsync(
+            Path.Combine(shardRepoRoot, "MemorySmith.App", "Services", "ShardFile.cs"),
+            "namespace MemorySmith.App.Services;\npublic static class ShardFile\n{\n    public static string ShardMethod(string input) => input + \" shard\";\n}\n");
+
+        var shardOptions = new MemorySmithOptions
+        {
+            DataPath = shardDataPath,
+            CodeSearch = new CodeSearchOptions
+            {
+                RepositoryRootPath = "..",
+                TargetDirectories = ["MemorySmith.App", "MemorySmith.Core"],
+                IncludedFileExtensions = [".cs"],
+                MaxResults = 10
+            }
+        };
+        // Adjust RepositoryRootPath to point to shardRepoRoot
+        shardOptions.CodeSearch.RepositoryRootPath = shardRepoRoot;
+        var shardService = new CodeSearchService(new HashEmbeddingProvider(), Options.Create(shardOptions), NullLogger<CodeSearchService>.Instance);
+        await shardService.SearchAsync(new CodeSearchQuery("ShardMethod shard file", Limit: 5), CancellationToken.None);
+
+        var shardDbPath = Path.Combine(Path.GetDirectoryName(shardDataPath)!.Replace("Memories", string.Empty).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar), "Graph", "code-search", "code-search.db");
+        // Compute the actual shard DB path from shardDataPath
+        var shardDataRoot = Directory.GetParent(shardDataPath)!.FullName;
+        var actualShardDbPath = Path.Combine(shardDataRoot, "Graph", "code-search", "code-search.db");
+        SqliteConnection.ClearAllPools();
+
+        Assert.That(File.Exists(actualShardDbPath), Is.True, "Shard DB should exist after shard build.");
+
+        var result = await mainService.MergeShardAsync(actualShardDbPath, preferNewer: true, CancellationToken.None);
+
+        // Note: we intentionally do NOT search for shard content here because the main service's staleness
+        // checker will prune chunks whose source files don't exist in the main repo root.
+        // The counter assertions are the meaningful signal that the merge operated correctly.
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.InsertedChunkCount, Is.GreaterThan(0), "Chunks from the shard should be inserted into the main index.");
+            Assert.That(result.UpdatedChunkCount, Is.EqualTo(0));
+            Assert.That(result.TotalShardChunkCount, Is.GreaterThan(0));
+            Assert.That(result.SkippedChunkCount, Is.EqualTo(0), "No chunks should be skipped when they are all new.");
+        });
+
+        // Cleanup shard temp dirs
+        SqliteConnection.ClearAllPools();
+        try { Directory.Delete(Directory.GetParent(shardDataRoot)!.FullName, recursive: true); } catch { /* best effort */ }
+    }
+
+    [Test]
+    public async Task MergeShardAsync_SkipsAllChunksWhenPreferNewerFalseAndChunksAlreadyExist()
+    {
+        await File.WriteAllTextAsync(Path.Combine(_repoRoot, ".gitignore"), string.Empty);
+        await File.WriteAllTextAsync(
+            Path.Combine(_repoRoot, "MemorySmith.App", "Services", "SharedFile.cs"),
+            "namespace MemorySmith.App.Services;\npublic static class SharedFile\n{\n    public static string SharedMethod(string input) => input + \" shared\";\n}\n");
+        var mainService = CreateService(new HashEmbeddingProvider());
+        await mainService.SearchAsync(new CodeSearchQuery("SharedMethod shared", Limit: 5), CancellationToken.None);
+
+        // Build a shard with the same file (same DocumentPath, so it already exists in main)
+        var shardDataPath = Path.Combine(Path.GetTempPath(), $"memorysmith-shard2-{Guid.NewGuid():N}", "Data", "Memories");
+        Directory.CreateDirectory(shardDataPath);
+        var shardRepoRoot = _repoRoot; // Same source files → same DocumentPath keys
+        var shardOptions = new MemorySmithOptions
+        {
+            DataPath = shardDataPath,
+            CodeSearch = new CodeSearchOptions
+            {
+                RepositoryRootPath = shardRepoRoot,
+                TargetDirectories = ["MemorySmith.App", "MemorySmith.Core"],
+                IncludedFileExtensions = [".cs"],
+                MaxResults = 10
+            }
+        };
+        var shardService = new CodeSearchService(new HashEmbeddingProvider(), Options.Create(shardOptions), NullLogger<CodeSearchService>.Instance);
+        await shardService.SearchAsync(new CodeSearchQuery("SharedMethod shared", Limit: 5), CancellationToken.None);
+
+        var shardDataRoot = Directory.GetParent(shardDataPath)!.FullName;
+        var actualShardDbPath = Path.Combine(shardDataRoot, "Graph", "code-search", "code-search.db");
+        SqliteConnection.ClearAllPools();
+
+        // Merge with preferNewer = false: existing chunks should not be overwritten
+        var result = await mainService.MergeShardAsync(actualShardDbPath, preferNewer: false, CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.InsertedChunkCount, Is.EqualTo(0), "Chunks already in the main index should not be inserted again.");
+            Assert.That(result.UpdatedChunkCount, Is.EqualTo(0), "Chunks already in the main index should not be updated when preferNewer=false.");
+            Assert.That(result.SkippedChunkCount, Is.EqualTo(result.TotalShardChunkCount), "All shard chunks should be skipped when preferNewer=false and the chunks already exist.");
+        });
+
+        SqliteConnection.ClearAllPools();
+        try { Directory.Delete(Directory.GetParent(shardDataRoot)!.FullName, recursive: true); } catch { /* best effort */ }
+    }
+
     private CodeSearchService CreateService(ITextEmbeddingProvider provider, Action<MemorySmithOptions>? configure = null)
     {
         var options = new MemorySmithOptions

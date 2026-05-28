@@ -39,6 +39,14 @@ public sealed record CodeSearchStatus(
     string ProviderStatus,
     CodeSearchBuildProgress Build);
 
+public sealed record CodeSearchShardMergeResult(
+    string ShardPath,
+    int InsertedChunkCount,
+    int UpdatedChunkCount,
+    int SkippedChunkCount,
+    int TotalShardChunkCount,
+    long ElapsedMilliseconds);
+
 public sealed record CodeSearchBuildTimings(
     long ProviderInitializationMilliseconds,
     long FileReadMilliseconds,
@@ -467,6 +475,23 @@ public sealed class CodeSearchService : IDisposable
         await using var connection = await OpenConnectionAsync(cancellationToken);
         var existingDocuments = await LoadExistingDocumentsAsync(connection, cancellationToken);
 
+        var buildId = Guid.NewGuid().ToString("N");
+        string? resumedFromBuildId = null;
+        var resumedProcessedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (!forceRebuild && _options.ResumableBuildsEnabled)
+        {
+            (resumedFromBuildId, resumedProcessedPaths) = await LoadResumableBuildAsync(connection, configurationHash, cancellationToken);
+            if (resumedFromBuildId is not null)
+            {
+                _logger.LogInformation(
+                    "Resuming interrupted code search index build {ResumedBuildId} with {ResumedPathCount} already-processed document(s).",
+                    resumedFromBuildId,
+                    resumedProcessedPaths.Count);
+            }
+        }
+
+        await SaveBuildLogStartAsync(connection, buildId, configurationHash, candidates.Count, resumedFromBuildId, cancellationToken);
+
         try
         {
             foreach (var candidate in candidates)
@@ -484,6 +509,12 @@ public sealed class CodeSearchService : IDisposable
 
                 try
                 {
+                    if (!forceRebuild && resumedProcessedPaths.Contains(candidate.DocumentPath))
+                    {
+                        reusedFileCount++;
+                    }
+                    else
+                    {
                     var fileInfo = new FileInfo(candidate.AbsolutePath);
                     if (!fileInfo.Exists || fileInfo.Length > _options.MaxFileBytes)
                     {
@@ -538,10 +569,12 @@ public sealed class CodeSearchService : IDisposable
                                 updatedFileCount += await ReplaceDocumentsBatchAsync(connection, pendingDocuments, cancellationToken);
                                 writeStopwatch.Stop();
                                 timings.DatabaseWriteMilliseconds += writeStopwatch.ElapsedMilliseconds;
+                                await SaveBuildLogDocumentsAsync(connection, buildId, pendingDocuments.Select(d => d.DocumentPath), cancellationToken);
                                 pendingDocuments.Clear();
                             }
                         }
                     }
+                    } // end else (not resumed)
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
@@ -582,6 +615,7 @@ public sealed class CodeSearchService : IDisposable
                 updatedFileCount += await ReplaceDocumentsBatchAsync(connection, pendingDocuments, cancellationToken);
                 writeStopwatch.Stop();
                 timings.DatabaseWriteMilliseconds += writeStopwatch.ElapsedMilliseconds;
+                await SaveBuildLogDocumentsAsync(connection, buildId, pendingDocuments.Select(d => d.DocumentPath), cancellationToken);
                 pendingDocuments.Clear();
                 SetBuildProgress(progress => progress with
                 {
@@ -612,6 +646,9 @@ public sealed class CodeSearchService : IDisposable
                 failedFileCount,
                 GetBuildProgress().LastError,
                 timingSnapshot);
+
+            await FinalizeBuildLogAsync(connection, buildId, "completed", processedFileCount, GetBuildProgress().LastError, cancellationToken);
+            await PruneBuildLogAsync(connection, _options.MaxCompletedBuildLogEntries, cancellationToken);
 
             _logger.LogInformation(
                 "Completed code search index build for {ProcessedFileCount} file(s). Reused {ReusedFileCount}, updated {UpdatedFileCount}, removed {RemovedFileCount}, skipped {SkippedFileCount}, failed {FailedFileCount}. Timing ms: provider init {ProviderInitializationMilliseconds}, file read {FileReadMilliseconds}, hash {ContentHashMilliseconds}, chunk prep {ChunkingMilliseconds}, embed {EmbeddingMilliseconds} across {EmbeddingCallCount} call(s) for {EmbeddedChunkCount} chunk(s), DB write {DatabaseWriteMilliseconds}, cleanup {RemovedDocumentCleanupMilliseconds}.",
@@ -1123,6 +1160,395 @@ VALUES (
         return chunks;
     }
 
+    public async Task<CodeSearchShardMergeResult> MergeShardAsync(string shardDatabasePath, bool preferNewer, CancellationToken cancellationToken)
+    {
+        if (!File.Exists(shardDatabasePath))
+        {
+            throw new FileNotFoundException($"Shard database not found: {shardDatabasePath}", shardDatabasePath);
+        }
+
+        var stopwatch = Stopwatch.StartNew();
+        var shardChunks = await LoadShardChunksAsync(shardDatabasePath, cancellationToken);
+        var totalShardChunks = shardChunks.Count;
+
+        if (totalShardChunks == 0)
+        {
+            stopwatch.Stop();
+            return new CodeSearchShardMergeResult(shardDatabasePath, 0, 0, 0, 0, stopwatch.ElapsedMilliseconds);
+        }
+
+        await _indexLock.WaitAsync(cancellationToken);
+        try
+        {
+            await EnsureDatabaseAsync(cancellationToken);
+            await using var connection = await OpenConnectionAsync(cancellationToken);
+
+            var existingTimestamps = new Dictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
+            await using (var selectCmd = connection.CreateCommand())
+            {
+                selectCmd.CommandText = "SELECT DocumentPath || '|' || ChunkId, IndexedAtUtc FROM CodeSearchChunks;";
+                await using var tsReader = await selectCmd.ExecuteReaderAsync(cancellationToken);
+                while (await tsReader.ReadAsync(cancellationToken))
+                {
+                    existingTimestamps[tsReader.GetString(0)] = DateTime.Parse(
+                        tsReader.GetString(1), null, System.Globalization.DateTimeStyles.RoundtripKind);
+                }
+            }
+
+            var toInsert = new List<CodeChunkRow>();
+            var toUpdate = new List<CodeChunkRow>();
+            var skippedCount = 0;
+            foreach (var chunk in shardChunks)
+            {
+                var key = $"{chunk.DocumentPath}|{chunk.ChunkId}";
+                if (!existingTimestamps.TryGetValue(key, out var existingTimestamp))
+                {
+                    toInsert.Add(chunk);
+                }
+                else if (preferNewer && chunk.IndexedAtUtc > existingTimestamp)
+                {
+                    toUpdate.Add(chunk);
+                }
+                else
+                {
+                    skippedCount++;
+                }
+            }
+
+            const int mergeBatchSize = 100;
+            var insertedCount = 0;
+            for (var offset = 0; offset < toInsert.Count; offset += mergeBatchSize)
+            {
+                var batch = toInsert.GetRange(offset, Math.Min(mergeBatchSize, toInsert.Count - offset));
+                await InsertMergedChunksAsync(connection, batch, cancellationToken);
+                insertedCount += batch.Count;
+            }
+
+            var updatedCount = 0;
+            for (var offset = 0; offset < toUpdate.Count; offset += mergeBatchSize)
+            {
+                var batch = toUpdate.GetRange(offset, Math.Min(mergeBatchSize, toUpdate.Count - offset));
+                await UpdateMergedChunksAsync(connection, batch, cancellationToken);
+                updatedCount += batch.Count;
+            }
+
+            if (insertedCount > 0 || updatedCount > 0)
+            {
+                InvalidateQueryCaches();
+            }
+
+            stopwatch.Stop();
+            _logger.LogInformation(
+                "Merged shard {ShardPath}: inserted {InsertedCount}, updated {UpdatedCount}, skipped {SkippedCount} of {TotalCount} chunk(s) in {ElapsedMs} ms.",
+                shardDatabasePath, insertedCount, updatedCount, skippedCount, totalShardChunks, stopwatch.ElapsedMilliseconds);
+
+            return new CodeSearchShardMergeResult(shardDatabasePath, insertedCount, updatedCount, skippedCount, totalShardChunks, stopwatch.ElapsedMilliseconds);
+        }
+        finally
+        {
+            _indexLock.Release();
+        }
+    }
+
+    private static async Task<List<CodeChunkRow>> LoadShardChunksAsync(string shardDatabasePath, CancellationToken cancellationToken)
+    {
+        var connectionString = new SqliteConnectionStringBuilder
+        {
+            DataSource = shardDatabasePath,
+            Mode = SqliteOpenMode.ReadOnly,
+            Pooling = false
+        }.ToString();
+
+        await using var shardConnection = new SqliteConnection(connectionString);
+        await shardConnection.OpenAsync(cancellationToken);
+
+        await using var command = shardConnection.CreateCommand();
+        command.CommandText = @"
+SELECT TargetKey, DocumentPath, AbsolutePath, ChunkId, SourceHash,
+       COALESCE(SourceLengthBytes, 0) AS SourceLengthBytes,
+       COALESCE(SourceLastWriteUtc, '0001-01-01T00:00:00.0000000Z') AS SourceLastWriteUtc,
+       ConfigurationHash, StartLine, EndLine, Snippet, SearchText, EmbeddingJson, IndexedAtUtc
+FROM CodeSearchChunks;";
+
+        var chunks = new List<CodeChunkRow>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            var embeddingJson = reader.IsDBNull(12) ? string.Empty : reader.GetString(12);
+            chunks.Add(new CodeChunkRow(
+                reader.GetString(0),
+                reader.GetString(1),
+                reader.GetString(2),
+                reader.GetInt32(3),
+                reader.GetString(4),
+                reader.GetInt64(5),
+                DateTime.Parse(reader.GetString(6), null, System.Globalization.DateTimeStyles.RoundtripKind),
+                reader.GetString(7),
+                reader.GetInt32(8),
+                reader.GetInt32(9),
+                reader.GetString(10),
+                reader.GetString(11),
+                string.IsNullOrWhiteSpace(embeddingJson) ? [] : JsonSerializer.Deserialize<float[]>(embeddingJson) ?? [],
+                DateTime.Parse(reader.GetString(13), null, System.Globalization.DateTimeStyles.RoundtripKind)));
+        }
+
+        return chunks;
+    }
+
+    private static async Task InsertMergedChunksAsync(SqliteConnection connection, IReadOnlyList<CodeChunkRow> chunks, CancellationToken cancellationToken)
+    {
+        if (chunks.Count == 0) return;
+
+        var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
+        await using (transaction)
+        {
+            await using var insert = connection.CreateCommand();
+            insert.Transaction = transaction;
+            insert.CommandText = @"
+INSERT OR IGNORE INTO CodeSearchChunks (
+    TargetKey, DocumentPath, AbsolutePath, ChunkId, SourceHash,
+    SourceLengthBytes, SourceLastWriteUtc, ConfigurationHash,
+    StartLine, EndLine, Snippet, SearchText, EmbeddingJson, IndexedAtUtc)
+VALUES (
+    @targetKey, @documentPath, @absolutePath, @chunkId, @sourceHash,
+    @sourceLengthBytes, @sourceLastWriteUtc, @configurationHash,
+    @startLine, @endLine, @snippet, @searchText, @embeddingJson, @indexedAtUtc);";
+
+            var targetKey = insert.Parameters.Add("@targetKey", SqliteType.Text);
+            var documentPath = insert.Parameters.Add("@documentPath", SqliteType.Text);
+            var absolutePath = insert.Parameters.Add("@absolutePath", SqliteType.Text);
+            var chunkId = insert.Parameters.Add("@chunkId", SqliteType.Integer);
+            var sourceHash = insert.Parameters.Add("@sourceHash", SqliteType.Text);
+            var sourceLengthBytes = insert.Parameters.Add("@sourceLengthBytes", SqliteType.Integer);
+            var sourceLastWriteUtc = insert.Parameters.Add("@sourceLastWriteUtc", SqliteType.Text);
+            var configurationHash = insert.Parameters.Add("@configurationHash", SqliteType.Text);
+            var startLine = insert.Parameters.Add("@startLine", SqliteType.Integer);
+            var endLine = insert.Parameters.Add("@endLine", SqliteType.Integer);
+            var snippet = insert.Parameters.Add("@snippet", SqliteType.Text);
+            var searchText = insert.Parameters.Add("@searchText", SqliteType.Text);
+            var embeddingJson = insert.Parameters.Add("@embeddingJson", SqliteType.Text);
+            var indexedAtUtc = insert.Parameters.Add("@indexedAtUtc", SqliteType.Text);
+
+            foreach (var chunk in chunks)
+            {
+                targetKey.Value = chunk.Target;
+                documentPath.Value = chunk.DocumentPath;
+                absolutePath.Value = chunk.AbsolutePath;
+                chunkId.Value = chunk.ChunkId;
+                sourceHash.Value = chunk.SourceHash;
+                sourceLengthBytes.Value = chunk.SourceLengthBytes;
+                sourceLastWriteUtc.Value = chunk.SourceLastWriteUtc.ToString("O");
+                configurationHash.Value = chunk.ConfigurationHash;
+                startLine.Value = chunk.StartLine;
+                endLine.Value = chunk.EndLine;
+                snippet.Value = chunk.Snippet;
+                searchText.Value = chunk.SearchText;
+                embeddingJson.Value = chunk.Embedding.Length == 0 ? DBNull.Value : (object)JsonSerializer.Serialize(chunk.Embedding);
+                indexedAtUtc.Value = chunk.IndexedAtUtc.ToString("O");
+                await insert.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            await transaction.CommitAsync(cancellationToken);
+        }
+    }
+
+    private static async Task UpdateMergedChunksAsync(SqliteConnection connection, IReadOnlyList<CodeChunkRow> chunks, CancellationToken cancellationToken)
+    {
+        if (chunks.Count == 0) return;
+
+        var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
+        await using (transaction)
+        {
+            await using var update = connection.CreateCommand();
+            update.Transaction = transaction;
+            update.CommandText = @"
+UPDATE CodeSearchChunks SET
+    TargetKey = @targetKey,
+    AbsolutePath = @absolutePath,
+    SourceHash = @sourceHash,
+    SourceLengthBytes = @sourceLengthBytes,
+    SourceLastWriteUtc = @sourceLastWriteUtc,
+    ConfigurationHash = @configurationHash,
+    StartLine = @startLine,
+    EndLine = @endLine,
+    Snippet = @snippet,
+    SearchText = @searchText,
+    EmbeddingJson = @embeddingJson,
+    IndexedAtUtc = @indexedAtUtc
+WHERE DocumentPath = @documentPath AND ChunkId = @chunkId;";
+
+            var targetKey = update.Parameters.Add("@targetKey", SqliteType.Text);
+            var documentPath = update.Parameters.Add("@documentPath", SqliteType.Text);
+            var absolutePath = update.Parameters.Add("@absolutePath", SqliteType.Text);
+            var chunkId = update.Parameters.Add("@chunkId", SqliteType.Integer);
+            var sourceHash = update.Parameters.Add("@sourceHash", SqliteType.Text);
+            var sourceLengthBytes = update.Parameters.Add("@sourceLengthBytes", SqliteType.Integer);
+            var sourceLastWriteUtc = update.Parameters.Add("@sourceLastWriteUtc", SqliteType.Text);
+            var configurationHash = update.Parameters.Add("@configurationHash", SqliteType.Text);
+            var startLine = update.Parameters.Add("@startLine", SqliteType.Integer);
+            var endLine = update.Parameters.Add("@endLine", SqliteType.Integer);
+            var snippet = update.Parameters.Add("@snippet", SqliteType.Text);
+            var searchText = update.Parameters.Add("@searchText", SqliteType.Text);
+            var embeddingJson = update.Parameters.Add("@embeddingJson", SqliteType.Text);
+            var indexedAtUtc = update.Parameters.Add("@indexedAtUtc", SqliteType.Text);
+
+            foreach (var chunk in chunks)
+            {
+                targetKey.Value = chunk.Target;
+                documentPath.Value = chunk.DocumentPath;
+                absolutePath.Value = chunk.AbsolutePath;
+                chunkId.Value = chunk.ChunkId;
+                sourceHash.Value = chunk.SourceHash;
+                sourceLengthBytes.Value = chunk.SourceLengthBytes;
+                sourceLastWriteUtc.Value = chunk.SourceLastWriteUtc.ToString("O");
+                configurationHash.Value = chunk.ConfigurationHash;
+                startLine.Value = chunk.StartLine;
+                endLine.Value = chunk.EndLine;
+                snippet.Value = chunk.Snippet;
+                searchText.Value = chunk.SearchText;
+                embeddingJson.Value = chunk.Embedding.Length == 0 ? DBNull.Value : (object)JsonSerializer.Serialize(chunk.Embedding);
+                indexedAtUtc.Value = chunk.IndexedAtUtc.ToString("O");
+                await update.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            await transaction.CommitAsync(cancellationToken);
+        }
+    }
+
+    private async Task<(string? ResumeBuildId, HashSet<string> ProcessedPaths)> LoadResumableBuildAsync(
+        SqliteConnection connection, string configurationHash, CancellationToken cancellationToken)
+    {
+        await using var findCmd = connection.CreateCommand();
+        findCmd.CommandText = @"
+SELECT BuildId FROM CodeSearchBuildLog
+WHERE ConfigurationHash = @configHash AND State = 'in-progress'
+ORDER BY StartedAtUtc DESC
+LIMIT 1;";
+        findCmd.Parameters.AddWithValue("@configHash", configurationHash);
+        var resumeBuildId = (string?)await findCmd.ExecuteScalarAsync(cancellationToken);
+
+        if (resumeBuildId is null)
+        {
+            return (null, new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+        }
+
+        await using var docCmd = connection.CreateCommand();
+        docCmd.CommandText = "SELECT DocumentPath FROM CodeSearchBuildLogDocument WHERE BuildId = @buildId;";
+        docCmd.Parameters.AddWithValue("@buildId", resumeBuildId);
+        var processedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        await using var reader = await docCmd.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            processedPaths.Add(reader.GetString(0));
+        }
+
+        return (resumeBuildId, processedPaths);
+    }
+
+    private static async Task SaveBuildLogStartAsync(
+        SqliteConnection connection,
+        string buildId,
+        string configurationHash,
+        int totalFileCount,
+        string? resumedFromBuildId,
+        CancellationToken cancellationToken)
+    {
+        var now = DateTime.UtcNow.ToString("O");
+        await using var command = connection.CreateCommand();
+        command.CommandText = @"
+INSERT OR REPLACE INTO CodeSearchBuildLog
+    (BuildId, ConfigurationHash, State, TotalFileCount, ProcessedFileCount, ResumedFromBuildId, StartedAtUtc, UpdatedAtUtc, CompletedAtUtc, LastError)
+VALUES
+    (@buildId, @configHash, 'in-progress', @totalFileCount, 0, @resumedFrom, @now, @now, NULL, NULL);";
+        command.Parameters.AddWithValue("@buildId", buildId);
+        command.Parameters.AddWithValue("@configHash", configurationHash);
+        command.Parameters.AddWithValue("@totalFileCount", totalFileCount);
+        command.Parameters.AddWithValue("@resumedFrom", (object?)resumedFromBuildId ?? DBNull.Value);
+        command.Parameters.AddWithValue("@now", now);
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    private static async Task SaveBuildLogDocumentsAsync(
+        SqliteConnection connection,
+        string buildId,
+        IEnumerable<string> documentPaths,
+        CancellationToken cancellationToken)
+    {
+        var now = DateTime.UtcNow.ToString("O");
+        var transaction = (SqliteTransaction)await connection.BeginTransactionAsync(cancellationToken);
+        await using (transaction)
+        {
+            await using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            command.CommandText = @"
+INSERT OR IGNORE INTO CodeSearchBuildLogDocument (BuildId, DocumentPath, ProcessedAtUtc)
+VALUES (@buildId, @documentPath, @now);";
+            var buildIdParam = command.Parameters.Add("@buildId", SqliteType.Text);
+            var documentPathParam = command.Parameters.Add("@documentPath", SqliteType.Text);
+            var nowParam = command.Parameters.Add("@now", SqliteType.Text);
+            buildIdParam.Value = buildId;
+            nowParam.Value = now;
+            foreach (var path in documentPaths)
+            {
+                documentPathParam.Value = path;
+                await command.ExecuteNonQueryAsync(cancellationToken);
+            }
+
+            await transaction.CommitAsync(cancellationToken);
+        }
+    }
+
+    private static async Task FinalizeBuildLogAsync(
+        SqliteConnection connection,
+        string buildId,
+        string state,
+        int processedFileCount,
+        string? lastError,
+        CancellationToken cancellationToken)
+    {
+        var now = DateTime.UtcNow.ToString("O");
+        await using var command = connection.CreateCommand();
+        command.CommandText = @"
+UPDATE CodeSearchBuildLog
+SET State = @state, ProcessedFileCount = @processedFileCount, UpdatedAtUtc = @now, CompletedAtUtc = @now, LastError = @lastError
+WHERE BuildId = @buildId;";
+        command.Parameters.AddWithValue("@buildId", buildId);
+        command.Parameters.AddWithValue("@state", state);
+        command.Parameters.AddWithValue("@processedFileCount", processedFileCount);
+        command.Parameters.AddWithValue("@now", now);
+        command.Parameters.AddWithValue("@lastError", (object?)lastError ?? DBNull.Value);
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    private static async Task PruneBuildLogAsync(
+        SqliteConnection connection,
+        int maxEntries,
+        CancellationToken cancellationToken)
+    {
+        maxEntries = Math.Max(1, maxEntries);
+        await using var pruneDocsCmd = connection.CreateCommand();
+        pruneDocsCmd.CommandText = @"
+DELETE FROM CodeSearchBuildLogDocument WHERE BuildId IN (
+    SELECT BuildId FROM CodeSearchBuildLog
+    WHERE State != 'in-progress'
+    ORDER BY StartedAtUtc DESC
+    LIMIT -1 OFFSET @maxEntries);";
+        pruneDocsCmd.Parameters.AddWithValue("@maxEntries", maxEntries);
+        await pruneDocsCmd.ExecuteNonQueryAsync(cancellationToken);
+
+        await using var pruneLogCmd = connection.CreateCommand();
+        pruneLogCmd.CommandText = @"
+DELETE FROM CodeSearchBuildLog
+WHERE State != 'in-progress'
+  AND BuildId NOT IN (
+    SELECT BuildId FROM CodeSearchBuildLog
+    WHERE State != 'in-progress'
+    ORDER BY StartedAtUtc DESC
+    LIMIT @maxEntries);";
+        pruneLogCmd.Parameters.AddWithValue("@maxEntries", maxEntries);
+        await pruneLogCmd.ExecuteNonQueryAsync(cancellationToken);
+    }
+
     private async Task EnsureDatabaseAsync(CancellationToken cancellationToken)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(_indexDatabasePath)!);
@@ -1147,10 +1573,27 @@ CREATE TABLE IF NOT EXISTS CodeSearchChunks (
     PRIMARY KEY (DocumentPath, ChunkId)
 );
 CREATE INDEX IF NOT EXISTS IX_CodeSearchChunks_TargetKey ON CodeSearchChunks(TargetKey);
-CREATE INDEX IF NOT EXISTS IX_CodeSearchChunks_DocumentPath ON CodeSearchChunks(DocumentPath);";
+CREATE INDEX IF NOT EXISTS IX_CodeSearchChunks_DocumentPath ON CodeSearchChunks(DocumentPath);
+CREATE TABLE IF NOT EXISTS CodeSearchBuildLog (
+    BuildId TEXT NOT NULL PRIMARY KEY,
+    ConfigurationHash TEXT NOT NULL,
+    State TEXT NOT NULL,
+    TotalFileCount INTEGER NOT NULL DEFAULT 0,
+    ProcessedFileCount INTEGER NOT NULL DEFAULT 0,
+    ResumedFromBuildId TEXT NULL,
+    StartedAtUtc TEXT NOT NULL,
+    UpdatedAtUtc TEXT NOT NULL,
+    CompletedAtUtc TEXT NULL,
+    LastError TEXT NULL);
+CREATE TABLE IF NOT EXISTS CodeSearchBuildLogDocument (
+    BuildId TEXT NOT NULL,
+    DocumentPath TEXT NOT NULL,
+    ProcessedAtUtc TEXT NOT NULL,
+    PRIMARY KEY (BuildId, DocumentPath));
+CREATE INDEX IF NOT EXISTS IX_CodeSearchBuildLog_ConfigState ON CodeSearchBuildLog(ConfigurationHash, State);";
         await command.ExecuteNonQueryAsync(cancellationToken);
-    await EnsureColumnAsync(connection, "SourceLengthBytes", "INTEGER NULL", cancellationToken);
-    await EnsureColumnAsync(connection, "SourceLastWriteUtc", "TEXT NULL", cancellationToken);
+        await EnsureColumnAsync(connection, "SourceLengthBytes", "INTEGER NULL", cancellationToken);
+        await EnsureColumnAsync(connection, "SourceLastWriteUtc", "TEXT NULL", cancellationToken);
     }
 
     private async Task<SqliteConnection> OpenConnectionAsync(CancellationToken cancellationToken)

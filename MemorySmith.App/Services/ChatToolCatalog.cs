@@ -439,6 +439,40 @@ public sealed class ChatToolCatalog
                 return JsonToolResult(await ctx.CodeSearch.GetStatusAsync(ct));
             });
 
+        yield return new ChatToolDescriptor(
+            "memorysmith_code_search_merge_shard",
+            "Merge chunks from an external code-search index shard database file into the main index. Useful for combining partial indexes built separately (e.g., on CI or for different target directories).",
+            new JsonObject
+            {
+                ["type"] = "object",
+                ["properties"] = new JsonObject
+                {
+                    ["shardPath"] = new JsonObject { ["type"] = "string", ["description"] = "Absolute path to the shard SQLite database file to merge into the main code-search index." },
+                    ["preferNewer"] = new JsonObject { ["type"] = "boolean", ["description"] = "When true (default), overwrite existing chunks if the shard has a newer IndexedAtUtc timestamp. When false, only insert new chunks; never update existing ones." }
+                },
+                ["required"] = new JsonArray { "shardPath" }
+            },
+            ChatToolRisk.Write,
+            AvailableInChat: false,
+            AvailableInMcp: true,
+            Execute: async (args, ctx, ct) =>
+            {
+                if (ctx.CodeSearch is null)
+                {
+                    return MissingCodeSearchServiceResult("memorysmith_code_search_merge_shard");
+                }
+
+                var shardPath = ReadString(args, "shardPath");
+                if (string.IsNullOrWhiteSpace(shardPath))
+                {
+                    return new ChatToolExecutionResult("The memorysmith_code_search_merge_shard tool requires a non-empty shardPath argument.", IsError: true);
+                }
+
+                var preferNewer = ReadBool(args, "preferNewer", true);
+                var result = await ctx.CodeSearch.MergeShardAsync(shardPath, preferNewer, ct);
+                return JsonToolResult(result);
+            });
+
         // ---------- New tools (Phase 2 of ChatCapabilityImprovements plan) ----------
 
         yield return new ChatToolDescriptor(

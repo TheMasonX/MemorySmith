@@ -224,6 +224,8 @@ public class CodeSearchOptions
     public int EmbeddingBatchSize { get; set; } = 8;
     public int StatusUpdateIntervalDocuments { get; set; } = 25;
     public int IndexStalenessCheckCooldownSeconds { get; set; } = 5;
+    public bool ResumableBuildsEnabled { get; set; } = true;
+    public int MaxCompletedBuildLogEntries { get; set; } = 10;
     public bool VectorCandidatePrefilterEnabled { get; set; } = true;
     public int VectorCandidateMultiplier { get; set; } = 12;
     public int VectorCandidateMinimum { get; set; } = 100;
