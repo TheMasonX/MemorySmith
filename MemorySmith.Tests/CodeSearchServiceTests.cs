@@ -92,6 +92,33 @@ public class CodeSearchServiceTests
     }
 
     [Test]
+    public async Task SearchAsync_DefaultExcludePatternsSkipProjectDocsNoise()
+    {
+        Directory.CreateDirectory(Path.Combine(_repoRoot, "MemorySmith.Core", "Docs"));
+        await File.WriteAllTextAsync(Path.Combine(_repoRoot, ".gitignore"), string.Empty);
+        await File.WriteAllTextAsync(
+            Path.Combine(_repoRoot, "MemorySmith.Core", "Docs", "NoiseGuide.md"),
+            "# Noise Guide\nThis document repeats BuildNoiseCollector and telemetry chatter.");
+        await File.WriteAllTextAsync(
+            Path.Combine(_repoRoot, "MemorySmith.Core", "Services", "NoiseCollector.cs"),
+            "namespace MemorySmith.Core.Services;\npublic static class NoiseCollector\n{\n    public static string BuildNoiseCollector(string input) => input + \" collector\";\n}\n");
+
+        var service = CreateService(new HashEmbeddingProvider(), options =>
+        {
+            options.CodeSearch.IncludedFileExtensions = [".cs", ".md"];
+        });
+
+        var results = await service.SearchAsync(new CodeSearchQuery("BuildNoiseCollector telemetry chatter", Limit: 5), CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(results, Is.Not.Empty);
+            Assert.That(results.Select(result => result.DocumentPath), Does.Contain("MemorySmith.Core/Services/NoiseCollector.cs"));
+            Assert.That(results.Select(result => result.DocumentPath), Does.Not.Contain("MemorySmith.Core/Docs/NoiseGuide.md"));
+        });
+    }
+
+    [Test]
     public async Task SearchAsync_ReusesPersistedIndexWithoutReembeddingUnchangedFiles()
     {
         await File.WriteAllTextAsync(Path.Combine(_repoRoot, ".gitignore"), string.Empty);
@@ -277,6 +304,30 @@ public class CodeSearchServiceTests
             Assert.That(status.Build.FailedFileCount, Is.EqualTo(1));
             Assert.That(status.Build.LastError, Does.Contain("BrokenBatchPlanner.cs"));
             Assert.That(status.Build.LastError, Does.Contain("Simulated document embedding failure."));
+        });
+    }
+
+    [Test]
+    public async Task SearchAsync_FallsBackToFullVectorScanWhenLexicalPrefilterMissesSemanticHit()
+    {
+        await File.WriteAllTextAsync(Path.Combine(_repoRoot, ".gitignore"), string.Empty);
+        await File.WriteAllTextAsync(
+            Path.Combine(_repoRoot, "MemorySmith.App", "Services", "SemanticAliasTarget.cs"),
+            "namespace MemorySmith.App.Services;\npublic static class SemanticAliasTarget\n{\n    public static string BuildOpaquePipeline(string input) => input + \" latent vector\";\n}\n");
+        await File.WriteAllTextAsync(
+            Path.Combine(_repoRoot, "MemorySmith.Core", "Services", "Distractor.cs"),
+            "namespace MemorySmith.Core.Services;\npublic static class Distractor\n{\n    public static string BuildDifferentPath(string input) => input + \" distractor\";\n}\n");
+
+        var provider = new SemanticAliasEmbeddingProvider();
+        var service = CreateService(provider);
+
+        var results = await service.SearchAsync(new CodeSearchQuery("semantic alias retrieval", Limit: 5), CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(results, Is.Not.Empty);
+            Assert.That(results[0].DocumentPath, Is.EqualTo("MemorySmith.App/Services/SemanticAliasTarget.cs"));
+            Assert.That(provider.QueryEmbeddingsRequested, Is.EqualTo(1));
         });
     }
 
@@ -491,6 +542,28 @@ public class CodeSearchServiceTests
             }
 
             embeddings = texts.Select(BuildEmbedding).ToArray();
+            return true;
+        }
+    }
+
+    private sealed class SemanticAliasEmbeddingProvider : ITextEmbeddingProvider
+    {
+        public int QueryEmbeddingsRequested { get; private set; }
+
+        public EmbeddingProviderStatus GetStatus() => new(true, "Semantic alias embedding provider available.", null, null, 2, "Cpu", "Cpu", null, null);
+
+        public bool TryEmbed(string text, EmbeddingInputKind kind, out float[] embedding, out string? reason)
+        {
+            if (kind == EmbeddingInputKind.Query)
+            {
+                QueryEmbeddingsRequested++;
+            }
+
+            reason = null;
+            embedding = text.Contains("semantic alias retrieval", StringComparison.OrdinalIgnoreCase)
+                || text.Contains("BuildOpaquePipeline", StringComparison.OrdinalIgnoreCase)
+                ? [1f, 0f]
+                : [0f, 1f];
             return true;
         }
     }

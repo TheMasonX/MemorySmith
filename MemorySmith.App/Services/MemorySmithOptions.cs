@@ -210,12 +210,23 @@ public class CodeSearchOptions
         ".yaml"
     ];
     public List<string> IncludePatterns { get; set; } = [];
-    public List<string> ExcludePatterns { get; set; } = [];
+    public List<string> ExcludePatterns { get; set; } =
+    [
+        "**/Docs/**",
+        "**/bin/**",
+        "**/obj/**",
+        "**/TestResults/**",
+        "**/BenchmarkDotNet.Artifacts/**"
+    ];
     public int ChunkLineCount { get; set; } = 40;
     public int ChunkOverlapLineCount { get; set; } = 8;
     public int IndexWriteBatchSize { get; set; } = 25;
-    public int EmbeddingBatchSize { get; set; } = 1;
+    public int EmbeddingBatchSize { get; set; } = 8;
     public int StatusUpdateIntervalDocuments { get; set; } = 25;
+    public bool VectorCandidatePrefilterEnabled { get; set; } = true;
+    public int VectorCandidateMultiplier { get; set; } = 12;
+    public int VectorCandidateMinimum { get; set; } = 100;
+    public int VectorCandidateMaximum { get; set; } = 400;
     public bool QueryTimingTelemetryEnabled { get; set; }
     public int QueryTimingLogInterval { get; set; } = 100;
     public int QueryTimingSlowThresholdMilliseconds { get; set; } = 500;

@@ -186,6 +186,10 @@ public sealed class CodeSearchService : IDisposable
         int EmbeddingCallCount,
         int EmbeddedChunkCount);
 
+    private sealed record VectorCandidateLoadResult(
+        List<IndexedChunk> Chunks,
+        bool UsedPrefilter);
+
     public CodeSearchService(
         ITextEmbeddingProvider embeddingProvider,
         IOptions<MemorySmithOptions> options,
@@ -216,12 +220,13 @@ public sealed class CodeSearchService : IDisposable
 
         var normalizedTargets = NormalizeTargets(query.Targets);
         var limit = Math.Clamp(query.Limit, 1, Math.Max(1, _options.MaxResults));
+        var queryTokens = Tokenize(query.Query!);
 
-        IReadOnlyList<CodeSearchResult> CompleteSearch(string mode, IReadOnlyList<CodeSearchResult> results)
+        IReadOnlyList<CodeSearchResult> CompleteSearch(string mode, IReadOnlyList<CodeSearchResult> results, int scannedChunkCount = 0)
         {
             if (queryTelemetryEnabled)
             {
-                LogQueryTiming(query.Query!, normalizedTargets, limit, mode, results.Count, queryStartTimestamp);
+                LogQueryTiming(query.Query!, normalizedTargets, limit, mode, results.Count, scannedChunkCount, queryStartTimestamp);
             }
 
             return results;
@@ -234,15 +239,12 @@ public sealed class CodeSearchService : IDisposable
         }
 
         await using var connection = await OpenConnectionAsync(cancellationToken);
-        var chunks = await LoadChunksAsync(connection, normalizedTargets, cancellationToken);
-        if (chunks.Count == 0)
-        {
-            return CompleteSearch("empty-index", []);
-        }
+        List<IndexedChunk>? chunks = null;
 
         if (TryGetQueryEmbedding(query.Query!, out var queryEmbedding))
         {
-            var vectorResults = chunks
+            var vectorCandidates = await LoadVectorCandidatesAsync(connection, normalizedTargets, queryTokens, limit, cancellationToken);
+            var vectorResults = vectorCandidates.Chunks
                 .Where(chunk => chunk.Embedding.Length == queryEmbedding.Length)
                 .Select(chunk => (Chunk: chunk, Score: Dot(queryEmbedding, chunk.Embedding)))
                 .Where(entry => entry.Score > 0)
@@ -265,11 +267,46 @@ public sealed class CodeSearchService : IDisposable
             if (vectorResults.Count > 0)
             {
                 CacheResults(resultCacheKey, vectorResults);
-                return CompleteSearch("vector", vectorResults);
+                return CompleteSearch(vectorCandidates.UsedPrefilter ? "vector-prefilter" : "vector", vectorResults, vectorCandidates.Chunks.Count);
+            }
+
+            if (vectorCandidates.UsedPrefilter)
+            {
+                chunks = await LoadChunksAsync(connection, normalizedTargets, cancellationToken);
+                var fallbackVectorResults = chunks
+                    .Where(chunk => chunk.Embedding.Length == queryEmbedding.Length)
+                    .Select(chunk => (Chunk: chunk, Score: Dot(queryEmbedding, chunk.Embedding)))
+                    .Where(entry => entry.Score > 0)
+                    .OrderByDescending(entry => entry.Score)
+                    .ThenBy(entry => entry.Chunk.DocumentPath, StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(entry => entry.Chunk.StartLine)
+                    .Take(limit)
+                    .Select(entry => new CodeSearchResult(
+                        entry.Chunk.Target,
+                        entry.Chunk.DocumentPath,
+                        entry.Chunk.AbsolutePath,
+                        entry.Chunk.StartLine,
+                        entry.Chunk.EndLine,
+                        Math.Round(entry.Score, 6),
+                        BuildSnippet(entry.Chunk.Snippet, query.Query!),
+                        $"Code embedding cosine similarity {entry.Score:0.###}.",
+                        entry.Chunk.IndexedAtUtc))
+                    .ToList();
+
+                if (fallbackVectorResults.Count > 0)
+                {
+                    CacheResults(resultCacheKey, fallbackVectorResults);
+                    return CompleteSearch("vector-full-fallback", fallbackVectorResults, chunks.Count);
+                }
             }
         }
 
-        var queryTokens = Tokenize(query.Query!);
+        chunks ??= await LoadChunksAsync(connection, normalizedTargets, cancellationToken);
+        if (chunks.Count == 0)
+        {
+            return CompleteSearch("empty-index", [], 0);
+        }
+
         var lexicalResults = chunks
             .Select(chunk => (Chunk: chunk, Score: ScoreLexical(chunk, queryTokens)))
             .Where(entry => entry.Score > 0)
@@ -290,7 +327,7 @@ public sealed class CodeSearchService : IDisposable
             .ToList();
 
             CacheResults(resultCacheKey, lexicalResults);
-            return CompleteSearch("lexical", lexicalResults);
+                return CompleteSearch("lexical", lexicalResults, chunks.Count);
     }
 
     public async Task<CodeSearchStatus> GetStatusAsync(CancellationToken cancellationToken)
@@ -1009,7 +1046,6 @@ VALUES (
 
     private async Task<List<IndexedChunk>> LoadChunksAsync(SqliteConnection connection, IReadOnlySet<string> targets, CancellationToken cancellationToken)
     {
-        var chunks = new List<IndexedChunk>();
         await using var command = connection.CreateCommand();
         if (targets.Count == 0)
         {
@@ -1029,6 +1065,12 @@ VALUES (
             command.CommandText = $"SELECT TargetKey, DocumentPath, AbsolutePath, StartLine, EndLine, Snippet, SearchText, EmbeddingJson, IndexedAtUtc FROM CodeSearchChunks WHERE TargetKey IN ({string.Join(", ", parameterNames)});";
         }
 
+        return await ReadChunksAsync(command, cancellationToken);
+    }
+
+    private static async Task<List<IndexedChunk>> ReadChunksAsync(SqliteCommand command, CancellationToken cancellationToken)
+    {
+        var chunks = new List<IndexedChunk>();
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         while (await reader.ReadAsync(cancellationToken))
         {
@@ -1164,7 +1206,7 @@ CREATE INDEX IF NOT EXISTS IX_CodeSearchChunks_DocumentPath ON CodeSearchChunks(
         return $"{Interlocked.Read(ref _resultCacheGeneration)}|{limit}|{query.Trim()}|{normalizedTargets}";
     }
 
-    private void LogQueryTiming(string queryText, IReadOnlySet<string> targets, int limit, string mode, int resultCount, long queryStartTimestamp)
+    private void LogQueryTiming(string queryText, IReadOnlySet<string> targets, int limit, string mode, int resultCount, int scannedChunkCount, long queryStartTimestamp)
     {
         var elapsedMs = Stopwatch.GetElapsedTime(queryStartTimestamp).TotalMilliseconds;
         var queryNumber = Interlocked.Increment(ref _queryTelemetryCounter);
@@ -1183,10 +1225,11 @@ CREATE INDEX IF NOT EXISTS IX_CodeSearchChunks_DocumentPath ON CodeSearchChunks(
         if (isSlow)
         {
             _logger.LogWarning(
-                "Code-search query timing slow path: {ElapsedMs:0.###} ms (mode={Mode}, results={ResultCount}, targets={TargetCount}, limit={Limit}, query=\"{QueryPreview}\").",
+                "Code-search query timing slow path: {ElapsedMs:0.###} ms (mode={Mode}, results={ResultCount}, scannedChunks={ScannedChunkCount}, targets={TargetCount}, limit={Limit}, query=\"{QueryPreview}\").",
                 elapsedMs,
                 mode,
                 resultCount,
+                scannedChunkCount,
                 targets.Count,
                 limit,
                 queryPreview);
@@ -1194,14 +1237,77 @@ CREATE INDEX IF NOT EXISTS IX_CodeSearchChunks_DocumentPath ON CodeSearchChunks(
         }
 
         _logger.LogDebug(
-            "Code-search query timing sample #{QueryNumber}: {ElapsedMs:0.###} ms (mode={Mode}, results={ResultCount}, targets={TargetCount}, limit={Limit}, query=\"{QueryPreview}\").",
+            "Code-search query timing sample #{QueryNumber}: {ElapsedMs:0.###} ms (mode={Mode}, results={ResultCount}, scannedChunks={ScannedChunkCount}, targets={TargetCount}, limit={Limit}, query=\"{QueryPreview}\").",
             queryNumber,
             elapsedMs,
             mode,
             resultCount,
+            scannedChunkCount,
             targets.Count,
             limit,
             queryPreview);
+    }
+
+    private int CalculateVectorCandidateLimit(int limit)
+    {
+        var minimum = Math.Max(1, _options.VectorCandidateMinimum);
+        var maximum = Math.Max(minimum, _options.VectorCandidateMaximum);
+        var scaled = Math.Max(limit * Math.Max(1, _options.VectorCandidateMultiplier), minimum);
+        return Math.Clamp(scaled, minimum, maximum);
+    }
+
+    private async Task<VectorCandidateLoadResult> LoadVectorCandidatesAsync(SqliteConnection connection, IReadOnlySet<string> targets, IReadOnlySet<string> queryTokens, int limit, CancellationToken cancellationToken)
+    {
+        if (!_options.VectorCandidatePrefilterEnabled || queryTokens.Count == 0)
+        {
+            return new VectorCandidateLoadResult(await LoadChunksAsync(connection, targets, cancellationToken), false);
+        }
+
+        await using var command = connection.CreateCommand();
+        var whereClauses = new List<string>();
+        if (targets.Count > 0)
+        {
+            var targetParameterNames = new List<string>();
+            var targetIndex = 0;
+            foreach (var target in targets)
+            {
+                var parameterName = $"@target{targetIndex++}";
+                targetParameterNames.Add(parameterName);
+                command.Parameters.AddWithValue(parameterName, target);
+            }
+
+            whereClauses.Add($"TargetKey IN ({string.Join(", ", targetParameterNames)})");
+        }
+
+        var tokenMatchClauses = new List<string>();
+        var tokenScoreClauses = new List<string>();
+        var tokenOrdinal = 0;
+        foreach (var token in queryTokens.OrderBy(value => value, StringComparer.OrdinalIgnoreCase))
+        {
+            var parameterName = $"@token{tokenOrdinal++}";
+            command.Parameters.AddWithValue(parameterName, token);
+            var documentHit = $"instr(lower(DocumentPath), {parameterName}) > 0";
+            var searchTextHit = $"instr(lower(SearchText), {parameterName}) > 0";
+            tokenMatchClauses.Add($"({documentHit} OR {searchTextHit})");
+            tokenScoreClauses.Add($"CASE WHEN {documentHit} THEN 2 ELSE 0 END");
+            tokenScoreClauses.Add($"CASE WHEN {searchTextHit} THEN 1 ELSE 0 END");
+        }
+
+        if (tokenMatchClauses.Count == 0)
+        {
+            return new VectorCandidateLoadResult(await LoadChunksAsync(connection, targets, cancellationToken), false);
+        }
+
+        whereClauses.Add($"({string.Join(" OR ", tokenMatchClauses)})");
+        command.Parameters.AddWithValue("@candidateLimit", CalculateVectorCandidateLimit(limit));
+        command.CommandText = $@"
+SELECT TargetKey, DocumentPath, AbsolutePath, StartLine, EndLine, Snippet, SearchText, EmbeddingJson, IndexedAtUtc
+FROM CodeSearchChunks
+WHERE {string.Join(" AND ", whereClauses)}
+ORDER BY ({string.Join(" + ", tokenScoreClauses)}) DESC, DocumentPath COLLATE NOCASE, StartLine
+LIMIT @candidateLimit;";
+
+        return new VectorCandidateLoadResult(await ReadChunksAsync(command, cancellationToken), true);
     }
 
     private void InvalidateQueryCaches()
