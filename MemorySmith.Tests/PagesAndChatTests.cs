@@ -378,6 +378,29 @@ public class PagesAndChatTests
     }
 
     [Test]
+    public void ChatMarkdownRenderer_AllowsHttpMailtoButBlocksOtherSchemesInTrustedMode()
+    {
+        var html = ChatMarkdownRenderer.RenderHtml("""
+        <a href="https://example.com">web</a>
+        <a href="mailto:ops@example.com">mail</a>
+        <a href="ftp://example.com/file">ftp</a>
+        <a href="file:///c:/windows/system32">file</a>
+        <img src="data:text/html;base64,PGgxPkJhZDwvaDE+" alt="bad" />
+        """, allowRawHtml: true);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(html, Does.Contain("href=\"https://example.com\""));
+            Assert.That(html, Does.Contain("href=\"mailto:ops@example.com\""));
+            Assert.That(html, Does.Contain("href=\"#\""));
+            Assert.That(html, Does.Not.Contain("ftp://example.com/file"));
+            Assert.That(html, Does.Not.Contain("file:///c:/windows/system32"));
+            Assert.That(html, Does.Not.Contain("data:text/html"));
+            Assert.That(html, Does.Contain("src=\"\""));
+        });
+    }
+
+    [Test]
     public void ChatMarkdownRenderer_RendersMermaidAndPrismCodeBlocks()
     {
         var html = ChatMarkdownRenderer.RenderHtml("""
