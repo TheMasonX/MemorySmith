@@ -4,7 +4,7 @@
   "title": "Ingest and review missing hyperagent fine-tuning artifact",
   "description": "Locate or import hyperagent-local-llm-finetuning.gz, verify provenance, and fold its findings into the consolidated plan before implementation starts.",
   "type": "Task",
-  "status": "Blocked",
+  "status": "Done",
   "priority": "Medium",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -14,7 +14,7 @@
     "training",
     "research",
     "artifact",
-    "blocked"
+    "reviewed"
   ],
   "attachments": [],
   "externalLinks": [],
@@ -27,15 +27,21 @@
       "author": "AgentSmith",
       "body": "Artifact was requested for review but was not present in workspace during this pass. Blocked until source is provided or path corrected.",
       "createdAtUtc": "2026-05-28T21:43:18.8947975Z"
+    },
+    {
+      "id": "c-close-0207-20260528",
+      "author": "AgentSmith",
+      "body": "Artifact received at artifacts/hyperagent-local-llm-finetuning.gz, decompressed, and reviewed. Key scaffold contracts were folded into the consolidated planning page. Blocker resolved.",
+      "createdAtUtc": "2026-05-28T22:05:00.0000000Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-28T21:43:18.8947975Z",
-  "updatedAtUtc": "2026-05-28T21:43:18.8947975Z",
-  "completedAtUtc": null,
-  "revision": 1,
+  "updatedAtUtc": "2026-05-28T22:05:00.0000000Z",
+  "completedAtUtc": "2026-05-28T22:05:00.0000000Z",
+  "revision": 2,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

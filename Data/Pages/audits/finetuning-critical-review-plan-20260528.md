@@ -5,7 +5,7 @@ Reviewed artifacts:
 - audits/vector-deepdive-5
 - audits/local-finetuning
 - audits/local-finetuning-ux-notes
-- hyperagent-local-llm-finetuning.gz (not found in workspace)
+- artifacts/hyperagent-local-llm-finetuning.gz (ingested and reviewed)
 
 ## Verification Snapshot
 - Tests are passing.
@@ -29,10 +29,12 @@ Reviewed artifacts:
 1. local-finetuning.md provides a strong staged harness for SFT + preference tuning, eval gates, and promotion discipline.
 2. local-finetuning-ux-notes.md identifies high-ROI operator UX for context-window control, VRAM estimates, and in-app training visibility.
 3. Current chat transcript + feedback persistence is insufficient as a training-data foundation and should be solved first.
+4. The provided hyperagent scaffold is implementation-oriented and materially supports the plan with concrete integration contracts: `MemoryType` enum model (`MemorySmith.Core/Models/MemoryType.cs`), transcript/feedback service contracts, Ollama `num_ctx` patch guidance, migration files, and training harness scripts.
 
-## Missing Artifact
-- hyperagent-local-llm-finetuning.gz was requested but not found in repository.
-- This is tracked as blocked backlog item TSK-0207.
+## Artifact Status
+- `artifacts/hyperagent-local-llm-finetuning.gz` was provided, decompressed, and reviewed.
+- Payload structure verified under `artifacts/hyperagent-local-llm-finetuning/scaffold`.
+- Former blocker task `TSK-0207` is now resolved.
 
 ## Tasked Plan
 Created task records:
@@ -42,7 +44,7 @@ Created task records:
 - TSK-0204: Add fine-tuning eval gates and promotion rollback workflow
 - TSK-0205: Harden chat and markdown security toggles before training rollout
 - TSK-0206: Add admin training workbench with live run telemetry
-- TSK-0207: Ingest and review missing hyperagent fine-tuning artifact (blocked)
+- TSK-0207: Ingest and review hyperagent fine-tuning artifact (completed)
 
 ## Assumptions
 - Primary deployment remains local-first single-user workstation.
@@ -50,10 +52,11 @@ Created task records:
 - Existing tool-call envelope remains authoritative until a versioned migration is approved.
 
 ## Open Questions
-1. Should memory taxonomy ship as first-class enum or reserved tags first?
-2. Should hardened profile disable Mermaid by default or keep with sanitizer-only hardening?
-3. Should diagnostics split into operator and public-safe payload variants?
-4. Where should hyperagent-local-llm-finetuning.gz originate from (artifact export, attachment, or committed source)?
+1. Should hardened profile disable Mermaid by default or keep with sanitizer-only hardening?
+2. Should diagnostics split into operator and public-safe payload variants?
+
+## Decision Log
+- Decision 2026-05-28: Memory taxonomy will ship enum-first (`MemoryType`) with optional `SubType` string for extensibility. Rationale: strong type safety, clearer eval targets, and alignment with the ingested hyperagent scaffold contracts.
 
 ## Immediate Priority
 - Start implementation with TSK-0201 and TSK-0202, then gate model promotion on TSK-0204.
