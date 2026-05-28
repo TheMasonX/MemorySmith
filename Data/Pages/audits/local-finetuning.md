@@ -1,10 +1,25 @@
 # MemorySmith Test & Fine-Tuning Harness — Technical Design
 
-**Status:** Forward-looking design report. Implementation scaffold deferred.
+**Status:** Design + partial implementation baseline. Core transcript/feedback data plane, harness bridge script, and first benchmarked run artifact are now in-repo.
 **Date:** 2026-05-28
 **Scope:** Production-grade fine-tuning harness for MemorySmith's local LLM. Pivot target: `qwen3.5:4b` (Ollama, Apache 2.0, 4.66B params, Q4_K_M, 256K native context) running on RTX 5060 8 GB VRAM with a deployed context window of 16–24K tokens.
 **Codebase reference:** master @ `c4d7a28ade1a2878d270f1479bfb255f5058482b`, audit branch `feature/code-search-high-roi-batch8` @ `61af8491`.
 **Audit family:** This document is the forward-looking complement to Audits #1–5. Cross-references to Audit #5 are inlined where relevant.
+
+---
+
+## Implementation Delta (2026-05-28 Evening)
+
+- Runnable harness bridge shipped:
+  - `Scripts/Run-FinetuneHarness.ps1`
+  - `MemorySmith.Training/harness.py`
+- First run evidence recorded:
+  - `runs/sprint3-ft-20260528/status.json`
+  - `runs/sprint3-ft-20260528/benchmark.json`
+  - `Data/Training/exports/sprint3-ft-20260528.sft.jsonl`
+- Operator runbook: [guides/local-finetune-harness-runbook](../guides/local-finetune-harness-runbook.md)
+
+Current limitation: the local `.venv` does not yet include full LoRA/TRL dependencies, so the current harness run executes export/eval/benchmark with simulated train steps. The bridge/status contract is already aligned for swapping to full training once the pinned training environment is provisioned.
 
 ---
 
