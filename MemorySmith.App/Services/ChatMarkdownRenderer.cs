@@ -36,7 +36,8 @@ public static partial class ChatMarkdownRenderer
         }
 
         var html = Markdown.ToHtml(markdown, allowRawHtml ? TrustedPipeline : SafePipeline);
-        return LinkAttributeRegex().Replace(html, SanitizeLinkAttribute);
+        html = LinkAttributeRegex().Replace(html, SanitizeQuotedLinkAttribute);
+        return UnquotedLinkAttributeRegex().Replace(html, SanitizeUnquotedLinkAttribute);
     }
 
     private static MarkdownPipeline BuildPipeline(bool allowRawHtml)
@@ -53,7 +54,7 @@ public static partial class ChatMarkdownRenderer
         return builder.Build();
     }
 
-    private static string SanitizeLinkAttribute(Match match)
+    private static string SanitizeQuotedLinkAttribute(Match match)
     {
         var name = match.Groups["name"].Value;
         var quote = match.Groups["quote"].Value;
@@ -62,6 +63,15 @@ public static partial class ChatMarkdownRenderer
         return IsSafeLinkTarget(normalized)
             ? $"{name}={quote}{normalized}{quote}"
             : $"{name}={quote}{UnsafeAttributeFallback(name)}{quote}";
+    }
+
+    private static string SanitizeUnquotedLinkAttribute(Match match)
+    {
+        var name = match.Groups["name"].Value;
+        var value = match.Groups["value"].Value;
+        var normalized = NormalizeLinkTarget(name, value);
+        var sanitized = IsSafeLinkTarget(normalized) ? normalized : UnsafeAttributeFallback(name);
+        return $"{name}=\"{sanitized}\"";
     }
 
     private static string NormalizeLinkTarget(string attributeName, string value)
@@ -353,6 +363,9 @@ public static partial class ChatMarkdownRenderer
 
     [GeneratedRegex("\\b(?<name>href|src)=(?<quote>[\"'])(?<value>[^\"']*)\\k<quote>", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex LinkAttributeRegex();
+
+    [GeneratedRegex("\\b(?<name>href|src)=(?<value>(?![\"'])[^\\s>]+)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    private static partial Regex UnquotedLinkAttributeRegex();
 
     private static readonly string[] ReferenceLabelDelimiters = [": ", " - "];
     private static readonly Regex PageSlugPattern = new("^[a-z0-9][a-z0-9/_-]*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
