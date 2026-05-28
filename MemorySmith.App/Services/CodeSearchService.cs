@@ -132,6 +132,7 @@ public sealed class CodeSearchService : IDisposable
     private readonly string _indexDatabasePath;
     private CodeSearchBuildProgress _buildProgress = CodeSearchBuildProgress.Idle;
     private long _resultCacheGeneration;
+    private long _queryTelemetryCounter;
 
     private sealed class BuildTimingAccumulator
     {
@@ -208,21 +209,35 @@ public sealed class CodeSearchService : IDisposable
             return [];
         }
 
+        var queryTelemetryEnabled = _options.QueryTimingTelemetryEnabled;
+        var queryStartTimestamp = queryTelemetryEnabled ? Stopwatch.GetTimestamp() : 0L;
+
         await EnsureIndexedAsync(query.RebuildIfStale, query.ForceRebuild, cancellationToken);
 
         var normalizedTargets = NormalizeTargets(query.Targets);
         var limit = Math.Clamp(query.Limit, 1, Math.Max(1, _options.MaxResults));
+
+        IReadOnlyList<CodeSearchResult> CompleteSearch(string mode, IReadOnlyList<CodeSearchResult> results)
+        {
+            if (queryTelemetryEnabled)
+            {
+                LogQueryTiming(query.Query!, normalizedTargets, limit, mode, results.Count, queryStartTimestamp);
+            }
+
+            return results;
+        }
+
         var resultCacheKey = BuildResultCacheKey(query.Query!, normalizedTargets, limit);
         if (_queryResultCache.TryGetValue(resultCacheKey, out IReadOnlyList<CodeSearchResult>? cachedResults) && cachedResults is not null)
         {
-            return cachedResults;
+            return CompleteSearch("cache", cachedResults);
         }
 
         await using var connection = await OpenConnectionAsync(cancellationToken);
         var chunks = await LoadChunksAsync(connection, normalizedTargets, cancellationToken);
         if (chunks.Count == 0)
         {
-            return [];
+            return CompleteSearch("empty-index", []);
         }
 
         if (TryGetQueryEmbedding(query.Query!, out var queryEmbedding))
@@ -250,7 +265,7 @@ public sealed class CodeSearchService : IDisposable
             if (vectorResults.Count > 0)
             {
                 CacheResults(resultCacheKey, vectorResults);
-                return vectorResults;
+                return CompleteSearch("vector", vectorResults);
             }
         }
 
@@ -275,7 +290,7 @@ public sealed class CodeSearchService : IDisposable
             .ToList();
 
             CacheResults(resultCacheKey, lexicalResults);
-            return lexicalResults;
+            return CompleteSearch("lexical", lexicalResults);
     }
 
     public async Task<CodeSearchStatus> GetStatusAsync(CancellationToken cancellationToken)
@@ -1147,6 +1162,46 @@ CREATE INDEX IF NOT EXISTS IX_CodeSearchChunks_DocumentPath ON CodeSearchChunks(
             ? "*"
             : string.Join(';', targets.OrderBy(value => value, StringComparer.OrdinalIgnoreCase));
         return $"{Interlocked.Read(ref _resultCacheGeneration)}|{limit}|{query.Trim()}|{normalizedTargets}";
+    }
+
+    private void LogQueryTiming(string queryText, IReadOnlySet<string> targets, int limit, string mode, int resultCount, long queryStartTimestamp)
+    {
+        var elapsedMs = Stopwatch.GetElapsedTime(queryStartTimestamp).TotalMilliseconds;
+        var queryNumber = Interlocked.Increment(ref _queryTelemetryCounter);
+        var logInterval = Math.Max(1, _options.QueryTimingLogInterval);
+        var slowThresholdMs = Math.Max(1, _options.QueryTimingSlowThresholdMilliseconds);
+        var isSlow = elapsedMs >= slowThresholdMs;
+        if (!isSlow && queryNumber % logInterval != 0)
+        {
+            return;
+        }
+
+        var queryPreview = queryText.Length <= 120
+            ? queryText
+            : queryText[..120];
+
+        if (isSlow)
+        {
+            _logger.LogWarning(
+                "Code-search query timing slow path: {ElapsedMs:0.###} ms (mode={Mode}, results={ResultCount}, targets={TargetCount}, limit={Limit}, query=\"{QueryPreview}\").",
+                elapsedMs,
+                mode,
+                resultCount,
+                targets.Count,
+                limit,
+                queryPreview);
+            return;
+        }
+
+        _logger.LogDebug(
+            "Code-search query timing sample #{QueryNumber}: {ElapsedMs:0.###} ms (mode={Mode}, results={ResultCount}, targets={TargetCount}, limit={Limit}, query=\"{QueryPreview}\").",
+            queryNumber,
+            elapsedMs,
+            mode,
+            resultCount,
+            targets.Count,
+            limit,
+            queryPreview);
     }
 
     private void InvalidateQueryCaches()

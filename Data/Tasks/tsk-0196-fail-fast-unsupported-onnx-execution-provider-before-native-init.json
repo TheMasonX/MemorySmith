@@ -1,0 +1,47 @@
+{
+  "id": "tsk-0196-fail-fast-unsupported-onnx-execution-provider-before-native-init",
+  "key": "TSK-0196",
+  "title": "Fail fast on unsupported ONNX execution provider before native initialization",
+  "description": "CI regression on 2026-05-28 showed `SemanticEmbeddingPathTests.GetStatus_RejectsUnsupportedExecutionProviderBeforeOpeningOnnxSession` failing because unsupported providers reached ONNX native initialization first and returned a runtime loader exception instead of the expected validation message. Harden `OnnxTextEmbeddingProvider` so unsupported `MemorySmith:SemanticSearch:ExecutionProvider` values are rejected before any ONNX session options are created, preserving deterministic diagnostics and preventing environment-dependent failure text.",
+  "type": "Task",
+  "status": "Done",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "AgentSmith",
+  "labels": [
+    "search",
+    "semantic",
+    "onnx",
+    "ci",
+    "reliability"
+  ],
+  "attachments": [],
+  "externalLinks": [
+    "https://github.com/TheMasonX/MemorySmith/actions/runs/26555808394"
+  ],
+  "linkedPages": [
+    "audits/vector-search-general-codebase-report_5-28-26",
+    "research/vector-search/index"
+  ],
+  "comments": [
+    {
+      "id": "c-0196-1",
+      "author": "AgentSmith",
+      "body": "Completed by validating execution provider support before session creation in `MemorySmith.App/Services/SemanticEmbeddingSearchService.cs`, returning the unsupported-provider message directly when configuration is invalid. Focused validation passed with `dotnet test .\\MemorySmith.Tests\\MemorySmith.Tests.csproj -c Release --filter \"FullyQualifiedName~SemanticEmbeddingPathTests.GetStatus_RejectsUnsupportedExecutionProviderBeforeOpeningOnnxSession|FullyQualifiedName~CodeSearchServiceTests\" --logger \"console;verbosity=minimal\"` (12/12).",
+      "createdAtUtc": "2026-05-28T06:10:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-28T06:05:00.0000000Z",
+  "updatedAtUtc": "2026-05-28T06:10:00.0000000Z",
+  "completedAtUtc": "2026-05-28T06:10:00.0000000Z",
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

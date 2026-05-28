@@ -1,0 +1,46 @@
+{
+  "id": "tsk-0199-add-semantic-search-candidate-index-and-ann-plan",
+  "key": "TSK-0199",
+  "title": "Add semantic-search candidate index and ANN migration plan",
+  "description": "Semantic memory ranking currently computes similarity across the full filtered corpus on-request. Add a staged migration plan: first candidate preselection and persisted lightweight indexing, then ANN feasibility with explicit migration triggers, quality gates, and rollback path. Keep local-first constraints and deterministic fallback behavior explicit.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "AgentSmith",
+  "labels": [
+    "search",
+    "semantic",
+    "vector-db",
+    "architecture",
+    "benchmark"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "audits/vector-search-general-codebase-report_5-28-26",
+    "research/vector-search/index",
+    "research/codebase-vector-search-whitepaper"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0199-20260528",
+      "author": "AgentSmith",
+      "body": "Created from the 2026-05-28 deep audit high-severity O(N) semantic ranking finding. The expected first milestone is candidate reduction instrumentation and benchmark baselines before ANN implementation commits.",
+      "createdAtUtc": "2026-05-28T06:15:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-28T06:15:00.0000000Z",
+  "updatedAtUtc": "2026-05-28T06:15:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

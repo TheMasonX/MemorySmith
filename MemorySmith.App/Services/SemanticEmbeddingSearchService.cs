@@ -679,6 +679,12 @@ public sealed class OnnxTextEmbeddingProvider : IBatchTextEmbeddingProvider, IDi
                 return false;
             }
 
+            if (!IsSupportedExecutionProvider(_requestedExecutionProvider))
+            {
+                _statusReason = OnnxEmbeddingModelConventions.GetUnsupportedExecutionProviderMessage(_options.ExecutionProvider);
+                return false;
+            }
+
             if (!File.Exists(_modelPath))
             {
                 _statusReason = $"ONNX embedding model was not found at '{_modelPath}'.";
@@ -712,6 +718,11 @@ public sealed class OnnxTextEmbeddingProvider : IBatchTextEmbeddingProvider, IDi
 
     private InferenceSession CreateSession(string modelPath)
     {
+        if (!IsSupportedExecutionProvider(_requestedExecutionProvider))
+        {
+            throw new NotSupportedException(OnnxEmbeddingModelConventions.GetUnsupportedExecutionProviderMessage(_options.ExecutionProvider));
+        }
+
         var allowCpuFallback = _options.CpuFallbackEnabled && _requestedExecutionProvider is "cuda" or "openvino";
         if (TryCreateSession(modelPath, _requestedExecutionProvider, out var session, out var failure))
         {
@@ -807,6 +818,8 @@ public sealed class OnnxTextEmbeddingProvider : IBatchTextEmbeddingProvider, IDi
             _ => null
         };
     }
+
+    private static bool IsSupportedExecutionProvider(string executionProvider) => executionProvider is "cpu" or "cuda" or "openvino";
 
     private static string FormatExecutionProviderWithDevice(string executionProvider, string? executionDevice)
     {

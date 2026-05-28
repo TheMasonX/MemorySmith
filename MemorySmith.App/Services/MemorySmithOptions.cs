@@ -216,6 +216,9 @@ public class CodeSearchOptions
     public int IndexWriteBatchSize { get; set; } = 25;
     public int EmbeddingBatchSize { get; set; } = 1;
     public int StatusUpdateIntervalDocuments { get; set; } = 25;
+    public bool QueryTimingTelemetryEnabled { get; set; }
+    public int QueryTimingLogInterval { get; set; } = 100;
+    public int QueryTimingSlowThresholdMilliseconds { get; set; } = 500;
     public int MaxFileBytes { get; set; } = 512 * 1024;
     public int MaxChunkCharacters { get; set; } = 4000;
     public int MaxResults { get; set; } = 10;

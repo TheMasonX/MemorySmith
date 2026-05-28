@@ -1,0 +1,45 @@
+{
+  "id": "tsk-0197-add-throttled-code-search-query-timing-telemetry",
+  "key": "TSK-0197",
+  "title": "Add throttled code-search query timing telemetry",
+  "description": "Add operator-visible code-search query telemetry that is explicitly disableable and sampled to avoid introducing measurable request overhead in normal operation. Capture cache/vector/lexical mode, elapsed time, and result count with sampled debug logs plus slow-query warning escalation so throughput regressions are diagnosable without forcing always-on tracing.",
+  "type": "Task",
+  "status": "Done",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "AgentSmith",
+  "labels": [
+    "search",
+    "telemetry",
+    "performance",
+    "code-search",
+    "instrumentation"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "research/vector-search/index",
+    "research/code-search-benchmark-cpu-vs-cuda-20260528"
+  ],
+  "comments": [
+    {
+      "id": "c-0197-1",
+      "author": "AgentSmith",
+      "body": "Completed in `MemorySmith.App/Services/CodeSearchService.cs` and `MemorySmith.App/Services/MemorySmithOptions.cs` with new controls: `QueryTimingTelemetryEnabled`, `QueryTimingLogInterval`, and `QueryTimingSlowThresholdMilliseconds`. Telemetry is disabled by default and only emits sampled debug logs unless a query crosses the configured slow threshold. Settings are surfaced in `MemorySmith.App/appsettings.json` under `MemorySmith:CodeSearch`.",
+      "createdAtUtc": "2026-05-28T06:12:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-28T06:08:00.0000000Z",
+  "updatedAtUtc": "2026-05-28T06:12:00.0000000Z",
+  "completedAtUtc": "2026-05-28T06:12:00.0000000Z",
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

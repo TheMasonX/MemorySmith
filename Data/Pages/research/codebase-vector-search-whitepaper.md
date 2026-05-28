@@ -227,3 +227,4 @@ If this page grows into a fuller paper, expand it in this order:
 - [Search System](../features/search-system.md)
 - [Semantic Acceleration Setup Guide](../guides/semantic-acceleration-setup.md)
 - [Codebase Vector Search Deep Research Prompt](codebase-vector-search-deep-research-prompt.md)
+- [Code Search Benchmark Breakdown: CPU Fallback vs CUDA (2026-05-28)](code-search-benchmark-cpu-vs-cuda-20260528.md)
