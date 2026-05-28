@@ -292,6 +292,28 @@ public class TagGovernanceTests
     }
 
     [Test]
+    public void CodeSearchAndTrainingWorkbenchMarkup_ExposeActionableCopyAndOpenControls()
+    {
+        var root = FindRepositoryRoot();
+        var codeSearchMarkup = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "Components", "Pages", "CodeSearch.razor"));
+        var trainingMarkup = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "Components", "Pages", "TrainingWorkbench.razor"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(codeSearchMarkup, Does.Contain("Copy file and line range"));
+            Assert.That(codeSearchMarkup, Does.Contain("Open file in default app"));
+            Assert.That(codeSearchMarkup, Does.Contain("CopyResultLocationAsync"));
+            Assert.That(codeSearchMarkup, Does.Contain("OpenResultAsync"));
+            Assert.That(codeSearchMarkup, Does.Contain("Icons.Material.Filled.OpenInNew"));
+            Assert.That(trainingMarkup, Does.Contain("Copy status.json path"));
+            Assert.That(trainingMarkup, Does.Contain("Open events.jsonl in default app"));
+            Assert.That(trainingMarkup, Does.Contain("Open benchmark.json in default app"));
+            Assert.That(trainingMarkup, Does.Contain("CopyTextAsync"));
+            Assert.That(trainingMarkup, Does.Contain("OpenArtifactAsync"));
+        });
+    }
+
+    [Test]
     public void AuthProviderSurfaces_UseRuntimeSchemeSupportForAvailability()
     {
         var root = FindRepositoryRoot();

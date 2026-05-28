@@ -51,13 +51,19 @@
       "author": "AgentSmith",
       "body": "Expanded workbench telemetry fidelity by parsing harness `events.jsonl` and `benchmark.json` artifacts for each run (last event timestamp, records/sec throughput, final loss, and latest event feed table). This closes the live telemetry visibility gap while keeping execution control script-first.",
       "createdAtUtc": "2026-05-29T00:30:00.0000000Z"
+    },
+    {
+      "id": "c-0203-6-20260529",
+      "author": "AgentSmith",
+      "body": "Completed remaining UI hardening for the training workbench by adding artifact-level operations in-app (copy status path and open status/events/benchmark files via source-link policy checks). Added markup regression guard (`TagGovernanceTests.CodeSearchAndTrainingWorkbenchMarkup_ExposeActionableCopyAndOpenControls`) and revalidated focused contracts (38/38 passed). Remaining work is non-UI harness execution depth (true LoRA path and cancellation semantics) once pinned environment dependencies are provisioned.",
+      "createdAtUtc": "2026-05-29T01:00:00.0000000Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-28T21:43:18.8947975Z",
-  "updatedAtUtc": "2026-05-29T00:30:00.0000000Z",
+  "updatedAtUtc": "2026-05-29T01:00:00.0000000Z",
   "completedAtUtc": null,
   "revision": 5,
   "isArchived": false,

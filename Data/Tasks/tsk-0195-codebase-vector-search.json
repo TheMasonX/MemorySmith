@@ -37,13 +37,19 @@
       "author": "AgentSmith",
       "body": "Delivered first-class Blazor visibility at `/code-search` with ranked result rows (target/path/line span/score/match reason/snippet), query controls, and live index build status/progress cards backed by `CodeSearchService.SearchAsync` and `CodeSearchService.GetStatusAsync`. Navigation now exposes a dedicated `Code Search` entry in `NavMenu.razor`. Focused validation: `dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj --filter \"FullyQualifiedName~TagGovernanceTests|FullyQualifiedName~CodeSearchPageRoute_ReturnsSuccessAndContainsHeading\"` (35/35 passed).",
       "createdAtUtc": "2026-05-29T00:00:00.0000000Z"
+    },
+    {
+      "id": "c-0195-4",
+      "author": "AgentSmith",
+      "body": "Closed high-ROI UI polish by adding actionable result controls directly in `/code-search`: copy file/line range and open source file through source-link policy checks (`CopyResultLocationAsync`, `OpenResultAsync`). Added regression guard in `TagGovernanceTests.CodeSearchAndTrainingWorkbenchMarkup_ExposeActionableCopyAndOpenControls`. Focused validation: `dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj --filter \"FullyQualifiedName~TagGovernanceTests|FullyQualifiedName~CodeSearchPageRoute_ReturnsSuccessAndContainsHeading|FullyQualifiedName~TrainingWorkbenchPage_WithAnonymousAdminConfig_DoesNotRenderWorkbenchForSignedOutUser|FullyQualifiedName~TrainingWorkbenchPage_AdminSession_ReturnsHeading\"` (38/38 passed).",
+      "createdAtUtc": "2026-05-29T01:00:00.0000000Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-27T16:55:53.0214105Z",
-  "updatedAtUtc": "2026-05-29T00:00:00.0000000Z",
+  "updatedAtUtc": "2026-05-29T01:00:00.0000000Z",
   "completedAtUtc": "2026-05-27T18:20:00.0000000Z",
   "revision": 5,
   "isArchived": false,

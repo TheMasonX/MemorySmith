@@ -2,8 +2,12 @@
 @rendermode InteractiveServer
 @attribute [Authorize(Policy = MemorySmithPolicies.CanAdminMemorySmith)]
 @inject IOptionsMonitor<MemorySmithOptions> Options
+@inject VarResolver VarResolver
+@inject IJSRuntime JS
+@inject ISnackbar Snackbar
 @using System.Text.Json
 @using Microsoft.Extensions.Options
+@using MemorySmith.Core.Models
 
 <PageTitle>Training Workbench - MemorySmith</PageTitle>
 
@@ -84,6 +88,7 @@
                 <MudTh>Records</MudTh>
                 <MudTh>Throughput</MudTh>
                 <MudTh>Loss</MudTh>
+                <MudTh>Artifacts</MudTh>
             </HeaderContent>
             <RowTemplate>
                 <MudTd DataLabel="Run">@context.RunId</MudTd>
@@ -94,6 +99,28 @@
                 <MudTd DataLabel="Records">@context.RecordCountText</MudTd>
                 <MudTd DataLabel="Throughput">@context.RecordsPerSecondText</MudTd>
                 <MudTd DataLabel="Loss">@context.FinalLossText</MudTd>
+                <MudTd DataLabel="Artifacts">
+                    <div style="display:flex; gap:4px; align-items:center; flex-wrap:wrap;">
+                        <MudTooltip Text="Copy status.json path">
+                            <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Size="Size.Small" Color="Color.Secondary" OnClick="@(() => CopyTextAsync(context.StatusPath))" aria-label="Copy status path" title="Copy status path" />
+                        </MudTooltip>
+                        <MudTooltip Text="Open status.json in default app">
+                            <MudIconButton Icon="@Icons.Material.Filled.Description" Size="Size.Small" Color="Color.Primary" OnClick="@(() => OpenArtifactAsync(context.StatusPath))" aria-label="Open status artifact" title="Open status artifact" />
+                        </MudTooltip>
+                        @if (File.Exists(context.EventsPath))
+                        {
+                            <MudTooltip Text="Open events.jsonl in default app">
+                                <MudIconButton Icon="@Icons.Material.Filled.Stream" Size="Size.Small" Color="Color.Info" OnClick="@(() => OpenArtifactAsync(context.EventsPath))" aria-label="Open events artifact" title="Open events artifact" />
+                            </MudTooltip>
+                        }
+                        @if (File.Exists(context.BenchmarkPath))
+                        {
+                            <MudTooltip Text="Open benchmark.json in default app">
+                                <MudIconButton Icon="@Icons.Material.Filled.Insights" Size="Size.Small" Color="Color.Success" OnClick="@(() => OpenArtifactAsync(context.BenchmarkPath))" aria-label="Open benchmark artifact" title="Open benchmark artifact" />
+                            </MudTooltip>
+                        }
+                    </div>
+                </MudTd>
             </RowTemplate>
             <NoRecordsContent>
                 <MudText Typo="Typo.body2" Class="pa-4">No run artifacts found yet. Execute Scripts/Run-FinetuneHarness.ps1 to generate run telemetry and refresh this page.</MudText>
@@ -472,4 +499,27 @@
         string TimestampText,
         string EventName,
         string DataSummary);
+
+    private async Task CopyTextAsync(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return;
+        }
+
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", value);
+        Snackbar.Add("Copied artifact path.", Severity.Success);
+    }
+
+    private async Task OpenArtifactAsync(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return;
+        }
+
+        var sourceLink = new SourceLink { Label = Path.GetFileName(path), Uri = path };
+        var openResult = await VarResolver.OpenWithDefaultAppAsync(sourceLink);
+        Snackbar.Add(openResult.Message, openResult.Opened ? Severity.Success : Severity.Warning);
+    }
 }

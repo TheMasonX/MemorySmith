@@ -1,8 +1,12 @@
 @page "/code-search"
 @rendermode InteractiveServer
 @inject CodeSearchService CodeSearchService
+@inject VarResolver VarResolver
 @inject IOptionsMonitor<MemorySmithOptions> Options
+@inject IJSRuntime JS
+@inject ISnackbar Snackbar
 @using Microsoft.Extensions.Options
+@using MemorySmith.Core.Models
 
 <PageTitle>Code Search - MemorySmith</PageTitle>
 
@@ -92,6 +96,7 @@
                 <MudTh>Score</MudTh>
                 <MudTh>Match</MudTh>
                 <MudTh>Snippet</MudTh>
+                <MudTh>Actions</MudTh>
             </HeaderContent>
             <RowTemplate>
                 <MudTd DataLabel="Target">@context.Target</MudTd>
@@ -101,6 +106,16 @@
                 <MudTd DataLabel="Match">@context.MatchReason</MudTd>
                 <MudTd DataLabel="Snippet">
                     <pre style="margin:0; white-space: pre-wrap; max-width: 56ch;">@context.Snippet</pre>
+                </MudTd>
+                <MudTd DataLabel="Actions">
+                    <div style="display:flex; gap:4px; align-items:center;">
+                        <MudTooltip Text="Copy file and line range">
+                            <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Size="Size.Small" Color="Color.Secondary" OnClick="@(() => CopyResultLocationAsync(context))" aria-label="Copy result location" title="Copy result location" />
+                        </MudTooltip>
+                        <MudTooltip Text="Open file in default app (subject to source-link policy)">
+                            <MudIconButton Icon="@Icons.Material.Filled.OpenInNew" Size="Size.Small" Color="Color.Primary" OnClick="@(() => OpenResultAsync(context))" aria-label="Open result file" title="Open result file" />
+                        </MudTooltip>
+                    </div>
                 </MudTd>
             </RowTemplate>
             <NoRecordsContent>
@@ -211,5 +226,26 @@
     {
         _results = [];
         _error = null;
+    }
+
+    private async Task CopyResultLocationAsync(CodeSearchResult result)
+    {
+        var value = $"{result.DocumentPath}:{result.StartLine}-{result.EndLine}";
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", value);
+        Snackbar.Add("Copied result location.", Severity.Success);
+    }
+
+    private async Task OpenResultAsync(CodeSearchResult result)
+    {
+        var sourceLink = new SourceLink
+        {
+            Label = result.DocumentPath,
+            Uri = result.AbsolutePath,
+            StartLine = result.StartLine,
+            EndLine = result.EndLine
+        };
+
+        var openResult = await VarResolver.OpenWithDefaultAppAsync(sourceLink);
+        Snackbar.Add(openResult.Message, openResult.Opened ? Severity.Success : Severity.Warning);
     }
 }

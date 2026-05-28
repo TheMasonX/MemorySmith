@@ -39,13 +39,19 @@
       "author": "AgentSmith",
       "body": "Completed standalone-first training UX pass. `/training-workbench` now surfaces live telemetry depth from `events.jsonl` and `benchmark.json` (event timestamp, throughput, final loss, and latest event feed), while remaining separate from admin tabs. Added route/security contract tests (`TrainingWorkbenchPage_WithAnonymousAdminConfig_DoesNotRenderWorkbenchForSignedOutUser`, `TrainingWorkbenchPage_AdminSession_ReturnsHeading`) and updated nav/admin markup guards (`TagGovernanceTests`). Validation: `dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj --filter \"FullyQualifiedName~TagGovernanceTests|FullyQualifiedName~CodeSearchPageRoute_ReturnsSuccessAndContainsHeading|FullyQualifiedName~TrainingWorkbenchPage_WithAnonymousAdminConfig_DoesNotRenderWorkbenchForSignedOutUser|FullyQualifiedName~TrainingWorkbenchPage_AdminSession_ReturnsHeading\"` => 37 passed, 0 failed.",
       "createdAtUtc": "2026-05-29T00:30:00.0000000Z"
+    },
+    {
+      "id": "c-0206-4-20260529",
+      "author": "AgentSmith",
+      "body": "Finalized first-class workbench readiness by adding artifact actions (copy/open status, events, benchmark) so operators can transition from telemetry viewing to direct artifact inspection without leaving the UI. Added shared regression guard for actionable controls in `TagGovernanceTests.CodeSearchAndTrainingWorkbenchMarkup_ExposeActionableCopyAndOpenControls`; focused validation now reports 38/38 passing.",
+      "createdAtUtc": "2026-05-29T01:00:00.0000000Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-28T21:43:18.8947975Z",
-  "updatedAtUtc": "2026-05-29T00:30:00.0000000Z",
+  "updatedAtUtc": "2026-05-29T01:00:00.0000000Z",
   "completedAtUtc": "2026-05-29T00:30:00.0000000Z",
   "revision": 3,
   "isArchived": false,
