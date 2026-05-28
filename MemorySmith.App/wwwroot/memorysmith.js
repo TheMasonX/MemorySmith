@@ -4,6 +4,7 @@
     const mermaidThemeStorageKey = "memorysmith.markdown.mermaidTheme.v1";
     const headingCollapseStoragePrefix = "memorysmith.pages.headingCollapse.v1:";
     const mermaidThemeModes = new Set(["auto", "light", "dark"]);
+    const mermaidRestrictionModes = new Set(["standard", "restricted", "strict"]);
     const reconnectRecoveryStorageKey = "memorysmith.reconnect.resumeFailedReloadAt.v1";
     const reconnectRecoveryCooldownMs = 15000;
     let mermaidSequence = 0;
@@ -287,6 +288,11 @@
         return mermaidThemeModes.has(normalized) ? normalized : "auto";
     }
 
+    function normalizeMermaidRestrictionMode(mode) {
+        const normalized = (mode || "").toString().trim().toLowerCase();
+        return mermaidRestrictionModes.has(normalized) ? normalized : "restricted";
+    }
+
     function storedMermaidThemeMode() {
         try {
             return normalizeMermaidThemeMode(localStorage.getItem(mermaidThemeStorageKey));
@@ -321,6 +327,52 @@
         }
 
         return true;
+    }
+
+    function evaluateMermaidPolicy(code, restrictionMode) {
+        const normalizedMode = normalizeMermaidRestrictionMode(restrictionMode);
+        if (normalizedMode === "standard") {
+            return { allowed: true };
+        }
+
+        const compact = String(code || "").trim();
+        const restrictedMax = 4000;
+        const strictMax = 2000;
+        const maxLength = normalizedMode === "strict" ? strictMax : restrictedMax;
+        if (compact.length > maxLength) {
+            return {
+                allowed: false,
+                reason: `Diagram exceeds ${maxLength} characters for '${normalizedMode}' Mermaid policy.`
+            };
+        }
+
+        const dangerousPattern = /%%\{\s*init|\bclick\b[^\n]*|\bhref\b\s*=|javascript:/i;
+        if (dangerousPattern.test(compact)) {
+            return {
+                allowed: false,
+                reason: "Diagram uses Mermaid directives or link syntax blocked by policy."
+            };
+        }
+
+        if (normalizedMode === "strict") {
+            const allowedFamilyPattern = /^\s*(?:flowchart|graph|sequenceDiagram|classDiagram|stateDiagram(?:-v2)?|erDiagram|journey|gantt|pie|mindmap|timeline|gitGraph|requirementDiagram|quadrantChart|xychart-beta)\b/i;
+            if (!allowedFamilyPattern.test(compact)) {
+                return {
+                    allowed: false,
+                    reason: "Diagram family is not allowed by strict Mermaid policy."
+                };
+            }
+        }
+
+        return { allowed: true };
+    }
+
+    function createMermaidPolicyError(code, reason) {
+        const overlay = document.createElement("pre");
+        overlay.className = "mermaid-error";
+        overlay.dataset.mermaidCode = code;
+        overlay.textContent = `Mermaid rendering disabled by policy:\n${reason}\n\n${code}`;
+        return overlay;
     }
 
     function restoreMermaidSource(root) {
@@ -437,7 +489,12 @@
         }, 1500);
     }
 
-    window.renderMermaid = async function (root) {
+    window.renderMermaid = async function (root, options) {
+        const settings = options || {};
+        if (settings.mermaidEnabled === false) {
+            return;
+        }
+
         if (!configureMermaid()) {
             return;
         }
@@ -445,9 +502,16 @@
         watchMermaidTheme();
         const scope = markdownRoot(root);
         const theme = resolveMermaidTheme();
+        const restrictionMode = normalizeMermaidRestrictionMode(settings.mermaidRestrictionMode);
         const blocks = Array.from(scope.querySelectorAll("pre.mermaid"));
         for (const block of blocks) {
             const code = block.textContent || "";
+            const policy = evaluateMermaidPolicy(code, restrictionMode);
+            if (!policy.allowed) {
+                block.replaceWith(createMermaidPolicyError(code, policy.reason || "Restricted by Mermaid policy."));
+                continue;
+            }
+
             const container = document.createElement("section");
             const id = `mermaid-${++mermaidSequence}`;
             container.id = id;
@@ -560,7 +624,7 @@
             }
 
             if (settings.skipMermaid !== true) {
-                await window.renderMermaid(scope);
+                await window.renderMermaid(scope, settings);
             }
         },
 

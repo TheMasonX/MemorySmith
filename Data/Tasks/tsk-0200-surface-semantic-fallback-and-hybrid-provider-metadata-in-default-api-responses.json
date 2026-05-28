@@ -4,7 +4,7 @@
   "title": "Surface semantic fallback and hybrid provider metadata in default API responses",
   "description": "Current non-envelope semantic/hybrid APIs can obscure whether ONNX embeddings actually ran or whether token fallback was used. Add a compatibility-safe response metadata path so clients can see provider mode, fallback reason, and hybrid fusion context without having to opt into alternate formats.",
   "type": "Task",
-  "status": "InProgress",
+  "status": "Done",
   "priority": "Medium",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -35,15 +35,21 @@
       "author": "AgentSmith",
       "body": "Moved to InProgress during non-model follow-up. Current pass prioritized code-search retrieval reliability and benchmark harness hardening; API response metadata surfacing remains the next high-ROI item from this audit group.",
       "createdAtUtc": "2026-05-28T13:55:00.0000000Z"
+    },
+    {
+      "id": "c-0200-3-20260528",
+      "author": "AgentSmith",
+      "body": "Completed compatibility-safe metadata surfacing by adding retrieval headers on default /api/memories/search responses while preserving array response contracts. Added API contract assertions for X-MemorySmith-Retrieval-* headers and revalidated full repo checks.",
+      "createdAtUtc": "2026-05-28T23:20:00.0000000Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-28T06:16:00.0000000Z",
-  "updatedAtUtc": "2026-05-28T13:55:00.0000000Z",
-  "completedAtUtc": null,
-  "revision": 2,
+  "updatedAtUtc": "2026-05-28T23:20:00.0000000Z",
+  "completedAtUtc": "2026-05-28T23:20:00.0000000Z",
+  "revision": 3,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

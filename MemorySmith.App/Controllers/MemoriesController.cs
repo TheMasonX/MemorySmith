@@ -10,6 +10,12 @@ namespace MemorySmith.App.Controllers;
 [Authorize(Policy = MemorySmithPolicies.CanViewMemorySmith)]
 public class MemoriesController : ControllerBase
 {
+    private const string RetrievalModeHeader = "X-MemorySmith-Retrieval-Mode";
+    private const string RetrievalProviderKindHeader = "X-MemorySmith-Retrieval-Provider-Kind";
+    private const string RetrievalProviderNameHeader = "X-MemorySmith-Retrieval-Provider-Name";
+    private const string RetrievalProviderPrimaryHeader = "X-MemorySmith-Retrieval-Provider-Primary";
+    private const string RetrievalProviderMessageHeader = "X-MemorySmith-Retrieval-Provider-Message";
+
     private readonly MemoryApplicationService _memories;
 
     public MemoriesController(MemoryApplicationService memories)
@@ -75,6 +81,7 @@ public class MemoriesController : ControllerBase
     [HttpPost("search")]
     public async Task<IActionResult> Search([FromBody] MemorySearchQuery request, [FromQuery] string? format = null, CancellationToken cancellationToken = default)
     {
+        SetRetrievalMetadataHeaders("lexical", MemoryApplicationService.GetLexicalProviderMetadata());
         if (IsEnvelopeFormat(format))
         {
             var results = await _memories.LexicalSearchAsync(request, cancellationToken);
@@ -88,6 +95,7 @@ public class MemoriesController : ControllerBase
     public async Task<IActionResult> SemanticSearch([FromBody] SemanticMemorySearchQuery request, [FromQuery] string? format = null, CancellationToken cancellationToken = default)
     {
         var results = await _memories.SemanticSearchAsync(request, cancellationToken);
+        SetRetrievalMetadataHeaders("semantic", _memories.GetSemanticProviderMetadata());
         return IsEnvelopeFormat(format)
             ? Ok(_memories.BuildRetrievalEnvelope("semantic", _memories.GetSemanticProviderMetadata(), results))
             : Ok(results);
@@ -97,6 +105,7 @@ public class MemoriesController : ControllerBase
     public async Task<IActionResult> HybridSearch([FromBody] HybridMemorySearchQuery request, [FromQuery] string? format = null, CancellationToken cancellationToken = default)
     {
         var results = await _memories.HybridSearchAsync(request, cancellationToken);
+        SetRetrievalMetadataHeaders("hybrid", _memories.GetSemanticProviderMetadata());
         return IsEnvelopeFormat(format)
             ? Ok(_memories.BuildRetrievalEnvelope("hybrid", _memories.GetSemanticProviderMetadata(), results))
             : Ok(results);
@@ -126,4 +135,16 @@ public class MemoriesController : ControllerBase
     private static bool IsEnvelopeFormat(string? format) =>
         string.Equals(format, "envelope", StringComparison.OrdinalIgnoreCase) ||
         string.Equals(format, "json-v2", StringComparison.OrdinalIgnoreCase);
+
+    private void SetRetrievalMetadataHeaders(string mode, RetrievalProviderMetadata provider)
+    {
+        Response.Headers[RetrievalModeHeader] = mode;
+        Response.Headers[RetrievalProviderKindHeader] = provider.Kind;
+        Response.Headers[RetrievalProviderNameHeader] = provider.Mode;
+        Response.Headers[RetrievalProviderPrimaryHeader] = provider.Available ? "true" : "false";
+        if (!string.IsNullOrWhiteSpace(provider.Reason))
+        {
+            Response.Headers[RetrievalProviderMessageHeader] = provider.Reason;
+        }
+    }
 }

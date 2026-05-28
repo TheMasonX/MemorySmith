@@ -36,6 +36,8 @@ public sealed class MemorySmithLocalDevelopmentPostConfigure : IPostConfigureOpt
         ApplyIfMissing(overrides, "MemorySmith:Auth:RateLimits:LockoutMinutes", () => options.Auth.RateLimits.LockoutMinutes = 1);
         ApplyIfMissing(overrides, "MemorySmith:Auth:RateLimits:MaxProgressiveLockoutMinutes", () => options.Auth.RateLimits.MaxProgressiveLockoutMinutes = 1);
         ApplyIfMissing(overrides, "MemorySmith:Pages:AllowRawHtml", () => options.Pages.AllowRawHtml = true);
+        ApplyIfMissing(overrides, "MemorySmith:Markdown:MermaidEnabled", () => options.Markdown.MermaidEnabled = true);
+        ApplyIfMissing(overrides, "MemorySmith:Markdown:MermaidRestrictionMode", () => options.Markdown.MermaidRestrictionMode = MermaidRestrictionModes.Standard);
         ApplyIfMissing(overrides, "MemorySmith:Blazor:MaximumReceiveMessageSizeBytes", () => options.Blazor.MaximumReceiveMessageSizeBytes = 4 * 1024 * 1024);
         ApplyIfMissing(overrides, "MemorySmith:Chat:RequestTimeoutSeconds", () => options.Chat.RequestTimeoutSeconds = 900);
         ApplyIfMissing(overrides, "MemorySmith:Chat:MaxContextRecords", () => options.Chat.MaxContextRecords = 12);
@@ -70,6 +72,8 @@ public sealed class MemorySmithLocalDevelopmentPostConfigure : IPostConfigureOpt
                 ApplyIfMissing(overrides, "MemorySmith:Auth:AutoEditorForAuthenticatedUsers", () => options.Auth.AutoEditorForAuthenticatedUsers = true);
                 ApplyIfMissing(overrides, "MemorySmith:Auth:Setup:AllowLoopbackBootstrap", () => options.Auth.Setup.AllowLoopbackBootstrap = true);
                 ApplyIfMissing(overrides, "MemorySmith:Auth:OpenLocalEditorCompatibility", () => options.Auth.OpenLocalEditorCompatibility = true);
+                ApplyIfMissing(overrides, "MemorySmith:Markdown:MermaidEnabled", () => options.Markdown.MermaidEnabled = true);
+                ApplyIfMissing(overrides, "MemorySmith:Markdown:MermaidRestrictionMode", () => options.Markdown.MermaidRestrictionMode = MermaidRestrictionModes.Standard);
                 break;
             case MemorySmithSecurityProfiles.RemoteHardened:
                 ApplyIfMissing(overrides, "MemorySmith:AllowRemoteApi", () => options.AllowRemoteApi = true);
@@ -79,6 +83,8 @@ public sealed class MemorySmithLocalDevelopmentPostConfigure : IPostConfigureOpt
                 ApplyIfMissing(overrides, "MemorySmith:Auth:AutoEditorForAuthenticatedUsers", () => options.Auth.AutoEditorForAuthenticatedUsers = false);
                 ApplyIfMissing(overrides, "MemorySmith:Auth:Setup:AllowLoopbackBootstrap", () => options.Auth.Setup.AllowLoopbackBootstrap = false);
                 ApplyIfMissing(overrides, "MemorySmith:Auth:OpenLocalEditorCompatibility", () => options.Auth.OpenLocalEditorCompatibility = false);
+                ApplyIfMissing(overrides, "MemorySmith:Markdown:MermaidEnabled", () => options.Markdown.MermaidEnabled = true);
+                ApplyIfMissing(overrides, "MemorySmith:Markdown:MermaidRestrictionMode", () => options.Markdown.MermaidRestrictionMode = MermaidRestrictionModes.Strict);
                 break;
             default:
                 ApplyIfMissing(overrides, "MemorySmith:AllowRemoteApi", () => options.AllowRemoteApi = false);
@@ -88,6 +94,8 @@ public sealed class MemorySmithLocalDevelopmentPostConfigure : IPostConfigureOpt
                 ApplyIfMissing(overrides, "MemorySmith:Auth:AutoEditorForAuthenticatedUsers", () => options.Auth.AutoEditorForAuthenticatedUsers = false);
                 ApplyIfMissing(overrides, "MemorySmith:Auth:Setup:AllowLoopbackBootstrap", () => options.Auth.Setup.AllowLoopbackBootstrap = true);
                 ApplyIfMissing(overrides, "MemorySmith:Auth:OpenLocalEditorCompatibility", () => options.Auth.OpenLocalEditorCompatibility = true);
+                ApplyIfMissing(overrides, "MemorySmith:Markdown:MermaidEnabled", () => options.Markdown.MermaidEnabled = true);
+                ApplyIfMissing(overrides, "MemorySmith:Markdown:MermaidRestrictionMode", () => options.Markdown.MermaidRestrictionMode = MermaidRestrictionModes.Restricted);
                 break;
         }
     }

@@ -20,6 +20,7 @@ public class MemorySmithOptions
     public AuditOptions Audit { get; set; } = new();
     public HistoryOptions History { get; set; } = new();
     public PageOptions Pages { get; set; } = new();
+    public MarkdownOptions Markdown { get; set; } = new();
     public SemanticSearchOptions SemanticSearch { get; set; } = new();
     public CodeSearchOptions CodeSearch { get; set; } = new();
     public TaskSearchOptions TaskSearch { get; set; } = new();
@@ -30,6 +31,7 @@ public class MemorySmithOptions
     public SourceLinkOptions SourceLinks { get; set; } = new();
     public McpOptions Mcp { get; set; } = new();
     public ChatOptions Chat { get; set; } = new();
+    public TrainingOptions Training { get; set; } = new();
     public MaintenanceAgentOptions MaintenanceAgent { get; set; } = new();
     public LoggingOptions Logging { get; set; } = new();
     public TelemetryOptions Telemetry { get; set; } = new();
@@ -161,6 +163,24 @@ public class PageOptions
 {
     public string DefaultMinimumRole { get; set; } = PageAccessLevels.Anonymous;
     public bool AllowRawHtml { get; set; }
+}
+
+public class MarkdownOptions
+{
+    public bool MermaidEnabled { get; set; } = true;
+    public string MermaidRestrictionMode { get; set; } = MermaidRestrictionModes.Restricted;
+}
+
+public static class MermaidRestrictionModes
+{
+    public const string Standard = "standard";
+    public const string Restricted = "restricted";
+    public const string Strict = "strict";
+
+    public static readonly IReadOnlyList<string> All = [Standard, Restricted, Strict];
+
+    public static string Normalize(string? mode) =>
+        All.FirstOrDefault(candidate => string.Equals(candidate, mode, StringComparison.OrdinalIgnoreCase)) ?? Restricted;
 }
 
 public class SemanticSearchOptions

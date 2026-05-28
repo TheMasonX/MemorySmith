@@ -4,7 +4,7 @@
   "title": "Harden chat and markdown security toggles before training rollout",
   "description": "Address high-risk audit findings by adding configurable controls and defaults for clipboard external fetch behavior, markdown sanitization coverage, mermaid hardening, and CSP baseline.",
   "type": "Task",
-  "status": "Ready",
+  "status": "InProgress",
   "priority": "High",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -27,15 +27,21 @@
       "author": "AgentSmith",
       "body": "Created from high-confidence findings in audit #5; intended as precondition hardening before expanded local model training operations.",
       "createdAtUtc": "2026-05-28T21:43:18.8947975Z"
+    },
+    {
+      "id": "c-0205-2-20260528",
+      "author": "AgentSmith",
+      "body": "Implemented Mermaid hardening controls: default-enabled with configurable disable and restriction modes (standard/restricted/strict), wired through admin settings and markdown render surfaces. Remaining work includes clipboard external-fetch policy and CSP baseline tightening.",
+      "createdAtUtc": "2026-05-28T23:20:00.0000000Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-28T21:43:18.8947975Z",
-  "updatedAtUtc": "2026-05-28T21:43:18.8947975Z",
+  "updatedAtUtc": "2026-05-28T23:20:00.0000000Z",
   "completedAtUtc": null,
-  "revision": 1,
+  "revision": 2,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

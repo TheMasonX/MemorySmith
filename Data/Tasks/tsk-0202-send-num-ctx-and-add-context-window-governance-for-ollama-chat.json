@@ -4,7 +4,7 @@
   "title": "Send num_ctx and add context-window governance for Ollama chat",
   "description": "Ensure Ollama requests include explicit num_ctx and add guarded context-window controls to prevent accidental VRAM overrun on local GPUs.",
   "type": "Task",
-  "status": "Ready",
+  "status": "InProgress",
   "priority": "High",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -29,15 +29,21 @@
       "author": "AgentSmith",
       "body": "Created from reviewed finding that configured context values are not fully reflected in request payload behavior; this blocks reliable local deployment tuning.",
       "createdAtUtc": "2026-05-28T21:43:18.8947975Z"
+    },
+    {
+      "id": "c-0202-2-20260528",
+      "author": "AgentSmith",
+      "body": "Implemented Ollama payload wiring so configured MemorySmith:Chat:OllamaContextWindowTokens emits options.num_ctx for both complete and streaming chat requests. Added provider regression test coverage. Remaining scope: stricter context-window governance UX and limits policy follow-up.",
+      "createdAtUtc": "2026-05-28T23:20:00.0000000Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-28T21:43:18.8947975Z",
-  "updatedAtUtc": "2026-05-28T21:43:18.8947975Z",
+  "updatedAtUtc": "2026-05-28T23:20:00.0000000Z",
   "completedAtUtc": null,
-  "revision": 1,
+  "revision": 2,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

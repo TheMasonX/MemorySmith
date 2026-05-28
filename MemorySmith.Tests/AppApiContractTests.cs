@@ -1189,6 +1189,14 @@ Line two",
         {
             Assert.That(defaultResults!.Single().Id, Is.EqualTo("api-warning-memory"));
             Assert.That(defaultBody, Does.Not.Contain("schemaVersion"));
+            Assert.That(defaultResponse.Headers.TryGetValues("X-MemorySmith-Retrieval-Mode", out var retrievalModes), Is.True);
+            Assert.That(retrievalModes!.Single(), Is.EqualTo("lexical"));
+            Assert.That(defaultResponse.Headers.TryGetValues("X-MemorySmith-Retrieval-Provider-Kind", out var providerKinds), Is.True);
+            Assert.That(providerKinds!.Single(), Is.EqualTo("lexical"));
+            Assert.That(defaultResponse.Headers.TryGetValues("X-MemorySmith-Retrieval-Provider-Name", out var providerNames), Is.True);
+            Assert.That(providerNames!.Single(), Is.EqualTo("lucene-standard-analyzer"));
+            Assert.That(defaultResponse.Headers.TryGetValues("X-MemorySmith-Retrieval-Provider-Primary", out var providerPrimary), Is.True);
+            Assert.That(providerPrimary!.Single(), Is.EqualTo("true"));
             Assert.That(envelope!.SchemaVersion, Is.EqualTo("memorysmith.retrieval-results.v1"));
             Assert.That(envelope.Provider.Kind, Is.EqualTo("lexical"));
             Assert.That(envelope.Results.Single().Diagnostics.Select(diagnostic => diagnostic.Code), Does.Contain("source.missing_variable"));
