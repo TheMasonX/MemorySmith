@@ -95,6 +95,17 @@
       "requiredInTopN": [
         "MemorySmith.Tests/CodeSearchServiceTests.cs"
       ]
+    },
+    {
+      "name": "staleness-cooldown-indexing",
+      "query": "code search staleness cooldown ensure indexed",
+      "limit": 5,
+      "expectedTopPathPrefixes": [
+        "MemorySmith.App/Services/CodeSearchService.cs"
+      ],
+      "forbiddenTopPathPrefixes": [
+        "MemorySmith.Tests/"
+      ]
     }
   ]
 }

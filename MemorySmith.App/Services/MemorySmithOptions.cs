@@ -223,6 +223,7 @@ public class CodeSearchOptions
     public int IndexWriteBatchSize { get; set; } = 25;
     public int EmbeddingBatchSize { get; set; } = 8;
     public int StatusUpdateIntervalDocuments { get; set; } = 25;
+    public int IndexStalenessCheckCooldownSeconds { get; set; } = 5;
     public bool VectorCandidatePrefilterEnabled { get; set; } = true;
     public int VectorCandidateMultiplier { get; set; } = 12;
     public int VectorCandidateMinimum { get; set; } = 100;

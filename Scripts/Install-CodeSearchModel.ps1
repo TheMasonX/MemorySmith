@@ -27,9 +27,23 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path $PSScriptRoot -Parent
-$resolvedVenvPath = [System.IO.Path]::GetFullPath((Join-Path $repoRoot $VenvPath))
-$resolvedModelsDir = [System.IO.Path]::GetFullPath((Join-Path $repoRoot $ModelsDir))
-$resolvedCacheDir = [System.IO.Path]::GetFullPath((Join-Path $repoRoot $CacheDir))
+
+function Resolve-WorkflowPath {
+    param(
+        [Parameter(Mandatory = $true)][string]$PathValue,
+        [Parameter(Mandatory = $true)][string]$BasePath
+    )
+
+    if ([System.IO.Path]::IsPathRooted($PathValue)) {
+        return [System.IO.Path]::GetFullPath($PathValue)
+    }
+
+    return [System.IO.Path]::GetFullPath((Join-Path $BasePath $PathValue))
+}
+
+$resolvedVenvPath = Resolve-WorkflowPath -PathValue $VenvPath -BasePath $repoRoot
+$resolvedModelsDir = Resolve-WorkflowPath -PathValue $ModelsDir -BasePath $repoRoot
+$resolvedCacheDir = Resolve-WorkflowPath -PathValue $CacheDir -BasePath $repoRoot
 $requirementsPath = Join-Path $repoRoot "Scripts\model-tools\requirements-model-export.txt"
 $exportScriptPath = Join-Path $repoRoot "Scripts\model-tools\export_hf_embedding_model.py"
 

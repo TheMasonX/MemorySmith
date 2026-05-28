@@ -22,6 +22,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--trust-remote-code", action="store_true", help="Allow remote model code during optimum export")
     parser.add_argument("--task", default="feature-extraction", help="Optimum export task")
     parser.add_argument("--opset", type=int, default=17, help="ONNX opset for export")
+    parser.add_argument("--dtype", default="", help="Optional export dtype (for example: fp16, fp32, bf16)")
     return parser.parse_args()
 
 
@@ -91,7 +92,7 @@ def copy_tokenizer_assets(snapshot_dir: Path, tokenizer_output_dir: Path) -> dic
     }
 
 
-def export_with_optimum(model_source_dir: Path, export_dir: Path, task: str, trust_remote_code: bool, opset: int) -> Path:
+def export_with_optimum(model_source_dir: Path, export_dir: Path, task: str, trust_remote_code: bool, opset: int, dtype: str | None) -> Path:
     from optimum.exporters.onnx import main_export
 
     export_dir.mkdir(parents=True, exist_ok=True)
@@ -106,6 +107,7 @@ def export_with_optimum(model_source_dir: Path, export_dir: Path, task: str, tru
                 task=task,
                 trust_remote_code=trust_remote_code,
                 opset=opset,
+                dtype=dtype,
                 library_name=library_name,
             )
             break
@@ -167,6 +169,7 @@ def main() -> int:
             task=args.task,
             trust_remote_code=bool(args.trust_remote_code),
             opset=args.opset,
+            dtype=args.dtype.strip() or None,
         )
         shutil.copy2(exported, output_path)
         manifest["onnxSource"] = "exported"

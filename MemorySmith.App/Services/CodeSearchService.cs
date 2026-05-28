@@ -134,6 +134,7 @@ public sealed class CodeSearchService : IDisposable
     private CodeSearchBuildProgress _buildProgress = CodeSearchBuildProgress.Idle;
     private long _resultCacheGeneration;
     private long _queryTelemetryCounter;
+    private long _nextStalenessCheckUtcTicks;
 
     private sealed class BuildTimingAccumulator
     {
@@ -389,11 +390,27 @@ public sealed class CodeSearchService : IDisposable
             return;
         }
 
+        if (!forceRebuild && ShouldSkipStalenessCheck())
+        {
+            await EnsureDatabaseAsync(cancellationToken);
+            return;
+        }
+
         await _indexLock.WaitAsync(cancellationToken);
         try
         {
+            if (!forceRebuild && ShouldSkipStalenessCheck())
+            {
+                await EnsureDatabaseAsync(cancellationToken);
+                return;
+            }
+
             await EnsureDatabaseAsync(cancellationToken);
             await BuildIndexCoreAsync(forceRebuild, cancellationToken);
+            if (!forceRebuild)
+            {
+                StampStalenessCooldownWindow();
+            }
         }
         finally
         {
@@ -1384,6 +1401,31 @@ LIMIT @candidateLimit;";
         Interlocked.Increment(ref _resultCacheGeneration);
         _queryEmbeddingCache.Compact(1.0);
         _queryResultCache.Compact(1.0);
+        Interlocked.Exchange(ref _nextStalenessCheckUtcTicks, 0);
+    }
+
+    private bool ShouldSkipStalenessCheck()
+    {
+        var cooldownSeconds = Math.Max(0, _options.IndexStalenessCheckCooldownSeconds);
+        if (cooldownSeconds <= 0)
+        {
+            return false;
+        }
+
+        var nextCheckTicks = Interlocked.Read(ref _nextStalenessCheckUtcTicks);
+        return nextCheckTicks > DateTime.UtcNow.Ticks;
+    }
+
+    private void StampStalenessCooldownWindow()
+    {
+        var cooldownSeconds = Math.Max(0, _options.IndexStalenessCheckCooldownSeconds);
+        if (cooldownSeconds <= 0)
+        {
+            return;
+        }
+
+        var nextCheckTicks = DateTime.UtcNow.AddSeconds(cooldownSeconds).Ticks;
+        Interlocked.Exchange(ref _nextStalenessCheckUtcTicks, nextCheckTicks);
     }
 
     private CodeSearchBuildProgress GetBuildProgress()

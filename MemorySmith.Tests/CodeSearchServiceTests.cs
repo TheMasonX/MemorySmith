@@ -198,6 +198,35 @@ public class CodeSearchServiceTests
     }
 
     [Test]
+    public async Task SearchAsync_SkipsRedundantStalenessReindexWithinCooldownWindow()
+    {
+        await File.WriteAllTextAsync(Path.Combine(_repoRoot, ".gitignore"), string.Empty);
+        await File.WriteAllTextAsync(
+            Path.Combine(_repoRoot, "MemorySmith.App", "Services", "Planner.cs"),
+            "namespace MemorySmith.App.Services;\npublic static class Planner\n{\n    public static string BuildPlan(string input) => input + \" plan\";\n}\n");
+
+        var provider = new CountingHashEmbeddingProvider();
+        var service = CreateService(provider, options =>
+        {
+            options.CodeSearch.IndexStalenessCheckCooldownSeconds = 300;
+        });
+
+        await service.SearchAsync(new CodeSearchQuery("build plan", Limit: 5), CancellationToken.None);
+        var firstStatus = await service.GetStatusAsync(CancellationToken.None);
+
+        await service.SearchAsync(new CodeSearchQuery("planner implementation", Limit: 5), CancellationToken.None);
+        var secondStatus = await service.GetStatusAsync(CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(firstStatus.Build.State, Is.EqualTo("completed"));
+            Assert.That(firstStatus.Build.UpdatedAtUtc, Is.Not.Null);
+            Assert.That(secondStatus.Build.UpdatedAtUtc, Is.EqualTo(firstStatus.Build.UpdatedAtUtc), "The second query should reuse the completed build within the staleness cooldown window.");
+            Assert.That(provider.QueryEmbeddingsRequested, Is.EqualTo(2));
+        });
+    }
+
+    [Test]
     public async Task SearchAsync_ReusesCachedRepeatedQueryWithinSameService()
     {
         await File.WriteAllTextAsync(Path.Combine(_repoRoot, ".gitignore"), string.Empty);
