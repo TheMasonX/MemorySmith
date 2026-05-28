@@ -539,7 +539,10 @@ public class TagGovernanceTests
             Assert.That(source, Does.Contain("Security profile"));
             Assert.That(source, Does.Contain("remote-hardened"));
             Assert.That(source, Does.Contain("secure-local for dogfood"));
+            Assert.That(source, Does.Contain("MemorySmith:ContentSecurityPolicyEnabled"));
+            Assert.That(source, Does.Contain("MemorySmith:ContentSecurityPolicy"));
             Assert.That(appsettings, Does.Contain("\"SecurityProfile\": null"));
+            Assert.That(appsettings, Does.Contain("\"ContentSecurityPolicyEnabled\": true"));
         });
     }
 

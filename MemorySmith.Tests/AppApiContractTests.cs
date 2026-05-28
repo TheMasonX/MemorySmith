@@ -84,6 +84,8 @@ public class AppApiContractTests
             using var client = factory.CreateClient();
             var normalResponse = await client.GetAsync("/api/health/live");
             normalResponse.EnsureSuccessStatusCode();
+            Assert.That(normalResponse.Headers.TryGetValues("Content-Security-Policy", out var cspHeaders), Is.True);
+            Assert.That(cspHeaders!.Single(), Does.Contain("default-src 'self'"));
             var normalEntry = await WaitForStructuredLogEntryAsync(tempDir, entry =>
                 GetString(entry, "SourceContext") == "Serilog.AspNetCore.RequestLoggingMiddleware" &&
                 GetString(entry, "RequestPath") == "/api/health/live" &&

@@ -588,6 +588,12 @@ try
 
     app.Use(async (context, next) =>
     {
+        var runtimeSettings = context.RequestServices.GetRequiredService<IOptionsMonitor<MemorySmithOptions>>().CurrentValue;
+        if (runtimeSettings.ContentSecurityPolicyEnabled && !string.IsNullOrWhiteSpace(runtimeSettings.ContentSecurityPolicy))
+        {
+            context.Response.Headers["Content-Security-Policy"] = runtimeSettings.ContentSecurityPolicy;
+        }
+
         context.Response.Headers["X-Correlation-Id"] = RequestMetadata.ResolveCorrelationId(context);
         await next();
     });
