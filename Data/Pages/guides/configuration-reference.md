@@ -63,6 +63,8 @@ Agent note: if behavior looks wrong across multiple routes, check the effective 
 | `MemorySmith:SecurityProfile` | Optional preset: `local-dev`, `secure-local`, or `remote-hardened` | Admin Configuration and `/api/diagnostics` |
 | `MemorySmith:AllowRemoteApi` | Allows guarded non-loopback API and MCP traffic after an API key is configured | `/api/diagnostics` warning list |
 | `MemorySmith:ApiKey` | Shared API/MCP key via `X-Api-Key`; required for guarded non-loopback API/MCP when remote API is enabled | configured state in `/admin` (replace or use `Clear secret` to remove), guarded API requests |
+| `MemorySmith:ContentSecurityPolicyEnabled` | Emits the Content-Security-Policy response header when enabled | browser response headers, `/api/health/live` response |
+| `MemorySmith:ContentSecurityPolicy` | Raw Content-Security-Policy directive string applied when CSP is enabled | browser response headers and script/style/connect behavior |
 
 Recommended dogfood default: leave explicit settings in their secure-local posture, or set `MemorySmith:SecurityProfile=secure-local` when you want the preset recorded in configuration.
 

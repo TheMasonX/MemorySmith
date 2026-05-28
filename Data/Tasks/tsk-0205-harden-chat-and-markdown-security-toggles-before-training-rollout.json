@@ -33,15 +33,21 @@
       "author": "AgentSmith",
       "body": "Implemented Mermaid hardening controls: default-enabled with configurable disable and restriction modes (standard/restricted/strict), wired through admin settings and markdown render surfaces. Remaining work includes clipboard external-fetch policy and CSP baseline tightening.",
       "createdAtUtc": "2026-05-28T23:20:00.0000000Z"
+    },
+    {
+      "id": "c-0205-3-20260528",
+      "author": "AgentSmith",
+      "body": "Implemented clipboard external image fetch policy toggle (`MemorySmith:Chat:ClipboardFetchExternalImagesEnabled`) so paste flow no longer fetches HTTP/HTTPS image URLs unless explicitly enabled. Added configurable CSP baseline settings (`MemorySmith:ContentSecurityPolicyEnabled`, `MemorySmith:ContentSecurityPolicy`) and response-header middleware plus API contract test coverage. Remaining scope is markdown sanitization coverage follow-up.",
+      "createdAtUtc": "2026-05-29T00:10:00.0000000Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-28T21:43:18.8947975Z",
-  "updatedAtUtc": "2026-05-28T23:20:00.0000000Z",
+  "updatedAtUtc": "2026-05-29T00:10:00.0000000Z",
   "completedAtUtc": null,
-  "revision": 2,
+  "revision": 3,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,
