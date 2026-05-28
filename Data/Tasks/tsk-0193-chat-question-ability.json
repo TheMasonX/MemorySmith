@@ -1,0 +1,49 @@
+﻿{
+  "id": "tsk-0193-chat-question-ability",
+  "key": "TSK-0193",
+  "title": "Chat Question Ability",
+  "description": "The chat should be able to propose a multiple choice question with a fill in the blank \u0060other\u0060 option. This can help them gather feedback before implementing",
+  "type": "Task",
+  "status": "Done",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "chat",
+    "ux",
+    "questions"
+  ],
+  "attachments": [],
+  "externalLinks": [
+    {
+      "id": "l-ea7d659738284d10a6c8e40cae19aba4",
+      "label": "Example",
+      "url": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSNRjxwmeymtunZjiULe97rMeTKUp7LfoOP1A\u0026s",
+      "addedAtUtc": "2026-05-27T13:04:31.1984504Z"
+    }
+  ],
+  "linkedPages": [
+    "workbench/tasks"
+  ],
+  "comments": [
+    {
+      "id": "c-0193-1",
+      "author": "AgentSmith",
+      "body": "Completed by teaching `MemorySmith.App/Components/Pages/Chat.razor` to render a `questionCard` JSON envelope as an interactive choice card with an optional freeform `Other` response, then sending the selected answer back through the normal chat pipeline. The question-card contract was documented in `MemorySmith.Core/Docs/Prompts/wiki-chat-agent.md` and `wiki-chat-agent.modelfile`, and focused validation passed with the same 8/8 Razor/source-guard test run covering `ChatMarkup_SupportsQuestionCardsWithOtherResponses`.",
+      "createdAtUtc": "2026-05-27T13:26:39.5618243Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-26T22:49:34.7817562Z",
+  "updatedAtUtc": "2026-05-27T13:26:39.5618243Z",
+  "completedAtUtc": "2026-05-27T13:26:39.5618243Z",
+  "revision": 3,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

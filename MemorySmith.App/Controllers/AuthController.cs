@@ -96,10 +96,7 @@ public class AuthController : ControllerBase
 
     private bool IsAllowedExternalScheme(string scheme)
     {
-        var providers = _options.CurrentValue.Auth.Providers;
-        return string.Equals(scheme, "GitHub", StringComparison.OrdinalIgnoreCase)
-            && providers.GitHub.Enabled
-            && !string.IsNullOrWhiteSpace(providers.GitHub.ClientId);
+        return MemorySmithExternalAuthSupport.IsConfiguredExternalProvider(scheme, _options.CurrentValue.Auth);
     }
 }
 

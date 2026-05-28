@@ -18,6 +18,7 @@ public static class TaskStatuses
     public const string Ready = "Ready";
     public const string InProgress = "InProgress";
     public const string Blocked = "Blocked";
+    public const string Rejected = "Rejected";
     public const string Done = "Done";
     public const string Archived = "Archived";
 }
@@ -36,6 +37,122 @@ public sealed record TaskAttachment(
     string Kind,
     string Uri,
     DateTime AddedAtUtc);
+
+public sealed record StoredTaskAttachmentFile(string FileName, string PublicUri, long Size);
+
+public static partial class TaskAttachmentFiles
+{
+    public const string PublicPathPrefix = "/artifacts/task-attachments";
+
+    public static async Task<StoredTaskAttachmentFile> SaveAsync(string taskId, string fileName, Stream source, long size, TaskAttachmentOptions options, CancellationToken cancellationToken)
+    {
+        if (size <= 0)
+        {
+            throw new ArgumentException("Attachment file is empty.");
+        }
+
+        if (size > options.MaxFileBytes)
+        {
+            throw new ArgumentException($"Attachment file exceeds the configured limit of {options.MaxFileBytes} bytes.");
+        }
+
+        var safeTaskId = SafeSegment(taskId, "task");
+        var safeFileName = SafeFileName(fileName);
+        var directory = Path.Combine(ResolveStorageRoot(options), safeTaskId);
+        Directory.CreateDirectory(directory);
+
+        var uniqueFileName = GetUniqueFileName(directory, safeFileName);
+        var path = Path.Combine(directory, uniqueFileName);
+        await using var target = File.Create(path);
+        await source.CopyToAsync(target, cancellationToken);
+        var publicUri = $"{PublicPathPrefix}/{Uri.EscapeDataString(safeTaskId)}/{Uri.EscapeDataString(uniqueFileName)}";
+        return new StoredTaskAttachmentFile(uniqueFileName, publicUri, size);
+    }
+
+    public static string? ResolvePublicPath(TaskAttachmentOptions options, string taskId, string fileName)
+    {
+        if (!HasValidPercentEncoding(taskId) || !HasValidPercentEncoding(fileName))
+        {
+            return null;
+        }
+
+        var decodedTaskId = Uri.UnescapeDataString(taskId);
+        var decodedFileName = Uri.UnescapeDataString(fileName);
+        if (!string.Equals(decodedTaskId, SafeSegment(decodedTaskId, "task"), StringComparison.Ordinal) ||
+            !string.Equals(decodedFileName, SafeFileName(decodedFileName), StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        var root = ResolveStorageRoot(options);
+        var path = Path.GetFullPath(Path.Combine(root, decodedTaskId, decodedFileName));
+        var rootWithSeparator = root.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        return path.StartsWith(rootWithSeparator, StringComparison.OrdinalIgnoreCase) ? path : null;
+    }
+
+    public static string ResolveStorageRoot(TaskAttachmentOptions options) =>
+        Path.GetFullPath(options.StoragePath);
+
+    private static string GetUniqueFileName(string directory, string fileName)
+    {
+        var baseName = Path.GetFileNameWithoutExtension(fileName);
+        var extension = Path.GetExtension(fileName);
+        var candidate = fileName;
+        var index = 2;
+        while (File.Exists(Path.Combine(directory, candidate)))
+        {
+            candidate = $"{baseName}-{index}{extension}";
+            index++;
+        }
+
+        return candidate;
+    }
+
+    private static string SafeFileName(string fileName)
+    {
+        var name = Path.GetFileName(fileName);
+        var extension = Path.GetExtension(name).ToLowerInvariant();
+        var baseName = Path.GetFileNameWithoutExtension(name).ToLowerInvariant();
+        baseName = SafeFileSegmentRegex().Replace(baseName, "-").Trim('-');
+        extension = SafeExtensionRegex().Replace(extension, string.Empty);
+        if (string.IsNullOrWhiteSpace(baseName))
+        {
+            baseName = $"attachment-{DateTime.UtcNow:yyyyMMddHHmmss}";
+        }
+
+        return string.IsNullOrWhiteSpace(extension) ? baseName : baseName + extension;
+    }
+
+    private static string SafeSegment(string value, string fallback)
+    {
+        var segment = SafeFileSegmentRegex().Replace(value.Trim().ToLowerInvariant(), "-").Trim('-');
+        return string.IsNullOrWhiteSpace(segment) ? fallback : segment;
+    }
+
+    private static bool HasValidPercentEncoding(string value)
+    {
+        for (var index = 0; index < value.Length; index++)
+        {
+            if (value[index] != '%')
+            {
+                continue;
+            }
+
+            if (index + 2 >= value.Length || !Uri.IsHexDigit(value[index + 1]) || !Uri.IsHexDigit(value[index + 2]))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    [GeneratedRegex("[^a-z0-9._-]+")]
+    private static partial Regex SafeFileSegmentRegex();
+
+    [GeneratedRegex("[^.a-z0-9]+")]
+    private static partial Regex SafeExtensionRegex();
+}
 
 public sealed record TaskExternalLink(
     string Id,
@@ -92,6 +209,9 @@ public sealed record TaskSummary(
     string Status,
     string Priority,
     string? Assignee,
+    string AssigneeMode,
+    string? AssigneeDirectoryId,
+    string? AssigneeCustomText,
     DateTime UpdatedAtUtc,
     int AttachmentCount,
     int LinkCount,
@@ -325,15 +445,23 @@ public sealed class FileTaskService : ITaskService
                 return Task.FromResult<TaskItem?>(null);
             }
 
+            var assigneeMode = string.IsNullOrWhiteSpace(request.AssigneeMode) ? item.AssigneeMode : NormalizeAssigneeMode(request.AssigneeMode);
+            var assigneeDirectoryId = string.Equals(assigneeMode, TaskAssigneeModes.Directory, StringComparison.OrdinalIgnoreCase)
+                ? request.AssigneeDirectoryId is null ? item.AssigneeDirectoryId : NormalizeNullable(request.AssigneeDirectoryId)
+                : request.AssigneeDirectoryId is null ? null : NormalizeNullable(request.AssigneeDirectoryId);
+            var assigneeCustomText = string.Equals(assigneeMode, TaskAssigneeModes.Custom, StringComparison.OrdinalIgnoreCase)
+                ? request.AssigneeCustomText is null && string.Equals(item.AssigneeMode, TaskAssigneeModes.Custom, StringComparison.OrdinalIgnoreCase) ? item.AssigneeCustomText : NormalizeNullable(request.AssigneeCustomText)
+                : request.AssigneeCustomText is null ? null : NormalizeNullable(request.AssigneeCustomText);
+
             var updated = item with
             {
                 Title = string.IsNullOrWhiteSpace(request.Title) ? item.Title : request.Title.Trim(),
                 Description = request.Description is null ? item.Description : request.Description.Trim(),
                 Type = string.IsNullOrWhiteSpace(request.Type) ? item.Type : request.Type.Trim(),
                 Priority = string.IsNullOrWhiteSpace(request.Priority) ? item.Priority : request.Priority.Trim(),
-                AssigneeMode = string.IsNullOrWhiteSpace(request.AssigneeMode) ? item.AssigneeMode : NormalizeAssigneeMode(request.AssigneeMode),
-                AssigneeDirectoryId = request.AssigneeDirectoryId is null ? item.AssigneeDirectoryId : NormalizeNullable(request.AssigneeDirectoryId),
-                AssigneeCustomText = request.AssigneeCustomText is null ? item.AssigneeCustomText : NormalizeNullable(request.AssigneeCustomText),
+                AssigneeMode = assigneeMode,
+                AssigneeDirectoryId = assigneeDirectoryId,
+                AssigneeCustomText = assigneeCustomText,
                 Reporter = request.Reporter is null ? item.Reporter : NormalizeNullable(request.Reporter),
                 Labels = request.Labels is null ? item.Labels : NormalizeLabels(request.Labels),
                 DueDateUtc = request.DueDateUtc,
@@ -431,7 +559,11 @@ public sealed class FileTaskService : ITaskService
                 throw new ArgumentException("Page slug is required.");
             }
 
-            var canonicalSlug = CanonicalizePageSlug(slug);
+            if (!PageSlugPolicy.TryNormalize(slug, out var canonicalSlug))
+            {
+                throw new ArgumentException("Page slug must be a safe page path using letters, numbers, hyphens, underscores, and forward slashes.");
+            }
+
             var pageExists = LinkedPageExists(canonicalSlug);
             EnsureTaskIsEditable(item);
 
@@ -506,21 +638,18 @@ public sealed class FileTaskService : ITaskService
             }
 
             var name = NormalizeNullable(request.Name);
-            var kind = NormalizeNullable(request.Kind) ?? "file";
+            var kind = NormalizeAttachmentKind(request.Kind);
             var uri = NormalizeNullable(request.Uri);
             if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(uri))
             {
                 throw new ArgumentException("Attachment name and uri are required.");
             }
 
-            if (uri.Contains("..", StringComparison.Ordinal))
-            {
-                throw new ArgumentException("Attachment uri cannot contain traversal segments.");
-            }
+            var attachmentUri = NormalizeAttachmentUri(item, kind, uri, cancellationToken);
 
             EnsureTaskIsEditable(item);
             var now = DateTime.UtcNow;
-            var attachment = new TaskAttachment($"a-{Guid.NewGuid():N}", name, kind, uri, now);
+            var attachment = new TaskAttachment($"a-{Guid.NewGuid():N}", name, kind, attachmentUri, now);
             var updated = item with
             {
                 Attachments = item.Attachments.Append(attachment).ToList(),
@@ -720,24 +849,9 @@ public sealed class FileTaskService : ITaskService
 
         var pagesRoot = ResolvePagesRoot();
         var relativePath = slug.Replace('/', Path.DirectorySeparatorChar);
-        var markdownPath = Path.Combine(pagesRoot, relativePath + ".md");
-        return File.Exists(markdownPath);
-    }
-
-    private static string CanonicalizePageSlug(string slug)
-    {
-        var normalized = slug.Trim().Replace('\\', '/').Trim('/');
-        if (normalized.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
-        {
-            normalized = normalized[..^3];
-        }
-
-        if (normalized.StartsWith("pages/", StringComparison.OrdinalIgnoreCase))
-        {
-            normalized = normalized["pages/".Length..];
-        }
-
-        return normalized;
+        var markdownPath = Path.GetFullPath(Path.Combine(pagesRoot, relativePath + ".md"));
+        var root = pagesRoot.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        return markdownPath.StartsWith(root, StringComparison.OrdinalIgnoreCase) && File.Exists(markdownPath);
     }
 
     private static TaskSummary ToSummary(TaskItem item) =>
@@ -748,6 +862,9 @@ public sealed class FileTaskService : ITaskService
             item.Status,
             item.Priority,
             ResolveAssignee(item),
+            item.AssigneeMode,
+            item.AssigneeDirectoryId,
+            item.AssigneeCustomText,
             item.UpdatedAtUtc,
             item.Attachments.Count,
             item.ExternalLinks.Count + item.LinkedPages.Count,
@@ -976,6 +1093,68 @@ public sealed class FileTaskService : ITaskService
         return string.Equals(normalized, TaskAssigneeModes.Custom, StringComparison.OrdinalIgnoreCase)
             ? TaskAssigneeModes.Custom
             : TaskAssigneeModes.Directory;
+    }
+
+    private static string NormalizeAttachmentKind(string? kind) =>
+        string.IsNullOrWhiteSpace(kind) ? "file" : kind.Trim().ToLowerInvariant();
+
+    private string NormalizeAttachmentUri(TaskItem owner, string kind, string uri, CancellationToken cancellationToken)
+    {
+        var normalizedUri = uri.Trim();
+        if (normalizedUri.Contains("..", StringComparison.Ordinal))
+        {
+            throw new ArgumentException("Attachment uri cannot contain traversal segments.");
+        }
+
+        if (string.Equals(kind, "task", StringComparison.OrdinalIgnoreCase))
+        {
+            var relatedToken = normalizedUri.StartsWith("task:", StringComparison.OrdinalIgnoreCase)
+                ? normalizedUri[5..].Trim()
+                : normalizedUri;
+            var relatedTask = FindByIdOrKey(relatedToken, cancellationToken);
+            if (relatedTask is null)
+            {
+                throw new ArgumentException("Related task attachment must reference an existing task id or key.");
+            }
+
+            if (string.Equals(relatedTask.Id, owner.Id, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new ArgumentException("Related task attachment cannot reference the same task.");
+            }
+
+            return $"task:{relatedTask.Id}";
+        }
+
+        if (IsSafeLocalTaskAttachmentUri(normalizedUri))
+        {
+            return normalizedUri.Replace('\\', '/');
+        }
+
+        if (!Uri.TryCreate(normalizedUri, UriKind.Absolute, out var absoluteUri) ||
+            (absoluteUri.Scheme != Uri.UriSchemeHttp && absoluteUri.Scheme != Uri.UriSchemeHttps))
+        {
+            throw new ArgumentException("Attachment uri must be an absolute http/https url, a related task reference, or a safe local task attachment path.");
+        }
+
+        return normalizedUri;
+    }
+
+    private static bool IsSafeLocalTaskAttachmentUri(string uri)
+    {
+        var normalized = uri.Replace('\\', '/');
+        if (!normalized.StartsWith("/artifacts/task-attachments/", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (!Uri.TryCreate(normalized, UriKind.Relative, out _))
+        {
+            return false;
+        }
+
+        var decoded = Uri.UnescapeDataString(normalized);
+        return decoded.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .All(segment => segment is not "." and not "..");
     }
 
     private static void ValidateCreate(TaskCreateRequest request)

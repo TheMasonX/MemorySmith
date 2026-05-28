@@ -1,0 +1,46 @@
+{
+  "id": "tsk-0190-decompose-admin-workbench-route-into-tab-owned-components-and-helpers",
+  "key": "TSK-0190",
+  "title": "Decompose Admin workbench route into tab-owned components and helpers",
+  "description": "Problem: `MemorySmith.App/Components/Pages/Admin.razor` is now 1,663 lines and mixes Users, OAuth providers, Models, Configuration, Variables, Audit, and History in one route file. The admin backlog already owns many UX and correctness fixes, but no task owns the route architecture itself, so each new change still lands in a very broad review surface.\n\nEvidence from 2026-05-26 audit:\n- Largest-file scan listed `MemorySmith.App/Components/Pages/Admin.razor` at 1,663 lines.\n- `Admin.razor` switches into a large `@code` block at line 590 and retains tab routing, provider/model editing, configuration filtering, variables, and audit/history state and actions there.\n- Search of `Data/Tasks` found no first-class decomposition task for `Admin.razor` or its tab-owned boundaries.\n- Recent admin-related tasks such as `TSK-0164`, `TSK-0179`, and `TSK-0180` all still accumulate in this route file.\n\nDesired outcome: preserve current admin behavior while moving each major tab or concern into bounded child components and focused editor/filter helpers.\n\nScope:\n- In scope: tab-owned components for Users, OAuth, Models, Configuration/Variables, and Audit/History plus shared helper extraction where needed.\n- In scope: characterization tests or focused UI/API checks that lock the current admin behaviors before extraction.\n- Out of scope: redesigning admin information architecture or changing auth/business rules unrelated to decomposition.\n\nDependencies:\n- Coordinate with current auth/audit/admin tasks such as `TSK-0173`, `TSK-0179`, and `TSK-0180` so extraction preserves their contracts.\n\nAcceptance criteria:\n- `Admin.razor` is materially reduced and major tabs no longer share one route file for markup and local state.\n- Auth/admin behavior remains unchanged under focused tests.\n- Future admin changes can target bounded child components instead of the top-level route.\n\nValidation:\n- Run focused auth/admin tests for providers, settings, audit/history, and model profile paths affected by extraction.\n- Run browser or route-smoke checks for `/admin` where practical.\n- Run `./Scripts/Test-TaskRecords.ps1` after task creation/update.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "AgentSmith",
+  "labels": [
+    "admin",
+    "architecture",
+    "blazor",
+    "complexity",
+    "ui"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "research/codebase-untracked-task-audit-20260526",
+    "council/untracked-task-prioritization-council-20260526",
+    "tasks/sprints/untracked-codebase-gap-sprints-20260526"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0190-20260526",
+      "author": "AgentSmith",
+      "body": "Created during the 2026-05-26 untracked-gap audit after confirming that the backlog covers many admin feature slices but still has no owner for the route-level `Admin.razor` monolith.",
+      "createdAtUtc": "2026-05-26T21:26:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-26T21:26:00.0000000Z",
+  "updatedAtUtc": "2026-05-26T21:26:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

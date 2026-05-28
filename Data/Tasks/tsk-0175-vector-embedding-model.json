@@ -1,0 +1,49 @@
+﻿{
+  "id": "tsk-0175-vector-embedding-model",
+  "key": "TSK-0175",
+  "title": "Evaluate ONNX Embedding Models for Hybrid Semantic Search",
+  "description": "Problem: MemorySmith already supports one local ONNX embedding provider for semantic and hybrid search, but the current implementation is tuned around a narrow E5-style contract: one configured model path, one vocabulary path, WordPiece tokenization, `query:`/`passage:` prefixes, and dense single-vector output. That is workable for the current wiki and memory corpus, but it leaves an unresolved product decision: should MemorySmith keep E5 as the default, switch to a longer-context model, or add a pluggable provider seam so deployments can choose the model that best fits their local LLM resource budget and retrieval goals?\n\nEvidence from the 2026-05-25 review:\n- `MemorySmith.App/Services/MemorySmithOptions.cs` exposes a single `SemanticSearch.ModelPath` and `VocabularyPath`, not a model-family abstraction.\n- `MemorySmith.App/Services/SemanticEmbeddingSearchService.cs` currently assumes dense embeddings, E5-style query/document prefix handling, and a WordPiece vocabulary-backed tokenizer.\n- `MemorySmith.Tests/ModelBackedSearchBenchmarkTests.cs` already provides MemorySmith-specific semantic, hybrid, and throughput guardrails for model-backed search.\n- `Data/Models` currently contains local assets for the active embedding path plus candidate ONNX files: `e5-base-v2.onnx`, `nomic-embed-text-v1.5.onnx`, `jjina-embeddings-v2-base-code_model_fp16.onnx`, `embedding-model.onnx`, and one `vocab.txt`.\n- Internet research suggests longer-context models such as Nomic and Jina may help technical or code-heavy retrieval, but those claims need MemorySmith-specific validation because this product already uses Lucene BM25 plus RRF and co-hosts a local LLM.\n\nDesired outcome: produce an evidence-backed recommendation for MemorySmith's local semantic-search stack: stay on the current E5-family baseline, adopt one of the staged alternatives, or add a model-agnostic provider seam first and defer any default-model switch until compatibility work is complete.\n\nScope:\n- In scope: evaluate at minimum the current E5 baseline plus the locally staged Nomic and Jina candidates under `Data/Models`.\n- In scope: compare relevance, hybrid rank behavior, warm-path latency, throughput, memory/footprint, context-window implications, and practical support burden for a local LLM plus Lucene BM25/RRF deployment.\n- In scope: verify tokenizer, pooling, prefix, vocabulary, and output-dimension compatibility with the current C# ONNX provider; explicitly call out when a candidate is not drop-in.\n- In scope: recommend whether MemorySmith should keep one default model, expose a configuration-driven provider strategy, or create a follow-up implementation task before any model switch.\n- Out of scope: adding ANN/vector-database infrastructure, broad AST-based repo chunking, or adopting multi-vector BGE-M3 style retrieval in the same task. Lucene already provides the sparse leg today, so multi-vector dense-plus-sparse experiments belong in a separate follow-up if still desired.\n\nAcceptance criteria:\n- A side-by-side comparison exists for the current E5 path, Nomic, and Jina using the same MemorySmith corpus and local hardware profile.\n- The comparison covers context window, on-disk footprint, tokenizer/runtime compatibility, query/document formatting requirements, output dimensionality, relevance results, latency results, and local-LLM resource tradeoffs.\n- The task ends with an explicit recommendation: keep E5, change the default model, or add model-provider abstraction first.\n- If a non-drop-in candidate clearly wins, a follow-up task exists that scopes the required provider/tokenizer/pooling/configuration work before adoption.\n\nValidation:\n- Run `MemorySmith.Tests/ModelBackedSearchBenchmarkTests.cs` or equivalent focused model-backed benchmark slices for each viable candidate.\n- Add focused provider tests if a candidate requires different tokenization, pooling, or prompt formatting behavior.\n- Run `Scripts/Test-TaskRecords.ps1` after task metadata changes.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Low",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future",
+    "search",
+    "semantic-search",
+    "onnx",
+    "evaluation",
+    "rag"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [
+    {
+      "id": "c-review-0175-20260525",
+      "author": "AgentSmith",
+      "body": "Rewritten during task review to separate model evaluation from provider abstraction. Current search already has model-backed relevance and latency guards plus a single-provider ONNX seam, so this task should prove whether E5 remains the right default for MemorySmith's Lucene + RRF + local-LLM stack instead of assuming a generic internet ranking applies unchanged.",
+      "createdAtUtc": "2026-05-25T21:35:00.0000000Z"
+    },
+    {
+      "id": "c-priority-0175-20260525",
+      "author": "AgentSmith",
+      "body": "Priority lowered to Low while near-term search work focuses on modular provider seams, cache correctness, and regression coverage. Treat this as a follow-on evaluation task after the current provider becomes easier to transition safely.",
+      "createdAtUtc": "2026-05-25T22:10:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T20:49:55.1531037Z",
+  "updatedAtUtc": "2026-05-25T22:10:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 5,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Claims;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -25,7 +26,9 @@ public sealed record ChatToolDescriptor(
     ChatToolRisk Risk,
     bool AvailableInChat,
     bool AvailableInMcp,
-    Func<JsonObject, ChatToolExecutionContext, CancellationToken, Task<ChatToolExecutionResult>> Execute);
+    Func<JsonObject, ChatToolExecutionContext, CancellationToken, Task<ChatToolExecutionResult>> Execute,
+    bool EnabledByDefaultInMcp = true,
+    bool AvailableInAgent = false);
 
 public sealed record ChatToolExecutionContext(
     MemoryApplicationService Memories,
@@ -35,7 +38,9 @@ public sealed record ChatToolExecutionContext(
     ICurrentUserContext? CurrentUser = null,
     AuthOptions? Auth = null,
     string? DefaultPageMinimumRole = null,
-    VarResolver? Vars = null)
+    VarResolver? Vars = null,
+    ITaskService? Tasks = null,
+    CodeSearchService? CodeSearch = null)
 {
     public bool CanViewPage(string minimumRole) =>
         CurrentUser is not null
@@ -55,7 +60,7 @@ public sealed record ChatToolExecutionResult(
     JsonNode? Structured = null);
 
 /// <summary>
-/// Single source of truth for the read-only tool surface used by both the JSON-RPC /mcp endpoint
+/// Single source of truth for the tool surface used by both the JSON-RPC /mcp endpoint
 /// and the in-chat application-intercepted tool protocol.
 /// </summary>
 public sealed class ChatToolCatalog
@@ -75,10 +80,16 @@ public sealed class ChatToolCatalog
     public IReadOnlyList<ChatToolDescriptor> All => _tools.Values.ToList();
 
     public IReadOnlyList<ChatToolDescriptor> ChatTools =>
-        _tools.Values.Where(tool => tool.AvailableInChat).ToList();
+        ToolsForMode(MemoryChatMode.Chat);
+
+    public IReadOnlyList<ChatToolDescriptor> AgentTools =>
+        ToolsForMode(MemoryChatMode.Agent);
 
     public IReadOnlyList<ChatToolDescriptor> McpTools =>
         _tools.Values.Where(tool => tool.AvailableInMcp).ToList();
+
+    public IReadOnlyList<ChatToolDescriptor> ToolsForMode(MemoryChatMode mode) =>
+        _tools.Values.Where(tool => IsAvailableInMode(tool, mode)).ToList();
 
     public bool TryGet(string name, out ChatToolDescriptor tool)
     {
@@ -91,7 +102,15 @@ public sealed class ChatToolCatalog
     }
 
     public bool IsChatEnabled(string name) =>
-        TryGet(name, out var tool) && tool.AvailableInChat;
+        IsAvailableInMode(name, MemoryChatMode.Chat);
+
+    public bool IsAvailableInMode(string name, MemoryChatMode mode) =>
+        TryGet(name, out var tool) && IsAvailableInMode(tool, mode);
+
+    public static bool IsAvailableInMode(ChatToolDescriptor tool, MemoryChatMode mode) =>
+        mode == MemoryChatMode.Agent
+            ? tool.AvailableInChat || tool.AvailableInAgent
+            : tool.AvailableInChat;
 
     public bool IsMcpEnabled(string name) =>
         TryGet(name, out var tool) && tool.AvailableInMcp;
@@ -352,6 +371,74 @@ public sealed class ChatToolCatalog
                 return new ChatToolExecutionResult(JsonSerializer.Serialize(result, ToolJsonOptions), ContextItems: matches.Select(ToMemoryContextItem).ToList());
             });
 
+        yield return new ChatToolDescriptor(
+            "memorysmith_code_search",
+            "Search the indexed MemorySmith codebase for files, symbols, and implementation snippets using vector similarity with lexical fallback.",
+            BuildCodeSearchSchema(),
+            ChatToolRisk.ReadOnly,
+            AvailableInChat: true,
+            AvailableInMcp: true,
+            Execute: async (args, ctx, ct) =>
+            {
+                if (ctx.CodeSearch is null)
+                {
+                    return MissingCodeSearchServiceResult("memorysmith_code_search");
+                }
+
+                var query = ReadString(args, "query");
+                if (string.IsNullOrWhiteSpace(query))
+                {
+                    return new ChatToolExecutionResult("The memorysmith_code_search tool requires a query argument.", IsError: true);
+                }
+
+                var limit = Math.Clamp(ReadInt(args, "limit", 10), 1, 50);
+                var targets = ReadStringList(args, "targets");
+                var rebuildIfStale = ReadBool(args, "rebuildIfStale", true);
+                var forceRebuild = ReadBool(args, "forceRebuild", false);
+                var results = await ctx.CodeSearch.SearchAsync(new CodeSearchQuery(query, targets, limit, rebuildIfStale, forceRebuild), ct);
+                var status = await ctx.CodeSearch.GetStatusAsync(ct);
+                var payload = new
+                {
+                    Query = query,
+                    ResultCount = results.Count,
+                    Status = status,
+                    Results = results.Select(result => new
+                    {
+                        result.Target,
+                        result.DocumentPath,
+                        result.AbsolutePath,
+                        result.StartLine,
+                        result.EndLine,
+                        result.Score,
+                        result.Snippet,
+                        result.MatchReason,
+                        result.IndexedAtUtc
+                    }).ToList()
+                };
+                var structured = JsonSerializer.SerializeToNode(payload, ToolJsonOptions);
+                return new ChatToolExecutionResult(
+                    structured!.ToJsonString(ToolJsonOptions),
+                    ContextItems: results.Select(ToCodeContextItem).ToList(),
+                    Structured: structured);
+            });
+
+        yield return new ChatToolDescriptor(
+            "memorysmith_code_search_status",
+            "Get the current MemorySmith code-search index status, including live build progress and the last completed build summary.",
+            BuildCodeSearchStatusSchema(),
+            ChatToolRisk.ReadOnly,
+            AvailableInChat: true,
+            AvailableInMcp: true,
+            Execute: async (args, ctx, ct) =>
+            {
+                if (ctx.CodeSearch is null)
+                {
+                    return MissingCodeSearchServiceResult("memorysmith_code_search_status");
+                }
+
+                return JsonToolResult(await ctx.CodeSearch.GetStatusAsync(ct));
+            });
+
         // ---------- New tools (Phase 2 of ChatCapabilityImprovements plan) ----------
 
         yield return new ChatToolDescriptor(
@@ -540,6 +627,249 @@ public sealed class ChatToolCatalog
             });
 
         yield return new ChatToolDescriptor(
+            "memorysmith_task_list",
+            "List MemorySmith tasks by query, status, assignee, and limit.",
+            BuildTaskListSchema(),
+            ChatToolRisk.ReadOnly,
+            AvailableInChat: true,
+            AvailableInMcp: true,
+            Execute: async (args, ctx, ct) =>
+            {
+                if (ctx.Tasks is null)
+                {
+                    return MissingTaskServiceResult("memorysmith_task_list");
+                }
+
+                var limit = Math.Clamp(ReadInt(args, "limit", 25), 1, 100);
+                var tasks = await ctx.Tasks.ListAsync(ReadString(args, "query"), ReadString(args, "status"), ReadString(args, "assignee"), limit, ct);
+                return JsonToolResult(new { Tasks = tasks });
+            });
+
+        yield return new ChatToolDescriptor(
+            "memorysmith_task_get",
+            "Fetch one MemorySmith task by id or key.",
+            BuildTaskIdSchema(),
+            ChatToolRisk.ReadOnly,
+            AvailableInChat: true,
+            AvailableInMcp: true,
+            Execute: async (args, ctx, ct) =>
+            {
+                if (ctx.Tasks is null)
+                {
+                    return MissingTaskServiceResult("memorysmith_task_get");
+                }
+
+                var idOrKey = ReadString(args, "idOrKey");
+                if (string.IsNullOrWhiteSpace(idOrKey))
+                {
+                    return new ChatToolExecutionResult("The memorysmith_task_get tool requires an idOrKey argument.", IsError: true);
+                }
+
+                var task = await ctx.Tasks.GetAsync(idOrKey, ct);
+                return task is null
+                    ? new ChatToolExecutionResult($"No task found for id or key '{idOrKey}'.")
+                    : JsonToolResult(new { Task = task });
+            });
+
+        yield return new ChatToolDescriptor(
+            "memorysmith_task_create",
+            "Create a MemorySmith task. Requires edit permission.",
+            BuildTaskCreateSchema(),
+            ChatToolRisk.Write,
+            AvailableInChat: false,
+            AvailableInMcp: true,
+            Execute: async (args, ctx, ct) =>
+            {
+                if (ctx.Tasks is null)
+                {
+                    return MissingTaskServiceResult("memorysmith_task_create");
+                }
+
+                try
+                {
+                    var actor = Actor(ctx);
+                    var task = await ctx.Tasks.CreateAsync(new TaskCreateRequest(
+                        Title: ReadString(args, "title") ?? string.Empty,
+                        Description: ReadString(args, "description") ?? string.Empty,
+                        Type: ReadString(args, "type") ?? "Task",
+                        Status: ReadString(args, "status") ?? TaskStatuses.Backlog,
+                        Priority: ReadString(args, "priority") ?? TaskPriorities.Medium,
+                        AssigneeMode: ReadString(args, "assigneeMode") ?? TaskAssigneeModes.Custom,
+                        AssigneeDirectoryId: ReadString(args, "assigneeDirectoryId"),
+                        AssigneeCustomText: ReadString(args, "assigneeCustomText") ?? "Agent",
+                        Reporter: ReadString(args, "reporter") ?? actor,
+                        Labels: ReadStringList(args, "labels"),
+                        DueDateUtc: ReadNullableDateTime(args, "dueDateUtc", null),
+                        EpicId: ReadString(args, "epicId"),
+                        ParentId: ReadString(args, "parentId"),
+                        Slug: ReadString(args, "slug")), actor, ct);
+                    return JsonToolResult(new { Message = "Task created.", Task = task });
+                }
+                catch (ArgumentException ex)
+                {
+                    return new ChatToolExecutionResult(ex.Message, IsError: true);
+                }
+            },
+            AvailableInAgent: true);
+
+        yield return new ChatToolDescriptor(
+            "memorysmith_task_update",
+            "Update editable MemorySmith task fields, including priority and assignment. Requires edit permission.",
+            BuildTaskUpdateSchema(),
+            ChatToolRisk.Write,
+            AvailableInChat: false,
+            AvailableInMcp: true,
+            Execute: async (args, ctx, ct) =>
+            {
+                if (ctx.Tasks is null)
+                {
+                    return MissingTaskServiceResult("memorysmith_task_update");
+                }
+
+                var idOrKey = ReadString(args, "idOrKey");
+                if (string.IsNullOrWhiteSpace(idOrKey))
+                {
+                    return new ChatToolExecutionResult("The memorysmith_task_update tool requires an idOrKey argument.", IsError: true);
+                }
+
+                try
+                {
+                    var existing = await ctx.Tasks.GetAsync(idOrKey, ct);
+                    if (existing is null)
+                    {
+                        return new ChatToolExecutionResult($"No task found for id or key '{idOrKey}'.");
+                    }
+
+                    var updated = await ctx.Tasks.UpdateAsync(idOrKey, new TaskUpdateRequest(
+                        Title: ReadString(args, "title"),
+                        Description: ReadString(args, "description"),
+                        Type: ReadString(args, "type"),
+                        Priority: ReadString(args, "priority"),
+                        AssigneeMode: ReadString(args, "assigneeMode"),
+                        AssigneeDirectoryId: ReadString(args, "assigneeDirectoryId"),
+                        AssigneeCustomText: ReadString(args, "assigneeCustomText"),
+                        Reporter: ReadString(args, "reporter"),
+                        Labels: ReadStringList(args, "labels"),
+                        DueDateUtc: ReadNullableDateTime(args, "dueDateUtc", existing.DueDateUtc),
+                        EpicId: ReadString(args, "epicId"),
+                        ParentId: ReadString(args, "parentId")), Actor(ctx), ct);
+                    return updated is null
+                        ? new ChatToolExecutionResult($"No task found for id or key '{idOrKey}'.")
+                        : JsonToolResult(new { Message = "Task updated.", Task = updated });
+                }
+                catch (ArgumentException ex)
+                {
+                    return new ChatToolExecutionResult(ex.Message, IsError: true);
+                }
+            },
+            AvailableInAgent: true);
+
+        yield return new ChatToolDescriptor(
+            "memorysmith_task_set_status",
+            "Change a MemorySmith task status and optionally record a note. Requires edit permission.",
+            BuildTaskSetStatusSchema(),
+            ChatToolRisk.Write,
+            AvailableInChat: false,
+            AvailableInMcp: true,
+            Execute: async (args, ctx, ct) =>
+            {
+                if (ctx.Tasks is null)
+                {
+                    return MissingTaskServiceResult("memorysmith_task_set_status");
+                }
+
+                var idOrKey = ReadString(args, "idOrKey");
+                if (string.IsNullOrWhiteSpace(idOrKey))
+                {
+                    return new ChatToolExecutionResult("The memorysmith_task_set_status tool requires an idOrKey argument.", IsError: true);
+                }
+
+                try
+                {
+                    var updated = await ctx.Tasks.SetStatusAsync(idOrKey, new TaskStatusUpdateRequest(ReadString(args, "status") ?? string.Empty, ReadString(args, "note")), Actor(ctx), ct);
+                    return updated is null
+                        ? new ChatToolExecutionResult($"No task found for id or key '{idOrKey}'.")
+                        : JsonToolResult(new { Message = "Task status updated.", Task = updated });
+                }
+                catch (ArgumentException ex)
+                {
+                    return new ChatToolExecutionResult(ex.Message, IsError: true);
+                }
+            },
+            AvailableInAgent: true);
+
+        yield return new ChatToolDescriptor(
+            "memorysmith_task_add_comment",
+            "Add a comment to a MemorySmith task. Requires edit permission.",
+            BuildTaskCommentSchema(),
+            ChatToolRisk.Write,
+            AvailableInChat: false,
+            AvailableInMcp: true,
+            Execute: async (args, ctx, ct) =>
+            {
+                if (ctx.Tasks is null)
+                {
+                    return MissingTaskServiceResult("memorysmith_task_add_comment");
+                }
+
+                var idOrKey = ReadString(args, "idOrKey");
+                if (string.IsNullOrWhiteSpace(idOrKey))
+                {
+                    return new ChatToolExecutionResult("The memorysmith_task_add_comment tool requires an idOrKey argument.", IsError: true);
+                }
+
+                try
+                {
+                    var updated = await ctx.Tasks.AddCommentAsync(idOrKey, new TaskCommentRequest(ReadString(args, "body") ?? string.Empty), Actor(ctx), ct);
+                    return updated is null
+                        ? new ChatToolExecutionResult($"No task found for id or key '{idOrKey}'.")
+                        : JsonToolResult(new { Message = "Task comment added.", Task = updated });
+                }
+                catch (ArgumentException ex)
+                {
+                    return new ChatToolExecutionResult(ex.Message, IsError: true);
+                }
+            },
+            AvailableInAgent: true);
+
+        yield return new ChatToolDescriptor(
+            "memorysmith_task_add_attachment",
+            "Attach an absolute http/https artifact URI to a MemorySmith task. Requires edit permission.",
+            BuildTaskAttachmentSchema(),
+            ChatToolRisk.Write,
+            AvailableInChat: false,
+            AvailableInMcp: true,
+            Execute: async (args, ctx, ct) =>
+            {
+                if (ctx.Tasks is null)
+                {
+                    return MissingTaskServiceResult("memorysmith_task_add_attachment");
+                }
+
+                var idOrKey = ReadString(args, "idOrKey");
+                if (string.IsNullOrWhiteSpace(idOrKey))
+                {
+                    return new ChatToolExecutionResult("The memorysmith_task_add_attachment tool requires an idOrKey argument.", IsError: true);
+                }
+
+                try
+                {
+                    var updated = await ctx.Tasks.AddAttachmentAsync(idOrKey, new TaskAttachmentRequest(
+                        ReadString(args, "name") ?? string.Empty,
+                        ReadString(args, "kind") ?? "file",
+                        ReadString(args, "uri") ?? string.Empty), Actor(ctx), ct);
+                    return updated is null
+                        ? new ChatToolExecutionResult($"No task found for id or key '{idOrKey}'.")
+                        : JsonToolResult(new { Message = "Task attachment added.", Task = updated });
+                }
+                catch (ArgumentException ex)
+                {
+                    return new ChatToolExecutionResult(ex.Message, IsError: true);
+                }
+            },
+            AvailableInAgent: true);
+
+        yield return new ChatToolDescriptor(
             "memorysmith_page_save",
             "Create or update a wiki page. Slug is derived from the title if omitted. Requires edit permission.",
             new JsonObject
@@ -709,6 +1039,134 @@ public sealed class ChatToolCatalog
         ["required"] = new JsonArray { "pattern" }
     };
 
+    private static JsonObject BuildCodeSearchSchema() => new()
+    {
+        ["type"] = "object",
+        ["properties"] = new JsonObject
+        {
+            ["query"] = new JsonObject { ["type"] = "string", ["description"] = "Search text for code symbols, files, or implementation details." },
+            ["targets"] = new JsonObject
+            {
+                ["type"] = "array",
+                ["description"] = "Optional target directories to limit the search, such as MemorySmith.App or MemorySmith.Core.",
+                ["items"] = new JsonObject { ["type"] = "string" }
+            },
+            ["limit"] = new JsonObject { ["type"] = "integer", ["description"] = "Maximum number of results to return. Clamped 1-50, default 10." },
+            ["rebuildIfStale"] = new JsonObject { ["type"] = "boolean", ["description"] = "Re-scan the configured repo targets and refresh changed code chunks before searching. Defaults to true." },
+            ["forceRebuild"] = new JsonObject { ["type"] = "boolean", ["description"] = "Ignore warm incremental reuse and rebuild all configured code-search documents from source before searching. Defaults to false." }
+        },
+        ["required"] = new JsonArray { "query" }
+    };
+
+    private static JsonObject BuildCodeSearchStatusSchema() => new()
+    {
+        ["type"] = "object",
+        ["properties"] = new JsonObject()
+    };
+
+    private static JsonObject BuildTaskListSchema() => new()
+    {
+        ["type"] = "object",
+        ["properties"] = new JsonObject
+        {
+            ["query"] = new JsonObject { ["type"] = "string", ["description"] = "Optional text matched against task title, description, key, labels, and assignee." },
+            ["status"] = new JsonObject { ["type"] = "string", ["description"] = "Optional task status filter." },
+            ["assignee"] = new JsonObject { ["type"] = "string", ["description"] = "Optional assignee text or directory id filter." },
+            ["limit"] = new JsonObject { ["type"] = "integer", ["description"] = "Maximum tasks to return. Clamped 1-100, default 25." }
+        }
+    };
+
+    private static JsonObject BuildTaskIdSchema() => new()
+    {
+        ["type"] = "object",
+        ["properties"] = new JsonObject
+        {
+            ["idOrKey"] = new JsonObject { ["type"] = "string", ["description"] = "Task id or key, such as tsk-0171-agent-task-tools or TSK-0171." }
+        },
+        ["required"] = new JsonArray { "idOrKey" }
+    };
+
+    private static JsonObject BuildTaskCreateSchema() => new()
+    {
+        ["type"] = "object",
+        ["properties"] = new JsonObject
+        {
+            ["title"] = new JsonObject { ["type"] = "string", ["description"] = "Task title." },
+            ["description"] = new JsonObject { ["type"] = "string", ["description"] = "Task description." },
+            ["type"] = new JsonObject { ["type"] = "string", ["description"] = "Task type. Defaults to Task." },
+            ["status"] = new JsonObject { ["type"] = "string", ["description"] = "Initial status. Defaults to Backlog." },
+            ["priority"] = new JsonObject { ["type"] = "string", ["description"] = "Priority: Critical, High, Medium, or Low. Defaults to Medium." },
+            ["assigneeMode"] = new JsonObject { ["type"] = "string", ["description"] = "Assignee mode: Directory or Custom. Defaults to Custom." },
+            ["assigneeDirectoryId"] = new JsonObject { ["type"] = "string", ["description"] = "Directory user id when assigneeMode is Directory." },
+            ["assigneeCustomText"] = new JsonObject { ["type"] = "string", ["description"] = "Custom assignee label. Defaults to Agent." },
+            ["reporter"] = new JsonObject { ["type"] = "string", ["description"] = "Reporter label. Defaults to the caller." },
+            ["labels"] = new JsonObject { ["description"] = "Labels as an array, comma-separated string, or newline-separated string." },
+            ["dueDateUtc"] = new JsonObject { ["type"] = "string", ["description"] = "Optional ISO-8601 UTC due date." },
+            ["epicId"] = new JsonObject { ["type"] = "string", ["description"] = "Optional epic task id." },
+            ["parentId"] = new JsonObject { ["type"] = "string", ["description"] = "Optional parent task id." },
+            ["slug"] = new JsonObject { ["type"] = "string", ["description"] = "Optional id slug suffix." }
+        },
+        ["required"] = new JsonArray { "title" }
+    };
+
+    private static JsonObject BuildTaskUpdateSchema() => new()
+    {
+        ["type"] = "object",
+        ["properties"] = new JsonObject
+        {
+            ["idOrKey"] = new JsonObject { ["type"] = "string", ["description"] = "Task id or key." },
+            ["title"] = new JsonObject { ["type"] = "string", ["description"] = "Replacement title." },
+            ["description"] = new JsonObject { ["type"] = "string", ["description"] = "Replacement description." },
+            ["type"] = new JsonObject { ["type"] = "string", ["description"] = "Replacement type." },
+            ["priority"] = new JsonObject { ["type"] = "string", ["description"] = "Replacement priority: Critical, High, Medium, or Low." },
+            ["assigneeMode"] = new JsonObject { ["type"] = "string", ["description"] = "Replacement assignee mode: Directory or Custom." },
+            ["assigneeDirectoryId"] = new JsonObject { ["type"] = "string", ["description"] = "Replacement directory assignee id." },
+            ["assigneeCustomText"] = new JsonObject { ["type"] = "string", ["description"] = "Replacement custom assignee text." },
+            ["reporter"] = new JsonObject { ["type"] = "string", ["description"] = "Replacement reporter." },
+            ["labels"] = new JsonObject { ["description"] = "Replacement labels as an array, comma-separated string, or newline-separated string." },
+            ["dueDateUtc"] = new JsonObject { ["type"] = "string", ["description"] = "Replacement ISO-8601 UTC due date. Omit to preserve the existing due date." },
+            ["epicId"] = new JsonObject { ["type"] = "string", ["description"] = "Replacement epic task id." },
+            ["parentId"] = new JsonObject { ["type"] = "string", ["description"] = "Replacement parent task id." }
+        },
+        ["required"] = new JsonArray { "idOrKey" }
+    };
+
+    private static JsonObject BuildTaskSetStatusSchema() => new()
+    {
+        ["type"] = "object",
+        ["properties"] = new JsonObject
+        {
+            ["idOrKey"] = new JsonObject { ["type"] = "string", ["description"] = "Task id or key." },
+            ["status"] = new JsonObject { ["type"] = "string", ["description"] = "New status: Backlog, Ready, InProgress, Blocked, Rejected, Done, or Archived." },
+            ["note"] = new JsonObject { ["type"] = "string", ["description"] = "Optional history note." }
+        },
+        ["required"] = new JsonArray { "idOrKey", "status" }
+    };
+
+    private static JsonObject BuildTaskCommentSchema() => new()
+    {
+        ["type"] = "object",
+        ["properties"] = new JsonObject
+        {
+            ["idOrKey"] = new JsonObject { ["type"] = "string", ["description"] = "Task id or key." },
+            ["body"] = new JsonObject { ["type"] = "string", ["description"] = "Comment body." }
+        },
+        ["required"] = new JsonArray { "idOrKey", "body" }
+    };
+
+    private static JsonObject BuildTaskAttachmentSchema() => new()
+    {
+        ["type"] = "object",
+        ["properties"] = new JsonObject
+        {
+            ["idOrKey"] = new JsonObject { ["type"] = "string", ["description"] = "Task id or key." },
+            ["name"] = new JsonObject { ["type"] = "string", ["description"] = "Attachment display name." },
+            ["kind"] = new JsonObject { ["type"] = "string", ["description"] = "Attachment kind, such as file, image, report, or trace. Defaults to file." },
+            ["uri"] = new JsonObject { ["type"] = "string", ["description"] = "Absolute http/https attachment URI." }
+        },
+        ["required"] = new JsonArray { "idOrKey", "name", "uri" }
+    };
+
     // ---------- Argument readers ----------
 
     public static MemorySearchQuery ReadLexicalQuery(JsonObject arguments) => new(
@@ -749,6 +1207,55 @@ public sealed class ChatToolCatalog
         }
 
         return node?.ToString();
+    }
+
+    public static IReadOnlyList<string>? ReadStringList(JsonObject item, string name)
+    {
+        var node = GetProperty(item, name);
+        if (node is null)
+        {
+            return null;
+        }
+
+        if (node is JsonArray array)
+        {
+            return array
+                .Select(value => value is JsonValue jsonValue && jsonValue.TryGetValue<string>(out var text) ? text : value?.ToString())
+                .Where(value => !string.IsNullOrWhiteSpace(value))
+                .Select(value => value!.Trim())
+                .ToList();
+        }
+
+        var raw = ReadString(item, name);
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return [];
+        }
+
+        return raw.Split([',', '\r', '\n'], StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+            .ToList();
+    }
+
+    public static DateTime? ReadNullableDateTime(JsonObject item, string name, DateTime? fallback)
+    {
+        var node = GetProperty(item, name);
+        if (node is null)
+        {
+            return fallback;
+        }
+
+        var text = ReadString(item, name);
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return fallback;
+        }
+
+        if (DateTime.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var value))
+        {
+            return value;
+        }
+
+        throw new ArgumentException($"{name} must be an ISO-8601 date/time value.");
     }
 
     public static int ReadInt(JsonObject item, string name, int fallback)
@@ -797,11 +1304,44 @@ public sealed class ChatToolCatalog
     private static ChatContextItem ToPageContextItem(PageDocument page, string markdown) =>
         new("page", page.Slug, page.Title, Truncate(markdown, 320), ChatContextOrigins.Tool);
 
+    private static ChatContextItem ToCodeContextItem(CodeSearchResult result) =>
+        new("code", $"{result.DocumentPath}:{result.StartLine}-{result.EndLine}", result.DocumentPath, Truncate(result.Snippet, 320), ChatContextOrigins.Tool);
+
     private static ChatToolExecutionResult BuildRetrievalToolResult(RetrievalResultEnvelope<MemorySearchResult> envelope)
     {
         var contextItems = envelope.Results.Select(ToMemoryContextItem).ToList();
         var structured = JsonSerializer.SerializeToNode(envelope, ToolJsonOptions);
         return new ChatToolExecutionResult(structured!.ToJsonString(ToolJsonOptions), ContextItems: contextItems, Structured: structured);
+    }
+
+    private static ChatToolExecutionResult JsonToolResult(object payload)
+    {
+        var structured = JsonSerializer.SerializeToNode(payload, ToolJsonOptions);
+        return new ChatToolExecutionResult(structured!.ToJsonString(ToolJsonOptions), Structured: structured);
+    }
+
+    private static ChatToolExecutionResult MissingTaskServiceResult(string toolName) =>
+        new($"The {toolName} tool requires the task service.", IsError: true);
+
+    private static ChatToolExecutionResult MissingCodeSearchServiceResult(string toolName) =>
+        new($"The {toolName} tool requires the code search service.", IsError: true);
+
+    private static string Actor(ChatToolExecutionContext ctx)
+    {
+        if (ctx.CurrentUser is { IsAuthenticated: true } && !string.IsNullOrWhiteSpace(ctx.CurrentUser.DisplayName))
+        {
+            return ctx.CurrentUser.DisplayName;
+        }
+
+        if (ctx.User?.Identity?.IsAuthenticated != true)
+        {
+            return "anonymous";
+        }
+
+        return ctx.User.Identity?.Name
+            ?? ctx.User.FindFirst("name")?.Value
+            ?? ctx.User.FindFirst("sub")?.Value
+            ?? "authenticated-user";
     }
 
     public static string FormatLexicalResults(IReadOnlyList<MemorySearchResult> results)

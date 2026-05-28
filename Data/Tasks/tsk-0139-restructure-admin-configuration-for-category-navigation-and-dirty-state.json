@@ -1,0 +1,50 @@
+{
+  "id": "tsk-0139-restructure-admin-configuration-for-category-navigation-and-dirty-state",
+  "key": "TSK-0139",
+  "title": "Restructure Admin Configuration for category navigation and dirty state",
+  "description": "Problem: the continued `/admin` Configuration review found the tab rendering as a very long single settings surface on narrow width, with more than 160 inputs, more than 50 switches, and repeated per-setting Save buttons. The page is searchable, but the current layout makes category scanning, dirty-state awareness, and save scope hard to understand.\n\nDesired outcome: Admin Configuration should feel like a managed settings workbench: searchable, categorized, compact, and explicit about what changed and what will be saved.\n\nScope:\n- In scope: category navigation, sticky compact filters, setting grouping, dirty-state indicators, save scope, repeated Save button reduction, keyboard/focus flow, and responsive rendering of setting descriptions/keys.\n- Out of scope: changing the allowlisted settings catalog or persistence backend unless needed to expose dirty-state metadata.\n\nAcceptance criteria:\n- Operators can jump between setting categories without scrolling through the entire catalog.\n- Changed settings are visually identifiable before save.\n- Save actions make their scope clear and avoid dozens of visually identical buttons in the first-pass scan.\n- Setting keys/descriptions are readable but do not dominate the narrow layout.\n\nValidation:\n- Capture `/admin` Configuration before/after at narrow and desktop widths with default and filtered states.\n- Run focused browser checks for search, category selection, changing a switch/text setting, dirty-state display, save, and cancel/reset behavior.",
+  "type": "Task",
+  "status": "Done",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "ui",
+    "admin",
+    "configuration",
+    "settings",
+    "audit-vetted"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "workbench/tasks"
+  ],
+  "comments": [
+    {
+      "id": "c-0139-1",
+      "author": "AgentSmith",
+      "body": "Created from 2026-05-25 continued live review: Admin Configuration measured as a very long single settings panel with 164 inputs, 52 switches, and many repeated Save controls on narrow width.",
+      "createdAtUtc": "2026-05-25T00:00:00.0000000Z"
+    },
+    {
+      "id": "c-0139-2",
+      "author": "AgentSmith",
+      "body": "Completed by turning the `/admin` Configuration tab into a compact settings workbench: added a top summary with visible-category and dirty counts, quick category-jump buttons, a changed-only filter, responsive labeled setting rows, explicit dirty badges, and reset affordances that remove unchanged action clutter from the default scan. Validation: `dotnet test .\\MemorySmith.Tests\\MemorySmith.Tests.csproj -c Release --filter \"Name~AdminMarkup_LeavesTagManagerInMainNav_UsesIconActions_AndMovesVariablesIntoAdmin|Name~AdminMarkup_UsesSortableAuditAndHistoryTablesWithoutRevealIcons\" --logger \"console;verbosity=minimal\"` passed 2/2. Browser validation in sandbox `artifacts/browser-validation/tsk-0139/20260526-114826-fresh/` at `http://127.0.0.1:5117/admin` confirmed: narrow default state with category navigation and summary counts; Auth category jump reduced the view to 13 settings; toggling `Auto editor for signed-in users` surfaced dirty badges and action buttons; changed-only reduced the view to the dirty row; `Reset visible` cleared the narrowed pending state; and `Save setting` persisted the same change and restored the summary to 0 changed. Screenshots: `admin-config-narrow-default.png`, `admin-config-narrow-filtered.png`, `admin-config-desktop-default.png`, `admin-config-desktop-filtered.png`.",
+      "createdAtUtc": "2026-05-26T16:48:31.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T00:00:00.0000000Z",
+  "updatedAtUtc": "2026-05-26T16:48:31.0000000Z",
+  "completedAtUtc": "2026-05-26T16:48:31.0000000Z",
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

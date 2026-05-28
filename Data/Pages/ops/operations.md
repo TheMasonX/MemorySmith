@@ -20,6 +20,8 @@ Useful pages:
 | `/health` | Readiness is clear, data paths are correct, semantic search status is visible. |
 | `/variables` | `%VarName%` values are available for source links. |
 
+For setting-level guidance, use [Configuration Reference](../guides/configuration-reference.md). For model profile and maintenance-agent routing questions, use [Agent and Model Configuration](../guides/agent-configuration.md).
+
 ## Validate Changes
 
 Use the solution file for normal validation:
@@ -30,6 +32,8 @@ dotnet test MemorySmith.slnx --configuration Release
 ```
 
 For search quality work, also run the focused search and semantic tool tests. For benchmark smoke checks, use the benchmark project rather than assuming UI behavior proves search quality.
+
+For wiki-specific guardrails and the current live-memory validation gap, use [Wiki Health and Validation](wiki-health-and-validation.md).
 
 ## Data Deployment Folder
 
@@ -69,6 +73,23 @@ The app can run as a Windows Service. When checking a service deployment, verify
 
 For hosted TLS deployment patterns (IIS/reverse proxy/Kestrel cert binding), use [HTTPS Production TLS Guide](https-production-tls.md).
 
+## Remote Access Outside Home
+
+MemorySmith can be reached from outside the home network, but the current recommended pattern is private remote access, not direct public internet exposure.
+
+Preferred approach:
+
+1. Use a VPN or private mesh such as WireGuard or Tailscale.
+2. Keep the app bound behind your home network boundary.
+3. Trust `artifacts/certs/MemorySmith-LAN-Root-CA.cer` on the remote client.
+4. Browse to `https://memorysmith.home.arpa:7090` or `https://192.168.1.8:7090`.
+
+Avoid treating the current local/LAN certificate setup as a public hosting solution. `memorysmith.home.arpa` and the local root CA are appropriate for private network trust, not for public internet clients.
+
+Current repo security planning still treats hardened public remote mode as incomplete. In particular, remote/API guardrails and broader transport/proxy hardening are still tracked as active work, so direct port-forwarding to the internet is not the recommended default posture.
+
+For exact Windows and Android root-CA import steps, use [HTTPS Setup Guide](../guides/https-setup.md).
+
 ## Pages Publishing
 
 GitHub Pages publishing builds a static site from `README.md`, `Data/Pages`, and the structured memory index. The source command is:
@@ -91,3 +112,5 @@ Start with `/health`, then check configuration in this order:
 6. `MemorySmith:Chat:*`
 
 Most surprising behavior comes from a path resolving to a different data folder than the one the operator expects.
+
+If the paths look right but the wiki still behaves unexpectedly, follow the focused checks in [Wiki Health and Validation](wiki-health-and-validation.md) before assuming the stored content is wrong.

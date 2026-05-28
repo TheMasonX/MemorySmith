@@ -24,7 +24,7 @@
   "SourceLinks": [
     {
       "Label": "Memory governance guide",
-      "Uri": "%MemorySmithRepo%Data/Pages/memory-governance-guide.md"
+      "Uri": "%MemorySmithRepo%Data/Pages/guides/memory-governance-guide.md"
     },
     {
       "Label": "Tag policy",

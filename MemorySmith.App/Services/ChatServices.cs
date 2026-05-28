@@ -33,6 +33,24 @@ public sealed record ChatAttachment(
     bool IsTruncated = false,
     string? LocalPath = null);
 
+public sealed record ChatAttachmentCleanupResult(
+    int DeletedCount,
+    int RetainedCount,
+    int MissingCount,
+    int RefusedCount,
+    int FailedCount)
+{
+    public static ChatAttachmentCleanupResult Empty { get; } = new(0, 0, 0, 0, 0);
+
+    public ChatAttachmentCleanupResult Add(ChatAttachmentCleanupResult other) =>
+        new(
+            DeletedCount + other.DeletedCount,
+            RetainedCount + other.RetainedCount,
+            MissingCount + other.MissingCount,
+            RefusedCount + other.RefusedCount,
+            FailedCount + other.FailedCount);
+}
+
 public sealed record ChatProviderRequest(
     IReadOnlyList<ChatMessage> Messages,
     MemoryChatMode Mode,
@@ -192,7 +210,10 @@ public sealed record AgentPageWriteProposal(string Slug, string Title, string Ma
 public sealed record AgentWriteApplyResult(
     IReadOnlyList<string> WrittenMemories,
     IReadOnlyList<string> WrittenPages,
-    IReadOnlyList<string>? SubmittedProposalIds = null);
+    IReadOnlyList<string>? SubmittedProposalIds = null,
+    string? BatchId = null,
+    string? ParentProposalId = null,
+    int Attempt = 1);
 
 public sealed record MemoryChatResponse(
     string Reply,
@@ -243,11 +264,14 @@ public interface IChatAgent
 
 public static class ChatAttachmentFiles
 {
-    private static readonly string TempRoot = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "MemorySmith", "ChatAttachments"));
+    private static readonly string DefaultTempRoot = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "MemorySmith", "ChatAttachments"));
 
-    public static async Task<string> SaveTempAsync(string originalName, byte[] content, CancellationToken cancellationToken = default)
+    public static string TempRoot => DefaultTempRoot;
+
+    public static async Task<string> SaveTempAsync(string originalName, byte[] content, CancellationToken cancellationToken = default, string? tempRoot = null)
     {
-        Directory.CreateDirectory(TempRoot);
+        var root = GetTempRoot(tempRoot);
+        Directory.CreateDirectory(root);
         var extension = Path.GetExtension(originalName);
         if (string.IsNullOrWhiteSpace(extension) || extension.Length > 12)
         {
@@ -255,7 +279,7 @@ public static class ChatAttachmentFiles
         }
 
         var fileName = $"{DateTime.UtcNow:yyyyMMddHHmmssfff}-{Guid.NewGuid():N}{extension.ToLowerInvariant()}";
-        var path = Path.Combine(TempRoot, fileName);
+        var path = Path.Combine(root, fileName);
         await File.WriteAllBytesAsync(path, content, cancellationToken);
         return path;
     }
@@ -275,18 +299,141 @@ public static class ChatAttachmentFiles
         return Convert.ToBase64String(File.ReadAllBytes(attachment.LocalPath));
     }
 
-    private static bool IsTrustedTempPath(string path)
+    public static ChatAttachmentCleanupResult DeleteTempFiles(IEnumerable<ChatAttachment> attachments, IEnumerable<ChatAttachment>? retainedAttachments = null, string? tempRoot = null)
+    {
+        var retainedPaths = BuildRetainedPathSet(retainedAttachments, tempRoot);
+        var result = ChatAttachmentCleanupResult.Empty;
+        foreach (var attachment in attachments)
+        {
+            result = result.Add(DeleteTempFile(attachment.LocalPath, retainedPaths, tempRoot));
+        }
+
+        return result;
+    }
+
+    public static ChatAttachmentCleanupResult DeleteStaleTempFiles(TimeSpan maxAge, DateTime? nowUtc = null, string? tempRoot = null)
+    {
+        if (maxAge <= TimeSpan.Zero)
+        {
+            return ChatAttachmentCleanupResult.Empty;
+        }
+
+        var root = GetTempRoot(tempRoot);
+        if (!Directory.Exists(root))
+        {
+            return ChatAttachmentCleanupResult.Empty;
+        }
+
+        var cutoffUtc = (nowUtc ?? DateTime.UtcNow) - maxAge;
+        var result = ChatAttachmentCleanupResult.Empty;
+        foreach (var path in Directory.EnumerateFiles(root, "*", SearchOption.TopDirectoryOnly))
+        {
+            try
+            {
+                if (File.GetLastWriteTimeUtc(path) <= cutoffUtc)
+                {
+                    result = result.Add(DeleteTempFile(path, retainedPaths: null, tempRoot));
+                }
+            }
+            catch
+            {
+                result = result.Add(new ChatAttachmentCleanupResult(0, 0, 0, 0, 1));
+            }
+        }
+
+        return result;
+    }
+
+    private static ChatAttachmentCleanupResult DeleteTempFile(string? path, ISet<string>? retainedPaths, string? tempRoot)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return ChatAttachmentCleanupResult.Empty;
+        }
+
+        string fullPath;
+        try
+        {
+            fullPath = Path.GetFullPath(path);
+        }
+        catch
+        {
+            return new ChatAttachmentCleanupResult(0, 0, 0, 1, 0);
+        }
+
+        if (!IsTrustedTempPath(fullPath, tempRoot))
+        {
+            return new ChatAttachmentCleanupResult(0, 0, 0, 1, 0);
+        }
+
+        if (retainedPaths?.Contains(fullPath) == true)
+        {
+            return new ChatAttachmentCleanupResult(0, 1, 0, 0, 0);
+        }
+
+        if (!File.Exists(fullPath))
+        {
+            return new ChatAttachmentCleanupResult(0, 0, 1, 0, 0);
+        }
+
+        try
+        {
+            File.Delete(fullPath);
+            return new ChatAttachmentCleanupResult(1, 0, 0, 0, 0);
+        }
+        catch
+        {
+            return new ChatAttachmentCleanupResult(0, 0, 0, 0, 1);
+        }
+    }
+
+    private static HashSet<string> BuildRetainedPathSet(IEnumerable<ChatAttachment>? attachments, string? tempRoot)
+    {
+        var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (attachments is null)
+        {
+            return paths;
+        }
+
+        foreach (var attachment in attachments)
+        {
+            if (string.IsNullOrWhiteSpace(attachment.LocalPath))
+            {
+                continue;
+            }
+
+            try
+            {
+                var fullPath = Path.GetFullPath(attachment.LocalPath);
+                if (IsTrustedTempPath(fullPath, tempRoot))
+                {
+                    paths.Add(fullPath);
+                }
+            }
+            catch
+            {
+            }
+        }
+
+        return paths;
+    }
+
+    private static bool IsTrustedTempPath(string path, string? tempRoot = null)
     {
         try
         {
+            var root = GetTempRoot(tempRoot);
             var fullPath = Path.GetFullPath(path);
-            return fullPath.StartsWith(TempRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
+            return fullPath.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
         }
         catch
         {
             return false;
         }
     }
+
+    private static string GetTempRoot(string? tempRoot) =>
+        Path.GetFullPath(string.IsNullOrWhiteSpace(tempRoot) ? DefaultTempRoot : tempRoot).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
 }
 
 public sealed partial class OllamaChatProvider : IChatProvider
@@ -1088,6 +1235,8 @@ public sealed partial class MemoryChatAgent : IChatAgent
     private readonly ChatToolCatalog _toolCatalog;
     private readonly ChatIntentInterceptor _intentInterceptor;
     private readonly MaintenanceProposalWorkflow? _proposalWorkflow;
+    private readonly ITaskService? _tasks;
+    private readonly CodeSearchService? _codeSearch;
 
     public MemoryChatAgent(
         IEnumerable<IChatProvider> providers,
@@ -1097,7 +1246,9 @@ public sealed partial class MemoryChatAgent : IChatAgent
         ICurrentUserContext? currentUser = null,
         ChatToolCatalog? toolCatalog = null,
         ChatIntentInterceptor? intentInterceptor = null,
-        MaintenanceProposalWorkflow? proposalWorkflow = null)
+        MaintenanceProposalWorkflow? proposalWorkflow = null,
+        ITaskService? tasks = null,
+        CodeSearchService? codeSearch = null)
     {
         _providers = providers.ToList();
         if (_providers.Count == 0)
@@ -1112,6 +1263,8 @@ public sealed partial class MemoryChatAgent : IChatAgent
         _intentInterceptor = intentInterceptor ?? new ChatIntentInterceptor();
         _currentUser = currentUser;
         _proposalWorkflow = proposalWorkflow;
+        _tasks = tasks;
+        _codeSearch = codeSearch;
     }
 
     public async Task<MemoryChatResponse> SendAsync(MemoryChatRequest request, CancellationToken cancellationToken)
@@ -1124,7 +1277,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
         var provider = ResolveProvider(request.Provider);
         var contextPlan = BuildContextPlan(request);
         var context = await BuildContextAsync(request, contextPlan, cancellationToken);
-        var interceptResults = await RunIntentInterceptAsync(request.Message, cancellationToken);
+        var interceptResults = await RunIntentInterceptAsync(request.Message, request.Mode, cancellationToken);
         var accessedContext = ExtractToolContext(interceptResults);
         var messages = BuildMessages(request, context, interceptResults, provider, contextPlan);
         var toolLoop = await CompleteWithToolCallsAsync(provider, request, messages, cancellationToken);
@@ -1143,7 +1296,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
         var provider = ResolveProvider(request.Provider);
         var contextPlan = BuildContextPlan(request);
         var context = await BuildContextAsync(request, contextPlan, cancellationToken);
-        var interceptResults = await RunIntentInterceptAsync(request.Message, cancellationToken);
+        var interceptResults = await RunIntentInterceptAsync(request.Message, request.Mode, cancellationToken);
         var accessedContext = ExtractToolContext(interceptResults).ToList();
         var messages = BuildMessages(request, context, interceptResults, provider, contextPlan);
         var resolvedModel = string.IsNullOrWhiteSpace(request.Model) ? DefaultModelForProvider(provider.Name) : request.Model.Trim();
@@ -1291,7 +1444,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
                     yield break;
                 }
 
-                var toolResults = await ExecuteToolCallsAsync(toolCalls, cancellationToken);
+                var toolResults = await ExecuteToolCallsAsync(toolCalls, request.Mode, RequiresAgentWriteApproval(request), cancellationToken);
                 accessedContext.AddRange(ExtractToolContext(toolResults));
                 messages.Add(new ChatMessage("assistant", providerResponse.Content));
                 messages.Add(new ChatMessage("system", FormatToolResults(toolResults)));
@@ -1373,7 +1526,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
                 }, messages, accessedContext);
             }
 
-            var toolResults = await ExecuteToolCallsAsync(toolCalls, cancellationToken);
+            var toolResults = await ExecuteToolCallsAsync(toolCalls, request.Mode, RequiresAgentWriteApproval(request), cancellationToken);
             accessedContext.AddRange(ExtractToolContext(toolResults));
             messages.Add(new ChatMessage("assistant", providerResponse.Content));
             messages.Add(new ChatMessage("system", FormatToolResults(toolResults)));
@@ -1388,10 +1541,11 @@ public sealed partial class MemoryChatAgent : IChatAgent
     {
         if (request.Mode == MemoryChatMode.Agent)
         {
-            var agentResult = request.RequireAgentWriteApproval
+            var approvalRequired = RequiresAgentWriteApproval(request);
+            var agentResult = approvalRequired
                 ? PlanAgentActions(providerResponse.Content)
                 : await TryApplyAgentActionsAsync(providerResponse.Content, cancellationToken);
-            if (request.RequireAgentWriteApproval)
+            if (approvalRequired)
             {
                 agentResult = PrepareApprovalRequiredResult(agentResult);
             }
@@ -1432,35 +1586,15 @@ public sealed partial class MemoryChatAgent : IChatAgent
 
         if (!CanApplyAgentWrites())
         {
-            throw new InvalidOperationException("Your current MemorySmith role cannot approve agent writes; no memories or pages were changed.");
+            throw new InvalidOperationException("Your current MemorySmith role cannot accept agent writes; no memories or pages were changed.");
         }
 
-        if (_proposalWorkflow is not null)
+        if (_proposalWorkflow is null)
         {
-            return await SubmitAgentWriteProposalsAsync(memoryWrites, pageWrites, cancellationToken);
+            throw new InvalidOperationException("Agent write approval requires the maintenance proposal workflow; no memories or pages were changed.");
         }
 
-        var writtenMemories = new List<string>();
-        foreach (var proposal in memoryWrites)
-        {
-            var written = await SaveMemoryProposalAsync(proposal, cancellationToken);
-            if (!string.IsNullOrWhiteSpace(written))
-            {
-                writtenMemories.Add(written);
-            }
-        }
-
-        var writtenPages = new List<string>();
-        foreach (var proposal in pageWrites)
-        {
-            var written = await SavePageProposalAsync(proposal, cancellationToken);
-            if (!string.IsNullOrWhiteSpace(written))
-            {
-                writtenPages.Add(written);
-            }
-        }
-
-        return new AgentWriteApplyResult(writtenMemories, writtenPages);
+        return await SubmitAgentWriteProposalsAsync(memoryWrites, pageWrites, cancellationToken);
     }
 
     private async Task<AgentWriteApplyResult> SubmitAgentWriteProposalsAsync(
@@ -1499,16 +1633,19 @@ public sealed partial class MemoryChatAgent : IChatAgent
         }
 
         var confidence = confidences.Count == 0 ? 0.7 : confidences.Average();
+        var submittedAt = DateTimeOffset.UtcNow;
+        var proposalId = $"chat-agent-{submittedAt:yyyyMMddHHmmss}-{Guid.NewGuid():N}"[..54];
+        var batchId = $"chat-agent-batch-{submittedAt:yyyyMMddHHmmss}-{Guid.NewGuid():N}"[..60];
         var submitted = await _proposalWorkflow!.SubmitAsync(new MaintenanceWriteProposal
         {
-            ProposalId = $"chat-agent-{DateTimeOffset.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid():N}"[..54],
+            ProposalId = proposalId,
             Changes = changes,
             Evidence =
             [
                 new MaintenanceEvidenceItem(
                     "chat-agent",
-                    "Approved chat-agent write proposal",
-                    Excerpt: "A chat Agent response proposed memory/page writes. The user approved submission to the maintenance proposal workflow; no file changes are applied until this proposal is approved.")
+                    "Accepted chat-agent write proposal",
+                    Excerpt: "A chat Agent response proposed memory/page writes. The user accepted submission to the maintenance proposal workflow; no file changes are applied until the proposal is approved.")
             ],
             RelatedRecords = relatedRecords.Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
             RiskLevel = changes.Count > 1 ? MaintenanceProposalRiskLevels.Medium : MaintenanceProposalRiskLevels.Low,
@@ -1520,10 +1657,12 @@ public sealed partial class MemoryChatAgent : IChatAgent
                 relatedRecords.Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
                 [],
                 [],
-                "chat-agent.proposal-gated.v1")
+                "chat-agent.proposal-gated.v1",
+                BatchId: batchId,
+                Attempt: 1)
         }, cancellationToken);
 
-        return new AgentWriteApplyResult([], [], [submitted.ProposalId]);
+            return new AgentWriteApplyResult([], [], [submitted.ProposalId], submitted.Metadata.BatchId, submitted.Metadata.ParentProposalId, submitted.Metadata.Attempt);
     }
 
     private async Task<(MaintenanceProposalChange Change, string RecordId)?> BuildMemoryProposalChangeAsync(AgentMemoryWriteProposal proposal, CancellationToken cancellationToken)
@@ -1533,6 +1672,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
             return null;
         }
 
+        ValidateMemoryProposalId(proposal.Id);
         var id = NormalizeMemoryId(string.IsNullOrWhiteSpace(proposal.Id) ? proposal.Title : proposal.Id);
         var existing = await _memories.GetAsync(id, cancellationToken);
         var record = new MemoryRecord
@@ -1559,7 +1699,10 @@ public sealed partial class MemoryChatAgent : IChatAgent
             return null;
         }
 
-        var path = Path.Combine(Path.GetFullPath(_options.Value.DataPath), MemoryStatus.Working.ToString(), $"{id}.json");
+        var path = BuildSafeProposalPath(
+            _options.Value.DataPath,
+            Path.Combine(MemoryStatus.Working.ToString(), $"{id}.json"),
+            "memory proposal path");
         return (new MaintenanceProposalChange(path, before, after), id);
     }
 
@@ -1570,6 +1713,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
             return null;
         }
 
+        ValidatePageProposalSlug(proposal.Slug);
         var slug = FilePageService.NormalizeSlug(string.IsNullOrWhiteSpace(proposal.Slug) ? proposal.Title : proposal.Slug);
         var existing = await _pages.GetAsync(slug, cancellationToken);
         var before = existing?.Markdown ?? string.Empty;
@@ -1580,7 +1724,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
         }
 
         var relative = slug.Replace('/', Path.DirectorySeparatorChar) + ".md";
-        var path = Path.Combine(Path.GetFullPath(_options.Value.PagesPath), relative);
+        var path = BuildSafeProposalPath(_options.Value.PagesPath, relative, "page proposal path");
         return new MaintenanceProposalChange(path, before, after);
     }
 
@@ -1797,6 +1941,8 @@ public sealed partial class MemoryChatAgent : IChatAgent
 
     private async Task<IReadOnlyList<ChatToolResult>> ExecuteToolCallsAsync(
         IReadOnlyList<ChatToolCall> toolCalls,
+        MemoryChatMode mode,
+        bool approvalRequired,
         CancellationToken cancellationToken)
     {
         var options = _options.Value.Chat;
@@ -1809,7 +1955,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
             var started = Stopwatch.GetTimestamp();
             try
             {
-                var result = await ExecuteToolCallAsync(toolCall, cancellationToken);
+                var result = await ExecuteToolCallAsync(toolCall, mode, approvalRequired, cancellationToken);
                 var duration = Stopwatch.GetElapsedTime(started);
                 results.Add(new ChatToolResult(
                     toolCall.Name,
@@ -1833,18 +1979,45 @@ public sealed partial class MemoryChatAgent : IChatAgent
         return results;
     }
 
-    private async Task<ChatToolExecutionResult> ExecuteToolCallAsync(ChatToolCall toolCall, CancellationToken cancellationToken)
+    private async Task<ChatToolExecutionResult> ExecuteToolCallAsync(
+        ChatToolCall toolCall,
+        MemoryChatMode mode,
+        bool approvalRequired,
+        CancellationToken cancellationToken)
     {
-        if (!_toolCatalog.TryGet(toolCall.Name, out var tool) || !tool.AvailableInChat)
+        if (!_toolCatalog.TryGet(toolCall.Name, out var tool))
         {
             return new ChatToolExecutionResult($"Unknown MemorySmith tool '{toolCall.Name}'.", IsError: true);
         }
 
-        var executionContext = new ChatToolExecutionContext(_memories, _pages, Transport: "chat", CurrentUser: _currentUser, Auth: _options.Value.Auth, DefaultPageMinimumRole: _options.Value.Pages.DefaultMinimumRole);
+        if (!ChatToolCatalog.IsAvailableInMode(tool, mode))
+        {
+            return tool.AvailableInAgent && mode != MemoryChatMode.Agent
+                ? new ChatToolExecutionResult($"MemorySmith tool '{toolCall.Name}' is only available in Agent mode.", IsError: true)
+                : new ChatToolExecutionResult($"Unknown MemorySmith tool '{toolCall.Name}'.", IsError: true);
+        }
+
+        if (tool.Risk == ChatToolRisk.Write && !CanApplyAgentWrites())
+        {
+            var message = _options.Value.Chat.AgentWritesEnabled
+                ? "Your current MemorySmith role cannot run Agent write tools."
+                : "Agent write tools are disabled by configuration.";
+            return new ChatToolExecutionResult(message, IsError: true);
+        }
+
+        if (tool.Risk == ChatToolRisk.Write && approvalRequired)
+        {
+            return new ChatToolExecutionResult($"MemorySmith tool '{toolCall.Name}' requires Agent auto_accept mode; direct mutation tool calls are disabled while Agent write approval is manual.", IsError: true);
+        }
+
+        var executionContext = new ChatToolExecutionContext(_memories, _pages, Transport: "chat", CurrentUser: _currentUser, Auth: _options.Value.Auth, DefaultPageMinimumRole: _options.Value.Pages.DefaultMinimumRole, Tasks: _tasks, CodeSearch: _codeSearch);
         return await tool.Execute(toolCall.Arguments, executionContext, cancellationToken);
     }
 
-    private async Task<IReadOnlyList<ChatToolResult>> RunIntentInterceptAsync(string userMessage, CancellationToken cancellationToken)
+    private async Task<IReadOnlyList<ChatToolResult>> RunIntentInterceptAsync(
+        string userMessage,
+        MemoryChatMode mode,
+        CancellationToken cancellationToken)
     {
         if (!_options.Value.Chat.ToolCallsEnabled)
         {
@@ -1860,7 +2033,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
         try
         {
             var started = Stopwatch.GetTimestamp();
-            var result = await ExecuteToolCallAsync(new ChatToolCall(match.ToolName, match.Arguments), cancellationToken);
+            var result = await ExecuteToolCallAsync(new ChatToolCall(match.ToolName, match.Arguments), mode, mode == MemoryChatMode.Agent && !IsAgentWriteAutoAcceptMode(), cancellationToken);
             var duration = Stopwatch.GetElapsedTime(started);
             var maxResultCharacters = Math.Clamp(_options.Value.Chat.MaxToolResultCharacters, 1000, 100000);
             var prefixed = $"[Auto-intercept: {match.Reason}]\n" + Truncate(result.Text, maxResultCharacters);
@@ -2229,7 +2402,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
         var options = _options.Value.Chat;
         var messages = new List<ChatMessage>
         {
-            new("system", BuildSystemPrompt(request.Mode, provider.Capabilities, contextPlan)),
+            new("system", BuildSystemPrompt(request, provider.Capabilities, contextPlan)),
             new("system", FormatCurrentUser()),
             new("system", FormatCapabilityContext(request, provider, contextPlan)),
             new("system", FormatContext(context))
@@ -2272,33 +2445,60 @@ public sealed partial class MemoryChatAgent : IChatAgent
     {
         var chat = _options.Value.Chat;
         var canApplyWrites = CanApplyAgentWrites();
+        var approvalRequired = RequiresAgentWriteApproval(request);
         var capabilities = provider.Capabilities;
         var writeFlow = request.Mode == MemoryChatMode.Agent
-            ? request.RequireAgentWriteApproval
-                ? "Agent write proposals require explicit user approval in the MemorySmith UI before anything is changed."
+            ? approvalRequired
+                ? "Agent write proposals require explicit user approval before changes are applied. Direct Agent mutation tool calls are disabled while approval mode is manual."
                 : canApplyWrites
-                    ? "The app may apply valid Agent write JSON directly for this request."
+                    ? "The app submits valid Agent memory/page write JSON through the proposal workflow; task mutation tools may run directly because Agent write approval mode is auto_accept."
                     : !chat.AgentWritesEnabled
                         ? "Agent writes are disabled by configuration; no writes will be applied."
                         : "The current user's role does not permit applying Agent writes."
-            : "Chat mode cannot create, update, or delete MemorySmith memories or pages.";
+            : "Chat mode cannot create, update, or delete MemorySmith memories, pages, or tasks.";
 
         var writeCapability = chat.AgentWritesEnabled
             ? canApplyWrites
                 ? "enabled for this user"
                 : "configured, but not allowed for this user"
             : "disabled by configuration";
+        var readToolNames = string.Join(", ", _toolCatalog.ToolsForMode(request.Mode)
+            .Where(tool => tool.Risk == ChatToolRisk.ReadOnly)
+            .Select(tool => tool.Name));
+        var writeToolNames = request.Mode == MemoryChatMode.Agent && canApplyWrites && !approvalRequired
+            ? string.Join(", ", _toolCatalog.ToolsForMode(request.Mode)
+                .Where(tool => tool.Risk == ChatToolRisk.Write)
+                .Select(tool => tool.Name))
+            : string.Empty;
+        var readToolDisplay = chat.ToolCallsEnabled && !string.IsNullOrWhiteSpace(readToolNames)
+            ? readToolNames
+            : "none";
+        var mutationToolLine = request.Mode == MemoryChatMode.Agent
+            ? !string.IsNullOrWhiteSpace(writeToolNames)
+                ? $"- Agent-only local mutation tools: enabled for explicit task changes in auto_accept mode ({writeToolNames}).\n"
+                : approvalRequired
+                    ? "- Agent-only local mutation tools: unavailable while Agent write approval mode is manual.\n"
+                    : "- Agent-only local mutation tools: unavailable for this request.\n"
+            : "- Local mutation tools: unavailable in Chat mode; use Agent mode for task/page mutations.\n";
 
         return "Current MemorySmith capabilities and limits:\n" +
             $"- Mode: {request.Mode}.\n" +
             $"- Provider: {provider.Name}; streaming {(capabilities.SupportsStreaming ? "supported" : "not reported")}; image input {(capabilities.SupportsImageInput ? "supported" : "not reported")}; structured responses {(capabilities.SupportsStructuredResponses ? "native" : "via text JSON only")}; context-window reporting {(capabilities.ReportsContextWindowUsage ? "supported" : "not reported")}.\n" +
             $"- Native tool calls: {(capabilities.SupportsNativeToolCalls ? "supported" : "not available")}. {capabilities.NativeToolCallStatus}\n" +
             $"- Context planner: {contextPlan.Summary}.\n" +
-            $"- Read-only local wiki search/retrieval tools: {(chat.ToolCallsEnabled ? "enabled" : "disabled")}. These tools can only read MemorySmith memories/pages; they cannot write files, create pages, use shell commands, browse the web, or call external MCP tools.\n" +
+            $"- Read-only local MemorySmith tools: {(chat.ToolCallsEnabled ? "enabled" : "disabled")}. Available read tools in this mode: {readToolDisplay}. These tools can only read MemorySmith memories, pages, tasks, and indexed code; they cannot use shell commands, browse the web, or call external MCP tools.\n" +
+            mutationToolLine +
             $"- Agent writes: {writeCapability}.\n" +
+            $"- Agent write approval mode: {AgentWriteApprovalModes.Normalize(chat.AgentWriteApprovalMode)}.\n" +
             $"- Write flow: {writeFlow}\n" +
-            "- Never claim that a memory or page was created, updated, deleted, or saved unless the application response includes written memory/page ids. Pending proposals are not changes.";
+            "- Never claim that a memory, page, or task was created, updated, deleted, or saved unless the application response includes written memory/page ids or a successful mutation tool result. Pending proposals are not changes.";
     }
+
+    private bool RequiresAgentWriteApproval(MemoryChatRequest request) =>
+        request.Mode == MemoryChatMode.Agent && !IsAgentWriteAutoAcceptMode();
+
+    private bool IsAgentWriteAutoAcceptMode() =>
+        AgentWriteApprovalModes.IsAutoAccept(_options.Value.Chat.AgentWriteApprovalMode);
 
     private bool CanApplyAgentWrites() =>
         _options.Value.Chat.AgentWritesEnabled &&
@@ -2307,8 +2507,9 @@ public sealed partial class MemoryChatAgent : IChatAgent
             string.Equals(role, MemorySmithRoles.Admin, StringComparison.OrdinalIgnoreCase) ||
             string.Equals(role, MemorySmithRoles.Editor, StringComparison.OrdinalIgnoreCase));
 
-    private string BuildSystemPrompt(MemoryChatMode mode, ChatProviderCapabilities providerCapabilities, ChatContextPlan contextPlan)
+    private string BuildSystemPrompt(MemoryChatRequest request, ChatProviderCapabilities providerCapabilities, ChatContextPlan contextPlan)
     {
+        var mode = request.Mode;
         var configuredPrompt = ReadConfiguredSystemPrompt();
         if (!string.IsNullOrWhiteSpace(configuredPrompt))
         {
@@ -2319,7 +2520,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
             }
             else
             {
-                extraPrompt.Append(BuildToolProtocolPrompt(mode, providerCapabilities, contextPlan));
+                extraPrompt.Append(BuildToolProtocolPrompt(request, providerCapabilities, contextPlan));
             }
 
             if (!HasMarkdownOutputGuidance(configuredPrompt))
@@ -2333,7 +2534,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
         var prompt = mode == MemoryChatMode.Agent
             ? "You are MemorySmith Agent. Answer the user and, only when useful, propose memoryWrites and pageWrites. Return strict JSON with keys reply, memoryWrites, and pageWrites. memoryWrites items may include id, title, content, tags, status, confidence. pageWrites items may include slug, title, markdown. Do not include markdown fences around the JSON."
             : "You are MemorySmith Chat. Answer the user's question using the supplied memories and pages when useful. Be direct when the local knowledge base does not contain enough evidence.";
-        return prompt + BuildToolProtocolPrompt(mode, providerCapabilities, contextPlan) + BuildOutputCapabilityPrompt(mode);
+        return prompt + BuildToolProtocolPrompt(request, providerCapabilities, contextPlan) + BuildOutputCapabilityPrompt(mode);
     }
 
     private string BuildToolRecommendationPrompt(ChatContextPlan contextPlan)
@@ -2349,13 +2550,15 @@ public sealed partial class MemoryChatAgent : IChatAgent
             toolCallExample + ".";
     }
 
-    private string BuildToolProtocolPrompt(MemoryChatMode mode, ChatProviderCapabilities providerCapabilities, ChatContextPlan contextPlan)
+    private string BuildToolProtocolPrompt(MemoryChatRequest request, ChatProviderCapabilities providerCapabilities, ChatContextPlan contextPlan)
     {
         if (!_options.Value.Chat.ToolCallsEnabled)
         {
             return string.Empty;
         }
 
+        var mode = request.Mode;
+        var approvalRequired = RequiresAgentWriteApproval(request);
         var finalInstruction = mode == MemoryChatMode.Agent
             ? "After tool results are supplied, return the normal strict Agent JSON with reply, memoryWrites, and pageWrites."
             : "After tool results are supplied, answer the user normally and do not expose the tool-call JSON.";
@@ -2363,12 +2566,28 @@ public sealed partial class MemoryChatAgent : IChatAgent
             ? "The selected provider reports native tool calls, but MemorySmith still keeps the application-intercepted JSON protocol as a deterministic fallback."
             : "The selected provider does not expose native MemorySmith tool registration here, so use the application-intercepted JSON protocol.";
         var toolCallExample = BuildToolCallExample(contextPlan.RecommendedToolName);
-        return "\n\nLocal wiki search/retrieval tools are available in Chat and Agent mode through an application-intercepted MCP-compatible protocol. " +
+        var readOnlyToolNames = string.Join(", ", _toolCatalog.ToolsForMode(mode)
+            .Where(tool => tool.Risk == ChatToolRisk.ReadOnly)
+            .Select(tool => tool.Name));
+        var writeToolNames = mode == MemoryChatMode.Agent && CanApplyAgentWrites() && !approvalRequired
+            ? string.Join(", ", _toolCatalog.ToolsForMode(mode)
+                .Where(tool => tool.Risk == ChatToolRisk.Write)
+                .Select(tool => tool.Name))
+            : string.Empty;
+        var writeToolInstruction = mode == MemoryChatMode.Agent
+            ? !string.IsNullOrWhiteSpace(writeToolNames)
+                ? $"Agent-only mutation tools are also available for explicit user-requested task changes: {writeToolNames}. Do not use mutation tools for ordinary lookup questions. "
+                : approvalRequired
+                    ? "Mutation tool calls are not available because Agent write approval mode is manual; propose memory/page writes through strict Agent JSON instead, and ask the user to approve or use the task UI for task changes. "
+                    : "No mutation tools are available for this request. "
+            : "Chat mode has no mutation tools; do not request write tools. ";
+        return "\n\nLocal MemorySmith tools are available in Chat and Agent mode through an application-intercepted MCP-compatible protocol. " +
             nativeToolStatus + " " +
             $"The context planner recommends {contextPlan.RecommendedToolName} when additional evidence is needed. " +
-            "When you need more MemorySmith wiki evidence than the preloaded context provides, respond with only one JSON object and no prose: " +
+            "When you need more MemorySmith wiki or codebase evidence than the preloaded context provides, respond with only one JSON object and no prose: " +
             toolCallExample + ". " +
-            "Available read-only tools: memorysmith_unified_search (recommended for broad questions; searches memories AND pages), memorysmith_search, memorysmith_semantic_search, memorysmith_hybrid_search, memorysmith_context_pack, memorysmith_get, memorysmith_page_search, memorysmith_page_get. " +
+            $"Available read-only tools: {readOnlyToolNames}. " +
+            writeToolInstruction +
             "The application will run the call locally and send results back in the same conversation turn. " +
             finalInstruction;
     }
@@ -2378,7 +2597,10 @@ public sealed partial class MemoryChatAgent : IChatAgent
         var arguments = toolName switch
         {
             "memorysmith_get" => "{\"id\":\"record-id\"}",
+            "memorysmith_code_search" => "{\"query\":\"WidgetParser symbol\",\"targets\":[\"MemorySmith.App\"],\"limit\":5}",
             "memorysmith_page_get" => "{\"slug\":\"page-slug\"}",
+            "memorysmith_task_get" => "{\"idOrKey\":\"TSK-0001\"}",
+            "memorysmith_task_list" => "{\"query\":\"search text\",\"limit\":10}",
             _ => "{\"query\":\"search text\"}"
         };
 
@@ -2511,7 +2733,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
         {
             if (plan.ProposedMemoryWrites.Count > 0 || plan.ProposedPageWrites.Count > 0)
             {
-                var deniedNotice = "Your current MemorySmith role cannot approve agent writes; no memories or pages were changed.";
+                var deniedNotice = "Your current MemorySmith role cannot accept agent writes; no memories or pages were changed.";
                 var reply = string.IsNullOrWhiteSpace(plan.Reply) ? deniedNotice : $"{plan.Reply.TrimEnd()}\n\n{deniedNotice}";
                 return plan with { Reply = reply, ProposedMemoryWrites = [], ProposedPageWrites = [] };
             }
@@ -2519,9 +2741,17 @@ public sealed partial class MemoryChatAgent : IChatAgent
             return plan;
         }
 
+        if (plan.ProposedMemoryWrites.Count == 0 && plan.ProposedPageWrites.Count == 0)
+        {
+            return plan;
+        }
+
         var applied = await ApplyAgentWritesAsync(plan.ProposedMemoryWrites, plan.ProposedPageWrites, cancellationToken);
+        var appliedReply = applied.SubmittedProposalIds is { Count: > 0 }
+            ? ResolveProposalSubmittedReply(plan.Reply, applied.SubmittedProposalIds.Count)
+            : ResolveAgentReply(plan.Reply, applied.WrittenMemories, applied.WrittenPages, providerContent);
         return new AgentActionResult(
-            ResolveAgentReply(plan.Reply, applied.WrittenMemories, applied.WrittenPages, providerContent),
+            appliedReply,
             applied.WrittenMemories,
             applied.WrittenPages,
             [],
@@ -2559,7 +2789,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
         {
             return result with
             {
-                Reply = "Your current MemorySmith role cannot approve agent writes; no memories or pages were changed.",
+                Reply = "Your current MemorySmith role cannot accept agent writes; no memories or pages were changed.",
                 ProposedMemoryWrites = [],
                 ProposedPageWrites = []
             };
@@ -2568,7 +2798,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
         var plural = proposalCount == 1 ? "proposal is" : "proposals are";
         return result with
         {
-            Reply = $"{proposalCount} write {plural} ready for review. No memories or pages have been changed yet; approve the proposed write(s) in MemorySmith to apply them."
+            Reply = $"{proposalCount} write {plural} ready for review. No memories or pages have been changed yet; accept or respond to the proposed write(s) in MemorySmith to continue."
         };
     }
 
@@ -2594,14 +2824,23 @@ public sealed partial class MemoryChatAgent : IChatAgent
         var proposedMemories = new List<AgentMemoryWriteProposal>();
         var proposedPages = new List<AgentPageWriteProposal>();
 
+        var rejectedProposals = new List<string>();
+
         if (json["memoryWrites"] is JsonArray memoryWrites)
         {
             foreach (var item in memoryWrites.OfType<JsonObject>())
             {
-                var proposal = ReadMemoryWriteProposal(item);
-                if (proposal is not null)
+                try
                 {
-                    proposedMemories.Add(proposal);
+                    var proposal = ReadMemoryWriteProposal(item);
+                    if (proposal is not null)
+                    {
+                        proposedMemories.Add(proposal);
+                    }
+                }
+                catch (InvalidOperationException ex)
+                {
+                    rejectedProposals.Add(ex.Message);
                 }
             }
         }
@@ -2610,15 +2849,22 @@ public sealed partial class MemoryChatAgent : IChatAgent
         {
             foreach (var item in pageWrites.OfType<JsonObject>())
             {
-                var proposal = ReadPageWriteProposal(item);
-                if (proposal is not null)
+                try
                 {
-                    proposedPages.Add(proposal);
+                    var proposal = ReadPageWriteProposal(item);
+                    if (proposal is not null)
+                    {
+                        proposedPages.Add(proposal);
+                    }
+                }
+                catch (InvalidOperationException ex)
+                {
+                    rejectedProposals.Add(ex.Message);
                 }
             }
         }
 
-        return new AgentActionResult(reply ?? string.Empty, [], [], proposedMemories, proposedPages, ParsedJson: true);
+        return new AgentActionResult(AppendRejectedProposalNotice(reply ?? string.Empty, rejectedProposals), [], [], proposedMemories, proposedPages, ParsedJson: true);
     }
 
     private static string ResolveAgentReply(string? reply, IReadOnlyList<string> writtenMemories, IReadOnlyList<string> writtenPages, string providerContent)
@@ -2643,6 +2889,18 @@ public sealed partial class MemoryChatAgent : IChatAgent
             : providerContent;
     }
 
+    private static string ResolveProposalSubmittedReply(string? reply, int proposalCount)
+    {
+        if (!string.IsNullOrWhiteSpace(reply))
+        {
+            return reply;
+        }
+
+        return proposalCount == 1
+            ? "Submitted 1 maintenance proposal for review."
+            : $"Submitted {proposalCount} maintenance proposals for review.";
+    }
+
     private AgentMemoryWriteProposal? ReadMemoryWriteProposal(JsonObject item)
     {
         var title = ReadString(item, "title");
@@ -2652,7 +2910,9 @@ public sealed partial class MemoryChatAgent : IChatAgent
             return null;
         }
 
-        var id = NormalizeMemoryId(ReadString(item, "id") ?? title ?? "agent-memory");
+        var rawId = ReadString(item, "id");
+        ValidateMemoryProposalId(rawId);
+        var id = NormalizeMemoryId(rawId ?? title ?? "agent-memory");
         return new AgentMemoryWriteProposal(
             id,
             title ?? id,
@@ -2671,54 +2931,68 @@ public sealed partial class MemoryChatAgent : IChatAgent
         }
 
         var slug = ReadString(item, "slug");
+        ValidatePageProposalSlug(slug);
         var title = ReadString(item, "title") ?? slug ?? "Agent Page";
         return new AgentPageWriteProposal(slug ?? string.Empty, title, markdown);
     }
 
-    private async Task<string?> SaveMemoryProposalAsync(AgentMemoryWriteProposal proposal, CancellationToken cancellationToken)
+    private static string AppendRejectedProposalNotice(string reply, IReadOnlyList<string> rejectedProposals)
     {
-        if (string.IsNullOrWhiteSpace(proposal.Content))
+        if (rejectedProposals.Count == 0)
         {
-            return null;
+            return reply;
         }
 
-        var id = NormalizeMemoryId(string.IsNullOrWhiteSpace(proposal.Id) ? proposal.Title : proposal.Id);
-        var existing = await _memories.GetAsync(id, cancellationToken);
-        var record = new MemoryRecord
-        {
-            Id = id,
-            Title = string.IsNullOrWhiteSpace(proposal.Title) ? existing?.Title ?? id : proposal.Title,
-            Content = proposal.Content,
-            Status = proposal.Status,
-            Confidence = proposal.Confidence,
-            Tags = proposal.Tags.Count == 0 ? ["agent", "chat"] : proposal.Tags.ToList(),
-            References = existing?.References.ToList() ?? [],
-            Conflicts = existing?.Conflicts.ToList() ?? [],
-            SourceLinks = existing?.SourceLinks.ToList() ?? [],
-            UsageCount = existing?.UsageCount ?? 0
-        };
-
-        if (existing is null)
-        {
-            await _memories.CreateAsync(record, cancellationToken);
-        }
-        else
-        {
-            await _memories.UpdateAsync(id, record, cancellationToken);
-        }
-
-        return id;
+        var notice = "Rejected unsafe write proposal(s): " + string.Join(" ", rejectedProposals.Distinct(StringComparer.OrdinalIgnoreCase));
+        return string.IsNullOrWhiteSpace(reply) ? notice : $"{reply.TrimEnd()}\n\n{notice}";
     }
 
-    private async Task<string?> SavePageProposalAsync(AgentPageWriteProposal proposal, CancellationToken cancellationToken)
+    private static void ValidateMemoryProposalId(string? id)
     {
-        if (string.IsNullOrWhiteSpace(proposal.Markdown))
+        if (!string.IsNullOrWhiteSpace(id))
         {
-            return null;
+            ValidateSafeProposalIdentifier(id, "memory proposal id", allowHierarchy: false);
+        }
+    }
+
+    private static void ValidatePageProposalSlug(string? slug)
+    {
+        if (!string.IsNullOrWhiteSpace(slug))
+        {
+            ValidateSafeProposalIdentifier(slug, "page proposal slug", allowHierarchy: true);
+        }
+    }
+
+    private static void ValidateSafeProposalIdentifier(string value, string kind, bool allowHierarchy)
+    {
+        var trimmed = value.Trim();
+        var normalized = trimmed.Replace('\\', '/');
+        var hasHierarchy = normalized.Contains('/');
+        var hasUnsafeSegment = normalized.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Any(segment => segment is "." or "..");
+        if (Path.IsPathRooted(trimmed) || normalized.StartsWith("/", StringComparison.Ordinal) || trimmed.Contains(':') || hasUnsafeSegment || (!allowHierarchy && hasHierarchy))
+        {
+            throw new InvalidOperationException($"Unsafe {kind} '{TrimForMessage(trimmed)}' was rejected before proposal submission.");
+        }
+    }
+
+    private static string BuildSafeProposalPath(string rootPath, string relativePath, string kind)
+    {
+        var root = Path.GetFullPath(rootPath);
+        var fullPath = Path.GetFullPath(Path.Combine(root, relativePath));
+        var rootWithSeparator = root.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        if (!fullPath.StartsWith(rootWithSeparator, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException($"Unsafe {kind} resolves outside the configured root.");
         }
 
-        var page = await _pages.SaveAsync(new PageSaveRequest(proposal.Slug, proposal.Title, proposal.Markdown), cancellationToken);
-        return page.Slug;
+        return fullPath;
+    }
+
+    private static string TrimForMessage(string value)
+    {
+        var singleLine = value.ReplaceLineEndings(" ");
+        return singleLine.Length <= 80 ? singleLine : singleLine[..80] + "...";
     }
 
     private static string StripJsonFence(string content)

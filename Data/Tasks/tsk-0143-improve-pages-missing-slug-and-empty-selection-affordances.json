@@ -1,0 +1,50 @@
+{
+  "id": "tsk-0143-improve-pages-missing-slug-and-empty-selection-affordances",
+  "key": "TSK-0143",
+  "title": "Improve Pages missing-slug and empty-selection affordances",
+  "description": "Problem: the continued empty-state review navigated directly to a missing `/pages/{slug}` route. The app emitted a brief `Page not found` message but the primary view then looked like a generic Pages browsing state dominated by the navigation tree, without a persistent missing-page explanation or actions tied to the requested slug.\n\nDesired outcome: missing and empty Pages states should preserve user intent, explain what happened, and offer a clear next action.\n\nScope:\n- In scope: missing page slug state, no selected page state, empty search/no-pages states where adjacent, create-from-missing-slug affordance, back/open first page actions, and accessible status messaging.\n- Out of scope: changing page storage semantics or creating pages automatically from arbitrary URLs.\n\nAcceptance criteria:\n- A direct missing `/pages/{slug}` visit shows a persistent not-found state, not only a transient snackbar.\n- The missing slug is summarized safely and can seed a `Create page` action if the user has edit permission.\n- The state offers at least one safe navigation action such as open Pages root, clear search, or select first available page.\n- The accessibility tree exposes the missing/not-found state and primary recovery action.\n\nValidation:\n- Navigate to a known missing `/pages/{slug}` route and capture the before/after state.\n- Run focused browser checks for missing slug, no selected page, and no results/empty pages where practical.",
+  "type": "Task",
+  "status": "Done",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "ui",
+    "pages",
+    "empty-state",
+    "routes",
+    "audit-vetted"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "workbench/tasks"
+  ],
+  "comments": [
+    {
+      "id": "c-0143-1",
+      "author": "AgentSmith",
+      "body": "Created from 2026-05-25 continued empty-state review: a direct missing `/pages/{slug}` visit produced a transient not-found message but no persistent recovery state for the requested slug.",
+      "createdAtUtc": "2026-05-25T00:00:00.0000000Z"
+    },
+    {
+      "id": "c-0143-2",
+      "author": "AgentSmith",
+      "body": "Implemented persistent Pages missing/no-selection states. Direct missing `/pages/{slug}` visits now preserve a summarized requested slug, expose a `Page not found` status, offer Open Pages root/Open first page actions, and offer Create page for editors with the missing slug/title prefilled. The generic no-selection state now has explicit recovery actions too. Validation: `dotnet build .\\MemorySmith.App\\MemorySmith.App.csproj --nologo` succeeded; `MEMORYSMITH_BASE_URL=http://127.0.0.1:5099 npm run test:nav-freeze` passed 5/5 including the new missing-slug recovery assertion; `MEMORYSMITH_BASE_URL=http://127.0.0.1:5099 npm run test:route-smoke` passed 5/5.",
+      "createdAtUtc": "2026-05-25T06:52:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T00:00:00.0000000Z",
+  "updatedAtUtc": "2026-05-25T06:52:00.0000000Z",
+  "completedAtUtc": "2026-05-25T06:52:00.0000000Z",
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

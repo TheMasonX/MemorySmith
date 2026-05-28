@@ -356,6 +356,87 @@
         }
     }
 
+    async function copyTextToClipboard(text) {
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+            await navigator.clipboard.writeText(text || "");
+            return;
+        }
+
+        const textarea = document.createElement("textarea");
+        textarea.value = text || "";
+        textarea.setAttribute("readonly", "readonly");
+        textarea.style.position = "fixed";
+        textarea.style.top = "-1000px";
+        textarea.style.left = "-1000px";
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+
+        try {
+            if (!document.execCommand("copy")) {
+                throw new Error("Clipboard copy command was rejected.");
+            }
+        } finally {
+            textarea.remove();
+        }
+    }
+
+    function createMermaidActionIcon(kind) {
+        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svg.setAttribute("viewBox", "0 0 24 24");
+        svg.setAttribute("aria-hidden", "true");
+        svg.classList.add("mermaid-action-icon");
+
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        path.setAttribute("d", kind === "copy"
+            ? "M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"
+            : "M9.4 16.6 4.8 12l4.6-4.6 1.4 1.4L7.6 12l3.2 3.2-1.4 1.4zm5.2 0-1.4-1.4 3.2-3.2-3.2-3.2 1.4-1.4 4.6 4.6-4.6 4.6z");
+        svg.appendChild(path);
+        return svg;
+    }
+
+    function createMermaidActionButton(kind, label) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "mermaid-action-button";
+        button.appendChild(createMermaidActionIcon(kind));
+
+        const text = document.createElement("span");
+        text.className = "mermaid-action-label";
+        text.textContent = label;
+        button.appendChild(text);
+        return button;
+    }
+
+    function setMermaidToggleState(container, button, showingCode) {
+        container.classList.toggle("is-showing-code", showingCode === true);
+        const label = showingCode === true ? "Show rendered diagram" : "Show raw Mermaid code";
+        button.title = label;
+        button.setAttribute("aria-label", label);
+        button.setAttribute("aria-pressed", showingCode === true ? "true" : "false");
+    }
+
+    function flashMermaidCopyState(button, title, state) {
+        button.classList.remove("is-confirmed", "is-error");
+        if (state) {
+            button.classList.add(state);
+        }
+
+        button.title = title;
+        button.setAttribute("aria-label", title);
+
+        if (button._memorySmithMermaidCopyTimer) {
+            window.clearTimeout(button._memorySmithMermaidCopyTimer);
+        }
+
+        button._memorySmithMermaidCopyTimer = window.setTimeout(function () {
+            button.classList.remove("is-confirmed", "is-error");
+            button.title = "Copy raw Mermaid code";
+            button.setAttribute("aria-label", "Copy raw Mermaid code");
+            button._memorySmithMermaidCopyTimer = null;
+        }, 1500);
+    }
+
     window.renderMermaid = async function (root) {
         if (!configureMermaid()) {
             return;
@@ -367,27 +448,61 @@
         const blocks = Array.from(scope.querySelectorAll("pre.mermaid"));
         for (const block of blocks) {
             const code = block.textContent || "";
-            const container = document.createElement("div");
+            const container = document.createElement("section");
             const id = `mermaid-${++mermaidSequence}`;
             container.id = id;
             container.className = "mermaid-rendered";
             container.dataset.mermaidCode = code;
             container.dataset.mermaidThemeMode = theme.mode;
             container.dataset.mermaidTheme = theme.resolvedMode;
+
+            const toolbar = document.createElement("div");
+            toolbar.className = "mermaid-toolbar";
+
+            const toggleButton = createMermaidActionButton("code", "Toggle raw Mermaid code");
+            const copyButton = createMermaidActionButton("copy", "Copy raw Mermaid code");
+            copyButton.title = "Copy raw Mermaid code";
+            copyButton.setAttribute("aria-label", "Copy raw Mermaid code");
+            toolbar.append(toggleButton, copyButton);
+
+            const diagram = document.createElement("div");
+            diagram.className = "mermaid-diagram";
+
+            const rawCode = document.createElement("pre");
+            rawCode.className = "mermaid-raw-code";
+            rawCode.textContent = code;
+
+            container.append(toolbar, diagram, rawCode);
             block.replaceWith(container);
+            setMermaidToggleState(container, toggleButton, false);
+
+            toggleButton.addEventListener("click", function () {
+                setMermaidToggleState(container, toggleButton, !container.classList.contains("is-showing-code"));
+            });
+
+            copyButton.addEventListener("click", async function () {
+                try {
+                    await copyTextToClipboard(code);
+                    flashMermaidCopyState(copyButton, "Copied raw Mermaid code", "is-confirmed");
+                } catch {
+                    flashMermaidCopyState(copyButton, "Copy failed", "is-error");
+                }
+            });
 
             try {
                 const result = await window.mermaid.render(`${id}-svg`, code);
-                container.innerHTML = result.svg || "";
+                diagram.innerHTML = result.svg || "";
                 if (typeof result.bindFunctions === "function") {
-                    result.bindFunctions(container);
+                    result.bindFunctions(diagram);
                 }
             } catch (error) {
                 const overlay = document.createElement("pre");
                 overlay.className = "mermaid-error";
                 overlay.dataset.mermaidCode = code;
                 overlay.textContent = `Mermaid render error:\n${error && error.message ? error.message : error}\n\n${code}`;
-                container.replaceWith(overlay);
+                diagram.replaceChildren(overlay);
+                container.classList.add("has-mermaid-error");
+                setMermaidToggleState(container, toggleButton, true);
             }
         }
     };

@@ -353,6 +353,8 @@ Proposed top-level appsettings shape:
 }
 ```
 
+Historical note: this pre-implementation configuration sketch used a separate top-level `Authentication` section. The current runtime stores provider credentials under `MemorySmith:Auth:Providers:{Provider}:ClientId` and `MemorySmith:Auth:Providers:{Provider}:ClientSecret`.
+
 Secrets should be provided through user-secrets, environment variables, Windows service configuration, or a future secret provider. They should not be committed into `appsettings.json`.
 
 Confidence: 0.82.

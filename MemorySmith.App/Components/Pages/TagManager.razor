@@ -1,7 +1,7 @@
 @page "/tags"
 @attribute [Authorize(Policy = MemorySmithPolicies.CanAdminMemorySmith)]
 
-<PageTitle>Tags</PageTitle>
+<PageTitle>Tags - MemorySmith</PageTitle>
 
 <div class="wiki-workbench tag-manager-workbench">
     <section class="wiki-commandbar" aria-label="Tag manager">
@@ -20,6 +20,14 @@
             <div class="wiki-pane-header">
                 <MudText Typo="Typo.subtitle2">Policy</MudText>
                 <span class="wiki-mode-label">@_policyMode</span>
+            </div>
+            <div class="@PolicyLoadClass(_policyLoadStatus)">
+                <strong>@PolicyLoadLabel(_policyLoadStatus)</strong>
+                @if (_policyLoadStatus is not null)
+                {
+                    <span>@_policyLoadStatus.Message</span>
+                    <small>@_policyLoadStatus.Path</small>
+                }
             </div>
             <div class="tag-policy-editor">
                 <MudSelect T="string" @bind-Value="_policyMode" Label="Overall Mode" Variant="Variant.Outlined" Margin="Margin.Dense">

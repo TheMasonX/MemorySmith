@@ -481,6 +481,315 @@ public class MemoryApplicationServiceTests
     }
 
     [Test]
+    public async Task SemanticSearchAsync_ReusesCachedDocumentEmbeddingsAcrossRepeatedQueries()
+    {
+        var tempRoot = CreateSemanticCacheTempRoot();
+
+        try
+        {
+            var options = CreateSemanticCacheOptions(tempRoot);
+            var provider = new CountingTextEmbeddingProvider();
+            using var embeddingSearch = new SemanticEmbeddingSearchService(provider, options);
+            var service = TestServiceFactory.CreateMemoryApplicationService(_store, _events, _publisher, embeddingSearch, options: options);
+
+            _store.Save(new MemoryRecord
+            {
+                Id = "cached-match",
+                Title = "Cached Match",
+                Content = "relevant target",
+                Status = MemoryStatus.Core,
+                Tags = ["search"],
+                LastUpdated = new DateTime(2026, 05, 19, 0, 0, 0, DateTimeKind.Utc)
+            });
+            _store.Save(new MemoryRecord
+            {
+                Id = "cached-miss",
+                Title = "Cached Miss",
+                Content = "unrelated content",
+                Status = MemoryStatus.Core,
+                Tags = ["search"],
+                LastUpdated = new DateTime(2026, 05, 20, 0, 0, 0, DateTimeKind.Utc)
+            });
+
+            var first = await service.SemanticSearchAsync(
+                new SemanticMemorySearchQuery(Query: "durable recall", Tags: "search", Limit: 5),
+                CancellationToken.None);
+            var second = await service.SemanticSearchAsync(
+                new SemanticMemorySearchQuery(Query: "durable recall", Tags: "search", Limit: 5),
+                CancellationToken.None);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(first.Select(result => result.Id), Is.EqualTo(new[] { "cached-match" }));
+                Assert.That(second.Select(result => result.Id), Is.EqualTo(new[] { "cached-match" }));
+                Assert.That(provider.DocumentEmbeddingsRequested, Is.EqualTo(2), "Each document should be embedded once and then served from cache.");
+                Assert.That(provider.QueryEmbeddingsRequested, Is.EqualTo(1), "Repeated identical queries should reuse the cached query embedding.");
+            });
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot))
+            {
+                Directory.Delete(tempRoot, recursive: true);
+            }
+        }
+    }
+
+    [Test]
+    public async Task SemanticSearchAsync_RefreshesCachedDocumentEmbeddingsWhenRecordTextChanges()
+    {
+        var tempRoot = CreateSemanticCacheTempRoot();
+
+        try
+        {
+            var options = CreateSemanticCacheOptions(tempRoot);
+            var provider = new CountingTextEmbeddingProvider();
+            using var embeddingSearch = new SemanticEmbeddingSearchService(provider, options);
+            var service = TestServiceFactory.CreateMemoryApplicationService(_store, _events, _publisher, embeddingSearch, options: options);
+
+            _store.Save(new MemoryRecord
+            {
+                Id = "cache-invalidation",
+                Title = "Cache Invalidation",
+                Content = "relevant target",
+                Status = MemoryStatus.Core,
+                Tags = ["search"],
+                LastUpdated = new DateTime(2026, 05, 21, 0, 0, 0, DateTimeKind.Utc)
+            });
+
+            var before = await service.SemanticSearchAsync(
+                new SemanticMemorySearchQuery(Query: "durable recall", Tags: "search", Limit: 5),
+                CancellationToken.None);
+
+            _store.Save(new MemoryRecord
+            {
+                Id = "cache-invalidation",
+                Title = "Cache Invalidation",
+                Content = "unrelated content",
+                Status = MemoryStatus.Core,
+                Tags = ["search"],
+                LastUpdated = new DateTime(2026, 05, 22, 0, 0, 0, DateTimeKind.Utc)
+            });
+
+            var after = await service.SemanticSearchAsync(
+                new SemanticMemorySearchQuery(Query: "durable recall", Tags: "search", Limit: 5),
+                CancellationToken.None);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(before.Select(result => result.Id), Is.EqualTo(new[] { "cache-invalidation" }));
+                Assert.That(after, Is.Empty, "Changed record text should invalidate the cached document embedding.");
+                Assert.That(provider.DocumentEmbeddingsRequested, Is.EqualTo(2), "The changed record should be re-embedded after its text changes.");
+            });
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot))
+            {
+                Directory.Delete(tempRoot, recursive: true);
+            }
+        }
+    }
+
+    [Test]
+    public async Task SemanticSearchAsync_ReusesPersistedDocumentEmbeddingsAcrossServiceRecreation()
+    {
+        var tempRoot = CreateSemanticCacheTempRoot();
+
+        try
+        {
+            var options = CreateSemanticCacheOptions(tempRoot);
+            _store.Save(new MemoryRecord
+            {
+                Id = "persisted-match",
+                Title = "Persisted Match",
+                Content = "relevant target",
+                Status = MemoryStatus.Core,
+                Tags = ["search"],
+                LastUpdated = new DateTime(2026, 05, 23, 0, 0, 0, DateTimeKind.Utc)
+            });
+            _store.Save(new MemoryRecord
+            {
+                Id = "persisted-miss",
+                Title = "Persisted Miss",
+                Content = "unrelated content",
+                Status = MemoryStatus.Core,
+                Tags = ["search"],
+                LastUpdated = new DateTime(2026, 05, 24, 0, 0, 0, DateTimeKind.Utc)
+            });
+
+            var firstProvider = new CountingTextEmbeddingProvider();
+            using var firstSearch = new SemanticEmbeddingSearchService(firstProvider, options);
+            var firstService = TestServiceFactory.CreateMemoryApplicationService(_store, _events, _publisher, firstSearch, options: options);
+            var first = await firstService.SemanticSearchAsync(
+                new SemanticMemorySearchQuery(Query: "durable recall", Tags: "search", Limit: 5),
+                CancellationToken.None);
+
+            var secondProvider = new CountingTextEmbeddingProvider();
+            using var secondSearch = new SemanticEmbeddingSearchService(secondProvider, options);
+            var secondService = TestServiceFactory.CreateMemoryApplicationService(_store, _events, _publisher, secondSearch, options: options);
+            var second = await secondService.SemanticSearchAsync(
+                new SemanticMemorySearchQuery(Query: "durable recall", Tags: "search", Limit: 5),
+                CancellationToken.None);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(first.Select(result => result.Id), Is.EqualTo(new[] { "persisted-match" }));
+                Assert.That(second.Select(result => result.Id), Is.EqualTo(new[] { "persisted-match" }));
+                Assert.That(firstProvider.DocumentEmbeddingsRequested, Is.EqualTo(2));
+                Assert.That(secondProvider.DocumentEmbeddingsRequested, Is.EqualTo(0), "Recreated services should load unchanged document embeddings from disk.");
+                Assert.That(secondProvider.QueryEmbeddingsRequested, Is.EqualTo(1), "Query embeddings remain process-local and should be recomputed after service recreation.");
+            });
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot))
+            {
+                Directory.Delete(tempRoot, recursive: true);
+            }
+        }
+    }
+
+    [Test]
+    public async Task SemanticSearchAsync_InvalidatesPersistedDocumentEmbeddingsWhenRecordTextChangesAcrossServiceRecreation()
+    {
+        var tempRoot = CreateSemanticCacheTempRoot();
+
+        try
+        {
+            var options = CreateSemanticCacheOptions(tempRoot);
+            _store.Save(new MemoryRecord
+            {
+                Id = "persisted-invalidation",
+                Title = "Persisted Invalidation",
+                Content = "relevant target",
+                Status = MemoryStatus.Core,
+                Tags = ["search"],
+                LastUpdated = new DateTime(2026, 05, 25, 0, 0, 0, DateTimeKind.Utc)
+            });
+
+            var firstProvider = new CountingTextEmbeddingProvider();
+            using (var firstSearch = new SemanticEmbeddingSearchService(firstProvider, options))
+            {
+                var firstService = TestServiceFactory.CreateMemoryApplicationService(_store, _events, _publisher, firstSearch, options: options);
+                var first = await firstService.SemanticSearchAsync(
+                    new SemanticMemorySearchQuery(Query: "durable recall", Tags: "search", Limit: 5),
+                    CancellationToken.None);
+
+                Assert.That(first.Select(result => result.Id), Is.EqualTo(new[] { "persisted-invalidation" }));
+            }
+
+            _store.Save(new MemoryRecord
+            {
+                Id = "persisted-invalidation",
+                Title = "Persisted Invalidation",
+                Content = "unrelated content",
+                Status = MemoryStatus.Core,
+                Tags = ["search"],
+                LastUpdated = new DateTime(2026, 05, 26, 0, 0, 0, DateTimeKind.Utc)
+            });
+
+            var secondProvider = new CountingTextEmbeddingProvider();
+            using var secondSearch = new SemanticEmbeddingSearchService(secondProvider, options);
+            var secondService = TestServiceFactory.CreateMemoryApplicationService(_store, _events, _publisher, secondSearch, options: options);
+            var second = await secondService.SemanticSearchAsync(
+                new SemanticMemorySearchQuery(Query: "durable recall", Tags: "search", Limit: 5),
+                CancellationToken.None);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(second, Is.Empty);
+                Assert.That(secondProvider.DocumentEmbeddingsRequested, Is.EqualTo(1), "Changed text should invalidate the persisted document embedding and force one fresh embed.");
+            });
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot))
+            {
+                Directory.Delete(tempRoot, recursive: true);
+            }
+        }
+    }
+
+    [Test]
+    public async Task SemanticSearchAsync_InvalidatesPersistedDocumentEmbeddingsWhenPoolingModeChangesAcrossServiceRecreation()
+    {
+        var tempRoot = CreateSemanticCacheTempRoot();
+
+        try
+        {
+            var meanOptions = CreateSemanticCacheOptions(tempRoot, poolingMode: "Mean");
+            var clsOptions = CreateSemanticCacheOptions(tempRoot, poolingMode: "Cls");
+
+            _store.Save(new MemoryRecord
+            {
+                Id = "persisted-pooling-change",
+                Title = "Persisted Pooling Change",
+                Content = "relevant target",
+                Status = MemoryStatus.Core,
+                Tags = ["search"],
+                LastUpdated = new DateTime(2026, 05, 27, 0, 0, 0, DateTimeKind.Utc)
+            });
+
+            var firstProvider = new CountingTextEmbeddingProvider();
+            using (var firstSearch = new SemanticEmbeddingSearchService(firstProvider, meanOptions))
+            {
+                var firstService = TestServiceFactory.CreateMemoryApplicationService(_store, _events, _publisher, firstSearch, options: meanOptions);
+                var first = await firstService.SemanticSearchAsync(
+                    new SemanticMemorySearchQuery(Query: "durable recall", Tags: "search", Limit: 5),
+                    CancellationToken.None);
+
+                Assert.That(first.Select(result => result.Id), Is.EqualTo(new[] { "persisted-pooling-change" }));
+            }
+
+            var secondProvider = new CountingTextEmbeddingProvider();
+            using var secondSearch = new SemanticEmbeddingSearchService(secondProvider, clsOptions);
+            var secondService = TestServiceFactory.CreateMemoryApplicationService(_store, _events, _publisher, secondSearch, options: clsOptions);
+            var second = await secondService.SemanticSearchAsync(
+                new SemanticMemorySearchQuery(Query: "durable recall", Tags: "search", Limit: 5),
+                CancellationToken.None);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(second.Select(result => result.Id), Is.EqualTo(new[] { "persisted-pooling-change" }));
+                Assert.That(secondProvider.DocumentEmbeddingsRequested, Is.EqualTo(1), "Changing pooling mode should invalidate persisted document embeddings because the provider semantics changed.");
+            });
+        }
+        finally
+        {
+            if (Directory.Exists(tempRoot))
+            {
+                Directory.Delete(tempRoot, recursive: true);
+            }
+        }
+    }
+
+    private static string CreateSemanticCacheTempRoot()
+    {
+        var tempRoot = Path.Combine(Path.GetTempPath(), $"memorysmith-semantic-cache-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(Path.Combine(tempRoot, "Memories"));
+        return tempRoot;
+    }
+
+    private static IOptions<MemorySmithOptions> CreateSemanticCacheOptions(string tempRoot, string poolingMode = "Mean", string tokenizerKind = "WordPiece") =>
+        Options.Create(new MemorySmithOptions
+        {
+            DataPath = Path.Combine(tempRoot, "Memories"),
+            SemanticSearch = new SemanticSearchOptions
+            {
+                EmbeddingsEnabled = true,
+                ModelPath = Path.Combine("Models", "embedding-model.onnx"),
+                VocabularyPath = Path.Combine("Models", "vocab.txt"),
+                TokenizerKind = tokenizerKind,
+                PoolingMode = poolingMode,
+                MaxInputTokens = 512,
+                MaxIndexedTextCharacters = 6000,
+                QueryPrefix = "query: ",
+                DocumentPrefix = "passage: "
+            }
+        });
+
+    [Test]
     public async Task HybridSearchAsync_FusesLexicalAndSemanticRanksWithRrf()
     {
         _store.Save(new MemoryRecord
@@ -751,7 +1060,8 @@ internal static class TestServiceFactory
         IEventStore eventStore,
         IMemoryChangePublisher publisher,
         SemanticEmbeddingSearchService? semanticEmbeddings = null,
-        MemoryDiagnosticsService? diagnostics = null)
+        MemoryDiagnosticsService? diagnostics = null,
+        IOptions<MemorySmithOptions>? options = null)
     {
         return new MemoryApplicationService(
             store,
@@ -759,7 +1069,7 @@ internal static class TestServiceFactory
             new MemorySmith.Core.Indexing.MemoryIndex(),
             new BackgroundServiceTelemetryTracker(),
             publisher,
-            Options.Create(new MemorySmithOptions()),
+            options ?? Options.Create(new MemorySmithOptions()),
             semanticEmbeddings,
             diagnostics: diagnostics);
     }
@@ -838,12 +1148,38 @@ internal sealed class CountingVarStore : IVarStore
 
 internal sealed class FakeTextEmbeddingProvider : ITextEmbeddingProvider
 {
-    public EmbeddingProviderStatus GetStatus() => new(true, "Fake embedding provider is available.", null, null, 2);
+    public EmbeddingProviderStatus GetStatus() => new(true, "Fake embedding provider is available.", null, null, 2, "Cpu", "Cpu", null, null);
 
     public bool TryEmbed(string text, EmbeddingInputKind kind, out float[] embedding, out string? reason)
     {
         reason = null;
         embedding = kind == EmbeddingInputKind.Query || text.Contains("recall vector target", StringComparison.OrdinalIgnoreCase)
+            ? [1, 0]
+            : [0, 1];
+        return true;
+    }
+}
+
+internal sealed class CountingTextEmbeddingProvider : ITextEmbeddingProvider
+{
+    public int QueryEmbeddingsRequested { get; private set; }
+    public int DocumentEmbeddingsRequested { get; private set; }
+
+    public EmbeddingProviderStatus GetStatus() => new(true, "Counting embedding provider is available.", null, null, 2, "Cpu", "Cpu", null, null);
+
+    public bool TryEmbed(string text, EmbeddingInputKind kind, out float[] embedding, out string? reason)
+    {
+        reason = null;
+
+        if (kind == EmbeddingInputKind.Query)
+        {
+            QueryEmbeddingsRequested++;
+            embedding = [1, 0];
+            return true;
+        }
+
+        DocumentEmbeddingsRequested++;
+        embedding = text.Contains("relevant target", StringComparison.OrdinalIgnoreCase)
             ? [1, 0]
             : [0, 1];
         return true;

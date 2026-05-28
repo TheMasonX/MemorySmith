@@ -1,0 +1,40 @@
+﻿{
+  "id": "tsk-0174-vector-embedding-model",
+  "key": "TSK-0174",
+  "title": "Vector Embedding Model",
+  "description": "Look to improve the vector embedding\nhttps://huggingface.co/nomic-ai/nomic-embed-text-v1.5\nhttps://huggingface.co/jinaai/jina-embeddings-v2-base-code/blob/main/onnx/model_fp16.onnx",
+  "type": "Task",
+  "status": "Archived",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future",
+    "duplicate",
+    "obsolete"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [
+    {
+      "id": "c-archive-0174-20260525",
+      "author": "AgentSmith",
+      "body": "Archived as a duplicate of TSK-0175 after task review. TSK-0175 now carries the scoped MemorySmith-specific evaluation brief, acceptance criteria, and follow-up guidance for embedding-model experimentation.",
+      "createdAtUtc": "2026-05-25T21:35:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T20:40:09.0157422Z",
+  "updatedAtUtc": "2026-05-25T21:35:00.0000000Z",
+  "completedAtUtc": "2026-05-25T21:35:00.0000000Z",
+  "revision": 2,
+  "isArchived": true,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

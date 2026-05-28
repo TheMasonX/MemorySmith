@@ -1,0 +1,50 @@
+{
+  "id": "tsk-0188-default-empty-chat-sessions-to-sidebar-closed-for-main-pane-space",
+  "key": "TSK-0188",
+  "title": "Default empty chat sessions to sidebar-closed for main-pane space",
+  "description": "Problem: live `/chat` review showed new and empty chat sessions opening with the History sidebar already visible, even though there was no transcript content to justify sacrificing main-pane width. That made the first-use chat surface feel more cramped than it needed to be.\n\nDesired outcome: fresh or empty chat sessions should spend their space on the main transcript/composer by default, while still keeping History and Trace one click away.\n\nScope:\n- In scope: the default sidebar-open state and preserving explicit user-open behavior for History and Trace.\n- Out of scope: changing chat history storage, trace semantics, or composer behavior.\n\nAcceptance criteria:\n- Empty `/chat` opens without the History/Trace sidebar visible by default.\n- The existing sidebar toggle still opens History and Trace on demand.\n- Existing trace/history interactions remain able to open the sidebar when needed.\n\nValidation:\n- Run focused chat markup guards for the sidebar default and existing pending-write behavior.\n- Browser-verify `/chat` on a fresh host and confirm the sidebar is absent until requested.",
+  "type": "Task",
+  "status": "Done",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "ui",
+    "chat",
+    "screen-real-estate",
+    "navigation",
+    "audit-vetted"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "workbench/tasks"
+  ],
+  "comments": [
+    {
+      "id": "c-0188-1",
+      "author": "AgentSmith",
+      "body": "Created from the 2026-05-26 live `/chat` sweep: empty sessions were opening with the History rail visible by default, which consumed width before the user had any transcript content to review.",
+      "createdAtUtc": "2026-05-26T20:43:58.5097010Z"
+    },
+    {
+      "id": "c-0188-2",
+      "author": "AgentSmith",
+      "body": "Completed by defaulting `_sidebarOpen` to false in `MemorySmith.App/Components/Pages/Chat.razor` while keeping `ToggleSidebar`, `ShowSidebarTab(...)`, and trace-selection paths able to reopen it on demand. Focused guards passed via `dotnet test .\\MemorySmith.Tests\\MemorySmith.Tests.csproj -c Release --filter \"Name~ChatMarkup_ReconcilesApproveAllBatchOutcomesAndPendingState|Name~ChatMarkup_DefaultsSidebarClosedUntilHistoryOrTraceIsRequested\" --logger \"console;verbosity=minimal\"`. Fresh-host browser verification on `http://127.0.0.1:5126/chat` reported `sidebarCount=0`, `toggleCount=1`, and `window.innerWidth=890` for an empty session.",
+      "createdAtUtc": "2026-05-26T20:45:58.5097010Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-26T20:43:58.5097010Z",
+  "updatedAtUtc": "2026-05-26T20:45:58.5097010Z",
+  "completedAtUtc": "2026-05-26T20:45:58.5097010Z",
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

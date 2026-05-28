@@ -1,0 +1,39 @@
+﻿{
+  "id": "tsk-0147-about-page-project-alignment",
+  "key": "TSK-0147",
+  "title": "About Page Project Alignment",
+  "description": "Project links are not right aligned in the About dependency table. Original report included a local screenshot path; path omitted from the committed task record to avoid storing user-machine details.",
+  "type": "Task",
+  "status": "Done",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future",
+    "ui"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [
+    {
+      "id": "c-0147-1",
+      "author": "AgentSmith",
+      "body": "Completed by right-aligning the Project column cells and header in the compact About dependency table. Evidence: `MemorySmith.App/wwwroot/app.css`. Validation passed through the TSK-0146 focused About route-smoke 1/1 and full route-smoke 6/6 against `http://127.0.0.1:5099` after the adjacent license-overlay changes.",
+      "createdAtUtc": "2026-05-25T15:16:06.5995220Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T15:10:38.4526049Z",
+  "updatedAtUtc": "2026-05-25T15:16:06.5995220Z",
+  "completedAtUtc": "2026-05-25T15:16:06.5995220Z",
+  "revision": 3,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

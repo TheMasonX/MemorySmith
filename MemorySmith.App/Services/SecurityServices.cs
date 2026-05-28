@@ -32,6 +32,181 @@ public static class MemorySmithAuthProperties
     public const string LinkUserId = "MemorySmith.LinkUserId";
 }
 
+public static class MemorySmithExternalAuthSupport
+{
+    public static async Task<HashSet<string>> GetSupportedExternalProvidersAsync(
+        IAuthenticationSchemeProvider schemeProvider,
+        AuthOptions auth,
+        CancellationToken cancellationToken)
+    {
+        var supported = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var scheme in await schemeProvider.GetAllSchemesAsync())
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (IsConfiguredExternalProvider(scheme.Name, auth))
+            {
+                supported.Add(scheme.Name);
+            }
+        }
+
+        return supported;
+    }
+
+    public static bool IsConfiguredExternalProvider(string providerName, AuthOptions auth) => providerName switch
+    {
+        MemorySmithProviders.GitHub => auth.Providers.GitHub.Enabled && !string.IsNullOrWhiteSpace(auth.Providers.GitHub.ClientId),
+        MemorySmithProviders.Google => auth.Providers.Google.Enabled && !string.IsNullOrWhiteSpace(auth.Providers.Google.ClientId),
+        MemorySmithProviders.Microsoft => auth.Providers.Microsoft.Enabled && !string.IsNullOrWhiteSpace(auth.Providers.Microsoft.ClientId),
+        _ => false
+    };
+
+    public static bool IsRuntimeSupportedExternalProvider(string providerName, ISet<string> supportedExternalProviders) =>
+        supportedExternalProviders.Contains(providerName);
+}
+
+public sealed record AuditActorContext(
+    string? UserId,
+    string DisplayName,
+    string AuthScheme,
+    string? ProviderName,
+    string ActorKind,
+    IReadOnlyList<string> Roles);
+
+public sealed class ExternalAuthOutcomeRecorder
+{
+    private const string FailurePersistedKey = "MemorySmith.ExternalAuthFailurePersisted";
+    private readonly IMemorySmithDatabase _database;
+    private readonly AuditLogService _audit;
+    private readonly IOptionsMonitor<MemorySmithOptions> _options;
+
+    public ExternalAuthOutcomeRecorder(
+        IMemorySmithDatabase database,
+        AuditLogService audit,
+        IOptionsMonitor<MemorySmithOptions> options)
+    {
+        _database = database;
+        _audit = audit;
+        _options = options;
+    }
+
+    public async Task RecordSuccessAsync(
+        HttpContext httpContext,
+        string providerName,
+        string? providerSubject,
+        UserAccount user,
+        IReadOnlyList<RoleRecord> roles,
+        bool requestedLink,
+        CancellationToken cancellationToken)
+    {
+        var occurredAtUtc = DateTime.UtcNow;
+        var requestMetadata = RequestMetadata.Capture(httpContext, _options.CurrentValue);
+        await _database.LoginHistory.RecordAsync(new LoginHistoryEntry
+        {
+            LoginId = Guid.NewGuid().ToString("N"),
+            UserId = user.UserId,
+            ProviderName = providerName,
+            ProviderSubject = providerSubject,
+            OccurredAtUtc = occurredAtUtc,
+            Succeeded = true,
+            IpHash = requestMetadata.IpHash,
+            UserAgentHash = requestMetadata.UserAgentHash,
+            RequestId = requestMetadata.RequestId
+        }, cancellationToken);
+
+        await _audit.RecordWithActorAsync(
+            new AuditActorContext(
+                user.UserId,
+                user.DisplayName,
+                providerName,
+                providerName,
+                MemorySmithActorKinds.User,
+                roles.Select(role => role.Name).Distinct(StringComparer.OrdinalIgnoreCase).ToList()),
+            "auth.login.succeeded",
+            "User",
+            user.UserId,
+            MemorySmithAuditOutcomes.Success,
+            details: new { providerName, requestedLink },
+            httpContext: httpContext,
+            cancellationToken: cancellationToken);
+    }
+
+    public async Task RecordFailureIfNeededAsync(
+        HttpContext httpContext,
+        string providerName,
+        string? providerSubject,
+        string? targetUserId,
+        string failureCode,
+        string message,
+        bool requestedLink,
+        object? details = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (FailureAlreadyPersisted(httpContext))
+        {
+            return;
+        }
+
+        MarkFailurePersisted(httpContext);
+        var occurredAtUtc = DateTime.UtcNow;
+        var requestMetadata = RequestMetadata.Capture(httpContext, _options.CurrentValue);
+        await _database.LoginHistory.RecordAsync(new LoginHistoryEntry
+        {
+            LoginId = Guid.NewGuid().ToString("N"),
+            UserId = targetUserId,
+            ProviderName = providerName,
+            ProviderSubject = providerSubject,
+            OccurredAtUtc = occurredAtUtc,
+            Succeeded = false,
+            FailureCode = failureCode,
+            IpHash = requestMetadata.IpHash,
+            UserAgentHash = requestMetadata.UserAgentHash,
+            RequestId = requestMetadata.RequestId
+        }, cancellationToken);
+
+        await _audit.RecordWithActorAsync(
+            ResolveAttemptActor(httpContext, providerName),
+            "auth.login.failed",
+            targetUserId is null ? "Provider" : "User",
+            targetUserId ?? providerName,
+            MemorySmithAuditOutcomes.Failure,
+            reason: failureCode,
+            details: details is null
+                ? new { providerName, requestedLink, message }
+                : new { providerName, requestedLink, message, details },
+            httpContext: httpContext,
+            cancellationToken: cancellationToken);
+    }
+
+    private static AuditActorContext ResolveAttemptActor(HttpContext httpContext, string providerName)
+    {
+        var principal = httpContext.User;
+        if (principal.Identity?.IsAuthenticated == true)
+        {
+            return new AuditActorContext(
+                principal.FindFirstValue(ClaimTypes.NameIdentifier),
+                principal.FindFirstValue(ClaimTypes.Name) ?? "Authenticated user",
+                principal.Identity.AuthenticationType ?? providerName,
+                principal.FindFirstValue("provider") ?? providerName,
+                MemorySmithActorKinds.User,
+                principal.FindAll(ClaimTypes.Role).Select(claim => claim.Value).Distinct(StringComparer.OrdinalIgnoreCase).ToList());
+        }
+
+        return new AuditActorContext(
+            null,
+            "Anonymous",
+            providerName,
+            providerName,
+            MemorySmithActorKinds.Anonymous,
+            []);
+    }
+
+    private static bool FailureAlreadyPersisted(HttpContext httpContext) =>
+        httpContext.Items.TryGetValue(FailurePersistedKey, out var value) && value is true;
+
+    private static void MarkFailurePersisted(HttpContext httpContext) =>
+        httpContext.Items[FailurePersistedKey] = true;
+}
+
 public enum MemorySmithPermission
 {
     View,
@@ -198,7 +373,7 @@ public sealed class MemorySmithPermissionHandler : AuthorizationHandler<MemorySm
             return true;
         }
 
-        return roles.Contains(MemorySmithRoles.Viewer) && permission is MemorySmithPermission.View or MemorySmithPermission.UseChat or MemorySmithPermission.ReadSourceBundle;
+        return roles.Contains(MemorySmithRoles.Viewer) && permission is MemorySmithPermission.View or MemorySmithPermission.UseChat;
     }
 }
 
@@ -248,17 +423,20 @@ public sealed class MemorySmithLocalAuthService
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly AuditLogService _audit;
     private readonly IOptionsMonitor<MemorySmithOptions> _options;
+    private readonly IAuthenticationSchemeProvider _schemeProvider;
 
     public MemorySmithLocalAuthService(
         IMemorySmithDatabase database,
         IHttpContextAccessor httpContextAccessor,
         AuditLogService audit,
-        IOptionsMonitor<MemorySmithOptions> options)
+        IOptionsMonitor<MemorySmithOptions> options,
+        IAuthenticationSchemeProvider schemeProvider)
     {
         _database = database;
         _httpContextAccessor = httpContextAccessor;
         _audit = audit;
         _options = options;
+        _schemeProvider = schemeProvider;
     }
 
     public async Task<bool> NeedsSetupAsync(CancellationToken cancellationToken) =>
@@ -358,6 +536,7 @@ public sealed class MemorySmithLocalAuthService
             }
         }
 
+        var requestMetadata = RequestMetadata.Capture(_httpContextAccessor.HttpContext, _options.CurrentValue);
         await _database.LoginHistory.RecordAsync(new LoginHistoryEntry
         {
             LoginId = Guid.NewGuid().ToString("N"),
@@ -367,7 +546,9 @@ public sealed class MemorySmithLocalAuthService
             OccurredAtUtc = DateTime.UtcNow,
             Succeeded = success,
             FailureCode = success ? null : failureCode,
-            RequestId = _httpContextAccessor.HttpContext?.TraceIdentifier
+            IpHash = requestMetadata.IpHash,
+            UserAgentHash = requestMetadata.UserAgentHash,
+            RequestId = requestMetadata.RequestId
         }, cancellationToken);
 
         if (!success || user is null)
@@ -569,12 +750,13 @@ public sealed class MemorySmithLocalAuthService
     private async Task<bool> HasUsableSignInMethodAfterRemovingAsync(UserAccount user, IReadOnlyList<ProviderLink> links, ISet<string> removedLinkIds, CancellationToken cancellationToken)
     {
         var providers = await _database.ProviderLinks.ListProvidersAsync(cancellationToken);
+        var supportedExternalProviders = await MemorySmithExternalAuthSupport.GetSupportedExternalProvidersAsync(_schemeProvider, _options.CurrentValue.Auth, cancellationToken);
         return links
             .Where(link => !removedLinkIds.Contains(link.LinkId))
-            .Any(link => IsUsableSignInMethod(user, link, providers));
+            .Any(link => IsUsableSignInMethod(user, link, providers, supportedExternalProviders));
     }
 
-    private bool IsUsableSignInMethod(UserAccount user, ProviderLink link, IReadOnlyList<AuthProviderRecord> providers)
+    private bool IsUsableSignInMethod(UserAccount user, ProviderLink link, IReadOnlyList<AuthProviderRecord> providers, ISet<string> supportedExternalProviders)
     {
         var providerRecord = providers.FirstOrDefault(provider => string.Equals(provider.ProviderName, link.ProviderName, StringComparison.OrdinalIgnoreCase));
         if (providerRecord?.IsEnabled != true)
@@ -586,9 +768,9 @@ public sealed class MemorySmithLocalAuthService
         return link.ProviderName switch
         {
             MemorySmithProviders.LocalPassword => auth.LocalPasswordEnabled && user.LocalPasswordEnabled && !string.IsNullOrWhiteSpace(user.PasswordHash),
-            MemorySmithProviders.GitHub => auth.Providers.GitHub.Enabled && !string.IsNullOrWhiteSpace(auth.Providers.GitHub.ClientId),
-            MemorySmithProviders.Google => auth.Providers.Google.Enabled && !string.IsNullOrWhiteSpace(auth.Providers.Google.ClientId),
-            MemorySmithProviders.Microsoft => auth.Providers.Microsoft.Enabled && !string.IsNullOrWhiteSpace(auth.Providers.Microsoft.ClientId),
+            MemorySmithProviders.GitHub or MemorySmithProviders.Google or MemorySmithProviders.Microsoft =>
+                MemorySmithExternalAuthSupport.IsConfiguredExternalProvider(link.ProviderName, auth)
+                && MemorySmithExternalAuthSupport.IsRuntimeSupportedExternalProvider(link.ProviderName, supportedExternalProviders),
             _ => false
         };
     }
@@ -660,20 +842,56 @@ public sealed class AuditLogService
         object? details = null,
         CancellationToken cancellationToken = default)
     {
+        return await RecordWithActorAsync(
+            new AuditActorContext(
+                _currentUser.UserId,
+                _currentUser.DisplayName,
+                _currentUser.AuthScheme,
+                _currentUser.Provider,
+                _currentUser.ActorKind,
+                _currentUser.Roles),
+            action,
+            targetKind,
+            targetId,
+            outcome,
+            beforeHash,
+            afterHash,
+            diffRef,
+            reason,
+            details,
+            _httpContextAccessor.HttpContext,
+            cancellationToken);
+    }
+
+    public async Task<AuditLogEntry> RecordWithActorAsync(
+        AuditActorContext actor,
+        string action,
+        string targetKind,
+        string? targetId,
+        string outcome,
+        string? beforeHash = null,
+        string? afterHash = null,
+        string? diffRef = null,
+        string? reason = null,
+        object? details = null,
+        HttpContext? httpContext = null,
+        CancellationToken cancellationToken = default)
+    {
         var latest = _options.CurrentValue.Audit.HashChainEnabled
             ? await _database.AuditLogs.GetLatestAsync(cancellationToken)
             : null;
+        var requestMetadata = RequestMetadata.Capture(httpContext ?? _httpContextAccessor.HttpContext, _options.CurrentValue);
         var entry = new AuditLogEntry
         {
             AuditId = Guid.NewGuid().ToString("N"),
             OccurredAtUtc = DateTime.UtcNow,
             RecordedAtUtc = DateTime.UtcNow,
-            ActorUserId = _currentUser.UserId,
-            ActorDisplay = _currentUser.DisplayName,
-            ActorKind = _currentUser.ActorKind,
-            AuthScheme = _currentUser.AuthScheme,
-            ProviderName = _currentUser.Provider,
-            RoleSnapshotJson = JsonSerializer.Serialize(_currentUser.Roles, JsonOptions),
+            ActorUserId = actor.UserId,
+            ActorDisplay = actor.DisplayName,
+            ActorKind = actor.ActorKind,
+            AuthScheme = actor.AuthScheme,
+            ProviderName = actor.ProviderName,
+            RoleSnapshotJson = JsonSerializer.Serialize(actor.Roles, JsonOptions),
             Action = action,
             TargetKind = targetKind,
             TargetId = targetId,
@@ -682,7 +900,10 @@ public sealed class AuditLogService
             BeforeHash = beforeHash,
             AfterHash = afterHash,
             DiffRef = diffRef,
-            RequestId = _httpContextAccessor.HttpContext?.TraceIdentifier,
+            RequestId = requestMetadata.RequestId,
+            CorrelationId = requestMetadata.CorrelationId,
+            IpHash = requestMetadata.IpHash,
+            UserAgentHash = requestMetadata.UserAgentHash,
             DetailsJson = details is null ? null : JsonSerializer.Serialize(details, JsonOptions),
             PreviousAuditHash = latest?.AuditHash
         };

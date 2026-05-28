@@ -237,6 +237,63 @@ public sealed record PageAsset(string FileName, string MarkdownPath, string Requ
 
 public sealed record PageAssetAccessInfo(bool IsReferenced, string MinimumRole);
 
+public static class PageSlugPolicy
+{
+    private static readonly Regex SegmentPattern = new("^[a-z0-9][a-z0-9_-]*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
+
+    public static bool TryNormalize(string? value, out string slug)
+    {
+        slug = string.Empty;
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        string candidate;
+        try
+        {
+            candidate = Uri.UnescapeDataString(value.Trim());
+        }
+        catch (Exception ex) when (ex is UriFormatException or ArgumentException)
+        {
+            return false;
+        }
+
+        candidate = candidate.Replace('\\', '/').Trim().Trim('/');
+        if (candidate.StartsWith("pages/", StringComparison.OrdinalIgnoreCase))
+        {
+            candidate = candidate["pages/".Length..].Trim('/');
+        }
+
+        if (candidate.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
+        {
+            candidate = candidate[..^3];
+        }
+
+        var segments = candidate.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (segments.Length == 0)
+        {
+            return false;
+        }
+
+        foreach (var segment in segments)
+        {
+            if (segment is "." or ".." || !SegmentPattern.IsMatch(segment))
+            {
+                return false;
+            }
+        }
+
+        slug = string.Join('/', segments).ToLowerInvariant();
+        return true;
+    }
+
+    public static string ToPageHref(string? slug) =>
+        TryNormalize(slug, out var normalizedSlug)
+            ? "/pages/" + string.Join('/', normalizedSlug.Split('/', StringSplitOptions.RemoveEmptyEntries).Select(Uri.EscapeDataString))
+            : "#";
+}
+
 public interface IPageService
 {
     Task<IReadOnlyList<PageSummary>> ListAsync(CancellationToken cancellationToken);

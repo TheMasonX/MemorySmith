@@ -1,10 +1,15 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using MemorySmith.App.Controllers;
 using MemorySmith.App.Services;
 using MemorySmith.Core.Models;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Data.Sqlite;
 
 namespace MemorySmith.Tests;
@@ -34,6 +39,7 @@ public class AppApiContractTests
                         ["MemorySmith:Database:ConnectionString"] = $"Data Source={Path.Combine(_tempDir, "memorysmith.db")};Pooling=False",
                         ["MemorySmith:Audit:JsonlPath"] = Path.Combine(_tempDir, "Events", "audit-{yyyy}-W{week}.jsonl"),
                         ["MemorySmith:History:RootPath"] = Path.Combine(_tempDir, ".history"),
+                        ["MemorySmith:TaskAttachments:StoragePath"] = Path.Combine(_tempDir, "Artifacts", "TaskAttachments"),
                         ["MemorySmith:Maintenance:Enabled"] = "false"
                     });
                 });
@@ -46,6 +52,7 @@ public class AppApiContractTests
     {
         _client.Dispose();
         _factory.Dispose();
+        Serilog.Log.CloseAndFlush();
         SqliteConnection.ClearAllPools();
         if (Directory.Exists(_tempDir))
         {
@@ -64,6 +71,58 @@ public class AppApiContractTests
             Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
             Assert.That(body, Does.Contain("Tasks"));
         });
+    }
+
+    [Test]
+    public async Task RequestPipeline_EmitsProblemDetailsTraceIdAndStructuredRequestCorrelation()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"memorysmith-request-pipeline-{Guid.NewGuid():N}");
+        var factory = CreateRequestPipelineFactory(tempDir);
+
+        try
+        {
+            using var client = factory.CreateClient();
+            var normalResponse = await client.GetAsync("/api/health/live");
+            normalResponse.EnsureSuccessStatusCode();
+            var normalEntry = await WaitForStructuredLogEntryAsync(tempDir, entry =>
+                GetString(entry, "SourceContext") == "Serilog.AspNetCore.RequestLoggingMiddleware" &&
+                GetString(entry, "RequestPath") == "/api/health/live" &&
+                GetInt32(entry, "StatusCode") == StatusCodes.Status200OK);
+
+            var failureResponse = await client.GetAsync("/api/test-failures/throw");
+            var problemJson = await failureResponse.Content.ReadAsStringAsync();
+            using var problem = JsonDocument.Parse(problemJson);
+            var traceId = GetString(problem.RootElement, "traceId");
+            var requestEntry = await WaitForStructuredLogEntryAsync(tempDir, entry =>
+                GetString(entry, "SourceContext") == "Serilog.AspNetCore.RequestLoggingMiddleware" &&
+                GetString(entry, "RequestPath") == "/api/test-failures/throw" &&
+                GetInt32(entry, "StatusCode") == StatusCodes.Status500InternalServerError);
+            var exceptionEntry = await WaitForStructuredLogEntryAsync(tempDir, entry =>
+                GetString(entry, "@mt") == "Unhandled request failure {Method} {Path} TraceId={TraceId}" &&
+                GetString(entry, "TraceId") == traceId);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(GetString(normalEntry, "TraceId"), Is.Not.Null.And.Not.Empty);
+                Assert.That(GetString(normalEntry, "CorrelationId"), Is.Not.Null.And.Not.Empty);
+                Assert.That(GetString(normalEntry, "RequestMethod"), Is.EqualTo("GET"));
+                Assert.That(GetDouble(normalEntry, "Elapsed"), Is.GreaterThanOrEqualTo(0));
+                Assert.That(GetString(normalEntry, "@l"), Is.EqualTo("Warning"));
+                Assert.That(failureResponse.StatusCode, Is.EqualTo(HttpStatusCode.InternalServerError));
+                Assert.That(failureResponse.Content.Headers.ContentType?.MediaType, Is.EqualTo("application/problem+json"));
+                Assert.That(GetString(problem.RootElement, "title"), Is.EqualTo("An unexpected error occurred."));
+                Assert.That(traceId, Is.Not.Null.And.Not.Empty);
+                Assert.That(problemJson, Does.Not.Contain("Synthetic TSK-0105 test failure"));
+                Assert.That(GetString(requestEntry, "TraceId"), Is.EqualTo(traceId));
+                Assert.That(GetString(requestEntry, "CorrelationId"), Is.Not.Null.And.Not.Empty);
+                Assert.That(GetDouble(requestEntry, "Elapsed"), Is.GreaterThanOrEqualTo(0));
+                Assert.That(GetString(exceptionEntry, "Path"), Is.EqualTo("/api/test-failures/throw"));
+            });
+        }
+        finally
+        {
+            await DisposeFactoryTempDirAsync(factory, tempDir);
+        }
     }
 
     [Test]
@@ -134,7 +193,10 @@ public class AppApiContractTests
         var externalLinkResponse = await _client.PostAsJsonAsync($"/api/tasks/{created.Id}/links/external", new TaskExternalLinkRequest("Spec", "https://example.test/spec"));
         externalLinkResponse.EnsureSuccessStatusCode();
 
-        var attachmentResponse = await _client.PostAsJsonAsync($"/api/tasks/{created.Id}/attachments", new TaskAttachmentRequest("Screenshot", "image", "artifacts/browser-validation/tasks.png"));
+        var invalidAttachmentResponse = await _client.PostAsJsonAsync($"/api/tasks/{created.Id}/attachments", new TaskAttachmentRequest("Screenshot", "image", "javascript:alert('xss')"));
+        Assert.That(invalidAttachmentResponse.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+
+        var attachmentResponse = await _client.PostAsJsonAsync($"/api/tasks/{created.Id}/attachments", new TaskAttachmentRequest("Screenshot", "image", "https://example.test/artifacts/browser-validation/tasks.png"));
         attachmentResponse.EnsureSuccessStatusCode();
         var withAttachment = await attachmentResponse.Content.ReadFromJsonAsync<TaskItem>();
 
@@ -147,11 +209,15 @@ public class AppApiContractTests
 
         Assert.Multiple(() =>
         {
+            var createdSummary = list!.Single(item => item.Id == created.Id);
             Assert.That(invalidCreate.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
             Assert.That(createResponse.StatusCode, Is.EqualTo(HttpStatusCode.Created));
             Assert.That(created.Id, Does.Contain("backend-delivery"));
             Assert.That(list, Is.Not.Null);
             Assert.That(list!.Any(item => item.Id == created.Id), Is.True);
+            Assert.That(createdSummary.AssigneeMode, Is.EqualTo(TaskAssigneeModes.Directory));
+            Assert.That(createdSummary.AssigneeDirectoryId, Is.EqualTo("reviewer-01"));
+            Assert.That(createdSummary.AssigneeCustomText, Is.Null);
             Assert.That(loaded, Is.Not.Null);
             Assert.That(loaded!.Title, Is.EqualTo("Implement task backend v2"));
             Assert.That(loaded.Description, Does.Contain("triage"));
@@ -161,6 +227,8 @@ public class AppApiContractTests
             Assert.That(loaded.Labels, Does.Contain("vetted"));
             Assert.That(loaded!.Comments.Count, Is.EqualTo(1));
             Assert.That(loaded.ExternalLinks.Count, Is.EqualTo(1));
+            Assert.That(loaded.Attachments.Count, Is.EqualTo(1));
+            Assert.That(loaded.Attachments[0].Uri, Is.EqualTo("https://example.test/artifacts/browser-validation/tasks.png"));
             Assert.That(loaded.LinkedPages.Count, Is.EqualTo(2));
             Assert.That(loaded.LinkedPages, Does.Contain("plans/tasks-page-feature-design-20260523"));
             Assert.That(loaded.LinkedPages, Does.Contain("does/not/exist"));
@@ -173,6 +241,254 @@ public class AppApiContractTests
             Assert.That(archived!.Status, Is.EqualTo(TaskStatuses.Archived));
             Assert.That(Directory.EnumerateFiles(Path.Combine(_tempDir, "Tasks"), "*.json", SearchOption.TopDirectoryOnly).Any(), Is.True);
             Assert.That(File.Exists(Path.Combine(_tempDir, "Events", "tasks.activity.jsonl")), Is.True);
+        });
+    }
+
+    [Test]
+    public async Task TasksApi_RejectsUnsafeLinkedPageSlugsAndKeepsSafeNestedSlugs()
+    {
+        var pageDirectory = Path.Combine(_tempDir, "Pages", "guides");
+        Directory.CreateDirectory(pageDirectory);
+        await File.WriteAllTextAsync(Path.Combine(pageDirectory, "configuration-reference.md"), "# Configuration Reference");
+
+        var createResponse = await _client.PostAsJsonAsync("/api/tasks", new TaskCreateRequest(
+            Title: "Validate page links",
+            Description: "Exercise task page link validation",
+            Type: "Task",
+            Status: TaskStatuses.Backlog,
+            Priority: TaskPriorities.High,
+            AssigneeMode: TaskAssigneeModes.Custom,
+            AssigneeDirectoryId: null,
+            AssigneeCustomText: "Copilot",
+            Reporter: "copilot",
+            Labels: ["tasks", "pages"],
+            DueDateUtc: null,
+            EpicId: null,
+            ParentId: null,
+            Slug: "validate-page-links"));
+        createResponse.EnsureSuccessStatusCode();
+        var created = await createResponse.Content.ReadFromJsonAsync<TaskItem>();
+        Assert.That(created, Is.Not.Null);
+
+        var safeResponse = await _client.PostAsJsonAsync($"/api/tasks/{created!.Id}/links/pages", new TaskPageLinkRequest("pages/guides/configuration-reference.md"));
+        safeResponse.EnsureSuccessStatusCode();
+
+        var unsafeSlugs = new[]
+        {
+            "../admin",
+            "./admin",
+            "guides/../admin",
+            "%2e%2e/admin",
+            "guides\\..\\admin",
+            "."
+        };
+
+        var unsafeResponses = new List<HttpResponseMessage>();
+        foreach (var slug in unsafeSlugs)
+        {
+            unsafeResponses.Add(await _client.PostAsJsonAsync($"/api/tasks/{created.Id}/links/pages", new TaskPageLinkRequest(slug)));
+        }
+
+        var loaded = await _client.GetFromJsonAsync<TaskItem>($"/api/tasks/{created.Id}");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(loaded, Is.Not.Null);
+            Assert.That(loaded!.LinkedPages, Is.EqualTo(new[] { "guides/configuration-reference" }));
+            Assert.That(unsafeResponses.Select(response => response.StatusCode), Is.All.EqualTo(HttpStatusCode.BadRequest));
+            Assert.That(PageSlugPolicy.ToPageHref("guides/configuration-reference"), Is.EqualTo("/pages/guides/configuration-reference"));
+            Assert.That(PageSlugPolicy.ToPageHref("../admin"), Is.EqualTo("#"));
+        });
+
+        foreach (var response in unsafeResponses)
+        {
+            response.Dispose();
+        }
+    }
+
+    [Test]
+    public async Task TasksApi_CanSwitchDirectoryAssigneeToCustomAssignee()
+    {
+        var createResponse = await _client.PostAsJsonAsync("/api/tasks", new TaskCreateRequest(
+            Title: "Custom assignee regression",
+            Description: "Verify Directory to Custom assignment updates clear the directory id.",
+            Type: "Task",
+            Status: TaskStatuses.Backlog,
+            Priority: TaskPriorities.Medium,
+            AssigneeMode: TaskAssigneeModes.Directory,
+            AssigneeDirectoryId: "editor-01",
+            AssigneeCustomText: null,
+            Reporter: "copilot",
+            Labels: ["tasks"],
+            DueDateUtc: null,
+            EpicId: null,
+            ParentId: null,
+            Slug: "custom-assignee-regression"));
+        createResponse.EnsureSuccessStatusCode();
+        var created = await createResponse.Content.ReadFromJsonAsync<TaskItem>();
+
+        var updateResponse = await _client.PutAsJsonAsync($"/api/tasks/{created!.Id}", new TaskUpdateRequest(
+            Title: null,
+            Description: null,
+            Type: null,
+            Priority: null,
+            AssigneeMode: TaskAssigneeModes.Custom,
+            AssigneeDirectoryId: null,
+            AssigneeCustomText: "Agent Smith",
+            Reporter: null,
+            Labels: null,
+            DueDateUtc: null,
+            EpicId: null,
+            ParentId: null));
+        updateResponse.EnsureSuccessStatusCode();
+        var updated = await updateResponse.Content.ReadFromJsonAsync<TaskItem>();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(updated, Is.Not.Null);
+            Assert.That(updated!.AssigneeMode, Is.EqualTo(TaskAssigneeModes.Custom));
+            Assert.That(updated.AssigneeDirectoryId, Is.Null);
+            Assert.That(updated.AssigneeCustomText, Is.EqualTo("Agent Smith"));
+        });
+    }
+
+    [Test]
+    public async Task TasksApi_CanAttachRelatedTasksAsFirstClassAttachments()
+    {
+        var parentResponse = await _client.PostAsJsonAsync("/api/tasks", new TaskCreateRequest(
+            Title: "Parent attachment task",
+            Description: "Primary task that references another task.",
+            Type: "Task",
+            Status: TaskStatuses.Backlog,
+            Priority: TaskPriorities.Medium,
+            AssigneeMode: TaskAssigneeModes.Custom,
+            AssigneeDirectoryId: null,
+            AssigneeCustomText: "Copilot",
+            Reporter: "copilot",
+            Labels: ["tasks"],
+            DueDateUtc: null,
+            EpicId: null,
+            ParentId: null,
+            Slug: "parent-attachment-task"));
+        parentResponse.EnsureSuccessStatusCode();
+        var parent = await parentResponse.Content.ReadFromJsonAsync<TaskItem>();
+
+        var childResponse = await _client.PostAsJsonAsync("/api/tasks", new TaskCreateRequest(
+            Title: "Related attachment task",
+            Description: "Related task target.",
+            Type: "Task",
+            Status: TaskStatuses.Backlog,
+            Priority: TaskPriorities.Medium,
+            AssigneeMode: TaskAssigneeModes.Custom,
+            AssigneeDirectoryId: null,
+            AssigneeCustomText: "Copilot",
+            Reporter: "copilot",
+            Labels: ["tasks"],
+            DueDateUtc: null,
+            EpicId: null,
+            ParentId: null,
+            Slug: "related-attachment-task"));
+        childResponse.EnsureSuccessStatusCode();
+        var child = await childResponse.Content.ReadFromJsonAsync<TaskItem>();
+
+        var relatedResponse = await _client.PostAsJsonAsync($"/api/tasks/{parent!.Id}/attachments", new TaskAttachmentRequest(
+            "Related attachment task",
+            "task",
+            $"task:{child!.Key}"));
+        relatedResponse.EnsureSuccessStatusCode();
+        var updated = await relatedResponse.Content.ReadFromJsonAsync<TaskItem>();
+        var selfResponse = await _client.PostAsJsonAsync($"/api/tasks/{parent.Id}/attachments", new TaskAttachmentRequest("Self", "task", $"task:{parent.Key}"));
+        var missingResponse = await _client.PostAsJsonAsync($"/api/tasks/{parent.Id}/attachments", new TaskAttachmentRequest("Missing", "task", "task:TSK-9999"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(updated, Is.Not.Null);
+            Assert.That(updated!.Attachments, Has.Count.EqualTo(1));
+            Assert.That(updated.Attachments[0].Kind, Is.EqualTo("task"));
+            Assert.That(updated.Attachments[0].Uri, Is.EqualTo($"task:{child.Id}"));
+            Assert.That(selfResponse.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+            Assert.That(missingResponse.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+        });
+    }
+
+    [Test]
+    public async Task TasksApi_CanUploadFileAttachmentsToArtifactsFolder()
+    {
+        var createResponse = await _client.PostAsJsonAsync("/api/tasks", new TaskCreateRequest(
+            Title: "File attachment task",
+            Description: "Task with a local uploaded artifact.",
+            Type: "Task",
+            Status: TaskStatuses.Backlog,
+            Priority: TaskPriorities.Medium,
+            AssigneeMode: TaskAssigneeModes.Custom,
+            AssigneeDirectoryId: null,
+            AssigneeCustomText: "Copilot",
+            Reporter: "copilot",
+            Labels: ["tasks"],
+            DueDateUtc: null,
+            EpicId: null,
+            ParentId: null,
+            Slug: "file-attachment-task"));
+        createResponse.EnsureSuccessStatusCode();
+        var created = await createResponse.Content.ReadFromJsonAsync<TaskItem>();
+
+        using var form = new MultipartFormDataContent();
+        var content = new ByteArrayContent("task attachment body"u8.ToArray());
+        content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("text/plain");
+        form.Add(content, "file", "Notes To Keep.txt");
+        form.Add(new StringContent("Implementation notes"), "name");
+        var uploadResponse = await _client.PostAsync($"/api/tasks/{created!.Id}/attachments/files", form);
+        uploadResponse.EnsureSuccessStatusCode();
+        var updated = await uploadResponse.Content.ReadFromJsonAsync<TaskItem>();
+        var attachment = updated!.Attachments.Single();
+        var fileResponse = await _client.GetAsync(attachment.Uri);
+        var fileBody = await fileResponse.Content.ReadAsStringAsync();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(attachment.Name, Is.EqualTo("Implementation notes"));
+            Assert.That(attachment.Kind, Is.EqualTo("file"));
+            Assert.That(attachment.Uri, Does.StartWith("/artifacts/task-attachments/"));
+            Assert.That(fileResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+            Assert.That(fileBody, Is.EqualTo("task attachment body"));
+            Assert.That(File.Exists(Path.Combine(_tempDir, "Artifacts", "TaskAttachments", created.Id, "notes-to-keep.txt")), Is.True);
+        });
+    }
+
+    [Test]
+    public async Task TasksApi_CanSetRejectedStatusWithoutCompletingOrArchivingTask()
+    {
+        var createResponse = await _client.PostAsJsonAsync("/api/tasks", new TaskCreateRequest(
+            Title: "Rejected status probe",
+            Description: "Verify rejected state semantics",
+            Type: "Task",
+            Status: TaskStatuses.Backlog,
+            Priority: TaskPriorities.Medium,
+            AssigneeMode: TaskAssigneeModes.Custom,
+            AssigneeDirectoryId: null,
+            AssigneeCustomText: "Copilot",
+            Reporter: "copilot",
+            Labels: ["tasks"],
+            DueDateUtc: null,
+            EpicId: null,
+            ParentId: null,
+            Slug: "rejected-status-probe"));
+        createResponse.EnsureSuccessStatusCode();
+        var created = await createResponse.Content.ReadFromJsonAsync<TaskItem>();
+
+        var statusResponse = await _client.PostAsJsonAsync($"/api/tasks/{created!.Id}/status", new TaskStatusUpdateRequest(TaskStatuses.Rejected, "human review declined this task"));
+        statusResponse.EnsureSuccessStatusCode();
+        var rejected = await statusResponse.Content.ReadFromJsonAsync<TaskItem>();
+        var history = await _client.GetFromJsonAsync<List<TaskActivityEntry>>($"/api/tasks/{created.Id}/history");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(rejected, Is.Not.Null);
+            Assert.That(rejected!.Status, Is.EqualTo(TaskStatuses.Rejected));
+            Assert.That(rejected.IsArchived, Is.False);
+            Assert.That(rejected.CompletedAtUtc, Is.Null);
+            Assert.That(history, Is.Not.Null);
+            Assert.That(history!.Any(item => item.Action == "status_changed" && item.Note == "human review declined this task"), Is.True);
         });
     }
 
@@ -568,6 +884,10 @@ Line two",
             var defaultVisibilityResponse = await adminClient.PutAsJsonAsync("/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:Pages:DefaultMinimumRole", PageAccessLevels.Authenticated));
             var sourceRootsResponse = await adminClient.PutAsJsonAsync("/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:SourceLinks:AllowedFileRoots", $"{Path.Combine(tempDir, "allowed-one")}\n{Path.Combine(tempDir, "allowed-two")}"));
             var nullableContextResponse = await adminClient.PutAsJsonAsync("/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:Chat:OllamaContextWindowTokens", string.Empty));
+            var configureApiKeyResponse = await adminClient.PutAsJsonAsync("/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:ApiKey", "contract-secret"));
+            adminClient.DefaultRequestHeaders.Add(MemorySmithRequestGuardMiddleware.ApiKeyHeaderName, "contract-secret");
+            var clearApiKeyResponse = await adminClient.PutAsJsonAsync("/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:ApiKey", string.Empty));
+            var apiKeyAudit = await adminClient.GetFromJsonAsync<PagedResult<AuditLogEntry>>("/api/admin/audit?action=settings.updated&targetKind=Setting&targetId=MemorySmith%3AApiKey&pageSize=10");
 
             Assert.Multiple(() =>
             {
@@ -583,6 +903,11 @@ Line two",
                 Assert.That(defaultVisibilityResponse.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
                 Assert.That(sourceRootsResponse.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
                 Assert.That(nullableContextResponse.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
+                Assert.That(configureApiKeyResponse.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
+                Assert.That(clearApiKeyResponse.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
+                Assert.That(apiKeyAudit?.Data.Select(item => item.DetailsJson), Has.Some.Contains("Configured"));
+                Assert.That(apiKeyAudit?.Data.Select(item => item.DetailsJson), Has.Some.Contains("Cleared"));
+                Assert.That(apiKeyAudit?.Data.Select(item => item.DetailsJson), Has.None.Contains("contract-secret"));
                 Assert.That(File.Exists(settingsPath), Is.True);
             });
 
@@ -591,6 +916,8 @@ Line two",
             Assert.That(json, Does.Contain("\"DefaultMinimumRole\": \"Authenticated\""));
             Assert.That(json, Does.Contain("\"AllowedFileRoots\": ["));
             Assert.That(json, Does.Contain("\"OllamaContextWindowTokens\": null"));
+            Assert.That(json, Does.Contain("\"ApiKey\": \"\""));
+            Assert.That(json, Does.Not.Contain("contract-secret"));
         }
         finally
         {
@@ -907,16 +1234,110 @@ Line two",
                 });
             });
 
+    private static WebApplicationFactory<Program> CreateRequestPipelineFactory(string tempDir) =>
+        CreateIsolatedFactory(tempDir, new Dictionary<string, string?>
+        {
+            ["MemorySmith:Logging:StructuredFilePath"] = Path.Combine(tempDir, "Logs", "structured-.jsonl"),
+            ["MemorySmith:Logging:SlowRequestThresholdMs"] = "0"
+        }).WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureTestServices(services =>
+            {
+                services.AddControllers().AddApplicationPart(typeof(TestFailureController).Assembly);
+            });
+        });
+
     private static bool IsAuthChallenge(HttpStatusCode statusCode) =>
         statusCode is HttpStatusCode.Redirect or HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden;
+
+    private static async Task<JsonElement> WaitForStructuredLogEntryAsync(string tempDir, Func<JsonElement, bool> predicate)
+    {
+        var logDirectory = Path.Combine(tempDir, "Logs");
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        while (DateTime.UtcNow < deadline)
+        {
+            if (Directory.Exists(logDirectory))
+            {
+                foreach (var filePath in Directory.EnumerateFiles(logDirectory, "*.jsonl", SearchOption.TopDirectoryOnly))
+                {
+                    foreach (var line in await ReadSharedLinesAsync(filePath))
+                    {
+                        if (string.IsNullOrWhiteSpace(line))
+                        {
+                            continue;
+                        }
+
+                        using var document = JsonDocument.Parse(line);
+                        if (predicate(document.RootElement))
+                        {
+                            return document.RootElement.Clone();
+                        }
+                    }
+                }
+            }
+
+            await Task.Delay(100);
+        }
+
+        Assert.Fail($"Expected matching structured log entry under {logDirectory}.");
+        return default;
+    }
+
+    private static async Task<List<string>> ReadSharedLinesAsync(string filePath)
+    {
+        var lines = new List<string>();
+        await using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        using var reader = new StreamReader(stream);
+        while (await reader.ReadLineAsync() is { } line)
+        {
+            lines.Add(line);
+        }
+
+        return lines;
+    }
+
+    private static string? GetString(JsonElement element, string propertyName) =>
+        element.TryGetProperty(propertyName, out var property) && property.ValueKind == JsonValueKind.String
+            ? property.GetString()
+            : null;
+
+    private static int? GetInt32(JsonElement element, string propertyName) =>
+        element.TryGetProperty(propertyName, out var property) && property.ValueKind == JsonValueKind.Number && property.TryGetInt32(out var value)
+            ? value
+            : null;
+
+    private static double? GetDouble(JsonElement element, string propertyName) =>
+        element.TryGetProperty(propertyName, out var property) && property.ValueKind == JsonValueKind.Number && property.TryGetDouble(out var value)
+            ? value
+            : null;
 
     private static async Task DisposeFactoryTempDirAsync(WebApplicationFactory<Program> factory, string tempDir)
     {
         await factory.DisposeAsync();
+        Serilog.Log.CloseAndFlush();
         SqliteConnection.ClearAllPools();
-        if (Directory.Exists(tempDir))
+        for (var attempt = 0; attempt < 5; attempt++)
         {
-            Directory.Delete(tempDir, recursive: true);
+            try
+            {
+                if (Directory.Exists(tempDir))
+                {
+                    Directory.Delete(tempDir, recursive: true);
+                }
+
+                return;
+            }
+            catch (IOException) when (attempt < 4)
+            {
+                await Task.Delay(100);
+            }
         }
     }
+}
+
+[ApiController]
+public sealed class TestFailureController : ControllerBase
+{
+    [HttpGet("/api/test-failures/throw")]
+    public IActionResult Throw() => throw new InvalidOperationException("Synthetic TSK-0105 test failure");
 }

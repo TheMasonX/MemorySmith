@@ -1,0 +1,63 @@
+﻿{
+  "id": "tsk-0160-enforce-page-visibility-rules-in-static-docs-publishing",
+  "key": "TSK-0160",
+  "title": "Enforce page visibility rules in static docs publishing",
+  "description": "Problem: runtime page/page-asset APIs enforce page visibility, but the static docs generator currently renders every markdown file under Data/Pages and copies every non-markdown file into docs/output/wiki. Current page sidecars include Admin-only pages, so the GitHub Pages export can publish content that the live app would hide behind Admin page visibility.\n\nEvidence from the 2026-05-25 deepdive:\n- docs/build_pages_site.py builds page_files = sorted(PAGES_DIR.rglob(\u0022*.md\u0022)) with no sidecar visibility filter.\n- docs/build_pages_site.py copy_pages_assets() copies every non-.md file under Data/Pages, which includes .page.json sidecars.\n- Data/Pages/features/admin-and-auth.page.json and Data/Pages/features/proposals-and-governance.page.json currently set minimumRole to Admin.\n- Runtime /page-assets serving in Program.cs checks FilePageService.GetAssetAccessInfoAsync and has tests, but the static generator is a separate publication path.\n\nDesired outcome: static publication must make an explicit visibility decision instead of silently publishing every page and metadata sidecar. The safest default is to publish only Anonymous pages/assets unless a deliberate internal-docs build mode is requested.\n\nScope:\n- In scope: teach docs/build_pages_site.py to read .page.json sidecars, exclude non-Anonymous pages by default, avoid copying .page.json metadata, and copy only assets referenced by included pages or explicitly safe static assets.\n- In scope: document the static docs visibility rule in the wiki health/docs publishing runbook.\n- Out of scope: changing runtime page visibility semantics.\n\nAcceptance criteria:\n- Static docs export excludes Admin and Authenticated pages by default.\n- Static docs export does not publish .page.json sidecars.\n- Asset copying cannot leak assets referenced only by excluded pages.\n- A deliberate opt-in flag exists if an internal all-pages export is needed, and it is clearly labeled as non-public.\n- Tests or a script-level validation fixture covers Anonymous, Authenticated, and Admin page sidecars plus asset-copy behavior.\n\nValidation:\n- Run the static docs build and verify excluded pages/sidecars/assets are absent from docs/output/wiki.\n- Run ./Scripts/Test-PageLinks.ps1 and ./Scripts/Test-PagePathLiterals.ps1 after docs/runbook updates.\n- Run ./Scripts/Test-TaskRecords.ps1 after task metadata changes.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "security",
+    "docs",
+    "pages",
+    "publishing",
+    "visibility"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "ops/wiki-health-and-validation",
+    "features/markdown-pages-wiki"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0160-20260525",
+      "author": "AgentSmith",
+      "body": "Created during 2026-05-25 deepdive audit. Runtime page asset visibility is tested, but docs/build_pages_site.py is a separate static publication path and currently does not consult page sidecar visibility.",
+      "createdAtUtc": "2026-05-25T16:35:00Z"
+    },
+    {
+      "id": "c-3ae3895c3ce14dc69f27c97b233f45ce",
+      "author": "TheMasonX",
+      "body": "All docs can be published to github for this project",
+      "createdAtUtc": "2026-05-25T15:53:31.8210208Z"
+    },
+    {
+      "id": "c-0f6978a844ff43dcaf51537f14f8365a",
+      "author": "TheMasonX",
+      "body": "Make a note that this is intentional: the docs are intended as part of the dogfooding, and are available to anyone looking to fork this or use the product themselves. Page visibility is not an issue for this installation, but is included for those for whom it might be.",
+      "createdAtUtc": "2026-05-25T15:55:04.4662638Z"
+    },
+    {
+      "id": "c-331c19a043f343fda543e112303d51f9",
+      "author": "TheMasonX",
+      "body": "\u0022C:\\Users\\norrt\\OneDrive\\Pictures\\Screenshots\\Screenshot 2026-05-25 105542.png\u0022\nNote that it looks like my comments were before, but the timestamps of the agentsmith comment are incorrect, and this commend comes after the other comment:\n\u0060\u0060\u0060\nAgentSmith\n5/25/2026 11:35 AM\nCreated during 2026-05-25 deepdive audit........\n\u0060\u0060\u0060",
+      "createdAtUtc": "2026-05-25T15:57:16.7369113Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T16:35:00Z",
+  "updatedAtUtc": "2026-05-25T15:57:16.7369113Z",
+  "completedAtUtc": null,
+  "revision": 4,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

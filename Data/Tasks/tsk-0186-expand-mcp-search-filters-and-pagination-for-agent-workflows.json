@@ -1,0 +1,44 @@
+{
+  "id": "tsk-0186-expand-mcp-search-filters-and-pagination-for-agent-workflows",
+  "key": "TSK-0186",
+  "title": "Expand MCP search filters and pagination for agent workflows",
+  "description": "Problem: current MemorySmith search tools expose bounded result counts and core filters (`query`, `tags`, `status`, and tool-specific limits), but they do not expose agent-friendly recency filters, score-threshold controls, or pagination. The Claude benchmark surfaced this gap while trying to build iterative retrieval workflows that need to window large result sets, prefer recently updated records, or discard weak semantic matches without brittle client-side post-processing. Public docs and task search show no current owner for that ergonomics gap.\n\nEvidence from 2026-05-26 audit:\n- `README.md` and `Data/Pages/guides/search-and-chat.md` document only the current `query`/`tags`/`status`/`limit`-style arguments.\n- `MemorySmith.App/Services/ChatToolCatalog.cs` and the current search controllers expose no `updatedAfter`, `updatedBefore`, `minScore`, or offset/cursor pagination parameters on the MCP search tools.\n- The Claude benchmark recommendations call out `minScore`, `updatedAfter`/`updatedBefore`, and pagination as missing but useful for agent workflows.\n- Search of `Data/Tasks` found no existing task that owns search-filter or pagination expansion for MCP/agent use.\n\nDesired outcome: external agents can run multi-step retrieval workflows with bounded server-side filtering instead of repeatedly overfetching and trimming results client-side.\n\nScope:\n- In scope: evaluating and, if accepted, adding optional date filters, score-threshold semantics, and pagination/windowing for the MCP search surfaces most useful to agents.\n- In scope: defining score semantics carefully so filters are meaningful for lexical, semantic, hybrid, and unified search rather than misleading.\n- Out of scope: page embeddings, major ranking redesign, or breaking existing tool signatures.\n\nAcceptance criteria:\n- A documented decision exists for whether and where to add recency filters, score-threshold controls, and pagination.\n- Any accepted parameters are implemented with backward-compatible defaults and clear semantics.\n- Focused tests cover the new filtering/pagination behavior.\n- Public docs explain the new parameters and any limitations, especially around score interpretation.\n\nValidation:\n- Add focused tests for the affected search tools/endpoints.\n- Run the affected MCP/search test slice.\n- Run `./Scripts/Test-TaskRecords.ps1` after task creation/update.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "AgentSmith",
+  "labels": [
+    "api",
+    "mcp",
+    "search",
+    "tooling"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "features/api-and-mcp",
+    "guides/search-and-chat"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0186-20260526",
+      "author": "AgentSmith",
+      "body": "Created during Claude benchmark triage to capture the still-unowned search ergonomics gap around recency filters, score thresholds, and pagination for external agent workflows.",
+      "createdAtUtc": "2026-05-26T19:21:09.5835278Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-26T19:21:09.5835278Z",
+  "updatedAtUtc": "2026-05-26T19:21:09.5835278Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

@@ -151,11 +151,19 @@ Use relative configuration values:
 {
   "EmbeddingsEnabled": true,
   "ModelPath": "Models/embedding-model.onnx",
-  "VocabularyPath": "Models/vocab.txt"
+  "VocabularyPath": "Models/vocab.txt",
+  "TokenizerKind": "WordPiece",
+  "PoolingMode": "Mean"
 }
 ```
 
+`TokenizerKind` and `PoolingMode` are part of the semantic-provider contract and also affect persisted embedding reuse under `Data/Graph/embeddings`. The current built-in provider supports `WordPiece` tokenization and `Mean` or `Cls` pooling; if you point the app at a model family that needs a different tokenizer, `/health` should report that mismatch clearly instead of silently serving stale vectors.
+
 Restart the app and confirm semantic provider status in `/health`.
+
+If you want hardware acceleration, CPU fallback behavior, Windows service deployment, or repo code-index warming/profiling, continue with [Semantic Acceleration Setup Guide](semantic-acceleration-setup.md).
+
+On Windows CUDA hosts, also verify `where.exe cudnn64_9.dll` before expecting GPU activation. The cuDNN local installer can leave the DLLs in `C:\Program Files\NVIDIA\CUDNN\...` without adding that folder to `PATH`, which makes MemorySmith fall back to CPU even though cuDNN is installed.
 
 > [!NOTE]
 > Screenshot placeholder [SYS-SETUP-12]: `/health` semantic provider active state.
@@ -171,6 +179,8 @@ If setup fails, check in this order:
 5. File permissions for `Data/Events`, `Data/Memories`, and `Data/Pages`
 
 Most setup issues come from path mismatches to an unintended `Data` folder.
+
+For a full setting-by-setting map after first run succeeds, use [Configuration Reference](configuration-reference.md).
 
 > [!NOTE]
 > Screenshot placeholder [SYS-SETUP-13]: example `/health` view highlighting a misconfigured path.

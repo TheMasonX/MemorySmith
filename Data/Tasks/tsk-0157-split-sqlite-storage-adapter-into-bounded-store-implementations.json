@@ -1,0 +1,44 @@
+{
+  "id": "tsk-0157-split-sqlite-storage-adapter-into-bounded-store-implementations",
+  "key": "TSK-0157",
+  "title": "Split SQLite storage adapter into bounded store implementations",
+  "description": "Problem: MemorySmith.Storage/SqliteMemorySmithDatabase.cs is 1,269 lines and implements many store contracts in one class: users, roles, provider links, login history, audit logs, settings, version history, semantic index metadata, and API tokens. The file also owns connection setup, migration SQL, seed SQL, query helpers, parameter writers, and row mappers. This concentrates auth/security-sensitive persistence in one review surface.\n\nDesired outcome: preserve the single SQLite provider while decomposing persistence into bounded store implementations or partial modules with clear ownership for each contract family.\n\nScope:\n- In scope: separate connection/migration infrastructure from store-specific query implementations, keep shared helper APIs small, and add characterization coverage before moving security-sensitive queries.\n- Out of scope: changing database schema semantics, replacing SQLite, or broad auth behavior changes.\n\nAcceptance criteria:\n- Store responsibilities are split by domain boundary, such as auth/users/roles/providers, audit/login history, settings, version history, semantic metadata, and API tokens.\n- Migration/seed SQL and shared query helpers have clear ownership and are not duplicated.\n- Existing storage/auth/admin/API tests pass without behavior changes.\n- Reviewers can inspect a change to one store family without scanning the entire SQLite adapter.\n\nValidation:\n- Run focused storage/auth/admin tests that cover SQLite persistence.\n- Run dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj --filter FullyQualifiedName~Auth or the narrow affected suite.\n- Run dotnet build MemorySmith.Storage/MemorySmith.Storage.csproj --nologo.\n- Run ./Scripts/Test-TaskRecords.ps1 after task metadata changes.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "audit",
+    "storage",
+    "sqlite",
+    "architecture",
+    "maintainability"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "workbench/tasks"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0157-20260525",
+      "author": "AgentSmith",
+      "body": "Created during 2026-05-25 deepdive audit. Evidence: source-only largest-file scan listed MemorySmith.Storage/SqliteMemorySmithDatabase.cs at 1,269 lines; method/interface scan showed the class exposes store entry points for users, roles, provider links, login history, audit logs, settings, version history, semantic index metadata, and API tokens plus migration/seed/query-helper responsibilities.",
+      "createdAtUtc": "2026-05-25T16:02:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T16:02:00.0000000Z",
+  "updatedAtUtc": "2026-05-25T16:02:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

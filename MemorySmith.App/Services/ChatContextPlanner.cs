@@ -57,6 +57,12 @@ public static partial class ChatContextPlanner
         var wantsPages = PageIntentRegex().IsMatch(message);
         var wantsMemories = MemoryIntentRegex().IsMatch(message);
         var wantsContextPack = ContextPackIntentRegex().IsMatch(message);
+        var wantsCode = CodeIntentRegex().IsMatch(message);
+
+        if (wantsCode && !wantsMemories && !wantsPages)
+        {
+            return None("Detected codebase/source investigation intent.", "memorysmith_code_search");
+        }
 
         var memoryLimit = memoryBudget;
         var pageLimit = pageBudget;
@@ -117,4 +123,7 @@ public static partial class ChatContextPlanner
 
     [GeneratedRegex(@"\b(?:context\s+pack|references?|conflicts?|backlinks?)\b", RegexOptions.IgnoreCase | RegexOptions.Compiled)]
     private static partial Regex ContextPackIntentRegex();
+
+    [GeneratedRegex(@"\b(?:code|codebase|repo(?:sitory)?|source\s+code|source\s+file(?:s)?|symbol|method|class|interface|implementation|function|csproj|razor|\.cs|\.tsx?|\.jsx?)\b", RegexOptions.IgnoreCase | RegexOptions.Compiled)]
+    private static partial Regex CodeIntentRegex();
 }

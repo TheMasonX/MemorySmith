@@ -1,0 +1,49 @@
+{
+  "Id": "project-wiki-current-validation-baseline",
+  "Title": "Current Validation Baseline",
+  "Content": "The active validation baseline should be tracked under this stable ID rather than in a count-anchored memory key. As of 2026-05-25, `dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj --no-build --list-tests --verbosity normal` listed 297 tests. Repository KB-health checks on the same date also passed for `Scripts/Test-PageLinks.ps1`, `Scripts/Test-PagePathLiterals.ps1`, `Scripts/Test-TaskRecords.ps1`, and a full JSON parse pass over `Data/Memories/**/*.json` with 0 parse errors across 54 memory records. Use `Scripts/Validate-Repo.ps1` as the normal entrypoint, then use the focused page or task validators when only one knowledge-base surface changes. If the listed test count changes again, update this content and supporting evidence without changing the memory ID.",
+  "Status": 2,
+  "Confidence": 0.95,
+  "Tags": [
+    "project-wiki",
+    "documentation",
+    "tests",
+    "current-state",
+    "kind:fact",
+    "audience:developer",
+    "audience:admin",
+    "scope:validation",
+    "scope:wiki-health"
+  ],
+  "References": [
+    "project-wiki-validation-command",
+    "project-wiki-wiki-validation-current",
+    "project-wiki-test-architecture",
+    "project-wiki-logging-telemetry-current"
+  ],
+  "Conflicts": [],
+  "SourceLinks": [
+    {
+      "Label": "Validate-Repo.ps1",
+      "Uri": "%MemorySmithRepo%Scripts/Validate-Repo.ps1"
+    },
+    {
+      "Label": "Test-TaskRecords.ps1",
+      "Uri": "%MemorySmithRepo%Scripts/Test-TaskRecords.ps1"
+    },
+    {
+      "Label": "Test-PageLinks.ps1",
+      "Uri": "%MemorySmithRepo%Scripts/Test-PageLinks.ps1"
+    },
+    {
+      "Label": "Test-PagePathLiterals.ps1",
+      "Uri": "%MemorySmithRepo%Scripts/Test-PagePathLiterals.ps1"
+    },
+    {
+      "Label": "MemorySmith.Tests.csproj",
+      "Uri": "%MemorySmithRepo%MemorySmith.Tests/MemorySmith.Tests.csproj"
+    }
+  ],
+  "UsageCount": 0,
+  "LastUpdated": "2026-05-25T00:20:00Z"
+}

@@ -11,23 +11,45 @@ public class MemorySmithOptions
     public string VarsPath { get; set; } = Path.Combine("..", "Data", "vars.json");
     public string DataProtectionKeysPath { get; set; } = Path.Combine("..", "Data", "Keys");
     public string? SettingsOverridePath { get; set; }
+    public string? SecurityProfile { get; set; }
     public string? ApiKey { get; set; }
     public bool AllowRemoteApi { get; set; }
+    public BlazorOptions Blazor { get; set; } = new();
     public DatabaseOptions Database { get; set; } = new();
     public AuthOptions Auth { get; set; } = new();
     public AuditOptions Audit { get; set; } = new();
     public HistoryOptions History { get; set; } = new();
     public PageOptions Pages { get; set; } = new();
     public SemanticSearchOptions SemanticSearch { get; set; } = new();
+    public CodeSearchOptions CodeSearch { get; set; } = new();
     public TaskSearchOptions TaskSearch { get; set; } = new();
+    public TaskAttachmentOptions TaskAttachments { get; set; } = new();
     public GovernanceOptions Governance { get; set; } = new();
     public MaintenanceOptions Maintenance { get; set; } = new();
     public LimitOptions Limits { get; set; } = new();
     public SourceLinkOptions SourceLinks { get; set; } = new();
+    public McpOptions Mcp { get; set; } = new();
     public ChatOptions Chat { get; set; } = new();
     public MaintenanceAgentOptions MaintenanceAgent { get; set; } = new();
     public LoggingOptions Logging { get; set; } = new();
     public TelemetryOptions Telemetry { get; set; } = new();
+}
+
+public static class MemorySmithSecurityProfiles
+{
+    public const string LocalDev = "local-dev";
+    public const string SecureLocal = "secure-local";
+    public const string RemoteHardened = "remote-hardened";
+
+    public static readonly IReadOnlyList<string> All = [LocalDev, SecureLocal, RemoteHardened];
+
+    public static string Normalize(string? profile) =>
+        All.FirstOrDefault(candidate => string.Equals(candidate, profile, StringComparison.OrdinalIgnoreCase)) ?? SecureLocal;
+}
+
+public class BlazorOptions
+{
+    public long MaximumReceiveMessageSizeBytes { get; set; } = 1024 * 1024;
 }
 
 public class LoggingOptions
@@ -144,12 +166,62 @@ public class PageOptions
 public class SemanticSearchOptions
 {
     public bool EmbeddingsEnabled { get; set; } = true;
+    public bool PrewarmOnStartupEnabled { get; set; } = true;
     public string ModelPath { get; set; } = Path.Combine("Models", "embedding-model.onnx");
     public string VocabularyPath { get; set; } = Path.Combine("Models", "vocab.txt");
+    public string TokenizerKind { get; set; } = "WordPiece";
+    public string PoolingMode { get; set; } = "Mean";
+    public string ExecutionProvider { get; set; } = "Cpu";
+    public bool CpuFallbackEnabled { get; set; } = true;
+    public int CudaDeviceId { get; set; }
+    public string OpenVinoDeviceId { get; set; } = string.Empty;
     public int MaxInputTokens { get; set; } = 512;
     public int MaxIndexedTextCharacters { get; set; } = 6000;
     public string QueryPrefix { get; set; } = "query: ";
     public string DocumentPrefix { get; set; } = "passage: ";
+}
+
+public class CodeSearchOptions
+{
+    public bool Enabled { get; set; } = true;
+    public string RepositoryRootPath { get; set; } = "..";
+    public bool WarmMetadataReuseEnabled { get; set; } = true;
+    public List<string> TargetDirectories { get; set; } =
+    [
+        "MemorySmith.App",
+        "MemorySmith.Core",
+        "MemorySmith.Storage",
+        "MemorySmith.Tests",
+        "MemorySmith.Benchmarks"
+    ];
+    public List<string> IncludedFileExtensions { get; set; } =
+    [
+        ".cs",
+        ".razor",
+        ".csproj",
+        ".js",
+        ".ts",
+        ".tsx",
+        ".jsx",
+        ".json",
+        ".md",
+        ".ps1",
+        ".yml",
+        ".yaml"
+    ];
+    public List<string> IncludePatterns { get; set; } = [];
+    public List<string> ExcludePatterns { get; set; } = [];
+    public int ChunkLineCount { get; set; } = 40;
+    public int ChunkOverlapLineCount { get; set; } = 8;
+    public int IndexWriteBatchSize { get; set; } = 25;
+    public int EmbeddingBatchSize { get; set; } = 1;
+    public int StatusUpdateIntervalDocuments { get; set; } = 25;
+    public bool QueryTimingTelemetryEnabled { get; set; }
+    public int QueryTimingLogInterval { get; set; } = 100;
+    public int QueryTimingSlowThresholdMilliseconds { get; set; } = 500;
+    public int MaxFileBytes { get; set; } = 512 * 1024;
+    public int MaxChunkCharacters { get; set; } = 4000;
+    public int MaxResults { get; set; } = 10;
 }
 
 public class GovernanceOptions
@@ -189,6 +261,12 @@ public class SourceLinkOptions
     public List<string> DeniedFileRoots { get; set; } = [];
 }
 
+public class McpOptions
+{
+    public List<string> EnabledTools { get; set; } = [];
+    public List<string> DisabledTools { get; set; } = [];
+}
+
 public class ChatOptions
 {
     public string Provider { get; set; } = "Ollama";
@@ -223,11 +301,29 @@ public class ChatOptions
     public int MaxHistoryMessages { get; set; } = 16;
     public int MaxAttachmentCharacters { get; set; } = 120000;
     public long MaxAttachmentBytes { get; set; } = 8 * 1024 * 1024;
+    public int AttachmentTempFileRetentionHours { get; set; } = 24;
     public bool ToolCallsEnabled { get; set; } = true;
     public int MaxToolIterations { get; set; } = 2;
     public int MaxToolCallsPerTurn { get; set; } = 3;
     public int MaxToolResultCharacters { get; set; } = 12000;
     public bool AgentWritesEnabled { get; set; }
+    public string AgentWriteApprovalMode { get; set; } = AgentWriteApprovalModes.Manual;
+    public List<string> AgentWriteRoots { get; set; } = [];
+}
+
+public static class AgentWriteApprovalModes
+{
+    public const string Manual = "manual";
+    public const string AutoAccept = "auto_accept";
+
+    public static bool IsAutoAccept(string? value) =>
+        string.Equals(Normalize(value), AutoAccept, StringComparison.OrdinalIgnoreCase);
+
+    public static string Normalize(string? value)
+    {
+        var normalized = (value ?? Manual).Trim().Replace('-', '_');
+        return string.IsNullOrWhiteSpace(normalized) ? Manual : normalized;
+    }
 }
 
 public class ChatModelOption
@@ -299,6 +395,9 @@ public class MaintenanceAgentOptions
         ["embedding_chunking_maintenance"] = true
     };
 
+    [JsonPropertyName("action_ux")]
+    public MaintenanceAgentActionUxOptions ActionUx { get; set; } = new();
+
     [JsonPropertyName("schedule")]
     public MaintenanceAgentScheduleOptions Schedule { get; set; } = new();
 
@@ -307,6 +406,62 @@ public class MaintenanceAgentOptions
 
     [JsonPropertyName("storage")]
     public MaintenanceAgentStorageOptions Storage { get; set; } = new();
+}
+
+public class MaintenanceAgentActionUxOptions
+{
+    [JsonPropertyName("show_accept")]
+    public bool ShowAccept { get; set; } = true;
+
+    [JsonPropertyName("show_respond")]
+    public bool ShowRespond { get; set; } = true;
+
+    [JsonPropertyName("show_reject")]
+    public bool ShowReject { get; set; } = true;
+
+    [JsonPropertyName("default_action")]
+    public string DefaultAction { get; set; } = MaintenanceProposalActionUx.Accept;
+
+    [JsonPropertyName("revision_required")]
+    public bool RevisionRequired { get; set; } = true;
+}
+
+public static class MaintenanceProposalActionUx
+{
+    public const string Accept = "accept";
+    public const string Respond = "respond";
+    public const string Reject = "reject";
+
+    public static readonly IReadOnlyList<string> All = [Accept, Respond, Reject];
+
+    public static string Normalize(string? action) =>
+        All.FirstOrDefault(candidate => string.Equals(candidate, action, StringComparison.OrdinalIgnoreCase)) ?? Accept;
+
+    public static bool IsVisible(MaintenanceAgentActionUxOptions? options, string action)
+    {
+        var requested = Normalize(action);
+        var snapshot = options ?? new MaintenanceAgentActionUxOptions();
+
+        return requested switch
+        {
+            Accept => snapshot.ShowAccept,
+            Respond => snapshot.ShowRespond,
+            Reject => snapshot.ShowReject,
+            _ => false
+        };
+    }
+
+    public static string NormalizeDefaultAction(MaintenanceAgentActionUxOptions? options)
+    {
+        var snapshot = options ?? new MaintenanceAgentActionUxOptions();
+        var requested = Normalize(snapshot.DefaultAction);
+        if (IsVisible(snapshot, requested))
+        {
+            return requested;
+        }
+
+        return All.FirstOrDefault(action => IsVisible(snapshot, action)) ?? Accept;
+    }
 }
 
 public class MaintenanceAgentScheduleOptions
@@ -370,4 +525,10 @@ public class MaintenanceAgentStorageOptions
 public class TaskSearchOptions
 {
     public bool HybridSemanticEnabled { get; set; } = true;
+}
+
+public class TaskAttachmentOptions
+{
+    public string StoragePath { get; set; } = Path.Combine("..", "artifacts", "task-attachments");
+    public long MaxFileBytes { get; set; } = 10 * 1024 * 1024;
 }

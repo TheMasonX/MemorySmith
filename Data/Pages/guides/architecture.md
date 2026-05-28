@@ -47,7 +47,7 @@ Background maintenance handles triage, consolidation, indexing, and telemetry. I
 ## Safety Boundaries
 
 - API and MCP access is local-only by default unless `AllowRemoteApi` is enabled.
-- `ApiKey` can require an `X-Api-Key` header for API and MCP callers.
+- `ApiKey` can require an `X-Api-Key` header for guarded API and MCP callers while leaving browser auth/setup routes available for LAN UI sign-in.
 - Source bundle reads are bounded by size and allowed roots.
 - Raw HTML in rendered pages is disabled by default.
 - Chat tool-call execution is read-only; durable writes require Agent mode and explicit `Chat:AgentWritesEnabled` opt-in, which is disabled by default.

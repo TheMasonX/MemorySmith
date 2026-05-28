@@ -1,0 +1,38 @@
+﻿{
+  "id": "tsk-0176-filter-out-done-tasks-by-default",
+  "key": "TSK-0176",
+  "title": "Filter Out Done Tasks By Default",
+  "description": "Filter out the completed tasks by default. The Refresh and Quick Add buttons can be reduced to icons in order to support this. Perhaps an icon with a tooltip?",
+  "type": "Task",
+  "status": "Done",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [
+    {
+      "id": "c-complete-0176-20260525",
+      "author": "AgentSmith",
+      "body": "Implemented active-by-default task filtering that hides Done and Archived tasks unless the Status filter is changed to All or a specific status. Converted Refresh and Quick Add to tooltip icon buttons to preserve toolbar space. Validated with Release build, browser smoke test on http://127.0.0.1:5091/tasks, focused semantic tests, and Scripts/Validate-Repo.ps1.",
+      "createdAtUtc": "2026-05-25T22:38:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T22:12:08.9958721Z",
+  "updatedAtUtc": "2026-05-25T22:38:00.0000000Z",
+  "completedAtUtc": "2026-05-25T22:38:00.0000000Z",
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

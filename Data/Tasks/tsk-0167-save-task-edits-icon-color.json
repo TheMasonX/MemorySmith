@@ -1,0 +1,38 @@
+﻿{
+  "id": "tsk-0167-save-task-edits-icon-color",
+  "key": "TSK-0167",
+  "title": "Save Task Edits Icon Color",
+  "description": "Save Task Edits Icon Color needs to be blue",
+  "type": "Task",
+  "status": "Done",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [
+    {
+      "id": "c-0167-1",
+      "author": "AgentSmith",
+      "body": "Changed the task detail edit-mode save icon from Color.Success to Color.Primary so Save Task Edits renders with the primary blue affordance. Validation: dotnet build .\\MemorySmith.App\\MemorySmith.App.csproj --nologo passed; route-smoke passed 6/6 against http://127.0.0.1:5099. Browser read-only validation selected TSK-0167 successfully, but edit-only action buttons were not rendered in the unauthenticated page state.",
+      "createdAtUtc": "2026-05-25T20:14:24.5481967Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T17:43:18.326686Z",
+  "updatedAtUtc": "2026-05-25T20:14:24.5481967Z",
+  "completedAtUtc": "2026-05-25T20:14:24.5481967Z",
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

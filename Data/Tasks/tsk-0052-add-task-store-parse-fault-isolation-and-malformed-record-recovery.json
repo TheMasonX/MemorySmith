@@ -4,7 +4,7 @@
   "title": "Add task-store parse fault isolation and malformed-record recovery",
   "description": "Problem: tasks loading currently deserializes all task JSON files with fail-fast behavior; one malformed record can crash task surfaces with HTTP 500.\n\nDesired outcome: preserve task API/page availability by isolating malformed files and surfacing actionable diagnostics for recovery.\n\nScope:\n- In scope: per-file parse try/catch in task loading, structured logging with filename, malformed file quarantine or skip strategy, admin-visible diagnostics, and regression tests.\n- Out of scope: redesign of task schema.\n\nAcceptance criteria:\n- `/tasks` and `/api/tasks` remain available when at least one malformed task file exists.\n- Malformed records are clearly reported with stable error metadata and file identity.\n- Recovery flow is documented and test-covered.\n\nValidation:\n- Introduce a malformed fixture file in isolated test data and verify no 500 on list routes.\n- Verify logs and diagnostics include expected identifiers without leaking sensitive data.",
   "type": "Task",
-  "status": "Backlog",
+  "status": "Done",
   "priority": "High",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -29,14 +29,20 @@
       "author": "AgentSmith",
       "body": "Follow-up convergence task created from runtime evidence of intermittent /tasks 500 due to JSON parse failure in task loading.",
       "createdAtUtc": "2026-05-23T23:20:00.0000000Z"
+    },
+    {
+      "id": "c-close-0052-20260525",
+      "author": "AgentSmith",
+      "body": "Re-evaluation found this implemented in the current branch: FileTaskService isolates per-file JSON parse failures, logs the malformed filename, returns fallback records with load-error metadata, prevents mutation of malformed records, and AppApiContractTests cover /tasks plus /api/tasks availability and bad-request mutation behavior for malformed task files.",
+      "createdAtUtc": "2026-05-25T05:07:34.5964639Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-23T23:20:00.0000000Z",
-  "updatedAtUtc": "2026-05-23T23:20:00.0000000Z",
-  "completedAtUtc": null,
-  "revision": 1,
+  "updatedAtUtc": "2026-05-25T05:07:34.5964639Z",
+  "completedAtUtc": "2026-05-25T05:07:34.5964639Z",
+  "revision": 2,
   "isArchived": false
 }

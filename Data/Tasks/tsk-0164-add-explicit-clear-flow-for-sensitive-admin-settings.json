@@ -1,0 +1,51 @@
+{
+  "id": "tsk-0164-add-explicit-clear-flow-for-sensitive-admin-settings",
+  "key": "TSK-0164",
+  "title": "Add explicit clear flow for sensitive admin settings",
+  "description": "Problem: sensitive admin settings are intentionally write-only in the UI, but the current row state makes a configured secret impossible to clear from `/admin` without using the API directly. AdminSettingsService accepts an empty value for sensitive strings and writes it to the settings override file, but Admin.razor initializes sensitive rows with an empty PendingValue and disables Save while PendingValue equals the masked empty Item.Value. For a configured secret, the operator can type a replacement and save, but cannot intentionally save an empty value because the row is never dirty in that state. This conflicts with the ApiKey help text, which says to enter a new value when rotating or clearing the key.\n\nEvidence from the 2026-05-25 deepdive:\n- AdminSettingsService.ToItem returns Value = string.Empty for every sensitive setting, with DisplayValue set to Configured/Not configured.\n- EditableConfigurationRow initializes PendingValue = item.Value, so sensitive configured rows start with an empty pending value.\n- Admin.razor disables the per-setting Save button when !context.IsDirty.\n- AdminSettingsService.TryConvert for string settings accepts an empty trimmed string, and UpdateAsync writes it through SetJsonValue, so the server/API can clear the value but the UI has no explicit clear action.\n\nDesired outcome: sensitive settings expose an intentional, accessible clear/reset flow without echoing the existing secret and without making accidental blank saves likely.\n\nScope:\n- In scope: add a Clear/Reset secret action or equivalent explicit dirty sentinel for sensitive settings, with confirmation for high-impact keys such as MemorySmith:ApiKey and OAuth client secrets.\n- In scope: keep existing write-only masking semantics; never echo existing secret values into the UI or API response.\n- In scope: clarify operator copy/help text so rotating, replacing, and clearing have distinct affordances.\n- Out of scope: broad redesign of the Admin Configuration workbench or changing where secrets are stored.\n\nAcceptance criteria:\n- A configured sensitive setting can be intentionally cleared from `/admin` without entering a replacement secret.\n- The UI distinguishes unchanged masked value, replacement value, and explicit clear action.\n- Clearing a sensitive setting writes an empty/null override according to the chosen settings semantics and reloads configuration.\n- Audit details record the setting key and a redacted state such as Cleared/Configured, never the old or new secret.\n- Tests cover sensitive setting list masking, replacement save, explicit clear, and audit redaction.\n\nValidation:\n- Add focused AdminSettingsService tests for sensitive replacement and explicit clear behavior.\n- Add focused admin API/UI test coverage where practical.\n- Run AppApiContractTests admin settings coverage.\n- Run ./Scripts/Test-TaskRecords.ps1 after task metadata changes.",
+  "type": "Task",
+  "status": "Done",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "admin",
+    "configuration",
+    "security",
+    "ux",
+    "secrets"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "guides/configuration-reference",
+    "features/admin-and-auth"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0164-20260525",
+      "author": "AgentSmith",
+      "body": "Created during 2026-05-25 deepdive audit. Sensitive settings are masked correctly, but the UI cannot intentionally clear a configured secret because the masked row starts with an empty pending value and Save is disabled until the value changes.",
+      "createdAtUtc": "2026-05-25T17:20:00.0000000Z"
+    },
+    {
+      "id": "c-done-0164-20260526",
+      "author": "AgentSmith",
+      "body": "Implemented an explicit confirmed Clear secret action for configured sensitive admin settings. Validation passed: focused admin settings API and markup tests, plus disposable browser sweep through /admin/setup and /admin Configuration showing MemorySmith:ApiKey moved from Configured to Not configured and persisted as an empty override without exposing the secret.",
+      "createdAtUtc": "2026-05-26T05:57:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T17:20:00.0000000Z",
+  "updatedAtUtc": "2026-05-26T05:57:00.0000000Z",
+  "completedAtUtc": "2026-05-26T05:57:00.0000000Z",
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

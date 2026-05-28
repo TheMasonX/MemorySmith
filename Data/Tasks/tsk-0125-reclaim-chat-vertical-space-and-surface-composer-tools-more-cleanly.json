@@ -1,0 +1,44 @@
+{
+  "id": "tsk-0125-reclaim-chat-vertical-space-and-surface-composer-tools-more-cleanly",
+  "key": "TSK-0125",
+  "title": "Reclaim Chat vertical space and surface composer tools more cleanly",
+  "description": "Problem: the live `/chat` review showed the header and model controls taking a large amount of vertical room before any conversation content appears. The native attachment input, context status, send-on-enter checkbox, disabled step/stop icons, and full-width send button create a visually heavy composer even when there are no messages.\n\nDesired outcome: Chat prioritizes the message stream and active composer while keeping model, diagram, attachment, trace, and sidebar controls easy to discover.\n\nScope:\n- In scope: compact model/diagram control placement, composer toolbar consolidation, attachment affordance alignment with TSK-0122, disabled control presentation, sidebar toggle discoverability, and empty-state spacing.\n- Out of scope: changing chat persistence, model invocation, or agent behavior.\n\nAcceptance criteria:\n- The message stream gets noticeably more first-viewport space on narrow screens.\n- Model/profile/diagram controls remain discoverable but do not dominate the route header.\n- Composer actions have a consistent hierarchy and avoid redundant full-width treatment where compact controls would be clearer.\n- Empty chat state still communicates readiness without wasting vertical space.\n\nValidation:\n- Capture `/chat` screenshots with and without sidebar open at narrow and desktop widths.\n- Run focused browser checks for model selection, sidebar toggle, composer focus, attachment affordance, and send-button availability.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "ui",
+    "chat",
+    "screen-real-estate",
+    "discoverability",
+    "audit-vetted"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "workbench/tasks"
+  ],
+  "comments": [
+    {
+      "id": "c-0125-1",
+      "author": "AgentSmith",
+      "body": "Created from 2026-05-25 live visual review: `/chat` header/model controls plus composer controls consumed much of the first viewport before useful message content.",
+      "createdAtUtc": "2026-05-25T00:00:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T00:00:00.0000000Z",
+  "updatedAtUtc": "2026-05-25T00:00:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

@@ -46,7 +46,7 @@ public class MaintenanceAgentWorkflowTests
         _diff = new MaintenanceDiffService();
         _permissions = new MaintenanceWritePermissionService(_config);
         var store = new FileMaintenanceProposalStore(_config, _permissions, _diff);
-        _workflow = new MaintenanceProposalWorkflow(store, new TestCurrentUserContext());
+        _workflow = new MaintenanceProposalWorkflow(store, new TestCurrentUserContext(), options: Options.Create(options));
     }
 
     [TearDown]
@@ -117,9 +117,43 @@ public class MaintenanceAgentWorkflowTests
             Assert.That(needsRevision.Comments.Single().Comment, Is.EqualTo("Please cite the source page."));
             Assert.That(needsRevision.History.Single(item => item.Action == "respond").Comment, Is.Null);
             Assert.That(approveError!.Message, Does.Contain("Only open"));
+            Assert.That(submitted.Metadata.BatchId, Is.EqualTo(submitted.ProposalId));
+            Assert.That(submitted.Metadata.ParentProposalId, Is.Null);
+            Assert.That(submitted.Metadata.Attempt, Is.EqualTo(1));
+            Assert.That(submitted.History.Single(item => item.Action == "open").Comment, Does.Contain("batchId="));
             Assert.That(revised.Metadata.Supersedes, Does.Contain(submitted.ProposalId));
+            Assert.That(revised.Metadata.BatchId, Is.EqualTo(submitted.Metadata.BatchId));
+            Assert.That(revised.Metadata.ParentProposalId, Is.EqualTo(submitted.ProposalId));
+            Assert.That(revised.Metadata.Attempt, Is.EqualTo(2));
+            Assert.That(revised.History.Single(item => item.Action == "open").Comment, Does.Contain($"parentProposalId={submitted.ProposalId}"));
             Assert.That(approved.Status, Is.EqualTo(MaintenanceProposalStatuses.Approved));
             Assert.That(approved.History.Select(item => item.Action), Does.Contain("approve"));
+            Assert.That(applied, Is.EqualTo("# Proposal\n\nAfter"));
+        });
+    }
+
+    [Test]
+    public async Task ProposalLifecycle_ActionUxCanAcceptNeedsRevisionProposalWithoutReplacement()
+    {
+        var workflow = CreateWorkflow(new MaintenanceAgentActionUxOptions
+        {
+            RevisionRequired = false
+        });
+        var targetPath = Path.Combine(_tempDir, "Pages", "proposal-note-accept-without-revision.md");
+        Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
+        await File.WriteAllTextAsync(targetPath, "# Proposal\n\nBefore");
+        var proposal = CreateProposal(targetPath, "# Proposal\n\nBefore", "# Proposal\n\nAfter");
+
+        var submitted = await workflow.SubmitAsync(proposal, CancellationToken.None);
+        var needsRevision = await workflow.RespondAsync(submitted.ProposalId, "Keep the diff, but adjust the note later.", CancellationToken.None);
+        var accepted = await workflow.ApproveAsync(needsRevision.ProposalId, "Accepting without a replacement proposal.", CancellationToken.None);
+        var applied = await File.ReadAllTextAsync(targetPath);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(needsRevision.Status, Is.EqualTo(MaintenanceProposalStatuses.NeedsRevision));
+            Assert.That(accepted.Status, Is.EqualTo(MaintenanceProposalStatuses.Approved));
+            Assert.That(accepted.History.Select(item => item.Action), Does.Contain("approve"));
             Assert.That(applied, Is.EqualTo("# Proposal\n\nAfter"));
         });
     }
@@ -168,6 +202,33 @@ public class MaintenanceAgentWorkflowTests
             Assert.That(() => _permissions.ValidateWritablePath(outside), Throws.InvalidOperationException.With.Message.Contains("outside"));
             Assert.That(() => _permissions.ValidateWritablePath(configPath), Throws.InvalidOperationException.With.Message.Contains("schema or configuration"));
         });
+    }
+
+    private MaintenanceProposalWorkflow CreateWorkflow(MaintenanceAgentActionUxOptions? actionUx = null)
+    {
+        var options = new MemorySmithOptions
+        {
+            MaintenanceAgent = new MaintenanceAgentOptions
+            {
+                Read = [Path.Combine(_tempDir, "Memories"), Path.Combine(_tempDir, "Pages")],
+                Write = [Path.Combine(_tempDir, "Memories", "Working"), Path.Combine(_tempDir, "Pages")],
+                UseLlm = false,
+                ActionUx = actionUx ?? new MaintenanceAgentActionUxOptions(),
+                Storage = new MaintenanceAgentStorageOptions
+                {
+                    ProposalsPath = Path.Combine(_tempDir, "Proposals"),
+                    TopicMapCachePath = Path.Combine(_tempDir, "Graph", "topic-map-cache.json"),
+                    LastRunPath = Path.Combine(_tempDir, "Events", "maintenance-agent-last-run.json"),
+                    ActivityLogPath = Path.Combine(_tempDir, "Events", "maintenance-agent-runs.jsonl"),
+                    TranscriptLogPath = Path.Combine(_tempDir, "Events", "maintenance-agent-transcript.jsonl")
+                }
+            }
+        };
+
+        var config = new MaintenanceAgentConfigService(new StaticOptionsMonitor<MemorySmithOptions>(options));
+        var permissions = new MaintenanceWritePermissionService(config);
+        var store = new FileMaintenanceProposalStore(config, permissions, _diff);
+        return new MaintenanceProposalWorkflow(store, new TestCurrentUserContext(), options: Options.Create(options));
     }
 
     [Test]
@@ -275,6 +336,32 @@ public class MaintenanceAgentWorkflowTests
             Assert.That(loaded.OllamaEndpoint, Is.EqualTo("http://localhost:6789"));
             Assert.That(loaded.Model, Is.EqualTo("fallback-model"));
             Assert.That(loaded.AgentVersion, Is.EqualTo("maintenance-agent.v1"));
+        });
+    }
+
+    [Test]
+    public void ConfigService_RebasesStandardRootEntriesAgainstOverriddenWikiPaths()
+    {
+        var dataPath = Path.Combine(_tempDir, "PublishedWiki", "Memories");
+        var pagesPath = Path.Combine(_tempDir, "PublishedWiki", "Pages");
+        var options = new MemorySmithOptions
+        {
+            DataPath = dataPath,
+            PagesPath = pagesPath,
+            MaintenanceAgent = new MaintenanceAgentOptions
+            {
+                Read = [Path.Combine("..", "Data", "Memories"), Path.Combine("..", "Data", "Pages")],
+                Write = [Path.Combine("..", "Data", "Memories", "Working"), Path.Combine("..", "Data", "Pages")]
+            }
+        };
+        var service = new MaintenanceAgentConfigService(new StaticOptionsMonitor<MemorySmithOptions>(options));
+
+        var loaded = service.GetCurrent();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(loaded.Read, Is.EqualTo(new[] { dataPath, pagesPath }));
+            Assert.That(loaded.Write, Is.EqualTo(new[] { Path.Combine(dataPath, "Working"), pagesPath }));
         });
     }
 
@@ -670,6 +757,10 @@ public class MaintenanceAgentWorkflowTests
             Assert.That(original.Metadata.SupersededBy, Does.Contain(result.RevisedProposal!.ProposalId));
             Assert.That(original.History.Select(item => item.Action), Does.Contain("agent_revision_proposed"));
             Assert.That(result.RevisedProposal.Metadata.Supersedes, Does.Contain(original.ProposalId));
+            Assert.That(result.RevisedProposal.Metadata.BatchId, Is.EqualTo(original.Metadata.BatchId));
+            Assert.That(result.RevisedProposal.Metadata.ParentProposalId, Is.EqualTo(original.ProposalId));
+            Assert.That(result.RevisedProposal.Metadata.Attempt, Is.EqualTo(2));
+            Assert.That(result.RevisedProposal.History.Single(item => item.Action == "open").Comment, Does.Contain("Lineage: batchId="));
             Assert.That(result.RevisedProposal.Changes.Single().After, Is.EqualTo("after revised"));
         });
     }

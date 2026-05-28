@@ -4,7 +4,7 @@
   "Title": "Add request, exception, and problem-details correlation with latency-first telemetry.",
   "Description": "The app logs some background-service failures, but the HTTP pipeline does not currently advertise Serilog request logging, a global exception handler, or problem-details responses with correlation metadata. Add request logging middleware, a centralized exception handling path, and consistent correlation identifiers so operators can follow a user-visible failure from response to log entry. Treat latency and performance as first-class fields: request duration, route/template, status code, and key subsystem timings should be captured in structured logs for every request and enriched for error paths. Acceptance criteria: normal requests emit structured request events with latency fields, unhandled failures are captured once through the central pipeline, API error payloads expose a supportable correlation identifier without leaking sensitive internals, high-latency/error requests are easy to isolate by query, and log-level/threshold controls are configurable from the existing admin configuration surface. Validation: trigger normal and failing requests and confirm response correlation ids map to structured log records that include timing metrics, then adjust at least one logging threshold via admin settings and verify the emitted event volume changes as expected.",
   "Type": "Task",
-  "Status": "Backlog",
+  "Status": "Done",
   "Priority": "High",
   "AssigneeMode": "Custom",
   "AssigneeDirectoryId": null,
@@ -32,14 +32,20 @@
       "Author": "AgentSmith",
       "Body": "Evidence: repository search under `MemorySmith.App/**` found no `UseSerilogRequestLogging`, `UseExceptionHandler`, or `AddProblemDetails` usage, while current explicit logging call sites are limited to a handful of service-level warnings and errors.",
       "CreatedAtUtc": "2026-05-25T00:12:30.0000000Z"
+    },
+    {
+      "Id": "c-0105-2",
+      "Author": "AgentSmith",
+      "Body": "Closing after re-verification corrected the stale audit note. Evidence: `MemorySmith.App/Program.cs` now registers `AddProblemDetails`, central `UseExceptionHandler`, and `UseSerilogRequestLogging`; request logging enriches `TraceId`, `CorrelationId`, `RequestPath`, `RequestMethod`, `StatusCode`, and `Elapsed`, with `SlowRequestThresholdMs` elevating slow requests to warning. `MemorySmith.App/Services/AdminSettingsService.cs` exposes `MemorySmith:Logging:RequestLoggingEnabled`, `SlowRequestThresholdMs`, log level, structured sink, metrics window, sample limit, and max diagnostics results through admin settings. Added `AppApiContractTests.RequestPipeline_EmitsProblemDetailsTraceIdAndStructuredRequestCorrelation`, which triggers a normal request and a test-only failing request, verifies `application/problem+json` with `traceId` and no internal exception text, confirms the same trace id reaches structured request/exception logs, and verifies threshold-driven warning-level request logging. Validation: `dotnet test MemorySmith.Tests\\MemorySmith.Tests.csproj --filter \"FullyQualifiedName~AppApiContractTests\" --nologo --verbosity minimal` passed 26/26 on 2026-05-25.",
+      "CreatedAtUtc": "2026-05-25T05:24:34.0729017Z"
     }
   ],
   "EpicId": null,
   "ParentId": null,
   "DueDateUtc": null,
   "CreatedAtUtc": "2026-05-25T00:12:30.0000000Z",
-  "UpdatedAtUtc": "2026-05-25T00:12:30.0000000Z",
-  "CompletedAtUtc": null,
-  "Revision": 1,
+  "UpdatedAtUtc": "2026-05-25T05:24:34.0729017Z",
+  "CompletedAtUtc": "2026-05-25T05:24:34.0729017Z",
+  "Revision": 2,
   "IsArchived": false
 }

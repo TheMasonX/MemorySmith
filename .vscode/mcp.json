@@ -1,7 +1,7 @@
 {
 	"servers": {
 		"MemorySmithWiki": {
-			"url": "http://localhost:5089/mcp",
+			"url": "https://memorysmith.home.arpa:7090/mcp",
 			"type": "http"
 		}
 	},

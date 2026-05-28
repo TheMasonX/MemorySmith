@@ -6,7 +6,7 @@
 @inject MaintenanceTopicMapService TopicMapService
 @inject ISnackbar Snackbar
 
-<PageTitle>Maintenance</PageTitle>
+<PageTitle>Maintenance - MemorySmith</PageTitle>
 
 <div class="wiki-workbench maintenance-workbench">
     <section class="wiki-commandbar maintenance-commandbar" aria-label="Maintenance">
@@ -45,47 +45,51 @@
                     <strong>Task trace history</strong>
                     <span class="wiki-muted">@_activity.Count logged</span>
                 </div>
-                @if (_lastRun?.Warnings.Count > 0)
-                {
-                    <div class="proposal-run-warnings">
-                        @foreach (var warning in _lastRun.Warnings.Take(3))
-                        {
-                            <span>@warning</span>
-                        }
-                    </div>
-                }
-                @if (_activity.Count == 0)
-                {
-                    <div class="wiki-empty-state">No maintenance task activity has been logged yet.</div>
-                }
-                else
-                {
-                    <div class="maintenance-activity-list maintenance-page-activity-list">
-                        @foreach (var activity in _activity)
-                        {
-                            <article class="maintenance-activity-row @(activity.Skipped ? "is-skipped" : null)">
-                                <span class="maintenance-activity-main">
-                                    <strong>@ActivitySummary(activity)</strong>
-                                    <small>@activity.FinishedAtUtc.ToLocalTime().ToString("g")</small>
-                                </span>
-                                <span>@activity.FindingCount finding(s) - @activity.ProposalCount proposal(s)</span>
-                                @if (activity.ProposalIds.Count > 0)
-                                {
-                                    <div class="maintenance-activity-proposals" aria-label="Maintenance proposals from this run">
-                                        @foreach (var proposalId in activity.ProposalIds)
-                                        {
-                                            <a href="@ProposalHref(proposalId)">@proposalId</a>
-                                        }
-                                    </div>
-                                }
-                                @foreach (var warning in activity.Warnings.Take(3))
-                                {
-                                    <small class="maintenance-activity-warning">@warning</small>
-                                }
-                            </article>
-                        }
-                    </div>
-                }
+                <div class="maintenance-panel-scroll maintenance-panel-scroll-trace">
+                    @if (_lastRun?.Warnings.Count > 0)
+                    {
+                        <div class="proposal-run-warnings">
+                            @foreach (var warning in _lastRun.Warnings.Take(3))
+                            {
+                                <span>@warning</span>
+                            }
+                        </div>
+                    }
+                    @if (_activity.Count == 0)
+                    {
+                        <div class="wiki-empty-state">No maintenance task activity has been logged yet.</div>
+                    }
+                    else
+                    {
+                        <div class="maintenance-activity-list maintenance-page-activity-list">
+                            @foreach (var activity in _activity)
+                            {
+                                <article class="maintenance-activity-row @(activity.Skipped ? "is-skipped" : null)">
+                                    <span class="maintenance-activity-main">
+                                        <strong>@ActivitySummary(activity)</strong>
+                                        <small>@activity.FinishedAtUtc.ToLocalTime().ToString("g")</small>
+                                    </span>
+                                    <span>@activity.FindingCount finding(s) - @activity.ProposalCount proposal(s)</span>
+                                    @if (activity.ProposalIds.Count > 0)
+                                    {
+                                        <div class="maintenance-activity-proposals" aria-label="Maintenance proposals from this run">
+                                            @foreach (var proposalId in activity.ProposalIds)
+                                            {
+                                                <MudTooltip Text="@proposalId" Placement="Placement.Top">
+                                                    <a class="maintenance-proposal-link" href="@ProposalHref(proposalId)">@proposalId</a>
+                                                </MudTooltip>
+                                            }
+                                        </div>
+                                    }
+                                    @foreach (var warning in activity.Warnings.Take(3))
+                                    {
+                                        <small class="maintenance-activity-warning">@warning</small>
+                                    }
+                                </article>
+                            }
+                        </div>
+                    }
+                </div>
             </section>
 
             <section class="maintenance-panel maintenance-action-history" aria-label="Maintenance proposal action history">
@@ -93,29 +97,33 @@
                     <strong>Proposal action history</strong>
                     <span class="wiki-muted">@ProposalActionRows.Count action(s)</span>
                 </div>
-                @if (ProposalActionRows.Count == 0)
-                {
-                    <div class="wiki-empty-state">No proposal actions have been recorded yet.</div>
-                }
-                else
-                {
-                    <div class="maintenance-action-list">
-                        @foreach (var action in ProposalActionRows)
-                        {
-                            <article class="maintenance-action-row">
-                                <header>
-                                    <strong>@action.Action</strong>
-                                    <a href="@ProposalHref(action.ProposalId)">@action.ProposalId</a>
-                                </header>
-                                <small>@action.User at @action.Timestamp.ToLocalTime().ToString("g")</small>
-                                @if (!string.IsNullOrWhiteSpace(action.Comment))
-                                {
-                                    <p>@action.Comment</p>
-                                }
-                            </article>
-                        }
-                    </div>
-                }
+                <div class="maintenance-panel-scroll maintenance-panel-scroll-actions">
+                    @if (ProposalActionRows.Count == 0)
+                    {
+                        <div class="wiki-empty-state">No proposal actions have been recorded yet.</div>
+                    }
+                    else
+                    {
+                        <div class="maintenance-action-list">
+                            @foreach (var action in ProposalActionRows)
+                            {
+                                <article class="maintenance-action-row">
+                                    <header>
+                                        <strong>@action.Action</strong>
+                                        <MudTooltip Text="@action.ProposalId" Placement="Placement.Top">
+                                            <a class="maintenance-proposal-link" href="@ProposalHref(action.ProposalId)">@action.ProposalId</a>
+                                        </MudTooltip>
+                                    </header>
+                                    <small>@action.User at @action.Timestamp.ToLocalTime().ToString("g")</small>
+                                    @if (!string.IsNullOrWhiteSpace(action.Comment))
+                                    {
+                                        <p>@action.Comment</p>
+                                    }
+                                </article>
+                            }
+                        </div>
+                    }
+                </div>
             </section>
         </div>
 
@@ -137,32 +145,43 @@
                 </div>
                 <div class="admin-maintenance-transcript-search">
                     <MudTextField T="string" Value="@_maintenanceTranscriptSearch" ValueChanged="@((string value) => _maintenanceTranscriptSearch = value)" Immediate="true" Label="Search transcripts" Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Disabled="@_isBusy" />
-                    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Search" Disabled="@_isBusy" OnClick="LoadMaintenanceTranscriptsAsync">Search</MudButton>
+                    <MudTooltip Text="Search">
+                        <MudIconButton Icon="@Icons.Material.Filled.Search"
+                                       Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       Size="Size.Small"
+                                       Class="wiki-search-submit"
+                                       Disabled="@_isBusy"
+                                       OnClick="LoadMaintenanceTranscriptsAsync"
+                                       aria-label="Search" />
+                    </MudTooltip>
                 </div>
-                @if (_maintenanceTranscripts.Count == 0)
-                {
-                    <div class="wiki-empty-state">No maintenance-agent transcript entries have been logged yet.</div>
-                }
-                else
-                {
-                    <div class="admin-maintenance-transcript-list">
-                        @foreach (var entry in _maintenanceTranscripts)
-                        {
-                            <article class="admin-maintenance-transcript">
-                                <header>
-                                    <strong>@entry.CreatedAtUtc.ToLocalTime().ToString("g")</strong>
-                                    <span>@TranscriptProviderLabel(entry)</span>
-                                </header>
-                                <p><strong>Admin:</strong> @entry.UserMessage</p>
-                                <p><strong>Agent:</strong> @entry.AssistantMessage</p>
-                                @if (entry.Warnings.Count > 0)
-                                {
-                                    <small class="admin-maintenance-warning">@entry.Warnings.First()</small>
-                                }
-                            </article>
-                        }
-                    </div>
-                }
+                <div class="maintenance-panel-scroll maintenance-panel-scroll-transcripts">
+                    @if (_maintenanceTranscripts.Count == 0)
+                    {
+                        <div class="wiki-empty-state">No maintenance-agent transcript entries have been logged yet.</div>
+                    }
+                    else
+                    {
+                        <div class="admin-maintenance-transcript-list">
+                            @foreach (var entry in _maintenanceTranscripts)
+                            {
+                                <article class="admin-maintenance-transcript">
+                                    <header>
+                                        <strong>@entry.CreatedAtUtc.ToLocalTime().ToString("g")</strong>
+                                        <span>@TranscriptProviderLabel(entry)</span>
+                                    </header>
+                                    <p><strong>Admin:</strong> @entry.UserMessage</p>
+                                    <p><strong>Agent:</strong> @entry.AssistantMessage</p>
+                                    @if (entry.Warnings.Count > 0)
+                                    {
+                                        <small class="admin-maintenance-warning">@entry.Warnings.First()</small>
+                                    }
+                                </article>
+                            }
+                        </div>
+                    }
+                </div>
             </section>
         </aside>
     </section>

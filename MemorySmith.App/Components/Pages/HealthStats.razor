@@ -6,7 +6,7 @@
 @inject LoggingObservabilityService LogObservability
 @implements IDisposable
 
-<PageTitle>Health</PageTitle>
+<PageTitle>Health - MemorySmith</PageTitle>
 
 <div class="health-workbench">
 <div class="health-header">
@@ -120,6 +120,7 @@
                 <span>Pages Path</span><strong>@_diagnostics.Configuration.PagesPath</strong>
                 <span>Event Log</span><strong>@_diagnostics.Configuration.EventLogPath</strong>
                 <span>Variables</span><strong>@_diagnostics.Configuration.VarsPath</strong>
+                <span>Tag Policy</span><strong>@FormatTagPolicyStatus(_diagnostics.Configuration.TagPolicy)</strong>
                 <span>URLs</span><strong>@FormatUrls(_diagnostics.Configuration.ConfiguredUrls)</strong>
                 <span>Service</span><strong>@_diagnostics.Configuration.WindowsServiceName</strong>
                 <span>API Key</span><strong>@(_diagnostics.Configuration.ApiKeyConfigured ? "Configured" : "Not configured")</strong>
@@ -320,13 +321,21 @@
         return string.Join(", ", roots.DefaultIfEmpty("None"));
     }
 
+    private static string FormatTagPolicyStatus(TagPolicyLoadStatus status) =>
+        status.LoadedFromFile ? $"Loaded / {status.Path}" : $"Fallback ({status.Reason}) / {status.Path}";
+
     private static string FormatChatProvider(ChatOptions chat) =>
         $"{chat.Provider} / Ollama:{chat.OllamaModel} / GitHub:{chat.GitHubModel} / {chat.SystemPromptPath}";
 
     private static string FormatSemanticSearch(SemanticSearchOptions semanticSearch, EmbeddingProviderStatus status) =>
         semanticSearch.EmbeddingsEnabled
-            ? $"{(status.Available ? "Embeddings available" : "Token fallback")} / {status.Reason}"
+            ? status.Available
+                ? $"Embeddings available / active {FormatExecutionProvider(status.ActiveExecutionProvider, status.ActiveExecutionDevice)} / {status.Reason}"
+                : $"Token fallback / requested {FormatExecutionProvider(status.RequestedExecutionProvider, status.RequestedExecutionDevice)} / {status.Reason}"
             : "Token scoring only";
+
+    private static string FormatExecutionProvider(string provider, string? device) =>
+        string.IsNullOrWhiteSpace(device) ? provider : $"{provider} ({device})";
 
     private static string FormatTelemetryExport(TelemetryOptions telemetry)
     {
@@ -338,6 +347,80 @@
         var protocol = string.IsNullOrWhiteSpace(telemetry.OtlpProtocol) ? "grpc" : telemetry.OtlpProtocol;
         var endpoint = string.IsNullOrWhiteSpace(telemetry.OtlpEndpoint) ? "(unset endpoint)" : telemetry.OtlpEndpoint;
         return $"{protocol} -> {endpoint}";
+    }
+
+    private static string MaskOperationalValue(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "Not set";
+        }
+
+        if (LooksLikeEmail(value))
+        {
+            return MaskEmail(value);
+        }
+
+        if (LooksLikeLocalPath(value))
+        {
+            return MaskPath(value);
+        }
+
+        return SummarizeIdentifier(value);
+    }
+
+    private static bool LooksLikeEmail(string value)
+    {
+        var atIndex = value.IndexOf('@');
+        return atIndex > 0 && atIndex < value.Length - 1 && value[(atIndex + 1)..].Contains('.');
+    }
+
+    private static bool LooksLikeLocalPath(string value) => value.Contains(@":\", StringComparison.Ordinal) || value.StartsWith(@"\\", StringComparison.Ordinal) || value.StartsWith("/", StringComparison.Ordinal);
+
+    private static string MaskEmail(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "Not set";
+        }
+
+        var atIndex = value.IndexOf('@');
+        if (atIndex <= 0 || atIndex == value.Length - 1)
+        {
+            return SummarizeIdentifier(value);
+        }
+
+        var local = value[..atIndex];
+        var domain = value[(atIndex + 1)..];
+        var visibleLocal = local.Length <= 2 ? local[..1] : local[..Math.Min(2, local.Length)];
+        return $"{visibleLocal}...@{domain}";
+    }
+
+    private static string MaskPath(string value)
+    {
+        var trimmed = value.Trim();
+        var separator = trimmed.Contains('\\') ? '\\' : '/';
+        var parts = trimmed.Split(separator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var leaf = parts.LastOrDefault() ?? "path";
+
+        if (trimmed.Length >= 2 && trimmed[1] == ':')
+        {
+            return $"{trimmed[..2]}{separator}...{separator}{leaf}";
+        }
+
+        return trimmed.StartsWith(@"\\", StringComparison.Ordinal)
+            ? $@"\\...\{leaf}"
+            : $"...{separator}{leaf}";
+    }
+
+    private static string SummarizeIdentifier(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "Not set";
+        }
+
+        return value.Length <= 10 ? value : $"{value[..4]}...{value[^4..]}";
     }
 
     private static string FormatPathDetails(StoragePathStatus path) => path switch

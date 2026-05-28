@@ -1,3 +1,4 @@
+using System.Text.Json;
 using MemorySmith.App.Services;
 using MemorySmith.Core.Models;
 using MemorySmith.Storage;
@@ -24,6 +25,34 @@ public class TagGovernanceTests
         {
             Directory.Delete(_tempRoot, recursive: true);
         }
+    }
+
+    [Test]
+    public void CreateDefault_MatchesRepositoryTagPolicy()
+    {
+        var root = FindRepositoryRoot();
+        var expected = JsonSerializer.Deserialize<TagPolicy>(
+            File.ReadAllText(Path.Combine(root, "Data", "Policies", "tag-policy.json")),
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        var actual = TagPolicy.CreateDefault();
+
+        Assert.That(expected, Is.Not.Null);
+        Assert.Multiple(() =>
+        {
+            Assert.That(actual.Mode, Is.EqualTo(expected!.Mode));
+            Assert.That(
+                actual.Namespaces.Select(item => $"{item.Name}|{item.Cardinality}|{item.ValueKind}|{string.Join(',', item.AllowedValues)}"),
+                Is.EqualTo(expected.Namespaces.Select(item => $"{item.Name}|{item.Cardinality}|{item.ValueKind}|{string.Join(',', item.AllowedValues)}")));
+            Assert.That(actual.PlainTags.Mode, Is.EqualTo(expected.PlainTags.Mode));
+            Assert.That(actual.PlainTags.Allowlist, Is.EquivalentTo(expected.PlainTags.Allowlist));
+            Assert.That(actual.PlainTags.Blocklist, Is.EquivalentTo(expected.PlainTags.Blocklist));
+            Assert.That(actual.PlainTags.Aliases.Count, Is.EqualTo(expected.PlainTags.Aliases.Count));
+            foreach (var pair in expected.PlainTags.Aliases)
+            {
+                Assert.That(actual.PlainTags.Aliases.TryGetValue(pair.Key, out var value), Is.True, $"Missing alias '{pair.Key}'.");
+                Assert.That(value, Is.EqualTo(pair.Value), $"Alias '{pair.Key}' points to the wrong canonical tag.");
+            }
+        });
     }
 
     [Test]
@@ -127,6 +156,58 @@ public class TagGovernanceTests
     }
 
     [Test]
+    public void MemoryViewerMarkup_CollapsesSecondaryFiltersAndRelatedContextByDefault()
+    {
+        var root = FindRepositoryRoot();
+        var markup = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "Components", "Pages", "MemoryViewer.razor"));
+        var css = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "wwwroot", "app.css"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(markup, Does.Contain("wiki-commandbar-main"));
+            Assert.That(markup, Does.Contain("wiki-secondary-filters"));
+            Assert.That(markup, Does.Contain("Search options"));
+            Assert.That(markup, Does.Contain("SecondaryFiltersSummary"));
+            Assert.That(markup, Does.Contain("wiki-related-panel"));
+            Assert.That(markup, Does.Contain("Related context"));
+            Assert.That(markup, Does.Contain("RelatedContextSummary(_selectedRecord)"));
+            Assert.That(css, Does.Contain(".wiki-secondary-filters"));
+            Assert.That(css, Does.Contain(".wiki-secondary-filters-body"));
+            Assert.That(css, Does.Contain(".wiki-related-panel"));
+            Assert.That(css, Does.Contain(".wiki-related-panel[open] > .wiki-related-body"));
+            Assert.That(css, Does.Not.Contain("max-height: 32%;"));
+        });
+    }
+
+    [Test]
+    public void PagesMarkup_RebalancesNavigationAndReadingSpaceOnNarrowViewports()
+    {
+        var root = FindRepositoryRoot();
+        var markup = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "Components", "Pages", "Pages.razor"));
+        var css = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "wwwroot", "app.css"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(markup, Does.Contain("SetNavigationModeAsync(TreeMode)"));
+            Assert.That(markup, Does.Contain("SetNavigationModeAsync(FlatMode)"));
+            Assert.That(markup, Does.Contain("SetNavigationModeAsync(TocMode)"));
+            Assert.That(markup, Does.Contain("ToggleNavigationVisibilityAsync"));
+            Assert.That(markup, Does.Contain("Toggle focus reading"));
+            Assert.That(markup, Does.Contain("PagesBodyClass"));
+            Assert.That(css, Does.Contain(".pages-body"));
+            Assert.That(css, Does.Contain("grid-template-columns: minmax(272px, 30%) minmax(0, 1fr);"));
+            Assert.That(css, Does.Contain(".pages-tree-row"));
+            Assert.That(css, Does.Contain("min-height: 32px;"));
+            Assert.That(css, Does.Contain(".pages-tree-folder .wiki-count"));
+            Assert.That(css, Does.Contain("grid-template-rows: minmax(72px, 22%) minmax(0, 1fr);"));
+            Assert.That(css, Does.Contain(".pages-navigation-pane .wiki-pane-header"));
+            Assert.That(css, Does.Contain(".page-rendered pre"));
+            Assert.That(css, Does.Contain("white-space: pre-wrap;"));
+            Assert.That(css, Does.Contain("overflow-wrap: anywhere;"));
+        });
+    }
+
+    [Test]
     public void TagManagerMarkup_ExposesPolicyEditingUsageAndSuggestionReview()
     {
         var markup = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "Components", "Pages", "TagManager.razor"));
@@ -185,11 +266,65 @@ public class TagGovernanceTests
             Assert.That(markup, Does.Not.Contain("Search transcripts"));
             Assert.That(markup, Does.Not.Contain("_maintenanceTranscriptSearch"));
             Assert.That(markup, Does.Not.Contain("title=\"@context.Item.HelpText\""));
+            Assert.That(markup, Does.Contain("admin-users-table"));
+            Assert.That(CountOccurrences(markup, "AllowReveal=\"false\""), Is.EqualTo(3));
+            Assert.That(markup, Does.Contain("DataLabel=\"User\""));
+            Assert.That(markup, Does.Contain("DataLabel=\"Last login\""));
+            Assert.That(markup, Does.Contain("admin-user-primary"));
+            Assert.That(markup, Does.Contain("admin-user-action-cell"));
+            Assert.That(markup, Does.Contain("admin-config-summary"));
+            Assert.That(markup, Does.Contain("admin-settings-nav"));
+            Assert.That(markup, Does.Contain("_settingsDirtyOnly"));
+            Assert.That(markup, Does.Contain("admin-setting-dirty-indicator"));
+            Assert.That(markup, Does.Contain("DataLabel=\"Setting\""));
+            Assert.That(markup, Does.Contain("ResetFilteredSettings"));
             Assert.That(navMarkup, Does.Contain("Href=\"/tags\""));
             Assert.That(navMarkup, Does.Contain("Tags"));
             Assert.That(navMarkup, Does.Contain("Href=\"/maintenance\""));
             Assert.That(navMarkup, Does.Contain("Maintenance"));
             Assert.That(navMarkup, Does.Not.Contain("Href=\"/variables\""));
+        });
+    }
+
+    [Test]
+    public void AuthProviderSurfaces_UseRuntimeSchemeSupportForAvailability()
+    {
+        var root = FindRepositoryRoot();
+        var adminMarkup = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "Components", "Pages", "Admin.razor"));
+        var profileMarkup = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "Components", "Pages", "Profile.razor"));
+        var authController = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "Controllers", "AuthController.cs"));
+        var securitySource = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "Services", "SecurityServices.cs"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(adminMarkup, Does.Contain("@inject IAuthenticationSchemeProvider SchemeProvider"));
+            Assert.That(adminMarkup, Does.Contain("MemorySmithExternalAuthSupport.GetSupportedExternalProvidersAsync"));
+            Assert.That(adminMarkup, Does.Contain("Configured in settings, but no runtime auth handler is registered"));
+            Assert.That(profileMarkup, Does.Contain("@inject IAuthenticationSchemeProvider SchemeProvider"));
+            Assert.That(profileMarkup, Does.Contain("IsConfiguredRuntimeExternalProvider"));
+            Assert.That(authController, Does.Contain("MemorySmithExternalAuthSupport.IsConfiguredExternalProvider"));
+            Assert.That(securitySource, Does.Contain("MemorySmithExternalAuthSupport.GetSupportedExternalProvidersAsync"));
+            Assert.That(securitySource, Does.Contain("MemorySmithExternalAuthSupport.IsRuntimeSupportedExternalProvider"));
+        });
+    }
+
+    [Test]
+    public void ExternalAuthCallbacks_RecordDurableSuccessAndFailureEvidence()
+    {
+        var root = FindRepositoryRoot();
+        var program = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "Program.cs"));
+        var securitySource = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "Services", "SecurityServices.cs"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(program, Does.Contain("ExternalAuthOutcomeRecorder"));
+            Assert.That(program, Does.Contain("RecordSuccessAsync"));
+            Assert.That(program, Does.Contain("RecordFailureIfNeededAsync"));
+            Assert.That(program, Does.Contain("OnRemoteFailure = async ctx =>"));
+            Assert.That(securitySource, Does.Contain("RecordWithActorAsync"));
+            Assert.That(securitySource, Does.Contain("FailurePersistedKey"));
+            Assert.That(securitySource, Does.Contain("auth.login.succeeded"));
+            Assert.That(securitySource, Does.Contain("auth.login.failed"));
         });
     }
 
@@ -210,9 +345,148 @@ public class TagGovernanceTests
             Assert.That(markup, Does.Contain("ListRecentActivityAsync(50"));
             Assert.That(markup, Does.Contain("ListRecentTranscriptsAsync(50"));
             Assert.That(markup, Does.Contain("ProposalActionRows"));
+            Assert.That(markup, Does.Contain("maintenance-panel-scroll maintenance-panel-scroll-trace"));
+            Assert.That(markup, Does.Contain("maintenance-proposal-link"));
+            Assert.That(markup, Does.Contain("MudTooltip Text=\"@proposalId\""));
             Assert.That(css, Does.Contain(".maintenance-body"));
+            Assert.That(css, Does.Contain(".maintenance-panel-scroll"));
+            Assert.That(css, Does.Contain(".maintenance-proposal-link"));
             Assert.That(css, Does.Contain(".maintenance-action-row"));
             Assert.That(css, Does.Contain(".maintenance-active-run"));
+        });
+    }
+
+    [Test]
+    public void TasksMarkup_PrioritizesSelectedTaskSummaryAndFocusAction()
+    {
+        var root = FindRepositoryRoot();
+        var markup = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "Components", "Pages", "Tasks.razor"));
+        var css = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "wwwroot", "app.css"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(markup, Does.Contain("tasks-detail-summary"));
+            Assert.That(markup, Does.Contain("tasks-detail-actions"));
+            Assert.That(markup, Does.Contain("tasks-header-icon-action"));
+            Assert.That(markup, Does.Contain("TaskListHeaderActionText"));
+            Assert.That(markup, Does.Contain("tasks-detail-overview"));
+            Assert.That(markup, Does.Contain("tasks-edit-shell"));
+            Assert.That(markup, Does.Contain("tasks-read-shell"));
+            Assert.That(css, Does.Contain(".tasks-detail-summary"));
+            Assert.That(css, Does.Contain(".tasks-detail-actions"));
+            Assert.That(css, Does.Contain(".tasks-header-icon-action"));
+            Assert.That(css, Does.Contain(".tasks-detail-overview"));
+            Assert.That(css, Does.Contain(".tasks-edit-shell"));
+            Assert.That(css, Does.Contain(".tasks-detail-description"));
+        });
+    }
+
+    [Test]
+    public void TasksMarkup_UnifiesArtifactsAndShareableDeepLinks()
+    {
+        var root = FindRepositoryRoot();
+        var markup = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "Components", "Pages", "Tasks.razor"));
+        var css = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "wwwroot", "app.css"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(markup, Does.Contain("[SupplyParameterFromQuery(Name = \"task\")]"));
+            Assert.That(markup, Does.Contain("CopyTaskLinkAsync"));
+            Assert.That(markup, Does.Contain("SearchRelatedPagesAsync"));
+            Assert.That(markup, Does.Contain("<MudTabPanel Text=\"Artifacts\""));
+            Assert.That(markup, Does.Not.Contain("<MudTabPanel Text=\"Links\""));
+            Assert.That(markup, Does.Not.Contain("<MudTabPanel Text=\"Attachments\""));
+            Assert.That(markup, Does.Contain("Legacy External Links"));
+            Assert.That(css, Does.Contain(".tasks-artifact-section"));
+            Assert.That(css, Does.Contain(".tasks-artifacts-grid"));
+        });
+    }
+
+    [Test]
+    public void WorkbenchMarkup_ExposesFullTitlesForClippedPageTaskAndMemoryRows()
+    {
+        var root = FindRepositoryRoot();
+        var pagesMarkup = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "Components", "Pages", "Pages.razor"));
+        var tasksMarkup = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "Components", "Pages", "Tasks.razor"));
+        var memoriesMarkup = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "Components", "Pages", "MemoryViewer.razor"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(pagesMarkup, Does.Contain("title=\"@row.Node.Label\""));
+            Assert.That(pagesMarkup, Does.Contain("<div class=\"wiki-result-title\" title=\"@summary.Title\">"));
+            Assert.That(tasksMarkup, Does.Contain("title=\"@($\"{task.Key} - {task.Title}\")\""));
+            Assert.That(memoriesMarkup, Does.Contain("<div class=\"wiki-result-title\" title=\"@(string.IsNullOrWhiteSpace(memory.Title) ? \"(untitled)\" : memory.Title)\">"));
+        });
+    }
+
+    [Test]
+    public void AdminMarkup_UsesSortableAuditAndHistoryTablesWithoutRevealIcons()
+    {
+        var root = FindRepositoryRoot();
+        var markup = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "Components", "Pages", "Admin.razor"));
+        var css = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "wwwroot", "app.css"));
+
+        var auditStart = markup.IndexOf("<MudTabPanel Text=\"Audit\"", StringComparison.Ordinal);
+        var historyStart = markup.IndexOf("<MudTabPanel Text=\"History\"", StringComparison.Ordinal);
+
+        Assert.That(auditStart, Is.GreaterThanOrEqualTo(0));
+        Assert.That(historyStart, Is.GreaterThan(auditStart));
+
+        var auditMarkup = markup[auditStart..historyStart];
+        var historyMarkup = markup[historyStart..];
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(auditMarkup, Does.Contain("Label=\"Sort audit by\""));
+            Assert.That(historyMarkup, Does.Contain("Label=\"Sort history by\""));
+            Assert.That(auditMarkup, Does.Contain("RowsPerPage=\"25\""));
+            Assert.That(historyMarkup, Does.Contain("RowsPerPage=\"25\""));
+            Assert.That(auditMarkup, Does.Contain("Breakpoint=\"Breakpoint.Sm\""));
+            Assert.That(historyMarkup, Does.Contain("Breakpoint=\"Breakpoint.Sm\""));
+            Assert.That(auditMarkup, Does.Contain("DataLabel=\"Time\""));
+            Assert.That(historyMarkup, Does.Contain("DataLabel=\"Artifact\""));
+            Assert.That(auditMarkup, Does.Contain("MudTablePager"));
+            Assert.That(historyMarkup, Does.Contain("MudTablePager"));
+            Assert.That(auditMarkup, Does.Not.Contain("<SensitiveValue"));
+            Assert.That(historyMarkup, Does.Not.Contain("<SensitiveValue"));
+            Assert.That(markup, Does.Contain("Active admin section"));
+            Assert.That(markup, Does.Contain("ActiveAdminSectionTitle"));
+            Assert.That(markup, Does.Contain("CopyAdminValueAsync"));
+            Assert.That(css, Does.Contain(".admin-grid-table .mud-table-cell"));
+            Assert.That(css, Does.Contain(".admin-section-summary"));
+            Assert.That(css, Does.Contain(".admin-copy-cell"));
+        });
+    }
+
+    [Test]
+    public void AdminMarkup_ExposesExplicitSensitiveSettingClearFlow()
+    {
+        var root = FindRepositoryRoot();
+        var markup = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "Components", "Pages", "Admin.razor"));
+        var css = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "wwwroot", "app.css"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(markup, Does.Contain("Clear secret"));
+            Assert.That(markup, Does.Contain("ClearSensitiveSettingAsync"));
+            Assert.That(markup, Does.Contain("CanClearSensitiveSetting"));
+            Assert.That(markup, Does.Contain("ConfirmDestructiveActionAsync"));
+            Assert.That(css, Does.Contain(".admin-setting-actions"));
+        });
+    }
+
+    [Test]
+    public void SensitiveValueMarkup_RevealsWithoutRenderingHideActions()
+    {
+        var markup = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "Components", "SensitiveValue.razor"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(markup, Does.Contain("[Parameter] public bool AllowReveal { get; set; } = true;"));
+            Assert.That(markup, Does.Contain("@if (AllowReveal && !_isRevealed)"));
+            Assert.That(markup, Does.Contain("private void Reveal()"));
+            Assert.That(markup, Does.Not.Contain("VisibilityOff"));
+            Assert.That(markup, Does.Not.Contain("ToggleReveal"));
         });
     }
 
@@ -237,6 +511,142 @@ public class TagGovernanceTests
     }
 
     [Test]
+    public void AdminSettings_ExposeSeparateChatAgentWriteRoots()
+    {
+        var source = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "Services", "AdminSettingsService.cs"));
+        var appsettings = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "appsettings.json"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(source, Does.Contain("MemorySmith:Chat:AgentWriteRoots"));
+            Assert.That(source, Does.Contain("Chat proposal write roots"));
+            Assert.That(source, Does.Contain("intentionally separate from MaintenanceAgent:Write"));
+            Assert.That(appsettings, Does.Contain("\"AgentWriteRoots\""));
+            Assert.That(appsettings, Does.Contain("../Data/Memories/Working"));
+            Assert.That(appsettings, Does.Contain("../Data/Pages"));
+        });
+    }
+
+    [Test]
+    public void AdminSettings_ExposeSecurityProfilePreset()
+    {
+        var source = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "Services", "AdminSettingsService.cs"));
+        var appsettings = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "appsettings.json"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(source, Does.Contain("MemorySmith:SecurityProfile"));
+            Assert.That(source, Does.Contain("Security profile"));
+            Assert.That(source, Does.Contain("remote-hardened"));
+            Assert.That(source, Does.Contain("secure-local for dogfood"));
+            Assert.That(appsettings, Does.Contain("\"SecurityProfile\": null"));
+        });
+    }
+
+    [Test]
+    public void AdminSettings_ExposeProposalActionUxSettings()
+    {
+        var source = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "Services", "AdminSettingsService.cs"));
+        var appsettings = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "appsettings.json"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(source, Does.Contain("MemorySmith:MaintenanceAgent:ActionUx:ShowAccept"));
+            Assert.That(source, Does.Contain("MemorySmith:MaintenanceAgent:ActionUx:ShowRespond"));
+            Assert.That(source, Does.Contain("MemorySmith:MaintenanceAgent:ActionUx:ShowReject"));
+            Assert.That(source, Does.Contain("MemorySmith:MaintenanceAgent:ActionUx:DefaultAction"));
+            Assert.That(source, Does.Contain("MemorySmith:MaintenanceAgent:ActionUx:RevisionRequired"));
+            Assert.That(source, Does.Contain("Proposal default action"));
+            Assert.That(source, Does.Contain("Revision required before accept"));
+            Assert.That(appsettings, Does.Contain("\"ActionUx\""));
+            Assert.That(appsettings, Does.Contain("\"DefaultAction\": \"accept\""));
+            Assert.That(appsettings, Does.Contain("\"RevisionRequired\": true"));
+        });
+    }
+
+    [Test]
+    public void ChatMarkup_ReconcilesApproveAllBatchOutcomesAndPendingState()
+    {
+        var markup = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "Components", "Pages", "Chat.razor"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(markup, Does.Contain("Accept all results"));
+            Assert.That(markup, Does.Contain("RemoveAttemptedProposals(turn, memories, pages);"));
+            Assert.That(markup, Does.Contain("-> accepted (submitted"));
+            Assert.That(markup, Does.Contain("lineage: batchId="));
+            Assert.That(markup, Does.Contain("-> rejected (no changes needed)"));
+            Assert.That(markup, Does.Contain("IsBlockedApprovalException(ex) ? \"blocked\" : \"failed\""));
+            Assert.That(markup, Does.Contain("PendingWriteCount(ChatSessionState session)"));
+            Assert.That(markup, Does.Contain("UpdatePendingWriteStatus(ActiveSession"));
+            Assert.That(markup, Does.Contain("UpdatePendingWriteStatus(active, \"Ready\")"));
+            Assert.That(markup, Does.Contain("UpdatePendingWriteStatus(session, _mode == MemoryChatMode.Agent ? \"Agent ready\" : \"Chat ready\")"));
+            Assert.That(markup, Does.Contain("var pendingWriteCount = PendingWriteCount(ActiveSession);"));
+            Assert.That(markup, Does.Contain("RespondMemoryWriteAsync"));
+            Assert.That(markup, Does.Contain("RespondPageWriteAsync"));
+            Assert.That(markup, Does.Contain("Respond requires a revision note."));
+            Assert.That(markup, Does.Contain("Agent writes sent back for revision"));
+            Assert.That(markup, Does.Contain("ResponseCommentDraft"));
+            Assert.That(markup, Does.Contain("Respond keeps the proposal diff and records this note in proposal history"));
+        });
+    }
+
+    [Test]
+    public void ChatMarkup_DefaultsSidebarClosedUntilHistoryOrTraceIsRequested()
+    {
+        var markup = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "Components", "Pages", "Chat.razor"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(markup, Does.Contain("private bool _sidebarOpen;"));
+            Assert.That(markup, Does.Contain("private void ToggleSidebar()"));
+            Assert.That(markup, Does.Contain("private void ShowSidebarTab(ChatSidebarTab tab)"));
+            Assert.That(markup, Does.Contain("_sidebarOpen = true;"));
+            Assert.That(markup, Does.Contain("CollapseSidebarOnNarrowViewportAsync"));
+        });
+    }
+
+    [Test]
+    public void PagesMarkup_UsesHeaderShareActionsForSelectedPages()
+    {
+        var root = FindRepositoryRoot();
+        var markup = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "Components", "Pages", "Pages.razor"));
+        var css = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "wwwroot", "app.css"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(markup, Does.Contain("CopySelectedPageLinkAsync"));
+            Assert.That(markup, Does.Contain("page-detail-actions"));
+            Assert.That(markup, Does.Contain("Copy page link"));
+            Assert.That(css, Does.Contain(".page-detail-actions"));
+        });
+    }
+
+    [Test]
+    public void ChatMarkup_SupportsQuestionCardsWithOtherResponses()
+    {
+        var root = FindRepositoryRoot();
+        var markup = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "Components", "Pages", "Chat.razor"));
+        var css = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "wwwroot", "app.css"));
+        var prompt = File.ReadAllText(Path.Combine(root, "MemorySmith.Core", "Docs", "Prompts", "wiki-chat-agent.md"));
+        var modelfile = File.ReadAllText(Path.Combine(root, "MemorySmith.Core", "Docs", "Prompts", "wiki-chat-agent.modelfile"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(markup, Does.Contain("\"questionCard\""));
+            Assert.That(markup, Does.Contain("TryParseQuestionCard"));
+            Assert.That(markup, Does.Contain("SendQuestionOptionAsync"));
+            Assert.That(markup, Does.Contain("QuestionOtherDraft"));
+            Assert.That(markup, Does.Contain("chat-question-card"));
+            Assert.That(css, Does.Contain(".chat-question-card"));
+            Assert.That(css, Does.Contain(".chat-question-card-other"));
+            Assert.That(prompt, Does.Contain("\"questionCard\""));
+            Assert.That(prompt, Does.Contain("\"responsePrefix\""));
+            Assert.That(modelfile, Does.Contain("\"questionCard\""));
+        });
+    }
+
+    [Test]
     public void ProposalsMarkup_ShowsActiveRunAndKeepsActionBarHorizontalAtDesktopScale()
     {
         var root = FindRepositoryRoot();
@@ -255,9 +665,16 @@ public class TagGovernanceTests
             Assert.That(markup, Does.Contain("Quick summary"));
             Assert.That(markup, Does.Contain("ProposalQuickSummary"));
             Assert.That(markup, Does.Contain("SummarizeChange"));
+            Assert.That(markup, Does.Contain("LineageValue(_selectedProposal.Metadata.BatchId)"));
+            Assert.That(markup, Does.Contain("LineageValue(_selectedProposal.Metadata.ParentProposalId)"));
+            Assert.That(markup, Does.Contain("LineageAttempt(_selectedProposal.Metadata.Attempt)"));
             Assert.That(markup, Does.Not.Contain("Approval applies the diff to disk; use Respond"));
             Assert.That(markup, Does.Contain("proposal-comment-row"));
             Assert.That(markup, Does.Contain("proposal-action-row"));
+            Assert.That(markup, Does.Contain("IOptionsMonitor<MemorySmithOptions> Options"));
+            Assert.That(markup, Does.Contain("MaintenanceProposalActionUx.Accept"));
+            Assert.That(markup, Does.Contain("CanAccept(_selectedProposal)"));
+            Assert.That(markup, Does.Contain(">Accept</MudButton>"));
             Assert.That(markup, Does.Contain("Recent task activity"));
             Assert.That(markup, Does.Contain("ListRecentActivityAsync"));
             Assert.That(markup, Does.Contain("SelectProposalByIdAsync"));
@@ -269,6 +686,54 @@ public class TagGovernanceTests
             Assert.That(css, Does.Contain(".maintenance-activity-proposals"));
             Assert.That(css, Does.Contain("grid-template-columns: minmax(260px, 31%) minmax(0, 1fr);"));
             Assert.That(css, Does.Contain("@media (max-width: 700px)"));
+        });
+    }
+
+    [Test]
+    public void ProposalsMarkup_ExplainsDisabledActionsAndPrioritizesReviewState()
+    {
+        var root = FindRepositoryRoot();
+        var markup = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "Components", "Pages", "Proposals.razor"));
+        var css = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "wwwroot", "app.css"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(markup, Does.Contain("proposal-review-state-card"));
+            Assert.That(markup, Does.Contain("ProposalStateHeading(_selectedProposal)"));
+            Assert.That(markup, Does.Contain("ProposalStateExplanation(_selectedProposal)"));
+            Assert.That(markup, Does.Contain("ProposalAvailableActions(_selectedProposal)"));
+            Assert.That(markup, Does.Contain("RequestReviewActionHelp(_selectedProposal)"));
+            Assert.That(markup, Does.Contain("AcceptActionHelp(_selectedProposal)"));
+            Assert.That(markup, Does.Contain("RespondActionHelp(_selectedProposal)"));
+            Assert.That(markup, Does.Contain("RejectActionHelp(_selectedProposal)"));
+            Assert.That(markup, Does.Contain("Generate a revised draft before accepting"));
+            Assert.That(css, Does.Contain(".proposal-review-state-card"));
+            Assert.That(css, Does.Contain(".proposal-action-button-shell"));
+            Assert.That(css, Does.Contain(".proposals-detail-pane"));
+            Assert.That(css, Does.Contain("grid-template-rows: minmax(190px, 34vh) minmax(0, 1fr);"));
+        });
+    }
+
+    [Test]
+    public void ProposalsMarkup_CollapsesMaintenanceContextForProposalFirstReview()
+    {
+        var root = FindRepositoryRoot();
+        var markup = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "Components", "Pages", "Proposals.razor"));
+        var css = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "wwwroot", "app.css"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(markup, Does.Contain("proposal-context-panel"));
+            Assert.That(markup, Does.Contain("Maintenance context"));
+            Assert.That(markup, Does.Contain("MaintenanceContextSummaryText"));
+            Assert.That(markup, Does.Contain("MaintenanceContextActionText"));
+            Assert.That(markup, Does.Contain("ToggleMaintenanceContext"));
+            Assert.That(markup, Does.Contain("Open maintenance context"));
+            Assert.That(markup, Does.Contain("_isMaintenanceContextExpanded = false;"));
+            Assert.That(css, Does.Contain(".proposal-context-panel"));
+            Assert.That(css, Does.Contain(".proposal-context-body"));
+            Assert.That(css, Does.Contain(".proposal-context-actions"));
+            Assert.That(css, Does.Contain(".proposal-context-toggle"));
         });
     }
 
@@ -311,5 +776,19 @@ public class TagGovernanceTests
         }
 
         throw new DirectoryNotFoundException("Could not locate MemorySmith.slnx from the test output directory.");
+    }
+
+    private static int CountOccurrences(string source, string value)
+    {
+        var count = 0;
+        var startIndex = 0;
+
+        while ((startIndex = source.IndexOf(value, startIndex, StringComparison.Ordinal)) >= 0)
+        {
+            count++;
+            startIndex += value.Length;
+        }
+
+        return count;
     }
 }

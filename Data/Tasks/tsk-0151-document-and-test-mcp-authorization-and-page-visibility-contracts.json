@@ -1,0 +1,45 @@
+{
+  "id": "tsk-0151-document-and-test-mcp-authorization-and-page-visibility-contracts",
+  "key": "TSK-0151",
+  "title": "Document and test MCP authorization and page visibility contracts",
+  "description": "Problem: MCP docs list tool permissions at a high level, but they do not clearly explain the authorization contract for page visibility, source-bundle access, and write tools. Code currently routes MCP tools through ChatToolCatalog, uses ClaimsPrincipal fallback for page visibility, and gates SensitiveRead tools with CanReadSourceBundle, but the docs and tests do not present that as a first-class matrix.\n\nDesired outcome: external agents and maintainers can see exactly which MCP tools are read-only, page-visibility-filtered, source-sensitive, or write-capable, and regression tests prove the contract for anonymous, viewer/editor/admin, and auth-disabled cases.\n\nScope:\n- In scope: document MCP auth behavior in README or a dedicated guide, add focused tests for memorysmith_page_get/page_search visibility over MCP/catalog context, confirm SensitiveRead source tools require CanReadSourceBundle over MCP, and record expected behavior when Auth is disabled.\n- Out of scope: changing the source-bundle risk model or making source tools chat-available; that remains TSK-0011.\n\nAcceptance criteria:\n- MCP documentation includes a concise permission matrix for View, Edit, and Source bundle tools.\n- Page tools are documented as respecting page minimum role visibility.\n- Source bundle and find_by_source are documented as SensitiveRead MCP-only tools.\n- Tests prove MCP/catalog page visibility with ClaimsPrincipal-based contexts and source-tool authorization behavior.\n\nValidation:\n- Run dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj --filter FullyQualifiedName~ChatToolCatalogAndInterceptTests.\n- Run dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj --filter FullyQualifiedName~McpAndSemanticSearchTests.\n- Run ./Scripts/Test-PageLinks.ps1 and ./Scripts/Test-TaskRecords.ps1 after doc/task changes.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "audit",
+    "mcp",
+    "security",
+    "tests",
+    "documentation"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "guides/search-and-chat",
+    "features/api-and-mcp"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0151-20260525",
+      "author": "AgentSmith",
+      "body": "Created during 2026-05-25 deepdive audit. Evidence: README.md MCP tools table lists permissions but does not spell out page minimum-role filtering or SensitiveRead authorization semantics; ChatToolCatalog.cs CanViewPage falls back from CurrentUser to ClaimsPrincipal, and McpController.cs gates ChatToolRisk.SensitiveRead through CanReadSourceBundleAsync.",
+      "createdAtUtc": "2026-05-25T15:24:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T15:24:00.0000000Z",
+  "updatedAtUtc": "2026-05-25T15:24:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

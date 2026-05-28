@@ -1,0 +1,52 @@
+{
+  "Id": "project-wiki-wiki-validation-current",
+  "Title": "Wiki Validation Current State",
+  "Content": "MemorySmith validation now has first-class whole-corpus coverage for pages, tasks, and live memory records. `Scripts/Validate-Repo.ps1` runs solution build and tests plus `Test-TaskRecords.ps1`, `Test-MemoryRecords.ps1`, `Test-PageLinks.ps1`, and `Test-PagePathLiterals.ps1`. `Test-MemoryRecords.ps1` executes `LiveMemoryRecordValidationTests`, which copy the live `Data/Memories` corpus into temp storage and verify JSON deserialization, filename or id alignment, folder or status alignment, corrupt-file detection, and application-level validation contracts. Operators and agents should treat these scripts as cheap mandatory gates, but still verify live behavior through runtime surfaces such as `/memories`, `/chat`, `/health`, and `/api/diagnostics` when an issue could be runtime access, rendering, or workflow behavior rather than stored data-shape drift.",
+  "Status": 2,
+  "Confidence": 0.93,
+  "Tags": [
+    "project-wiki",
+    "documentation",
+    "tests",
+    "current-state",
+    "kind:fact",
+    "audience:developer",
+    "audience:admin",
+    "scope:validation",
+    "scope:wiki-health"
+  ],
+  "References": [
+    "project-wiki-validation-command",
+    "project-wiki-test-architecture",
+    "project-wiki-operational-diagnostics-dashboard"
+  ],
+  "Conflicts": [],
+  "SourceLinks": [
+    {
+      "Label": "Validate-Repo.ps1",
+      "Uri": "%MemorySmithRepo%Scripts/Validate-Repo.ps1"
+    },
+    {
+      "Label": "Test-TaskRecords.ps1",
+      "Uri": "%MemorySmithRepo%Scripts/Test-TaskRecords.ps1"
+    },
+    {
+      "Label": "Test-MemoryRecords.ps1",
+      "Uri": "%MemorySmithRepo%Scripts/Test-MemoryRecords.ps1"
+    },
+    {
+      "Label": "Test-PageLinks.ps1",
+      "Uri": "%MemorySmithRepo%Scripts/Test-PageLinks.ps1"
+    },
+    {
+      "Label": "Test-PagePathLiterals.ps1",
+      "Uri": "%MemorySmithRepo%Scripts/Test-PagePathLiterals.ps1"
+    },
+    {
+      "Label": "README.md",
+      "Uri": "%MemorySmithRepo%README.md"
+    }
+  ],
+  "UsageCount": 0,
+  "LastUpdated": "2026-05-27T00:00:00Z"
+}

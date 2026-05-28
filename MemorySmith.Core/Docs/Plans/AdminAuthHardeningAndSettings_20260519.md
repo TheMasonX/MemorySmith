@@ -18,7 +18,7 @@ The fix is to make privileged policies require an authenticated user with an exp
 - Sanitize config-derived anonymous/default roles so they cannot become `Admin`.
 - Add regression tests for the anonymous-admin misconfiguration and role-change endpoint.
 - Add a bounded settings editor for non-secret operational settings from `/admin`.
-- Persist allowed setting edits to `appsettings.LocalDevelopment.json` in the running app directory and reload configuration.
+- Persist allowed setting edits to `appsettings.LocalOverrides.json` in the running app directory and reload configuration.
 - Audit setting edits.
 - Update docs and project wiki records that mention the old compatibility behavior.
 
@@ -45,7 +45,7 @@ The fix is to make privileged policies require an authenticated user with an exp
 
 - A configured shared API key is still useful for compatibility automation, but it is not a substitute for a human Admin identity.
 - `OpenLocalEditorCompatibility` should preserve pre-setup local memory/page workflows only for non-privileged operations.
-- `appsettings.LocalDevelopment.json` is the correct local override target because `appsettings.Secrets.json` may contain secrets and should not be edited by the UI.
+- `appsettings.LocalOverrides.json` is the correct local override target because `appsettings.Secrets.json` may contain secrets and should not be edited by the UI.
 
 ## Open Questions
 

@@ -20,6 +20,8 @@ public sealed record EffectiveMemorySmithConfiguration(
     string PagesPath,
     string EventLogPath,
     string VarsPath,
+    TagPolicyLoadStatus TagPolicy,
+    string SecurityProfile,
     bool ApiKeyConfigured,
     bool AllowRemoteApi,
     string WindowsServiceName,
@@ -52,19 +54,22 @@ public class OperationalDiagnosticsService
     private readonly ITextEmbeddingProvider _embeddingProvider;
     private readonly IWebHostEnvironment _environment;
     private readonly IConfiguration _configuration;
+    private readonly TagPolicyService _tagPolicy;
 
     public OperationalDiagnosticsService(
         IOptions<MemorySmithOptions> options,
         StorageDiagnostics storageDiagnostics,
         ITextEmbeddingProvider embeddingProvider,
         IWebHostEnvironment environment,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        TagPolicyService tagPolicy)
     {
         _options = options;
         _storageDiagnostics = storageDiagnostics;
         _embeddingProvider = embeddingProvider;
         _environment = environment;
         _configuration = configuration;
+        _tagPolicy = tagPolicy;
     }
 
     public OperationalDiagnosticsSnapshot GetSnapshot()
@@ -74,6 +79,7 @@ public class OperationalDiagnosticsService
         var pagesPath = GetFullPath(settings.PagesPath);
         var eventLogPath = GetFullPath(settings.EventLogPath);
         var varsPath = GetFullPath(settings.VarsPath);
+        var tagPolicyStatus = _tagPolicy.GetLoadStatus();
         var sourceLinks = new SourceLinkOptions
         {
             MaxReadBytes = settings.SourceLinks.MaxReadBytes,
@@ -97,6 +103,8 @@ public class OperationalDiagnosticsService
                 pagesPath,
                 eventLogPath,
                 varsPath,
+                tagPolicyStatus,
+                MemorySmithSecurityProfiles.Normalize(settings.SecurityProfile),
                 !string.IsNullOrWhiteSpace(settings.ApiKey),
                 settings.AllowRemoteApi,
                 _configuration["MemorySmith:WindowsService:Name"] ?? WindowsServiceCommands.DefaultServiceName,
@@ -114,12 +122,12 @@ public class OperationalDiagnosticsService
                 GetFileStatus("Variables", varsPath)
             ],
             GetEndpoints(),
-            GetWarnings(settings),
+            GetWarnings(settings, tagPolicyStatus),
                 _embeddingProvider.GetStatus(),
             _storageDiagnostics.GetSnapshot());
     }
 
-    private static List<OperationalWarning> GetWarnings(MemorySmithOptions settings)
+    private static List<OperationalWarning> GetWarnings(MemorySmithOptions settings, TagPolicyLoadStatus tagPolicyStatus)
     {
         var warnings = new List<OperationalWarning>();
         if (settings.AllowRemoteApi && string.IsNullOrWhiteSpace(settings.ApiKey))
@@ -127,8 +135,16 @@ public class OperationalDiagnosticsService
             warnings.Add(new OperationalWarning(
                 "remote-api-without-api-key",
                 "High",
-                "Remote API access is enabled without MemorySmith:ApiKey. Configure an API key before exposing the service beyond localhost."));
+                "Remote API access is enabled without MemorySmith:ApiKey. Non-loopback API/MCP requests are blocked until MemorySmith:ApiKey is configured."));
         }
+
+            if (tagPolicyStatus.UsingFallback && tagPolicyStatus.Reason != "missing")
+            {
+                warnings.Add(new OperationalWarning(
+                "tag-policy-load-failed",
+                "Medium",
+                tagPolicyStatus.Message));
+            }
 
         return warnings;
     }

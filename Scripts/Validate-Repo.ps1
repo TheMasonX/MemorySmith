@@ -17,7 +17,16 @@ function Invoke-Step {
     )
 
     Write-Host ("==> " + $Name) -ForegroundColor Cyan
+    $global:LASTEXITCODE = 0
     & $Action
+    if (-not $?) {
+        throw "Step failed: $Name"
+    }
+
+    if ($global:LASTEXITCODE -ne 0) {
+        throw "Step failed: $Name (exit code $global:LASTEXITCODE)"
+    }
+
     Write-Host ("OK: " + $Name) -ForegroundColor Green
 }
 
@@ -39,6 +48,10 @@ try {
 
     Invoke-Step -Name "Validate task records" -Action {
         & (Join-Path $repoRoot "Scripts/Test-TaskRecords.ps1")
+    }
+
+    Invoke-Step -Name "Validate memory records" -Action {
+        & (Join-Path $repoRoot "Scripts/Test-MemoryRecords.ps1")
     }
 
     Invoke-Step -Name "Validate markdown page links" -Action {
@@ -64,6 +77,10 @@ try {
 
             Invoke-Step -Name "Install Playwright Chromium" -Action {
                 npx playwright install chromium
+            }
+
+            Invoke-Step -Name "Run route-smoke browser regression" -Action {
+                npm run test:route-smoke
             }
 
             Invoke-Step -Name "Run route-hop browser regression" -Action {

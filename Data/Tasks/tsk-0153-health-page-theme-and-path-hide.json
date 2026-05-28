@@ -1,0 +1,38 @@
+﻿{
+  "id": "tsk-0153-health-page-theme-and-path-hide",
+  "key": "TSK-0153",
+  "title": "Health Page Theme And Path Hide",
+  "description": "The theming of this page makes the values look more like the labels/headers. Screenshot reference: Screenshot 2026-05-25 103010.png (local account path omitted from repo task content; attach or copy a sanitized asset before PR).\n\nI also don\u0027t want the paths hidden in the health page. This can be an admin only page if we\u0027re that worried",
+  "type": "Task",
+  "status": "Done",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [
+    {
+      "id": "c-0153-1",
+      "author": "AgentSmith",
+      "body": "Implemented the Health feedback by showing runtime/storage-related paths directly on /health again and styling runtime configuration values as distinct code-like value chips instead of plain label-like strong text. Profile/Admin sensitive-value masking remains unchanged. Validation: dotnet build .\\MemorySmith.App\\MemorySmith.App.csproj --nologo passed after stopping the expected apphost lock; browser probe confirmed full Data and Pages paths are visible with no reveal/copy buttons in the Health config grid and value styles use bordered code-like rendering; route-smoke passed 6/6 against http://127.0.0.1:5099.",
+      "createdAtUtc": "2026-05-25T15:55:30.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T15:33:20.7730258Z",
+  "updatedAtUtc": "2026-05-25T15:55:30.0000000Z",
+  "completedAtUtc": "2026-05-25T15:55:30.0000000Z",
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

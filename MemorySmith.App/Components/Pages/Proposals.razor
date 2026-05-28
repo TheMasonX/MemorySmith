@@ -4,9 +4,10 @@
 @inject MaintenanceProposalWorkflow ProposalWorkflow
 @inject MaintenanceAgentService Agent
 @inject MaintenanceTopicMapService TopicMapService
+@inject Microsoft.Extensions.Options.IOptionsMonitor<MemorySmithOptions> Options
 @inject ISnackbar Snackbar
 
-<PageTitle>Proposals</PageTitle>
+<PageTitle>Proposals - MemorySmith</PageTitle>
 
 <div class="wiki-workbench proposals-workbench">
     <section class="wiki-commandbar proposals-commandbar" aria-label="Maintenance proposals">
@@ -29,18 +30,92 @@
                 }
             </MudSelect>
             <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" Disabled="@_isBusy" OnClick="LoadAsync">Refresh</MudButton>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Psychology" Disabled="@_isBusy" OnClick="RunNowAsync">Run Now</MudButton>
-            <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PlayArrow" Disabled="@_isBusy" OnClick="RunTaskAsync">Run Task</MudButton>
-            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.AccountTree" Disabled="@_isBusy" OnClick="RefreshTopicMapAsync">Topic Map</MudButton>
-            @if (CurrentActiveRun is not null)
-            {
-                <div class="proposal-active-run" role="status" aria-live="polite">
-                    <MudIcon Icon="@Icons.Material.Filled.HourglassTop" Size="Size.Small" />
-                    <span>@ActiveRunLabel(CurrentActiveRun) started @CurrentActiveRun.StartedAtUtc.ToLocalTime().ToString("t")</span>
-                    <small>@ActiveRunDetail(CurrentActiveRun)</small>
-                </div>
-            }
         </div>
+    </section>
+
+    <section class="proposal-context-panel @(_isMaintenanceContextExpanded ? "is-expanded" : "is-collapsed")" aria-label="Maintenance context">
+        <div class="proposal-context-header">
+            <div class="proposal-context-summary">
+                <strong>Maintenance context</strong>
+                <span>@MaintenanceContextSummaryText</span>
+            </div>
+            <MudTooltip Text="@MaintenanceContextActionTooltip" Placement="Placement.Top">
+                <MudButton Variant="Variant.Outlined"
+                           StartIcon="@MaintenanceContextActionIcon"
+                           Disabled="@_isBusy"
+                           OnClick="ToggleMaintenanceContext"
+                           Class="proposal-context-toggle">@MaintenanceContextActionText</MudButton>
+            </MudTooltip>
+        </div>
+        @if (_isMaintenanceContextExpanded)
+        {
+            <div class="proposal-context-body">
+                @if (CurrentActiveRun is not null)
+                {
+                    <div class="proposal-active-run proposal-context-active-run" role="status" aria-live="polite">
+                        <MudIcon Icon="@Icons.Material.Filled.HourglassTop" Size="Size.Small" />
+                        <span>@ActiveRunLabel(CurrentActiveRun) started @CurrentActiveRun.StartedAtUtc.ToLocalTime().ToString("t")</span>
+                        <small>@ActiveRunDetail(CurrentActiveRun)</small>
+                    </div>
+                }
+                <div class="proposal-context-actions">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Psychology" Disabled="@_isBusy" OnClick="RunNowAsync">Run Now</MudButton>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PlayArrow" Disabled="@_isBusy" OnClick="RunTaskAsync">Run Task</MudButton>
+                    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.AccountTree" Disabled="@_isBusy" OnClick="RefreshTopicMapAsync">Topic Map</MudButton>
+                </div>
+                @if (_lastRun?.Warnings.Count > 0)
+                {
+                    <div class="proposal-run-warnings">
+                        @foreach (var warning in _lastRun.Warnings.Take(3))
+                        {
+                            <span>@warning</span>
+                        }
+                    </div>
+                }
+                <div class="maintenance-activity-panel" aria-label="Recent maintenance task activity">
+                    <header>
+                        <strong>Recent task activity</strong>
+                        <span>@_activity.Count logged</span>
+                    </header>
+                    @if (_activity.Count == 0)
+                    {
+                        <span class="wiki-muted">No maintenance task activity has been logged yet.</span>
+                    }
+                    else
+                    {
+                        <div class="maintenance-activity-list">
+                            @foreach (var activity in _activity.Take(6))
+                            {
+                                <div class="maintenance-activity-row @(activity.Skipped ? "is-skipped" : null)">
+                                    <span class="maintenance-activity-main">
+                                        <strong>@ActivitySummary(activity)</strong>
+                                        <small>@activity.FinishedAtUtc.ToLocalTime().ToString("g")</small>
+                                    </span>
+                                    <span>@activity.FindingCount finding(s) - @activity.ProposalCount proposal(s)</span>
+                                    @if (activity.ProposalIds.Count > 0)
+                                    {
+                                        <div class="maintenance-activity-proposals" aria-label="Maintenance proposals from this run">
+                                            @foreach (var proposalId in activity.ProposalIds.Take(5))
+                                            {
+                                                <button type="button" @onclick="@(() => SelectProposalByIdAsync(proposalId))">@proposalId</button>
+                                            }
+                                            @if (activity.ProposalIds.Count > 5)
+                                            {
+                                                <small>+@(activity.ProposalIds.Count - 5) more</small>
+                                            }
+                                        </div>
+                                    }
+                                    @if (activity.Warnings.Count > 0)
+                                    {
+                                        <small class="maintenance-activity-warning">@activity.Warnings.First()</small>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        }
     </section>
 
     <section class="proposals-body @(_isListPaneCollapsed ? "is-list-collapsed" : string.Empty)">
@@ -53,62 +128,11 @@
                 }
                 <MudSpacer />
                 <MudTooltip Text="Collapse proposal list" Placement="Placement.Top">
-                    <MudIconButton Icon="@Icons.Material.Filled.ViewSidebar"
+                    <MudIconButton Icon="@Icons.Material.Filled.MenuOpen"
                                    Size="Size.Small"
                                    OnClick="CollapseListPane"
                                    aria-label="Collapse proposal list" />
                 </MudTooltip>
-            </div>
-            @if (_lastRun?.Warnings.Count > 0)
-            {
-                <div class="proposal-run-warnings">
-                    @foreach (var warning in _lastRun.Warnings.Take(3))
-                    {
-                        <span>@warning</span>
-                    }
-                </div>
-            }
-            <div class="maintenance-activity-panel" aria-label="Recent maintenance task activity">
-                <header>
-                    <strong>Recent task activity</strong>
-                    <span>@_activity.Count logged</span>
-                </header>
-                @if (_activity.Count == 0)
-                {
-                    <span class="wiki-muted">No maintenance task activity has been logged yet.</span>
-                }
-                else
-                {
-                    <div class="maintenance-activity-list">
-                        @foreach (var activity in _activity.Take(6))
-                        {
-                            <div class="maintenance-activity-row @(activity.Skipped ? "is-skipped" : null)">
-                                <span class="maintenance-activity-main">
-                                    <strong>@ActivitySummary(activity)</strong>
-                                    <small>@activity.FinishedAtUtc.ToLocalTime().ToString("g")</small>
-                                </span>
-                                <span>@activity.FindingCount finding(s) - @activity.ProposalCount proposal(s)</span>
-                                @if (activity.ProposalIds.Count > 0)
-                                {
-                                    <div class="maintenance-activity-proposals" aria-label="Maintenance proposals from this run">
-                                        @foreach (var proposalId in activity.ProposalIds.Take(5))
-                                        {
-                                            <button type="button" @onclick="@(() => SelectProposalByIdAsync(proposalId))">@proposalId</button>
-                                        }
-                                        @if (activity.ProposalIds.Count > 5)
-                                        {
-                                            <small>+@(activity.ProposalIds.Count - 5) more</small>
-                                        }
-                                    </div>
-                                }
-                                @if (activity.Warnings.Count > 0)
-                                {
-                                    <small class="maintenance-activity-warning">@activity.Warnings.First()</small>
-                                }
-                            </div>
-                        }
-                    </div>
-                }
             </div>
             <div class="wiki-results-list">
                 @foreach (var proposal in FilteredProposals)
@@ -133,7 +157,11 @@
             {
                 <div class="proposal-empty-state">
                     <MudIcon Icon="@Icons.Material.Filled.RuleFolder" Size="Size.Large" />
-                    <span>Select a proposal or run maintenance.</span>
+                    <span>@ProposalEmptyStateText</span>
+                    @if (!_isMaintenanceContextExpanded)
+                    {
+                        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Tune" OnClick="ExpandMaintenanceContext">Open maintenance context</MudButton>
+                    }
                 </div>
             }
             else
@@ -146,7 +174,7 @@
                     @if (_isListPaneCollapsed)
                     {
                         <MudTooltip Text="Show proposal list" Placement="Placement.Top">
-                            <MudIconButton Icon="@Icons.Material.Filled.ViewSidebar"
+                            <MudIconButton Icon="@Icons.Material.Filled.Menu"
                                            Size="Size.Small"
                                            OnClick="ExpandListPane"
                                            aria-label="Show proposal list" />
@@ -167,10 +195,30 @@
                         </div>
                     </section>
 
+                    <section class="proposal-review-state-card" aria-label="Proposal review state">
+                        <div class="proposal-review-state-header">
+                            <strong>@ProposalStateHeading(_selectedProposal)</strong>
+                            <div class="proposal-review-state-badges">
+                                <span class="proposal-status @StatusClass(_selectedProposal.Status)">@StatusLabel(_selectedProposal.Status)</span>
+                                <span class="proposal-risk @RiskClass(_selectedProposal.RiskLevel)">@_selectedProposal.RiskLevel</span>
+                            </div>
+                        </div>
+                        <p>@ProposalStateExplanation(_selectedProposal)</p>
+                        <div class="proposal-review-state-actions">
+                            @foreach (var action in ProposalAvailableActions(_selectedProposal))
+                            {
+                                <span>@action</span>
+                            }
+                        </div>
+                    </section>
+
                     <div class="proposal-metadata-grid">
                         <span>Confidence</span><strong>@_selectedProposal.Confidence.ToString("P0")</strong>
                         <span>Related</span><strong>@(_selectedProposal.RelatedRecords.Count == 0 ? "-" : string.Join(", ", _selectedProposal.RelatedRecords))</strong>
                         <span>Supersedes</span><strong>@(_selectedProposal.Metadata.Supersedes.Count == 0 ? "-" : string.Join(", ", _selectedProposal.Metadata.Supersedes))</strong>
+                        <span>Batch</span><strong>@LineageValue(_selectedProposal.Metadata.BatchId)</strong>
+                        <span>Parent</span><strong>@LineageValue(_selectedProposal.Metadata.ParentProposalId)</strong>
+                        <span>Attempt</span><strong>@LineageAttempt(_selectedProposal.Metadata.Attempt)</strong>
                         <span>Updated</span><strong>@_selectedProposal.UpdatedAtUtc.ToLocalTime().ToString("g")</strong>
                     </div>
 
@@ -224,10 +272,35 @@
                         <MudTextField T="string" Value="@_comment" ValueChanged="@((string value) => _comment = value)" Placeholder="Comment for respond/reject/approve history" Variant="Variant.Outlined" Margin="Margin.Dense" Lines="2" Class="proposal-comment-input" />
                     </div>
                     <div class="proposal-action-row">
-                        <MudButton Variant="Variant.Outlined" Color="Color.Info" StartIcon="@Icons.Material.Filled.RateReview" Disabled="@(_isBusy || IsClosed(_selectedProposal))" OnClick="RequestAgentReviewAsync">Request Agent Review</MudButton>
-                        <MudButton Variant="Variant.Filled" Color="Color.Success" StartIcon="@Icons.Material.Filled.Check" Disabled="@(_isBusy || !IsOpen(_selectedProposal))" OnClick="ApproveAsync">Approve</MudButton>
-                        <MudButton Variant="Variant.Outlined" Color="Color.Warning" StartIcon="@Icons.Material.Filled.Reply" Disabled="@(_isBusy || !IsOpen(_selectedProposal))" OnClick="RespondAsync">Respond</MudButton>
-                        <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.Close" Disabled="@(_isBusy || IsClosed(_selectedProposal))" OnClick="RejectAsync">Reject</MudButton>
+                        <MudTooltip Text="@RequestReviewActionHelp(_selectedProposal)">
+                            <span class="proposal-action-button-shell">
+                                <MudButton Variant="Variant.Outlined" Color="Color.Info" StartIcon="@Icons.Material.Filled.RateReview" Disabled="@(_isBusy || IsClosed(_selectedProposal))" OnClick="RequestAgentReviewAsync">Request Agent Review</MudButton>
+                            </span>
+                        </MudTooltip>
+                        @if (ShowAcceptAction)
+                        {
+                            <MudTooltip Text="@AcceptActionHelp(_selectedProposal)">
+                                <span class="proposal-action-button-shell">
+                                    <MudButton Variant="@ActionVariant(MaintenanceProposalActionUx.Accept)" Color="Color.Success" StartIcon="@Icons.Material.Filled.Check" Disabled="@(_isBusy || !CanAccept(_selectedProposal))" OnClick="ApproveAsync">Accept</MudButton>
+                                </span>
+                            </MudTooltip>
+                        }
+                        @if (ShowRespondAction)
+                        {
+                            <MudTooltip Text="@RespondActionHelp(_selectedProposal)">
+                                <span class="proposal-action-button-shell">
+                                    <MudButton Variant="@ActionVariant(MaintenanceProposalActionUx.Respond)" Color="Color.Warning" StartIcon="@Icons.Material.Filled.Reply" Disabled="@(_isBusy || !IsOpen(_selectedProposal))" OnClick="RespondAsync">Respond</MudButton>
+                                </span>
+                            </MudTooltip>
+                        }
+                        @if (ShowRejectAction)
+                        {
+                            <MudTooltip Text="@RejectActionHelp(_selectedProposal)">
+                                <span class="proposal-action-button-shell">
+                                    <MudButton Variant="@ActionVariant(MaintenanceProposalActionUx.Reject)" Color="Color.Error" StartIcon="@Icons.Material.Filled.Close" Disabled="@(_isBusy || IsClosed(_selectedProposal))" OnClick="RejectAsync">Reject</MudButton>
+                                </span>
+                            </MudTooltip>
+                        }
                     </div>
                 </div>
             }
@@ -239,6 +312,11 @@
     private const string AllFilterValue = "__all__";
     private static readonly IReadOnlyList<string> StatusOptions = [MaintenanceProposalStatuses.Open, MaintenanceProposalStatuses.NeedsRevision, MaintenanceProposalStatuses.Approved, MaintenanceProposalStatuses.Rejected];
     private static readonly IReadOnlyList<string> TaskOptions = ["staleness_scan", "relationship_integrity", "topic_map", "embedding_chunking_maintenance", "spot_checks", "consistency_checks", "synthesis"];
+    private MaintenanceAgentActionUxOptions ActionUx => Options.CurrentValue.MaintenanceAgent.ActionUx;
+    private string DefaultProposalAction => MaintenanceProposalActionUx.NormalizeDefaultAction(ActionUx);
+    private bool ShowAcceptAction => ActionUx.ShowAccept;
+    private bool ShowRespondAction => ActionUx.ShowRespond;
+    private bool ShowRejectAction => ActionUx.ShowReject;
     private IReadOnlyList<MaintenanceWriteProposal> _proposals = [];
     private MaintenanceWriteProposal? _selectedProposal;
     private TopicMapDocument? _topicMap;
@@ -249,10 +327,26 @@
     private string _comment = string.Empty;
     private bool _isBusy;
     private bool _isListPaneCollapsed;
+    private bool _isMaintenanceContextExpanded;
     private MaintenanceActiveRunSnapshot? _activeRun;
     private MaintenanceActiveRunSnapshot? _localActiveRun;
 
     private MaintenanceActiveRunSnapshot? CurrentActiveRun => _activeRun ?? _localActiveRun;
+    private string MaintenanceContextActionText => _isMaintenanceContextExpanded ? "Hide context" : "Show context";
+    private string MaintenanceContextActionTooltip => _isMaintenanceContextExpanded
+        ? "Collapse maintenance run controls and recent activity"
+        : "Show maintenance run controls and recent activity";
+    private string MaintenanceContextActionIcon => _isMaintenanceContextExpanded
+        ? Icons.Material.Filled.UnfoldLess
+        : Icons.Material.Filled.UnfoldMore;
+    private string MaintenanceContextSummaryText => CurrentActiveRun is not null
+        ? $"{ActiveRunLabel(CurrentActiveRun)} in progress. {RecentActivitySummaryText()}"
+        : _activity.Count == 0
+            ? "Run maintenance, refresh the topic map, and review recent task activity here."
+            : RecentActivitySummaryText();
+    private string ProposalEmptyStateText => FilteredProposals.Count == 0
+        ? "No proposals match the current filters. Open maintenance context to run maintenance or review recent activity."
+        : "Select a proposal to review or open maintenance context for recent runs.";
 
     private IReadOnlyList<MaintenanceWriteProposal> FilteredProposals => _proposals
         .Where(proposal => _statusFilter == AllFilterValue || string.Equals(proposal.Status, _statusFilter, StringComparison.OrdinalIgnoreCase))
@@ -288,6 +382,7 @@
     {
         _selectedProposal = proposal;
         _comment = string.Empty;
+        _isMaintenanceContextExpanded = false;
     }
 
     private async Task SelectProposalByIdAsync(string proposalId)
@@ -311,6 +406,10 @@
     private void CollapseListPane() => _isListPaneCollapsed = true;
 
     private void ExpandListPane() => _isListPaneCollapsed = false;
+
+    private void ToggleMaintenanceContext() => _isMaintenanceContextExpanded = !_isMaintenanceContextExpanded;
+
+    private void ExpandMaintenanceContext() => _isMaintenanceContextExpanded = true;
 
     private async Task RunNowAsync()
     {
@@ -486,10 +585,161 @@
     private static bool IsOpen(MaintenanceWriteProposal proposal) =>
         string.Equals(proposal.Status, MaintenanceProposalStatuses.Open, StringComparison.OrdinalIgnoreCase);
 
+    private bool CanAccept(MaintenanceWriteProposal proposal) =>
+        string.Equals(proposal.Status, MaintenanceProposalStatuses.Open, StringComparison.OrdinalIgnoreCase) ||
+        (!ActionUx.RevisionRequired && string.Equals(proposal.Status, MaintenanceProposalStatuses.NeedsRevision, StringComparison.OrdinalIgnoreCase));
+
+    private IReadOnlyList<string> ProposalAvailableActions(MaintenanceWriteProposal proposal)
+    {
+        var actions = new List<string>();
+        if (!IsClosed(proposal))
+        {
+            actions.Add("Agent review available");
+            actions.Add("Reject available");
+        }
+
+        if (CanAccept(proposal))
+        {
+            actions.Add("Accept available");
+        }
+
+        if (IsOpen(proposal))
+        {
+            actions.Add("Respond available");
+        }
+
+        if (actions.Count == 0)
+        {
+            actions.Add("No further review actions");
+        }
+
+        return actions;
+    }
+
+    private string ProposalStateHeading(MaintenanceWriteProposal proposal)
+    {
+        if (string.Equals(proposal.Status, MaintenanceProposalStatuses.Approved, StringComparison.OrdinalIgnoreCase))
+        {
+            return "Accepted and closed";
+        }
+
+        if (string.Equals(proposal.Status, MaintenanceProposalStatuses.Rejected, StringComparison.OrdinalIgnoreCase))
+        {
+            return "Rejected and closed";
+        }
+
+        if (string.Equals(proposal.Status, MaintenanceProposalStatuses.NeedsRevision, StringComparison.OrdinalIgnoreCase))
+        {
+            return ActionUx.RevisionRequired
+                ? "Revision requested"
+                : "Revision requested, accept still available";
+        }
+
+        return "Ready for review";
+    }
+
+    private string ProposalStateExplanation(MaintenanceWriteProposal proposal)
+    {
+        if (string.Equals(proposal.Status, MaintenanceProposalStatuses.Approved, StringComparison.OrdinalIgnoreCase))
+        {
+            return "This proposal has already been accepted. Review history, diff, and evidence remain available below for audit follow-up.";
+        }
+
+        if (string.Equals(proposal.Status, MaintenanceProposalStatuses.Rejected, StringComparison.OrdinalIgnoreCase))
+        {
+            return "This proposal is closed because it was rejected. Use the history and evidence tabs to understand the decision, then generate or select a replacement proposal if needed.";
+        }
+
+        if (string.Equals(proposal.Status, MaintenanceProposalStatuses.NeedsRevision, StringComparison.OrdinalIgnoreCase))
+        {
+            return ActionUx.RevisionRequired
+                ? "A reviewer requested changes and acceptance is paused until a revised proposal is generated or selected."
+                : "A reviewer requested changes, but acceptance is still allowed because revision-required mode is disabled for this environment.";
+        }
+
+        return "Review the summary, diff, and evidence, then choose whether to accept, respond with revision guidance, reject, or request an agent review.";
+    }
+
+    private string RequestReviewActionHelp(MaintenanceWriteProposal proposal) =>
+        IsClosed(proposal)
+            ? "Closed proposals cannot request another agent review. Select an open proposal or generate a new revision instead."
+            : "Ask the maintenance agent to review this proposal and optionally produce a revised follow-up proposal.";
+
+    private string AcceptActionHelp(MaintenanceWriteProposal proposal)
+    {
+        if (CanAccept(proposal))
+        {
+            return "Apply the diff and mark this proposal accepted.";
+        }
+
+        if (string.Equals(proposal.Status, MaintenanceProposalStatuses.NeedsRevision, StringComparison.OrdinalIgnoreCase))
+        {
+            return "Accept is disabled because this proposal needs revision and revision-required mode is enabled. Generate a revised draft before accepting.";
+        }
+
+        if (string.Equals(proposal.Status, MaintenanceProposalStatuses.Approved, StringComparison.OrdinalIgnoreCase))
+        {
+            return "Accept is unavailable because this proposal was already accepted.";
+        }
+
+        if (string.Equals(proposal.Status, MaintenanceProposalStatuses.Rejected, StringComparison.OrdinalIgnoreCase))
+        {
+            return "Accept is unavailable because rejected proposals are closed. Select another proposal or generate a replacement draft.";
+        }
+
+        return "Accept is currently unavailable for this proposal state.";
+    }
+
+    private string RespondActionHelp(MaintenanceWriteProposal proposal)
+    {
+        if (IsOpen(proposal))
+        {
+            return "Keep the diff, add a review note, and mark the proposal as needing revision.";
+        }
+
+        if (string.Equals(proposal.Status, MaintenanceProposalStatuses.NeedsRevision, StringComparison.OrdinalIgnoreCase))
+        {
+            return "Respond is unavailable because this proposal already awaits revision.";
+        }
+
+        if (string.Equals(proposal.Status, MaintenanceProposalStatuses.Approved, StringComparison.OrdinalIgnoreCase))
+        {
+            return "Respond is unavailable because accepted proposals are already closed.";
+        }
+
+        if (string.Equals(proposal.Status, MaintenanceProposalStatuses.Rejected, StringComparison.OrdinalIgnoreCase))
+        {
+            return "Respond is unavailable because rejected proposals are closed.";
+        }
+
+        return "Respond is currently unavailable for this proposal state.";
+    }
+
+    private string RejectActionHelp(MaintenanceWriteProposal proposal) =>
+        IsClosed(proposal)
+            ? string.Equals(proposal.Status, MaintenanceProposalStatuses.Approved, StringComparison.OrdinalIgnoreCase)
+                ? "Reject is unavailable because this proposal has already been accepted."
+                : "Reject is unavailable because this proposal has already been rejected."
+            : "Close this proposal without applying the diff.";
+
+    private Variant ActionVariant(string action) =>
+        string.Equals(DefaultProposalAction, action, StringComparison.OrdinalIgnoreCase)
+            ? Variant.Filled
+            : Variant.Outlined;
+
     private static string StatusLabel(string status) => status.Replace('_', ' ');
     private static string TaskLabel(string task) => task.Replace('_', ' ');
+    private static string LineageValue(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value.Trim();
+    private static string LineageAttempt(int attempt) => attempt <= 0 ? "-" : attempt.ToString();
     private static string StatusClass(string status) => "is-" + status.Replace('_', '-');
     private static string RiskClass(string risk) => "is-" + risk.ToLowerInvariant();
+    private string RecentActivitySummaryText() => _activity.Count switch
+    {
+        0 => "No recent maintenance runs are available.",
+        1 => "1 recent maintenance run is available.",
+        _ => $"{_activity.Count} recent maintenance runs are available."
+    };
+
     private static string ProposalQuickSummary(MaintenanceWriteProposal proposal)
     {
         var distinctPaths = proposal.Changes

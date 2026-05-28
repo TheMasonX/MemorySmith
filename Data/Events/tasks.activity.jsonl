@@ -74,3 +74,35 @@
 {"taskId":"tsk-0073-share-buttons","action":"updated","actor":"TheMasonX","note":null,"occurredAtUtc":"2026-05-24T17:41:27.0740874Z"}
 {"taskId":"tsk-0072-github-pages-deployment-no-pages","action":"updated","actor":"TheMasonX","note":null,"occurredAtUtc":"2026-05-24T17:49:37.2896778Z"}
 {"taskId":"tsk-0074-task-links-should-be-clickable","action":"created","actor":"TheMasonX","note":null,"occurredAtUtc":"2026-05-24T19:03:00.3439732Z"}
+{"taskId":"tsk-0146-include-license-text","action":"created","actor":"TheMasonX","note":null,"occurredAtUtc":"2026-05-25T15:05:56.9452866Z"}
+{"taskId":"tsk-0147-about-page-project-alignment","action":"created","actor":"TheMasonX","note":null,"occurredAtUtc":"2026-05-25T15:10:38.4526049Z"}
+{"taskId":"tsk-0147-about-page-project-alignment","action":"updated","actor":"TheMasonX","note":null,"occurredAtUtc":"2026-05-25T15:12:22.4535889Z"}
+{"taskId":"tsk-0148-file-attachments","action":"created","actor":"TheMasonX","note":null,"occurredAtUtc":"2026-05-25T15:13:55.1563416Z"}
+{"taskId":"tsk-0149-chat-proposals","action":"created","actor":"TheMasonX","note":null,"occurredAtUtc":"2026-05-25T15:17:35.7553827Z"}
+{"taskId":"tsk-0153-health-page-theme-and-path-hide","action":"created","actor":"TheMasonX","note":null,"occurredAtUtc":"2026-05-25T15:33:20.7730258Z"}
+{"taskId":"tsk-0155-memory-errors-collapsible","action":"created","actor":"TheMasonX","note":null,"occurredAtUtc":"2026-05-25T15:37:44.7569249Z"}
+{"taskId":"tsk-0155-memory-errors-collapsible","action":"updated","actor":"TheMasonX","note":null,"occurredAtUtc":"2026-05-25T15:39:43.8924882Z"}
+{"taskId":"tsk-0161-memories-ui-layout","action":"created","actor":"TheMasonX","note":null,"occurredAtUtc":"2026-05-25T15:46:13.4380791Z"}
+{"taskId":"tsk-0161-memories-ui-layout","action":"updated","actor":"TheMasonX","note":null,"occurredAtUtc":"2026-05-25T15:47:53.7986161Z"}
+{"taskId":"tsk-0165-task-dashboard","action":"created","actor":"TheMasonX","note":null,"occurredAtUtc":"2026-05-25T15:51:44.1195198Z"}
+{"taskId":"tsk-0160-enforce-page-visibility-rules-in-static-docs-publishing","action":"comment_added","actor":"TheMasonX","note":"All docs can be published to github for this project","occurredAtUtc":"2026-05-25T15:53:31.8210208Z"}
+{"taskId":"tsk-0160-enforce-page-visibility-rules-in-static-docs-publishing","action":"comment_added","actor":"TheMasonX","note":"Make a note that this is intentional: the docs are intended as part of the dogfooding, and are available to anyone looking to fork this or use the product themselves. Page visibility is not an issue for this installation, but is included for those for whom it might be.","occurredAtUtc":"2026-05-25T15:55:04.4662638Z"}
+{"taskId":"tsk-0160-enforce-page-visibility-rules-in-static-docs-publishing","action":"comment_added","actor":"TheMasonX","note":"Screenshot reference: Screenshot 2026-05-25 105542.png (local account path omitted from repo task activity).\nNote that it looks like my comments were before, but the timestamps of the agentsmith comment are incorrect, and this commend comes after the other comment:\n\u0060\u0060\u0060\nAgentSmith\n5/25/2026 11:35 AM\nCreated d...","occurredAtUtc":"2026-05-25T15:57:16.7369113Z"}
+{"taskId":"tsk-0166-mermaid-copy-and-raw-code","action":"created","actor":"TheMasonX","note":null,"occurredAtUtc":"2026-05-25T17:41:32.2917456Z"}
+{"taskId":"tsk-0167-save-task-edits-icon-color","action":"created","actor":"TheMasonX","note":null,"occurredAtUtc":"2026-05-25T17:43:18.326686Z"}
+{"taskId":"tsk-0168-audit-history-page-tables","action":"created","actor":"TheMasonX","note":null,"occurredAtUtc":"2026-05-25T18:15:58.3290601Z"}
+{"taskId":"tsk-0169-rejected-task-status","action":"created","actor":"TheMasonX","note":null,"occurredAtUtc":"2026-05-25T18:23:26.510103Z"}
+{"taskId":"tsk-0170-related-task-attachment","action":"created","actor":"TheMasonX","note":null,"occurredAtUtc":"2026-05-25T18:25:15.2969523Z"}
+{"taskId":"tsk-0171-agent-task-tools","action":"created","actor":"TheMasonX","note":null,"occurredAtUtc":"2026-05-25T18:49:55.6729806Z"}
+{"taskId":"tsk-0172-mcp-tool-config","action":"created","actor":"TheMasonX","note":null,"occurredAtUtc":"2026-05-25T18:52:18.5398355Z"}
+{"taskId":"tsk-0174-vector-embedding-model","action":"created","actor":"TheMasonX","note":null,"occurredAtUtc":"2026-05-25T20:40:09.0157422Z"}
+{"taskId":"tsk-0175-vector-embedding-model","action":"created","actor":"TheMasonX","note":null,"occurredAtUtc":"2026-05-25T20:49:55.1531037Z"}
+{"taskId":"tsk-0175-vector-embedding-model","action":"updated","actor":"TheMasonX","note":null,"occurredAtUtc":"2026-05-25T20:52:11.9859342Z"}
+{"taskId":"tsk-0175-vector-embedding-model","action":"updated","actor":"TheMasonX","note":null,"occurredAtUtc":"2026-05-25T21:03:52.8499493Z"}
+{"taskId":"tsk-0176-filter-out-done-tasks-by-default","action":"created","actor":"TheMasonX","note":null,"occurredAtUtc":"2026-05-25T22:12:08.9958721Z"}
+{"taskId":"tsk-0182-add-new-page-to-foler","action":"created","actor":"TheMasonX","note":null,"occurredAtUtc":"2026-05-26T19:15:24.6212105Z"}
+{"taskId":"tsk-0193-chat-question-ability","action":"created","actor":"TheMasonX","note":null,"occurredAtUtc":"2026-05-26T22:49:34.7817562Z"}
+{"taskId":"tsk-0194-tasks-combine-links-and-attachments","action":"created","actor":"TheMasonX","note":null,"occurredAtUtc":"2026-05-27T12:57:26.2250616Z"}
+{"taskId":"tsk-0193-chat-question-ability","action":"external_link_added","actor":"TheMasonX","note":"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSNRjxwmeymtunZjiULe97rMeTKUp7LfoOP1A\u0026s","occurredAtUtc":"2026-05-27T13:04:31.1984504Z"}
+{"taskId":"tsk-0195-codebase-vector-search","action":"created","actor":"TheMasonX","note":null,"occurredAtUtc":"2026-05-27T16:55:53.0214105Z"}
+{"taskId":"tsk-0195-codebase-vector-search","action":"updated","actor":"TheMasonX","note":null,"occurredAtUtc":"2026-05-27T17:00:02.1316373Z"}

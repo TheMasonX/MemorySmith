@@ -12,6 +12,51 @@ MemorySmith has three search modes and one chat surface that can use those modes
 
 Hybrid is the best default when the user is exploring. Lexical is best when the exact phrase or ID matters. Semantic is best when the wording may differ from the records.
 
+## Search Contract
+
+The public search contract is narrower than a full Lucene query language. MemorySmith search accepts plain text plus explicit filters.
+
+| Input | Contract |
+| --- | --- |
+| `query` | Plain text. MemorySmith tokenizes the text and scores title, tags, references, and content. There is no fielded query parser in the lexical path. |
+| `tags` | Optional comma-separated, case-insensitive exact-match filter with any-match semantics. `kind:rule,audience:agent` means records that have either tag. Namespaced tags are matched literally, not parsed as operators. |
+| `status` | Optional memory status name: `Unconsolidated`, `Working`, `Core`, or `Deprecated`. |
+| `limit` | Optional bounded result count. The server clamps it to configured safe limits. |
+
+Important query-shape rules:
+
+- Do not rely on field targeting like `title:mcp` or `tags:project-wiki`; use the explicit `tags` and `status` arguments instead.
+- Do not rely on boolean, wildcard, fuzzy, or range syntax such as `foo AND bar`, `auth*`, `auth~`, or `updated:[2026 TO *]`.
+- If phrase matching matters, send the phrase text itself. The runtime adds extra weight when the raw query text appears verbatim in title or content, but quoted parser syntax is not special.
+- Empty or whitespace `query` returns deterministic recency ordering rather than a parse error.
+
+## Search Output Formats
+
+Search format support differs by surface. Use the exact surface contract below instead of assuming every tool or endpoint supports the same formats.
+
+| Surface | Supported formats | Default | Contract |
+| --- | --- | --- | --- |
+| `POST /api/memories/search` | compatible array, `format=envelope`, `format=json-v2` | compatible array | Structured responses use `memorysmith.retrieval-results.v1`. |
+| `POST /api/memories/search/semantic` | compatible array, `format=envelope`, `format=json-v2` | compatible array | Structured responses use `memorysmith.retrieval-results.v1`. |
+| `POST /api/memories/search/hybrid` | compatible array, `format=envelope`, `format=json-v2` | compatible array | Structured responses use `memorysmith.retrieval-results.v1`. |
+| `GET /api/pages` | compatible page list, `format=json`, `format=envelope`, `format=json-v2` | compatible page list | Structured responses use `memorysmith.page-results.v1`. |
+| `memorysmith_search` | `markdown`, `json`, `envelope` | `markdown` | `json` and `envelope` currently return the same retrieval envelope payload. |
+| `memorysmith_semantic_search` | `markdown`, `json`, `envelope` | `markdown` | `json` and `envelope` currently return the same retrieval envelope payload. |
+| `memorysmith_hybrid_search` | `markdown`, `json`, `envelope` | `markdown` | `json` and `envelope` currently return the same retrieval envelope payload. |
+| `memorysmith_context_pack` | `markdown`, `json` | `markdown` | Structured responses use `memorysmith.context-pack.v1`. |
+| `memorysmith_unified_search` | `markdown`, `json`, `envelope` | `markdown` | Structured responses use `memorysmith.unified-search.v1`. |
+| `memorysmith_page_search` | markdown only | markdown | No `format` argument today. |
+| `memorysmith_page_get` | markdown only | markdown | No `format` argument today. |
+| `memorysmith_get` | fixed structured JSON | JSON | No `format` argument today. |
+
+Compatibility note: the MCP search-tool parser also accepts `json-v2` today because the shared structured-output helper treats it as a synonym for structured retrieval. Public docs and prompts should still use the advertised MCP values `markdown`, `json`, and `envelope`.
+
+### Score Interpretation
+
+- Lexical and semantic numeric scores are meaningful only within the same mode and result set.
+- Hybrid `Score` is Reciprocal Rank Fusion, built from lexical and semantic ranks. It is a ranking aid, not a confidence percentage.
+- Structured envelopes are the right format when an agent needs provider metadata, warnings, diagnostics, or score interpretation. Markdown is the right format when a human is reading the result directly.
+
 ## ONNX Embeddings
 
 Semantic embedding search is optional. Fresh clones work without model binaries because the app falls back to local scoring.
@@ -32,20 +77,69 @@ Check `/health` after restart to confirm whether the provider is active or falli
 
 The MCP endpoint is available at `/mcp` and exposes local tools over the wiki. The most useful tools are:
 
-| Tool | Use it when |
-| --- | --- |
-| `memorysmith_search` | You need direct lexical matches. |
-| `memorysmith_semantic_search` | You need concept-level recall. |
-| `memorysmith_hybrid_search` | You need balanced discovery. |
-| `memorysmith_context_pack` | You want root records plus references, conflicts, and backlinks. |
-| `memorysmith_get` | You know the exact memory ID. |
-| `memorysmith_page_search` | You need markdown page hits by query text. |
-| `memorysmith_page_get` | You know the exact page slug and need the page body. |
-| `memorysmith_unified_search` | You want one call that searches memories and pages together. |
-| `memorysmith_source_bundle` | You need source-linked file slices with the memory records. |
-| `memorysmith_find_by_source` | You want records tied to a file path or source-link pattern. |
+| Tool | Use it when | Formats/output |
+| --- | --- | --- |
+| `memorysmith_search` | You need direct lexical matches. | `markdown`, `json`, `envelope` |
+| `memorysmith_semantic_search` | You need concept-level recall. | `markdown`, `json`, `envelope` |
+| `memorysmith_hybrid_search` | You need balanced discovery. | `markdown`, `json`, `envelope` |
+| `memorysmith_context_pack` | You want root records plus references, conflicts, and backlinks. | `markdown`, `json` |
+| `memorysmith_get` | You know the exact memory ID. | Fixed structured JSON |
+| `memorysmith_page_search` | You need markdown page hits by query text. | Markdown only |
+| `memorysmith_page_get` | You know the exact page slug and need the page body. | Markdown only |
+| `memorysmith_unified_search` | You want one call that searches memories and pages together. | `markdown`, `json`, `envelope` |
+| `memorysmith_source_bundle` | You need source-linked file slices with the memory records. | `json`, `jsonl` |
+| `memorysmith_find_by_source` | You want records tied to a file path or source-link pattern. | Fixed structured JSON |
 
 Use `context_pack` before `source_bundle` when researching code changes. The context pack tells you which records matter; the source bundle pulls the concrete source evidence for those records.
+
+### Search Examples
+
+MCP hybrid search with namespaced tags and structured envelope output:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "hybrid-1",
+  "method": "tools/call",
+  "params": {
+    "name": "memorysmith_hybrid_search",
+    "arguments": {
+      "query": "mcp authorization matrix",
+      "tags": "project-wiki,kind:rule",
+      "status": "Core",
+      "limit": 5,
+      "format": "envelope"
+    }
+  }
+}
+```
+
+REST lexical search with the same filter pattern:
+
+```http
+POST /api/memories/search?format=envelope
+Content-Type: application/json
+
+{
+  "query": "mcp authorization matrix",
+  "tags": "project-wiki,kind:rule",
+  "status": "Core",
+  "limit": 5
+}
+```
+
+Use `memorysmith_get` or `memorysmith_page_get` when you already know the exact memory id or page slug. Do not simulate exact lookup with parser syntax in `query`.
+
+MCP tool authorization is part of the retrieval contract:
+
+| Tool family | Access rule |
+| --- | --- |
+| Memory search/get/context tools | Require the normal MemorySmith view policy. |
+| Page search/get/unified page results | Require view access and filter pages by each page's minimum visibility role. |
+| Page save/delete | Require edit permission and still respect page minimum-role rules. |
+| Source bundle and find-by-source | Require the source-bundle policy because they can expose source-link file slices; they are MCP-only and not chat-requested model tools. |
+
+When testing an MCP client, verify both tool availability and role-filtered output. A successful tool call should not be treated as proof that every matching page or source link was visible to that caller.
 
 ## Chat Mode
 
@@ -79,6 +173,8 @@ During generation, the icon Stop control cancels immediately. The icon Finish St
 
 Use Agent mode when the desired outcome is a wiki update or a multi-step change. Use Chat mode when the desired outcome is explanation, research, or a concise answer.
 
+For the exact split between generic chat settings, model profiles, maintenance-agent assignments, and write gates, use [Agent and Model Configuration](agent-configuration.md).
+
 ## Good Search Habits
 
 - Start broad with hybrid search.
@@ -105,6 +201,8 @@ For agent workflows:
 Treat `memorysmith_context_pack` as a bounded view rather than a complete census. If it reports omitted records or other truncation warnings, broaden the query or follow up with `memorysmith_source_bundle` instead of assuming the pack is exhaustive.
 
 Prefer JSON output for agent parsing when a tool offers it. Prefer Markdown output when a human is reading the result directly. Context-pack JSON includes `schemaVersion: memorysmith.context-pack.v1`, preserves the existing `records` and `warnings` fields, and can include per-record diagnostics for stale, broken-source, relationship, tag-policy, and maintenance warnings.
+
+For the search tools, `envelope` is the clearest public format name when you need score interpretation, provider metadata, warnings, and result diagnostics. `json` remains useful when a caller wants the same structured payload without leaning on the retrieval-envelope label.
 
 ## Search Quality And Long-Term Memory
 

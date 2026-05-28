@@ -1,0 +1,44 @@
+{
+  "id": "tsk-0129-turn-home-into-an-actionable-compact-dashboard",
+  "key": "TSK-0129",
+  "title": "Turn Home into an actionable compact dashboard",
+  "description": "Problem: the live home route repeats the app name and spends most of the viewport on four large summary cards plus two navigation buttons. It is visually clean, but it does not use the first screen to surface the most useful next actions, recent work, health concerns, or active tasks.\n\nDesired outcome: Home should become a compact operational dashboard that helps the user decide where to go next without duplicating the global app header.\n\nScope:\n- In scope: compact summary metrics, recent/active task or proposal links, health/readiness signals, quick links to Memories/Pages/Chat/Tasks, and removal or resizing of redundant hero-style text.\n- Out of scope: adding new backend data contracts unless an existing service cannot supply the needed summary.\n\nAcceptance criteria:\n- The first viewport shows useful navigation and current-state signals, not only large aggregate counts.\n- Existing memory summary metrics remain available but take less space.\n- At least three primary workflows are one click away with clear labels.\n- The layout works at narrow and desktop widths without marketing-style filler.\n\nValidation:\n- Capture `/` screenshots before/after at narrow and desktop widths.\n- Run route-smoke or a focused Home render test.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "ui",
+    "home",
+    "dashboard",
+    "discoverability",
+    "audit-vetted"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "workbench/tasks"
+  ],
+  "comments": [
+    {
+      "id": "c-0129-1",
+      "author": "AgentSmith",
+      "body": "Created from 2026-05-25 live visual review: Home uses oversized count cards and duplicated app naming, leaving little first-viewport value beyond links to Memories and Health.",
+      "createdAtUtc": "2026-05-25T00:00:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T00:00:00.0000000Z",
+  "updatedAtUtc": "2026-05-25T00:00:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

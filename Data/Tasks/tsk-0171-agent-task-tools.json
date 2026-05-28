@@ -1,0 +1,38 @@
+﻿{
+  "id": "tsk-0171-agent-task-tools",
+  "key": "TSK-0171",
+  "title": "Agent Task Tools",
+  "description": "Agents should have tools for creating, updating, and commenting on tasks. Change status, priority, add attachments, etc.",
+  "type": "Task",
+  "status": "Done",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [
+    {
+      "id": "c-0171-1",
+      "author": "AgentSmith",
+      "body": "Implemented MCP task tools backed by the existing ITaskService path: memorysmith_task_list, memorysmith_task_get, memorysmith_task_create, memorysmith_task_update, memorysmith_task_set_status, memorysmith_task_add_comment, and memorysmith_task_add_attachment. The tools are MCP-only, share task-service validation/persistence/history, and write tools remain gated by edit permission through the existing MCP risk check. Updated README and the API/MCP feature page. Validation passed: focused McpTaskTools_ListAndMutateTasks regression passed 1/1; broader McpAndSemanticSearchTests plus AppApiContractTests slice passed 43/43; editor diagnostics reported no errors in the touched code/test files.",
+      "createdAtUtc": "2026-05-25T20:45:48.8070383Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T18:49:55.6729806Z",
+  "updatedAtUtc": "2026-05-25T20:45:48.8070383Z",
+  "completedAtUtc": "2026-05-25T20:45:48.8070383Z",
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

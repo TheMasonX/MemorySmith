@@ -1,0 +1,46 @@
+{
+  "id": "tsk-0152-curate-historical-docs-and-supersede-stale-plans",
+  "key": "TSK-0152",
+  "title": "Curate historical docs and supersede stale plans",
+  "description": "Problem: MemorySmith has useful historical reviews and plans, but older files can still surface in search with stale claims about inactive projects, older test counts, xUnit, or aspirational semantic-search architecture. The misspelled MemorySmith.Core/Docs/Plans/SemantingSearch.md file is a concrete example: it mixes current ONNX fallback notes with future FAISS/HNSW architecture and is harder to discover by name.\n\nDesired outcome: historical documents remain preserved, but agents can quickly tell whether a document is current, historical, superseded, or aspirational.\n\nScope:\n- In scope: add supersession/front-matter or prominent status notes to stale reviews/plans, create or update an index that points to current source-of-truth pages, decide whether to rename or alias SemantingSearch.md, and add validation/search guidance so agents prefer current pages and memories.\n- Out of scope: rewriting every historical review from scratch or deleting historical evidence.\n\nAcceptance criteria:\n- Historical review/plan files that commonly appear in search have a visible status marker.\n- Current source-of-truth docs are linked from stale/high-traffic historical files.\n- The semantic search plan filename typo is either corrected with a compatibility pointer or explicitly documented.\n- Wiki/search guidance explains how agents should treat historical reviews versus current-state memories/pages.\n\nValidation:\n- Search for Worker, Dashboard, xUnit, SemantingSearch, FAISS, and historical validation counts after updates and confirm current status markers are visible.\n- Run ./Scripts/Test-PageLinks.ps1, ./Scripts/Test-PagePathLiterals.ps1, and memory JSON parse checks.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "audit",
+    "documentation",
+    "wiki-health",
+    "search",
+    "current-state"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "ops/wiki-health-and-validation",
+    "guides/search-and-chat",
+    "research/ultra-codebase-audit-20260524"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0152-20260525",
+      "author": "AgentSmith",
+      "body": "Created during 2026-05-25 deepdive audit. Evidence: MemorySmith.Core/Docs/Plans/SemantingSearch.md has a misspelled filename and mixes current ONNX/fallback notes with future FAISS/HNSW planning; older Reviews/Plans files are explicitly called historical in repository instructions but do not all carry visible supersession markers.",
+      "createdAtUtc": "2026-05-25T15:25:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T15:25:00.0000000Z",
+  "updatedAtUtc": "2026-05-25T15:25:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

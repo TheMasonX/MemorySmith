@@ -1,63 +1,31 @@
 {
   "Id": "project-wiki-current-validation-146-tests",
-  "Content": "Current validation after configurable Auto/Light/Dark Mermaid theme mode with readable light/dark diagram surfaces, explicit chat-agent wiki tool guidance, Markdown/Mermaid output hints for shared and Athena prompts, runtime fallback/custom-prompt output capability guidance, padded Markdown display boxes, static asset cache-busting, Mermaid fenced block rendering, unclosed Mermaid fence streaming hardening, Prism-compatible fenced code rendering, post-render Mermaid/Prism client hooks, Markdown-rendered memory content, right-edge chat sidebar toggle placement, global chat Trace panel, history-compatible medium-width Trace layout, stable History/Trace toolbar and composer layout, collapsed per-turn References resource drawer, restored history trace selection, collapsible trace headers, responsive trace layout for small viewports, icon Stop/Finish Step controls, Agent write approval gating, editable tool rerun, trace filters, compact trace graph, tool latency/token trace metadata, Finish Step soft-stop run control, chat context preload tightening, blue mid-chat resource chips, chat tool catalog and intent-intercept integration, intercepted wiki tool calls, chat model metadata, stop-generation, hydrated chat context, context usage meter, robust Ctrl+V copied-image paste handling, CI coverage workflow, Doxygen Pages workflow, benchmark-probe updates, admin model profiles with provider-discovered model dropdowns, maintenance proposal review/activity/transcript controls, proposal quick summaries and two-row proposal actions, fenced JSON maintenance-review parsing, tag suggestion approve/reject policy actions, standalone /maintenance trace/chat/action history, proposal-gated chat-agent writes, service-level maintenance active task state, and tool-backed Admin Maintenance chat is dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj --logger \"console;verbosity=minimal\" --nologo with 269 passing NUnit tests (0 failed, 0 skipped). dotnet build MemorySmith.slnx -v minimal also succeeds. Focused admin-review usability validation passed 13/13 for TagGovernanceTests plus fenced maintenance/proposal JSON parser regressions, and focused wiki/search validation passed 6/6 after normalizing two SourceLinks arrays. Browser smoke on http://localhost:5089 verified Admin Models provider-discovered dropdowns, Proposals quick summary plus comment/action rows, Tag Suggestions Approve/Reject controls, and the new /maintenance page showing task trace history, proposal action history, maintenance chat, and transcript search without triggering a provider-backed message or mutating run. The solution build covers MemorySmith.Core, MemorySmith.Storage, MemorySmith.App, MemorySmith.Benchmarks, and MemorySmith.Tests. Focused chat/page coverage lives in PagesAndChatTests, including Mermaid and Prism Markdig renderer output, unclosed mermaid fences staying Prism-compatible code during streaming, page assets, provider attachments, Ollama streaming token usage, trusted temp-file image payloads, raw-HTML rendering, GitHub error guidance, custom system prompts receiving fallback MemorySmith tool and Mermaid output guidance, full-memory context hydration beyond the leading search snippet when the user explicitly asks for wiki context, skipped preload for exact-reply/simple prompts, bounded preload counts, blue ChatContextOrigins.Tool resources for mid-chat tool access, intercepted MemorySmith toolCalls/JSON-RPC/fenced JSON tools/call execution before the final answer, approval-mode proposed memory/page writes without immediate writes, approved chat writes submitting MaintenanceWriteProposal records through IChatAgent.ApplyAgentWritesAsync when MaintenanceProposalWorkflow is available, and ChatRunControl stop-after-current-step behavior. MaintenanceAgentWorkflowTests covers proposal lifecycle, agent review, activity/transcript behavior, model assignment, fenced JSON review parsing, MaintenanceActiveRunStore current-run tracking, and Admin Maintenance chat delegation to the MemoryChatAgent tool-backed Chat pipeline. TagGovernanceTests includes static markup checks for Admin model discovery, Proposals active-run display and human summary/action rows, Tag Manager suggestion decisions, the standalone Maintenance page, service-state wiring, and Admin Maintenance read-only tool chat copy. ChatToolCatalogAndInterceptTests covers shared page/unified-search tool behavior and deterministic intent interception before provider generation. SearchBenchmarkTests includes lexical, semantic, hybrid, source-link, MCP, and chat/search dogfooding probes for model-used metadata, stop generation cancellation, compact chat history, context-window usage/rate-limit display, intercepted MCP/wiki tool calls, GitHub model guidance, Claude Haiku before Sonnet preference terms, and Ctrl+V copied-image paste terms. SecurityAndSourceLinkTests covers request guard behavior plus the remote API without API key diagnostics warning. MemoryMaintenanceTasksTests covers configured maintenance interval labels. MemoryApplicationServiceTests covers Lucene lexical tokenization, token fallback search, and CI-safe fake-provider embedding ranking. Benchmark smoke validation remains available through the BenchmarkDotNet search benchmark project, but the normal regression gate is the full NUnit suite.",
-  "Title": "Current validation baseline",
+  "Content": "Legacy alias record retained for backward compatibility after earlier count-anchored naming. The active current validation record is `project-wiki-current-validation-baseline`. This older record previously carried a test-count-specific ID and should not be used as the primary retrieval anchor for current validation state. Keep it only so existing references and searches can land on the newer stable record instead of losing context.",
+  "Title": "Historical Validation Baseline Alias",
   "Status": 2,
   "Confidence": 0.95,
   "Tags": [
     "project-wiki",
-    "validation",
+    "documentation",
     "tests",
-    "benchmarks",
-    "current-state"
+    "kind:index",
+    "audience:developer",
+    "scope:validation"
   ],
   "References": [
+    "project-wiki-current-validation-baseline",
     "project-wiki-validation-command",
-    "project-wiki-chat-agent-provider",
-    "project-wiki-maintenance-proposals-current",
-    "project-wiki-markdown-pages",
-    "project-wiki-benchmarkdotnet-suite",
-    "project-wiki-github-actions-artifacts"
+    "project-wiki-wiki-validation-current"
   ],
   "Conflicts": [],
   "SourceLinks": [
     {
-      "Label": "MemorySmith.slnx",
-      "Uri": "%MemorySmithRepo%MemorySmith.slnx",
-      "StartLine": null,
-      "EndLine": null
-    },
-    {
-      "Label": "PagesAndChatTests.cs",
-      "Uri": "%MemorySmithRepo%MemorySmith.Tests/PagesAndChatTests.cs",
-      "StartLine": null,
-      "EndLine": null
-    },
-    {
-      "Label": "Search benchmark probes",
-      "Uri": "%MemorySmithRepo%MemorySmith.Tests/SearchBenchmarkTests.cs",
-      "StartLine": null,
-      "EndLine": null
-    },
-    {
-      "Label": "Chat tool catalog and intent tests",
-      "Uri": "%MemorySmithRepo%MemorySmith.Tests/ChatToolCatalogAndInterceptTests.cs",
-      "StartLine": null,
-      "EndLine": null
-    },
-    {
-      "Label": "CI workflow",
-      "Uri": "%MemorySmithRepo%.github/workflows/ci.yml",
-      "StartLine": null,
-      "EndLine": null
-    },
-    {
-      "Label": "Doxygen Pages workflow",
-      "Uri": "%MemorySmithRepo%.github/workflows/docs-pages.yml",
+      "Label": "Current validation baseline memory",
+      "Uri": "%MemorySmithRepo%Data/Memories/Core/project-wiki-current-validation-baseline.json",
       "StartLine": null,
       "EndLine": null
     }
   ],
   "UsageCount": 0,
-  "LastUpdated": "2026-05-23T00:25:00Z"
+  "LastUpdated": "2026-05-25T00:25:00Z"
 }

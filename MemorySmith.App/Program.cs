@@ -43,15 +43,16 @@ Log.Logger = new LoggerConfiguration()
 try
 {
     var builder = WebApplication.CreateBuilder(args);
+    if (string.Equals(builder.Environment.EnvironmentName, "LocalDevelopment", StringComparison.OrdinalIgnoreCase))
+    {
+        builder.WebHost.UseStaticWebAssets();
+    }
     // Load optional local secrets file from the service working directory (survives publishes, gitignored in artifacts/)
     var secretsFile = Path.Combine(AppContext.BaseDirectory, "appsettings.Secrets.json");
     if (File.Exists(secretsFile))
         builder.Configuration.AddJsonFile(secretsFile, optional: true, reloadOnChange: false);
-    var configuredSettingsOverridePath = builder.Configuration["MemorySmith:SettingsOverridePath"];
-    var localDevelopmentFile = string.IsNullOrWhiteSpace(configuredSettingsOverridePath)
-        ? Path.Combine(AppContext.BaseDirectory, "appsettings.LocalDevelopment.json")
-        : Path.GetFullPath(configuredSettingsOverridePath);
-    builder.Configuration.AddJsonFile(localDevelopmentFile, optional: true, reloadOnChange: true);
+    var settingsOverrideFile = MemorySmithConfigurationPaths.ResolveSettingsOverridePath(builder.Configuration["MemorySmith:SettingsOverridePath"]);
+    builder.Configuration.AddJsonFile(settingsOverrideFile, optional: true, reloadOnChange: true);
     builder.Host.UseSerilog((context, services, loggerConfiguration) =>
     {
         var loggingOptions = context.Configuration.GetSection("MemorySmith:Logging").Get<LoggingOptions>() ?? new LoggingOptions();
@@ -72,7 +73,14 @@ try
         if (loggingOptions.EnableStructuredFile)
         {
             var structuredFilePath = ResolveLogPath(loggingOptions.StructuredFilePath);
-            Directory.CreateDirectory(Path.GetDirectoryName(structuredFilePath)!);
+            var structuredFileDirectory = Path.GetDirectoryName(structuredFilePath);
+            if (string.IsNullOrWhiteSpace(structuredFileDirectory))
+            {
+                structuredFileDirectory = AppContext.BaseDirectory;
+                structuredFilePath = Path.Combine(structuredFileDirectory, Path.GetFileName(structuredFilePath));
+            }
+
+            Directory.CreateDirectory(structuredFileDirectory);
             loggerConfiguration.WriteTo.File(
                 new CompactJsonFormatter(),
                 structuredFilePath,
@@ -101,6 +109,7 @@ try
     builder.Services.AddMudServices();
 
     builder.Services.Configure<MemorySmithOptions>(builder.Configuration.GetSection("MemorySmith"));
+    builder.Services.AddSingleton<IPostConfigureOptions<MemorySmithOptions>, MemorySmithLocalDevelopmentPostConfigure>();
     builder.Services.AddHttpContextAccessor();
     builder.Services.AddCascadingAuthenticationState();
     var authProviders = builder.Configuration.GetSection("MemorySmith:Auth:Providers").Get<AuthProviderOptions>() ?? new AuthProviderOptions();
@@ -147,19 +156,32 @@ try
                     var githubDisplayName = root.TryGetProperty("name", out var nameEl) && nameEl.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(nameEl.GetString()) ? nameEl.GetString() : null;
                     if (githubSubject == null) return;
                     var db = ctx.HttpContext.RequestServices.GetRequiredService<IMemorySmithDatabase>();
+                    var externalAuthOutcomes = ctx.HttpContext.RequestServices.GetRequiredService<ExternalAuthOutcomeRecorder>();
                     var msOpts = ctx.HttpContext.RequestServices.GetRequiredService<IOptions<MemorySmithOptions>>().Value;
                     var ct = ctx.HttpContext.RequestAborted;
                     var displayName = githubDisplayName ?? githubLogin ?? githubSubject;
                     var linkUserId = ctx.Properties?.Items.TryGetValue(MemorySmithAuthProperties.LinkUserId, out var requestedUserId) == true
                         ? requestedUserId
                         : null;
+                    var requestedLink = !string.IsNullOrWhiteSpace(linkUserId);
                     var link = await db.ProviderLinks.GetByProviderSubjectAsync(MemorySmithProviders.GitHub, githubSubject, ct);
                     string internalUserId;
                     if (link != null)
                     {
                         if (!string.IsNullOrWhiteSpace(linkUserId) && !string.Equals(link.UserId, linkUserId, StringComparison.Ordinal))
                         {
-                            ctx.Fail("This GitHub account is already linked to another MemorySmith user.");
+                            const string message = "This GitHub account is already linked to another MemorySmith user.";
+                            await externalAuthOutcomes.RecordFailureIfNeededAsync(
+                                ctx.HttpContext,
+                                MemorySmithProviders.GitHub,
+                                githubSubject,
+                                link.UserId,
+                                "link_conflict",
+                                message,
+                                requestedLink: true,
+                                details: new { requestedLinkUserId = linkUserId, existingLinkedUserId = link.UserId },
+                                cancellationToken: ct);
+                            ctx.Fail(message);
                             return;
                         }
 
@@ -170,7 +192,18 @@ try
                         var linkedUser = await db.Users.GetByIdAsync(linkUserId, ct);
                         if (linkedUser is null || linkedUser.IsDisabled)
                         {
-                            ctx.Fail("The MemorySmith account for this link request is not available.");
+                            const string message = "The MemorySmith account for this link request is not available.";
+                            await externalAuthOutcomes.RecordFailureIfNeededAsync(
+                                ctx.HttpContext,
+                                MemorySmithProviders.GitHub,
+                                githubSubject,
+                                linkUserId,
+                                linkedUser is null ? "link_user_missing" : "disabled",
+                                message,
+                                requestedLink: true,
+                                details: new { requestedLinkUserId = linkUserId },
+                                cancellationToken: ct);
+                            ctx.Fail(message);
                             return;
                         }
 
@@ -219,7 +252,17 @@ try
                     var user = await db.Users.GetByIdAsync(internalUserId, ct);
                     if (user is null || user.IsDisabled)
                     {
-                        ctx.Fail("The MemorySmith account is disabled or no longer exists.");
+                        const string message = "The MemorySmith account is disabled or no longer exists.";
+                        await externalAuthOutcomes.RecordFailureIfNeededAsync(
+                            ctx.HttpContext,
+                            MemorySmithProviders.GitHub,
+                            githubSubject,
+                            user?.UserId ?? internalUserId,
+                            user is null ? "user_missing" : "disabled",
+                            message,
+                            requestedLink,
+                            cancellationToken: ct);
+                        ctx.Fail(message);
                         return;
                     }
 
@@ -228,16 +271,7 @@ try
                     resolvedUser.LastLoginAtUtc = loginAtUtc;
                     resolvedUser.UpdatedAtUtc = loginAtUtc;
                     await db.Users.UpdateAsync(resolvedUser, ct);
-                    await db.LoginHistory.RecordAsync(new LoginHistoryEntry
-                    {
-                        LoginId = Guid.NewGuid().ToString("N"),
-                        UserId = resolvedUser.UserId,
-                        ProviderName = MemorySmithProviders.GitHub,
-                        ProviderSubject = githubSubject,
-                        OccurredAtUtc = loginAtUtc,
-                        Succeeded = true,
-                        RequestId = ctx.HttpContext.TraceIdentifier
-                    }, ct);
+                    await externalAuthOutcomes.RecordSuccessAsync(ctx.HttpContext, MemorySmithProviders.GitHub, githubSubject, resolvedUser, roles, requestedLink, ct);
                     ctx.Identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, internalUserId, ClaimValueTypes.String, ctx.Options.ClaimsIssuer));
                     ctx.Identity.AddClaim(new Claim(ClaimTypes.Name, resolvedUser.DisplayName, ClaimValueTypes.String, ctx.Options.ClaimsIssuer));
                     if (resolvedUser.Email is not null)
@@ -247,15 +281,28 @@ try
                     foreach (var role in roles)
                         ctx.Identity.AddClaim(new Claim(ClaimTypes.Role, role.Name, ClaimValueTypes.String, ctx.Options.ClaimsIssuer));
                 },
-                OnRemoteFailure = ctx =>
+                OnRemoteFailure = async ctx =>
                 {
+                    var linkUserId = ctx.Properties?.Items.TryGetValue(MemorySmithAuthProperties.LinkUserId, out var requestedUserId) == true
+                        ? requestedUserId
+                        : null;
+                    var externalAuthOutcomes = ctx.HttpContext.RequestServices.GetRequiredService<ExternalAuthOutcomeRecorder>();
+                    await externalAuthOutcomes.RecordFailureIfNeededAsync(
+                        ctx.HttpContext,
+                        MemorySmithProviders.GitHub,
+                        providerSubject: null,
+                        targetUserId: linkUserId,
+                        failureCode: "remote_failure",
+                        message: ctx.Failure?.Message ?? "External sign-in failed.",
+                        requestedLink: !string.IsNullOrWhiteSpace(linkUserId),
+                        details: string.IsNullOrWhiteSpace(linkUserId) ? null : new { requestedLinkUserId = linkUserId },
+                        cancellationToken: ctx.HttpContext.RequestAborted);
                     ctx.HandleResponse();
                     var returnUri = ctx.Properties?.RedirectUri;
                     var target = !string.IsNullOrWhiteSpace(returnUri) && returnUri.StartsWith("/profile", StringComparison.Ordinal)
                         ? $"/profile?error={Uri.EscapeDataString(ctx.Failure?.Message ?? "External sign-in failed.")}"
                         : "/login?error=1";
                     ctx.Response.Redirect(target);
-                    return Task.CompletedTask;
                 }
             };
         });
@@ -298,6 +345,7 @@ try
     });
     builder.Services.AddSingleton<ICurrentUserContext, HttpCurrentUserContext>();
     builder.Services.AddSingleton<AuditLogService>();
+    builder.Services.AddSingleton<ExternalAuthOutcomeRecorder>();
     builder.Services.AddSingleton<AdminSettingsService>();
     builder.Services.AddSingleton<ChatModelProfileService>();
     builder.Services.AddSingleton<VersionHistoryService>();
@@ -338,6 +386,7 @@ try
     builder.Services.AddSingleton<MemoryIndex>();
     builder.Services.AddSingleton<ITextEmbeddingProvider, OnnxTextEmbeddingProvider>();
     builder.Services.AddSingleton<SemanticEmbeddingSearchService>();
+    builder.Services.AddSingleton<CodeSearchService>();
     builder.Services.AddSingleton<BackgroundServiceTelemetryTracker>();
     builder.Services.AddSingleton<IMemoryChangePublisher, MemoryChangePublisher>();
     builder.Services.AddSingleton<TagPolicyService>();
@@ -357,6 +406,7 @@ try
     builder.Services.AddSingleton<MaintenanceTopicMapService>();
     builder.Services.AddScoped<MaintenanceAgentService>();
     builder.Services.AddSingleton<OperationalDiagnosticsService>();
+    builder.Services.AddHostedService<SemanticEmbeddingPrewarmService>();
 
     var telemetryOptions = builder.Configuration.GetSection("MemorySmith:Telemetry").Get<TelemetryOptions>() ?? new TelemetryOptions();
     if (telemetryOptions.Enabled)
@@ -496,7 +546,7 @@ try
             };
             details.Extensions["traceId"] = traceId;
 
-            await context.Response.WriteAsJsonAsync(details);
+            await context.Response.WriteAsJsonAsync(details, options: null, contentType: "application/problem+json");
         });
     });
 
@@ -522,19 +572,20 @@ try
 
             options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
             {
-                diagnosticContext.Set("TraceId", Activity.Current?.TraceId.ToString() ?? httpContext.TraceIdentifier);
+                var correlationId = RequestMetadata.ResolveCorrelationId(httpContext);
+                diagnosticContext.Set("TraceId", correlationId);
                 diagnosticContext.Set("RequestPath", httpContext.Request.Path.ToString());
                 diagnosticContext.Set("RequestHost", httpContext.Request.Host.Value);
                 diagnosticContext.Set("RequestScheme", httpContext.Request.Scheme);
                 diagnosticContext.Set("UserAgent", httpContext.Request.Headers.UserAgent.ToString());
-                diagnosticContext.Set("CorrelationId", httpContext.TraceIdentifier);
+                diagnosticContext.Set("CorrelationId", correlationId);
             };
         });
     }
 
     app.Use(async (context, next) =>
     {
-        context.Response.Headers["X-Correlation-Id"] = Activity.Current?.TraceId.ToString() ?? context.TraceIdentifier;
+        context.Response.Headers["X-Correlation-Id"] = RequestMetadata.ResolveCorrelationId(context);
         await next();
     });
 
@@ -548,6 +599,27 @@ try
     var pageAssetsPath = Path.GetFullPath(Path.Combine(pagesPath, "assets"));
     Directory.CreateDirectory(pageAssetsPath);
     var contentTypeProvider = new FileExtensionContentTypeProvider();
+    app.MapGet("/artifacts/task-attachments/{taskId}/{fileName}", (
+        string taskId,
+        string fileName,
+        IOptionsMonitor<MemorySmithOptions> options) =>
+    {
+        var resolvedPath = TaskAttachmentFiles.ResolvePublicPath(options.CurrentValue.TaskAttachments, taskId, fileName);
+        if (resolvedPath is null)
+        {
+            return Results.BadRequest();
+        }
+
+        if (!File.Exists(resolvedPath))
+        {
+            return Results.NotFound();
+        }
+
+        return Results.File(
+            resolvedPath,
+            contentTypeProvider.TryGetContentType(resolvedPath, out var contentType) ? contentType : "application/octet-stream");
+    }).RequireAuthorization(MemorySmithPolicies.CanViewMemorySmith);
+
     app.MapGet("/page-assets/{**assetPath}", async (
         string assetPath,
         FilePageService pages,

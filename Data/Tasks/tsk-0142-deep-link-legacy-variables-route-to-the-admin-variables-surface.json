@@ -1,0 +1,50 @@
+{
+  "id": "tsk-0142-deep-link-legacy-variables-route-to-the-admin-variables-surface",
+  "key": "TSK-0142",
+  "title": "Deep-link legacy Variables route to the Admin Variables surface",
+  "description": "Problem: the continued live review found `/variables` acting as a compatibility landing page with an `Open Admin` action, but the action points to the general Admin route rather than the Variables tab or a route state that preserves the user's intent. Users following old links can be dropped into Admin without seeing the moved Variables surface.\n\nDesired outcome: compatibility routes should preserve intent by taking users directly to the modern replacement surface while still explaining that the route moved.\n\nScope:\n- In scope: `/variables` compatibility landing behavior, Admin tab deep-linking or query/fragment state, visible moved-route copy, and browser validation for the Variables destination.\n- Out of scope: changing variable storage semantics, path variable validation, or Admin Variables editing behavior beyond route targeting.\n\nAcceptance criteria:\n- The `/variables` page action opens Admin with the Variables surface selected.\n- A reloadable URL, query string, fragment, or equivalent route state can represent the Variables tab.\n- The compatibility page remains clear for users who arrive from old bookmarks.\n- Browser checks prove `/variables` reaches the Variables management surface without manual tab hunting.\n\nValidation:\n- Capture `/variables` before/after and verify the destination route/tab.\n- Add or update focused browser coverage for the compatibility route and Admin Variables tab selection.",
+  "type": "Task",
+  "status": "Done",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "ui",
+    "admin",
+    "variables",
+    "routes",
+    "audit-vetted"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "workbench/tasks"
+  ],
+  "comments": [
+    {
+      "id": "c-0142-1",
+      "author": "AgentSmith",
+      "body": "Created from 2026-05-25 continued live review: `/variables` explains that variable editing moved, but its action opens generic Admin rather than the Variables tab/surface.",
+      "createdAtUtc": "2026-05-25T00:00:00.0000000Z"
+    },
+    {
+      "id": "c-0142-2",
+      "author": "AgentSmith",
+      "body": "Implemented `/admin?tab=variables` as a reloadable Admin tab contract and updated the `/variables` compatibility action to link to that route state. Admin now reads the `tab=variables` query and selects the Variables tab, and tab changes update the URL for the Variables surface. Validation: `dotnet build .\\MemorySmith.App\\MemorySmith.App.csproj --nologo` succeeded after stopping the temporary validation server; a Playwright probe verified `/variables` links to `/admin?tab=variables` and preserves the query through the protected login ReturnUrl; `MEMORYSMITH_BASE_URL=http://127.0.0.1:5099 npm run test:route-smoke` passed 5/5. The local anonymous probe could not enter protected Admin without credentials, so the selected-tab behavior is validated by compile and code path rather than an authenticated browser assertion in this checkpoint.",
+      "createdAtUtc": "2026-05-25T06:39:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T00:00:00.0000000Z",
+  "updatedAtUtc": "2026-05-25T06:39:00.0000000Z",
+  "completedAtUtc": "2026-05-25T06:39:00.0000000Z",
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

@@ -4,7 +4,7 @@
   "Title": "Fix `Approve all` batch semantics to be per-item (for example 3/5 valid applies 3), report itemized outcomes (`approved`/`rejected`/`blocked`/`failed`), and clear/refresh pending cards and counters deterministically.",
   "Description": "Problem: the original batch approval flow was fail-fast and hard to audit. Recent work improved per-item handling, but deterministic pending-state cleanup and outcome coverage still need hardening.\r\n\r\nDesired outcome:\r\n- Batch approval applies valid items independently and records explicit per-item outcomes.\r\n- Remaining reconciliation logic leaves no orphaned pending cards or ambiguous counts.\r\n\r\nAcceptance criteria:\r\n- Mixed batches report `approved`, `rejected`, `blocked`, or `failed` per item.\r\n- Valid proposals in a mixed batch continue independently instead of being cancelled by one bad item.\r\n- Pending UI state is consistent after the batch completes.\r\n\r\nValidation:\r\n- Re-run the mixed-batch scenario from the chat-agent testing tracker.\r\n- Add focused test coverage for per-item outcomes and post-batch state reconciliation.\r\n\r\nAudit note: vetted on 2026-05-24; narrowed but not fully obsolete because logs show per-item behavior improved while state reconciliation remains incomplete.",
   "Type": "Task",
-  "Status": "Backlog",
+  "Status": "Done",
   "Priority": "High",
   "AssigneeMode": "Custom",
   "AssigneeDirectoryId": null,
@@ -43,14 +43,20 @@
       "Author": "AgentSmith",
       "Body": "Review round: remains Backlog. Per-item batch outcomes are improved, but deterministic pending-state reconciliation is still incomplete in reproduced mixed-batch scenarios.",
       "CreatedAtUtc": "2026-05-24T04:44:00.0000000Z"
+    },
+    {
+      "Id": "c-done-0018-20260526",
+      "Author": "AgentSmith",
+      "Body": "Completed: Approve all now removes attempted pending proposals for submitted, rejected/no-op, blocked, and failed outcomes; submitted proposals are reported as approved/submitted, blank no-change proposals are reported as rejected, and blocked/failed exceptions are itemized. Validation: focused no-op apply-result test passed 1/1; focused chat/page plus component reconciliation suite passed 63/63; UI sweep loaded /chat and /tasks on the shared HTTPS app.",
+      "CreatedAtUtc": "2026-05-26T17:42:00.0000000Z"
     }
   ],
   "EpicId": null,
   "ParentId": null,
   "DueDateUtc": null,
   "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z",
-  "UpdatedAtUtc": "2026-05-24T04:44:00.0000000Z",
-  "CompletedAtUtc": null,
-  "Revision": 3,
+  "UpdatedAtUtc": "2026-05-26T17:42:00.0000000Z",
+  "CompletedAtUtc": "2026-05-26T17:42:00.0000000Z",
+  "Revision": 4,
   "IsArchived": false
 }

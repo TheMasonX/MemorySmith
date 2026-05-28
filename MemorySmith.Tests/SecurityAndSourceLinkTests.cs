@@ -6,9 +6,14 @@ using System.Text.Json;
 using MemorySmith.App.Services;
 using MemorySmith.Core.Models;
 using MemorySmith.Storage;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Data.Sqlite;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
 namespace MemorySmith.Tests;
@@ -16,6 +21,7 @@ namespace MemorySmith.Tests;
 [TestFixture]
 public class SecurityAndSourceLinkTests
 {
+    private const string ValidPassword = "ThisIsAValidPassword123!";
     private string _tempRoot = null!;
 
     [SetUp]
@@ -95,6 +101,58 @@ public class SecurityAndSourceLinkTests
         });
     }
 
+    [TestCase("/api/health/live")]
+    [TestCase("/mcp")]
+    public async Task RequestGuard_BlocksRemoteApiWhenRemoteApiIsAllowedWithoutConfiguredApiKey(string path)
+    {
+        var blocked = CreateRemoteApiContext(path);
+        var allowed = CreateRemoteApiContext(path);
+        allowed.Request.Headers[MemorySmithRequestGuardMiddleware.ApiKeyHeaderName] = "secret";
+        var nextCalls = 0;
+        var middleware = new MemorySmithRequestGuardMiddleware(_ =>
+        {
+            nextCalls++;
+            return Task.CompletedTask;
+        });
+
+        await middleware.InvokeAsync(blocked, Options.Create(new MemorySmithOptions { AllowRemoteApi = true }));
+        await middleware.InvokeAsync(allowed, Options.Create(new MemorySmithOptions { AllowRemoteApi = true, ApiKey = "secret" }));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(blocked.Response.StatusCode, Is.EqualTo(StatusCodes.Status503ServiceUnavailable));
+            Assert.That(ReadResponseBody(blocked), Does.Contain("MemorySmith:ApiKey"));
+            Assert.That(allowed.Response.StatusCode, Is.EqualTo(StatusCodes.Status200OK));
+            Assert.That(nextCalls, Is.EqualTo(1));
+        });
+    }
+
+    [TestCase("/api/auth/me")]
+    [TestCase("/api/auth/login")]
+    [TestCase("/api/auth/logout")]
+    [TestCase("/api/auth/challenge")]
+    [TestCase("/api/admin/setup")]
+    [TestCase("/api/admin/setup/status")]
+    public async Task RequestGuard_AllowsRemoteBrowserAuthAndSetupEndpointsWithoutApiKey(string path)
+    {
+        var context = CreateRemoteApiContext(path);
+        var nextCalls = 0;
+        var middleware = new MemorySmithRequestGuardMiddleware(_ =>
+        {
+            nextCalls++;
+            return Task.CompletedTask;
+        });
+
+        await middleware.InvokeAsync(context, Options.Create(new MemorySmithOptions { AllowRemoteApi = true, ApiKey = "secret" }));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(context.Response.StatusCode, Is.EqualTo(StatusCodes.Status200OK));
+            Assert.That(ReadResponseBody(context), Is.Empty);
+            Assert.That(nextCalls, Is.EqualTo(1));
+        });
+    }
+
     [Test]
     public async Task McpInitializedNotification_DoesNotReturnJsonRpcError()
     {
@@ -111,6 +169,79 @@ public class SecurityAndSourceLinkTests
     }
 
     [Test]
+    public async Task McpSensitiveRead_DeniesAnonymousAndAuthenticatedViewerCallers()
+    {
+        await using var factory = CreateFactory(new Dictionary<string, string?>
+        {
+            ["MemorySmith:Auth:AnonymousAccess"] = MemorySmithRoles.Viewer,
+            ["MemorySmith:Auth:AuthenticatedDefaultRole"] = MemorySmithRoles.Viewer
+        });
+
+        using var setupClient = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var setupResponse = await setupClient.PostAsJsonAsync("/api/admin/setup", new SetupAdminRequest("Admin User", "admin@example.test", ValidPassword));
+        setupResponse.EnsureSuccessStatusCode();
+
+        using var anonymousClient = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var anonymousText = await CallFindBySourceTextAsync(anonymousClient);
+
+        await CreateLocalUserAsync(factory, "Viewer User", "viewer@example.test", ValidPassword, MemorySmithRoles.Viewer);
+        using var viewerClient = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var loginResponse = await viewerClient.PostAsJsonAsync("/api/auth/login", new LoginRequest("viewer@example.test", ValidPassword));
+        loginResponse.EnsureSuccessStatusCode();
+        var viewerText = await CallFindBySourceTextAsync(viewerClient);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(anonymousText, Does.Contain("not authorized to read source bundles"));
+            Assert.That(viewerText, Does.Contain("not authorized to read source bundles"));
+        });
+    }
+
+    [Test]
+    public async Task McpSensitiveRead_AllowsEditorAdminApiKeyAndAuthDisabledCallers()
+    {
+        await using var roleFactory = CreateFactory(new Dictionary<string, string?>
+        {
+            ["MemorySmith:Auth:AnonymousAccess"] = MemorySmithRoles.Viewer,
+            ["MemorySmith:Auth:AuthenticatedDefaultRole"] = MemorySmithRoles.Viewer
+        });
+
+        using var adminClient = roleFactory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var setupResponse = await adminClient.PostAsJsonAsync("/api/admin/setup", new SetupAdminRequest("Admin User", "admin@example.test", ValidPassword));
+        setupResponse.EnsureSuccessStatusCode();
+        var adminText = await CallFindBySourceTextAsync(adminClient);
+
+        await CreateLocalUserAsync(roleFactory, "Editor User", "editor@example.test", ValidPassword, MemorySmithRoles.Editor);
+        using var editorClient = roleFactory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var loginResponse = await editorClient.PostAsJsonAsync("/api/auth/login", new LoginRequest("editor@example.test", ValidPassword));
+        loginResponse.EnsureSuccessStatusCode();
+        var editorText = await CallFindBySourceTextAsync(editorClient);
+
+        await using var apiKeyFactory = CreateFactory(new Dictionary<string, string?>
+        {
+            ["MemorySmith:ApiKey"] = "secret"
+        });
+        using var apiKeyClient = apiKeyFactory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        apiKeyClient.DefaultRequestHeaders.Add(MemorySmithRequestGuardMiddleware.ApiKeyHeaderName, "secret");
+        var apiKeyText = await CallFindBySourceTextAsync(apiKeyClient);
+
+        await using var authDisabledFactory = CreateFactory(new Dictionary<string, string?>
+        {
+            ["MemorySmith:Auth:Enabled"] = "false"
+        });
+        using var authDisabledClient = authDisabledFactory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var authDisabledText = await CallFindBySourceTextAsync(authDisabledClient);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(adminText, Does.Not.Contain("not authorized to read source bundles"));
+            Assert.That(editorText, Does.Not.Contain("not authorized to read source bundles"));
+            Assert.That(apiKeyText, Does.Not.Contain("not authorized to read source bundles"));
+            Assert.That(authDisabledText, Does.Not.Contain("not authorized to read source bundles"));
+        });
+    }
+
+    [Test]
     public async Task Diagnostics_WarnsWhenRemoteApiIsAllowedWithoutApiKey()
     {
         await using var factory = CreateFactory(new Dictionary<string, string?>
@@ -124,7 +255,62 @@ public class SecurityAndSourceLinkTests
 
         var body = await client.GetStringAsync("/api/diagnostics");
 
-        Assert.That(body, Does.Contain("remote-api-without-api-key"));
+        Assert.Multiple(() =>
+        {
+            Assert.That(body, Does.Contain("remote-api-without-api-key"));
+            Assert.That(body, Does.Contain("blocked until MemorySmith:ApiKey"));
+        });
+    }
+
+    [Test]
+    public void SecurityProfile_RemoteHardenedAppliesRemoteSafeDefaults()
+    {
+        var options = new MemorySmithOptions
+        {
+            SecurityProfile = MemorySmithSecurityProfiles.RemoteHardened,
+            AllowRemoteApi = false,
+            Auth = new AuthOptions
+            {
+                Enabled = false,
+                AnonymousAccess = MemorySmithRoles.Viewer,
+                AutoEditorForAuthenticatedUsers = true,
+                RequireHttpsForRemoteAuth = false,
+                OpenLocalEditorCompatibility = true,
+                Setup = new AuthSetupOptions { AllowLoopbackBootstrap = true }
+            }
+        };
+        var postConfigure = CreatePostConfigure("Production");
+
+        postConfigure.PostConfigure(null, options);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(options.SecurityProfile, Is.EqualTo(MemorySmithSecurityProfiles.RemoteHardened));
+            Assert.That(options.AllowRemoteApi, Is.True);
+            Assert.That(options.Auth.Enabled, Is.True);
+            Assert.That(options.Auth.RequireHttpsForRemoteAuth, Is.True);
+            Assert.That(options.Auth.AnonymousAccess, Is.EqualTo("None"));
+            Assert.That(options.Auth.AutoEditorForAuthenticatedUsers, Is.False);
+            Assert.That(options.Auth.OpenLocalEditorCompatibility, Is.False);
+            Assert.That(options.Auth.Setup.AllowLoopbackBootstrap, Is.False);
+        });
+    }
+
+    [Test]
+    public void SecurityProfile_LocalDevelopmentEnvironmentPreservesDogfoodOverrides()
+    {
+        var options = new MemorySmithOptions();
+        var postConfigure = CreatePostConfigure("LocalDevelopment");
+
+        postConfigure.PostConfigure(null, options);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(options.AllowRemoteApi, Is.True);
+            Assert.That(options.Auth.RequireHttpsForRemoteAuth, Is.False);
+            Assert.That(options.Chat.AgentWritesEnabled, Is.True);
+            Assert.That(options.SourceLinks.MaxReadBytes, Is.EqualTo(262144));
+        });
     }
 
     [Test]
@@ -230,7 +416,19 @@ public class SecurityAndSourceLinkTests
         var broadRoot = Path.Combine(_tempRoot, "broad");
         Directory.CreateDirectory(broadRoot);
         var sourceFile = Path.Combine(broadRoot, "source.txt");
-        await File.WriteAllTextAsync(sourceFile, "broad read allowed");
+        await File.WriteAllTextAsync(sourceFile, string.Join(Environment.NewLine, Enumerable.Range(1, 120).Select(index => $"LINE-{index:000}")));
+
+        var boundedResolver = new VarResolver(
+            new FileVarStore(Path.Combine(_tempRoot, "vars-bounded.json")),
+            Options.Create(new MemorySmithOptions
+            {
+                SourceLinks = new SourceLinkOptions
+                {
+                    AllowedFileRoots = [broadRoot]
+                }
+            }));
+
+        var boundedContent = await boundedResolver.ReadSourceAsync(new SourceLink { Uri = sourceFile });
 
         var resolver = new VarResolver(
             new FileVarStore(Path.Combine(_tempRoot, "vars.json")),
@@ -246,8 +444,13 @@ public class SecurityAndSourceLinkTests
 
         Assert.Multiple(() =>
         {
+            Assert.That(boundedContent.Exists, Is.True);
+            Assert.That(boundedContent.Content, Does.Contain("LINE-001"));
+            Assert.That(boundedContent.Content, Does.Contain("LINE-050"));
+            Assert.That(boundedContent.Content, Does.Not.Contain("LINE-051"));
             Assert.That(content.Exists, Is.True);
-            Assert.That(content.Content, Does.Contain("broad read allowed"));
+            Assert.That(content.Content, Does.Contain("LINE-001"));
+            Assert.That(content.Content, Does.Contain("LINE-120"));
         });
     }
 
@@ -406,6 +609,81 @@ public class SecurityAndSourceLinkTests
                 config.AddInMemoryCollection(values);
             });
         });
+
+    private MemorySmithLocalDevelopmentPostConfigure CreatePostConfigure(string environmentName)
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["MemorySmith:SettingsOverridePath"] = Path.Combine(_tempRoot, "missing-overrides.json")
+            })
+            .Build();
+
+        return new MemorySmithLocalDevelopmentPostConfigure(new TestHostEnvironment(environmentName), configuration);
+    }
+
+    private static DefaultHttpContext CreateRemoteApiContext(string path)
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Path = path;
+        context.Connection.RemoteIpAddress = IPAddress.Parse("203.0.113.10");
+        context.Response.Body = new MemoryStream();
+        return context;
+    }
+
+    private static string ReadResponseBody(DefaultHttpContext context) =>
+        Encoding.UTF8.GetString(((MemoryStream)context.Response.Body).ToArray());
+
+    private sealed class TestHostEnvironment(string environmentName) : IHostEnvironment
+    {
+        public string EnvironmentName { get; set; } = environmentName;
+        public string ApplicationName { get; set; } = "MemorySmith.Tests";
+        public string ContentRootPath { get; set; } = AppContext.BaseDirectory;
+        public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
+    }
+
+    private static async Task CreateLocalUserAsync(WebApplicationFactory<Program> factory, string displayName, string email, string password, string role)
+    {
+        using var scope = factory.Services.CreateScope();
+        var database = scope.ServiceProvider.GetRequiredService<IMemorySmithDatabase>();
+        var now = DateTime.UtcNow;
+        var user = new UserAccount
+        {
+            UserId = Guid.NewGuid().ToString("N"),
+            DisplayName = displayName,
+            NormalizedDisplayName = displayName.Trim().ToUpperInvariant(),
+            Email = email,
+            NormalizedEmail = email.Trim().ToUpperInvariant(),
+            LocalPasswordEnabled = true,
+            SecurityStamp = Guid.NewGuid().ToString("N"),
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now
+        };
+        user.PasswordHash = new PasswordHasher<UserAccount>().HashPassword(user, password);
+
+        await database.Users.CreateAsync(user, CancellationToken.None);
+        await database.Roles.AssignRoleAsync(user.UserId, role, null, CancellationToken.None);
+    }
+
+    private static async Task<string> CallFindBySourceTextAsync(HttpClient client)
+    {
+        var response = await client.PostAsJsonAsync("/mcp", new
+        {
+            JsonRpc = "2.0",
+            Id = "source-auth",
+            Method = "tools/call",
+            Params = new
+            {
+                Name = "memorysmith_find_by_source",
+                Arguments = new
+                {
+                    Pattern = "no-match-source-auth-probe"
+                }
+            }
+        }, JsonSerializerOptions.Web);
+        response.EnsureSuccessStatusCode();
+        return await ExtractFirstToolTextAsync(response);
+    }
 
     private static async Task<string> ExtractFirstToolTextAsync(HttpResponseMessage response)
     {

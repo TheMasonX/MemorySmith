@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using MemorySmith.App.Services;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
@@ -111,6 +112,8 @@ public class McpAndSemanticSearchTests
         Assert.That(toolNames, Does.Contain("memorysmith_hybrid_search"));
         Assert.That(toolNames, Does.Contain("memorysmith_context_pack"));
         Assert.That(toolNames, Does.Contain("memorysmith_get"));
+        Assert.That(toolNames, Does.Contain("memorysmith_code_search"));
+        Assert.That(toolNames, Does.Contain("memorysmith_code_search_status"));
 
         var contextPackTool = document.RootElement
             .GetProperty("result")
@@ -122,6 +125,322 @@ public class McpAndSemanticSearchTests
         {
             Assert.That(contextPackProperties.TryGetProperty("maxRecords", out _), Is.True);
             Assert.That(contextPackProperties.TryGetProperty("format", out _), Is.True);
+        });
+    }
+
+    [Test]
+    public async Task McpToolConfig_HidesAndBlocksDisabledTools()
+    {
+        var dataPath = ProjectWikiFixture.CopyToTemp(_tempRoot);
+        await using var factory = CreateFactory(dataPath, new Dictionary<string, string?>
+        {
+            ["MemorySmith:Mcp:DisabledTools:0"] = "memorysmith_context_pack"
+        });
+        using var client = factory.CreateClient();
+
+        var listResponse = await client.PostAsJsonAsync("/mcp", new
+        {
+            JsonRpc = "2.0",
+            Id = 1,
+            Method = "tools/list"
+        }, JsonSerializerOptions.Web);
+
+        Assert.That(listResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+
+        using var listDocument = await JsonDocument.ParseAsync(await listResponse.Content.ReadAsStreamAsync());
+        var toolNames = listDocument.RootElement
+            .GetProperty("result")
+            .GetProperty("tools")
+            .EnumerateArray()
+            .Select(tool => tool.GetProperty("name").GetString())
+            .ToList();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(toolNames, Does.Contain("memorysmith_search"));
+            Assert.That(toolNames, Does.Not.Contain("memorysmith_context_pack"));
+        });
+
+        var callResponse = await client.PostAsJsonAsync("/mcp", new
+        {
+            JsonRpc = "2.0",
+            Id = 2,
+            Method = "tools/call",
+            Params = new
+            {
+                Name = "memorysmith_context_pack",
+                Arguments = new
+                {
+                    Query = "configuration disabled tool",
+                    MaxRecords = 1
+                }
+            }
+        }, JsonSerializerOptions.Web);
+
+        Assert.That(callResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+
+        using var callDocument = await JsonDocument.ParseAsync(await callResponse.Content.ReadAsStreamAsync());
+        var result = callDocument.RootElement.GetProperty("result");
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.GetProperty("isError").GetBoolean(), Is.True);
+            Assert.That(result.GetProperty("content")[0].GetProperty("text").GetString(), Does.Contain("disabled by MCP tool configuration"));
+        });
+    }
+
+    [Test]
+    public async Task McpTaskTools_ListAndMutateTasks()
+    {
+        var dataPath = ProjectWikiFixture.CopyToTemp(_tempRoot);
+        await using var factory = CreateFactory(dataPath);
+        using var client = factory.CreateClient();
+
+        var listToolsResponse = await client.PostAsJsonAsync("/mcp", new
+        {
+            JsonRpc = "2.0",
+            Id = "task-tools",
+            Method = "tools/list"
+        }, JsonSerializerOptions.Web);
+
+        listToolsResponse.EnsureSuccessStatusCode();
+        using var listToolsDocument = await JsonDocument.ParseAsync(await listToolsResponse.Content.ReadAsStreamAsync());
+        var toolNames = listToolsDocument.RootElement
+            .GetProperty("result")
+            .GetProperty("tools")
+            .EnumerateArray()
+            .Select(tool => tool.GetProperty("name").GetString())
+            .ToList();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(toolNames, Does.Contain("memorysmith_task_list"));
+            Assert.That(toolNames, Does.Contain("memorysmith_task_get"));
+            Assert.That(toolNames, Does.Contain("memorysmith_task_create"));
+            Assert.That(toolNames, Does.Contain("memorysmith_task_update"));
+            Assert.That(toolNames, Does.Contain("memorysmith_task_set_status"));
+            Assert.That(toolNames, Does.Contain("memorysmith_task_add_comment"));
+            Assert.That(toolNames, Does.Contain("memorysmith_task_add_attachment"));
+        });
+
+        var createResponse = await client.PostAsJsonAsync("/mcp", new
+        {
+            JsonRpc = "2.0",
+            Id = "create-task",
+            Method = "tools/call",
+            Params = new
+            {
+                Name = "memorysmith_task_create",
+                Arguments = new
+                {
+                    Title = "Agent tool smoke task",
+                    Description = "Created through the MCP task tool regression.",
+                    Priority = TaskPriorities.High,
+                    Labels = new[] { "agent", "mcp" },
+                    Slug = "agent-tool-smoke"
+                }
+            }
+        }, JsonSerializerOptions.Web);
+
+        createResponse.EnsureSuccessStatusCode();
+        using var createDocument = JsonDocument.Parse(await ExtractFirstToolTextAsync(createResponse));
+        var taskId = createDocument.RootElement.GetProperty("task").GetProperty("id").GetString();
+        Assert.That(taskId, Is.Not.Null.And.Contains("agent-tool-smoke"));
+
+        var statusResponse = await client.PostAsJsonAsync("/mcp", new
+        {
+            JsonRpc = "2.0",
+            Id = "status-task",
+            Method = "tools/call",
+            Params = new
+            {
+                Name = "memorysmith_task_set_status",
+                Arguments = new
+                {
+                    IdOrKey = taskId,
+                    Status = TaskStatuses.InProgress,
+                    Note = "agent started the task"
+                }
+            }
+        }, JsonSerializerOptions.Web);
+        statusResponse.EnsureSuccessStatusCode();
+
+        var updateResponse = await client.PostAsJsonAsync("/mcp", new
+        {
+            JsonRpc = "2.0",
+            Id = "update-task",
+            Method = "tools/call",
+            Params = new
+            {
+                Name = "memorysmith_task_update",
+                Arguments = new
+                {
+                    IdOrKey = taskId,
+                    Priority = TaskPriorities.Critical
+                }
+            }
+        }, JsonSerializerOptions.Web);
+        updateResponse.EnsureSuccessStatusCode();
+
+        var commentResponse = await client.PostAsJsonAsync("/mcp", new
+        {
+            JsonRpc = "2.0",
+            Id = "comment-task",
+            Method = "tools/call",
+            Params = new
+            {
+                Name = "memorysmith_task_add_comment",
+                Arguments = new
+                {
+                    IdOrKey = taskId,
+                    Body = "Progress note from the MCP task tool."
+                }
+            }
+        }, JsonSerializerOptions.Web);
+        commentResponse.EnsureSuccessStatusCode();
+
+        var attachmentResponse = await client.PostAsJsonAsync("/mcp", new
+        {
+            JsonRpc = "2.0",
+            Id = "attach-task",
+            Method = "tools/call",
+            Params = new
+            {
+                Name = "memorysmith_task_add_attachment",
+                Arguments = new
+                {
+                    IdOrKey = taskId,
+                    Name = "Smoke Artifact",
+                    Kind = "report",
+                    Uri = "https://example.test/artifacts/task-tool-smoke.txt"
+                }
+            }
+        }, JsonSerializerOptions.Web);
+        attachmentResponse.EnsureSuccessStatusCode();
+
+        var getResponse = await client.PostAsJsonAsync("/mcp", new
+        {
+            JsonRpc = "2.0",
+            Id = "get-task",
+            Method = "tools/call",
+            Params = new
+            {
+                Name = "memorysmith_task_get",
+                Arguments = new
+                {
+                    IdOrKey = taskId
+                }
+            }
+        }, JsonSerializerOptions.Web);
+
+        getResponse.EnsureSuccessStatusCode();
+        using var getDocument = JsonDocument.Parse(await ExtractFirstToolTextAsync(getResponse));
+        var task = getDocument.RootElement.GetProperty("task");
+        Assert.Multiple(() =>
+        {
+            Assert.That(task.GetProperty("status").GetString(), Is.EqualTo(TaskStatuses.InProgress));
+            Assert.That(task.GetProperty("priority").GetString(), Is.EqualTo(TaskPriorities.Critical));
+            Assert.That(task.GetProperty("comments").GetArrayLength(), Is.EqualTo(1));
+            Assert.That(task.GetProperty("attachments").GetArrayLength(), Is.EqualTo(1));
+            Assert.That(task.GetProperty("attachments")[0].GetProperty("uri").GetString(), Is.EqualTo("https://example.test/artifacts/task-tool-smoke.txt"));
+        });
+    }
+
+    [Test]
+    public async Task McpCodeSearchTool_ReturnsIndexedRepoMatches()
+    {
+        var dataPath = ProjectWikiFixture.CopyToTemp(_tempRoot);
+        var repoRoot = Directory.GetParent(Directory.GetParent(dataPath)!.FullName)!.FullName;
+        Directory.CreateDirectory(Path.Combine(repoRoot, "MemorySmith.App", "Services"));
+        await File.WriteAllTextAsync(Path.Combine(repoRoot, ".gitignore"), "obj/\n");
+        await File.WriteAllTextAsync(
+            Path.Combine(repoRoot, "MemorySmith.App", "Services", "WidgetParser.cs"),
+            "namespace MemorySmith.App.Services;\npublic static class WidgetParser\n{\n    public static string ParseWidgetTokens(string input) => input.Trim().ToUpperInvariant();\n}\n");
+
+        await using var factory = CreateFactory(dataPath);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/mcp", new
+        {
+            JsonRpc = "2.0",
+            Id = "code-search",
+            Method = "tools/call",
+            Params = new
+            {
+                Name = "memorysmith_code_search",
+                Arguments = new
+                {
+                    Query = "widget parser",
+                    Targets = new[] { "MemorySmith.App" },
+                    Limit = 5
+                }
+            }
+        }, JsonSerializerOptions.Web);
+
+        response.EnsureSuccessStatusCode();
+        var text = await ExtractFirstToolTextAsync(response);
+        Assert.Multiple(() =>
+        {
+            Assert.That(text, Does.Contain("WidgetParser.cs"));
+            Assert.That(text, Does.Contain("ParseWidgetTokens"));
+        });
+    }
+
+    [Test]
+    public async Task McpCodeSearchStatusTool_ReturnsBuildSummary()
+    {
+        var dataPath = ProjectWikiFixture.CopyToTemp(_tempRoot);
+        var repoRoot = Directory.GetParent(Directory.GetParent(dataPath)!.FullName)!.FullName;
+        Directory.CreateDirectory(Path.Combine(repoRoot, "MemorySmith.App", "Services"));
+        await File.WriteAllTextAsync(Path.Combine(repoRoot, ".gitignore"), "obj/\n");
+        await File.WriteAllTextAsync(
+            Path.Combine(repoRoot, "MemorySmith.App", "Services", "WidgetParser.cs"),
+            "namespace MemorySmith.App.Services;\npublic static class WidgetParser\n{\n    public static string ParseWidgetTokens(string input) => input.Trim().ToUpperInvariant();\n}\n");
+
+        await using var factory = CreateFactory(dataPath);
+        using var client = factory.CreateClient();
+
+        var searchResponse = await client.PostAsJsonAsync("/mcp", new
+        {
+            JsonRpc = "2.0",
+            Id = "code-search-seed",
+            Method = "tools/call",
+            Params = new
+            {
+                Name = "memorysmith_code_search",
+                Arguments = new
+                {
+                    Query = "widget parser",
+                    Targets = new[] { "MemorySmith.App" },
+                    Limit = 5
+                }
+            }
+        }, JsonSerializerOptions.Web);
+
+        searchResponse.EnsureSuccessStatusCode();
+
+        var statusResponse = await client.PostAsJsonAsync("/mcp", new
+        {
+            JsonRpc = "2.0",
+            Id = "code-search-status",
+            Method = "tools/call",
+            Params = new
+            {
+                Name = "memorysmith_code_search_status",
+                Arguments = new { }
+            }
+        }, JsonSerializerOptions.Web);
+
+        statusResponse.EnsureSuccessStatusCode();
+        using var document = JsonDocument.Parse(await ExtractFirstToolTextAsync(statusResponse));
+        var build = document.RootElement.GetProperty("build");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(document.RootElement.GetProperty("indexedFileCount").GetInt32(), Is.EqualTo(1));
+            Assert.That(build.GetProperty("state").GetString(), Is.EqualTo("completed"));
+            Assert.That(build.GetProperty("processedFileCount").GetInt32(), Is.EqualTo(1));
+            Assert.That(build.GetProperty("updatedFileCount").GetInt32(), Is.EqualTo(1));
+            Assert.That(build.GetProperty("timings").GetProperty("fileReadMilliseconds").GetInt64(), Is.GreaterThanOrEqualTo(0));
         });
     }
 
@@ -490,17 +809,27 @@ public class McpAndSemanticSearchTests
         Assert.That(text, Does.Contain("Semantic search"), "The search current-state record should describe semantic search behavior.");
     }
 
-    private WebApplicationFactory<Program> CreateFactory(string memoryPath) =>
+    private WebApplicationFactory<Program> CreateFactory(string memoryPath, IReadOnlyDictionary<string, string?>? overrides = null) =>
         new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
             builder.ConfigureAppConfiguration((_, config) =>
             {
-                config.AddInMemoryCollection(new Dictionary<string, string?>
+                var settings = new Dictionary<string, string?>
                 {
                     ["MemorySmith:DataPath"] = memoryPath,
                     ["MemorySmith:EventLogPath"] = Path.Combine(_tempRoot, "Events", "audit.log"),
                     ["MemorySmith:Maintenance:Enabled"] = "false"
-                });
+                };
+
+                if (overrides is not null)
+                {
+                    foreach (var item in overrides)
+                    {
+                        settings[item.Key] = item.Value;
+                    }
+                }
+
+                config.AddInMemoryCollection(settings);
             });
         });
 

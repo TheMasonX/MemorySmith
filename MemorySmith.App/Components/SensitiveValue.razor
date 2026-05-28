@@ -1,0 +1,60 @@
+@inject IJSRuntime JS
+@inject ISnackbar Snackbar
+
+<span class="@CssClass">
+    <span class="sensitive-value-text">@DisplayText</span>
+    <span class="sensitive-value-actions">
+        @if (AllowReveal && !_isRevealed)
+        {
+            <MudIconButton Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" Color="Color.Secondary" Disabled="@(!HasValue)" OnClick="Reveal" aria-label="@RevealLabel" title="@RevealLabel" />
+        }
+        <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Size="Size.Small" Color="Color.Secondary" Disabled="@(!HasValue)" OnClick="CopyAsync" aria-label="@CopyLabel" title="@CopyLabel" />
+    </span>
+</span>
+
+@code {
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public string? Summary { get; set; }
+    [Parameter] public string Label { get; set; } = "value";
+    [Parameter] public string EmptyText { get; set; } = "Not set";
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public bool AllowReveal { get; set; } = true;
+
+    private bool _isRevealed;
+
+    private bool HasValue => !string.IsNullOrWhiteSpace(Value);
+    private string DisplayText => HasValue ? (_isRevealed ? Value! : SummaryValue) : EmptyText;
+    private string SummaryValue => string.IsNullOrWhiteSpace(Summary) ? SummarizeIdentifier(Value) : Summary!;
+    private string CssClass => string.IsNullOrWhiteSpace(Class) ? "sensitive-value" : $"sensitive-value {Class}";
+    private string RevealLabel => $"Reveal {Label}";
+    private string CopyLabel => $"Copy {Label}";
+
+    private void Reveal()
+    {
+        _isRevealed = true;
+    }
+
+    private async Task CopyAsync()
+    {
+        if (!HasValue)
+        {
+            Snackbar.Add($"No {Label} to copy.", Severity.Info);
+            return;
+        }
+
+        var copied = await SafeJsInterop.TryInvokeVoidAsync(JS, "navigator.clipboard.writeText", Value);
+        Snackbar.Add(copied ? $"{Capitalize(Label)} copied." : "Clipboard unavailable. Reveal the value and copy it manually.", copied ? Severity.Success : Severity.Warning);
+    }
+
+    private static string SummarizeIdentifier(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "Not set";
+        }
+
+        return value.Length <= 10 ? value : $"{value[..4]}...{value[^4..]}";
+    }
+
+    private static string Capitalize(string value) => string.IsNullOrWhiteSpace(value) ? "Value" : char.ToUpperInvariant(value[0]) + value[1..];
+}

@@ -1,0 +1,51 @@
+{
+  "id": "tsk-0150-surface-tag-policy-load-failures-in-diagnostics-and-governance-ui",
+  "key": "TSK-0150",
+  "title": "Surface tag policy load failures in diagnostics and governance UI",
+  "description": "Problem: TagPolicyService currently returns TagPolicy.CreateDefault() when Data/Policies/tag-policy.json is missing, unreadable, or invalid JSON. That fallback is useful for first-run resilience, but parse/read failures are silent, so a broken governance policy can look like a deliberate default policy.\n\nDesired outcome: operators and agents can tell when MemorySmith is using fallback tag policy because the configured file is missing or malformed.\n\nScope:\n- In scope: preserve safe fallback behavior, capture the policy path and failure reason without leaking sensitive paths beyond existing diagnostics posture, surface status through operational diagnostics and /tags policy diagnostics, and add regression coverage for invalid policy JSON.\n- Out of scope: changing the tag policy schema or blocking all startup when the policy file is absent.\n\nAcceptance criteria:\n- Invalid tag-policy JSON produces an explicit diagnostic or health warning rather than silently behaving like defaults.\n- /tags or governance API consumers can distinguish loaded-from-file from fallback-default policy.\n- Operational diagnostics include a redacted/appropriate policy-load status.\n- Tests cover valid policy load, missing policy fallback, and malformed policy warning behavior.\n\nValidation:\n- Add focused tests around TagPolicyService and MemoryDiagnosticsService.\n- Run dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj --filter FullyQualifiedName~MemoryDiagnosticsTests.\n- Run ./Scripts/Test-TaskRecords.ps1 after task metadata changes.",
+  "type": "Task",
+  "status": "Done",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "audit",
+    "tag-governance",
+    "diagnostics",
+    "configuration",
+    "governance"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "guides/memory-governance-guide",
+    "ops/wiki-health-and-validation"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0150-20260525",
+      "author": "AgentSmith",
+      "body": "Created during 2026-05-25 deepdive audit. Evidence: MemorySmith.App/Services/MemoryGovernanceServices.cs TagPolicyService.LoadPolicy returns TagPolicy.CreateDefault() for missing files, null deserialization, and all caught exceptions; MemorySmith.Tests/MemoryDiagnosticsTests.cs covers duplicate namespaces and caching but not malformed policy surfacing.",
+      "createdAtUtc": "2026-05-25T15:23:00.0000000Z"
+    },
+    {
+      "id": "c-0150-2",
+      "author": "AgentSmith",
+      "body": "Implemented cached TagPolicyLoadStatus so missing, loaded, empty, and failed policy reads are distinguishable while preserving fallback defaults. /tags now shows policy source/status and includes policy-load diagnostics; operational diagnostics include tag policy status and warn for malformed/unreadable policy files; /health displays the active tag policy status/path. Focused regression coverage verifies missing fallback info, malformed JSON warning fallback, valid loaded policy status, and cache status updates. Validation: dotnet build .\\MemorySmith.App\\MemorySmith.App.csproj --nologo passed; MemoryDiagnosticsTests passed 10/10 via focused test runner.",
+      "createdAtUtc": "2026-05-25T15:50:37.3585351Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T15:23:00.0000000Z",
+  "updatedAtUtc": "2026-05-25T15:50:37.3585351Z",
+  "completedAtUtc": "2026-05-25T15:50:37.3585351Z",
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

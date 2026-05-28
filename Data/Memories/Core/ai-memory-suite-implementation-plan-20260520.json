@@ -25,19 +25,19 @@
     "project-wiki-mcp-context-pack",
     "project-wiki-source-links-feature",
     "project-wiki-semantic-ui-current",
-    "project-wiki-current-validation-146-tests"
+    "project-wiki-current-validation-baseline"
   ],
   "Conflicts": [],
   "SourceLinks": [
     {
       "Label": "AI Memory Suite Implementation Plan",
-      "Uri": "%MemorySmithRepo%Data/Pages/ai-memory-suite-implementation-plan.md",
+      "Uri": "%MemorySmithRepo%Data/Pages/plans/ai-memory-suite-implementation-plan.md",
       "StartLine": null,
       "EndLine": null
     },
     {
       "Label": "Core Memory System Improvements RFC",
-      "Uri": "%MemorySmithRepo%Data/Pages/temp-plan.md",
+      "Uri": "%MemorySmithRepo%Data/Pages/plans/temp-plan.md",
       "StartLine": null,
       "EndLine": null
     },

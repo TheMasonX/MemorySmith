@@ -1,0 +1,38 @@
+﻿{
+  "id": "tsk-0155-memory-errors-collapsible",
+  "key": "TSK-0155",
+  "title": "Memory Errors Collapsible",
+  "description": "The Memory errors/warnings like non-standard tags can take up too much room. It should be expandable, with the default being collapsed and including the number of warnings for easier at a glance audits. Screenshot reference: Screenshot 2026-05-25 103635.png (local account path omitted from repo task content; attach or copy a sanitized asset before PR).",
+  "type": "Task",
+  "status": "Done",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [
+    {
+      "id": "c-0155-1",
+      "author": "AgentSmith",
+      "body": "Implemented collapsed Memory diagnostics panels for both selected memories and draft diagnostics. The default view now shows a compact Diagnostics/Draft Diagnostics summary with the warning/error count, and expanding reveals the detailed rows. Result-list diagnostic chips remain visible for quick scanning. Validation: dotnet build .\\MemorySmith.App\\MemorySmith.App.csproj --nologo passed; browser probe on /memories confirmed a selected memory renders collapsed as 'Diagnostics 5' and expands to non-standard tag warning rows on click; route-smoke passed 6/6 against http://127.0.0.1:5099.",
+      "createdAtUtc": "2026-05-25T16:08:30.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T15:37:44.7569249Z",
+  "updatedAtUtc": "2026-05-25T16:08:30.0000000Z",
+  "completedAtUtc": "2026-05-25T16:08:30.0000000Z",
+  "revision": 3,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

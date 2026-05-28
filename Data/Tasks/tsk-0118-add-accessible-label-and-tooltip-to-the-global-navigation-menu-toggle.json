@@ -1,0 +1,50 @@
+{
+  "id": "tsk-0118-add-accessible-label-and-tooltip-to-the-global-navigation-menu-toggle",
+  "key": "TSK-0118",
+  "title": "Add accessible label and tooltip to the global navigation menu toggle",
+  "description": "Problem: a live browser audit on 2026-05-25 found the app bar drawer/menu icon button is visible on every primary route but has no accessible name and no tooltip/title. This makes the main navigation toggle ambiguous for screen-reader and pointer users.\n\nEvidence: Playwright accessibility/DOM sweep of `/`, `/pages`, `/memories`, `/chat`, `/tasks`, `/proposals`, `/health`, `/tags`, `/maintenance`, `/admin`, `/about`, and `/profile` reported the top-left MudIconButton as unnamed on both desktop and mobile viewports.\n\nDesired outcome: the global menu toggle exposes a stable accessible name and a short tooltip consistent with the rest of the app shell.\n\nScope:\n- In scope: app shell menu toggle aria-label/title or MudTooltip, keyboard focus/name verification, and route-smoke coverage or an equivalent focused assertion.\n- Out of scope: redesigning the nav drawer or route list.\n\nAcceptance criteria:\n- The global menu/drawer toggle has an accessible name such as `Toggle navigation`.\n- Pointer users get a tooltip or equivalent title on hover/focus.\n- The label is stable across the main app routes and both collapsed/open drawer states.\n\nValidation:\n- Run a browser accessibility snapshot on at least `/`, `/pages`, `/memories`, `/chat`, `/tasks`, and `/health` and confirm the app bar menu button is named.\n- Run `npm run test:route-smoke` or the focused app-shell test after the change.",
+  "type": "Task",
+  "status": "Done",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "accessibility",
+    "ui",
+    "navigation",
+    "tooltips",
+    "audit-vetted"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "workbench/tasks"
+  ],
+  "comments": [
+    {
+      "id": "c-0118-1",
+      "author": "AgentSmith",
+      "body": "Created from 2026-05-25 live browser audit: the app-shell menu MudIconButton was unnamed and had no tooltip on every primary route checked.",
+      "createdAtUtc": "2026-05-25T00:00:00.0000000Z"
+    },
+    {
+      "id": "c-0118-2",
+      "author": "AgentSmith",
+      "body": "Implemented by adding a stable `Toggle primary navigation` accessible name and title to the app-shell menu button in `MainLayout.razor`, plus route-smoke coverage that asserts the named button and title on the core smoke routes. Validation: `dotnet build .\\MemorySmith.App\\MemorySmith.App.csproj --nologo` succeeded, and `MEMORYSMITH_BASE_URL=http://127.0.0.1:5099 npm run test:route-smoke` passed 5/5 against a Development local server on 2026-05-25.",
+      "createdAtUtc": "2026-05-25T06:34:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T00:00:00.0000000Z",
+  "updatedAtUtc": "2026-05-25T06:34:00.0000000Z",
+  "completedAtUtc": "2026-05-25T06:34:00.0000000Z",
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

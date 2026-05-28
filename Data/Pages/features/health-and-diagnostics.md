@@ -34,6 +34,12 @@ Local-first systems still need clear observability. Health and diagnostics help 
 - Diagnostic endpoint coverage for local triage.
 - Visibility into indexing and maintenance behavior.
 - Role-gated access to sensitive operational data.
+- Correlation-aware audit diagnostics: persisted audit records can be searched by request/correlation id while request metadata stores only hashed IP and user-agent values.
+
+## Current Operator Notes
+
+- `MemorySmith:DataProtectionKeysPath` now anchors both ASP.NET Core data-protection keys and the local HMAC key used to hash durable request metadata for audit/login history.
+- `/admin` remains the best operator surface for durable audit/history inspection; `/health` and diagnostics explain runtime state, while admin audit/history answer who-did-what and which request it came from.
 
 > [!NOTE]
 > Screenshot placeholder [FEAT-HEALTH-02]: activity charts and maintenance telemetry section.

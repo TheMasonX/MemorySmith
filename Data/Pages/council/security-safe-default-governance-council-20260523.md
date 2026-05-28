@@ -13,7 +13,8 @@ Adopt a safe-by-default security baseline that preserves localhost functionality
 - MemorySmith.App/Controllers/AuthController.cs
 - MemorySmith.App/Controllers/AdminController.cs
 - MemorySmith.App/appsettings.json
-- MemorySmith.App/appsettings.LocalDevelopment.json
+- MemorySmith.App/Services/MemorySmithLocalDevelopmentPostConfigure.cs
+- MemorySmith.App/Properties/launchSettings.json
 - MemorySmith.Tests/SecurityAndSourceLinkTests.cs
 - Data/Tasks/tsk-0023-add-startup-admin-guardrails-for-secure-remote-mode-when-allowremoteapi-true-require-an-api-key-and-enforce-https-auth-hardening-settings.json
 

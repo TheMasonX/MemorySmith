@@ -1,0 +1,44 @@
+{
+  "id": "tsk-0158-generate-exhaustive-configuration-setting-inventory-and-doc-coverage-check",
+  "key": "TSK-0158",
+  "title": "Generate exhaustive configuration setting inventory and doc coverage check",
+  "description": "Problem: Data/Pages/guides/configuration-reference.md is useful as an operator map, but it groups many settings instead of listing every editable key. A 2026-05-25 scan of AdminSettingsService found 161 editable setting descriptors, while the guide documents many of them as groups such as Auth:*, Chat:*, Logging:*, Telemetry:*, and MaintenanceAgent:*. That is readable, but agents looking for an exact setting key need a machine-checkable inventory.\n\nDesired outcome: provide an exhaustive, generated or validated configuration-key inventory that complements the human guide and fails when editable settings drift without docs.\n\nScope:\n- In scope: extract editable setting descriptors from AdminSettingsService or a shared descriptor source, emit a grouped key inventory with label/category/help/sensitivity metadata, and add a lightweight validation that flags undocumented new keys or intentionally grouped keys.\n- Out of scope: redesigning the admin settings UI or changing setting semantics.\n\nAcceptance criteria:\n- Every editable setting key has a discoverable docs entry or an explicit grouped-coverage marker.\n- The generated inventory is linked from configuration-reference.md and useful to agents configuring MemorySmith.\n- Sensitive/write-only settings are clearly marked without exposing values.\n- A local validation command reports drift when a new EditableSettingDescriptor is added without coverage.\n\nValidation:\n- Run the new configuration docs coverage check if implemented.\n- Run ./Scripts/Test-PageLinks.ps1 and ./Scripts/Test-PagePathLiterals.ps1 after docs updates.\n- Run ./Scripts/Test-TaskRecords.ps1 after task metadata changes.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "audit",
+    "configuration",
+    "docs",
+    "validation",
+    "agent-support"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "guides/configuration-reference"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0158-20260525",
+      "author": "AgentSmith",
+      "body": "Created during 2026-05-25 deepdive audit. Evidence: descriptor extraction from MemorySmith.App/Services/AdminSettingsService.cs found 161 editable keys; Data/Pages/guides/configuration-reference.md documents the active configuration as grouped operator guidance rather than a complete per-key inventory. The page now states that limitation explicitly.",
+      "createdAtUtc": "2026-05-25T16:15:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T16:15:00.0000000Z",
+  "updatedAtUtc": "2026-05-25T16:15:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

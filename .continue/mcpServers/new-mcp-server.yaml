@@ -5,6 +5,7 @@ mcpServers:
   - name: MemorySmith MCP
     command: npx
     args:
+      - --use-system-ca
       - -y
       - mcp-remote
       - http://localhost:5089/mcp

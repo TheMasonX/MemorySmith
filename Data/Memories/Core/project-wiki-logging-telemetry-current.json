@@ -1,0 +1,47 @@
+{
+  "Id": "project-wiki-logging-telemetry-current",
+  "Title": "Logging and Telemetry Current State",
+  "Content": "MemorySmith exposes both application logging and OpenTelemetry instrumentation as first-class runtime configuration. LoggingOptions control console logging, rolling structured JSONL file output, Windows Event Log integration on Windows, request logging, slow-request thresholds, benchmark timing events, metrics windows, metrics sample limits, and admin diagnostics result caps. LoggingObservabilityService powers `/api/diagnostics/logs` and `/api/diagnostics/logs/metrics`, combining structured log search with optional Windows Event Log reads and log-derived latency or error trend metrics. TelemetryOptions control OpenTelemetry tracing and metrics with local-first defaults: instrumentation is enabled, low-cardinality MemorySmith spans and metrics are registered, exporter output is disabled by default, trace sampling defaults to 10 percent, and noisy request paths such as `/health`, `/_blazor`, and static asset routes are excluded. OperationalDiagnosticsService includes the effective Telemetry configuration in the `/api/diagnostics` snapshot so operators can verify the running observability posture without reading local files.",
+  "Status": 2,
+  "Confidence": 0.94,
+  "Tags": [
+    "project-wiki",
+    "configuration",
+    "current-state",
+    "kind:fact",
+    "audience:admin",
+    "audience:developer",
+    "scope:configuration",
+    "scope:observability"
+  ],
+  "References": [
+    "project-wiki-operational-diagnostics-dashboard",
+    "project-wiki-configuration-settings-current",
+    "project-wiki-admin-configuration-surface"
+  ],
+  "Conflicts": [],
+  "SourceLinks": [
+    {
+      "Label": "MemorySmithOptions.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/MemorySmithOptions.cs"
+    },
+    {
+      "Label": "Program.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Program.cs"
+    },
+    {
+      "Label": "LoggingObservabilityService.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/LoggingObservabilityService.cs"
+    },
+    {
+      "Label": "OperationalDiagnosticsService.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/OperationalDiagnosticsService.cs"
+    },
+    {
+      "Label": "appsettings.json",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/appsettings.json"
+    }
+  ],
+  "UsageCount": 0,
+  "LastUpdated": "2026-05-24T22:35:00Z"
+}

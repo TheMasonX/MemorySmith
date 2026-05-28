@@ -1,0 +1,44 @@
+{
+  "id": "tsk-0178-add-pluggable-semantic-tokenizer-and-provider-profiles",
+  "key": "TSK-0178",
+  "title": "Add Pluggable Semantic Tokenizer and Provider Profiles",
+  "description": "Problem: MemorySmith's semantic ONNX path now exposes explicit `TokenizerKind` and `PoolingMode` configuration and invalidates persisted embeddings when those provider semantics change, but the runtime still only implements a single WordPiece-based ONNX provider and a single DI registration. That means candidate model evaluation can now fail fast and clearly when a tokenizer is unsupported, but actual transition to non-E5 families is still blocked by missing tokenizer/provider profiles rather than by benchmark coverage alone.\n\nEvidence from the 2026-05-25 search-improvement slice:\n- `MemorySmith.App/Services/MemorySmithOptions.cs` now exposes `SemanticSearch.TokenizerKind` and `SemanticSearch.PoolingMode`.\n- `MemorySmith.App/Services/SemanticEmbeddingSearchService.cs` now treats tokenizer selection and pooling as explicit provider semantics and folds them into the persisted embedding configuration hash.\n- `MemorySmith.Tests/SemanticEmbeddingPathTests.cs` now proves unsupported tokenizer kinds fail fast with a clear status reason instead of falling through to a vague ONNX initialization failure.\n- `MemorySmith.Tests/MemoryApplicationServiceTests.cs` now proves persisted embeddings are invalidated when pooling mode changes across service recreation.\n- `MemorySmith.App/Program.cs` still registers only `OnnxTextEmbeddingProvider`, and the provider still implements only WordPiece tokenization today.\n\nDesired outcome: MemorySmith can choose between supported semantic provider profiles by configuration, report the active profile and capability limits clearly, and add new model families without rewriting the search service or risking stale persisted embeddings.\n\nScope:\n- In scope: define a provider/profile abstraction for semantic ONNX models, including tokenizer, pooling, input-format, and capability metadata.\n- In scope: preserve the current WordPiece/E5 path as the default working profile while making unsupported profiles fail clearly in diagnostics and health output.\n- In scope: add focused tests for provider/profile selection and capability reporting.\n- Out of scope: choosing a new default embedding model; that belongs to TSK-0175 after the provider seam exists.\n\nAcceptance criteria:\n- Configuration can select among at least named semantic provider profiles rather than only one implicit ONNX path.\n- Diagnostics and retrieval provider metadata clearly describe the active semantic profile and unsupported-profile failures.\n- Persisted embedding reuse remains safe when provider profile semantics change.\n- Focused tests cover profile selection, unsupported-profile reporting, and cache invalidation behavior.\n\nValidation:\n- Run focused semantic-provider and persistence tests.\n- Run `MemorySmith.Tests/ModelBackedSearchBenchmarkTests.cs` for the default working profile.\n- Run `Scripts/Test-TaskRecords.ps1` after task metadata changes.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "search",
+    "semantic-search",
+    "onnx",
+    "modularity",
+    "architecture"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "guides/system-setup"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0178-20260525",
+      "author": "AgentSmith",
+      "body": "Created after making pooling and tokenizer semantics explicit. The next real transition blocker is no longer hidden cache behavior; it is the absence of first-class provider/tokenizer profiles beyond the current WordPiece ONNX path.",
+      "createdAtUtc": "2026-05-25T22:20:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T22:20:00.0000000Z",
+  "updatedAtUtc": "2026-05-25T22:20:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

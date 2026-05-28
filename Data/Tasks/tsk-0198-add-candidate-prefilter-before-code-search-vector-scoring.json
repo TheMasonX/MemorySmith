@@ -1,0 +1,46 @@
+{
+  "id": "tsk-0198-add-candidate-prefilter-before-code-search-vector-scoring",
+  "key": "TSK-0198",
+  "title": "Add candidate prefilter before code-search vector scoring",
+  "description": "Code-search retrieval currently loads all indexed chunks and performs full in-memory vector scoring/sort per uncached query. Introduce a high-ROI candidate-reduction stage before vector scoring (lexical prefilter or equivalent), then benchmark candidate counts, latency, and ranking impact. Keep behavior feature-flagged and reversible until benchmark evidence is stable.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "AgentSmith",
+  "labels": [
+    "search",
+    "code-search",
+    "vector-db",
+    "performance",
+    "benchmark"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "audits/vector-search-general-codebase-report_5-28-26",
+    "research/vector-search/index",
+    "research/code-search-benchmark-cpu-vs-cuda-20260528"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0198-20260528",
+      "author": "AgentSmith",
+      "body": "Created from the 2026-05-28 deep audit item about brute-force in-memory code-search vector retrieval. Scope should start with a reversible candidate prefilter and benchmark harness expansion before committing to ANN or storage migration.",
+      "createdAtUtc": "2026-05-28T06:14:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-28T06:14:00.0000000Z",
+  "updatedAtUtc": "2026-05-28T06:14:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

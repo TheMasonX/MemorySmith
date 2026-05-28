@@ -1,0 +1,31 @@
+﻿{
+  "id": "tsk-0165-task-dashboard",
+  "key": "TSK-0165",
+  "title": "Task Dashboard",
+  "description": "We need a dashboard to track tasks (esp. over time if possible) such as the breakdown of status/priority/assignee. I want to get a sense of how many tasks are being closed.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T15:51:44.1195198Z",
+  "updatedAtUtc": "2026-05-25T15:51:44.1195198Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

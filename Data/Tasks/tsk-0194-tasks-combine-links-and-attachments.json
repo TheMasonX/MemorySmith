@@ -1,0 +1,43 @@
+﻿{
+  "id": "tsk-0194-tasks-combine-links-and-attachments",
+  "key": "TSK-0194",
+  "title": "Tasks Combine Links and Attachments",
+  "description": "Links and Attachments should be one tab group. Use the same search box for pages as related tasks. Attachments, Related Pages, Related Tasks are the only ones we need. People can paste the URL in the description if needed",
+  "type": "Task",
+  "status": "Done",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "tasks",
+    "ui",
+    "attachments",
+    "pages"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "workbench/tasks"
+  ],
+  "comments": [
+    {
+      "id": "c-0194-1",
+      "author": "AgentSmith",
+      "body": "Completed in `MemorySmith.App/Components/Pages/Tasks.razor` by replacing separate `Links` and `Attachments` tabs with a single `Artifacts` tab that now groups Related Pages, Related Tasks, file Attachments, and legacy external links. Page linking now uses the same autocomplete pattern as related-task selection, and new external-link entry controls were removed so URLs can live in the task description instead. Focused validation passed with the same 8/8 Razor/source-guard test run covering `TasksMarkup_UnifiesArtifactsAndShareableDeepLinks`.",
+      "createdAtUtc": "2026-05-27T13:26:40.5618243Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-27T12:57:26.2250616Z",
+  "updatedAtUtc": "2026-05-27T13:26:40.5618243Z",
+  "completedAtUtc": "2026-05-27T13:26:40.5618243Z",
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

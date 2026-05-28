@@ -5,6 +5,7 @@
   "scripts": {
     "test": "playwright test",
     "test:headed": "playwright test --headed",
+    "test:route-smoke": "playwright test tests/route-smoke.spec.ts",
     "test:nav-freeze": "playwright test tests/navigation-freeze.spec.ts"
   },
   "devDependencies": {

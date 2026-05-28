@@ -1,0 +1,31 @@
+﻿{
+  "id": "tsk-0148-file-attachments",
+  "key": "TSK-0148",
+  "title": "File Attachments",
+  "description": "Support file attachments that get loaded to an artifacts folder. Filesize limits and archiving have to be considered",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T15:13:55.1563416Z",
+  "updatedAtUtc": "2026-05-25T15:13:55.1563416Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

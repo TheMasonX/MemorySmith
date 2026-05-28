@@ -4,7 +4,7 @@
   "Title": "Expand chat mutation controls from Approve/Reject to Accept/Reject/Respond so users can request revisions without leaving chat.",
   "Description": "Add notes on how revision requests are summarized.\r\n\r\nImported from Data/Pages/workbench/tasks.md",
   "Type": "Task",
-  "Status": "Backlog",
+  "Status": "Done",
   "Priority": "Medium",
   "AssigneeMode": "Custom",
   "AssigneeDirectoryId": null,
@@ -26,14 +26,20 @@
       "Author": "tracker-import",
       "Body": "Add notes on how revision requests are summarized.",
       "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z"
+    },
+    {
+      "Id": "c-ec6fb30b2cc9488cbaf3a2b4466ac1c5",
+      "Author": "Copilot",
+      "Body": "Implemented chat-side Accept/Respond/Reject controls with a required shared revision note for Respond, persisted the note in saved chat sessions, and summarized revision requests in the trace as `Agent writes sent back for revision` with the proposal id. Validation: focused `dotnet test` filter passed for `MemoryChatAgent_ReturnsProposedWritesWhenApprovalRequired`, `MemoryChatAgent_SubmitsProposalThenRespondsWithRevisionNote`, and `ChatMarkup_ReconcilesApproveAllBatchOutcomesAndPendingState`. Browser verification on `http://localhost:5109/chat` confirmed: empty-note Respond shows `Respond requires a revision note.`; authenticated Respond removes the pending item, switches the status to `No pending write approvals`, adds an `Agent writes sent back for revision` trace entry, and stores the submitted proposal id in chat session storage.",
+      "CreatedAtUtc": "2026-05-26T14:10:52.9107398Z"
     }
   ],
   "EpicId": null,
   "ParentId": null,
   "DueDateUtc": null,
   "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z",
-  "UpdatedAtUtc": "2026-05-23T23:36:10.0439283Z",
-  "CompletedAtUtc": null,
-  "Revision": 1,
+  "UpdatedAtUtc": "2026-05-26T14:10:52.9107398Z",
+  "CompletedAtUtc": "2026-05-26T14:10:52.9107398Z",
+  "Revision": 2,
   "IsArchived": false
 }

@@ -1,0 +1,46 @@
+{
+  "id": "tsk-0191-split-memoryapplicationservice-into-retrieval-mutation-and-diagnostics-modules",
+  "key": "TSK-0191",
+  "title": "Split MemoryApplicationService into retrieval, mutation, and diagnostics modules",
+  "description": "Problem: `MemorySmith.App/Services/MemoryApplicationService.cs` is now 1,168 lines and acts as the central orchestration point for memory listing, lexical/semantic/hybrid retrieval, context-pack generation, diagnostics lookup, source-link lookup, create/update/delete flows, usage increments, stats, and telemetry. The current architecture backlog owns search and service-adjacent work, but no task explicitly owns this core memory-domain hotspot.\n\nEvidence from 2026-05-26 audit:\n- Largest-file scan listed `MemorySmith.App/Services/MemoryApplicationService.cs` at 1,168 lines.\n- Public methods now span `GetMemoriesAsync`, `SearchAsync`, `SearchMetadataAsync`, `LexicalSearchAsync`, `SemanticSearchAsync`, `HybridSearchAsync`, `BuildContextPackAsync`, `GetAsync`, `GetDiagnosticsAsync`, `FindBySourceAsync`, `CreateAsync`, `UpdateAsync`, `DeleteAsync`, `IncrementUsageAsync`, `GetStatsAsync`, `GetActivityBucketsAsync`, and `GetTelemetryAsync`.\n- Search of `Data/Tasks` found no first-class decomposition task for `MemoryApplicationService`.\n\nDesired outcome: preserve the current memory-domain API while separating retrieval/search, mutation/audit publishing, and diagnostics/stats responsibilities into bounded collaborators or modules.\n\nScope:\n- In scope: extraction boundaries for retrieval/query, mutation/history/audit publishing, diagnostics/source lookup, and stats/telemetry concerns.\n- In scope: characterization tests and benchmark-sensitive safeguards before moving retrieval behavior.\n- Out of scope: changing search ranking semantics, memory JSON schema, or store contracts beyond the minimum needed for cleaner boundaries.\n\nDependencies:\n- Coordinate with current search/semantic backlog and `TSK-0047` complexity guardrails.\n\nAcceptance criteria:\n- `MemoryApplicationService` no longer centralizes retrieval, mutation, diagnostics, and stats concerns in one file.\n- Existing memory/search/context-pack behavior remains unchanged under focused tests.\n- Reviewers can inspect retrieval or mutation changes without scanning the entire memory domain file.\n\nValidation:\n- Run focused `MemoryApplicationServiceTests`, search-related tests, and any impacted benchmark-sensitive tests.\n- Run `dotnet build MemorySmith.slnx -v minimal`.\n- Run `./Scripts/Test-TaskRecords.ps1` after task creation/update.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "AgentSmith",
+  "labels": [
+    "architecture",
+    "complexity",
+    "memory",
+    "search",
+    "services"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "research/codebase-untracked-task-audit-20260526",
+    "council/untracked-task-prioritization-council-20260526",
+    "tasks/sprints/untracked-codebase-gap-sprints-20260526"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0191-20260526",
+      "author": "AgentSmith",
+      "body": "Created during the 2026-05-26 untracked-gap audit after confirming that the current architecture backlog does not own the monolithic `MemoryApplicationService` even though it now spans retrieval, mutation, diagnostics, and telemetry concerns.",
+      "createdAtUtc": "2026-05-26T21:27:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-26T21:27:00.0000000Z",
+  "updatedAtUtc": "2026-05-26T21:27:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

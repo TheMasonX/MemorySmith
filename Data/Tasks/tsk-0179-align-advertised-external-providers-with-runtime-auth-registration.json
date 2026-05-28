@@ -1,0 +1,51 @@
+{
+  "id": "tsk-0179-align-advertised-external-providers-with-runtime-auth-registration",
+  "key": "TSK-0179",
+  "title": "Align advertised external providers with runtime auth registration",
+  "description": "Problem: MemorySmith currently advertises GitHub, Google, and Microsoft as configurable external sign-in providers across admin/profile surfaces and docs, but the startup auth pipeline only registers a GitHub OAuth handler. In `MemorySmith.App/Program.cs`, startup adds `auth.AddOAuth(\"GitHub\", ...)` with `/signin-github`, but no corresponding `AddGoogle`, `AddMicrosoftAccount`, or custom OAuth registrations were found for the other providers. At the same time, `Admin.razor`, `Profile.razor`, `SecurityServices.cs`, and `Data/Pages/guides/configuration-reference.md` all treat Google and Microsoft as configurable/provider-usable when enabled and given client IDs. This creates a misleading operator contract: admins can configure providers that the runtime does not actually activate.\n\nEvidence from 2026-05-26 audit:\n- `MemorySmith.App/Program.cs` registers only GitHub external auth.\n- `MemorySmith.App/Components/Pages/Admin.razor` shows Google and Microsoft as configurable provider rows with setup links and configured-state checks.\n- `MemorySmith.App/Components/Pages/Profile.razor` treats Google and Microsoft links as usable sign-in methods when enabled and configured.\n- `Data/Pages/guides/configuration-reference.md` currently groups `Providers:{GitHub|Google|Microsoft}:*` under the sign-in flow contract.\n\nDesired outcome: provider-management UI, docs, and runtime auth registration should describe the same set of supported external sign-in providers.\n\nScope:\n- In scope: either wire Google/Microsoft auth handlers with the expected callback routes and tests, or hide/mark those providers as unsupported placeholders in admin/profile/docs until runtime parity exists.\n- In scope: provider availability messaging, callback-route documentation, and tests that assert the visible provider set matches the registered auth schemes.\n- Out of scope: changing provider credential storage, first-admin bootstrap behavior, or broader auth UX beyond provider-support accuracy.\n\nAcceptance criteria:\n- Every provider shown as available/configurable for end-user sign-in has a matching runtime auth registration and callback path.\n- Unsupported providers are not presented as usable sign-in options in `/profile`, `/login`, or provider docs.\n- Focused tests cover provider availability against actual registered schemes or configuration gates.\n- Docs and admin/provider surfaces no longer overstate supported providers.\n\nValidation:\n- Add focused auth/provider tests for visible provider availability and callback registration.\n- Run the affected auth/admin test slice.\n- Run `./Scripts/Test-TaskRecords.ps1` after task creation/update.",
+  "type": "Task",
+  "status": "Done",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "AgentSmith",
+  "labels": [
+    "auth",
+    "oauth",
+    "configuration",
+    "docs",
+    "ux"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "features/admin-and-auth",
+    "guides/configuration-reference"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0179-20260526",
+      "author": "AgentSmith",
+      "body": "Created during 2026-05-26 audit after verifying that startup registers only GitHub OAuth while admin/profile/docs still advertise Google and Microsoft as usable external providers.",
+      "createdAtUtc": "2026-05-26T14:09:51.7844447Z"
+    },
+    {
+      "id": "c-complete-0179-20260526",
+      "author": "AgentSmith",
+      "body": "Completed by routing admin/profile/account-safety provider checks through the runtime authentication scheme registry. Focused tests passed for `ExternalAuthSupport_ReturnsOnlyRegisteredConfiguredProviders`, `RemoveLocalPasswordAsync_DoesNotTreatConfiguredButUnregisteredProviderAsFallback`, and the source-level auth-provider surface guard. Browser verification on isolated sandboxes confirmed `/admin` marks configured Google/Microsoft entries as `Unsupported`, `/profile` keeps usable sign-in methods at `1`, and `/login` still advertises only GitHub plus local password.",
+      "createdAtUtc": "2026-05-26T14:40:33.9148182Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-26T14:09:51.7844447Z",
+  "updatedAtUtc": "2026-05-26T14:40:33.9148182Z",
+  "completedAtUtc": "2026-05-26T14:40:33.9148182Z",
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

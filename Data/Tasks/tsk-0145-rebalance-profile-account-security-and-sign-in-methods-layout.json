@@ -1,0 +1,50 @@
+{
+  "id": "tsk-0145-rebalance-profile-account-security-and-sign-in-methods-layout",
+  "key": "TSK-0145",
+  "title": "Rebalance Profile account, security, and sign-in methods layout",
+  "description": "Problem: the continued visual-density review found `/profile` using the first visible area for account fields and the local password form, while linked sign-in methods and provider actions begin below the fold. This makes the security state and linked authentication methods less discoverable even though they are often the most important profile information.\n\nDesired outcome: Profile should make identity, role, linked sign-in methods, and security actions scannable without burying important account state or overexposing identifiers.\n\nScope:\n- In scope: Profile section hierarchy, compact account summary, password/security form placement, sign-in method row/card layout, linked-provider affordances, and coordination with TSK-0010 destructive confirmations and TSK-0138 privacy masking.\n- Out of scope: adding new profile fields already tracked by TSK-0033 or changing authentication provider behavior.\n\nAcceptance criteria:\n- Sign-in methods and account/security status are visible or directly reachable from the first viewport.\n- Account summary, role, and security actions have a clearer hierarchy than editable text fields alone.\n- Linked provider rows remain scannable after privacy masking and destructive-action confirmation work.\n- Password/change actions do not crowd unrelated profile metadata.\n\nValidation:\n- Capture `/profile` before/after at narrow and desktop widths.\n- Run focused browser checks for account save, password change validation, link-provider affordance visibility, and remove-action confirmation integration.",
+  "type": "Task",
+  "status": "Done",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "ui",
+    "profile",
+    "auth",
+    "screen-real-estate",
+    "audit-vetted"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "workbench/tasks"
+  ],
+  "comments": [
+    {
+      "id": "c-0145-1",
+      "author": "AgentSmith",
+      "body": "Created from 2026-05-25 continued visual-density review: `/profile` puts sign-in methods and linked-provider actions below the first visible area while account/password forms consume the top of the page.",
+      "createdAtUtc": "2026-05-25T00:00:00.0000000Z"
+    },
+    {
+      "id": "c-0145-2",
+      "author": "AgentSmith",
+      "body": "Completed by rebalancing `/profile` into a first-viewport account status summary plus sign-in methods panel, moving account/password edit forms below, and masking default summary/table account identifiers while preserving the existing destructive confirmation for provider removal. Evidence: `MemorySmith.App/Components/Pages/Profile.razor`, `MemorySmith.App/wwwroot/app.css`. Validation passed: `dotnet build .\\MemorySmith.App\\MemorySmith.App.csproj --nologo`; route-smoke 5/5 and nav-freeze 5/5 against `http://127.0.0.1:5099`. Residual gap: authenticated profile save/password/link/remove browser clicks still need a Playwright auth fixture.",
+      "createdAtUtc": "2026-05-25T15:01:20.0921718Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T00:00:00.0000000Z",
+  "updatedAtUtc": "2026-05-25T15:01:20.0921718Z",
+  "completedAtUtc": "2026-05-25T15:01:20.0921718Z",
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

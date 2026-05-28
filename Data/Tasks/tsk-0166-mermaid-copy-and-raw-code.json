@@ -1,0 +1,38 @@
+﻿{
+  "id": "tsk-0166-mermaid-copy-and-raw-code",
+  "key": "TSK-0166",
+  "title": "Mermaid Copy and Raw Code",
+  "description": "Buttons to copy the raw code or to toggle to it. Ties in with the other tasks to add image export.",
+  "type": "Task",
+  "status": "Done",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [
+    {
+      "id": "c-complete-0166-20260526",
+      "author": "AgentSmith",
+      "body": "Implemented Mermaid action buttons in the shared markdown enhancement pipeline. Rendered Mermaid blocks now expose a raw-code toggle and raw-code copy button across Pages, Chat, and memory views via memorysmith.js. Validated with browser sweeps on /pages/features/chat-and-agent and /tasks, plus a Release build of MemorySmith.App.",
+      "createdAtUtc": "2026-05-26T05:18:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T17:41:32.2917456Z",
+  "updatedAtUtc": "2026-05-26T05:18:00.0000000Z",
+  "completedAtUtc": "2026-05-26T05:18:00.0000000Z",
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

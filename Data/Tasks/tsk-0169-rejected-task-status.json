@@ -1,0 +1,38 @@
+﻿{
+  "id": "tsk-0169-rejected-task-status",
+  "key": "TSK-0169",
+  "title": "Rejected Task Status",
+  "description": "A rejected task status will allow us to explicitly mark tasks when we\u0027ve changed our minds or human review steps in.",
+  "type": "Task",
+  "status": "Done",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [
+    {
+      "id": "c-0169-1",
+      "author": "AgentSmith",
+      "body": "Added Rejected as a first-class task status constant, task list/detail dropdown option, and task-record validator value. Added API regression coverage proving Rejected keeps tasks unarchived and uncompleted while preserving status-change history notes. Validation passed: focused TasksApi_CanSetRejectedStatusWithoutCompletingOrArchivingTask test passed 1/1 and Scripts/Test-TaskRecords.ps1 passed over 170 task records.",
+      "createdAtUtc": "2026-05-25T20:22:39.1866479Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T18:23:26.510103Z",
+  "updatedAtUtc": "2026-05-25T20:22:39.1866479Z",
+  "completedAtUtc": "2026-05-25T20:22:39.1866479Z",
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

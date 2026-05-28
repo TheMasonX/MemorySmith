@@ -1,0 +1,40 @@
+{
+  "Id": "tsk-0177-add-memorysmith-read-file-mcp-chat-tool-for-surgical-source-reads-by-path",
+  "Key": "TSK-0177",
+  "Title": "Add memorysmith_read_file MCP+chat tool for surgical source reads by path",
+  "Description": "Problem: `memorysmith_source_bundle` is KB-anchor first — it requires a memory record with SourceLinks to retrieve file content. There is no way to read a specific file path (with optional line range) directly, even though wikis frequently reference file paths in prose without formal SourceLink attachments. This creates friction for agents and MCP callers trying to verify referenced source code without constructing a search first.\n\nVS Code's built-in read_file tool fills this role in the editor context, but MemorySmith-connected callers (LLM agents via MCP, chat tools) have no equivalent that respects the configured source-root allow list and authorization policy.\n\nDesired outcome: A new `memorysmith_read_file` tool (exact name TBD — `memorysmith_source_read` is an alternative) available in both MCP and the shared chat tool catalog that:\n- Accepts `path` (required, workspace-relative or absolute within allowed roots), `startLine` (optional, 1-based), `endLine` (optional, 1-based inclusive), and `maxBytes` (optional, clamped to a safe limit)\n- Resolves `%Variable%` expansion via VarResolver (same as source_bundle)\n- Validates the resolved path is under a configured source root (MemorySmith:SourceLinks:Roots or equivalent) — rejects out-of-scope reads\n- Returns file content as plain text (with a line-count/truncation indicator when clamped)\n- Carries `ChatToolRisk.SensitiveRead` (same tier as source_bundle)\n- Available in MCP (opt-in, enabled by default when source roots are configured) and in the shared chat tool catalog\n\nScope:\n- In scope: the tool implementation, schema, auth gate, source-root path validation, line-range slicing, maxBytes clamping, VarResolver expansion\n- In scope: adding to ChatToolCatalog as an MCP+chat tool (distinct from the MCP-only source_bundle)\n- In scope: unit tests for allowed reads, denied reads (out-of-scope path), line-range slicing, and clamping\n- Out of scope: directory listing, recursive reads, write operations, changes to source_bundle behavior\n- Out of scope: UI surface changes (this is a tool/API addition)\n\nAcceptance criteria:\n- `memorysmith_read_file` (or chosen name) is callable via MCP and chat tool path\n- Path validation rejects any resolved path outside configured source roots\n- Line range returns only the requested slice; no-range returns full file (subject to maxBytes)\n- `%Variable%` paths are expanded before root validation\n- SensitiveRead auth gate is enforced (CanReadSourceBundle policy)\n- Tests pass for: valid read, out-of-scope path rejection, variable expansion, line-range slicing, maxBytes clamping\n\nValidation:\n- Unit tests covering above AC\n- Scripts/Validate-Repo.ps1 passes\n\nNotes:\n- This is more surgical than source_bundle: the caller supplies a path directly rather than going through KB record IDs. The two tools are complementary — source_bundle for KB-grounded retrieval, read_file for ad-hoc path lookup.\n- Coordinate with TSK-0060 on which task owns the source-root config shape; this task can reuse whatever structure TSK-0060 establishes.\n- TSK-0011 asked whether source bridge tools should move into the shared catalog; this task resolves that question in the affirmative for the read_file use case.\n- TSK-0159 covers source-bundle permission granularity; reuse or extend that policy here.",
+  "Type": "Task",
+  "Status": "Backlog",
+  "Priority": "Medium",
+  "AssigneeMode": "Custom",
+  "AssigneeDirectoryId": null,
+  "AssigneeCustomText": "Copilot",
+  "Reporter": "AgentSmith",
+  "Labels": [
+    "mcp",
+    "chat",
+    "source",
+    "tools",
+    "security",
+    "configuration"
+  ],
+  "Attachments": [],
+  "ExternalLinks": [],
+  "LinkedPages": [],
+  "Comments": [
+    {
+      "Id": "c-create-0177-20260525",
+      "Author": "AgentSmith",
+      "Body": "Created from user request: no existing task covers a standalone read-by-path tool (source_bundle is KB-anchor first). TSK-0060 covers line-expansion around KB-linked sources; TSK-0011 is a governance question about moving existing tools. This is a distinct new tool. Coordinate with TSK-0060 on source-root config shape, TSK-0159 on SensitiveRead auth policy.",
+      "CreatedAtUtc": "2026-05-25T00:00:00.0000000Z"
+    }
+  ],
+  "EpicId": null,
+  "ParentId": null,
+  "DueDateUtc": null,
+  "CreatedAtUtc": "2026-05-25T00:00:00.0000000Z",
+  "UpdatedAtUtc": "2026-05-25T00:00:00.0000000Z",
+  "CompletedAtUtc": null,
+  "Revision": 1,
+  "IsArchived": false
+}

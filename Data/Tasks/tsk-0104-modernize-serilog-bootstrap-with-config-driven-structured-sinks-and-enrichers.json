@@ -4,7 +4,7 @@
   "Title": "Modernize Serilog bootstrap with config-driven structured sinks, enrichers, and Windows Event Log.",
   "Description": "MemorySmith already uses Serilog, but the bootstrap is still a minimal code-only console plus rolling file setup. Move logger construction to configuration-backed Serilog settings, add standard enrichers and correlation metadata, keep a developer-friendly console sink, and configure structured sinks for both file/JSON search and Windows Event Log when running on Windows. Windows Event Log should be enabled by default on Windows systems, with an explicit setting to disable it when needed. Acceptance criteria: logging is configured from app settings, structured event payloads include common correlation fields, sink selection is environment-aware, Windows Event Log entries are emitted for key operational and error events by default on Windows, and every logging control is editable from the existing admin configuration UI/service. Validation: start the app in local and service-like modes, trigger representative requests and failures, confirm structured fields and event-log entries appear in configured destinations, then disable the Windows Event Log sink via admin settings and verify behavior changes without code edits.",
   "Type": "Task",
-  "Status": "Backlog",
+  "Status": "Done",
   "Priority": "High",
   "AssigneeMode": "Custom",
   "AssigneeDirectoryId": null,
@@ -31,14 +31,20 @@
       "Author": "AgentSmith",
       "Body": "Evidence: `MemorySmith.App/Program.cs` currently builds `Log.Logger` with only `WriteTo.Console()` and `WriteTo.File(...)`, and `MemorySmith.App/appsettings.json` has no `Serilog` section for sink or enricher configuration.",
       "CreatedAtUtc": "2026-05-25T00:12:00.0000000Z"
+    },
+    {
+      "Id": "c-0104-2",
+      "Author": "AgentSmith",
+      "Body": "Closing after re-verification corrected the stale audit note. Evidence: `MemorySmith.App/Program.cs` now uses `builder.Host.UseSerilog` with configuration-backed `LoggingOptions`, `ReadFrom.Configuration`, `Enrich.FromLogContext`, `Application` and `Environment` enrichers, optional console sink, compact JSON structured file sink with retention, and Windows Event Log sink on Windows when `WindowsEventLogEnabled` is true. `MemorySmith.App/appsettings.json` contains `MemorySmith:Logging` defaults for minimum level, console, structured file, retention, Windows Event Log source/name, request logging, slow-request threshold, benchmark logging, and diagnostics limits. `MemorySmith.App/Services/AdminSettingsService.cs` exposes these logging controls through the admin settings surface. Package evidence: `MemorySmith.App/MemorySmith.App.csproj` references `Serilog.AspNetCore`, `Serilog.Formatting.Compact`, and `Serilog.Sinks.EventLog`. Validation: `AppApiContractTests.RequestPipeline_EmitsProblemDetailsTraceIdAndStructuredRequestCorrelation` verifies structured request-log fields, correlation ids, elapsed timing, and threshold-driven warning-level request logging; `dotnet test MemorySmith.Tests\\MemorySmith.Tests.csproj --filter \"FullyQualifiedName~AppApiContractTests\" --nologo --verbosity minimal` passed 26/26 on 2026-05-25. Windows Event Log emission is configured conditionally and not written during tests to avoid host event-log side effects.",
+      "CreatedAtUtc": "2026-05-25T05:27:56.4749237Z"
     }
   ],
   "EpicId": null,
   "ParentId": null,
   "DueDateUtc": null,
   "CreatedAtUtc": "2026-05-25T00:12:00.0000000Z",
-  "UpdatedAtUtc": "2026-05-25T00:12:00.0000000Z",
-  "CompletedAtUtc": null,
-  "Revision": 1,
+  "UpdatedAtUtc": "2026-05-25T05:27:56.4749237Z",
+  "CompletedAtUtc": "2026-05-25T05:27:56.4749237Z",
+  "Revision": 2,
   "IsArchived": false
 }

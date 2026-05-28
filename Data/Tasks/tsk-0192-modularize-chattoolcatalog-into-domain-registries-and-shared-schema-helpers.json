@@ -1,0 +1,46 @@
+{
+  "id": "tsk-0192-modularize-chattoolcatalog-into-domain-registries-and-shared-schema-helpers",
+  "key": "TSK-0192",
+  "title": "Modularize ChatToolCatalog into domain registries and shared schema helpers",
+  "description": "Problem: `MemorySmith.App/Services/ChatToolCatalog.cs` is now 1,161 lines and mixes tool registration, executable handlers, JSON schema builders, formatting helpers, and context-item conversion for a rapidly growing MCP/chat tool surface. The next active MCP backlog items (`TSK-0183`, `TSK-0185`, `TSK-0186`) all touch this file, and there is no architecture task that owns the registry structure itself.\n\nEvidence from 2026-05-26 audit:\n- Largest-file scan listed `MemorySmith.App/Services/ChatToolCatalog.cs` at 1,161 lines.\n- The file currently yields 19 `ChatToolDescriptor` registrations and also owns schema builders such as `BuildSearchSchema`, `BuildContextPackSchema`, `BuildSourceBundleSchema`, and multiple task-tool schemas.\n- Search of `Data/Tasks` found task coverage for MCP features and docs, but no first-class modularization task for `ChatToolCatalog` itself.\n- Upcoming tasks `TSK-0185` and `TSK-0186` would otherwise add more behavior to the same hotspot.\n\nDesired outcome: keep the current tool contracts stable while moving registrations and schema helpers into domain-owned modules so new MCP/chat tool work no longer expands one monolithic registry file.\n\nScope:\n- In scope: grouping tool descriptors by domain (for example memory/search, pages, tasks, source, diagnostics) and extracting shared schema/format helpers where appropriate.\n- In scope: preserving tool names, availability flags, risk tiers, auth semantics, and output formats.\n- Out of scope: changing public tool names or redesigning existing tool behavior beyond the structural extraction.\n\nDependencies:\n- Coordinate with `TSK-0183`, `TSK-0185`, `TSK-0186`, `TSK-0177`, `TSK-0151`, and `TSK-0159` so structural work does not fork policy decisions.\n\nAcceptance criteria:\n- `ChatToolCatalog.cs` no longer contains all tool registrations and schema builders in one file.\n- Domain-specific tool additions can land in bounded registry files or helpers without changing the central contract surface broadly.\n- Existing MCP/chat tool behavior remains unchanged under focused tests.\n\nValidation:\n- Run focused `McpAndSemanticSearchTests`, `ChatToolCatalogAndInterceptTests`, and any diagnostics/security slices affected by the extraction.\n- Run `dotnet build MemorySmith.slnx -v minimal`.\n- Run `./Scripts/Test-TaskRecords.ps1` after task creation/update.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "AgentSmith",
+  "labels": [
+    "architecture",
+    "chat",
+    "mcp",
+    "tooling",
+    "complexity"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "research/codebase-untracked-task-audit-20260526",
+    "council/untracked-task-prioritization-council-20260526",
+    "tasks/sprints/untracked-codebase-gap-sprints-20260526"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0192-20260526",
+      "author": "AgentSmith",
+      "body": "Created during the 2026-05-26 untracked-gap audit after verifying that multiple active MCP/tool tasks keep converging on `ChatToolCatalog.cs` with no owning modularization task.",
+      "createdAtUtc": "2026-05-26T21:28:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-26T21:28:00.0000000Z",
+  "updatedAtUtc": "2026-05-26T21:28:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

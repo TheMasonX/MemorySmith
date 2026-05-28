@@ -1,0 +1,38 @@
+﻿{
+  "id": "tsk-0161-memories-ui-layout",
+  "key": "TSK-0161",
+  "title": "Memories UI Layout",
+  "description": "The Title can go off the screen and cause layout issues like overlap. The Conflicts section is usually none, so move the lower link area to: References and Source Links first, then Conflicts only if conflicts exist. Screenshot reference: Screenshot 2026-05-25 104537.png (local account path omitted from repo task content; attach or copy a sanitized asset before PR).",
+  "type": "Task",
+  "status": "Done",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [
+    {
+      "id": "c-0161-1",
+      "author": "AgentSmith",
+      "body": "Implemented /memories selected-detail layout fixes. The title block now uses the existing detail-title wrapper with flex sizing and overflow-wrap:anywhere, actions are isolated in a bounded action cluster, and the lower link area renders References and Source Links first with Conflicts hidden unless the selected record actually has conflicts. Validation: dotnet build .\\MemorySmith.App\\MemorySmith.App.csproj --nologo passed; browser probe at 520px viewport confirmed the title/actions remain within the header, overflow wrapping is active, and a no-conflict record shows only References and Source Links; route-smoke passed 6/6 against http://127.0.0.1:5099.",
+      "createdAtUtc": "2026-05-25T20:06:28.3891094Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T15:46:13.4380791Z",
+  "updatedAtUtc": "2026-05-25T20:06:28.3891094Z",
+  "completedAtUtc": "2026-05-25T20:06:28.3891094Z",
+  "revision": 3,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

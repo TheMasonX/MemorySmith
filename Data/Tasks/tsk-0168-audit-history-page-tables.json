@@ -1,0 +1,38 @@
+﻿{
+  "id": "tsk-0168-audit-history-page-tables",
+  "key": "TSK-0168",
+  "title": "Audit History Page Tables",
+  "description": "The audit and history pages should be proper tables, and not use the show/hide icon. They need to be filterable/sortable, etc. like a highend spreadsheet. Screenshot reference: Screenshot 2026-05-25 131330.png (local account path omitted from repo task content; attach or copy a sanitized asset before PR).",
+  "type": "Task",
+  "status": "Done",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [
+    {
+      "id": "c-complete-0168-20260526",
+      "author": "AgentSmith",
+      "body": "Upgraded the Admin audit and history tabs into pageable spreadsheet-style tables with explicit search/filter/sort controls, visible size and sequence columns, and copy-only target/artifact cells. Removed the reveal/hide affordance from these tabs while preserving quick copy actions. Validated with a focused admin markup test plus sandboxed browser sweeps against a disposable local admin instance, including a generated history row.",
+      "createdAtUtc": "2026-05-26T05:26:30.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T18:15:58.3290601Z",
+  "updatedAtUtc": "2026-05-26T05:26:30.0000000Z",
+  "completedAtUtc": "2026-05-26T05:26:30.0000000Z",
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

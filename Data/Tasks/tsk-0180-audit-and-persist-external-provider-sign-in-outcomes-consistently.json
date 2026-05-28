@@ -1,0 +1,51 @@
+{
+  "id": "tsk-0180-audit-and-persist-external-provider-sign-in-outcomes-consistently",
+  "key": "TSK-0180",
+  "title": "Audit and persist external provider sign-in outcomes consistently",
+  "description": "Problem: local password sign-in records both login-history rows and audit-log entries, but the current external OAuth callback path is not held to the same contract. In `MemorySmith.App/Program.cs`, the GitHub `OnCreatingTicket` handler writes a successful `LoginHistoryEntry` with hashed IP/user-agent metadata and `RequestId`, but does not emit a corresponding audit event. The `OnRemoteFailure` handler redirects to `/login` or `/profile` without recording either an audit-log entry or a failed login-history row. This leaves admin audit/history surfaces incomplete for external-provider authentication activity and makes provider sign-in failures harder to investigate than local-auth failures.\n\nEvidence from 2026-05-26 audit:\n- `SecurityServices.SignInAsync()` records `auth.login.failed` and `auth.login.succeeded` through `AuditLogService` and also appends login history.\n- `Program.cs` GitHub `OnCreatingTicket` appends a successful `LoginHistoryEntry`, but there is no `AuditLogService` call in that callback.\n- `Program.cs` `OnRemoteFailure` handles the response by redirecting, but does not persist an audit or login-history failure record.\n- No focused task or test coverage was found for external-provider sign-in audit parity.\n\nDesired outcome: successful and failed external-provider sign-in attempts should be durably visible to operators with the same privacy posture as local sign-ins.\n\nScope:\n- In scope: GitHub OAuth callback success/failure auditing, login-history parity for external-provider failures where enough context exists, provider/link-conflict and disabled-user failure cases, and request-metadata propagation through the external-auth path.\n- In scope: reuse the existing privacy-reviewed request metadata pattern; do not store raw OAuth access tokens, raw IP addresses, or raw user-agent strings.\n- Out of scope: changing provider credential storage, OAuth scopes, or broad auth UX beyond operator-visible audit/history completeness.\n\nAcceptance criteria:\n- Successful external-provider sign-ins record an audit event with provider context and the same persisted request-metadata contract used elsewhere.\n- External-provider failures that currently short-circuit with redirects or `ctx.Fail(...)` produce durable, operator-visible audit evidence and a failure login-history row when a provider/subject outcome can be identified safely.\n- Persisted details remain privacy-conscious and do not include raw tokens or third-party profile payloads beyond the minimum identifiers already in use.\n- Focused tests cover at least one successful external-provider sign-in path and one failure path.\n\nValidation:\n- Add focused auth/storage tests for external-provider success and failure persistence.\n- Run the affected auth/admin/storage test slice.\n- Run `./Scripts/Test-TaskRecords.ps1` after task creation/update.",
+  "type": "Task",
+  "status": "Done",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "AgentSmith",
+  "labels": [
+    "auth",
+    "audit",
+    "oauth",
+    "observability",
+    "privacy"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "features/admin-and-auth",
+    "features/health-and-diagnostics"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0180-20260526",
+      "author": "AgentSmith",
+      "body": "Created during 2026-05-26 audit after comparing local-password auth auditing with the GitHub OAuth callback path in startup and finding missing external-provider audit/failure persistence.",
+      "createdAtUtc": "2026-05-26T14:09:51.7844447Z"
+    },
+    {
+      "id": "c-complete-0180-20260526",
+      "author": "AgentSmith",
+      "body": "Completed by routing GitHub OAuth callback success and failure through `ExternalAuthOutcomeRecorder`, which now writes login-history rows plus `auth.login.succeeded` / `auth.login.failed` audit events with privacy-reviewed request metadata. Focused validation passed: `runTests` on `MemorySmith.Tests/SqliteMetadataStoreTests.cs` and `MemorySmith.Tests/TagGovernanceTests.cs` reported `26 passed, 0 failed`, including the new success, failure, and callback-source guard coverage. Browser verification in isolated sandbox `artifacts/browser-validation/tsk-0180/20260526-095402/` reproduced a real GitHub callback denial and confirmed `/profile` showed the remote error while `/admin` Audit displayed a durable `auth.login.failed` entry for the callback path.",
+      "createdAtUtc": "2026-05-26T14:56:58.0908090Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-26T14:09:51.7844447Z",
+  "updatedAtUtc": "2026-05-26T14:56:58.0908090Z",
+  "completedAtUtc": "2026-05-26T14:56:58.0908090Z",
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

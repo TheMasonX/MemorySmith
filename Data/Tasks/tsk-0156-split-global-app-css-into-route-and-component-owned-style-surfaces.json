@@ -1,0 +1,44 @@
+{
+  "id": "tsk-0156-split-global-app-css-into-route-and-component-owned-style-surfaces",
+  "key": "TSK-0156",
+  "title": "Split global app.css into route and component-owned style surfaces",
+  "description": "Problem: MemorySmith.App/wwwroot/app.css is now 3,726 lines and carries global styles for most route families. A selector-prefix scan found heavy concentrations for chat (164), wiki (98), admin (65), page/pages (92 combined), proposal/proposals (51 combined), tasks (36), maintenance (30), health (27), and about/profile/tag surfaces. This makes visual changes harder to review and increases the chance that one route's CSS fix changes another route.\n\nDesired outcome: keep the current visual language while moving styles toward route/component-owned files or well-named shared primitives so UI changes have smaller review and regression surfaces.\n\nScope:\n- In scope: inventory app.css sections, define shared primitives versus route-owned styles, introduce CSS isolation or grouped companion styles where compatible with Blazor/MudBlazor, and add style ownership notes for future UI tasks.\n- Out of scope: broad redesign, palette changes, or behavior changes unrelated to style ownership.\n\nAcceptance criteria:\n- app.css is materially reduced or reorganized with clear route/component ownership boundaries.\n- Shared primitives remain explicit and reusable rather than duplicated across route styles.\n- Route smoke and visual/browser checks cover at least Memories, Pages, Chat, Admin, Tasks, Health, and About after extraction.\n- Future UI tasks can identify the owning style surface without scanning the whole global stylesheet.\n\nValidation:\n- Run dotnet build MemorySmith.App/MemorySmith.App.csproj --nologo.\n- Run route-smoke or equivalent browser checks for the affected routes.\n- Run ./Scripts/Test-TaskRecords.ps1 after task metadata changes.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "AgentSmith",
+  "labels": [
+    "audit",
+    "ui",
+    "css",
+    "maintainability",
+    "repo-hygiene"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "workbench/tasks"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0156-20260525",
+      "author": "AgentSmith",
+      "body": "Created during 2026-05-25 deepdive audit. Evidence: clean source-only largest-file scan listed MemorySmith.App/wwwroot/app.css as the largest source file at 3,726 lines; selector-prefix scan found the highest class-prefix counts in chat, wiki, admin, page/pages, proposal/proposals, tasks, maintenance, health, about, profile, and tag surfaces. Existing UI tasks cover specific route UX problems but not stylesheet ownership/architecture.",
+      "createdAtUtc": "2026-05-25T15:58:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-25T15:58:00.0000000Z",
+  "updatedAtUtc": "2026-05-25T15:58:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

@@ -4,7 +4,7 @@
   "Title": "Add schema or fixture validation for the live `Data/Memories` wiki so bad records are caught before runtime.",
   "Description": "Problem: live `Data/Memories` records are used as real app content and as test fixtures, but there is no dedicated validation pass that fails fast on malformed or incomplete records before runtime behavior drifts.\r\n\r\nDesired outcome:\r\n- Add an executable validation command for live memory records and fixture assumptions.\r\n- Surface the failing record id and reason without requiring deep log inspection.\r\n\r\nAcceptance criteria:\r\n- Validation checks required fields, filename/id alignment, and basic contract invariants for the live wiki set.\r\n- A failing record produces concise output with the offending record id/path.\r\n- The command is documented in README or a nearby wiki page.\r\n\r\nValidation:\r\n- Run the validation command against the current `Data/Memories` tree.\r\n- Add at least one focused automated test covering the validator.\r\n\r\nAudit note: vetted on 2026-05-24; still relevant because current tests exercise runtime behavior but no dedicated whole-wiki fixture validation surface was found.",
   "Type": "Task",
-  "Status": "Backlog",
+  "Status": "Done",
   "Priority": "Medium",
   "AssigneeMode": "Custom",
   "AssigneeDirectoryId": null,
@@ -42,14 +42,20 @@
       "Author": "AgentSmith",
       "Body": "Review round: remains Backlog. Validation coverage exists in targeted tests, but no single live-wiki contract validator command surfaced for Data/Memories filename/id and required-field invariants.",
       "CreatedAtUtc": "2026-05-24T04:41:00.0000000Z"
+    },
+    {
+      "Id": "c-impl-0003-20260525",
+      "Author": "AgentSmith",
+      "Body": "Added `./Scripts/Test-MemoryRecords.ps1` backed by `LiveMemoryRecordValidationTests` to validate `Data/Memories` filename/id alignment, status-folder alignment, and `MemoryApplicationService` contract rules against a temp copy of the live wiki. Local validation passed via both `./Scripts/Test-MemoryRecords.ps1` and `./Scripts/Validate-Repo.ps1 -SkipBuild -SkipTests`.",
+      "CreatedAtUtc": "2026-05-25T02:31:43.7940098Z"
     }
   ],
   "EpicId": null,
   "ParentId": null,
   "DueDateUtc": null,
   "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z",
-  "UpdatedAtUtc": "2026-05-24T04:41:00.0000000Z",
-  "CompletedAtUtc": null,
-  "Revision": 3,
+  "UpdatedAtUtc": "2026-05-25T02:31:43.7940098Z",
+  "CompletedAtUtc": "2026-05-25T02:31:43.7940098Z",
+  "Revision": 4,
   "IsArchived": false
 }

@@ -1,6 +1,7 @@
 using MemorySmith.App.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace MemorySmith.App.Controllers;
 
@@ -11,11 +12,13 @@ public sealed class TasksController : ControllerBase
 {
     private readonly ITaskService _tasks;
     private readonly IAuthorizationService _authorization;
+    private readonly IOptionsMonitor<MemorySmithOptions> _options;
 
-    public TasksController(ITaskService tasks, IAuthorizationService authorization)
+    public TasksController(ITaskService tasks, IAuthorizationService authorization, IOptionsMonitor<MemorySmithOptions> options)
     {
         _tasks = tasks;
         _authorization = authorization;
+        _options = options;
     }
 
     [HttpGet]
@@ -145,6 +148,41 @@ public sealed class TasksController : ControllerBase
         try
         {
             var updated = await _tasks.AddAttachmentAsync(idOrKey, request, Actor(), cancellationToken);
+            return updated is null ? NotFound() : Ok(updated);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    [HttpPost("{idOrKey}/attachments/files")]
+    [Authorize(Policy = MemorySmithPolicies.CanEditMemorySmith)]
+    public async Task<ActionResult<TaskItem>> AddFileAttachment(string idOrKey, [FromForm] IFormFile file, [FromForm] string? name, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var task = await _tasks.GetAsync(idOrKey, cancellationToken);
+            if (task is null)
+            {
+                return NotFound();
+            }
+
+            if (file.Length <= 0)
+            {
+                return BadRequest("Attachment file is empty.");
+            }
+
+            var attachmentOptions = _options.CurrentValue.TaskAttachments;
+            if (file.Length > attachmentOptions.MaxFileBytes)
+            {
+                return BadRequest($"Attachment file exceeds the configured limit of {attachmentOptions.MaxFileBytes} bytes.");
+            }
+
+            await using var stream = file.OpenReadStream();
+            var stored = await TaskAttachmentFiles.SaveAsync(task.Id, file.FileName, stream, file.Length, attachmentOptions, cancellationToken);
+            var displayName = string.IsNullOrWhiteSpace(name) ? file.FileName : name.Trim();
+            var updated = await _tasks.AddAttachmentAsync(task.Id, new TaskAttachmentRequest(displayName, "file", stored.PublicUri), Actor(), cancellationToken);
             return updated is null ? NotFound() : Ok(updated);
         }
         catch (ArgumentException ex)

@@ -4,7 +4,7 @@
   "title": "Expand route interaction regressions and freeze diagnostics",
   "description": "Problem: the current navigation-freeze test is valuable but narrow, leaving broader route interaction regressions under-protected.\n\nDesired outcome: expand browser regression coverage to include route-specific interaction expectations and standardized freeze diagnostics capture.\n\nScope:\n- In scope: additional deterministic specs for route interaction paths, client-side error capture normalization, and artifact enrichment.\n- Out of scope: full UI end-to-end feature testing beyond regression-priority paths.\n\nDependencies:\n- Browser smoke coverage from TSK-0068.\n\nAcceptance criteria:\n- Core route interactions have regression specs with clear expected heading/region checks.\n- Console/page errors relevant to circuit/render faults are captured in failure output.\n- Failure artifacts provide enough context to reproduce lockups quickly.\n\nValidation:\n- Run expanded browser suite locally and in CI with at least one induced assertion failure to verify diagnostics.\n\nRollback:\n- Disable newly added flaky specs individually while retaining stable baseline coverage.",
   "type": "Task",
-  "status": "Backlog",
+  "status": "Done",
   "priority": "Medium",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -30,15 +30,21 @@
       "author": "AgentSmith",
       "body": "Created from audit finding F-004 to broaden lockup and navigation regression safety net.",
       "createdAtUtc": "2026-05-24T18:23:00.0000000Z"
+    },
+    {
+      "id": "c-impl-0070-20260525",
+      "author": "AgentSmith",
+      "body": "Expanded `e2e/tests/route-smoke.spec.ts` with deterministic route interactions for Pages navigation, Tasks list collapse/reopen, and Health refresh while capturing relevant browser circuit/render errors into failure output. Development-time failing runs produced Playwright screenshot/video/error-context bundles before the final `./Scripts/Validate-Repo.ps1 -SkipBuild -SkipTests -IncludeE2E` pass.",
+      "createdAtUtc": "2026-05-25T02:24:56.4938183Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-24T18:23:00.0000000Z",
-  "updatedAtUtc": "2026-05-24T18:23:00.0000000Z",
-  "completedAtUtc": null,
-  "revision": 1,
+  "updatedAtUtc": "2026-05-25T02:24:56.4938183Z",
+  "completedAtUtc": "2026-05-25T02:24:56.4938183Z",
+  "revision": 2,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

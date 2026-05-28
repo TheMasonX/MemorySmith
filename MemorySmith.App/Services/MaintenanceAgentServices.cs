@@ -127,7 +127,10 @@ public sealed record MaintenanceProposalMetadata(
     [property: JsonPropertyName("related_records")] IReadOnlyList<string> RelatedRecords,
     [property: JsonPropertyName("supersedes")] IReadOnlyList<string> Supersedes,
     [property: JsonPropertyName("superseded_by")] IReadOnlyList<string> SupersededBy,
-    [property: JsonPropertyName("agent_version")] string AgentVersion);
+    [property: JsonPropertyName("agent_version")] string AgentVersion,
+    [property: JsonPropertyName("batchId")] string? BatchId = null,
+    [property: JsonPropertyName("parentProposalId")] string? ParentProposalId = null,
+    [property: JsonPropertyName("attempt")] int Attempt = 1);
 
 public sealed record MaintenanceProposalHistoryEntry(
     string Action,
@@ -213,6 +216,11 @@ public sealed record MaintenanceResourceSnapshot(bool IsBusy, IReadOnlyList<stri
 
 public sealed class MaintenanceAgentConfigService
 {
+    private static readonly string DefaultReadMemoriesRoot = Path.Combine("..", "Data", "Memories");
+    private static readonly string DefaultReadPagesRoot = Path.Combine("..", "Data", "Pages");
+    private static readonly string DefaultWriteWorkingRoot = Path.Combine("..", "Data", "Memories", "Working");
+    private static readonly string DefaultChatWriteWorkingRoot = Path.Combine("..", "Data", "Memories", "Working");
+    private static readonly string DefaultChatWritePagesRoot = Path.Combine("..", "Data", "Pages");
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
         PropertyNameCaseInsensitive = true,
@@ -234,6 +242,19 @@ public sealed class MaintenanceAgentConfigService
         return options;
     }
 
+    public IReadOnlyList<string> GetChatProposalWriteRoots()
+    {
+        var appOptions = _options.CurrentValue;
+        return NormalizeRoots(
+            appOptions.Chat.AgentWriteRoots,
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                [DefaultChatWriteWorkingRoot] = Path.Combine(appOptions.DataPath, "Working"),
+                [DefaultChatWritePagesRoot] = appOptions.PagesPath
+            },
+            [Path.Combine(appOptions.DataPath, "Working"), appOptions.PagesPath]);
+    }
+
     public string ResolvePath(string path) => Path.GetFullPath(path);
 
     private MaintenanceAgentOptions Clone(MaintenanceAgentOptions source) =>
@@ -243,15 +264,23 @@ public sealed class MaintenanceAgentConfigService
     {
         var appOptions = _options.CurrentValue;
         ApplyAssignedModelProfile(config, appOptions, purpose);
-        if (config.Read.Count == 0)
-        {
-            config.Read = [appOptions.DataPath, appOptions.PagesPath];
-        }
+        config.Read = NormalizeRoots(
+            config.Read,
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                [DefaultReadMemoriesRoot] = appOptions.DataPath,
+                [DefaultReadPagesRoot] = appOptions.PagesPath
+            },
+            [appOptions.DataPath, appOptions.PagesPath]);
 
-        if (config.Write.Count == 0)
-        {
-            config.Write = [Path.Combine(appOptions.DataPath, "Working"), appOptions.PagesPath];
-        }
+        config.Write = NormalizeRoots(
+            config.Write,
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                [DefaultWriteWorkingRoot] = Path.Combine(appOptions.DataPath, "Working"),
+                [DefaultReadPagesRoot] = appOptions.PagesPath
+            },
+            [Path.Combine(appOptions.DataPath, "Working"), appOptions.PagesPath]);
 
         if (string.IsNullOrWhiteSpace(config.Provider))
         {
@@ -272,6 +301,18 @@ public sealed class MaintenanceAgentConfigService
         {
             config.AgentVersion = "maintenance-agent.v1";
         }
+    }
+
+    private static List<string> NormalizeRoots(List<string> configuredRoots, IReadOnlyDictionary<string, string> defaultMappings, IReadOnlyList<string> fallbackRoots)
+    {
+        if (configuredRoots.Count == 0)
+        {
+            return fallbackRoots.ToList();
+        }
+
+        return configuredRoots
+            .Select(root => defaultMappings.TryGetValue(root, out var mappedRoot) ? mappedRoot : root)
+            .ToList();
     }
 
     private static void ApplyAssignedModelProfile(MaintenanceAgentOptions config, MemorySmithOptions appOptions, MaintenanceAgentModelPurpose purpose)
@@ -433,7 +474,7 @@ public sealed class MaintenanceWritePermissionService
         _config = config;
     }
 
-    public string ValidateWritablePath(string path)
+    public string ValidateWritablePath(string path, IEnumerable<string>? additionalAllowedRoots = null)
     {
         var config = _config.GetCurrent();
         var fullPath = Path.GetFullPath(path);
@@ -442,7 +483,7 @@ public sealed class MaintenanceWritePermissionService
             throw new InvalidOperationException("Maintenance proposals cannot modify schema or configuration files.");
         }
 
-        var allowedRoots = config.Write.Select(_config.ResolvePath).ToList();
+        var allowedRoots = config.Write.Concat(additionalAllowedRoots ?? []).Select(_config.ResolvePath).ToList();
         if (!allowedRoots.Any(root => IsUnderPath(fullPath, root)))
         {
             throw new InvalidOperationException($"Path '{path}' is outside the configured maintenance write directories.");
@@ -557,10 +598,11 @@ public sealed class FileMaintenanceProposalStore : IMaintenanceProposalStore
             Changes = proposal.Changes.Select(_diff.WithDiff).ToList(),
             UpdatedAtUtc = DateTimeOffset.UtcNow
         };
+        var additionalWriteRoots = AdditionalWriteRootsFor(normalized);
 
         foreach (var change in normalized.Changes)
         {
-            _permissions.ValidateWritablePath(change.Path);
+            _permissions.ValidateWritablePath(change.Path, additionalWriteRoots);
         }
 
         lock (_lock)
@@ -577,8 +619,9 @@ public sealed class FileMaintenanceProposalStore : IMaintenanceProposalStore
         cancellationToken.ThrowIfCancellationRequested();
         lock (_lock)
         {
+            var additionalWriteRoots = AdditionalWriteRootsFor(proposal);
             var validatedChanges = proposal.Changes
-                .Select(change => (Change: change, FullPath: _permissions.ValidateWritablePath(change.Path)))
+                .Select(change => (Change: change, FullPath: _permissions.ValidateWritablePath(change.Path, additionalWriteRoots)))
                 .ToList();
 
             foreach (var item in validatedChanges)
@@ -601,6 +644,12 @@ public sealed class FileMaintenanceProposalStore : IMaintenanceProposalStore
 
         return Task.CompletedTask;
     }
+
+    private IReadOnlyList<string> AdditionalWriteRootsFor(MaintenanceWriteProposal proposal) =>
+        IsChatAgentProposal(proposal) ? _config.GetChatProposalWriteRoots() : [];
+
+    private static bool IsChatAgentProposal(MaintenanceWriteProposal proposal) =>
+        proposal.Metadata.AgentVersion.StartsWith("chat-agent.", StringComparison.OrdinalIgnoreCase);
 
     private string ProposalsPath => _config.ResolvePath(_config.GetCurrent().Storage.ProposalsPath);
 
@@ -625,12 +674,14 @@ public sealed class MaintenanceProposalWorkflow
     private readonly IMaintenanceProposalStore _store;
     private readonly ICurrentUserContext _currentUser;
     private readonly AuditLogService? _audit;
+    private readonly MaintenanceAgentActionUxOptions _actionUx;
 
-    public MaintenanceProposalWorkflow(IMaintenanceProposalStore store, ICurrentUserContext currentUser, AuditLogService? audit = null)
+    public MaintenanceProposalWorkflow(IMaintenanceProposalStore store, ICurrentUserContext currentUser, AuditLogService? audit = null, IOptions<MemorySmithOptions>? options = null)
     {
         _store = store;
         _currentUser = currentUser;
         _audit = audit;
+        _actionUx = options?.Value.MaintenanceAgent.ActionUx ?? new MaintenanceAgentActionUxOptions();
     }
 
     public Task<IReadOnlyList<MaintenanceWriteProposal>> ListAsync(CancellationToken cancellationToken) =>
@@ -642,15 +693,17 @@ public sealed class MaintenanceProposalWorkflow
     public async Task<MaintenanceWriteProposal> SubmitAsync(MaintenanceWriteProposal proposal, CancellationToken cancellationToken)
     {
         var now = DateTimeOffset.UtcNow;
+        var metadata = NormalizeLineage(proposal.Metadata, proposal.ProposalId);
         var history = proposal.History.ToList();
         if (history.Count == 0)
         {
-            history.Add(new MaintenanceProposalHistoryEntry("open", Actor(), now, "Proposal submitted."));
+            history.Add(new MaintenanceProposalHistoryEntry("open", Actor(), now, ProposalSubmittedComment(metadata)));
         }
 
         var normalized = proposal with
         {
             Status = MaintenanceProposalStatuses.Open,
+            Metadata = metadata,
             History = history,
             CreatedAtUtc = proposal.CreatedAtUtc == default ? now : proposal.CreatedAtUtc,
             UpdatedAtUtc = now
@@ -663,7 +716,7 @@ public sealed class MaintenanceProposalWorkflow
     public async Task<MaintenanceWriteProposal> ApproveAsync(string proposalId, string? comment, CancellationToken cancellationToken)
     {
         var proposal = await LoadRequiredAsync(proposalId, cancellationToken);
-        EnsureOpen(proposal, "Only open proposals can be approved.");
+        EnsureAcceptAllowed(proposal);
         await _store.ApplyAsync(proposal, cancellationToken);
         var updated = AppendHistory(proposal, MaintenanceProposalStatuses.Approved, "approve", comment);
         var saved = await _store.SaveAsync(updated, cancellationToken);
@@ -723,13 +776,17 @@ public sealed class MaintenanceProposalWorkflow
     {
         var original = await LoadRequiredAsync(originalProposalId, cancellationToken);
         EnsureActionable(original);
+        var revisionMetadata = revisedProposal.Metadata with
+        {
+            BatchId = string.IsNullOrWhiteSpace(revisedProposal.Metadata.BatchId) ? LineageBatchId(original) : revisedProposal.Metadata.BatchId.Trim(),
+            ParentProposalId = string.IsNullOrWhiteSpace(revisedProposal.Metadata.ParentProposalId) ? original.ProposalId : revisedProposal.Metadata.ParentProposalId.Trim(),
+            Attempt = NextLineageAttempt(original, revisedProposal.Metadata.Attempt),
+            Supersedes = revisedProposal.Metadata.Supersedes.Append(original.ProposalId).Distinct(StringComparer.OrdinalIgnoreCase).ToList()
+        };
         var revision = revisedProposal with
         {
-            Metadata = revisedProposal.Metadata with
-            {
-                Supersedes = revisedProposal.Metadata.Supersedes.Append(original.ProposalId).Distinct(StringComparer.OrdinalIgnoreCase).ToList()
-            },
-            History = revisedProposal.History.Append(new MaintenanceProposalHistoryEntry("open", "Maintenance agent", DateTimeOffset.UtcNow, "Agent review proposed this revision.")).ToList()
+            Metadata = revisionMetadata,
+            History = revisedProposal.History.Append(new MaintenanceProposalHistoryEntry("open", "Maintenance agent", DateTimeOffset.UtcNow, $"Agent review proposed this revision. Lineage: {FormatProposalLineage(revisionMetadata)}.")).ToList()
         };
         var savedRevision = await SubmitAsync(revision, cancellationToken);
         var updatedOriginal = original with
@@ -738,7 +795,7 @@ public sealed class MaintenanceProposalWorkflow
             {
                 SupersededBy = original.Metadata.SupersededBy.Append(savedRevision.ProposalId).Distinct(StringComparer.OrdinalIgnoreCase).ToList()
             },
-            History = original.History.Append(new MaintenanceProposalHistoryEntry("agent_revision_proposed", "Maintenance agent", DateTimeOffset.UtcNow, $"Revision proposed as {savedRevision.ProposalId}.")).ToList(),
+            History = original.History.Append(new MaintenanceProposalHistoryEntry("agent_revision_proposed", "Maintenance agent", DateTimeOffset.UtcNow, $"Revision proposed as {savedRevision.ProposalId}. Lineage: {FormatProposalLineage(savedRevision.Metadata)}.")).ToList(),
             UpdatedAtUtc = DateTimeOffset.UtcNow
         };
         var savedOriginal = await _store.SaveAsync(updatedOriginal, cancellationToken);
@@ -772,6 +829,9 @@ public sealed class MaintenanceProposalWorkflow
         {
             Metadata = revisedProposal.Metadata with
             {
+                BatchId = string.IsNullOrWhiteSpace(revisedProposal.Metadata.BatchId) ? LineageBatchId(original) : revisedProposal.Metadata.BatchId.Trim(),
+                ParentProposalId = string.IsNullOrWhiteSpace(revisedProposal.Metadata.ParentProposalId) ? original.ProposalId : revisedProposal.Metadata.ParentProposalId.Trim(),
+                Attempt = NextLineageAttempt(original, revisedProposal.Metadata.Attempt),
                 Supersedes = revisedProposal.Metadata.Supersedes.Append(original.ProposalId).Distinct(StringComparer.OrdinalIgnoreCase).ToList()
             }
         };
@@ -782,7 +842,7 @@ public sealed class MaintenanceProposalWorkflow
             {
                 SupersededBy = original.Metadata.SupersededBy.Append(savedRevision.ProposalId).Distinct(StringComparer.OrdinalIgnoreCase).ToList()
             },
-            History = original.History.Append(new MaintenanceProposalHistoryEntry("superseded", Actor(), DateTimeOffset.UtcNow, $"Revision submitted as {savedRevision.ProposalId}.")).ToList(),
+            History = original.History.Append(new MaintenanceProposalHistoryEntry("superseded", Actor(), DateTimeOffset.UtcNow, $"Revision submitted as {savedRevision.ProposalId}. Lineage: {FormatProposalLineage(savedRevision.Metadata)}.")).ToList(),
             UpdatedAtUtc = DateTimeOffset.UtcNow
         };
         await _store.SaveAsync(updatedOriginal, cancellationToken);
@@ -809,6 +869,52 @@ public sealed class MaintenanceProposalWorkflow
             throw new InvalidOperationException(message);
         }
     }
+
+    private void EnsureAcceptAllowed(MaintenanceWriteProposal proposal)
+    {
+        if (string.Equals(proposal.Status, MaintenanceProposalStatuses.Open, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        if (!_actionUx.RevisionRequired && string.Equals(proposal.Status, MaintenanceProposalStatuses.NeedsRevision, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        throw new InvalidOperationException(_actionUx.RevisionRequired
+            ? "Only open proposals can be approved."
+            : "Only open or needs-revision proposals can be approved.");
+    }
+
+    private static MaintenanceProposalMetadata NormalizeLineage(MaintenanceProposalMetadata metadata, string proposalId)
+    {
+        var batchId = string.IsNullOrWhiteSpace(metadata.BatchId) ? proposalId : metadata.BatchId.Trim();
+        var parentProposalId = string.IsNullOrWhiteSpace(metadata.ParentProposalId) ? null : metadata.ParentProposalId.Trim();
+        var attempt = metadata.Attempt <= 0 ? 1 : metadata.Attempt;
+        return metadata with { BatchId = batchId, ParentProposalId = parentProposalId, Attempt = attempt };
+    }
+
+    private static string LineageBatchId(MaintenanceWriteProposal proposal) =>
+        string.IsNullOrWhiteSpace(proposal.Metadata.BatchId) ? proposal.ProposalId : proposal.Metadata.BatchId.Trim();
+
+    private static int NextLineageAttempt(MaintenanceWriteProposal original, int requestedAttempt)
+    {
+        if (requestedAttempt > 1)
+        {
+            return requestedAttempt;
+        }
+
+        return Math.Max(original.Metadata.Attempt, 1) + 1;
+    }
+
+    private static string ProposalSubmittedComment(MaintenanceProposalMetadata metadata) =>
+        $"Proposal submitted. Lineage: {FormatProposalLineage(metadata)}.";
+
+    private static string FormatProposalLineage(MaintenanceProposalMetadata metadata) =>
+        $"batchId={LineageValue(metadata.BatchId)}; parentProposalId={LineageValue(metadata.ParentProposalId)}; attempt={Math.Max(metadata.Attempt, 1)}";
+
+    private static string LineageValue(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value.Trim();
 
     private MaintenanceWriteProposal AppendHistory(MaintenanceWriteProposal proposal, string status, string action, string? comment, string? actor = null)
     {

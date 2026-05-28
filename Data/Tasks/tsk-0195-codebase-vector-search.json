@@ -1,0 +1,47 @@
+﻿{
+  "id": "tsk-0195-codebase-vector-search",
+  "key": "TSK-0195",
+  "title": "Codebase Vector Search",
+  "description": "Separate code base embedding using nomic embed\nScript to generate an on-disc sequel light database \nUsed to regenerate only when necessary \nVector search uses simple cosine similarity to start \nUsed to augment existing KB memory and Page searches, by adding mCP tooling and chat tool support for searching against the specified code base for symbols and methods. \nUsed during agent research to build out the kb, and while using the KB as guidance for what to search for and how to interpret it in context\nEmbedding step uses a gitignore as default, with optional filters that augment or override the .gitignore for further refinement and focusing of embedded code sources\nIt would be nice to expose this in the web, with snippets of the source shown for results and links to open the files\nShould be able to target multiple directories. Use the memorysmith projects as the targets so we can search our own codebase",
+  "type": "Task",
+  "status": "Done",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "search",
+    "codebase",
+    "mcp",
+    "chat"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [
+    {
+      "id": "c-0195-1",
+      "author": "AgentSmith",
+      "body": "Completed by adding `MemorySmith.App/Services/CodeSearchService.cs`, which builds a reusable SQLite-backed chunk index at `Data/Graph/code-search/code-search.db` for the configured MemorySmith project targets, honors repo `.gitignore` plus include/exclude overrides, and reuses unchanged file chunks instead of re-embedding them. Chat and MCP now expose `memorysmith_code_search` through `MemorySmith.App/Services/ChatToolCatalog.cs`, `MemorySmith.App/Services/ChatServices.cs`, and `MemorySmith.App/Controllers/McpController.cs`, with deterministic code-search intent interception and prompt contract updates. Focused validation passed with `dotnet test .\\MemorySmith.Tests\\MemorySmith.Tests.csproj -c Release --filter \"FullyQualifiedName~CodeSearchServiceTests|FullyQualifiedName~ChatToolCatalogAndInterceptTests|Name~McpToolsList_ExposesWikiSearchTools|Name~McpCodeSearchTool_ReturnsIndexedRepoMatches\" --logger \"console;verbosity=minimal\"`, which reported 25/25 passed.",
+      "createdAtUtc": "2026-05-27T18:20:00.0000000Z"
+    },
+    {
+      "id": "c-0195-2",
+      "author": "AgentSmith",
+      "body": "Follow-up hardening completed for the code-search embedding/import path. `MemorySmith.App/Services/CodeSearchService.cs` now reports live build progress and last-build summary through `CodeSearchStatus.Build`, batches SQLite document rewrites, isolates per-file indexing failures instead of aborting the whole build, reuses unchanged documents on warm builds via persisted metadata plus hashes, and caches repeated exact queries in-process. Chat/MCP now also expose `memorysmith_code_search_status`, while `memorysmith_code_search` accepts `forceRebuild` for an explicit cold rebuild. Focused validation passed with `dotnet test .\\MemorySmith.Tests\\MemorySmith.Tests.csproj -c Release --filter \"FullyQualifiedName~CodeSearchServiceTests|FullyQualifiedName~ChatToolCatalogAndInterceptTests|Name~McpToolsList_ExposesWikiSearchTools|Name~McpCodeSearchTool_ReturnsIndexedRepoMatches|Name~McpCodeSearchStatusTool_ReturnsBuildSummary\" --logger \"console;verbosity=minimal\"` (29/29), and `Scripts\\Validate-Repo.ps1` finished green with 392/392 tests plus task, memory, and page validators.",
+      "createdAtUtc": "2026-05-27T18:55:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-27T16:55:53.0214105Z",
+  "updatedAtUtc": "2026-05-27T18:55:00.0000000Z",
+  "completedAtUtc": "2026-05-27T18:20:00.0000000Z",
+  "revision": 4,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

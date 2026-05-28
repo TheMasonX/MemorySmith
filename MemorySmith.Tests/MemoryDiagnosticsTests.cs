@@ -133,6 +133,77 @@ public class MemoryDiagnosticsTests
     }
 
     [Test]
+    public void AnalyzePolicy_ReportsMissingPolicyFallback()
+    {
+        var options = CreateOptions();
+        var policyService = new TagPolicyService(options);
+        var diagnostics = new MemoryDiagnosticsService(policyService, new VarResolver(_vars, options), _store, options);
+
+        var policy = policyService.GetPolicy();
+        var status = policyService.GetLoadStatus();
+        var policyDiagnostics = diagnostics.AnalyzePolicy(policy);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(status.UsingFallback, Is.True);
+            Assert.That(status.LoadedFromFile, Is.False);
+            Assert.That(status.Reason, Is.EqualTo("missing"));
+            Assert.That(policyDiagnostics.Select(diagnostic => diagnostic.Code), Does.Contain("tag.policy_missing"));
+            Assert.That(policyDiagnostics.Single(diagnostic => diagnostic.Code == "tag.policy_missing").Severity, Is.EqualTo("Info"));
+        });
+    }
+
+    [Test]
+    public void AnalyzePolicy_ReportsMalformedPolicyFallbackAsWarning()
+    {
+        var options = CreateOptions();
+        var policyPath = Path.Combine(_tempRoot, "Policies", "tag-policy.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(policyPath)!);
+        File.WriteAllText(policyPath, "{ not valid json");
+        var policyService = new TagPolicyService(options);
+        var diagnostics = new MemoryDiagnosticsService(policyService, new VarResolver(_vars, options), _store, options);
+
+        var policy = policyService.GetPolicy();
+        var status = policyService.GetLoadStatus();
+        var policyDiagnostics = diagnostics.AnalyzePolicy(policy);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(status.UsingFallback, Is.True);
+            Assert.That(status.LoadedFromFile, Is.False);
+            Assert.That(status.Reason, Is.EqualTo("failed"));
+            Assert.That(status.ErrorType, Is.EqualTo("JsonException"));
+            Assert.That(policyDiagnostics.Select(diagnostic => diagnostic.Code), Does.Contain("tag.policy_load_failed"));
+            Assert.That(policyDiagnostics.Single(diagnostic => diagnostic.Code == "tag.policy_load_failed").Severity, Is.EqualTo("Warning"));
+        });
+    }
+
+    [Test]
+    public void AnalyzePolicy_DoesNotReportFallbackDiagnosticForValidPolicy()
+    {
+        var options = CreateOptions();
+        var policyService = new TagPolicyService(options);
+        policyService.SavePolicy(new TagPolicy
+        {
+            Namespaces = [new TagNamespacePolicy { Name = "kind" }]
+        });
+        var diagnostics = new MemoryDiagnosticsService(policyService, new VarResolver(_vars, options), _store, options);
+
+        var policy = policyService.GetPolicy();
+        var status = policyService.GetLoadStatus();
+        var policyDiagnostics = diagnostics.AnalyzePolicy(policy);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(status.UsingFallback, Is.False);
+            Assert.That(status.LoadedFromFile, Is.True);
+            Assert.That(status.Reason, Is.EqualTo("loaded"));
+            Assert.That(policyDiagnostics.Select(diagnostic => diagnostic.Code), Does.Not.Contain("tag.policy_missing"));
+            Assert.That(policyDiagnostics.Select(diagnostic => diagnostic.Code), Does.Not.Contain("tag.policy_load_failed"));
+        });
+    }
+
+    [Test]
     public void TagPolicyService_CachesPolicyUntilFileChanges()
     {
         var options = CreateOptions();
@@ -156,12 +227,15 @@ public class MemoryDiagnosticsTests
         File.SetLastWriteTimeUtc(policyPath, DateTime.UtcNow.AddMinutes(1));
 
         var updated = service.GetPolicy();
+        var status = service.GetLoadStatus();
 
         Assert.Multiple(() =>
         {
             Assert.That(ReferenceEquals(first, second), Is.True);
             Assert.That(ReferenceEquals(first, updated), Is.False);
             Assert.That(updated.Namespaces.Select(namespacePolicy => namespacePolicy.Name), Does.Contain("custom"));
+            Assert.That(status.LoadedFromFile, Is.True);
+            Assert.That(status.UsingFallback, Is.False);
         });
     }
 

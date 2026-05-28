@@ -4,7 +4,7 @@
   "Title": "Ensure chat status counters and pending-write badges update immediately after reject/approve outcomes (no stale \"1 approval pending\" state).",
   "Description": "Problem: pending-write counts and badges can drift from reality after mixed approve/reject/block flows, leaving stale approval state in chat history and headers.\r\n\r\nDesired outcome:\r\n- Pending counters, badges, and actionable cards reconcile to the same truth after every outcome.\r\n- History reload and thread switching do not preserve stale pending state.\r\n\r\nAcceptance criteria:\r\n- Reject, approve, blocked, and mixed-batch outcomes all update header counts and pending panels deterministically.\r\n- Re-opening the affected thread shows the same reconciled state.\r\n- Tests cover mixed-outcome reconciliation, not only visual happy paths.\r\n\r\nValidation:\r\n- Reproduce the stale-pending scenario from the audit tracker and confirm it no longer occurs.\r\n- Add a deterministic test around pending-count reconciliation after mixed results and history reload.\r\n\r\nAudit note: vetted on 2026-05-24; still relevant even after batch-approval work, because stale pending state remains documented in recent chat-governance testing.",
   "Type": "Task",
-  "Status": "Backlog",
+  "Status": "Done",
   "Priority": "High",
   "AssigneeMode": "Custom",
   "AssigneeDirectoryId": null,
@@ -43,14 +43,20 @@
       "Author": "AgentSmith",
       "Body": "Review round: remains Backlog. Deterministic repro evidence still indicates stale pending counters/cards after mixed approve/reject flows and history reload.",
       "CreatedAtUtc": "2026-05-24T04:43:00.0000000Z"
+    },
+    {
+      "Id": "c-done-0017-20260526",
+      "Author": "AgentSmith",
+      "Body": "Completed: chat pending-write status now counts pending proposals across the active session instead of only the affected turn, and session load/switch paths recompute the status from stored pending writes. Approve/reject/batch outcomes clear attempted proposals and refresh the active-session count. Validation: focused chat/page plus source guard passed 63/63; current-tree UI sweep loaded /chat and /tasks on http://127.0.0.1:5101.",
+      "CreatedAtUtc": "2026-05-26T18:02:00.0000000Z"
     }
   ],
   "EpicId": null,
   "ParentId": null,
   "DueDateUtc": null,
   "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z",
-  "UpdatedAtUtc": "2026-05-24T04:43:00.0000000Z",
-  "CompletedAtUtc": null,
-  "Revision": 3,
+  "UpdatedAtUtc": "2026-05-26T18:02:00.0000000Z",
+  "CompletedAtUtc": "2026-05-26T18:02:00.0000000Z",
+  "Revision": 4,
   "IsArchived": false
 }

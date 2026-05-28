@@ -13,9 +13,9 @@ public static class MemorySmithTelemetry
     private static readonly Histogram<double> OperationDurationMs =
         Meter.CreateHistogram<double>("memorysmith.operation.duration", "ms", "Duration of bounded MemorySmith domain operations.");
     private static readonly Counter<long> OperationCount =
-        Meter.CreateCounter<long>("memorysmith.operation.count", "{operation}", "Count of bounded MemorySmith domain operations.");
+        Meter.CreateCounter<long>("memorysmith.operation.count", "count", "Count of bounded MemorySmith domain operations.");
     private static readonly Counter<long> OperationFailureCount =
-        Meter.CreateCounter<long>("memorysmith.operation.failures", "{operation}", "Count of failed bounded MemorySmith domain operations.");
+        Meter.CreateCounter<long>("memorysmith.operation.failures", "count", "Count of failed bounded MemorySmith domain operations.");
 
     public static Activity? StartOperation(string operation, string category)
     {

@@ -11,13 +11,17 @@
 @inject ChatModelProfileService ModelProfiles
 @inject MemoryApplicationService Memories
 @inject IPageService Pages
+@inject ITaskService Tasks
 @inject IEnumerable<IChatProvider> ChatProviders
 @inject IOptionsMonitor<MemorySmithOptions> Options
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
 @inject ICurrentUserContext CurrentUser
+@inject IDialogService Dialogs
+@inject ILogger<Chat> Logger
+@inject MaintenanceProposalWorkflow ProposalWorkflow
 
-<PageTitle>Chat</PageTitle>
+<PageTitle>Chat - MemorySmith</PageTitle>
 <NavigationLock ConfirmExternalNavigation="@HasPendingDraft" OnBeforeInternalNavigation="ConfirmInternalNavigation" />
 
 <div class="@ChatWorkbenchClass">
@@ -63,10 +67,10 @@
                     <MudSelectItem T="string" Value="@MermaidThemeLight">Light</MudSelectItem>
                     <MudSelectItem T="string" Value="@MermaidThemeDark">Dark</MudSelectItem>
                 </MudSelect>
-                <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Small" Color="Color.Primary" Disabled="@_isLoadingModels" OnClick="RefreshModelsAsync" aria-label="Refresh models" />
+                <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Small" Color="Color.Primary" Disabled="@_isLoadingModels" OnClick="RefreshModelsAsync" aria-label="Refresh models" title="Refresh models" />
             </div>
 
-            <MudIconButton Icon="@(_sidebarOpen ? Icons.Material.Filled.ChevronRight : Icons.Material.Filled.Menu)" Size="Size.Small" OnClick="ToggleSidebar" aria-label="Toggle sidebar" />
+            <MudIconButton Icon="@(_sidebarOpen ? Icons.Material.Filled.ChevronRight : Icons.Material.Filled.Menu)" Size="Size.Small" OnClick="ToggleSidebar" aria-label="Toggle sidebar" title="Toggle sidebar" />
         </div>
 
         <div class="chat-status-strip">
@@ -139,7 +143,50 @@
                                 </div>
                             </details>
                         }
-                        <div class="chat-message-body chat-message-markdown">@RenderTurnContent(turn)</div>
+                        <div class="chat-message-body chat-message-markdown">
+                            @if (TryParseQuestionCard(turn.Content) is { } questionCard)
+                            {
+                                <div class="chat-question-card">
+                                    <div class="chat-question-card-title">@questionCard.Question</div>
+                                    @if (!string.IsNullOrWhiteSpace(questionCard.DetailsMarkdown))
+                                    {
+                                        <div class="chat-question-card-details chat-message-markdown">@RenderQuestionCardDetails(questionCard)</div>
+                                    }
+                                    <div class="chat-question-card-options">
+                                        @foreach (var option in questionCard.Options)
+                                        {
+                                            <MudButton Variant="Variant.Outlined"
+                                                       Color="Color.Primary"
+                                                       Size="Size.Small"
+                                                       Disabled="@_isSending"
+                                                       OnClick="@(() => SendQuestionOptionAsync(turn, questionCard, option))">@option</MudButton>
+                                        }
+                                    </div>
+                                    @if (questionCard.AllowOther)
+                                    {
+                                        <div class="chat-question-card-other">
+                                            <MudTextField T="string"
+                                                          Value="@turn.QuestionOtherDraft"
+                                                          ValueChanged="@((string value) => OnQuestionOtherDraftChanged(turn, value))"
+                                                          Label="@questionCard.OtherLabel"
+                                                          Placeholder="@questionCard.OtherPlaceholder"
+                                                          Variant="Variant.Outlined"
+                                                          Margin="Margin.Dense"
+                                                          Disabled="@_isSending" />
+                                            <MudButton Variant="Variant.Filled"
+                                                       Color="Color.Primary"
+                                                       Size="Size.Small"
+                                                       Disabled="@(_isSending || string.IsNullOrWhiteSpace(turn.QuestionOtherDraft))"
+                                                       OnClick="@(() => SendQuestionOtherAsync(turn, questionCard))">Send other</MudButton>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                @RenderTurnContent(turn)
+                            }
+                        </div>
 
                         @if (turn.Attachments.Count > 0)
                         {
@@ -187,7 +234,13 @@
         </div>
 
         <div class="chat-attachment-row">
-            <InputFile id="chat-file-input" OnChange="OnFilesSelectedAsync" multiple class="chat-file-input" />
+            <MudTooltip Text="Attach files">
+                <label class="chat-attachment-button" for="chat-file-input" title="Attach files">
+                    <MudIcon Icon="@Icons.Material.Filled.AttachFile" Size="Size.Small" />
+                    <span>Attach</span>
+                    <InputFile id="chat-file-input" OnChange="OnFilesSelectedAsync" multiple class="chat-file-input" aria-label="Attach files" />
+                </label>
+            </MudTooltip>
             @foreach (var attachment in _attachments)
             {
                 <span class="wiki-tag chat-attachment-chip" title="@AttachmentTitle(attachment)">
@@ -213,10 +266,10 @@
                 <div class="chat-composer-actions">
                     <MudCheckBox T="bool" Value="_sendOnEnter" ValueChanged="SetSendOnEnterAsync" Label="Send on Enter" Size="Size.Small" />
                     <MudTooltip Text="Finish current step">
-                        <MudIconButton Icon="@Icons.Material.Filled.Pause" Size="Size.Small" Color="Color.Warning" Class="chat-composer-icon" Disabled="@(!_isSending || _activeRunControl?.StopAfterCurrentStepRequested == true)" OnClick="StopAfterCurrentStepAsync" aria-label="Finish current step" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Pause" Size="Size.Small" Color="Color.Warning" Class="chat-composer-icon" Disabled="@(!_isSending || _activeRunControl?.StopAfterCurrentStepRequested == true)" OnClick="StopAfterCurrentStepAsync" aria-label="Finish current step" title="Finish current step" />
                     </MudTooltip>
                     <MudTooltip Text="Stop generation">
-                        <MudIconButton Icon="@Icons.Material.Filled.Stop" Size="Size.Small" Color="Color.Error" Class="chat-composer-icon" Disabled="@(!_isSending)" OnClick="StopGeneratingAsync" aria-label="Stop generation" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Stop" Size="Size.Small" Color="Color.Error" Class="chat-composer-icon" Disabled="@(!_isSending)" OnClick="StopGeneratingAsync" aria-label="Stop generation" title="Stop generation" />
                     </MudTooltip>
                     <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Send" Disabled="@(!CanSendChat)" OnClick="SendAsync">Send</MudButton>
                 </div>
@@ -232,7 +285,7 @@
                     <MudButton Variant="@SidebarTabVariant(ChatSidebarTab.History)" Color="@SidebarTabColor(ChatSidebarTab.History)" Class="@SidebarTabClass(ChatSidebarTab.History)" OnClick="@(() => ShowSidebarTab(ChatSidebarTab.History))">History</MudButton>
                     <MudButton Variant="@SidebarTabVariant(ChatSidebarTab.Trace)" Color="@SidebarTabColor(ChatSidebarTab.Trace)" Class="@SidebarTabClass(ChatSidebarTab.Trace)" OnClick="@(() => ShowSidebarTab(ChatSidebarTab.Trace))">Trace</MudButton>
                 </MudButtonGroup>
-                <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" Color="Color.Default" OnClick="ToggleSidebar" aria-label="Close sidebar" />
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" Color="Color.Default" OnClick="ToggleSidebar" aria-label="Close sidebar" title="Close sidebar" />
             </div>
 
             @if (_sidebarTab == ChatSidebarTab.History)
@@ -240,7 +293,7 @@
                 <section class="chat-history-panel" aria-label="Chat history">
                     <div class="chat-history-header">
                         <MudText Typo="Typo.subtitle2">History</MudText>
-                        <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" Color="Color.Success" OnClick="StartNewChatAsync" aria-label="New chat" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" Color="Color.Success" OnClick="StartNewChatAsync" aria-label="New chat" title="New chat" />
                     </div>
 
                     <div class="chat-history-list">
@@ -251,7 +304,7 @@
                                     <span>@session.Title</span>
                                     <small>@session.UpdatedUtc.ToLocalTime().ToString("M/d HH:mm")</small>
                                 </button>
-                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" Disabled="@_isSending" OnClick="@(() => DeleteSessionAsync(session.Id))" aria-label="Delete chat" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" Disabled="@_isSending" OnClick="@(() => DeleteSessionAsync(session.Id))" aria-label="Delete chat" title="Delete chat" />
                             </div>
                         }
                     </div>
@@ -285,19 +338,19 @@
 
                         <div class="chat-trace-filters" aria-label="Trace filters">
                             <MudTooltip Text="@TraceFilterTooltipText("Reasoning", _traceShowReasoning)">
-                                <MudIconButton Icon="@Icons.Material.Filled.Psychology" Size="Size.Small" Variant="Variant.Outlined" Color="@TraceFilterColor(_traceShowReasoning)" Class="chat-trace-filter-button" OnClick="ToggleTraceReasoning" aria-label="Toggle reasoning filter" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Psychology" Size="Size.Small" Variant="Variant.Outlined" Color="@TraceFilterColor(_traceShowReasoning)" Class="chat-trace-filter-button" OnClick="ToggleTraceReasoning" aria-label="Toggle reasoning filter" title='@TraceFilterTooltipText("Reasoning", _traceShowReasoning)' />
                             </MudTooltip>
                             <MudTooltip Text="@TraceFilterTooltipText("Tools", _traceShowTools)">
-                                <MudIconButton Icon="@Icons.Material.Filled.Build" Size="Size.Small" Variant="Variant.Outlined" Color="@TraceFilterColor(_traceShowTools)" Class="chat-trace-filter-button" OnClick="ToggleTraceTools" aria-label="Toggle tools filter" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Build" Size="Size.Small" Variant="Variant.Outlined" Color="@TraceFilterColor(_traceShowTools)" Class="chat-trace-filter-button" OnClick="ToggleTraceTools" aria-label="Toggle tools filter" title='@TraceFilterTooltipText("Tools", _traceShowTools)' />
                             </MudTooltip>
                             <MudTooltip Text="@TraceFilterTooltipText("Answer", _traceShowAssistant)">
-                                <MudIconButton Icon="@Icons.Material.Filled.QuestionAnswer" Size="Size.Small" Variant="Variant.Outlined" Color="@TraceFilterColor(_traceShowAssistant)" Class="chat-trace-filter-button" OnClick="ToggleTraceAssistant" aria-label="Toggle answer filter" />
+                                <MudIconButton Icon="@Icons.Material.Filled.QuestionAnswer" Size="Size.Small" Variant="Variant.Outlined" Color="@TraceFilterColor(_traceShowAssistant)" Class="chat-trace-filter-button" OnClick="ToggleTraceAssistant" aria-label="Toggle answer filter" title='@TraceFilterTooltipText("Answer", _traceShowAssistant)' />
                             </MudTooltip>
                             <MudTooltip Text="@TraceFilterTooltipText("System", _traceShowSystem)">
-                                <MudIconButton Icon="@Icons.Material.Filled.Settings" Size="Size.Small" Variant="Variant.Outlined" Color="@TraceFilterColor(_traceShowSystem)" Class="chat-trace-filter-button" OnClick="ToggleTraceSystem" aria-label="Toggle system filter" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Settings" Size="Size.Small" Variant="Variant.Outlined" Color="@TraceFilterColor(_traceShowSystem)" Class="chat-trace-filter-button" OnClick="ToggleTraceSystem" aria-label="Toggle system filter" title='@TraceFilterTooltipText("System", _traceShowSystem)' />
                             </MudTooltip>
                             <MudTooltip Text="@TraceFilterTooltipText("Errors", _traceErrorsOnly)">
-                                <MudIconButton Icon="@Icons.Material.Filled.Error" Size="Size.Small" Variant="Variant.Outlined" Color="@TraceFilterColor(_traceErrorsOnly, Color.Error)" Class="chat-trace-filter-button" OnClick="ToggleTraceErrors" aria-label="Toggle errors-only filter" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Error" Size="Size.Small" Variant="Variant.Outlined" Color="@TraceFilterColor(_traceErrorsOnly, Color.Error)" Class="chat-trace-filter-button" OnClick="ToggleTraceErrors" aria-label="Toggle errors-only filter" title='@TraceFilterTooltipText("Errors", _traceErrorsOnly)' />
                             </MudTooltip>
                         </div>
 
@@ -313,16 +366,28 @@
                             <section class="chat-approval-panel">
                                 <header>
                                     <span>Pending writes</span>
-                                    <button type="button" disabled="@_isApprovingWrites" @onclick="@(() => ApproveAllWritesAsync(selectedTurn.Id))">Approve all</button>
+                                    <button type="button" title="Accept all pending writes in this turn" disabled="@_isApprovingWrites" @onclick="@(() => ApproveAllWritesAsync(selectedTurn.Id))">Accept all</button>
                                 </header>
+                                <div class="chat-approval-comment-row">
+                                    <label for="@($"chat-response-note-{selectedTurn.Id}")">Revision note</label>
+                                    <textarea id="@($"chat-response-note-{selectedTurn.Id}")"
+                                              class="chat-approval-comment-input"
+                                              rows="2"
+                                              placeholder="Required for Respond. Example: keep the change, but add the source page."
+                                              aria-label="Revision note for respond actions"
+                                              value="@selectedTurn.ResponseCommentDraft"
+                                              @oninput="@(args => OnResponseCommentInput(selectedTurn, args))"></textarea>
+                                    <small>Respond keeps the proposal diff and records this note in proposal history. Accept and Reject do not use it.</small>
+                                </div>
                                 @foreach (var proposal in selectedTurn.ProposedMemoryWrites)
                                 {
                                     <div class="chat-approval-item">
                                         <strong>memory:@proposal.Id</strong>
                                         <span>@proposal.Title</span>
                                         <div>
-                                            <button type="button" @onclick="@(() => ApproveMemoryWriteAsync(selectedTurn.Id, proposal.Id))">Approve</button>
-                                            <button type="button" @onclick="@(() => RejectMemoryWriteAsync(selectedTurn.Id, proposal.Id))">Reject</button>
+                                            <button type="button" title="Accept memory write proposal" @onclick="@(() => ApproveMemoryWriteAsync(selectedTurn.Id, proposal.Id))">Accept</button>
+                                            <button type="button" title="Request a revision for this memory write proposal" @onclick="@(() => RespondMemoryWriteAsync(selectedTurn.Id, proposal.Id))">Respond</button>
+                                            <button type="button" title="Reject memory write proposal" @onclick="@(() => RejectMemoryWriteAsync(selectedTurn.Id, proposal.Id))">Reject</button>
                                         </div>
                                     </div>
                                 }
@@ -332,8 +397,9 @@
                                         <strong>page:@proposal.Slug</strong>
                                         <span>@proposal.Title</span>
                                         <div>
-                                            <button type="button" @onclick="@(() => ApprovePageWriteAsync(selectedTurn.Id, proposal.Slug))">Approve</button>
-                                            <button type="button" @onclick="@(() => RejectPageWriteAsync(selectedTurn.Id, proposal.Slug))">Reject</button>
+                                            <button type="button" title="Accept page write proposal" @onclick="@(() => ApprovePageWriteAsync(selectedTurn.Id, proposal.Slug))">Accept</button>
+                                            <button type="button" title="Request a revision for this page write proposal" @onclick="@(() => RespondPageWriteAsync(selectedTurn.Id, proposal.Slug))">Respond</button>
+                                            <button type="button" title="Reject page write proposal" @onclick="@(() => RejectPageWriteAsync(selectedTurn.Id, proposal.Slug))">Reject</button>
                                         </div>
                                     </div>
                                 }
@@ -406,7 +472,7 @@
     private string _agentStatus = "Ready";
     private string? _preferredActiveSessionId;
     private string? _modelError;
-    private bool _sidebarOpen = true;
+    private bool _sidebarOpen;
     private ChatSidebarTab _sidebarTab = ChatSidebarTab.History;
     private bool _sendOnEnter = true;
     private bool _isSending;
@@ -467,6 +533,7 @@
     protected override void OnInitialized()
     {
         var chatOptions = Options.CurrentValue.Chat;
+        CleanupStaleAttachmentTempFiles(chatOptions);
         LoadModelProfiles();
         _availableProviders.Clear();
         _availableProviders.AddRange(ChatProviders.Select(provider => provider.Name).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(provider => provider));
@@ -588,7 +655,7 @@
             RestoreSessionDraft(active);
             SelectDefaultTraceTurn(active);
             _currentUsage = null;
-            _agentStatus = "Ready";
+            UpdatePendingWriteStatus(active, "Ready");
             _scrollPending = true;
         }
 
@@ -697,6 +764,8 @@
             Context = ReadJsonObjects(item, "context").Select(ParseStoredContextItem).ToList(),
             ProposedMemoryWrites = ReadJsonObjects(item, "proposedMemoryWrites").Select(ParseStoredMemoryWriteProposal).Where(proposal => proposal is not null).Select(proposal => proposal!).ToList(),
             ProposedPageWrites = ReadJsonObjects(item, "proposedPageWrites").Select(ParseStoredPageWriteProposal).Where(proposal => proposal is not null).Select(proposal => proposal!).ToList(),
+            ResponseCommentDraft = ReadJsonString(item, "responseCommentDraft") ?? string.Empty,
+            QuestionOtherDraft = ReadJsonString(item, "questionOtherDraft") ?? string.Empty,
             WrittenMemories = ReadJsonStrings(item, "writtenMemories"),
             WrittenPages = ReadJsonStrings(item, "writtenPages"),
             SubmittedProposalIds = ReadJsonStrings(item, "submittedProposalIds"),
@@ -984,6 +1053,7 @@
             RestoreSessionDraft(session);
             SelectDefaultTraceTurn(session);
             _currentUsage = null;
+            UpdatePendingWriteStatus(session, _mode == MemoryChatMode.Agent ? "Agent ready" : "Chat ready");
             _scrollPending = true;
             await SaveSessionsAsync();
             await SavePreferencesAsync();
@@ -998,12 +1068,16 @@
         }
 
         var title = string.IsNullOrWhiteSpace(session.Title) ? "this chat" : session.Title;
-        if (!await JS.InvokeAsync<bool>("confirm", $"Delete chat '{title}'? This cannot be undone."))
+        if (!await Dialogs.ConfirmDestructiveActionAsync(
+            "Delete chat?",
+            $"Delete chat \"{title}\". This removes the saved chat session from this browser profile and cannot be undone.",
+            "Delete chat"))
         {
             return;
         }
 
         var wasActive = string.Equals(_activeSessionId, id, StringComparison.Ordinal);
+        var pendingAttachments = session.PendingAttachments.ToList();
         _sessions.Remove(session);
         if (_sessions.Count == 0)
         {
@@ -1018,7 +1092,9 @@
             _currentUsage = null;
         }
 
-        _agentStatus = "Chat deleted";
+        LogAttachmentCleanupResult("session-delete", ChatAttachmentFiles.DeleteTempFiles(pendingAttachments, RetainedPendingAttachments()));
+        UpdatePendingWriteStatus(ActiveSession, "Chat deleted");
+        Snackbar.Add("Chat deleted.", Severity.Success);
         await SaveSessionsAsync();
         await SavePreferencesAsync();
     }
@@ -1128,6 +1204,13 @@
     {
         _draft = args.Value?.ToString() ?? string.Empty;
         PersistActiveDraft();
+        await SaveSessionsAsync();
+    }
+
+    private async Task OnResponseCommentInput(ChatTurnState turn, ChangeEventArgs args)
+    {
+        turn.ResponseCommentDraft = args.Value?.ToString() ?? string.Empty;
+        ActiveSession.UpdatedUtc = DateTimeOffset.UtcNow;
         await SaveSessionsAsync();
     }
 
@@ -1301,7 +1384,7 @@
                     EstimatedTokens = EstimateTraceTokens(FormatPendingWriteSummary(pendingTurn))
                 });
                 ShowSidebarTab(ChatSidebarTab.Trace);
-                _agentStatus = $"{pendingTurn.ProposedMemoryWrites.Count + pendingTurn.ProposedPageWrites.Count} write approval(s) pending";
+                _agentStatus = $"{PendingWriteCount(pendingTurn)} write approval(s) pending";
             }
             if (!string.IsNullOrWhiteSpace(response.Thinking) && !pendingTurn.TraceEntries.Any(entry => string.Equals(entry.Kind, ChatTraceKinds.Reasoning, StringComparison.OrdinalIgnoreCase)))
             {
@@ -1327,9 +1410,9 @@
 
             FinalizeActiveTraceEntries(pendingTurn);
             pendingTurn.DurationMilliseconds = (long)Math.Max(0, (DateTimeOffset.UtcNow - (_responseStartedUtc ?? DateTimeOffset.UtcNow)).TotalMilliseconds);
-            session.History.Add(new ChatMessage("assistant", response.Reply));
+            session.History.Add(new ChatMessage("assistant", BuildAssistantHistoryContent(response.Reply)));
             session.UpdatedUtc = DateTimeOffset.UtcNow;
-            var pendingWriteCount = pendingTurn.ProposedMemoryWrites.Count + pendingTurn.ProposedPageWrites.Count;
+            var pendingWriteCount = PendingWriteCount(ActiveSession);
             _agentStatus = pendingWriteCount > 0
                 ? $"{response.ProviderName} / {response.Model}: {response.Context.Count} resource(s), {pendingWriteCount} approval(s) pending"
                 : $"{response.ProviderName} / {response.Model}: {response.Context.Count} resource(s), {response.WrittenMemories.Count + response.WrittenPages.Count} write(s)";
@@ -1387,6 +1470,7 @@
             StopResponseTimer();
             _isSending = false;
             _scrollPending = true;
+            LogAttachmentCleanupResult("send-complete", ChatAttachmentFiles.DeleteTempFiles(attachments, RetainedPendingAttachments()));
             await InvokeAsync(StateHasChanged);
             await SaveSessionsAsync();
             await SavePreferencesAsync();
@@ -1450,13 +1534,13 @@
                 results.Add(await ApproveProposalWithOutcomeAsync(turn, [], [proposal], $"page:{proposal.Slug}"));
             }
 
-            UpdatePendingWriteStatus(turn);
+            UpdatePendingWriteStatus();
             if (results.Count > 0)
             {
                 AddTraceEntry(
                     turn,
                     ChatTraceKinds.Write,
-                    "Approve all results",
+                    "Accept all results",
                     string.Join(Environment.NewLine, results.Select(result => $"- {result}")),
                     IsError: results.Any(result => result.Contains("blocked", StringComparison.OrdinalIgnoreCase) || result.Contains("failed", StringComparison.OrdinalIgnoreCase)));
             }
@@ -1481,7 +1565,29 @@
         if (proposal is not null)
         {
             _ = await ApproveProposalWithOutcomeAsync(turn, [proposal], [], $"memory:{proposal.Id}");
-            UpdatePendingWriteStatus(turn);
+            UpdatePendingWriteStatus();
+            ActiveSession.UpdatedUtc = DateTimeOffset.UtcNow;
+            await SaveSessionsAsync();
+        }
+    }
+
+    private async Task RespondMemoryWriteAsync(string turnId, string memoryId)
+    {
+        if (FindTurn(turnId) is not { } turn)
+        {
+            return;
+        }
+
+        var proposal = turn.ProposedMemoryWrites.FirstOrDefault(item => string.Equals(item.Id, memoryId, StringComparison.OrdinalIgnoreCase));
+        if (proposal is not null)
+        {
+            var outcome = await RespondProposalWithOutcomeAsync(turn, [proposal], [], $"memory:{proposal.Id}");
+            if (outcome is null)
+            {
+                return;
+            }
+
+            UpdatePendingWriteStatus();
             ActiveSession.UpdatedUtc = DateTimeOffset.UtcNow;
             await SaveSessionsAsync();
         }
@@ -1498,7 +1604,29 @@
         if (proposal is not null)
         {
             _ = await ApproveProposalWithOutcomeAsync(turn, [], [proposal], $"page:{proposal.Slug}");
-            UpdatePendingWriteStatus(turn);
+            UpdatePendingWriteStatus();
+            ActiveSession.UpdatedUtc = DateTimeOffset.UtcNow;
+            await SaveSessionsAsync();
+        }
+    }
+
+    private async Task RespondPageWriteAsync(string turnId, string slug)
+    {
+        if (FindTurn(turnId) is not { } turn)
+        {
+            return;
+        }
+
+        var proposal = turn.ProposedPageWrites.FirstOrDefault(item => string.Equals(item.Slug, slug, StringComparison.OrdinalIgnoreCase));
+        if (proposal is not null)
+        {
+            var outcome = await RespondProposalWithOutcomeAsync(turn, [], [proposal], $"page:{proposal.Slug}");
+            if (outcome is null)
+            {
+                return;
+            }
+
+            UpdatePendingWriteStatus();
             ActiveSession.UpdatedUtc = DateTimeOffset.UtcNow;
             await SaveSessionsAsync();
         }
@@ -1512,38 +1640,128 @@
             if (result.SubmittedProposalIds?.Count > 0)
             {
                 turn.SubmittedProposalIds.AddRange(result.SubmittedProposalIds.Where(id => !turn.SubmittedProposalIds.Contains(id, StringComparer.OrdinalIgnoreCase)));
-                turn.ProposedMemoryWrites.RemoveAll(proposal => memories.Any(memory => string.Equals(memory.Id, proposal.Id, StringComparison.OrdinalIgnoreCase)));
-                turn.ProposedPageWrites.RemoveAll(proposal => pages.Any(page => string.Equals(page.Slug, proposal.Slug, StringComparison.OrdinalIgnoreCase)));
+                RemoveAttemptedProposals(turn, memories, pages);
                 AddTraceEntry(turn, ChatTraceKinds.Write, "Agent writes submitted for proposal review", FormatSubmittedProposalSummary(result), IsError: false);
                 _agentStatus = $"Submitted {result.SubmittedProposalIds.Count} proposal(s) for review";
-                return $"{proposalKey} -> submitted ({string.Join(", ", result.SubmittedProposalIds)})";
+                return $"{proposalKey} -> accepted (submitted {string.Join(", ", result.SubmittedProposalIds)})";
             }
 
             turn.WrittenMemories.AddRange(result.WrittenMemories.Where(id => !turn.WrittenMemories.Contains(id, StringComparer.OrdinalIgnoreCase)));
             turn.WrittenPages.AddRange(result.WrittenPages.Where(slug => !turn.WrittenPages.Contains(slug, StringComparer.OrdinalIgnoreCase)));
             turn.ProposedMemoryWrites.RemoveAll(proposal => result.WrittenMemories.Contains(proposal.Id, StringComparer.OrdinalIgnoreCase));
             turn.ProposedPageWrites.RemoveAll(proposal => result.WrittenPages.Contains(proposal.Slug, StringComparer.OrdinalIgnoreCase));
-            AddTraceEntry(turn, ChatTraceKinds.Write, "Agent writes approved", FormatAppliedWriteSummary(result), IsError: false);
-            _agentStatus = $"Applied {result.WrittenMemories.Count + result.WrittenPages.Count} approved write(s)";
-            return $"{proposalKey} -> approved";
+            if (result.WrittenMemories.Count == 0 && result.WrittenPages.Count == 0)
+            {
+                RemoveAttemptedProposals(turn, memories, pages);
+                AddTraceEntry(turn, ChatTraceKinds.Write, "Agent write rejected", $"{proposalKey} rejected: no file changes were needed.", IsError: false);
+                _agentStatus = "No file changes were needed";
+                return $"{proposalKey} -> rejected (no changes needed)";
+            }
+
+            AddTraceEntry(turn, ChatTraceKinds.Write, "Agent writes accepted", FormatAppliedWriteSummary(result), IsError: false);
+            _agentStatus = $"Applied {result.WrittenMemories.Count + result.WrittenPages.Count} accepted write(s)";
+            return $"{proposalKey} -> accepted";
         }
         catch (Exception ex)
         {
             // Blocked/failed approvals are terminal for this attempt; remove pending item and retain auditable trace.
-            turn.ProposedMemoryWrites.RemoveAll(proposal => memories.Any(memory => string.Equals(memory.Id, proposal.Id, StringComparison.OrdinalIgnoreCase)));
-            turn.ProposedPageWrites.RemoveAll(proposal => pages.Any(page => string.Equals(page.Slug, proposal.Slug, StringComparison.OrdinalIgnoreCase)));
-            AddTraceEntry(turn, ChatTraceKinds.Write, "Agent write blocked", $"{proposalKey} blocked: {ex.Message}", IsError: true);
+            RemoveAttemptedProposals(turn, memories, pages);
+            var outcome = IsBlockedApprovalException(ex) ? "blocked" : "failed";
+            AddTraceEntry(turn, ChatTraceKinds.Write, $"Agent write {outcome}", $"{proposalKey} {outcome}: {ex.Message}", IsError: true);
             Snackbar.Add(ex.Message, Severity.Error);
-            return $"{proposalKey} -> blocked ({ex.Message})";
+            return $"{proposalKey} -> {outcome} ({ex.Message})";
         }
     }
 
-    private void UpdatePendingWriteStatus(ChatTurnState turn)
+    private async Task<string?> RespondProposalWithOutcomeAsync(ChatTurnState turn, IReadOnlyList<AgentMemoryWriteProposal> memories, IReadOnlyList<AgentPageWriteProposal> pages, string proposalKey)
     {
-        var pendingCount = turn.ProposedMemoryWrites.Count + turn.ProposedPageWrites.Count;
+        if (!TryGetResponseComment(turn, out var comment))
+        {
+            return null;
+        }
+
+        try
+        {
+            var result = await ChatAgent.ApplyAgentWritesAsync(memories, pages, CancellationToken.None);
+            if (result.SubmittedProposalIds?.Count > 0)
+            {
+                foreach (var proposalId in result.SubmittedProposalIds)
+                {
+                    var responded = await ProposalWorkflow.RespondAsync(proposalId, comment, CancellationToken.None);
+                    if (!turn.SubmittedProposalIds.Contains(responded.ProposalId, StringComparer.OrdinalIgnoreCase))
+                    {
+                        turn.SubmittedProposalIds.Add(responded.ProposalId);
+                    }
+                }
+
+                RemoveAttemptedProposals(turn, memories, pages);
+                AddTraceEntry(turn, ChatTraceKinds.Write, "Agent writes sent back for revision", FormatRespondedProposalSummary(result.SubmittedProposalIds, comment), IsError: false);
+                _agentStatus = $"Requested revisions for {result.SubmittedProposalIds.Count} proposal(s)";
+                return $"{proposalKey} -> responded ({string.Join(", ", result.SubmittedProposalIds)})";
+            }
+
+            RemoveAttemptedProposals(turn, memories, pages);
+            AddTraceEntry(turn, ChatTraceKinds.Write, "Agent write response skipped", $"{proposalKey} response skipped: no file changes were needed.", IsError: false);
+            _agentStatus = "No file changes were needed";
+            return $"{proposalKey} -> response skipped (no changes needed)";
+        }
+        catch (Exception ex)
+        {
+            RemoveAttemptedProposals(turn, memories, pages);
+            var outcome = IsBlockedApprovalException(ex) ? "blocked" : "failed";
+            AddTraceEntry(turn, ChatTraceKinds.Write, $"Agent write response {outcome}", $"{proposalKey} response {outcome}: {ex.Message}", IsError: true);
+            Snackbar.Add(ex.Message, Severity.Error);
+            return $"{proposalKey} -> response {outcome} ({ex.Message})";
+        }
+    }
+
+    private bool TryGetResponseComment(ChatTurnState turn, out string comment)
+    {
+        comment = turn.ResponseCommentDraft.Trim();
+        if (!string.IsNullOrWhiteSpace(comment))
+        {
+            return true;
+        }
+
+        Snackbar.Add("Respond requires a revision note.", Severity.Warning);
+        return false;
+    }
+
+    private static string FormatRespondedProposalSummary(IReadOnlyList<string> proposalIds, string comment)
+    {
+        var lines = new List<string>
+        {
+            $"Revision note: {comment}"
+        };
+
+        lines.AddRange(proposalIds.Select(id => $"- proposal:{id} -> needs_revision"));
+        return string.Join(Environment.NewLine, lines);
+    }
+
+    private static void RemoveAttemptedProposals(ChatTurnState turn, IReadOnlyList<AgentMemoryWriteProposal> memories, IReadOnlyList<AgentPageWriteProposal> pages)
+    {
+        turn.ProposedMemoryWrites.RemoveAll(proposal => memories.Any(memory => string.Equals(memory.Id, proposal.Id, StringComparison.OrdinalIgnoreCase)));
+        turn.ProposedPageWrites.RemoveAll(proposal => pages.Any(page => string.Equals(page.Slug, proposal.Slug, StringComparison.OrdinalIgnoreCase)));
+    }
+
+    private static bool IsBlockedApprovalException(Exception ex) =>
+        ex is InvalidOperationException or UnauthorizedAccessException or ArgumentException;
+
+    private static int PendingWriteCount(ChatTurnState turn) =>
+        turn.ProposedMemoryWrites.Count + turn.ProposedPageWrites.Count;
+
+    private static int PendingWriteCount(ChatSessionState session) =>
+        session.Turns.Sum(PendingWriteCount);
+
+    private void UpdatePendingWriteStatus(string emptyStatus = "No pending write approvals") =>
+        UpdatePendingWriteStatus(ActiveSession, emptyStatus);
+
+    private void UpdatePendingWriteStatus(ChatSessionState session, string emptyStatus = "No pending write approvals")
+    {
+        var pendingCount = PendingWriteCount(session);
         _agentStatus = pendingCount > 0
             ? $"{pendingCount} write approval(s) pending"
-            : "No pending write approvals";
+            : emptyStatus;
     }
 
     private static Color TraceFilterColor(bool enabled, Color accent = Color.Primary) => enabled ? accent : Color.Default;
@@ -1572,7 +1790,7 @@
 
         turn.ProposedMemoryWrites.RemoveAll(item => string.Equals(item.Id, memoryId, StringComparison.OrdinalIgnoreCase));
         AddTraceEntry(turn, ChatTraceKinds.Write, "Agent memory write rejected", $"Rejected memory:{memoryId}.");
-        UpdatePendingWriteStatus(turn);
+        UpdatePendingWriteStatus();
         await SaveSessionsAsync();
     }
 
@@ -1585,7 +1803,7 @@
 
         turn.ProposedPageWrites.RemoveAll(item => string.Equals(item.Slug, slug, StringComparison.OrdinalIgnoreCase));
         AddTraceEntry(turn, ChatTraceKinds.Write, "Agent page write rejected", $"Rejected page:{slug}.");
-        UpdatePendingWriteStatus(turn);
+        UpdatePendingWriteStatus();
         await SaveSessionsAsync();
     }
 
@@ -1607,7 +1825,7 @@
             return;
         }
 
-        if (!ToolCatalog.TryGet(entry.ToolName, out var tool) || !tool.AvailableInChat)
+        if (!ToolCatalog.TryGet(entry.ToolName, out var tool) || !ChatToolCatalog.IsAvailableInMode(tool, _mode))
         {
             AddTraceEntry(turn, ChatTraceKinds.ToolResult, $"Retry failed: {entry.ToolName}", $"Tool '{entry.ToolName}' is not available in chat.", IsError: true, toolName: entry.ToolName);
             return;
@@ -1618,7 +1836,7 @@
         try
         {
             _agentStatus = $"Running {entry.ToolName}";
-            var result = await tool.Execute(arguments, new ChatToolExecutionContext(Memories, Pages, "chat-ui-retry", CurrentUser: CurrentUser, Auth: Options.CurrentValue.Auth, DefaultPageMinimumRole: Options.CurrentValue.Pages.DefaultMinimumRole), CancellationToken.None);
+            var result = await tool.Execute(arguments, new ChatToolExecutionContext(Memories, Pages, "chat-ui-retry", CurrentUser: CurrentUser, Auth: Options.CurrentValue.Auth, DefaultPageMinimumRole: Options.CurrentValue.Pages.DefaultMinimumRole, Tasks: Tasks), CancellationToken.None);
             var duration = (long)Math.Max(0, (DateTimeOffset.UtcNow - started).TotalMilliseconds);
             AddTraceEntry(turn, ChatTraceKinds.ToolResult, $"Retry result: {entry.ToolName}", result.Text, result.IsError, entry.ToolName, duration);
             if (result.ContextItems is { Count: > 0 })
@@ -1745,11 +1963,40 @@
 
     private async Task RemoveAttachment(string name)
     {
+        var removed = _attachments.Where(attachment => string.Equals(attachment.Name, name, StringComparison.OrdinalIgnoreCase)).ToList();
         _attachments.RemoveAll(attachment => string.Equals(attachment.Name, name, StringComparison.OrdinalIgnoreCase));
         PersistActiveDraft();
+        LogAttachmentCleanupResult("remove", ChatAttachmentFiles.DeleteTempFiles(removed, RetainedPendingAttachments()));
         await SaveSessionsAsync();
         await SavePreferencesAsync();
         _agentStatus = "Ready";
+    }
+
+    private void CleanupStaleAttachmentTempFiles(ChatOptions chatOptions)
+    {
+        var retentionHours = Math.Clamp(chatOptions.AttachmentTempFileRetentionHours, 1, 720);
+        var result = ChatAttachmentFiles.DeleteStaleTempFiles(TimeSpan.FromHours(retentionHours));
+        LogAttachmentCleanupResult("stale", result);
+    }
+
+    private IReadOnlyList<ChatAttachment> RetainedPendingAttachments() =>
+        _sessions.SelectMany(session => session.PendingAttachments).ToList();
+
+    private void LogAttachmentCleanupResult(string reason, ChatAttachmentCleanupResult result)
+    {
+        if (result.DeletedCount + result.RetainedCount + result.MissingCount + result.RefusedCount + result.FailedCount == 0)
+        {
+            return;
+        }
+
+        Logger.LogInformation(
+            "Chat attachment temp cleanup {Reason}: deleted {DeletedCount}, retained {RetainedCount}, missing {MissingCount}, refused {RefusedCount}, failed {FailedCount}.",
+            reason,
+            result.DeletedCount,
+            result.RetainedCount,
+            result.MissingCount,
+            result.RefusedCount,
+            result.FailedCount);
     }
 
     private async Task SaveSessionsAsync()
@@ -1841,6 +2088,8 @@
             ProposedPageWrites = turn.ProposedPageWrites
                 .Select(proposal => proposal with { Markdown = TrimForStorage(proposal.Markdown, MaxStoredTurnCharacters) })
                 .ToList(),
+            ResponseCommentDraft = TrimForStorage(turn.ResponseCommentDraft, MaxStoredTurnCharacters),
+            QuestionOtherDraft = TrimForStorage(turn.QuestionOtherDraft, MaxStoredTurnCharacters),
             TraceEntries = turn.TraceEntries
                 .TakeLast(MaxStoredTraceEntries)
                 .Select(entry => new ChatTraceEntryState
@@ -2070,8 +2319,15 @@
     private static string FormatSubmittedProposalSummary(AgentWriteApplyResult result)
     {
         var lines = result.SubmittedProposalIds?.Select(id => $"- proposal:{id}").ToList() ?? [];
+        if (!string.IsNullOrWhiteSpace(result.BatchId) || !string.IsNullOrWhiteSpace(result.ParentProposalId) || result.Attempt > 1)
+        {
+            lines.Add($"- lineage: batchId={LineageValue(result.BatchId)}; parentProposalId={LineageValue(result.ParentProposalId)}; attempt={Math.Max(result.Attempt, 1)}");
+        }
+
         return lines.Count == 0 ? "No proposals were submitted." : string.Join(Environment.NewLine, lines);
     }
+
+    private static string LineageValue(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value.Trim();
 
     private static MarkupString RenderTurnContent(ChatTurnState turn)
     {
@@ -2356,6 +2612,127 @@
     private static int TurnReferenceCount(ChatTurnState turn) =>
         turn.Context.Count + turn.WrittenMemories.Count + turn.WrittenPages.Count + turn.SubmittedProposalIds.Count;
 
+    private static string BuildAssistantHistoryContent(string content)
+    {
+        if (TryParseQuestionCard(content) is not { } questionCard)
+        {
+            return content;
+        }
+
+        var lines = new List<string>
+        {
+            questionCard.Question,
+            $"Options: {string.Join("; ", questionCard.Options)}{(questionCard.AllowOther ? "; Other: freeform" : string.Empty)}"
+        };
+
+        if (!string.IsNullOrWhiteSpace(questionCard.DetailsMarkdown))
+        {
+            lines.Add(questionCard.DetailsMarkdown);
+        }
+
+        return string.Join(Environment.NewLine, lines);
+    }
+
+    private static ChatQuestionCard? TryParseQuestionCard(string? content)
+    {
+        var candidate = content?.Trim();
+        if (string.IsNullOrWhiteSpace(candidate) || candidate[0] != '{' || !candidate.Contains("\"questionCard\"", StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        JsonObject? root;
+        try
+        {
+            root = JsonNode.Parse(candidate) as JsonObject;
+        }
+        catch
+        {
+            return null;
+        }
+
+        if (root?["questionCard"] is not JsonObject questionCard)
+        {
+            return null;
+        }
+
+        var question = ReadJsonString(questionCard, "question");
+        var options = ReadQuestionCardOptions(questionCard);
+        if (string.IsNullOrWhiteSpace(question) || options.Count == 0)
+        {
+            return null;
+        }
+
+        var other = questionCard["other"] as JsonObject;
+        return new ChatQuestionCard(
+            question.Trim(),
+            ReadJsonString(questionCard, "detailsMarkdown") ?? ReadJsonString(questionCard, "details"),
+            options,
+            ReadJsonString(questionCard, "responsePrefix") ?? "Answer to follow-up question",
+            other is not null,
+            ReadJsonString(other ?? new JsonObject(), "label") ?? "Other",
+            ReadJsonString(other ?? new JsonObject(), "placeholder") ?? "Type your answer");
+    }
+
+    private static IReadOnlyList<string> ReadQuestionCardOptions(JsonObject questionCard)
+    {
+        if (GetJsonArray(questionCard, "options") is not { } options)
+        {
+            return [];
+        }
+
+        var labels = new List<string>();
+        foreach (var option in options)
+        {
+            switch (option)
+            {
+                case JsonValue value when value.TryGetValue<string>(out var text) && !string.IsNullOrWhiteSpace(text):
+                    labels.Add(text.Trim());
+                    break;
+                case JsonObject optionObject:
+                    var label = ReadJsonString(optionObject, "label") ?? ReadJsonString(optionObject, "value");
+                    if (!string.IsNullOrWhiteSpace(label))
+                    {
+                        labels.Add(label.Trim());
+                    }
+                    break;
+            }
+        }
+
+        return labels;
+    }
+
+    private static MarkupString RenderQuestionCardDetails(ChatQuestionCard questionCard) =>
+        new(ChatMarkdownRenderer.RenderHtml(questionCard.DetailsMarkdown ?? string.Empty));
+
+    private Task OnQuestionOtherDraftChanged(ChatTurnState turn, string value)
+    {
+        turn.QuestionOtherDraft = value;
+        return Task.CompletedTask;
+    }
+
+    private async Task SendQuestionOptionAsync(ChatTurnState turn, ChatQuestionCard questionCard, string option)
+    {
+        turn.QuestionOtherDraft = string.Empty;
+        await SendAsync(BuildQuestionCardResponse(questionCard, option));
+    }
+
+    private async Task SendQuestionOtherAsync(ChatTurnState turn, ChatQuestionCard questionCard)
+    {
+        var answer = turn.QuestionOtherDraft.Trim();
+        if (string.IsNullOrWhiteSpace(answer))
+        {
+            Snackbar.Add("Enter an answer first.", Severity.Warning);
+            return;
+        }
+
+        turn.QuestionOtherDraft = string.Empty;
+        await SendAsync(BuildQuestionCardResponse(questionCard, answer));
+    }
+
+    private static string BuildQuestionCardResponse(ChatQuestionCard questionCard, string answer) =>
+        $"{questionCard.ResponsePrefix}\nQuestion: {questionCard.Question}\nAnswer: {answer}";
+
     private static string PageHref(string slug) =>
         "/pages/" + string.Join('/', slug.Split('/', StringSplitOptions.RemoveEmptyEntries).Select(Uri.EscapeDataString));
 
@@ -2577,6 +2954,8 @@
         public List<ChatContextItem> Context { get; set; } = [];
         public List<AgentMemoryWriteProposal> ProposedMemoryWrites { get; set; } = [];
         public List<AgentPageWriteProposal> ProposedPageWrites { get; set; } = [];
+        public string ResponseCommentDraft { get; set; } = string.Empty;
+        public string QuestionOtherDraft { get; set; } = string.Empty;
         public List<ChatTraceEntryState> TraceEntries { get; set; } = [];
         public bool TraceDrawerOpen { get; set; }
         public List<string> WrittenMemories { get; set; } = [];
@@ -2607,4 +2986,12 @@
     }
 
     private sealed record TraceGraphNode(string Label, string ClassName);
+    private sealed record ChatQuestionCard(
+        string Question,
+        string? DetailsMarkdown,
+        IReadOnlyList<string> Options,
+        string ResponsePrefix,
+        bool AllowOther,
+        string OtherLabel,
+        string OtherPlaceholder);
 }

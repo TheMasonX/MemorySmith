@@ -112,23 +112,7 @@ public sealed class LoggingObservabilityService
 
         if (query.IncludeStructuredLogs)
         {
-            foreach (var file in ResolveStructuredLogFiles(settings.StructuredFilePath))
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                if (!File.Exists(file))
-                {
-                    continue;
-                }
-
-                foreach (var line in File.ReadLines(file))
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    if (TryParseStructuredLog(line, out var entry) && Matches(entry, sinceUtc, query.Text, query.Level))
-                    {
-                        entries.Add(entry);
-                    }
-                }
-            }
+            entries.AddRange(ReadStructuredEntries(query, settings, limit, sinceUtc, cancellationToken));
         }
 
         if (OperatingSystem.IsWindows() && settings.WindowsEventLogEnabled && query.IncludeWindowsEventLog)
@@ -141,6 +125,98 @@ public sealed class LoggingObservabilityService
             .Take(limit)
             .ToList();
         return ordered;
+    }
+
+    private static List<LogEntryDto> ReadStructuredEntries(LogSearchQuery query, LoggingOptions settings, int limit, DateTime sinceUtc, CancellationToken cancellationToken)
+    {
+        var results = new List<LogEntryDto>();
+
+        foreach (var file in ResolveStructuredLogFiles(settings.StructuredFilePath))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!File.Exists(file))
+            {
+                continue;
+            }
+
+            IEnumerable<string> lines;
+            try
+            {
+                lines = File.ReadLines(file);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                InsertStructuredReadFailure(results, file, ex, query, sinceUtc, limit);
+                continue;
+            }
+
+            try
+            {
+                foreach (var line in lines)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (!TryParseStructuredLog(line, out var entry) || !Matches(entry, sinceUtc, query.Text, query.Level))
+                    {
+                        continue;
+                    }
+
+                    InsertByTimestamp(results, entry, limit);
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                InsertStructuredReadFailure(results, file, ex, query, sinceUtc, limit);
+            }
+        }
+
+        return results;
+    }
+
+    private static void InsertStructuredReadFailure(List<LogEntryDto> results, string file, Exception ex, LogSearchQuery query, DateTime sinceUtc, int limit)
+    {
+        var entry = new LogEntryDto(
+            DateTime.UtcNow,
+            "Warning",
+            $"Structured log file '{Path.GetFileName(file)}' could not be read: {ex.Message}",
+            "StructuredFile",
+            null,
+            null,
+            null,
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["FilePath"] = file,
+                ["ExceptionType"] = ex.GetType().Name
+            });
+
+        if (Matches(entry, sinceUtc, query.Text, query.Level))
+        {
+            InsertByTimestamp(results, entry, limit);
+        }
+    }
+
+    private static void InsertByTimestamp(List<LogEntryDto> results, LogEntryDto entry, int limit)
+    {
+        if (limit <= 0)
+        {
+            return;
+        }
+
+        var insertIndex = 0;
+        while (insertIndex < results.Count && results[insertIndex].TimestampUtc >= entry.TimestampUtc)
+        {
+            insertIndex++;
+        }
+
+        if (insertIndex >= limit)
+        {
+            return;
+        }
+
+        results.Insert(insertIndex, entry);
+        if (results.Count > limit)
+        {
+            results.RemoveAt(results.Count - 1);
+        }
     }
 
     private static bool IsError(string level) => string.Equals(level, "Error", StringComparison.OrdinalIgnoreCase)
@@ -208,7 +284,9 @@ public sealed class LoggingObservabilityService
         if (fileName.Contains("-."))
         {
             var wildcard = fileName.Replace("-.", "*.", StringComparison.Ordinal);
-            return Directory.EnumerateFiles(directory, wildcard, SearchOption.TopDirectoryOnly);
+            return Directory.EnumerateFiles(directory, wildcard, SearchOption.TopDirectoryOnly)
+                .OrderByDescending(path => File.GetLastWriteTimeUtc(path))
+                .ThenByDescending(path => path, StringComparer.OrdinalIgnoreCase);
         }
 
         return [resolvedPath];

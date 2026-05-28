@@ -24,15 +24,15 @@
   "SourceLinks": [
     {
       "Label": "Core Memory System Improvements RFC",
-      "Uri": "%MemorySmithRepo%Data/Pages/temp-plan.md"
+      "Uri": "%MemorySmithRepo%Data/Pages/plans/temp-plan.md"
     },
     {
       "Label": "Council Workflow",
-      "Uri": "%MemorySmithRepo%Data/Pages/llm-council.md"
+      "Uri": "%MemorySmithRepo%Data/Pages/council/llm-council.md"
     },
     {
       "Label": "Search and Chat",
-      "Uri": "%MemorySmithRepo%Data/Pages/search-and-chat.md"
+      "Uri": "%MemorySmithRepo%Data/Pages/guides/search-and-chat.md"
     }
   ],
   "UsageCount": 0,

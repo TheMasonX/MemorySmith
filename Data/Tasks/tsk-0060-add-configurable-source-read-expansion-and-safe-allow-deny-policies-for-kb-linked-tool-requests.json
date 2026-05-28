@@ -2,30 +2,7 @@
   "Id": "tsk-0060-add-configurable-source-read-expansion-and-safe-allow-deny-policies-for-kb-linked-tool-requests",
   "Key": "TSK-0060",
   "Title": "Add configurable source-read expansion and safe allow/deny policies for KB-linked tool requests.",
-  "Description": "Problem: when a KB entry points to a source file and line range, the tooling currently cannot clearly answer whether it may read nearby source context outside the exact quoted lines. That makes source-grounded answers less useful than they could be and leaves the safe read/write boundary underspecified for future automation.
-
-Desired outcome: source-backed requests can optionally expand to nearby lines within a configured safe source-read scope, while tool writes remain strictly controlled by explicit approval and deny rules.
-
-Scope:
-- In scope: configurable safe directories for source reads, configurable safe directories for tool writes, allow/deny lists for read and write requests, an opt-in mode for broad read access, and task/tool behavior for answering whether surrounding source context may be read.
-- In scope: clarifying behavior when the requested source location is outside the allowed read scope or when no surrounding read is permitted.
-- Out of scope: automatic approval for any write request, and any change that bypasses human approval for durable writes.
-
-Acceptance criteria:
-- A source-linked request can state whether nearby context may be read from the same file and, if allowed, can expand to surrounding lines within the configured safe read scope.
-- The tool/prompt path can clearly say when source-context expansion is not allowed.
-- Config supports explicit safe read directories, explicit safe write directories, and allow/deny lists for both read and write requests.
-- A broad-read opt-in exists, but write requests still never auto-approve.
-- Dangerous or out-of-scope source reads and all unauthorized writes are rejected or blocked before execution.
-
-Validation:
-- Focused tests cover allowed nearby source reads, denied source reads, and denied writes.
-- Focused tests cover the opt-in broad-read mode without enabling automatic write approval.
-- Update any prompt or task-routing coverage needed to keep the user-facing answer consistent.
-
-Notes:
-- This is meant to preserve source-grounded usefulness while keeping the source-read and tool-write trust boundary explicit.
-- Related precedent: the shared source-bridge/tool-risk task and the explicit write-approval tasks already in the backlog.",
+  "Description": "Problem: when a KB entry points to a source file and line range, the tooling currently cannot clearly answer whether it may read nearby source context outside the exact quoted lines. That makes source-grounded answers less useful than they could be and leaves the safe read/write boundary underspecified for future automation.\n\nDesired outcome: source-backed requests can optionally expand to nearby lines within a configured safe source-read scope, while tool writes remain strictly controlled by explicit approval and deny rules.\n\nScope:\n- In scope: configurable safe directories for source reads, configurable safe directories for tool writes, allow/deny lists for read and write requests, an opt-in mode for broad read access, and task/tool behavior for answering whether surrounding source context may be read.\n- In scope: clarifying behavior when the requested source location is outside the allowed read scope or when no surrounding read is permitted.\n- Out of scope: automatic approval for any write request, and any change that bypasses human approval for durable writes.\n\nAcceptance criteria:\n- A source-linked request can state whether nearby context may be read from the same file and, if allowed, can expand to surrounding lines within the configured safe read scope.\n- The tool/prompt path can clearly say when source-context expansion is not allowed.\n- Config supports explicit safe read directories, explicit safe write directories, and allow/deny lists for both read and write requests.\n- A broad-read opt-in exists, but write requests still never auto-approve.\n- Dangerous or out-of-scope source reads and all unauthorized writes are rejected or blocked before execution.\n\nValidation:\n- Focused tests cover allowed nearby source reads, denied source reads, and denied writes.\n- Focused tests cover the opt-in broad-read mode without enabling automatic write approval.\n- Update any prompt or task-routing coverage needed to keep the user-facing answer consistent.\n\nNotes:\n- This is meant to preserve source-grounded usefulness while keeping the source-read and tool-write trust boundary explicit.\n- Related precedent: the shared source-bridge/tool-risk task and the explicit write-approval tasks already in the backlog.",
   "Type": "Task",
   "Status": "Backlog",
   "Priority": "High",
