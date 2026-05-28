@@ -56,9 +56,12 @@ public static partial class ChatMarkdownRenderer
     private static string SanitizeLinkAttribute(Match match)
     {
         var name = match.Groups["name"].Value;
+        var quote = match.Groups["quote"].Value;
         var value = match.Groups["value"].Value;
         var normalized = NormalizeLinkTarget(name, value);
-        return IsSafeLinkTarget(normalized) ? $"{name}=\"{normalized}\"" : $"{name}=\"{UnsafeAttributeFallback(name)}\"";
+        return IsSafeLinkTarget(normalized)
+            ? $"{name}={quote}{normalized}{quote}"
+            : $"{name}={quote}{UnsafeAttributeFallback(name)}{quote}";
     }
 
     private static string NormalizeLinkTarget(string attributeName, string value)
@@ -348,7 +351,7 @@ public static partial class ChatMarkdownRenderer
         return !target.Contains(':', StringComparison.Ordinal);
     }
 
-    [GeneratedRegex("\\b(?<name>href|src)=\"(?<value>[^\"]*)\"", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    [GeneratedRegex("\\b(?<name>href|src)=(?<quote>[\"'])(?<value>[^\"']*)\\k<quote>", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex LinkAttributeRegex();
 
     private static readonly string[] ReferenceLabelDelimiters = [": ", " - "];

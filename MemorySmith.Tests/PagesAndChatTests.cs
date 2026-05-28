@@ -346,6 +346,22 @@ public class PagesAndChatTests
     }
 
     [Test]
+    public void ChatMarkdownRenderer_SanitizesSingleQuotedHrefAndSrcAttributes()
+    {
+        var html = ChatMarkdownRenderer.RenderHtml("""
+        <a href='javascript:alert(1)'>bad</a>
+        <img src='javascript:alert(1)' alt='bad image' />
+        """);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(html, Does.Not.Contain("javascript:alert"));
+            Assert.That(html, Does.Contain("href='#'"));
+            Assert.That(html, Does.Contain("src=''"));
+        });
+    }
+
+    [Test]
     public void ChatMarkdownRenderer_RendersMermaidAndPrismCodeBlocks()
     {
         var html = ChatMarkdownRenderer.RenderHtml("""
