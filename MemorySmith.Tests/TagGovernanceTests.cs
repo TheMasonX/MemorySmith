@@ -547,6 +547,8 @@ public class TagGovernanceTests
             Assert.That(source, Does.Contain("MemorySmith:ReferrerPolicy"));
             Assert.That(source, Does.Contain("MemorySmith:XFrameOptionsEnabled"));
             Assert.That(source, Does.Contain("MemorySmith:XFrameOptions"));
+            Assert.That(source, Does.Contain("MemorySmith:PermissionsPolicyEnabled"));
+            Assert.That(source, Does.Contain("MemorySmith:PermissionsPolicy"));
             Assert.That(appsettings, Does.Contain("\"SecurityProfile\": null"));
             Assert.That(appsettings, Does.Contain("\"ContentSecurityPolicyEnabled\": true"));
             Assert.That(appsettings, Does.Contain("\"XContentTypeOptionsEnabled\": true"));
@@ -555,6 +557,8 @@ public class TagGovernanceTests
             Assert.That(appsettings, Does.Contain("\"ReferrerPolicy\": \"strict-origin-when-cross-origin\""));
             Assert.That(appsettings, Does.Contain("\"XFrameOptionsEnabled\": true"));
             Assert.That(appsettings, Does.Contain("\"XFrameOptions\": \"DENY\""));
+            Assert.That(appsettings, Does.Contain("\"PermissionsPolicyEnabled\": true"));
+            Assert.That(appsettings, Does.Contain("\"PermissionsPolicy\":"));
         });
     }
 

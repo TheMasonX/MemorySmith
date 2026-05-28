@@ -92,6 +92,8 @@ public class AppApiContractTests
             Assert.That(referrerHeaders!.Single(), Is.EqualTo("strict-origin-when-cross-origin"));
             Assert.That(normalResponse.Headers.TryGetValues("X-Frame-Options", out var frameHeaders), Is.True);
             Assert.That(frameHeaders!.Single(), Is.EqualTo("DENY"));
+            Assert.That(normalResponse.Headers.TryGetValues("Permissions-Policy", out var permissionsHeaders), Is.True);
+            Assert.That(permissionsHeaders!.Single(), Does.Contain("microphone=()"));
             var normalEntry = await WaitForStructuredLogEntryAsync(tempDir, entry =>
                 GetString(entry, "SourceContext") == "Serilog.AspNetCore.RequestLoggingMiddleware" &&
                 GetString(entry, "RequestPath") == "/api/health/live" &&

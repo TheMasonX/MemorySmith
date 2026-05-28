@@ -22,6 +22,8 @@ public class MemorySmithOptions
     public string ReferrerPolicy { get; set; } = "strict-origin-when-cross-origin";
     public bool XFrameOptionsEnabled { get; set; } = true;
     public string XFrameOptions { get; set; } = "DENY";
+    public bool PermissionsPolicyEnabled { get; set; } = true;
+    public string PermissionsPolicy { get; set; } = "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()";
     public BlazorOptions Blazor { get; set; } = new();
     public DatabaseOptions Database { get; set; } = new();
     public AuthOptions Auth { get; set; } = new();

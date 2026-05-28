@@ -609,6 +609,11 @@ try
             context.Response.Headers["X-Frame-Options"] = runtimeSettings.XFrameOptions;
         }
 
+        if (runtimeSettings.PermissionsPolicyEnabled && !string.IsNullOrWhiteSpace(runtimeSettings.PermissionsPolicy))
+        {
+            context.Response.Headers["Permissions-Policy"] = runtimeSettings.PermissionsPolicy;
+        }
+
         context.Response.Headers["X-Correlation-Id"] = RequestMetadata.ResolveCorrelationId(context);
         await next();
     });
