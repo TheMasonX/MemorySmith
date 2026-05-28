@@ -136,6 +136,47 @@ public class AppApiContractTests
     }
 
     [Test]
+    public async Task RequestPipeline_DoesNotEmitOptionalSecurityHeadersWhenDisabled()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"memorysmith-request-pipeline-disabled-{Guid.NewGuid():N}");
+        var factory = CreateRequestPipelineFactory(tempDir).WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureAppConfiguration((_, config) =>
+            {
+                config.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["MemorySmith:ContentSecurityPolicyEnabled"] = "false",
+                    ["MemorySmith:XContentTypeOptionsEnabled"] = "false",
+                    ["MemorySmith:ReferrerPolicyEnabled"] = "false",
+                    ["MemorySmith:XFrameOptionsEnabled"] = "false",
+                    ["MemorySmith:PermissionsPolicyEnabled"] = "false"
+                });
+            });
+        });
+
+        try
+        {
+            using var client = factory.CreateClient();
+            var response = await client.GetAsync("/api/health/live");
+            response.EnsureSuccessStatusCode();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(response.Headers.Contains("Content-Security-Policy"), Is.False);
+                Assert.That(response.Headers.Contains("X-Content-Type-Options"), Is.False);
+                Assert.That(response.Headers.Contains("Referrer-Policy"), Is.False);
+                Assert.That(response.Headers.Contains("X-Frame-Options"), Is.False);
+                Assert.That(response.Headers.Contains("Permissions-Policy"), Is.False);
+                Assert.That(response.Headers.Contains("X-Correlation-Id"), Is.True);
+            });
+        }
+        finally
+        {
+            await DisposeFactoryTempDirAsync(factory, tempDir);
+        }
+    }
+
+    [Test]
     public async Task TasksApi_FullWorkflow_SupportsCrudHistoryAndRelatedArtifacts()
     {
         var invalidCreate = await _client.PostAsJsonAsync("/api/tasks", new TaskCreateRequest(
