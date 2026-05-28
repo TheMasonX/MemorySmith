@@ -57,6 +57,9 @@ public class CodeSearchServiceTests
             Assert.That(results[0].MatchReason, Does.Contain("cosine similarity"));
             Assert.That(File.Exists(Path.Combine(_repoRoot, "Data", "Graph", "code-search", "code-search.db")), Is.True);
             Assert.That(status.IndexedFileCount, Is.EqualTo(2));
+            Assert.That(status.Build.Timings.EmbeddingCallCount, Is.GreaterThan(0));
+            Assert.That(status.Build.Timings.EmbeddedChunkCount, Is.GreaterThan(0));
+            Assert.That(status.Build.Timings.DatabaseWriteMilliseconds, Is.GreaterThanOrEqualTo(0));
         });
     }
 
@@ -212,6 +215,7 @@ public class CodeSearchServiceTests
             Assert.That(status.Build.ReusedFileCount, Is.EqualTo(1));
             Assert.That(status.Build.UpdatedFileCount, Is.EqualTo(0));
             Assert.That(status.Build.ProgressPercentage, Is.EqualTo(100));
+            Assert.That(status.Build.Timings.EmbeddingCallCount, Is.EqualTo(0));
         });
     }
 

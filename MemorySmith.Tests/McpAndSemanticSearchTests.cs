@@ -440,6 +440,7 @@ public class McpAndSemanticSearchTests
             Assert.That(build.GetProperty("state").GetString(), Is.EqualTo("completed"));
             Assert.That(build.GetProperty("processedFileCount").GetInt32(), Is.EqualTo(1));
             Assert.That(build.GetProperty("updatedFileCount").GetInt32(), Is.EqualTo(1));
+            Assert.That(build.GetProperty("timings").GetProperty("fileReadMilliseconds").GetInt64(), Is.GreaterThanOrEqualTo(0));
         });
     }
 

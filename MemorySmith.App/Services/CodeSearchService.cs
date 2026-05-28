@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -38,6 +39,33 @@ public sealed record CodeSearchStatus(
     string ProviderStatus,
     CodeSearchBuildProgress Build);
 
+public sealed record CodeSearchBuildTimings(
+    long ProviderInitializationMilliseconds,
+    long FileReadMilliseconds,
+    long ContentHashMilliseconds,
+    long ChunkingMilliseconds,
+    long EmbeddingMilliseconds,
+    long DatabaseWriteMilliseconds,
+    long RemovedDocumentCleanupMilliseconds,
+    int EmbeddingCallCount,
+    int EmbeddedChunkCount)
+{
+    public double AverageEmbeddingMilliseconds => EmbeddingCallCount <= 0
+        ? 0
+        : Math.Round((double)EmbeddingMilliseconds / EmbeddingCallCount, 3);
+
+    public static CodeSearchBuildTimings Empty { get; } = new(
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0);
+}
+
 public sealed record CodeSearchBuildProgress(
     string State,
     bool IsRunning,
@@ -49,6 +77,7 @@ public sealed record CodeSearchBuildProgress(
     int RemovedFileCount,
     int FailedFileCount,
     int PendingWriteCount,
+    CodeSearchBuildTimings Timings,
     string? CurrentTarget,
     string? CurrentDocumentPath,
     DateTime? StartedAtUtc,
@@ -74,6 +103,7 @@ public sealed record CodeSearchBuildProgress(
         0,
         0,
         0,
+        CodeSearchBuildTimings.Empty,
         null,
         null,
         null,
@@ -102,6 +132,37 @@ public sealed class CodeSearchService : IDisposable
     private readonly string _indexDatabasePath;
     private CodeSearchBuildProgress _buildProgress = CodeSearchBuildProgress.Idle;
     private long _resultCacheGeneration;
+
+    private sealed class BuildTimingAccumulator
+    {
+        public long ProviderInitializationMilliseconds { get; set; }
+        public long FileReadMilliseconds { get; set; }
+        public long ContentHashMilliseconds { get; set; }
+        public long ChunkingMilliseconds { get; set; }
+        public long EmbeddingMilliseconds { get; set; }
+        public long DatabaseWriteMilliseconds { get; set; }
+        public long RemovedDocumentCleanupMilliseconds { get; set; }
+        public int EmbeddingCallCount { get; set; }
+        public int EmbeddedChunkCount { get; set; }
+
+        public CodeSearchBuildTimings Snapshot() => new(
+            ProviderInitializationMilliseconds,
+            FileReadMilliseconds,
+            ContentHashMilliseconds,
+            ChunkingMilliseconds,
+            EmbeddingMilliseconds,
+            DatabaseWriteMilliseconds,
+            RemovedDocumentCleanupMilliseconds,
+            EmbeddingCallCount,
+            EmbeddedChunkCount);
+    }
+
+    private sealed record ChunkFileResult(
+        List<CodeChunkRow> Chunks,
+        long ChunkingMilliseconds,
+        long EmbeddingMilliseconds,
+        int EmbeddingCallCount,
+        int EmbeddedChunkCount);
 
     public CodeSearchService(
         ITextEmbeddingProvider embeddingProvider,
@@ -262,10 +323,14 @@ public sealed class CodeSearchService : IDisposable
         var targets = ResolveTargets();
         var matcher = CodeSearchIgnoreMatcher.Create(_repositoryRoot, _options.IncludePatterns, _options.ExcludePatterns);
         var configurationHash = BuildConfigurationHash();
+        var timings = new BuildTimingAccumulator();
+        var providerStopwatch = Stopwatch.StartNew();
         var providerStatus = _embeddingProvider.GetStatus();
+        providerStopwatch.Stop();
+        timings.ProviderInitializationMilliseconds = providerStopwatch.ElapsedMilliseconds;
         var canEmbed = providerStatus.Available;
         var candidates = ResolveTargetFiles(targets, matcher);
-        BeginBuild(candidates.Count);
+        BeginBuild(candidates.Count, timings.Snapshot());
 
         _logger.LogInformation(
             "Starting code search index build for {FileCount} file(s). Force rebuild: {ForceRebuild}. Provider mode: {ProviderMode}.",
@@ -275,7 +340,7 @@ public sealed class CodeSearchService : IDisposable
 
         if (candidates.Count == 0)
         {
-            CompleteBuild(0, 0, 0, 0, 0, 0, null);
+            CompleteBuild(0, 0, 0, 0, 0, 0, null, timings.Snapshot());
             return;
         }
 
@@ -328,8 +393,16 @@ public sealed class CodeSearchService : IDisposable
                     }
                     else
                     {
+                        var fileReadStopwatch = Stopwatch.StartNew();
                         var sourceText = await File.ReadAllTextAsync(candidate.AbsolutePath, cancellationToken);
+                        fileReadStopwatch.Stop();
+                        timings.FileReadMilliseconds += fileReadStopwatch.ElapsedMilliseconds;
+
+                        var hashStopwatch = Stopwatch.StartNew();
                         var sourceHash = ComputeHash(sourceText);
+                        hashStopwatch.Stop();
+                        timings.ContentHashMilliseconds += hashStopwatch.ElapsedMilliseconds;
+
                         if (!forceRebuild &&
                             existingDocuments.TryGetValue(candidate.DocumentPath, out var existingDocument) &&
                             CanReuseDocument(existingDocument, sourceHash, configurationHash, canEmbed))
@@ -338,7 +411,7 @@ public sealed class CodeSearchService : IDisposable
                         }
                         else
                         {
-                            var chunks = ChunkFile(
+                            var chunkResult = ChunkFile(
                                 candidate.TargetKey,
                                 candidate.DocumentPath,
                                 candidate.AbsolutePath,
@@ -348,10 +421,17 @@ public sealed class CodeSearchService : IDisposable
                                 fileInfo.LastWriteTimeUtc,
                                 configurationHash,
                                 canEmbed);
-                            pendingDocuments.Add(new PendingDocumentUpdate(candidate.DocumentPath, chunks));
+                            timings.ChunkingMilliseconds += chunkResult.ChunkingMilliseconds;
+                            timings.EmbeddingMilliseconds += chunkResult.EmbeddingMilliseconds;
+                            timings.EmbeddingCallCount += chunkResult.EmbeddingCallCount;
+                            timings.EmbeddedChunkCount += chunkResult.EmbeddedChunkCount;
+                            pendingDocuments.Add(new PendingDocumentUpdate(candidate.DocumentPath, chunkResult.Chunks));
                             if (pendingDocuments.Count >= batchSize)
                             {
+                                var writeStopwatch = Stopwatch.StartNew();
                                 updatedFileCount += await ReplaceDocumentsBatchAsync(connection, pendingDocuments, cancellationToken);
+                                writeStopwatch.Stop();
+                                timings.DatabaseWriteMilliseconds += writeStopwatch.ElapsedMilliseconds;
                                 pendingDocuments.Clear();
                             }
                         }
@@ -377,6 +457,7 @@ public sealed class CodeSearchService : IDisposable
                     SkippedFileCount = skippedFileCount,
                     FailedFileCount = failedFileCount,
                     PendingWriteCount = pendingDocuments.Count,
+                    Timings = timings.Snapshot(),
                     CurrentTarget = candidate.TargetKey,
                     CurrentDocumentPath = candidate.DocumentPath,
                     UpdatedAtUtc = DateTime.UtcNow
@@ -391,21 +472,30 @@ public sealed class CodeSearchService : IDisposable
 
             if (pendingDocuments.Count > 0)
             {
+                var writeStopwatch = Stopwatch.StartNew();
                 updatedFileCount += await ReplaceDocumentsBatchAsync(connection, pendingDocuments, cancellationToken);
+                writeStopwatch.Stop();
+                timings.DatabaseWriteMilliseconds += writeStopwatch.ElapsedMilliseconds;
                 pendingDocuments.Clear();
                 SetBuildProgress(progress => progress with
                 {
                     UpdatedFileCount = updatedFileCount,
                     PendingWriteCount = 0,
+                    Timings = timings.Snapshot(),
                     UpdatedAtUtc = DateTime.UtcNow
                 });
             }
 
+            var cleanupStopwatch = Stopwatch.StartNew();
             removedFileCount = await DeleteRemovedDocumentsAsync(connection, liveDocuments, cancellationToken);
+            cleanupStopwatch.Stop();
+            timings.RemovedDocumentCleanupMilliseconds += cleanupStopwatch.ElapsedMilliseconds;
             if (updatedFileCount > 0 || removedFileCount > 0 || forceRebuild)
             {
                 InvalidateQueryCaches();
             }
+
+            var timingSnapshot = timings.Snapshot();
 
             CompleteBuild(
                 processedFileCount,
@@ -414,26 +504,36 @@ public sealed class CodeSearchService : IDisposable
                 skippedFileCount,
                 removedFileCount,
                 failedFileCount,
-                GetBuildProgress().LastError);
+                GetBuildProgress().LastError,
+                timingSnapshot);
 
             _logger.LogInformation(
-                "Completed code search index build for {ProcessedFileCount} file(s). Reused {ReusedFileCount}, updated {UpdatedFileCount}, removed {RemovedFileCount}, skipped {SkippedFileCount}, failed {FailedFileCount}.",
+                "Completed code search index build for {ProcessedFileCount} file(s). Reused {ReusedFileCount}, updated {UpdatedFileCount}, removed {RemovedFileCount}, skipped {SkippedFileCount}, failed {FailedFileCount}. Timing ms: provider init {ProviderInitializationMilliseconds}, file read {FileReadMilliseconds}, hash {ContentHashMilliseconds}, chunk prep {ChunkingMilliseconds}, embed {EmbeddingMilliseconds} across {EmbeddingCallCount} call(s) for {EmbeddedChunkCount} chunk(s), DB write {DatabaseWriteMilliseconds}, cleanup {RemovedDocumentCleanupMilliseconds}.",
                 processedFileCount,
                 reusedFileCount,
                 updatedFileCount,
                 removedFileCount,
                 skippedFileCount,
-                failedFileCount);
+                failedFileCount,
+                timingSnapshot.ProviderInitializationMilliseconds,
+                timingSnapshot.FileReadMilliseconds,
+                timingSnapshot.ContentHashMilliseconds,
+                timingSnapshot.ChunkingMilliseconds,
+                timingSnapshot.EmbeddingMilliseconds,
+                timingSnapshot.EmbeddingCallCount,
+                timingSnapshot.EmbeddedChunkCount,
+                timingSnapshot.DatabaseWriteMilliseconds,
+                timingSnapshot.RemovedDocumentCleanupMilliseconds);
         }
         catch (OperationCanceledException)
         {
-            CancelBuild(processedFileCount, reusedFileCount, updatedFileCount, skippedFileCount, removedFileCount, failedFileCount, GetBuildProgress().LastError);
+            CancelBuild(processedFileCount, reusedFileCount, updatedFileCount, skippedFileCount, removedFileCount, failedFileCount, GetBuildProgress().LastError, timings.Snapshot());
             _logger.LogWarning("Canceled the code search index build after processing {ProcessedFileCount} file(s).", processedFileCount);
             throw;
         }
         catch (Exception ex)
         {
-            FailBuild(processedFileCount, reusedFileCount, updatedFileCount, skippedFileCount, removedFileCount, failedFileCount, ex.Message);
+            FailBuild(processedFileCount, reusedFileCount, updatedFileCount, skippedFileCount, removedFileCount, failedFileCount, ex.Message, timings.Snapshot());
             _logger.LogError(ex, "The code search index build failed after processing {ProcessedFileCount} file(s).", processedFileCount);
             throw;
         }
@@ -498,7 +598,7 @@ public sealed class CodeSearchService : IDisposable
         return results;
     }
 
-    private List<CodeChunkRow> ChunkFile(
+    private ChunkFileResult ChunkFile(
         string target,
         string documentPath,
         string absolutePath,
@@ -511,10 +611,14 @@ public sealed class CodeSearchService : IDisposable
     {
         var chunkLineCount = Math.Max(5, _options.ChunkLineCount);
         var overlapLineCount = Math.Clamp(_options.ChunkOverlapLineCount, 0, Math.Max(0, chunkLineCount - 1));
+        var chunkingStopwatch = Stopwatch.StartNew();
         var lines = sourceText.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n').Split('\n');
         var chunks = new List<CodeChunkRow>();
         var step = Math.Max(1, chunkLineCount - overlapLineCount);
         var chunkIndex = 0;
+        long embeddingMilliseconds = 0;
+        var embeddingCallCount = 0;
+        var embeddedChunkCount = 0;
 
         for (var startLineIndex = 0; startLineIndex < lines.Length; startLineIndex += step)
         {
@@ -535,7 +639,18 @@ public sealed class CodeSearchService : IDisposable
             float[] embedding = [];
             if (canEmbed)
             {
+                chunkingStopwatch.Stop();
+                var embeddingStopwatch = Stopwatch.StartNew();
                 _embeddingProvider.TryEmbed(BuildEmbeddingText(documentPath, chunkText), EmbeddingInputKind.Document, out embedding, out _);
+                embeddingStopwatch.Stop();
+                embeddingMilliseconds += embeddingStopwatch.ElapsedMilliseconds;
+                embeddingCallCount++;
+                if (embedding.Length > 0)
+                {
+                    embeddedChunkCount++;
+                }
+
+                chunkingStopwatch.Start();
             }
 
             chunks.Add(new CodeChunkRow(
@@ -555,7 +670,8 @@ public sealed class CodeSearchService : IDisposable
                 DateTime.UtcNow));
         }
 
-        return chunks;
+            chunkingStopwatch.Stop();
+            return new ChunkFileResult(chunks, chunkingStopwatch.ElapsedMilliseconds, embeddingMilliseconds, embeddingCallCount, embeddedChunkCount);
     }
 
     private async Task<Dictionary<string, ExistingDocumentState>> LoadExistingDocumentsAsync(SqliteConnection connection, CancellationToken cancellationToken)
@@ -936,7 +1052,7 @@ CREATE INDEX IF NOT EXISTS IX_CodeSearchChunks_DocumentPath ON CodeSearchChunks(
         }
     }
 
-    private void BeginBuild(int totalFileCount)
+    private void BeginBuild(int totalFileCount, CodeSearchBuildTimings timings)
     {
         var now = DateTime.UtcNow;
         lock (_buildProgressGate)
@@ -952,6 +1068,7 @@ CREATE INDEX IF NOT EXISTS IX_CodeSearchChunks_DocumentPath ON CodeSearchChunks(
                 0,
                 0,
                 0,
+                timings,
                 null,
                 null,
                 now,
@@ -961,16 +1078,16 @@ CREATE INDEX IF NOT EXISTS IX_CodeSearchChunks_DocumentPath ON CodeSearchChunks(
         }
     }
 
-    private void CompleteBuild(int processedFileCount, int reusedFileCount, int updatedFileCount, int skippedFileCount, int removedFileCount, int failedFileCount, string? lastError) =>
-        FinalizeBuild("completed", false, processedFileCount, reusedFileCount, updatedFileCount, skippedFileCount, removedFileCount, failedFileCount, 0, lastError);
+    private void CompleteBuild(int processedFileCount, int reusedFileCount, int updatedFileCount, int skippedFileCount, int removedFileCount, int failedFileCount, string? lastError, CodeSearchBuildTimings timings) =>
+        FinalizeBuild("completed", false, processedFileCount, reusedFileCount, updatedFileCount, skippedFileCount, removedFileCount, failedFileCount, 0, lastError, timings);
 
-    private void CancelBuild(int processedFileCount, int reusedFileCount, int updatedFileCount, int skippedFileCount, int removedFileCount, int failedFileCount, string? lastError) =>
-        FinalizeBuild("canceled", false, processedFileCount, reusedFileCount, updatedFileCount, skippedFileCount, removedFileCount, failedFileCount, 0, lastError);
+    private void CancelBuild(int processedFileCount, int reusedFileCount, int updatedFileCount, int skippedFileCount, int removedFileCount, int failedFileCount, string? lastError, CodeSearchBuildTimings timings) =>
+        FinalizeBuild("canceled", false, processedFileCount, reusedFileCount, updatedFileCount, skippedFileCount, removedFileCount, failedFileCount, 0, lastError, timings);
 
-    private void FailBuild(int processedFileCount, int reusedFileCount, int updatedFileCount, int skippedFileCount, int removedFileCount, int failedFileCount, string? lastError) =>
-        FinalizeBuild("failed", false, processedFileCount, reusedFileCount, updatedFileCount, skippedFileCount, removedFileCount, failedFileCount, 0, lastError);
+    private void FailBuild(int processedFileCount, int reusedFileCount, int updatedFileCount, int skippedFileCount, int removedFileCount, int failedFileCount, string? lastError, CodeSearchBuildTimings timings) =>
+        FinalizeBuild("failed", false, processedFileCount, reusedFileCount, updatedFileCount, skippedFileCount, removedFileCount, failedFileCount, 0, lastError, timings);
 
-    private void FinalizeBuild(string state, bool isRunning, int processedFileCount, int reusedFileCount, int updatedFileCount, int skippedFileCount, int removedFileCount, int failedFileCount, int pendingWriteCount, string? lastError)
+    private void FinalizeBuild(string state, bool isRunning, int processedFileCount, int reusedFileCount, int updatedFileCount, int skippedFileCount, int removedFileCount, int failedFileCount, int pendingWriteCount, string? lastError, CodeSearchBuildTimings timings)
     {
         var now = DateTime.UtcNow;
         lock (_buildProgressGate)
@@ -986,6 +1103,7 @@ CREATE INDEX IF NOT EXISTS IX_CodeSearchChunks_DocumentPath ON CodeSearchChunks(
                 RemovedFileCount = removedFileCount,
                 FailedFileCount = failedFileCount,
                 PendingWriteCount = pendingWriteCount,
+                Timings = timings,
                 UpdatedAtUtc = now,
                 CompletedAtUtc = now,
                 LastError = lastError,

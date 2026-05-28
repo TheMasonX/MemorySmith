@@ -406,6 +406,7 @@ try
     builder.Services.AddSingleton<MaintenanceTopicMapService>();
     builder.Services.AddScoped<MaintenanceAgentService>();
     builder.Services.AddSingleton<OperationalDiagnosticsService>();
+    builder.Services.AddHostedService<SemanticEmbeddingPrewarmService>();
 
     var telemetryOptions = builder.Configuration.GetSection("MemorySmith:Telemetry").Get<TelemetryOptions>() ?? new TelemetryOptions();
     if (telemetryOptions.Enabled)

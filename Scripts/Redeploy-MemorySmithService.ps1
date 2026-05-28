@@ -9,6 +9,14 @@ param(
     [string]$Configuration = 'Release',
     [string]$MemoryDirectory,
     [string]$PublishDirectory,
+    [string]$SettingsOverridePath,
+    [ValidateSet('Cpu', 'Cuda', 'OpenVino')]
+    [string]$OnnxRuntimeFlavor = 'Cpu',
+    [ValidateSet('Cpu', 'Cuda', 'OpenVino')]
+    [string]$SemanticExecutionProvider,
+    [bool]$CpuFallbackEnabled = $true,
+    [int]$CudaDeviceId = 0,
+    [string]$OpenVinoDeviceId = '',
     [int]$Port = 5089,
     [string]$BindAddress = '0.0.0.0',
     [switch]$UseHttps,
@@ -32,8 +40,10 @@ $repoRoot = Split-Path $PSScriptRoot -Parent
 $appProject = Join-Path $repoRoot 'MemorySmith.App\MemorySmith.App.csproj'
 $MemoryDirectory = if ([string]::IsNullOrWhiteSpace($MemoryDirectory)) { Join-Path $repoRoot 'Data\Memories' } else { [System.IO.Path]::GetFullPath($MemoryDirectory) }
 $PublishDirectory = if ([string]::IsNullOrWhiteSpace($PublishDirectory)) { Join-Path $repoRoot 'artifacts\MemorySmith.App' } else { [System.IO.Path]::GetFullPath($PublishDirectory) }
+$SettingsOverridePath = if ([string]::IsNullOrWhiteSpace($SettingsOverridePath)) { Join-Path $PublishDirectory 'appsettings.LocalOverrides.json' } else { [System.IO.Path]::GetFullPath($SettingsOverridePath) }
 $publishExe = Join-Path $PublishDirectory 'MemorySmith.App.exe'
 $ServiceDisplayName = if ([string]::IsNullOrWhiteSpace($ServiceDisplayName)) { $ServiceName } else { $ServiceDisplayName }
+$SemanticExecutionProvider = if ([string]::IsNullOrWhiteSpace($SemanticExecutionProvider)) { $OnnxRuntimeFlavor } else { $SemanticExecutionProvider }
 
 function Test-IsAdministrator {
     $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -251,6 +261,63 @@ function Resolve-DefaultHttpsPasswordFilePath {
     return $null
 }
 
+function Write-SemanticSettingsOverride {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ExecutionProvider,
+
+        [Parameter(Mandatory = $true)]
+        [bool]$CpuFallbackEnabled,
+
+        [Parameter(Mandatory = $true)]
+        [int]$CudaDeviceId,
+
+        [Parameter(Mandatory = $true)]
+        [string]$OpenVinoDeviceId
+    )
+
+    $root = @{}
+    if (Test-Path $Path) {
+        $raw = Get-Content -Path $Path -Raw
+        if (-not [string]::IsNullOrWhiteSpace($raw)) {
+            $parsed = ConvertFrom-Json -InputObject $raw -AsHashtable
+            if ($parsed -is [System.Collections.IDictionary]) {
+                $root = @{}
+                foreach ($entry in $parsed.GetEnumerator()) {
+                    $root[$entry.Key] = $entry.Value
+                }
+            }
+        }
+    }
+
+    if (-not $root.ContainsKey('MemorySmith') -or $root['MemorySmith'] -isnot [System.Collections.IDictionary]) {
+        $root['MemorySmith'] = @{}
+    }
+
+    $memorySmith = $root['MemorySmith']
+    if (-not $memorySmith.ContainsKey('SemanticSearch') -or $memorySmith['SemanticSearch'] -isnot [System.Collections.IDictionary]) {
+        $memorySmith['SemanticSearch'] = @{}
+    }
+
+    $semantic = $memorySmith['SemanticSearch']
+    $semantic['EmbeddingsEnabled'] = $true
+    $semantic['ExecutionProvider'] = $ExecutionProvider
+    $semantic['CpuFallbackEnabled'] = $CpuFallbackEnabled
+    $semantic['CudaDeviceId'] = $CudaDeviceId
+    $semantic['OpenVinoDeviceId'] = $OpenVinoDeviceId
+
+    $directory = Split-Path $Path -Parent
+    if (-not (Test-Path $directory)) {
+        New-Item -ItemType Directory -Path $directory -Force | Out-Null
+    }
+
+    $json = $root | ConvertTo-Json -Depth 20
+    Set-Content -Path $Path -Value $json -Encoding UTF8
+}
+
 function Wait-ReadyEndpoint {
     param(
         [Parameter(Mandatory = $true)]
@@ -349,6 +416,10 @@ if ($HttpOnly -and $UseHttps) {
     throw 'Use either -HttpOnly or -UseHttps, not both.'
 }
 
+if ($SemanticExecutionProvider -ne 'Cpu' -and $SemanticExecutionProvider -ne $OnnxRuntimeFlavor) {
+    Write-Warning "Semantic execution provider '$SemanticExecutionProvider' does not match ONNX runtime flavor '$OnnxRuntimeFlavor'. MemorySmith can still fall back to CPU, but the requested hardware provider is unlikely to initialize unless the published runtime flavor also matches."
+}
+
 if (-not [string]::IsNullOrWhiteSpace($HttpsCertificatePassword) -and -not [string]::IsNullOrWhiteSpace($HttpsCertificatePasswordFile)) {
     throw 'Use either -HttpsCertificatePassword or -HttpsCertificatePasswordFile, not both.'
 }
@@ -422,14 +493,18 @@ try {
     }
 
     $listenUrl = [string]::Join(';', $listenUrls)
+    $additionalRuntimeArgs += @('--MemorySmith:SettingsOverridePath', $SettingsOverridePath)
 
     Stop-ServiceIfPresent -Name $ServiceName -TimeoutSeconds $ServiceTimeoutSeconds
-    Invoke-CheckedCommand -FilePath 'dotnet' -Arguments @('build', $appProject, '-c', $Configuration, '-v', 'minimal') -Step 'Build MemorySmith.App'
-    Invoke-CheckedCommand -FilePath 'dotnet' -Arguments @('publish', $appProject, '-c', $Configuration, '-o', $PublishDirectory, '--no-build', '-v', 'minimal') -Step 'Publish MemorySmith.App'
+    Invoke-CheckedCommand -FilePath 'dotnet' -Arguments @('build', $appProject, '-c', $Configuration, '-v', 'minimal', "-p:MemorySmithOnnxRuntimeFlavor=$OnnxRuntimeFlavor") -Step 'Build MemorySmith.App'
+    Invoke-CheckedCommand -FilePath 'dotnet' -Arguments @('publish', $appProject, '-c', $Configuration, '-o', $PublishDirectory, '--no-build', '-v', 'minimal', "-p:MemorySmithOnnxRuntimeFlavor=$OnnxRuntimeFlavor") -Step 'Publish MemorySmith.App'
 
     if (-not (Test-Path $publishExe)) {
         throw "Publish completed, but the expected executable was not found: $publishExe"
     }
+
+    Write-Host "==> Write semantic settings override '$SettingsOverridePath'"
+    Write-SemanticSettingsOverride -Path $SettingsOverridePath -ExecutionProvider $SemanticExecutionProvider -CpuFallbackEnabled $CpuFallbackEnabled -CudaDeviceId $CudaDeviceId -OpenVinoDeviceId $OpenVinoDeviceId
 
     Register-OrUpdateService -Name $ServiceName -DisplayName $ServiceDisplayName -ExecutablePath $publishExe -DataPath $MemoryDirectory -ListenUrl $listenUrl -RemoteApiEnabled $AllowRemoteApi -AdditionalRuntimeArgs $additionalRuntimeArgs
 
@@ -451,6 +526,14 @@ try {
     Write-Host "Publish directory: $PublishDirectory"
     Write-Host "Listen URL: $listenUrl"
     Write-Host "MemorySmith:AllowRemoteApi: $AllowRemoteApi"
+    Write-Host "MemorySmithOnnxRuntimeFlavor: $OnnxRuntimeFlavor"
+    Write-Host "Semantic execution provider: $SemanticExecutionProvider"
+    Write-Host "CPU fallback enabled: $CpuFallbackEnabled"
+    Write-Host "CUDA device id: $CudaDeviceId"
+    if (-not [string]::IsNullOrWhiteSpace($OpenVinoDeviceId)) {
+        Write-Host "OpenVINO device id: $OpenVinoDeviceId"
+    }
+    Write-Host "Settings override: $SettingsOverridePath"
     if ($httpsEnabled -and $resolvedHttpsCertificatePath) {
         Write-Host "HTTPS certificate: $resolvedHttpsCertificatePath"
     }

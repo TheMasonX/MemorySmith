@@ -166,6 +166,7 @@ public class PageOptions
 public class SemanticSearchOptions
 {
     public bool EmbeddingsEnabled { get; set; } = true;
+    public bool PrewarmOnStartupEnabled { get; set; } = true;
     public string ModelPath { get; set; } = Path.Combine("Models", "embedding-model.onnx");
     public string VocabularyPath { get; set; } = Path.Combine("Models", "vocab.txt");
     public string TokenizerKind { get; set; } = "WordPiece";

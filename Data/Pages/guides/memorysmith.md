@@ -8,6 +8,7 @@ This folder is the human-readable side of the project wiki. Pages here are meant
 
 - [Architecture](architecture.md) explains the single-host app shape and where each project fits.
 - [System Setup Guide](system-setup.md) walks through prerequisites, first run, admin bootstrap, validation, and troubleshooting.
+- [Semantic Acceleration Setup Guide](semantic-acceleration-setup.md) explains CPU/CUDA/OpenVINO ONNX deployment, Windows service redeploy options, CPU fallback behavior, and code-search index warming/profiling.
 - [Configuration Reference](configuration-reference.md) maps the active `MemorySmith:*` settings to their edit and verification surfaces.
 - [Agent and Model Configuration](agent-configuration.md) explains chat model profiles, maintenance-agent model routing, and write gates.
 - [HTTPS Setup Guide](https-setup.md) explains local development certificates, HTTPS launch profile setup, and verification steps.
