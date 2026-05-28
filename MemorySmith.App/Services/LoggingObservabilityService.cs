@@ -144,8 +144,17 @@ public sealed class LoggingObservabilityService
             {
                 lines = File.ReadLines(file);
             }
-            catch
+            catch (Exception ex)
             {
+                results.Add(new LogEntryDto(
+                    TimestampUtc: DateTime.UtcNow,
+                    Level: "Warning",
+                    Message: $"[Diagnostics] Could not read structured log file '{Path.GetFileName(file)}': {ex.Message}",
+                    Source: "LoggingObservabilityService",
+                    TraceId: null,
+                    CorrelationId: null,
+                    ElapsedMs: null,
+                    Properties: new Dictionary<string, string> { ["file"] = Path.GetFileName(file), ["error"] = ex.GetType().Name }));
                 continue;
             }
 

@@ -254,7 +254,7 @@ public static class PageSlugPolicy
         {
             candidate = Uri.UnescapeDataString(value.Trim());
         }
-        catch (UriFormatException)
+        catch (Exception ex) when (ex is UriFormatException or ArgumentException)
         {
             return false;
         }
