@@ -90,6 +90,9 @@
       ],
       "limit": 5,
       "expectedTopPathPrefixes": [
+        "MemorySmith.Tests/"
+      ],
+      "requiredInTopN": [
         "MemorySmith.Tests/CodeSearchServiceTests.cs"
       ]
     }
