@@ -401,6 +401,20 @@ public class PagesAndChatTests
     }
 
     [Test]
+    public void ChatMarkdownRenderer_SanitizesSrcSetByRemovingUnsafeCandidates()
+    {
+        var html = ChatMarkdownRenderer.RenderHtml("""
+        <img src="/images/local.png" srcset="javascript:alert(1) 1x, https://example.com/safe.png 2x" alt="img" />
+        """, allowRawHtml: true);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(html, Does.Not.Contain("javascript:alert"));
+            Assert.That(html, Does.Contain("srcset=\"https://example.com/safe.png 2x\""));
+        });
+    }
+
+    [Test]
     public void ChatMarkdownRenderer_RendersMermaidAndPrismCodeBlocks()
     {
         var html = ChatMarkdownRenderer.RenderHtml("""
