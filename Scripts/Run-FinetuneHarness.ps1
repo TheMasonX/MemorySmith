@@ -5,6 +5,7 @@ param(
     [string]$ExportPath = "Data/Training/exports",
     [string]$TranscriptDirectory = "Data/Events/chat-transcripts",
     [string]$PythonVenvPath = ".venv",
+    [switch]$RequireTrainingDependencies,
     [switch]$DryRun
 )
 
@@ -15,12 +16,28 @@ $workDir = Join-Path $repoRoot (Join-Path $WorkRoot $RunId)
 $requestPath = Join-Path $workDir "request.json"
 $pythonExe = Join-Path $repoRoot (Join-Path $PythonVenvPath "Scripts/python.exe")
 $harnessPath = Join-Path $repoRoot "MemorySmith.Training/harness.py"
+$preflightScript = Join-Path $repoRoot "Scripts/Test-FinetuneHarnessPrereqs.ps1"
 
 if (-not (Test-Path $pythonExe)) {
     throw "Python executable not found at $pythonExe"
 }
 if (-not (Test-Path $harnessPath)) {
     throw "Harness script not found at $harnessPath"
+}
+if (-not (Test-Path $preflightScript)) {
+    throw "Preflight script not found at $preflightScript"
+}
+
+$preflightJson = & $preflightScript -PythonVenvPath $PythonVenvPath -AsJson
+if ($LASTEXITCODE -ne 0) {
+    throw "Training dependency preflight execution failed"
+}
+$preflight = $preflightJson | ConvertFrom-Json
+if ($RequireTrainingDependencies -and -not $preflight.ready) {
+    throw "Training dependencies missing: $($preflight.missing -join ', ')"
+}
+if (-not $preflight.ready) {
+    Write-Warning "Training dependencies missing. Harness run will execute in simulated mode. Missing: $($preflight.missing -join ', ')"
 }
 
 New-Item -ItemType Directory -Path $workDir -Force | Out-Null
@@ -31,6 +48,11 @@ $request = [ordered]@{
     exportPath = (Resolve-Path (Join-Path $repoRoot $ExportPath)).Path
     transcriptDirectory = (Join-Path $repoRoot $TranscriptDirectory)
     format = "FilteredSft"
+    dependencyProbe = [ordered]@{
+        python = $preflight.python
+        ready = $preflight.ready
+        missing = @($preflight.missing)
+    }
     hyperparameters = [ordered]@{
         epochs = 3
         learningRate = 0.0002

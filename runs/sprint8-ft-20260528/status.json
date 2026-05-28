@@ -1,0 +1,13 @@
+{
+  "runId": "sprint8-ft-20260528",
+  "phase": "done",
+  "startedAt": "2026-05-28T22:54:32.267662+00:00",
+  "elapsedSeconds": 0.009,
+  "lastEvent": "run.completed",
+  "metrics": {
+    "records": 2,
+    "events": 6
+  },
+  "warnings": [],
+  "errors": []
+}
