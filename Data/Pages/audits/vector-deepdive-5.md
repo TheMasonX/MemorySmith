@@ -14,6 +14,23 @@
 
 ## 0. Executive Update
 
+### 0.1 2026-05-28 Addendum (Implemented)
+
+The following vector-adjacent recommendations from this audit family are now partially implemented and validated in branch `feature/code-search-high-roi-batch8`:
+
+1. Retrieval transparency for default API shape:
+  - `/api/memories/search` now emits retrieval metadata headers while preserving the legacy array response contract.
+  - Headers include mode/provider details (`X-MemorySmith-Retrieval-Mode`, `X-MemorySmith-Retrieval-Provider-*`) so callers can detect lexical fallback without switching to envelope mode.
+
+2. Semantic/hybrid transparency path consistency:
+  - `/api/memories/search/semantic` and `/api/memories/search/hybrid` now also emit the same retrieval metadata header family.
+  - This reduces ambiguity during benchmark interpretation when embedding initialization fails and fallback scoring is active.
+
+3. Operational benchmark implication:
+  - Fine-tuning harness seed runs now produce deterministic benchmark JSON artifacts (`runs/<run_id>/benchmark.json`) that can be correlated with retrieval mode headers to avoid treating lexical fallback as model-regression noise.
+
+This addendum keeps the original audit findings intact while recording concrete progress against the highest-ROI observability gap for vector-search behavior under fallback.
+
 Three observations frame this audit:
 
 1. **The clipboard-paste flow silently fetches external image URLs.** `memorysmith.js:813-832` (`referenceToImageFile`) does `await fetch(reference)` on every `https?:` URL it extracts from the clipboard payload (line 800: `Array.from(document.images || []).forEach(image => add(image.currentSrc || image.src))`). Pasting an HTML payload that contains attacker-controlled image URLs (e.g., from a malicious webpage the user grabbed a screenshot from) triggers silent fetches from the browser — leaking IP, User-Agent, and "user just pasted from us" signal to the attacker. **For a single-actor local-first app this is a surprising paste-time side effect that should be configurable off.**
