@@ -4,7 +4,7 @@
   "title": "Harden chat and markdown security toggles before training rollout",
   "description": "Address high-risk audit findings by adding configurable controls and defaults for clipboard external fetch behavior, markdown sanitization coverage, mermaid hardening, and CSP baseline.",
   "type": "Task",
-  "status": "InProgress",
+  "status": "Done",
   "priority": "High",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -39,15 +39,21 @@
       "author": "AgentSmith",
       "body": "Implemented clipboard external image fetch policy toggle (`MemorySmith:Chat:ClipboardFetchExternalImagesEnabled`) so paste flow no longer fetches HTTP/HTTPS image URLs unless explicitly enabled. Added configurable CSP baseline settings (`MemorySmith:ContentSecurityPolicyEnabled`, `MemorySmith:ContentSecurityPolicy`) and response-header middleware plus API contract test coverage. Remaining scope is markdown sanitization coverage follow-up.",
       "createdAtUtc": "2026-05-29T00:10:00.0000000Z"
+    },
+    {
+      "id": "c-0205-4-20260529",
+      "author": "AgentSmith",
+      "body": "Completed markdown sanitization coverage and runtime hardening follow-up. Added trusted-mode coverage for single-quoted, unquoted, and `srcset` attribute sanitization paths in `ChatMarkdownRenderer`, including disallowed URI-scheme filtering. Added configurable security headers with defaults and request-pipeline coverage: `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options`, and `Permissions-Policy`, including explicit disabled-path integration tests.",
+      "createdAtUtc": "2026-05-29T00:45:00.0000000Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-28T21:43:18.8947975Z",
-  "updatedAtUtc": "2026-05-29T00:10:00.0000000Z",
-  "completedAtUtc": null,
-  "revision": 3,
+  "updatedAtUtc": "2026-05-29T00:45:00.0000000Z",
+  "completedAtUtc": "2026-05-29T00:45:00.0000000Z",
+  "revision": 4,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

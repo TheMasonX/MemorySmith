@@ -65,6 +65,14 @@ Agent note: if behavior looks wrong across multiple routes, check the effective 
 | `MemorySmith:ApiKey` | Shared API/MCP key via `X-Api-Key`; required for guarded non-loopback API/MCP when remote API is enabled | configured state in `/admin` (replace or use `Clear secret` to remove), guarded API requests |
 | `MemorySmith:ContentSecurityPolicyEnabled` | Emits the Content-Security-Policy response header when enabled | browser response headers, `/api/health/live` response |
 | `MemorySmith:ContentSecurityPolicy` | Raw Content-Security-Policy directive string applied when CSP is enabled | browser response headers and script/style/connect behavior |
+| `MemorySmith:XContentTypeOptionsEnabled` | Emits `X-Content-Type-Options` when enabled | browser response headers, `/api/health/live` response |
+| `MemorySmith:XContentTypeOptions` | Value used for `X-Content-Type-Options` (default `nosniff`) | browser response headers |
+| `MemorySmith:ReferrerPolicyEnabled` | Emits `Referrer-Policy` when enabled | browser response headers, `/api/health/live` response |
+| `MemorySmith:ReferrerPolicy` | Value used for `Referrer-Policy` | browser response headers and cross-origin referrer behavior |
+| `MemorySmith:XFrameOptionsEnabled` | Emits `X-Frame-Options` when enabled | browser response headers and frame embedding behavior |
+| `MemorySmith:XFrameOptions` | Value used for `X-Frame-Options` (default `DENY`) | browser response headers |
+| `MemorySmith:PermissionsPolicyEnabled` | Emits `Permissions-Policy` when enabled | browser response headers, `/api/health/live` response |
+| `MemorySmith:PermissionsPolicy` | Value used for `Permissions-Policy` | browser response headers and browser capability restrictions |
 
 Recommended dogfood default: leave explicit settings in their secure-local posture, or set `MemorySmith:SecurityProfile=secure-local` when you want the preset recorded in configuration.
 
