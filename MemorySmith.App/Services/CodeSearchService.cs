@@ -164,6 +164,27 @@ public sealed class CodeSearchService : IDisposable
         int EmbeddingCallCount,
         int EmbeddedChunkCount);
 
+    private sealed record PreparedChunk(
+        string Target,
+        string DocumentPath,
+        string AbsolutePath,
+        int ChunkId,
+        string SourceHash,
+        long SourceLengthBytes,
+        DateTime SourceLastWriteUtc,
+        string ConfigurationHash,
+        int StartLine,
+        int EndLine,
+        string Snippet,
+        string SearchText,
+        string EmbeddingText);
+
+    private sealed record EmbeddingBatchResult(
+        List<float[]> Embeddings,
+        long EmbeddingMilliseconds,
+        int EmbeddingCallCount,
+        int EmbeddedChunkCount);
+
     public CodeSearchService(
         ITextEmbeddingProvider embeddingProvider,
         IOptions<MemorySmithOptions> options,
@@ -613,12 +634,9 @@ public sealed class CodeSearchService : IDisposable
         var overlapLineCount = Math.Clamp(_options.ChunkOverlapLineCount, 0, Math.Max(0, chunkLineCount - 1));
         var chunkingStopwatch = Stopwatch.StartNew();
         var lines = sourceText.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n').Split('\n');
-        var chunks = new List<CodeChunkRow>();
+        var preparedChunks = new List<PreparedChunk>();
         var step = Math.Max(1, chunkLineCount - overlapLineCount);
         var chunkIndex = 0;
-        long embeddingMilliseconds = 0;
-        var embeddingCallCount = 0;
-        var embeddedChunkCount = 0;
 
         for (var startLineIndex = 0; startLineIndex < lines.Length; startLineIndex += step)
         {
@@ -636,24 +654,7 @@ public sealed class CodeSearchService : IDisposable
                 chunkText = chunkText[..Math.Max(1, _options.MaxChunkCharacters)].TrimEnd();
             }
 
-            float[] embedding = [];
-            if (canEmbed)
-            {
-                chunkingStopwatch.Stop();
-                var embeddingStopwatch = Stopwatch.StartNew();
-                _embeddingProvider.TryEmbed(BuildEmbeddingText(documentPath, chunkText), EmbeddingInputKind.Document, out embedding, out _);
-                embeddingStopwatch.Stop();
-                embeddingMilliseconds += embeddingStopwatch.ElapsedMilliseconds;
-                embeddingCallCount++;
-                if (embedding.Length > 0)
-                {
-                    embeddedChunkCount++;
-                }
-
-                chunkingStopwatch.Start();
-            }
-
-            chunks.Add(new CodeChunkRow(
+            preparedChunks.Add(new PreparedChunk(
                 target,
                 documentPath,
                 absolutePath,
@@ -666,12 +667,123 @@ public sealed class CodeSearchService : IDisposable
                 endLine,
                 BuildSnippet(chunkText, chunkText),
                 chunkText,
-                embedding,
-                DateTime.UtcNow));
+                BuildEmbeddingText(documentPath, chunkText)));
         }
 
-            chunkingStopwatch.Stop();
-            return new ChunkFileResult(chunks, chunkingStopwatch.ElapsedMilliseconds, embeddingMilliseconds, embeddingCallCount, embeddedChunkCount);
+        chunkingStopwatch.Stop();
+        var embeddingResult = canEmbed
+            ? EmbedPreparedChunks(preparedChunks)
+            : new EmbeddingBatchResult(new List<float[]>(preparedChunks.Count), 0, 0, 0);
+
+        var indexedAtUtc = DateTime.UtcNow;
+        var chunks = new List<CodeChunkRow>(preparedChunks.Count);
+        for (var index = 0; index < preparedChunks.Count; index++)
+        {
+            var preparedChunk = preparedChunks[index];
+            var embedding = embeddingResult.Embeddings.Count > index ? embeddingResult.Embeddings[index] : [];
+            chunks.Add(new CodeChunkRow(
+                preparedChunk.Target,
+                preparedChunk.DocumentPath,
+                preparedChunk.AbsolutePath,
+                preparedChunk.ChunkId,
+                preparedChunk.SourceHash,
+                preparedChunk.SourceLengthBytes,
+                preparedChunk.SourceLastWriteUtc,
+                preparedChunk.ConfigurationHash,
+                preparedChunk.StartLine,
+                preparedChunk.EndLine,
+                preparedChunk.Snippet,
+                preparedChunk.SearchText,
+                embedding,
+                indexedAtUtc));
+        }
+
+        return new ChunkFileResult(
+            chunks,
+            chunkingStopwatch.ElapsedMilliseconds,
+            embeddingResult.EmbeddingMilliseconds,
+            embeddingResult.EmbeddingCallCount,
+            embeddingResult.EmbeddedChunkCount);
+    }
+
+    private EmbeddingBatchResult EmbedPreparedChunks(IReadOnlyList<PreparedChunk> preparedChunks)
+    {
+        var embeddings = new List<float[]>(preparedChunks.Count);
+        if (preparedChunks.Count == 0)
+        {
+            return new EmbeddingBatchResult(embeddings, 0, 0, 0);
+        }
+
+        var embeddingBatchSize = Math.Max(1, _options.EmbeddingBatchSize);
+        long embeddingMilliseconds = 0;
+        var embeddingCallCount = 0;
+        var embeddedChunkCount = 0;
+
+        if (_embeddingProvider is IBatchTextEmbeddingProvider batchProvider && embeddingBatchSize > 1)
+        {
+            for (var offset = 0; offset < preparedChunks.Count; offset += embeddingBatchSize)
+            {
+                var batch = preparedChunks.Skip(offset).Take(Math.Min(embeddingBatchSize, preparedChunks.Count - offset)).ToArray();
+                var batchTexts = batch.Select(chunk => chunk.EmbeddingText).ToArray();
+                var batchStopwatch = Stopwatch.StartNew();
+                var usedBatch = batchProvider.TryEmbedBatch(batchTexts, EmbeddingInputKind.Document, out var batchEmbeddings, out var batchReason) &&
+                    batchEmbeddings.Count == batchTexts.Length;
+                batchStopwatch.Stop();
+                embeddingMilliseconds += batchStopwatch.ElapsedMilliseconds;
+                embeddingCallCount++;
+
+                if (usedBatch)
+                {
+                    foreach (var batchEmbedding in batchEmbeddings)
+                    {
+                        embeddings.Add(batchEmbedding);
+                        if (batchEmbedding.Length > 0)
+                        {
+                            embeddedChunkCount++;
+                        }
+                    }
+
+                    continue;
+                }
+
+                _logger.LogWarning(
+                    "Batch code-search embedding failed for {ChunkCount} chunk(s); falling back to scalar document embeddings. Reason: {Reason}",
+                    batchTexts.Length,
+                    string.IsNullOrWhiteSpace(batchReason) ? "embedding count mismatch" : batchReason);
+
+                foreach (var batchText in batchTexts)
+                {
+                    var scalarStopwatch = Stopwatch.StartNew();
+                    _embeddingProvider.TryEmbed(batchText, EmbeddingInputKind.Document, out var embedding, out _);
+                    scalarStopwatch.Stop();
+                    embeddingMilliseconds += scalarStopwatch.ElapsedMilliseconds;
+                    embeddingCallCount++;
+                    embeddings.Add(embedding);
+                    if (embedding.Length > 0)
+                    {
+                        embeddedChunkCount++;
+                    }
+                }
+            }
+
+            return new EmbeddingBatchResult(embeddings, embeddingMilliseconds, embeddingCallCount, embeddedChunkCount);
+        }
+
+        foreach (var preparedChunk in preparedChunks)
+        {
+            var scalarStopwatch = Stopwatch.StartNew();
+            _embeddingProvider.TryEmbed(preparedChunk.EmbeddingText, EmbeddingInputKind.Document, out var embedding, out _);
+            scalarStopwatch.Stop();
+            embeddingMilliseconds += scalarStopwatch.ElapsedMilliseconds;
+            embeddingCallCount++;
+            embeddings.Add(embedding);
+            if (embedding.Length > 0)
+            {
+                embeddedChunkCount++;
+            }
+        }
+
+        return new EmbeddingBatchResult(embeddings, embeddingMilliseconds, embeddingCallCount, embeddedChunkCount);
     }
 
     private async Task<Dictionary<string, ExistingDocumentState>> LoadExistingDocumentsAsync(SqliteConnection connection, CancellationToken cancellationToken)

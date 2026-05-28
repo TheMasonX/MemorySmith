@@ -35,6 +35,11 @@ public interface ITextEmbeddingProvider
     bool TryEmbed(string text, EmbeddingInputKind kind, out float[] embedding, out string? reason);
 }
 
+public interface IBatchTextEmbeddingProvider : ITextEmbeddingProvider
+{
+    bool TryEmbedBatch(IReadOnlyList<string> texts, EmbeddingInputKind kind, out IReadOnlyList<float[]> embeddings, out string? reason);
+}
+
 internal static class OnnxEmbeddingModelConventions
 {
     public static string CanonicalizeTokenizerKind(string? tokenizerKind)
@@ -525,7 +530,7 @@ public sealed class SemanticEmbeddingSearchService : IDisposable
         DateTime UpdatedUtc);
 }
 
-public sealed class OnnxTextEmbeddingProvider : ITextEmbeddingProvider, IDisposable
+public sealed class OnnxTextEmbeddingProvider : IBatchTextEmbeddingProvider, IDisposable
 {
     private readonly MemorySmithOptions _settings;
     private readonly SemanticSearchOptions _options;
@@ -580,9 +585,62 @@ public sealed class OnnxTextEmbeddingProvider : ITextEmbeddingProvider, IDisposa
             var prefix = kind == EmbeddingInputKind.Query ? _options.QueryPrefix : _options.DocumentPrefix;
             var tokenized = _tokenizer!.Encode(prefix + (text ?? string.Empty), _options.MaxInputTokens);
             using var results = session.Run(CreateInputs(session, tokenized));
-            embedding = ExtractEmbedding(results, tokenized.AttentionMask, _options.PoolingMode);
+            embedding = ExtractEmbeddings(results, [tokenized], _options.PoolingMode)[0];
             Normalize(embedding);
             _dimension = embedding.Length;
+            reason = null;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            reason = ex.Message;
+            return false;
+        }
+    }
+
+    public bool TryEmbedBatch(IReadOnlyList<string> texts, EmbeddingInputKind kind, out IReadOnlyList<float[]> embeddings, out string? reason)
+    {
+        embeddings = [];
+        if (texts.Count == 0)
+        {
+            reason = null;
+            return true;
+        }
+
+        if (texts.Count == 1)
+        {
+            var singleSuccess = TryEmbed(texts[0], kind, out var singleEmbedding, out reason);
+            embeddings = singleSuccess ? [singleEmbedding] : [];
+            return singleSuccess;
+        }
+
+        if (!EnsureInitialized())
+        {
+            reason = _statusReason;
+            return false;
+        }
+
+        try
+        {
+            var session = _session!;
+            var prefix = kind == EmbeddingInputKind.Query ? _options.QueryPrefix : _options.DocumentPrefix;
+            var tokenized = texts
+                .Select(text => _tokenizer!.Encode(prefix + (text ?? string.Empty), _options.MaxInputTokens))
+                .ToArray();
+
+            using var results = session.Run(CreateInputs(session, tokenized));
+            var extracted = ExtractEmbeddings(results, tokenized, _options.PoolingMode).ToArray();
+            foreach (var vector in extracted)
+            {
+                Normalize(vector);
+            }
+
+            if (extracted.Length > 0)
+            {
+                _dimension = extracted[0].Length;
+            }
+
+            embeddings = extracted;
             reason = null;
             return true;
         }
@@ -813,7 +871,7 @@ public sealed class OnnxTextEmbeddingProvider : ITextEmbeddingProvider, IDisposa
                 _ => throw new NotSupportedException($"Unsupported ONNX embedding input '{input.Key}'.")
             };
 
-            inputs.Add(CreateTokenInput(input.Key, values, input.Value.ElementType));
+            inputs.Add(CreateTokenInput(input.Key, values, [1, values.Length], input.Value.ElementType));
         }
 
         if (inputs.Count == 0)
@@ -824,12 +882,61 @@ public sealed class OnnxTextEmbeddingProvider : ITextEmbeddingProvider, IDisposa
         return inputs;
     }
 
-    private static NamedOnnxValue CreateTokenInput(string name, long[] values, Type? elementType)
+    private static List<NamedOnnxValue> CreateInputs(InferenceSession session, IReadOnlyList<TokenizedText> tokenizedBatch)
     {
-        var dimensions = new[] { 1, values.Length };
+        if (tokenizedBatch.Count == 1)
+        {
+            return CreateInputs(session, tokenizedBatch[0]);
+        }
+
+        var maxTokenCount = tokenizedBatch.Max(tokenized => tokenized.InputIds.Length);
+        var inputIds = new long[tokenizedBatch.Count * maxTokenCount];
+        var attentionMask = new long[tokenizedBatch.Count * maxTokenCount];
+        var tokenTypeIds = new long[tokenizedBatch.Count * maxTokenCount];
+
+        for (var batchIndex = 0; batchIndex < tokenizedBatch.Count; batchIndex++)
+        {
+            var tokenized = tokenizedBatch[batchIndex];
+            var offset = batchIndex * maxTokenCount;
+            Array.Copy(tokenized.InputIds, 0, inputIds, offset, tokenized.InputIds.Length);
+            Array.Copy(tokenized.AttentionMask, 0, attentionMask, offset, tokenized.AttentionMask.Length);
+            Array.Copy(tokenized.TokenTypeIds, 0, tokenTypeIds, offset, tokenized.TokenTypeIds.Length);
+        }
+
+        var inputs = new List<NamedOnnxValue>();
+        foreach (var input in session.InputMetadata)
+        {
+            var normalized = NormalizeInputName(input.Key);
+            var values = normalized switch
+            {
+                "input_ids" => inputIds,
+                "attention_mask" or "input_mask" => attentionMask,
+                "token_type_ids" or "segment_ids" => tokenTypeIds,
+                _ => throw new NotSupportedException($"Unsupported ONNX embedding input '{input.Key}'.")
+            };
+
+            inputs.Add(CreateTokenInput(input.Key, values, [tokenizedBatch.Count, maxTokenCount], input.Value.ElementType));
+        }
+
+        if (inputs.Count == 0)
+        {
+            throw new InvalidOperationException("The ONNX embedding model did not expose any supported inputs.");
+        }
+
+        return inputs;
+    }
+
+    private static NamedOnnxValue CreateTokenInput(string name, long[] values, int[] dimensions, Type? elementType)
+    {
         if (elementType == typeof(int))
         {
-            return NamedOnnxValue.CreateFromTensor(name, new DenseTensor<int>(values.Select(value => (int)value).ToArray(), dimensions));
+            var intValues = new int[values.Length];
+            for (var index = 0; index < values.Length; index++)
+            {
+                intValues[index] = (int)values[index];
+            }
+
+            return NamedOnnxValue.CreateFromTensor(name, new DenseTensor<int>(intValues, dimensions));
         }
 
         return NamedOnnxValue.CreateFromTensor(name, new DenseTensor<long>(values, dimensions));
@@ -838,8 +945,9 @@ public sealed class OnnxTextEmbeddingProvider : ITextEmbeddingProvider, IDisposa
     private static string NormalizeInputName(string name) =>
         name.Replace('-', '_').ToLowerInvariant();
 
-    private static float[] ExtractEmbedding(IDisposableReadOnlyCollection<DisposableNamedOnnxValue> results, long[] attentionMask, string? poolingMode)
+    private static IReadOnlyList<float[]> ExtractEmbeddings(IDisposableReadOnlyCollection<DisposableNamedOnnxValue> results, IReadOnlyList<TokenizedText> tokenizedBatch, string? poolingMode)
     {
+        var batchCount = tokenizedBatch.Count;
         foreach (var result in results.OrderByDescending(result => result.Name.Contains("embedding", StringComparison.OrdinalIgnoreCase)))
         {
             Tensor<float> tensor;
@@ -856,17 +964,45 @@ public sealed class OnnxTextEmbeddingProvider : ITextEmbeddingProvider, IDisposa
             var data = tensor.ToArray();
             if (dimensions.Length == 1)
             {
-                return data;
+                if (batchCount != 1)
+                {
+                    continue;
+                }
+
+                return [data];
             }
 
-            if (dimensions.Length == 2 && dimensions[0] == 1)
+            if (dimensions.Length == 2 && dimensions[0] == batchCount)
             {
-                return data.Take(dimensions[1]).ToArray();
+                var dimension = dimensions[1];
+                var embeddings = new List<float[]>(batchCount);
+                for (var batchIndex = 0; batchIndex < batchCount; batchIndex++)
+                {
+                    var offset = batchIndex * dimension;
+                    embeddings.Add(data.AsSpan(offset, dimension).ToArray());
+                }
+
+                return embeddings;
             }
 
-            if (dimensions.Length == 3 && dimensions[0] == 1)
+            if (dimensions.Length == 3 && dimensions[0] == batchCount)
             {
-                return OnnxEmbeddingVectorProjector.ProjectSequenceOutput(data, dimensions[1], dimensions[2], attentionMask, poolingMode);
+                var tokenCount = dimensions[1];
+                var dimension = dimensions[2];
+                var stride = tokenCount * dimension;
+                var embeddings = new List<float[]>(batchCount);
+                for (var batchIndex = 0; batchIndex < batchCount; batchIndex++)
+                {
+                    var offset = batchIndex * stride;
+                    embeddings.Add(OnnxEmbeddingVectorProjector.ProjectSequenceOutput(
+                        data.AsSpan(offset, stride).ToArray(),
+                        tokenCount,
+                        dimension,
+                        tokenizedBatch[batchIndex].AttentionMask,
+                        poolingMode));
+                }
+
+                return embeddings;
             }
         }
 

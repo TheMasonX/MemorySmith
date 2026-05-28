@@ -214,6 +214,7 @@ public class CodeSearchOptions
     public int ChunkLineCount { get; set; } = 40;
     public int ChunkOverlapLineCount { get; set; } = 8;
     public int IndexWriteBatchSize { get; set; } = 25;
+    public int EmbeddingBatchSize { get; set; } = 1;
     public int StatusUpdateIntervalDocuments { get; set; } = 25;
     public int MaxFileBytes { get; set; } = 512 * 1024;
     public int MaxChunkCharacters { get; set; } = 4000;

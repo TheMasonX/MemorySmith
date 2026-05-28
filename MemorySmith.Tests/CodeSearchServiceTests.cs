@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using System.Text;
 using MemorySmith.App.Services;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -161,6 +162,64 @@ public class CodeSearchServiceTests
     }
 
     [Test]
+    public async Task SearchAsync_UsesBatchDocumentEmbeddingsWhenProviderSupportsIt()
+    {
+        await File.WriteAllTextAsync(Path.Combine(_repoRoot, ".gitignore"), string.Empty);
+        await File.WriteAllTextAsync(
+            Path.Combine(_repoRoot, "MemorySmith.App", "Services", "BatchPlanner.cs"),
+            BuildLargeCodeFile("BatchPlanner", 60));
+
+        var provider = new BatchCountingHashEmbeddingProvider();
+        var service = CreateService(provider, options =>
+        {
+            options.CodeSearch.ChunkLineCount = 5;
+            options.CodeSearch.ChunkOverlapLineCount = 0;
+            options.CodeSearch.EmbeddingBatchSize = 4;
+        });
+
+        var results = await service.SearchAsync(new CodeSearchQuery("BatchPlanner step", Limit: 5), CancellationToken.None);
+        var status = await service.GetStatusAsync(CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(results, Is.Not.Empty);
+            Assert.That(provider.BatchDocumentEmbeddingsRequested, Is.GreaterThan(0));
+            Assert.That(provider.DocumentEmbeddingsRequested, Is.EqualTo(0));
+            Assert.That(status.Build.Timings.EmbeddedChunkCount, Is.GreaterThan(1));
+            Assert.That(status.Build.Timings.EmbeddingCallCount, Is.LessThan(status.Build.Timings.EmbeddedChunkCount));
+        });
+    }
+
+    [Test]
+    public async Task SearchAsync_FallsBackToScalarDocumentEmbeddingsWhenBatchPathFails()
+    {
+        await File.WriteAllTextAsync(Path.Combine(_repoRoot, ".gitignore"), string.Empty);
+        await File.WriteAllTextAsync(
+            Path.Combine(_repoRoot, "MemorySmith.App", "Services", "FallbackPlanner.cs"),
+            BuildLargeCodeFile("FallbackPlanner", 40));
+
+        var provider = new BatchCountingHashEmbeddingProvider { FailBatchDocumentEmbeddings = true };
+        var service = CreateService(provider, options =>
+        {
+            options.CodeSearch.ChunkLineCount = 5;
+            options.CodeSearch.ChunkOverlapLineCount = 0;
+            options.CodeSearch.EmbeddingBatchSize = 4;
+        });
+
+        var results = await service.SearchAsync(new CodeSearchQuery("FallbackPlanner step", Limit: 5), CancellationToken.None);
+        var status = await service.GetStatusAsync(CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(results, Is.Not.Empty);
+            Assert.That(provider.BatchDocumentEmbeddingsRequested, Is.GreaterThan(0));
+            Assert.That(provider.DocumentEmbeddingsRequested, Is.GreaterThan(0));
+            Assert.That(status.Build.Timings.EmbeddedChunkCount, Is.GreaterThan(1));
+            Assert.That(status.Build.Timings.EmbeddingCallCount, Is.GreaterThanOrEqualTo(status.Build.Timings.EmbeddedChunkCount));
+        });
+    }
+
+    [Test]
     public async Task GetStatusAsync_ReportsInProgressBuildWhileIndexing()
     {
         await File.WriteAllTextAsync(Path.Combine(_repoRoot, ".gitignore"), string.Empty);
@@ -236,6 +295,25 @@ public class CodeSearchServiceTests
         return new CodeSearchService(provider, Options.Create(options), NullLogger<CodeSearchService>.Instance);
     }
 
+    private static string BuildLargeCodeFile(string className, int methodCount)
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine("namespace MemorySmith.App.Services;");
+        builder.Append("public static class ").Append(className).AppendLine();
+        builder.AppendLine("{");
+        for (var index = 0; index < methodCount; index++)
+        {
+            builder.Append("    public static string Step")
+                .Append(index)
+                .Append("(string input) => input + \" step-")
+                .Append(index)
+                .AppendLine("\";");
+        }
+
+        builder.AppendLine("}");
+        return builder.ToString();
+    }
+
     private class HashEmbeddingProvider : ITextEmbeddingProvider
     {
         public EmbeddingProviderStatus GetStatus() => new(true, "Hash embedding provider available.", null, null, 512, "Cpu", "Cpu", null, null);
@@ -270,7 +348,7 @@ public class CodeSearchServiceTests
         }
     }
 
-    private sealed class CountingHashEmbeddingProvider : HashEmbeddingProvider
+    private class CountingHashEmbeddingProvider : HashEmbeddingProvider
     {
         public int QueryEmbeddingsRequested { get; private set; }
 
@@ -309,6 +387,42 @@ public class CodeSearchServiceTests
             }
 
             return base.TryEmbed(text, kind, out embedding, out reason);
+        }
+    }
+
+    private sealed class BatchCountingHashEmbeddingProvider : CountingHashEmbeddingProvider, IBatchTextEmbeddingProvider
+    {
+        public int BatchDocumentEmbeddingsRequested { get; private set; }
+
+        public bool FailBatchDocumentEmbeddings { get; init; }
+
+        public bool TryEmbedBatch(IReadOnlyList<string> texts, EmbeddingInputKind kind, out IReadOnlyList<float[]> embeddings, out string? reason)
+        {
+            embeddings = [];
+            reason = null;
+
+            if (kind != EmbeddingInputKind.Document)
+            {
+                var results = new List<float[]>(texts.Count);
+                foreach (var text in texts)
+                {
+                    TryEmbed(text, kind, out var embedding, out _);
+                    results.Add(embedding);
+                }
+
+                embeddings = results;
+                return true;
+            }
+
+            BatchDocumentEmbeddingsRequested++;
+            if (FailBatchDocumentEmbeddings)
+            {
+                reason = "Simulated batch failure.";
+                return false;
+            }
+
+            embeddings = texts.Select(BuildEmbedding).ToArray();
+            return true;
         }
     }
 }
