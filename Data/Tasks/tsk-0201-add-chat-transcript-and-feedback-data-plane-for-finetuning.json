@@ -47,15 +47,21 @@
       "author": "AgentSmith",
       "body": "Wired thumbs-up/thumbs-down controls into chat UI for assistant turns and persisted per-turn rating via `IChatFeedbackStore.UpsertAsync`, including local session state hydration (`ChatTurnState.FeedbackRating`) so selections survive refresh. Remaining scope is exporter/bridge plumbing for dataset generation and lifecycle tooling.",
       "createdAtUtc": "2026-05-28T23:55:00.0000000Z"
+    },
+    {
+      "id": "c-0201-5-20260528",
+      "author": "AgentSmith",
+      "body": "Integrated first exporter path through harness bridge execution. Run `sprint3-ft-20260528` produced `Data/Training/exports/sprint3-ft-20260528.sft.jsonl` and benchmark/status artifacts, confirming transcript/feedback foundation can feed training datasets end-to-end.",
+      "createdAtUtc": "2026-05-28T23:15:00.0000000Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-28T21:43:18.8947975Z",
-  "updatedAtUtc": "2026-05-28T23:55:00.0000000Z",
+  "updatedAtUtc": "2026-05-28T23:59:00.0000000Z",
   "completedAtUtc": null,
-  "revision": 4,
+  "revision": 5,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

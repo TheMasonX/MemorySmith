@@ -4,7 +4,7 @@
   "title": "Build Python training harness and .NET bridge contract",
   "description": "Implement a reproducible local harness for SFT and preference tuning with .NET process orchestration, status contracts, and cancellation semantics.",
   "type": "Task",
-  "status": "Backlog",
+  "status": "InProgress",
   "priority": "Medium",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -27,15 +27,21 @@
       "author": "AgentSmith",
       "body": "Created from the staged harness architecture review; depends on transcript and export prerequisites.",
       "createdAtUtc": "2026-05-28T21:43:18.8947975Z"
+    },
+    {
+      "id": "c-0203-2-20260528",
+      "author": "AgentSmith",
+      "body": "Implemented first harness bridge slice with `Scripts/Run-FinetuneHarness.ps1` and `MemorySmith.Training/harness.py`, including request/status/event contract files and benchmark output. Executed run `sprint3-ft-20260528` with exported SFT JSONL, benchmark JSON, and pass/fail eval gate reporting.",
+      "createdAtUtc": "2026-05-28T23:12:00.0000000Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-28T21:43:18.8947975Z",
-  "updatedAtUtc": "2026-05-28T21:43:18.8947975Z",
+  "updatedAtUtc": "2026-05-28T23:12:00.0000000Z",
   "completedAtUtc": null,
-  "revision": 1,
+  "revision": 2,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,
