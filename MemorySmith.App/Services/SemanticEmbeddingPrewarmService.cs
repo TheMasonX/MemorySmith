@@ -30,13 +30,13 @@ public sealed class SemanticEmbeddingPrewarmService : BackgroundService
 
         if (!_options.PrewarmOnStartupEnabled)
         {
-            _logger.LogInformation("Semantic embedding startup prewarm is disabled by configuration.");
+            _logger.LogDebug("Semantic embedding startup prewarm is disabled by configuration.");
             return;
         }
 
         if (!_options.EmbeddingsEnabled)
         {
-            _logger.LogInformation("Skipping semantic embedding startup prewarm because embeddings are disabled.");
+            _logger.LogDebug("Skipping semantic embedding startup prewarm because embeddings are disabled.");
             return;
         }
 
@@ -47,7 +47,7 @@ public sealed class SemanticEmbeddingPrewarmService : BackgroundService
             if (!status.Available)
             {
                 stopwatch.Stop();
-                _logger.LogInformation(
+                _logger.LogDebug(
                     "Skipping semantic embedding startup prewarm because the provider is unavailable after {ElapsedMilliseconds} ms: {Reason}",
                     stopwatch.ElapsedMilliseconds,
                     status.Reason);
