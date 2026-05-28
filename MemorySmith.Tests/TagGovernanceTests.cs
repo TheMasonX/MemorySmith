@@ -583,6 +583,21 @@ public class TagGovernanceTests
     }
 
     [Test]
+    public void AdminSettings_ExposeClipboardExternalFetchPolicyControl()
+    {
+        var source = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "Services", "AdminSettingsService.cs"));
+        var appsettings = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "appsettings.json"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(source, Does.Contain("MemorySmith:Chat:ClipboardFetchExternalImagesEnabled"));
+            Assert.That(source, Does.Contain("Fetch external clipboard image URLs"));
+            Assert.That(source, Does.Contain("avoid unprompted network fetches during paste"));
+            Assert.That(appsettings, Does.Contain("\"ClipboardFetchExternalImagesEnabled\": false"));
+        });
+    }
+
+    [Test]
     public void AdminSettings_ExposeProposalActionUxSettings()
     {
         var source = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "Services", "AdminSettingsService.cs"));

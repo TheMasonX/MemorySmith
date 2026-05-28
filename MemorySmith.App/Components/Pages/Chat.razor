@@ -577,7 +577,7 @@
         if (firstRender)
         {
             _dotNetRef = DotNetObjectReference.Create(this);
-            await TryInvokeVoidAsync("memorySmith.chat.registerComposer", _composerInput, _dotNetRef, _sendOnEnter);
+            await TryInvokeVoidAsync("memorySmith.chat.registerComposer", _composerInput, _dotNetRef, _sendOnEnter, Options.CurrentValue.Chat.ClipboardFetchExternalImagesEnabled);
             _composerRegistered = true;
             await LoadPreferencesAsync();
             await CollapseSidebarOnNarrowViewportAsync();

@@ -684,7 +684,7 @@
             return window.innerWidth <= width;
         },
 
-        registerComposer: function (textarea, dotNetRef, sendOnEnter) {
+        registerComposer: function (textarea, dotNetRef, sendOnEnter, clipboardFetchExternalImagesEnabled) {
             if (!textarea) {
                 return;
             }
@@ -700,6 +700,7 @@
             }
 
             textarea.dataset.sendOnEnter = sendOnEnter ? "true" : "false";
+            textarea.dataset.clipboardFetchExternalImages = clipboardFetchExternalImagesEnabled ? "true" : "false";
             textarea.memorySmithComposerKeyHandler = function (event) {
                 if (event.key === "Enter" && !event.shiftKey && textarea.dataset.sendOnEnter === "true") {
                     const message = textarea.value;
@@ -710,7 +711,8 @@
                 }
             };
             textarea.memorySmithComposerPasteHandler = function (event) {
-                void window.memorySmith.chat.attachClipboardImage(event, dotNetRef);
+                const allowExternal = textarea.dataset.clipboardFetchExternalImages === "true";
+                void window.memorySmith.chat.attachClipboardImage(event, dotNetRef, allowExternal);
             };
             textarea.memorySmithComposerDocumentPasteHandler = function (event) {
                 const shell = textarea.closest(".chat-shell");
@@ -719,7 +721,8 @@
                     return;
                 }
 
-                void window.memorySmith.chat.attachClipboardImage(event, dotNetRef);
+                const allowExternal = textarea.dataset.clipboardFetchExternalImages === "true";
+                void window.memorySmith.chat.attachClipboardImage(event, dotNetRef, allowExternal);
             };
             textarea.addEventListener("keydown", textarea.memorySmithComposerKeyHandler);
             textarea.addEventListener("paste", textarea.memorySmithComposerPasteHandler, true);
@@ -745,7 +748,7 @@
             }
         },
 
-        attachClipboardImage: async function (event, dotNetRef) {
+        attachClipboardImage: async function (event, dotNetRef, allowExternalClipboardImageFetch) {
             if (!dotNetRef || event.defaultPrevented || event.memorySmithClipboardHandled) {
                 return false;
             }
@@ -753,14 +756,14 @@
             event.memorySmithClipboardHandled = true;
             const clipboardData = event.clipboardData || window.clipboardData;
             let files = window.memorySmith.chat.getClipboardImageFiles(clipboardData);
-            const hasImageHint = files.length > 0 || window.memorySmith.chat.clipboardHasImageReference(clipboardData);
+            const hasImageHint = files.length > 0 || window.memorySmith.chat.clipboardHasImageReference(clipboardData, allowExternalClipboardImageFetch);
             if (hasImageHint) {
                 event.preventDefault();
                 event.stopPropagation();
             }
 
             if (files.length === 0) {
-                files = await window.memorySmith.chat.getClipboardReferencedImages(clipboardData);
+                files = await window.memorySmith.chat.getClipboardReferencedImages(clipboardData, allowExternalClipboardImageFetch);
             }
 
             if (files.length === 0) {
@@ -809,15 +812,20 @@
             return files;
         },
 
-        clipboardHasImageReference: function (clipboardData) {
+        clipboardHasImageReference: function (clipboardData, allowExternalClipboardImageFetch) {
             const text = window.memorySmith.chat.readClipboardText(clipboardData, "text/html") + "\n" + window.memorySmith.chat.readClipboardText(clipboardData, "text/plain");
-            return /<img\b/i.test(text) || /data:image\//i.test(text) || /^https?:\/\/\S+\.(png|jpe?g|gif|webp|bmp|heic|heif)(\?\S*)?$/im.test(text.trim());
+            if (allowExternalClipboardImageFetch) {
+                return /<img\b/i.test(text) || /data:image\//i.test(text) || /^https?:\/\/\S+\.(png|jpe?g|gif|webp|bmp|heic|heif)(\?\S*)?$/im.test(text.trim());
+            }
+
+            return /data:image\//i.test(text);
         },
 
-        getClipboardReferencedImages: async function (clipboardData) {
+        getClipboardReferencedImages: async function (clipboardData, allowExternalClipboardImageFetch) {
             const references = window.memorySmith.chat.extractImageReferences(
                 window.memorySmith.chat.readClipboardText(clipboardData, "text/html"),
-                window.memorySmith.chat.readClipboardText(clipboardData, "text/plain"));
+                window.memorySmith.chat.readClipboardText(clipboardData, "text/plain"),
+                allowExternalClipboardImageFetch);
             const files = [];
             let index = 0;
             for (const reference of references) {
@@ -842,7 +850,7 @@
             }
         },
 
-        extractImageReferences: function (html, plainText) {
+        extractImageReferences: function (html, plainText, allowExternalClipboardImageFetch) {
             const references = [];
             const add = function (value) {
                 const reference = String(value || "").trim();
@@ -850,7 +858,12 @@
                     return;
                 }
 
-                if (/^data:image\//i.test(reference) || /^https?:\/\//i.test(reference) || /^blob:/i.test(reference)) {
+                if (/^data:image\//i.test(reference) || /^blob:/i.test(reference)) {
+                    references.push(reference);
+                    return;
+                }
+
+                if (allowExternalClipboardImageFetch && /^https?:\/\//i.test(reference)) {
                     references.push(reference);
                 }
             };
@@ -867,7 +880,7 @@
             }
 
             const plain = String(plainText || "").trim();
-            if (/^https?:\/\/\S+\.(png|jpe?g|gif|webp|bmp|heic|heif)(\?\S*)?$/i.test(plain)) {
+            if (allowExternalClipboardImageFetch && /^https?:\/\/\S+\.(png|jpe?g|gif|webp|bmp|heic|heif)(\?\S*)?$/i.test(plain)) {
                 add(plain);
             }
 

@@ -175,6 +175,7 @@ Existing MCP tools default on unless they are listed in `DisabledTools`; `Disabl
 | `RequestTimeoutSeconds` | Provider request timeout | long chat turns |
 | `MaxContextRecords`, `MaxContextPages`, `PreloadContextEnabled`, `MaxPreloadedContextRecords`, `MaxPreloadedContextPages`, `MaxContextItemCharacters`, `MaxHistoryMessages` | Context planner and history budget | `/chat` context behavior |
 | `MaxAttachmentCharacters`, `MaxAttachmentBytes` | Attachment input limits | attachment uploads |
+| `ClipboardFetchExternalImagesEnabled` | Allows clipboard paste flow to fetch HTTP/HTTPS image URLs as attachments | clipboard image paste behavior and network posture |
 | `ToolCallsEnabled`, `MaxToolIterations`, `MaxToolCallsPerTurn`, `MaxToolResultCharacters` | Bounded read-only tool loop | tool traces and retrieval behavior |
 | `AgentWritesEnabled` | Enables approval-gated Agent write proposals | `/chat` Agent mode and `/proposals` |
 | `AgentWriteRoots` | Paths approved chat-agent memory/page proposals may target | `/chat` approvals and `/proposals`; separate from `MaintenanceAgent:Write` |
