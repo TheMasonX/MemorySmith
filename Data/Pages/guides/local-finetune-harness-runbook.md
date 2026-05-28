@@ -10,6 +10,12 @@ This runbook captures the current in-repo training harness flow for local fine-t
 ./Scripts/Run-FinetuneHarness.ps1 -RunId sprint3-ft-20260528
 ```
 
+Preflight only:
+
+```powershell
+./Scripts/Test-FinetuneHarnessPrereqs.ps1
+```
+
 ## Produced Artifacts
 
 - Run request: `runs/sprint3-ft-20260528/request.json`
@@ -26,6 +32,8 @@ This runbook captures the current in-repo training harness flow for local fine-t
 - Final simulated loss: `1.6747`
 - Total harness wall time: `0.012s`
 
+Second run (`sprint8-ft-20260528`) with dependency-preflight wiring produced the same pass gate with explicit simulated-mode warning and artifacts under `runs/sprint8-ft-20260528/`.
+
 ## Validation Outcome
 
 - Harness phase reached: `done`
@@ -34,7 +42,7 @@ This runbook captures the current in-repo training harness flow for local fine-t
 
 ## Constraints and Next Step
 
-The current `.venv` does not contain a full LoRA stack (`torch`, `transformers`, `datasets`, `trl`, `peft`, `unsloth` are missing), so this run executes export/eval/benchmark with simulated training steps.
+The current `.venv` does not contain a full LoRA stack (`torch`, `transformers`, `datasets`, `trl`, `peft`, `unsloth` are missing), so this run executes export/eval/benchmark with simulated training steps. The runner now prints this state up-front via preflight and can be configured to fail fast with `-RequireTrainingDependencies`.
 
 Next action for real fine-tuning:
 

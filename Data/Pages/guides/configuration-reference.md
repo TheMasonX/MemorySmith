@@ -39,6 +39,7 @@ This page is the operator and agent-oriented map of the configuration groups, wh
 | Source links | `SourceLinks:*` | `/variables`, source-link actions, diagnostics | Agents can read too much or too little local source. |
 | MCP tools | `Mcp:*` | `/mcp`, `/admin` Configuration | A deployment exposes an unwanted tool or hides an expected one. |
 | Chat | `Chat:*` | `/chat`, `/api/chat/config` | Wrong provider/model defaults, context bloat, or disabled tool flow. |
+| Training harness | `Training:*` | harness scripts, run artifacts under `runs/<runId>/`, `/admin` Configuration | Fine-tuning data export/run behavior drifts or silently falls back to simulated mode. |
 | Maintenance agent | `MaintenanceAgent:*` | `/maintenance`, `/proposals`, admin maintenance chat | Review paths, write roots, or transcript handling drift. |
 | Logging and telemetry | `Logging:*`, `Telemetry:*` | `/api/diagnostics`, `/api/diagnostics/logs*`, structured logs | Observability is too noisy, too sparse, or exporter behavior surprises operators. |
 
@@ -179,6 +180,26 @@ Existing MCP tools default on unless they are listed in `DisabledTools`; `Disabl
 | `AgentWriteRoots` | Paths approved chat-agent memory/page proposals may target | `/chat` approvals and `/proposals`; separate from `MaintenanceAgent:Write` |
 
 Important exception: `Chat:ModelProfiles`, `DefaultModelProfileId`, and maintenance-agent model assignment IDs are edited from the Models tab, not the generic settings table.
+
+## Training Harness
+
+| Key | Purpose | Verify |
+| --- | --- | --- |
+| `MemorySmith:Training:ChatTranscriptEnabled` | Enables assistant-turn transcript JSONL capture for training export | transcript files under `Data/Events/chat-transcripts` |
+| `StoreChatContent` | Enables companion content JSONL capture with literal request/response text | `*.content.jsonl` files and privacy posture |
+| `TranscriptRetentionDays` | Deletes stale transcript files older than configured age | transcript directory contents over time |
+| `TranscriptRedactionEnabled` | Redacts common token/secret patterns before content write | sampled transcript content and redaction behavior |
+| `FeedbackEnabled` | Enables thumbs feedback persistence path | `/chat` thumbs controls and feedback store rows |
+| `TrainingDataExportPath` | Target directory for exported SFT/DPO/ORPO JSONL | `Data/Training/exports/*` outputs |
+| `RunsDirectory` | Root directory for per-run contract artifacts | `runs/<runId>/status.json`, `events.jsonl`, `benchmark.json` |
+| `PythonVenvPath` | Python environment path used by harness bridge script | `Scripts/Test-FinetuneHarnessPrereqs.ps1` output |
+| `PythonHarnessScript` | Python harness entrypoint path | `Scripts/Run-FinetuneHarness.ps1` invocation |
+| `PreferenceFormat` | Default export format selection (`FilteredSft`, `Dpo`, `Orpo`) | request payloads and export naming conventions |
+
+Operational scripts:
+
+- `Scripts/Test-FinetuneHarnessPrereqs.ps1` validates whether training dependencies are installed in the configured venv.
+- `Scripts/Run-FinetuneHarness.ps1` runs the harness bridge and writes request/status/events/benchmark artifacts.
 
 ## Maintenance Agent
 
