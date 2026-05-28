@@ -40,7 +40,7 @@ public class SemanticEmbeddingPathTests
             DataPath = Path.Combine(dataRoot, "Memories"),
             SemanticSearch = new SemanticSearchOptions
             {
-                ModelPath = Path.Combine("Models", "embedding-model.onnx"),
+                ModelPath = Path.Combine("Models", "e5-base-v2.onnx"),
                 VocabularyPath = Path.Combine("Models", "vocab.txt")
             }
         }));
@@ -49,11 +49,11 @@ public class SemanticEmbeddingPathTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(status.ModelPath, Is.EqualTo(Path.Combine(dataRoot, "Models", "embedding-model.onnx")));
+            Assert.That(status.ModelPath, Is.EqualTo(Path.Combine(dataRoot, "Models", "e5-base-v2.onnx")));
             Assert.That(status.VocabularyPath, Is.EqualTo(Path.Combine(dataRoot, "Models", "vocab.txt")));
             Assert.That(status.RequestedExecutionProvider, Is.EqualTo("Cpu"));
             Assert.That(status.ActiveExecutionProvider, Is.EqualTo("None"));
-            Assert.That(status.Reason, Does.Contain(Path.Combine(dataRoot, "Models", "embedding-model.onnx")));
+            Assert.That(status.Reason, Does.Contain(Path.Combine(dataRoot, "Models", "e5-base-v2.onnx")));
         });
     }
 
@@ -70,7 +70,7 @@ public class SemanticEmbeddingPathTests
             DataPath = Path.Combine(dataRoot, "Memories"),
             SemanticSearch = new SemanticSearchOptions
             {
-                ModelPath = Path.Combine("..", "Data", "Models", "embedding-model.onnx"),
+                ModelPath = Path.Combine("..", "Data", "Models", "e5-base-v2.onnx"),
                 VocabularyPath = Path.Combine("..", "Data", "Models", "vocab.txt")
             }
         }));
@@ -79,7 +79,7 @@ public class SemanticEmbeddingPathTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(status.ModelPath, Is.EqualTo(Path.Combine(dataRoot, "Models", "embedding-model.onnx")));
+            Assert.That(status.ModelPath, Is.EqualTo(Path.Combine(dataRoot, "Models", "e5-base-v2.onnx")));
             Assert.That(status.VocabularyPath, Is.EqualTo(Path.Combine(dataRoot, "Models", "vocab.txt")));
             Assert.That(status.RequestedExecutionProvider, Is.EqualTo("Cpu"));
             Assert.That(status.ActiveExecutionProvider, Is.EqualTo("None"));
@@ -94,7 +94,7 @@ public class SemanticEmbeddingPathTests
         Directory.CreateDirectory(unrelatedWorkingDirectory);
         Directory.SetCurrentDirectory(unrelatedWorkingDirectory);
 
-        File.WriteAllBytes(Path.Combine(dataRoot, "Models", "embedding-model.onnx"), new byte[] { 0x00 });
+        File.WriteAllBytes(Path.Combine(dataRoot, "Models", "e5-base-v2.onnx"), new byte[] { 0x00 });
         File.WriteAllLines(Path.Combine(dataRoot, "Models", "vocab.txt"), ["[UNK]", "[CLS]", "[SEP]"]);
 
         using var provider = new OnnxTextEmbeddingProvider(Options.Create(new MemorySmithOptions
@@ -102,7 +102,7 @@ public class SemanticEmbeddingPathTests
             DataPath = Path.Combine(dataRoot, "Memories"),
             SemanticSearch = new SemanticSearchOptions
             {
-                ModelPath = Path.Combine("Models", "embedding-model.onnx"),
+                ModelPath = Path.Combine("Models", "e5-base-v2.onnx"),
                 VocabularyPath = Path.Combine("Models", "vocab.txt"),
                 TokenizerKind = "SentencePiece"
             }
@@ -128,7 +128,7 @@ public class SemanticEmbeddingPathTests
         Directory.CreateDirectory(unrelatedWorkingDirectory);
         Directory.SetCurrentDirectory(unrelatedWorkingDirectory);
 
-        File.WriteAllBytes(Path.Combine(dataRoot, "Models", "embedding-model.onnx"), new byte[] { 0x00 });
+        File.WriteAllBytes(Path.Combine(dataRoot, "Models", "e5-base-v2.onnx"), new byte[] { 0x00 });
         File.WriteAllLines(Path.Combine(dataRoot, "Models", "vocab.txt"), ["[UNK]", "[CLS]", "[SEP]"]);
 
         using var provider = new OnnxTextEmbeddingProvider(Options.Create(new MemorySmithOptions
@@ -136,7 +136,7 @@ public class SemanticEmbeddingPathTests
             DataPath = Path.Combine(dataRoot, "Memories"),
             SemanticSearch = new SemanticSearchOptions
             {
-                ModelPath = Path.Combine("Models", "embedding-model.onnx"),
+                ModelPath = Path.Combine("Models", "e5-base-v2.onnx"),
                 VocabularyPath = Path.Combine("Models", "vocab.txt"),
                 ExecutionProvider = "TensorRt"
             }

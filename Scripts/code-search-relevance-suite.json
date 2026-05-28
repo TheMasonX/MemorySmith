@@ -1,0 +1,97 @@
+{
+  "version": 1,
+  "description": "Fixed relevance suite for implementation-vs-tests drift and intent alignment checks.",
+  "targets": [
+    "MemorySmith.App",
+    "MemorySmith.Core",
+    "MemorySmith.Storage",
+    "MemorySmith.Tests",
+    "Scripts"
+  ],
+  "cases": [
+    {
+      "name": "implementation-telemetry",
+      "query": "code search query timing telemetry slow threshold",
+      "limit": 5,
+      "expectedTopPathPrefixes": [
+        "MemorySmith.App/Services/CodeSearchService.cs"
+      ],
+      "forbiddenTopPathPrefixes": [
+        "MemorySmith.Tests/"
+      ]
+    },
+    {
+      "name": "implementation-prefilter",
+      "query": "vector candidate prefilter code search lexical fallback",
+      "limit": 5,
+      "expectedTopPathPrefixes": [
+        "MemorySmith.App/Services/CodeSearchService.cs"
+      ],
+      "forbiddenTopPathPrefixes": [
+        "MemorySmith.Tests/"
+      ]
+    },
+    {
+      "name": "page-validation-intent",
+      "query": "page path literals and page links validation script",
+      "limit": 5,
+      "expectedTopPathPrefixes": [
+        "MemorySmith.App/Services/PageService.cs",
+        "MemorySmith.App/Components/Pages/Pages.razor"
+      ]
+    },
+    {
+      "name": "semantic-provider-path",
+      "query": "unsupported execution provider onnx session initialization",
+      "limit": 5,
+      "expectedTopPathPrefixes": [
+        "MemorySmith.App/Services/SemanticEmbeddingSearchService.cs",
+        "MemorySmith.Tests/SemanticEmbeddingPathTests.cs",
+        "MemorySmith.App/Components/Pages/Admin.razor"
+      ]
+    },
+    {
+      "name": "semantic-provider-tests",
+      "query": "semantic embedding path tests unsupported execution provider",
+      "limit": 5,
+      "expectedTopPathPrefixes": [
+        "MemorySmith.Tests/SemanticEmbeddingPathTests.cs",
+        "MemorySmith.Tests/CodeSearchServiceTests.cs",
+        "MemorySmith.App/Services/SemanticEmbeddingSearchService.cs"
+      ]
+    },
+    {
+      "name": "benchmark-harness-intent",
+      "query": "warm code search index summary benchmark script",
+      "limit": 5,
+      "expectedTopPathPrefixes": [
+        "Scripts/Measure-CodeSearchQueries.ps1",
+        "Scripts/Warm-CodeSearchIndex.ps1",
+        "MemorySmith.App/Services/CodeSearchService.cs",
+        "MemorySmith.Tests/SearchBenchmarkTests.cs"
+      ]
+    },
+    {
+      "name": "ranking-weight-implementation",
+      "query": "target weight implementation demotes tests code search ranking",
+      "limit": 5,
+      "expectedTopPathPrefixes": [
+        "MemorySmith.App/Services/CodeSearchService.cs"
+      ],
+      "forbiddenTopPathPrefixes": [
+        "MemorySmith.Tests/"
+      ]
+    },
+    {
+      "name": "nunit-regression-tests",
+      "query": "SearchAsync_LexicalFallbackMatchesSnakeCaseQueryAgainstCamelCaseIdentifier",
+      "targets": [
+        "MemorySmith.Tests"
+      ],
+      "limit": 5,
+      "expectedTopPathPrefixes": [
+        "MemorySmith.Tests/CodeSearchServiceTests.cs"
+      ]
+    }
+  ]
+}

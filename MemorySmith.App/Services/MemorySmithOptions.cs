@@ -167,7 +167,7 @@ public class SemanticSearchOptions
 {
     public bool EmbeddingsEnabled { get; set; } = true;
     public bool PrewarmOnStartupEnabled { get; set; } = true;
-    public string ModelPath { get; set; } = Path.Combine("Models", "embedding-model.onnx");
+    public string ModelPath { get; set; } = Path.Combine("Models", "e5-base-v2.onnx");
     public string VocabularyPath { get; set; } = Path.Combine("Models", "vocab.txt");
     public string TokenizerKind { get; set; } = "WordPiece";
     public string PoolingMode { get; set; } = "Mean";

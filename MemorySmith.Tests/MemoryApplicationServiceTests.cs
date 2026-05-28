@@ -778,7 +778,7 @@ public class MemoryApplicationServiceTests
             SemanticSearch = new SemanticSearchOptions
             {
                 EmbeddingsEnabled = true,
-                ModelPath = Path.Combine("Models", "embedding-model.onnx"),
+                ModelPath = Path.Combine("Models", "e5-base-v2.onnx"),
                 VocabularyPath = Path.Combine("Models", "vocab.txt"),
                 TokenizerKind = tokenizerKind,
                 PoolingMode = poolingMode,

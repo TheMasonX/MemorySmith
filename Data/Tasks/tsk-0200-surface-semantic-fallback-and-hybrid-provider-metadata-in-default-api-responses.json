@@ -4,7 +4,7 @@
   "title": "Surface semantic fallback and hybrid provider metadata in default API responses",
   "description": "Current non-envelope semantic/hybrid APIs can obscure whether ONNX embeddings actually ran or whether token fallback was used. Add a compatibility-safe response metadata path so clients can see provider mode, fallback reason, and hybrid fusion context without having to opt into alternate formats.",
   "type": "Task",
-  "status": "Backlog",
+  "status": "InProgress",
   "priority": "Medium",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -29,15 +29,21 @@
       "author": "AgentSmith",
       "body": "Created from deep-audit findings about silent semantic fallback and hybrid metadata ambiguity. Any implementation should preserve backward compatibility while making provider mode/fallback explicit for diagnostics and automation.",
       "createdAtUtc": "2026-05-28T06:16:00.0000000Z"
+    },
+    {
+      "id": "c-0200-2-20260528",
+      "author": "AgentSmith",
+      "body": "Moved to InProgress during non-model follow-up. Current pass prioritized code-search retrieval reliability and benchmark harness hardening; API response metadata surfacing remains the next high-ROI item from this audit group.",
+      "createdAtUtc": "2026-05-28T13:55:00.0000000Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-28T06:16:00.0000000Z",
-  "updatedAtUtc": "2026-05-28T06:16:00.0000000Z",
+  "updatedAtUtc": "2026-05-28T13:55:00.0000000Z",
   "completedAtUtc": null,
-  "revision": 1,
+  "revision": 2,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

@@ -4,7 +4,7 @@
   "title": "Add candidate prefilter before code-search vector scoring",
   "description": "Code-search retrieval currently loads all indexed chunks and performs full in-memory vector scoring/sort per uncached query. Introduce a high-ROI candidate-reduction stage before vector scoring (lexical prefilter or equivalent), then benchmark candidate counts, latency, and ranking impact. Keep behavior feature-flagged and reversible until benchmark evidence is stable.",
   "type": "Task",
-  "status": "Backlog",
+  "status": "Done",
   "priority": "High",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -30,15 +30,21 @@
       "author": "AgentSmith",
       "body": "Created from the 2026-05-28 deep audit item about brute-force in-memory code-search vector retrieval. Scope should start with a reversible candidate prefilter and benchmark harness expansion before committing to ANN or storage migration.",
       "createdAtUtc": "2026-05-28T06:14:00.0000000Z"
+    },
+    {
+      "id": "c-0198-2-20260528",
+      "author": "AgentSmith",
+      "body": "Completed non-model follow-up pass: code-search now tokenizes identifier variants for lexical/scalar fallback, removes lowercased-haystack allocations in lexical scoring, and validates snake_case-to-camelCase fallback via `CodeSearchServiceTests.SearchAsync_LexicalFallbackMatchesSnakeCaseQueryAgainstCamelCaseIdentifier`. Benchmark artifacts refreshed at `artifacts/browser-validation/code-search-query-baseline-e5-postfix-20260528.json` and `artifacts/browser-validation/code-search-relevance-e5-postfix-20260528.json` (8/8 pass).",
+      "createdAtUtc": "2026-05-28T13:55:00.0000000Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-28T06:14:00.0000000Z",
-  "updatedAtUtc": "2026-05-28T06:14:00.0000000Z",
-  "completedAtUtc": null,
-  "revision": 1,
+  "updatedAtUtc": "2026-05-28T13:55:00.0000000Z",
+  "completedAtUtc": "2026-05-28T13:55:00.0000000Z",
+  "revision": 2,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

@@ -50,7 +50,7 @@ public sealed class ModelBackedSearchBenchmarkTests
             SemanticSearch = new SemanticSearchOptions
             {
                 EmbeddingsEnabled = true,
-                ModelPath = Path.Combine("Models", "embedding-model.onnx"),
+                ModelPath = Path.Combine("Models", "e5-base-v2.onnx"),
                 VocabularyPath = Path.Combine("Models", "vocab.txt"),
                 MaxInputTokens = 512,
                 MaxIndexedTextCharacters = 6000,
@@ -99,7 +99,7 @@ public sealed class ModelBackedSearchBenchmarkTests
             Assert.That(providerMetadata.Available, Is.True, providerMetadata.Reason);
             Assert.That(providerMetadata.Mode, Is.EqualTo("onnx-embedding"));
             Assert.That(providerMetadata.ModelPath, Is.Not.Null);
-            Assert.That(providerMetadata.ModelPath!, Does.EndWith(Path.Combine("Models", "embedding-model.onnx")));
+            Assert.That(providerMetadata.ModelPath!, Does.EndWith(Path.Combine("Models", "e5-base-v2.onnx")));
             Assert.That(providerMetadata.VocabularyPath, Is.Not.Null);
             Assert.That(providerMetadata.VocabularyPath!, Does.EndWith(Path.Combine("Models", "vocab.txt")));
             Assert.That(providerMetadata.Dimension, Is.Not.Null);

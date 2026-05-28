@@ -99,11 +99,12 @@ function Invoke-McpTool {
     }
 
     $contentProperty = $result.PSObject.Properties['content']
-    if ($null -eq $contentProperty -or $contentProperty.Value.Count -eq 0) {
+    $contentItems = if ($null -ne $contentProperty) { @($contentProperty.Value) } else { @() }
+    if ($contentItems.Count -eq 0) {
         throw "MCP tool '$ToolName' returned no content payload."
     }
 
-    $text = [string]$contentProperty.Value[0].text
+    $text = [string]$contentItems[0].text
     $isErrorProperty = $result.PSObject.Properties['isError']
     if ($null -ne $isErrorProperty -and [bool]$isErrorProperty.Value) {
         throw "MCP tool '$ToolName' failed: $text"
@@ -115,11 +116,12 @@ function Invoke-McpTool {
 function Get-Median {
     param([double[]]$Values)
 
-    if ($Values.Count -eq 0) {
+    $normalizedValues = @($Values)
+    if ($normalizedValues.Count -eq 0) {
         return 0
     }
 
-    $sorted = $Values | Sort-Object
+    $sorted = @($normalizedValues | Sort-Object)
     $middle = [int]($sorted.Count / 2)
     if ($sorted.Count % 2 -eq 1) {
         return [double]$sorted[$middle]

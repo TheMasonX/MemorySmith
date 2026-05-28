@@ -119,6 +119,59 @@ public class CodeSearchServiceTests
     }
 
     [Test]
+    public async Task SearchAsync_DemotesTestTargetsForImplementationQueries()
+    {
+        await File.WriteAllTextAsync(Path.Combine(_repoRoot, ".gitignore"), string.Empty);
+        Directory.CreateDirectory(Path.Combine(_repoRoot, "MemorySmith.Tests"));
+        await File.WriteAllTextAsync(
+            Path.Combine(_repoRoot, "MemorySmith.App", "Services", "WidgetRenderer.cs"),
+            "namespace MemorySmith.App.Services;\npublic static class WidgetRenderer\n{\n    public static string BuildWidgetRenderer(string input) => input + \" implementation\";\n}\n");
+        await File.WriteAllTextAsync(
+            Path.Combine(_repoRoot, "MemorySmith.Tests", "WidgetRendererTests.cs"),
+            "namespace MemorySmith.Tests;\npublic static class WidgetRendererTests\n{\n    public static string BuildWidgetRenderer(string input) => input + \" implementation\";\n}\n");
+
+        var service = CreateService(new RankingBiasEmbeddingProvider());
+
+        var results = await service.SearchAsync(new CodeSearchQuery("BuildWidgetRenderer implementation", Limit: 5), CancellationToken.None);
+        var testResultIndex = results
+            .Select((result, index) => new { result.DocumentPath, index })
+            .Where(item => item.DocumentPath == "MemorySmith.Tests/WidgetRendererTests.cs")
+            .Select(item => item.index)
+            .DefaultIfEmpty(-1)
+            .Single();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(results, Is.Not.Empty);
+            Assert.That(results[0].DocumentPath, Is.EqualTo("MemorySmith.App/Services/WidgetRenderer.cs"));
+            Assert.That(testResultIndex, Is.Not.EqualTo(0));
+        });
+    }
+
+    [Test]
+    public async Task SearchAsync_LexicalFallbackMatchesSnakeCaseQueryAgainstCamelCaseIdentifier()
+    {
+        await File.WriteAllTextAsync(Path.Combine(_repoRoot, ".gitignore"), string.Empty);
+        await File.WriteAllTextAsync(
+            Path.Combine(_repoRoot, "MemorySmith.App", "Services", "VectorSearchTelemetryReporter.cs"),
+            "namespace MemorySmith.App.Services;\npublic static class VectorSearchTelemetryReporter\n{\n    public static string EmitHealthTrace(string input) => input + \" telemetry\";\n}\n");
+        await File.WriteAllTextAsync(
+            Path.Combine(_repoRoot, "MemorySmith.Core", "Services", "Noise.cs"),
+            "namespace MemorySmith.Core.Services;\npublic static class Noise\n{\n    public static string EmitUnrelatedTrace(string input) => input + \" noise\";\n}\n");
+
+        var service = CreateService(new QueryFailureEmbeddingProvider());
+
+        var results = await service.SearchAsync(new CodeSearchQuery("vector_search", Limit: 5), CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(results, Is.Not.Empty);
+            Assert.That(results[0].DocumentPath, Is.EqualTo("MemorySmith.App/Services/VectorSearchTelemetryReporter.cs"));
+            Assert.That(results[0].MatchReason, Does.Contain("Lexical fallback matched"));
+        });
+    }
+
+    [Test]
     public async Task SearchAsync_ReusesPersistedIndexWithoutReembeddingUnchangedFiles()
     {
         await File.WriteAllTextAsync(Path.Combine(_repoRoot, ".gitignore"), string.Empty);
@@ -564,6 +617,51 @@ public class CodeSearchServiceTests
                 || text.Contains("BuildOpaquePipeline", StringComparison.OrdinalIgnoreCase)
                 ? [1f, 0f]
                 : [0f, 1f];
+            return true;
+        }
+    }
+
+    private sealed class QueryFailureEmbeddingProvider : HashEmbeddingProvider
+    {
+        public override bool TryEmbed(string text, EmbeddingInputKind kind, out float[] embedding, out string? reason)
+        {
+            if (kind == EmbeddingInputKind.Query)
+            {
+                embedding = [];
+                reason = "Simulated query embedding failure.";
+                return false;
+            }
+
+            return base.TryEmbed(text, kind, out embedding, out reason);
+        }
+    }
+
+    private sealed class RankingBiasEmbeddingProvider : ITextEmbeddingProvider
+    {
+        public EmbeddingProviderStatus GetStatus() => new(true, "Ranking bias provider available.", null, null, 2, "Cpu", "Cpu", null, null);
+
+        public bool TryEmbed(string text, EmbeddingInputKind kind, out float[] embedding, out string? reason)
+        {
+            reason = null;
+            if (kind == EmbeddingInputKind.Query)
+            {
+                embedding = [1f, 0f];
+                return true;
+            }
+
+            if (text.Contains("MemorySmith.Tests/WidgetRendererTests.cs", StringComparison.OrdinalIgnoreCase))
+            {
+                embedding = [0.98f, 0f];
+                return true;
+            }
+
+            if (text.Contains("MemorySmith.App/Services/WidgetRenderer.cs", StringComparison.OrdinalIgnoreCase))
+            {
+                embedding = [0.95f, 0f];
+                return true;
+            }
+
+            embedding = [0.25f, 0f];
             return true;
         }
     }

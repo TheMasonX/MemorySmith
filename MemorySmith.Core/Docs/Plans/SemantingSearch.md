@@ -17,9 +17,9 @@ Microsoft maintains several ONNX‑exported transformer models suitable for embe
 Human Note:
 Downloaded E5-Base here. Please make the model file path configurable, but default to this path.
 Please add onnx to the .gitignore as well since I don't want to redist
-[E5-Base](../../../Data/Models/embedding-model.onnx)
+[E5-Base](../../../Data/Models/e5-base-v2.onnx)
 
-Implementation note (2026-05-17): MemorySmith now has an optional ONNX Runtime embedding path for memory semantic search. The model path defaults to `Models/embedding-model.onnx`; the matching WordPiece vocabulary defaults to `Models/vocab.txt`. Relative semantic model paths resolve from the configured data deployment root: the folder that contains `Memories`, `Events`, `Graph`, `Models`, and `Pages`. ONNX/model files are ignored by Git. When either asset is missing or unusable, semantic and hybrid search automatically fall back to the existing local token/tag/title/reference/alias scorer.
+Implementation note (2026-05-17): MemorySmith now has an optional ONNX Runtime embedding path for memory semantic search. The model path defaults to `Models/e5-base-v2.onnx`; the matching WordPiece vocabulary defaults to `Models/vocab.txt`. Relative semantic model paths resolve from the configured data deployment root: the folder that contains `Memories`, `Events`, `Graph`, `Models`, and `Pages`. ONNX/model files are ignored by Git. When either asset is missing or unusable, semantic and hybrid search automatically fall back to the existing local token/tag/title/reference/alias scorer.
 
 The first implementation uses an exact in-memory cosine scan over the filtered memory set rather than FAISS. That keeps the local/no-service architecture working without native FAISS distribution while preserving the same API shape for a future FAISS or HNSW index.
 

@@ -117,6 +117,7 @@ public sealed class CodeSearchService : IDisposable
     private const int MaxCachedQueryEmbeddings = 256;
     private const int MaxCachedQueryResults = 128;
     private static readonly Regex TokenRegex = new("[A-Za-z0-9_]+", RegexOptions.Compiled);
+    private static readonly Regex IdentifierSplitRegex = new("(?<=[a-z0-9])(?=[A-Z])|_+", RegexOptions.Compiled);
 
     private readonly ITextEmbeddingProvider _embeddingProvider;
     private readonly MemorySmithOptions _settings;
@@ -246,9 +247,14 @@ public sealed class CodeSearchService : IDisposable
             var vectorCandidates = await LoadVectorCandidatesAsync(connection, normalizedTargets, queryTokens, limit, cancellationToken);
             var vectorResults = vectorCandidates.Chunks
                 .Where(chunk => chunk.Embedding.Length == queryEmbedding.Length)
-                .Select(chunk => (Chunk: chunk, Score: Dot(queryEmbedding, chunk.Embedding)))
-                .Where(entry => entry.Score > 0)
-                .OrderByDescending(entry => entry.Score)
+                .Select(chunk =>
+                {
+                    var rawScore = Dot(queryEmbedding, chunk.Embedding);
+                    var targetWeight = GetTargetWeight(chunk.Target, chunk.DocumentPath, queryTokens);
+                    return (Chunk: chunk, RawScore: rawScore, TargetWeight: targetWeight, WeightedScore: rawScore * targetWeight);
+                })
+                .Where(entry => entry.WeightedScore > 0)
+                .OrderByDescending(entry => entry.WeightedScore)
                 .ThenBy(entry => entry.Chunk.DocumentPath, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(entry => entry.Chunk.StartLine)
                 .Take(limit)
@@ -258,9 +264,9 @@ public sealed class CodeSearchService : IDisposable
                     entry.Chunk.AbsolutePath,
                     entry.Chunk.StartLine,
                     entry.Chunk.EndLine,
-                    Math.Round(entry.Score, 6),
+                    Math.Round(entry.WeightedScore, 6),
                     BuildSnippet(entry.Chunk.Snippet, query.Query!),
-                    $"Code embedding cosine similarity {entry.Score:0.###}.",
+                    BuildVectorMatchReason(entry.RawScore, entry.TargetWeight),
                     entry.Chunk.IndexedAtUtc))
                 .ToList();
 
@@ -275,9 +281,14 @@ public sealed class CodeSearchService : IDisposable
                 chunks = await LoadChunksAsync(connection, normalizedTargets, cancellationToken);
                 var fallbackVectorResults = chunks
                     .Where(chunk => chunk.Embedding.Length == queryEmbedding.Length)
-                    .Select(chunk => (Chunk: chunk, Score: Dot(queryEmbedding, chunk.Embedding)))
-                    .Where(entry => entry.Score > 0)
-                    .OrderByDescending(entry => entry.Score)
+                    .Select(chunk =>
+                    {
+                        var rawScore = Dot(queryEmbedding, chunk.Embedding);
+                        var targetWeight = GetTargetWeight(chunk.Target, chunk.DocumentPath, queryTokens);
+                        return (Chunk: chunk, RawScore: rawScore, TargetWeight: targetWeight, WeightedScore: rawScore * targetWeight);
+                    })
+                    .Where(entry => entry.WeightedScore > 0)
+                    .OrderByDescending(entry => entry.WeightedScore)
                     .ThenBy(entry => entry.Chunk.DocumentPath, StringComparer.OrdinalIgnoreCase)
                     .ThenBy(entry => entry.Chunk.StartLine)
                     .Take(limit)
@@ -287,9 +298,9 @@ public sealed class CodeSearchService : IDisposable
                         entry.Chunk.AbsolutePath,
                         entry.Chunk.StartLine,
                         entry.Chunk.EndLine,
-                        Math.Round(entry.Score, 6),
+                        Math.Round(entry.WeightedScore, 6),
                         BuildSnippet(entry.Chunk.Snippet, query.Query!),
-                        $"Code embedding cosine similarity {entry.Score:0.###}.",
+                        BuildVectorMatchReason(entry.RawScore, entry.TargetWeight),
                         entry.Chunk.IndexedAtUtc))
                     .ToList();
 
@@ -308,9 +319,14 @@ public sealed class CodeSearchService : IDisposable
         }
 
         var lexicalResults = chunks
-            .Select(chunk => (Chunk: chunk, Score: ScoreLexical(chunk, queryTokens)))
-            .Where(entry => entry.Score > 0)
-            .OrderByDescending(entry => entry.Score)
+            .Select(chunk =>
+            {
+                var rawScore = ScoreLexical(chunk, queryTokens);
+                var targetWeight = GetTargetWeight(chunk.Target, chunk.DocumentPath, queryTokens);
+                return (Chunk: chunk, RawScore: rawScore, TargetWeight: targetWeight, WeightedScore: rawScore * targetWeight);
+            })
+            .Where(entry => entry.WeightedScore > 0)
+            .OrderByDescending(entry => entry.WeightedScore)
             .ThenBy(entry => entry.Chunk.DocumentPath, StringComparer.OrdinalIgnoreCase)
             .ThenBy(entry => entry.Chunk.StartLine)
             .Take(limit)
@@ -320,9 +336,9 @@ public sealed class CodeSearchService : IDisposable
                 entry.Chunk.AbsolutePath,
                 entry.Chunk.StartLine,
                 entry.Chunk.EndLine,
-                entry.Score,
+                Math.Round(entry.WeightedScore, 6),
                 BuildSnippet(entry.Chunk.Snippet, query.Query!),
-                $"Lexical fallback matched {queryTokens.Count} query token(s) in indexed code.",
+                BuildLexicalMatchReason(queryTokens.Count, entry.TargetWeight),
                 entry.Chunk.IndexedAtUtc))
             .ToList();
 
@@ -1206,6 +1222,59 @@ CREATE INDEX IF NOT EXISTS IX_CodeSearchChunks_DocumentPath ON CodeSearchChunks(
         return $"{Interlocked.Read(ref _resultCacheGeneration)}|{limit}|{query.Trim()}|{normalizedTargets}";
     }
 
+    private static double GetTargetWeight(string target, string documentPath, IReadOnlySet<string> queryTokens)
+    {
+        if (IsArtifactFocusedQuery(queryTokens))
+        {
+            return 1;
+        }
+
+        var weight = 1d;
+        if (IsDocsArtifact(documentPath))
+        {
+            weight *= 0.6;
+        }
+
+        if (IsTestTarget(target, documentPath))
+        {
+            weight *= 0.78;
+        }
+
+        if (IsBenchmarkTarget(target, documentPath))
+        {
+            weight *= 0.9;
+        }
+
+        return weight;
+    }
+
+    private static bool IsArtifactFocusedQuery(IReadOnlySet<string> queryTokens) =>
+        queryTokens.Overlaps(["test", "tests", "benchmark", "benchmarks", "doc", "docs", "documentation"]);
+
+    private static bool IsDocsArtifact(string documentPath) =>
+        documentPath.Contains("/Docs/", StringComparison.OrdinalIgnoreCase) ||
+        documentPath.EndsWith(".md", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsTestTarget(string target, string documentPath) =>
+        target.Contains("Tests", StringComparison.OrdinalIgnoreCase) ||
+        documentPath.Contains("/Tests/", StringComparison.OrdinalIgnoreCase) ||
+        documentPath.EndsWith("Tests.cs", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsBenchmarkTarget(string target, string documentPath) =>
+        target.Contains("Benchmarks", StringComparison.OrdinalIgnoreCase) ||
+        documentPath.Contains("/Benchmarks/", StringComparison.OrdinalIgnoreCase) ||
+        documentPath.Contains("Benchmark", StringComparison.OrdinalIgnoreCase);
+
+    private static string BuildVectorMatchReason(double rawScore, double targetWeight) =>
+        targetWeight < 0.999
+            ? $"Code embedding cosine similarity {rawScore:0.###} (target weight {targetWeight:0.###})."
+            : $"Code embedding cosine similarity {rawScore:0.###}.";
+
+    private static string BuildLexicalMatchReason(int matchedTokenCount, double targetWeight) =>
+        targetWeight < 0.999
+            ? $"Lexical fallback matched {matchedTokenCount} query token(s) in indexed code (target weight {targetWeight:0.###})."
+            : $"Lexical fallback matched {matchedTokenCount} query token(s) in indexed code.";
+
     private void LogQueryTiming(string queryText, IReadOnlySet<string> targets, int limit, string mode, int resultCount, int scannedChunkCount, long queryStartTimestamp)
     {
         var elapsedMs = Stopwatch.GetElapsedTime(queryStartTimestamp).TotalMilliseconds;
@@ -1454,7 +1523,7 @@ LIMIT @candidateLimit;";
             return 0;
         }
 
-        var haystack = (chunk.DocumentPath + "\n" + chunk.SearchText).ToLowerInvariant();
+        var haystack = chunk.DocumentPath + "\n" + chunk.SearchText;
         var score = 0.0;
         foreach (var token in queryTokens)
         {
@@ -1483,7 +1552,7 @@ LIMIT @candidateLimit;";
 
         var count = 0;
         var index = 0;
-        while ((index = haystack.IndexOf(needle, index, StringComparison.Ordinal)) >= 0)
+        while ((index = haystack.IndexOf(needle, index, StringComparison.OrdinalIgnoreCase)) >= 0)
         {
             count++;
             index += needle.Length;
@@ -1492,11 +1561,41 @@ LIMIT @candidateLimit;";
         return count;
     }
 
-    private static IReadOnlySet<string> Tokenize(string query) =>
-        TokenRegex.Matches(query ?? string.Empty)
-            .Select(match => match.Value.ToLowerInvariant())
-            .Where(value => value.Length > 1)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+    private static IReadOnlySet<string> Tokenize(string query)
+    {
+        var tokens = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (Match match in TokenRegex.Matches(query ?? string.Empty))
+        {
+            AddTokenVariants(tokens, match.Value);
+        }
+
+        return tokens;
+    }
+
+    private static void AddTokenVariants(HashSet<string> tokens, string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return;
+        }
+
+        var normalized = value.ToLowerInvariant();
+        if (normalized.Length > 1)
+        {
+            tokens.Add(normalized);
+        }
+
+        foreach (var part in IdentifierSplitRegex.Split(value))
+        {
+            var segment = part.Trim();
+            if (segment.Length <= 1)
+            {
+                continue;
+            }
+
+            tokens.Add(segment.ToLowerInvariant());
+        }
+    }
 
     private static string NormalizeExtension(string extension)
     {

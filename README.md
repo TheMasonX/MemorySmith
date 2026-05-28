@@ -389,7 +389,7 @@ All settings live under `MemorySmith` in `appsettings.json`:
     },
     "SemanticSearch": {
       "EmbeddingsEnabled": true,
-      "ModelPath": "Models/embedding-model.onnx",
+      "ModelPath": "Models/e5-base-v2.onnx",
       "VocabularyPath": "Models/vocab.txt",
       "TokenizerKind": "WordPiece",
       "PoolingMode": "Mean",
@@ -481,9 +481,11 @@ For an operator-facing map of the active settings, see [`Data/Pages/guides/confi
 - **`History:*`** — controls version-history artifact storage for memory and page mutations.
 - **`Pages:DefaultMinimumRole`** — default minimum visibility for newly saved pages. Use `Anonymous`, `Authenticated`, or `Admin`; the admin settings UI exposes this as default page visibility.
 - **`Pages:AllowRawHtml`** — enables trusted raw HTML rendering in markdown pages. Off by default; leave disabled for agent-written or unreviewed pages.
-- **`SemanticSearch:*`** — controls optional ONNX embedding ranking. Relative model and vocabulary paths resolve from the configured data deployment root: the folder that contains `Memories`, `Events`, `Graph`, `Models`, and `Pages`. The default model path is `Models/embedding-model.onnx`; ONNX/model artifacts are ignored by Git, and a matching WordPiece `vocab.txt` is required before embeddings activate. `TokenizerKind` currently supports `WordPiece`; `PoolingMode` supports `Mean` and `Cls` for compatible sequence-output models. `ExecutionProvider` accepts `Cpu`, `Cuda`, or `OpenVino`; `CudaDeviceId` and `OpenVinoDeviceId` select the accelerator target when those providers are enabled, and `CpuFallbackEnabled` keeps semantic search online by falling back to CPU if the requested hardware provider cannot initialize. Hardware providers also require a matching app build flavor through `MemorySmithOnnxRuntimeFlavor` (`Cpu`, `Cuda`, or `OpenVino`). Legacy `../Data/Models/...` values are also interpreted relative to that data root.
+- **`SemanticSearch:*`** — controls optional ONNX embedding ranking. Relative model and vocabulary paths resolve from the configured data deployment root: the folder that contains `Memories`, `Events`, `Graph`, `Models`, and `Pages`. The default model path is `Models/e5-base-v2.onnx`; ONNX/model artifacts are ignored by Git, and a matching WordPiece `vocab.txt` is required before embeddings activate. `TokenizerKind` currently supports `WordPiece`; `PoolingMode` supports `Mean` and `Cls` for compatible sequence-output models. `ExecutionProvider` accepts `Cpu`, `Cuda`, or `OpenVino`; `CudaDeviceId` and `OpenVinoDeviceId` select the accelerator target when those providers are enabled, and `CpuFallbackEnabled` keeps semantic search online by falling back to CPU if the requested hardware provider cannot initialize. Hardware providers also require a matching app build flavor through `MemorySmithOnnxRuntimeFlavor` (`Cpu`, `Cuda`, or `OpenVino`). Legacy `../Data/Models/...` values are also interpreted relative to that data root.
 - **`Scripts/Redeploy-MemorySmithService.ps1`** — deploys the Windows service and now also supports `-OnnxRuntimeFlavor`, `-SemanticExecutionProvider`, `-CpuFallbackEnabled`, `-CudaDeviceId`, `-OpenVinoDeviceId`, and `-SettingsOverridePath` so a service publish and its semantic-acceleration runtime config stay aligned.
 - **`Scripts/Warm-CodeSearchIndex.ps1`** — triggers the MCP-backed code-search index build against the running server, then reports timing, provider mode/status, SQLite path, file/chunk counts, and rough throughput for `Data/Graph/code-search/code-search.db`.
+- **`Scripts/Install-CodeSearchModel.ps1`** — one-command local model workflow that creates/uses a repo `.venv`, installs export dependencies, downloads a Hugging Face model snapshot, and copies or exports ONNX artifacts directly into `Data/Models` (plus tokenizer/manifest metadata).
+- **Guide:** `Data/Pages/guides/code-search-model-export-workflow.md` documents one-command usage, model selection examples, and tokenizer compatibility caveats.
 - **`TaskSearch:*` / `TaskAttachments:*`** — controls task search ranking and task attachment storage. Uploaded task files are stored under `TaskAttachments:StoragePath`, served from `/artifacts/task-attachments/...` behind task view authorization, and capped by `TaskAttachments:MaxFileBytes`. Related-task attachments use `kind=task` and `task:<idOrKey>` URIs.
 - **`Mcp:*`** — controls per-tool MCP exposure. `DisabledTools` hides named tools from `tools/list` and rejects direct `tools/call`; `EnabledTools` opts in descriptor-level default-off tools. Existing MCP tools default on unless disabled.
 - **`DataPath`** — root of the memory store. Subdirectories (`Unconsolidated/`, `Working/`, `Core/`, `Deprecated/`) are created automatically.
@@ -684,3 +686,4 @@ dotnet run -c Release --project MemorySmith.Benchmarks -- --filter *SearchBenchm
 ```
 
 The solution builds `MemorySmith.App` as the single deployable host. `MemorySmith.Tests` contains an actively growing NUnit suite spanning unit tests, integration tests (via `WebApplicationFactory`), SQLite metadata coverage, auth/audit/history coverage, Markdown rendering coverage, task/governance flows, and a `[Category("Benchmark")]` suite of search quality probes with latency thresholds. GitHub Actions collects Cobertura coverage in CI and publishes a Doxygen HTML wiki through the Pages workflow.
+
