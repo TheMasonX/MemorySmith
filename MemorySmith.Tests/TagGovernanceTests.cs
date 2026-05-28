@@ -541,8 +541,12 @@ public class TagGovernanceTests
             Assert.That(source, Does.Contain("secure-local for dogfood"));
             Assert.That(source, Does.Contain("MemorySmith:ContentSecurityPolicyEnabled"));
             Assert.That(source, Does.Contain("MemorySmith:ContentSecurityPolicy"));
+            Assert.That(source, Does.Contain("MemorySmith:XContentTypeOptionsEnabled"));
+            Assert.That(source, Does.Contain("MemorySmith:XContentTypeOptions"));
             Assert.That(appsettings, Does.Contain("\"SecurityProfile\": null"));
             Assert.That(appsettings, Does.Contain("\"ContentSecurityPolicyEnabled\": true"));
+            Assert.That(appsettings, Does.Contain("\"XContentTypeOptionsEnabled\": true"));
+            Assert.That(appsettings, Does.Contain("\"XContentTypeOptions\": \"nosniff\""));
         });
     }
 

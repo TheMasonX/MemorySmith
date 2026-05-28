@@ -594,6 +594,11 @@ try
             context.Response.Headers["Content-Security-Policy"] = runtimeSettings.ContentSecurityPolicy;
         }
 
+        if (runtimeSettings.XContentTypeOptionsEnabled && !string.IsNullOrWhiteSpace(runtimeSettings.XContentTypeOptions))
+        {
+            context.Response.Headers["X-Content-Type-Options"] = runtimeSettings.XContentTypeOptions;
+        }
+
         context.Response.Headers["X-Correlation-Id"] = RequestMetadata.ResolveCorrelationId(context);
         await next();
     });
