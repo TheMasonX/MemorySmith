@@ -220,6 +220,67 @@ public class CodeSearchServiceTests
     }
 
     [Test]
+    public async Task SearchAsync_MarksDocumentFailedWhenScalarDocumentEmbeddingFails()
+    {
+        await File.WriteAllTextAsync(Path.Combine(_repoRoot, ".gitignore"), string.Empty);
+        await File.WriteAllTextAsync(
+            Path.Combine(_repoRoot, "MemorySmith.App", "Services", "BrokenPlanner.cs"),
+            "namespace MemorySmith.App.Services;\npublic static class BrokenPlanner\n{\n    public static string BuildBrokenPlan(string input) => input + \" broken\";\n}\n");
+
+        var provider = new CountingHashEmbeddingProvider { FailDocumentEmbeddings = true };
+        var service = CreateService(provider);
+
+        var results = await service.SearchAsync(new CodeSearchQuery("broken plan", Limit: 5), CancellationToken.None);
+        var status = await service.GetStatusAsync(CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(results, Is.Empty);
+            Assert.That(status.IndexedFileCount, Is.EqualTo(0));
+            Assert.That(status.Build.FailedFileCount, Is.EqualTo(1));
+            Assert.That(status.Build.UpdatedFileCount, Is.EqualTo(0));
+            Assert.That(status.Build.LastError, Does.Contain("BrokenPlanner.cs"));
+            Assert.That(status.Build.LastError, Does.Contain("Simulated document embedding failure."));
+        });
+    }
+
+    [Test]
+    public async Task SearchAsync_MarksDocumentFailedWhenBatchFallbackScalarEmbeddingFails()
+    {
+        await File.WriteAllTextAsync(Path.Combine(_repoRoot, ".gitignore"), string.Empty);
+        await File.WriteAllTextAsync(
+            Path.Combine(_repoRoot, "MemorySmith.App", "Services", "BrokenBatchPlanner.cs"),
+            BuildLargeCodeFile("BrokenBatchPlanner", 40));
+
+        var provider = new BatchCountingHashEmbeddingProvider
+        {
+            FailBatchDocumentEmbeddings = true,
+            FailDocumentEmbeddings = true
+        };
+
+        var service = CreateService(provider, options =>
+        {
+            options.CodeSearch.ChunkLineCount = 5;
+            options.CodeSearch.ChunkOverlapLineCount = 0;
+            options.CodeSearch.EmbeddingBatchSize = 4;
+        });
+
+        var results = await service.SearchAsync(new CodeSearchQuery("BrokenBatchPlanner step", Limit: 5), CancellationToken.None);
+        var status = await service.GetStatusAsync(CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(results, Is.Empty);
+            Assert.That(provider.BatchDocumentEmbeddingsRequested, Is.GreaterThan(0));
+            Assert.That(provider.DocumentEmbeddingsRequested, Is.GreaterThan(0));
+            Assert.That(status.IndexedFileCount, Is.EqualTo(0));
+            Assert.That(status.Build.FailedFileCount, Is.EqualTo(1));
+            Assert.That(status.Build.LastError, Does.Contain("BrokenBatchPlanner.cs"));
+            Assert.That(status.Build.LastError, Does.Contain("Simulated document embedding failure."));
+        });
+    }
+
+    [Test]
     public async Task GetStatusAsync_ReportsInProgressBuildWhileIndexing()
     {
         await File.WriteAllTextAsync(Path.Combine(_repoRoot, ".gitignore"), string.Empty);
@@ -354,6 +415,8 @@ public class CodeSearchServiceTests
 
         public int DocumentEmbeddingsRequested { get; private set; }
 
+        public bool FailDocumentEmbeddings { get; init; }
+
         public override bool TryEmbed(string text, EmbeddingInputKind kind, out float[] embedding, out string? reason)
         {
             if (kind == EmbeddingInputKind.Query)
@@ -363,6 +426,12 @@ public class CodeSearchServiceTests
             else
             {
                 DocumentEmbeddingsRequested++;
+                if (FailDocumentEmbeddings)
+                {
+                    embedding = [];
+                    reason = "Simulated document embedding failure.";
+                    return false;
+                }
             }
 
             return base.TryEmbed(text, kind, out embedding, out reason);

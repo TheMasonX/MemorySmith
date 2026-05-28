@@ -754,15 +754,19 @@ public sealed class CodeSearchService : IDisposable
                 foreach (var batchText in batchTexts)
                 {
                     var scalarStopwatch = Stopwatch.StartNew();
-                    _embeddingProvider.TryEmbed(batchText, EmbeddingInputKind.Document, out var embedding, out _);
+                    var scalarSuccess = _embeddingProvider.TryEmbed(batchText, EmbeddingInputKind.Document, out var embedding, out var scalarReason);
                     scalarStopwatch.Stop();
                     embeddingMilliseconds += scalarStopwatch.ElapsedMilliseconds;
                     embeddingCallCount++;
-                    embeddings.Add(embedding);
-                    if (embedding.Length > 0)
+                    if (!scalarSuccess || embedding.Length == 0)
                     {
-                        embeddedChunkCount++;
+                        throw new InvalidOperationException(string.IsNullOrWhiteSpace(scalarReason)
+                            ? "Code-search document embedding fallback returned no vector."
+                            : $"Code-search document embedding fallback failed: {scalarReason}");
                     }
+
+                    embeddings.Add(embedding);
+                    embeddedChunkCount++;
                 }
             }
 
@@ -772,15 +776,19 @@ public sealed class CodeSearchService : IDisposable
         foreach (var preparedChunk in preparedChunks)
         {
             var scalarStopwatch = Stopwatch.StartNew();
-            _embeddingProvider.TryEmbed(preparedChunk.EmbeddingText, EmbeddingInputKind.Document, out var embedding, out _);
+            var scalarSuccess = _embeddingProvider.TryEmbed(preparedChunk.EmbeddingText, EmbeddingInputKind.Document, out var embedding, out var scalarReason);
             scalarStopwatch.Stop();
             embeddingMilliseconds += scalarStopwatch.ElapsedMilliseconds;
             embeddingCallCount++;
-            embeddings.Add(embedding);
-            if (embedding.Length > 0)
+            if (!scalarSuccess || embedding.Length == 0)
             {
-                embeddedChunkCount++;
+                throw new InvalidOperationException(string.IsNullOrWhiteSpace(scalarReason)
+                    ? $"Code-search document embedding failed for '{preparedChunk.DocumentPath}'."
+                    : $"Code-search document embedding failed for '{preparedChunk.DocumentPath}': {scalarReason}");
             }
+
+            embeddings.Add(embedding);
+            embeddedChunkCount++;
         }
 
         return new EmbeddingBatchResult(embeddings, embeddingMilliseconds, embeddingCallCount, embeddedChunkCount);

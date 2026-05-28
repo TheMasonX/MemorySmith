@@ -13,7 +13,8 @@ MemorySmith now has a real codebase vector-search pipeline with:
 - warm incremental rebuild reuse;
 - live build status and timing breakdowns;
 - exact-query caching;
-- an optional batch document-embedding path.
+- an optional batch document-embedding path;
+- fail-closed handling for document embedding errors so failed files are marked as failed instead of being silently written with empty vectors.
 
 The main current conclusion is uncomfortable but useful: on the active MemorySmith repo and CUDA host, the provider-only batch benchmark is faster than scalar inference, yet the full end-to-end code-search rebuild still gets slower as batch size increases. The correct default today is scalar document embedding, not because batching is theoretically bad, but because the current workload and pipeline shape do not convert the micro-benchmark win into a rebuild win.
 
@@ -76,6 +77,18 @@ This improves operator experience but does not solve steady-state rebuild throug
 ### 5. Batch Document Embedding Path
 
 An explicit batch document-embedding path was added so code-search indexing could reuse a batched provider when available. That work was valid and necessary to test, but the later live benchmark sweep showed that keeping the path available does not imply it should be the default on the current workload.
+
+### 6. Fail Closed On Embedding Errors
+
+The indexing path now treats document embedding failures as actual per-file indexing failures.
+
+This matters because the earlier behavior could silently accept a failed `TryEmbed(...)` call, keep going with an empty vector, and write a document into the SQLite index without a usable embedding. That kind of partial success is worse than a visible failure because it poisons the corpus quietly and makes relevance problems look like ranking issues instead of ingestion defects.
+
+The current behavior is stricter and more trustworthy:
+
+- batch embedding can still fall back to scalar when the batch call fails;
+- if the scalar path also fails or returns an empty vector, the affected document is skipped;
+- build status records the file as failed instead of pretending the document indexed successfully.
 
 ## Current Measured Evidence
 
