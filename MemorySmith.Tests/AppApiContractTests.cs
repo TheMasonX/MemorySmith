@@ -88,6 +88,8 @@ public class AppApiContractTests
             Assert.That(cspHeaders!.Single(), Does.Contain("default-src 'self'"));
             Assert.That(normalResponse.Headers.TryGetValues("X-Content-Type-Options", out var contentTypeHeaders), Is.True);
             Assert.That(contentTypeHeaders!.Single(), Is.EqualTo("nosniff"));
+            Assert.That(normalResponse.Headers.TryGetValues("Referrer-Policy", out var referrerHeaders), Is.True);
+            Assert.That(referrerHeaders!.Single(), Is.EqualTo("strict-origin-when-cross-origin"));
             var normalEntry = await WaitForStructuredLogEntryAsync(tempDir, entry =>
                 GetString(entry, "SourceContext") == "Serilog.AspNetCore.RequestLoggingMiddleware" &&
                 GetString(entry, "RequestPath") == "/api/health/live" &&

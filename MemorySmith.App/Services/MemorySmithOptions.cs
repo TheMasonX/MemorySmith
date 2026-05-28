@@ -18,6 +18,8 @@ public class MemorySmithOptions
     public string ContentSecurityPolicy { get; set; } = "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; img-src 'self' data: blob:; object-src 'none'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; connect-src 'self'";
     public bool XContentTypeOptionsEnabled { get; set; } = true;
     public string XContentTypeOptions { get; set; } = "nosniff";
+    public bool ReferrerPolicyEnabled { get; set; } = true;
+    public string ReferrerPolicy { get; set; } = "strict-origin-when-cross-origin";
     public BlazorOptions Blazor { get; set; } = new();
     public DatabaseOptions Database { get; set; } = new();
     public AuthOptions Auth { get; set; } = new();

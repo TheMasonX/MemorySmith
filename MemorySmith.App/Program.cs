@@ -599,6 +599,11 @@ try
             context.Response.Headers["X-Content-Type-Options"] = runtimeSettings.XContentTypeOptions;
         }
 
+        if (runtimeSettings.ReferrerPolicyEnabled && !string.IsNullOrWhiteSpace(runtimeSettings.ReferrerPolicy))
+        {
+            context.Response.Headers["Referrer-Policy"] = runtimeSettings.ReferrerPolicy;
+        }
+
         context.Response.Headers["X-Correlation-Id"] = RequestMetadata.ResolveCorrelationId(context);
         await next();
     });
