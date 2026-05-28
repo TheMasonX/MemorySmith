@@ -20,6 +20,8 @@ public class MemorySmithOptions
     public string XContentTypeOptions { get; set; } = "nosniff";
     public bool ReferrerPolicyEnabled { get; set; } = true;
     public string ReferrerPolicy { get; set; } = "strict-origin-when-cross-origin";
+    public bool XFrameOptionsEnabled { get; set; } = true;
+    public string XFrameOptions { get; set; } = "DENY";
     public BlazorOptions Blazor { get; set; } = new();
     public DatabaseOptions Database { get; set; } = new();
     public AuthOptions Auth { get; set; } = new();

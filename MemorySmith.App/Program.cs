@@ -604,6 +604,11 @@ try
             context.Response.Headers["Referrer-Policy"] = runtimeSettings.ReferrerPolicy;
         }
 
+        if (runtimeSettings.XFrameOptionsEnabled && !string.IsNullOrWhiteSpace(runtimeSettings.XFrameOptions))
+        {
+            context.Response.Headers["X-Frame-Options"] = runtimeSettings.XFrameOptions;
+        }
+
         context.Response.Headers["X-Correlation-Id"] = RequestMetadata.ResolveCorrelationId(context);
         await next();
     });
