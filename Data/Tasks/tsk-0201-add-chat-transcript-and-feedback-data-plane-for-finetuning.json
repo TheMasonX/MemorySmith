@@ -1,0 +1,45 @@
+{
+  "id": "tsk-0201-add-chat-transcript-and-feedback-data-plane-for-finetuning",
+  "key": "TSK-0201",
+  "title": "Add chat transcript and feedback data plane for fine-tuning",
+  "description": "Create durable chat transcript + thumbs feedback capture with retention/redaction controls so MemorySmith can produce high-quality supervised and preference datasets from real usage.",
+  "type": "Task",
+  "status": "Ready",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "AgentSmith",
+  "labels": [
+    "training",
+    "finetuning",
+    "chat",
+    "data",
+    "safety"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "audits/local-finetuning",
+    "audits/vector-deepdive-5"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0201-20260528",
+      "author": "AgentSmith",
+      "body": "Created from critical pre-implementation review. This is a prerequisite for any meaningful SFT/DPO/ORPO pipeline because current chat history is effectively client-local and non-durable.",
+      "createdAtUtc": "2026-05-28T21:43:18.8947975Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-28T21:43:18.8947975Z",
+  "updatedAtUtc": "2026-05-28T21:43:18.8947975Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

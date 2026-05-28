@@ -1,0 +1,45 @@
+{
+  "id": "tsk-0202-send-num-ctx-and-add-context-window-governance-for-ollama-chat",
+  "key": "TSK-0202",
+  "title": "Send num_ctx and add context-window governance for Ollama chat",
+  "description": "Ensure Ollama requests include explicit num_ctx and add guarded context-window controls to prevent accidental VRAM overrun on local GPUs.",
+  "type": "Task",
+  "status": "Ready",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "AgentSmith",
+  "labels": [
+    "training",
+    "inference",
+    "ollama",
+    "runtime",
+    "ux"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "audits/local-finetuning",
+    "audits/local-finetuning-ux-notes"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0202-20260528",
+      "author": "AgentSmith",
+      "body": "Created from reviewed finding that configured context values are not fully reflected in request payload behavior; this blocks reliable local deployment tuning.",
+      "createdAtUtc": "2026-05-28T21:43:18.8947975Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-28T21:43:18.8947975Z",
+  "updatedAtUtc": "2026-05-28T21:43:18.8947975Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

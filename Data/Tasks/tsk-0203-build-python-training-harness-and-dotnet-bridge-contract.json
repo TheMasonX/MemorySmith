@@ -1,0 +1,43 @@
+{
+  "id": "tsk-0203-build-python-training-harness-and-dotnet-bridge-contract",
+  "key": "TSK-0203",
+  "title": "Build Python training harness and .NET bridge contract",
+  "description": "Implement a reproducible local harness for SFT and preference tuning with .NET process orchestration, status contracts, and cancellation semantics.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "AgentSmith",
+  "labels": [
+    "training",
+    "python",
+    "dotnet",
+    "orchestration"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "audits/local-finetuning"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0203-20260528",
+      "author": "AgentSmith",
+      "body": "Created from the staged harness architecture review; depends on transcript and export prerequisites.",
+      "createdAtUtc": "2026-05-28T21:43:18.8947975Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-28T21:43:18.8947975Z",
+  "updatedAtUtc": "2026-05-28T21:43:18.8947975Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

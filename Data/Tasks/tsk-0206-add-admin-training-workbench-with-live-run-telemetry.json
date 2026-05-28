@@ -1,0 +1,43 @@
+{
+  "id": "tsk-0206-add-admin-training-workbench-with-live-run-telemetry",
+  "key": "TSK-0206",
+  "title": "Add admin training workbench with live run telemetry",
+  "description": "Provide a first-class admin UI for local training runs, progress streams, context/VRAM guidance, and safe model promotion workflows.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "AgentSmith",
+  "labels": [
+    "training",
+    "admin",
+    "ux",
+    "telemetry"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "audits/local-finetuning-ux-notes"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0206-20260528",
+      "author": "AgentSmith",
+      "body": "Created from UX supplement review; intended to dogfood training operations in-app and reduce terminal-only operational burden.",
+      "createdAtUtc": "2026-05-28T21:43:18.8947975Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-28T21:43:18.8947975Z",
+  "updatedAtUtc": "2026-05-28T21:43:18.8947975Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}
