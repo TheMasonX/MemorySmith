@@ -239,6 +239,7 @@ public class TagGovernanceTests
         Assert.Multiple(() =>
         {
             Assert.That(markup, Does.Not.Contain("<MudTabPanel Text=\"Tags\""));
+            Assert.That(markup, Does.Not.Contain("<MudTabPanel Text=\"Training\""));
             Assert.That(markup, Does.Contain("<MudTabPanel Text=\"OAuth\""));
             Assert.That(markup, Does.Contain("<MudTabPanel Text=\"Models\""));
             Assert.That(markup, Does.Contain("ChatModelProfileService ModelProfiles"));

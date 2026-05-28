@@ -871,6 +871,70 @@ Line two",
     }
 
     [Test]
+    public async Task TrainingWorkbenchPage_WithAnonymousAdminConfig_DoesNotRenderWorkbenchForSignedOutUser()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"memorysmith-training-workbench-page-{Guid.NewGuid():N}");
+        var factory = CreateIsolatedFactory(tempDir, new Dictionary<string, string?>
+        {
+            ["MemorySmith:Auth:AnonymousAccess"] = MemorySmithRoles.Admin,
+            ["MemorySmith:Auth:AuthenticatedDefaultRole"] = MemorySmithRoles.Admin,
+            ["MemorySmith:Auth:AutoEditorForAuthenticatedUsers"] = "true"
+        });
+
+        try
+        {
+            using var setupClient = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+            var setupResponse = await setupClient.PostAsJsonAsync("/api/admin/setup", new SetupAdminRequest("Admin User", "admin@example.test", "ThisIsAValidPassword123!"));
+            setupResponse.EnsureSuccessStatusCode();
+
+            using var anonymousClient = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+            var pageResponse = await anonymousClient.GetAsync("/training-workbench");
+            var body = await pageResponse.Content.ReadAsStringAsync();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(pageResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK).Or.EqualTo(HttpStatusCode.Redirect).Or.EqualTo(HttpStatusCode.Unauthorized).Or.EqualTo(HttpStatusCode.Forbidden));
+                Assert.That(body, Does.Not.Contain("Training Workbench"));
+                if (pageResponse.StatusCode == HttpStatusCode.OK)
+                {
+                    Assert.That(body, Does.Contain("Sign In"));
+                }
+            });
+        }
+        finally
+        {
+            await DisposeFactoryTempDirAsync(factory, tempDir);
+        }
+    }
+
+    [Test]
+    public async Task TrainingWorkbenchPage_AdminSession_ReturnsHeading()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"memorysmith-training-workbench-admin-{Guid.NewGuid():N}");
+        var factory = CreateIsolatedFactory(tempDir, null);
+
+        try
+        {
+            using var adminClient = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+            var setupResponse = await adminClient.PostAsJsonAsync("/api/admin/setup", new SetupAdminRequest("Admin User", "admin@example.test", "ThisIsAValidPassword123!"));
+            setupResponse.EnsureSuccessStatusCode();
+
+            var pageResponse = await adminClient.GetAsync("/training-workbench");
+            var body = await pageResponse.Content.ReadAsStringAsync();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(pageResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+                Assert.That(body, Does.Contain("Training Workbench"));
+            });
+        }
+        finally
+        {
+            await DisposeFactoryTempDirAsync(factory, tempDir);
+        }
+    }
+
+    [Test]
     public async Task AdminRoleApi_WithAnonymousAdminConfig_RejectsSignedOutRoleChanges()
     {
         var tempDir = Path.Combine(Path.GetTempPath(), $"memorysmith-admin-api-{Guid.NewGuid():N}");

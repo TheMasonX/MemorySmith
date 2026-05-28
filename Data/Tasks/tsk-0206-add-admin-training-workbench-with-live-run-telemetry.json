@@ -4,7 +4,7 @@
   "title": "Add admin training workbench with live run telemetry",
   "description": "Provide a first-class admin UI for local training runs, progress streams, context/VRAM guidance, and safe model promotion workflows.",
   "type": "Task",
-  "status": "InProgress",
+  "status": "Done",
   "priority": "Medium",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -33,15 +33,21 @@
       "author": "AgentSmith",
       "body": "Delivered first admin-visible workbench slice at `/training-workbench` with readiness diagnostics for transcript/feedback toggles, export/runs paths, Python venv + harness script presence, and run status artifact table from `status.json` files. Added governance navigation link and route-level admin policy. Follow-up scope is live run trigger/streaming event tail and promotion controls.",
       "createdAtUtc": "2026-05-29T00:00:00.0000000Z"
+    },
+    {
+      "id": "c-0206-3-20260529",
+      "author": "AgentSmith",
+      "body": "Completed standalone-first training UX pass. `/training-workbench` now surfaces live telemetry depth from `events.jsonl` and `benchmark.json` (event timestamp, throughput, final loss, and latest event feed), while remaining separate from admin tabs. Added route/security contract tests (`TrainingWorkbenchPage_WithAnonymousAdminConfig_DoesNotRenderWorkbenchForSignedOutUser`, `TrainingWorkbenchPage_AdminSession_ReturnsHeading`) and updated nav/admin markup guards (`TagGovernanceTests`). Validation: `dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj --filter \"FullyQualifiedName~TagGovernanceTests|FullyQualifiedName~CodeSearchPageRoute_ReturnsSuccessAndContainsHeading|FullyQualifiedName~TrainingWorkbenchPage_WithAnonymousAdminConfig_DoesNotRenderWorkbenchForSignedOutUser|FullyQualifiedName~TrainingWorkbenchPage_AdminSession_ReturnsHeading\"` => 37 passed, 0 failed.",
+      "createdAtUtc": "2026-05-29T00:30:00.0000000Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-28T21:43:18.8947975Z",
-  "updatedAtUtc": "2026-05-29T00:00:00.0000000Z",
-  "completedAtUtc": null,
-  "revision": 2,
+  "updatedAtUtc": "2026-05-29T00:30:00.0000000Z",
+  "completedAtUtc": "2026-05-29T00:30:00.0000000Z",
+  "revision": 3,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

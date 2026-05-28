@@ -22,6 +22,10 @@
         </div>
 
         <MudTextField T="string" Value="@_targetsInput" ValueChanged="@((string value) => _targetsInput = value)" Label="Target directories (one per line)" Variant="Variant.Outlined" Lines="3" Margin="Margin.Dense" HelperText="Leave blank to search configured targets." />
+        <div style="display:flex; gap:8px; margin-top:8px;">
+            <MudButton Variant="Variant.Text" Color="Color.Primary" StartIcon="@Icons.Material.Filled.RestartAlt" OnClick="ResetTargetsToDefaults" Disabled="@_isBusy">Reset targets</MudButton>
+            <MudButton Variant="Variant.Text" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.ClearAll" OnClick="ClearResults" Disabled="@_isBusy">Clear results</MudButton>
+        </div>
 
         @if (_targetOptions.Count > 0)
         {
@@ -65,12 +69,15 @@
             <MudProgressLinear Color="Color.Primary" Rounded="true" Value="@_status.Build.ProgressPercentage" BufferValue="100" Class="mt-2" />
             <div class="health-config-grid" style="margin-top: 10px;">
                 <span>State</span><strong>@_status.Build.State</strong>
+                <span>Provider status</span><strong>@_status.ProviderStatus</strong>
                 <span>Processed</span><strong>@_status.Build.ProcessedFileCount / @_status.Build.TotalFileCount</strong>
                 <span>Reused</span><strong>@_status.Build.ReusedFileCount</strong>
                 <span>Updated</span><strong>@_status.Build.UpdatedFileCount</strong>
                 <span>Skipped</span><strong>@_status.Build.SkippedFileCount</strong>
                 <span>Failed</span><strong>@_status.Build.FailedFileCount</strong>
                 <span>Current document</span><strong>@(_status.Build.CurrentDocumentPath ?? "-")</strong>
+                <span>Repository root</span><strong>@_status.RepositoryRoot</strong>
+                <span>Index database</span><strong>@_status.IndexPath</strong>
                 <span>Last error</span><strong>@(_status.Build.LastError ?? "-")</strong>
             </div>
         </MudPaper>
@@ -193,5 +200,16 @@
         }
 
         return progress.State;
+    }
+
+    private void ResetTargetsToDefaults()
+    {
+        _targetsInput = string.Join(Environment.NewLine, _targetOptions);
+    }
+
+    private void ClearResults()
+    {
+        _results = [];
+        _error = null;
     }
 }

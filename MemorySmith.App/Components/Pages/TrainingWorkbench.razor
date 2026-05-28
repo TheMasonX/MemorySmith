@@ -79,17 +79,21 @@
                 <MudTh>Run</MudTh>
                 <MudTh>Phase</MudTh>
                 <MudTh>Last Event</MudTh>
+                <MudTh>Event Time</MudTh>
                 <MudTh>Elapsed (s)</MudTh>
                 <MudTh>Records</MudTh>
-                <MudTh>Status File</MudTh>
+                <MudTh>Throughput</MudTh>
+                <MudTh>Loss</MudTh>
             </HeaderContent>
             <RowTemplate>
                 <MudTd DataLabel="Run">@context.RunId</MudTd>
                 <MudTd DataLabel="Phase">@context.Phase</MudTd>
                 <MudTd DataLabel="Last Event">@context.LastEvent</MudTd>
+                <MudTd DataLabel="Event Time">@context.LastEventTimestampText</MudTd>
                 <MudTd DataLabel="Elapsed">@context.ElapsedSecondsText</MudTd>
                 <MudTd DataLabel="Records">@context.RecordCountText</MudTd>
-                <MudTd DataLabel="Status File">@context.StatusPath</MudTd>
+                <MudTd DataLabel="Throughput">@context.RecordsPerSecondText</MudTd>
+                <MudTd DataLabel="Loss">@context.FinalLossText</MudTd>
             </RowTemplate>
             <NoRecordsContent>
                 <MudText Typo="Typo.body2" Class="pa-4">No run artifacts found yet. Execute Scripts/Run-FinetuneHarness.ps1 to generate run telemetry and refresh this page.</MudText>
@@ -99,6 +103,25 @@
             </PagerContent>
         </MudTable>
     </MudPaper>
+
+    @if (_latestRunEvents.Count > 0)
+    {
+        <MudPaper Class="pa-4 mt-4" Outlined="true">
+            <MudText Typo="Typo.subtitle2">Latest Run Events</MudText>
+            <MudTable Items="@_latestRunEvents" Dense="true" Hover="true" Breakpoint="Breakpoint.Sm" Class="health-table mt-2">
+                <HeaderContent>
+                    <MudTh>Timestamp</MudTh>
+                    <MudTh>Event</MudTh>
+                    <MudTh>Data</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Timestamp">@context.TimestampText</MudTd>
+                    <MudTd DataLabel="Event">@context.EventName</MudTd>
+                    <MudTd DataLabel="Data"><pre style="margin:0; white-space: pre-wrap;">@context.DataSummary</pre></MudTd>
+                </RowTemplate>
+            </MudTable>
+        </MudPaper>
+    }
 </div>
 
 @code {
@@ -106,6 +129,7 @@
     private string? _error;
     private TrainingReadinessSnapshot? _snapshot;
     private IReadOnlyList<TrainingRunSummary> _runs = [];
+    private IReadOnlyList<TrainingRunEvent> _latestRunEvents = [];
 
     protected override async Task OnInitializedAsync()
     {
@@ -121,6 +145,9 @@
             var training = Options.CurrentValue.Training;
             _snapshot = BuildSnapshot(training);
             _runs = await LoadRunSummariesAsync(_snapshot.RunsDirectory);
+            _latestRunEvents = _runs.Count > 0
+                ? await LoadRecentEventsAsync(_runs[0].EventsPath)
+                : [];
         }
         catch (Exception ex)
         {
@@ -218,12 +245,16 @@
             using var document = await JsonDocument.ParseAsync(stream);
             var root = document.RootElement;
 
+            var eventsPath = Path.Combine(runDirectory, "events.jsonl");
+            var benchmarkPath = Path.Combine(runDirectory, "benchmark.json");
+
             var runId = GetString(root, "runId") ?? Path.GetFileName(runDirectory);
             var phase = GetString(root, "phase") ?? "unknown";
             var lastEvent = GetString(root, "lastEvent") ?? "-";
             var elapsed = root.TryGetProperty("elapsedSeconds", out var elapsedElement) && elapsedElement.ValueKind == JsonValueKind.Number
                 ? elapsedElement.GetDouble().ToString("0.###")
                 : "-";
+            var lastEventTimestamp = await ReadLastEventTimestampAsync(eventsPath);
 
             var recordCount = "-";
             if (root.TryGetProperty("metrics", out var metricsElement)
@@ -234,18 +265,141 @@
                 recordCount = recordsElement.GetInt32().ToString();
             }
 
+            var benchmark = await ReadBenchmarkSummaryAsync(benchmarkPath);
+
             return new TrainingRunSummary(
                 runId,
                 phase,
                 lastEvent,
+                lastEventTimestamp,
                 elapsed,
                 recordCount,
-                statusPath);
+                benchmark.RecordsPerSecond,
+                benchmark.FinalLoss,
+                statusPath,
+                eventsPath,
+                benchmarkPath);
         }
         catch
         {
             return null;
         }
+    }
+
+    private static async Task<string> ReadLastEventTimestampAsync(string eventsPath)
+    {
+        if (!File.Exists(eventsPath))
+        {
+            return "-";
+        }
+
+        var lines = await File.ReadAllLinesAsync(eventsPath);
+        for (var index = lines.Length - 1; index >= 0; index--)
+        {
+            var candidate = lines[index].Trim();
+            if (string.IsNullOrWhiteSpace(candidate))
+            {
+                continue;
+            }
+
+            try
+            {
+                using var document = JsonDocument.Parse(candidate);
+                var ts = GetString(document.RootElement, "ts");
+                if (DateTimeOffset.TryParse(ts, out var parsed))
+                {
+                    return parsed.ToLocalTime().ToString("g");
+                }
+
+                return ts ?? "-";
+            }
+            catch
+            {
+                return "-";
+            }
+        }
+
+        return "-";
+    }
+
+    private static async Task<(string RecordsPerSecond, string FinalLoss)> ReadBenchmarkSummaryAsync(string benchmarkPath)
+    {
+        if (!File.Exists(benchmarkPath))
+        {
+            return ("-", "-");
+        }
+
+        try
+        {
+            await using var stream = File.OpenRead(benchmarkPath);
+            using var document = await JsonDocument.ParseAsync(stream);
+            var root = document.RootElement;
+
+            var recordsPerSecond = "-";
+            if (root.TryGetProperty("throughput", out var throughput)
+                && throughput.ValueKind == JsonValueKind.Object
+                && throughput.TryGetProperty("recordsPerSecond", out var rps)
+                && rps.ValueKind == JsonValueKind.Number)
+            {
+                recordsPerSecond = rps.GetDouble().ToString("0.###");
+            }
+
+            var finalLoss = "-";
+            if (root.TryGetProperty("train", out var train)
+                && train.ValueKind == JsonValueKind.Object
+                && train.TryGetProperty("finalLoss", out var loss)
+                && loss.ValueKind == JsonValueKind.Number)
+            {
+                finalLoss = loss.GetDouble().ToString("0.####");
+            }
+
+            return (recordsPerSecond, finalLoss);
+        }
+        catch
+        {
+            return ("-", "-");
+        }
+    }
+
+    private static async Task<IReadOnlyList<TrainingRunEvent>> LoadRecentEventsAsync(string eventsPath)
+    {
+        if (!File.Exists(eventsPath))
+        {
+            return [];
+        }
+
+        var allLines = await File.ReadAllLinesAsync(eventsPath);
+        var lines = allLines
+            .Where(line => !string.IsNullOrWhiteSpace(line))
+            .TakeLast(20)
+            .ToList();
+
+        var events = new List<TrainingRunEvent>(lines.Count);
+        foreach (var line in lines)
+        {
+            try
+            {
+                using var document = JsonDocument.Parse(line);
+                var root = document.RootElement;
+                var name = GetString(root, "event") ?? "-";
+                var ts = GetString(root, "ts") ?? "-";
+                var timestampText = DateTimeOffset.TryParse(ts, out var parsed)
+                    ? parsed.ToLocalTime().ToString("g")
+                    : ts;
+
+                var dataSummary = root.TryGetProperty("data", out var dataElement)
+                    ? dataElement.GetRawText()
+                    : "{}";
+
+                events.Add(new TrainingRunEvent(timestampText, name, dataSummary));
+            }
+            catch
+            {
+                // Ignore malformed lines so one bad event does not break telemetry rendering.
+            }
+        }
+
+        return events;
     }
 
     private static int SafeCountFiles(string directory, string pattern)
@@ -305,7 +459,17 @@
         string RunId,
         string Phase,
         string LastEvent,
+        string LastEventTimestampText,
         string ElapsedSecondsText,
         string RecordCountText,
-        string StatusPath);
+        string RecordsPerSecondText,
+        string FinalLossText,
+        string StatusPath,
+        string EventsPath,
+        string BenchmarkPath);
+
+    private sealed record TrainingRunEvent(
+        string TimestampText,
+        string EventName,
+        string DataSummary);
 }
