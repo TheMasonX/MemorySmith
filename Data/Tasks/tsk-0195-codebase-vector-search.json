@@ -31,15 +31,21 @@
       "author": "AgentSmith",
       "body": "Follow-up hardening completed for the code-search embedding/import path. `MemorySmith.App/Services/CodeSearchService.cs` now reports live build progress and last-build summary through `CodeSearchStatus.Build`, batches SQLite document rewrites, isolates per-file indexing failures instead of aborting the whole build, reuses unchanged documents on warm builds via persisted metadata plus hashes, and caches repeated exact queries in-process. Chat/MCP now also expose `memorysmith_code_search_status`, while `memorysmith_code_search` accepts `forceRebuild` for an explicit cold rebuild. Focused validation passed with `dotnet test .\\MemorySmith.Tests\\MemorySmith.Tests.csproj -c Release --filter \"FullyQualifiedName~CodeSearchServiceTests|FullyQualifiedName~ChatToolCatalogAndInterceptTests|Name~McpToolsList_ExposesWikiSearchTools|Name~McpCodeSearchTool_ReturnsIndexedRepoMatches|Name~McpCodeSearchStatusTool_ReturnsBuildSummary\" --logger \"console;verbosity=minimal\"` (29/29), and `Scripts\\Validate-Repo.ps1` finished green with 392/392 tests plus task, memory, and page validators.",
       "createdAtUtc": "2026-05-27T18:55:00.0000000Z"
+    },
+    {
+      "id": "c-0195-3",
+      "author": "AgentSmith",
+      "body": "Delivered first-class Blazor visibility at `/code-search` with ranked result rows (target/path/line span/score/match reason/snippet), query controls, and live index build status/progress cards backed by `CodeSearchService.SearchAsync` and `CodeSearchService.GetStatusAsync`. Navigation now exposes a dedicated `Code Search` entry in `NavMenu.razor`. Focused validation: `dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj --filter \"FullyQualifiedName~TagGovernanceTests|FullyQualifiedName~CodeSearchPageRoute_ReturnsSuccessAndContainsHeading\"` (35/35 passed).",
+      "createdAtUtc": "2026-05-29T00:00:00.0000000Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-27T16:55:53.0214105Z",
-  "updatedAtUtc": "2026-05-27T18:55:00.0000000Z",
+  "updatedAtUtc": "2026-05-29T00:00:00.0000000Z",
   "completedAtUtc": "2026-05-27T18:20:00.0000000Z",
-  "revision": 4,
+  "revision": 5,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

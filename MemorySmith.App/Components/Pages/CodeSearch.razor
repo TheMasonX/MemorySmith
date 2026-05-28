@@ -1,0 +1,197 @@
+@page "/code-search"
+@rendermode InteractiveServer
+@inject CodeSearchService CodeSearchService
+@inject IOptionsMonitor<MemorySmithOptions> Options
+@using Microsoft.Extensions.Options
+
+<PageTitle>Code Search - MemorySmith</PageTitle>
+
+<div class="health-workbench">
+    <div class="health-header">
+        <MudText Typo="Typo.h4">Code Search</MudText>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" OnClick="RefreshStatusAsync" Disabled="@_isBusy">Refresh status</MudButton>
+    </div>
+
+    <MudPaper Class="pa-4" Outlined="true">
+        <div class="admin-filter-bar" aria-label="Code search query controls">
+            <MudTextField T="string" Value="@_query" ValueChanged="@((string value) => _query = value)" Label="Search query" Variant="Variant.Outlined" Margin="Margin.Dense" Class="admin-filter-input" Immediate="true" />
+            <MudNumericField T="int" Value="@_limit" ValueChanged="@((int value) => _limit = Math.Clamp(value, 1, MaxLimit))" Min="1" Max="@MaxLimit" Label="Limit" Variant="Variant.Outlined" Margin="Margin.Dense" Class="admin-filter-select" />
+            <MudSwitch T="bool" Value="@_rebuildIfStale" ValueChanged="@((bool value) => _rebuildIfStale = value)" Label="Rebuild if stale" Color="Color.Primary" />
+            <MudSwitch T="bool" Value="@_forceRebuild" ValueChanged="@((bool value) => _forceRebuild = value)" Label="Force rebuild" Color="Color.Warning" />
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Search" Disabled="@(_isBusy || string.IsNullOrWhiteSpace(_query))" OnClick="SearchAsync">Search</MudButton>
+        </div>
+
+        <MudTextField T="string" Value="@_targetsInput" ValueChanged="@((string value) => _targetsInput = value)" Label="Target directories (one per line)" Variant="Variant.Outlined" Lines="3" Margin="Margin.Dense" HelperText="Leave blank to search configured targets." />
+
+        @if (_targetOptions.Count > 0)
+        {
+            <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;">
+                @foreach (var target in _targetOptions)
+                {
+                    <MudChip T="string" Variant="Variant.Outlined" Color="Color.Default">@target</MudChip>
+                }
+            </div>
+        }
+    </MudPaper>
+
+    @if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <MudAlert Severity="Severity.Error" Dense="true" Variant="Variant.Outlined" Class="mt-4">@_error</MudAlert>
+    }
+
+    @if (_status is not null)
+    {
+        <div class="health-stat-row" style="margin-top: 12px;">
+            <div class="health-stat-card">
+                <span class="health-stat-label">Provider</span>
+                <span class="health-stat-value" style="font-size:1rem">@_status.ProviderMode</span>
+            </div>
+            <div class="health-stat-card">
+                <span class="health-stat-label">Indexed Files</span>
+                <span class="health-stat-value">@_status.IndexedFileCount</span>
+            </div>
+            <div class="health-stat-card">
+                <span class="health-stat-label">Indexed Chunks</span>
+                <span class="health-stat-value">@_status.IndexedChunkCount</span>
+            </div>
+            <div class="health-stat-card @(_status.Build.IsRunning ? "is-working" : "is-core")">
+                <span class="health-stat-label">Build</span>
+                <span class="health-stat-value" style="font-size:1rem">@BuildLabel(_status.Build)</span>
+            </div>
+        </div>
+
+        <MudPaper Class="pa-4 mt-3" Outlined="true">
+            <MudText Typo="Typo.subtitle2">Index Build Progress</MudText>
+            <MudProgressLinear Color="Color.Primary" Rounded="true" Value="@_status.Build.ProgressPercentage" BufferValue="100" Class="mt-2" />
+            <div class="health-config-grid" style="margin-top: 10px;">
+                <span>State</span><strong>@_status.Build.State</strong>
+                <span>Processed</span><strong>@_status.Build.ProcessedFileCount / @_status.Build.TotalFileCount</strong>
+                <span>Reused</span><strong>@_status.Build.ReusedFileCount</strong>
+                <span>Updated</span><strong>@_status.Build.UpdatedFileCount</strong>
+                <span>Skipped</span><strong>@_status.Build.SkippedFileCount</strong>
+                <span>Failed</span><strong>@_status.Build.FailedFileCount</strong>
+                <span>Current document</span><strong>@(_status.Build.CurrentDocumentPath ?? "-")</strong>
+                <span>Last error</span><strong>@(_status.Build.LastError ?? "-")</strong>
+            </div>
+        </MudPaper>
+    }
+
+    <MudPaper Class="pa-0 mt-4" Outlined="true">
+        <MudTable Items="@_results" Dense="true" Hover="true" Breakpoint="Breakpoint.Sm" RowsPerPage="15" Class="health-table">
+            <HeaderContent>
+                <MudTh>Target</MudTh>
+                <MudTh>Path</MudTh>
+                <MudTh>Lines</MudTh>
+                <MudTh>Score</MudTh>
+                <MudTh>Match</MudTh>
+                <MudTh>Snippet</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Target">@context.Target</MudTd>
+                <MudTd DataLabel="Path">@context.DocumentPath</MudTd>
+                <MudTd DataLabel="Lines">@context.StartLine-@context.EndLine</MudTd>
+                <MudTd DataLabel="Score">@context.Score.ToString("0.000")</MudTd>
+                <MudTd DataLabel="Match">@context.MatchReason</MudTd>
+                <MudTd DataLabel="Snippet">
+                    <pre style="margin:0; white-space: pre-wrap; max-width: 56ch;">@context.Snippet</pre>
+                </MudTd>
+            </RowTemplate>
+            <NoRecordsContent>
+                <MudText Typo="Typo.body2" Class="pa-4">No code search results yet. Run a query to inspect ranked snippets.</MudText>
+            </NoRecordsContent>
+            <PagerContent>
+                <MudTablePager />
+            </PagerContent>
+        </MudTable>
+    </MudPaper>
+</div>
+
+@code {
+    private const int MaxLimit = 100;
+
+    private bool _isBusy;
+    private string _query = string.Empty;
+    private string _targetsInput = string.Empty;
+    private int _limit = 10;
+    private bool _rebuildIfStale = true;
+    private bool _forceRebuild;
+    private string? _error;
+    private CodeSearchStatus? _status;
+    private IReadOnlyList<string> _targetOptions = [];
+    private IReadOnlyList<CodeSearchResult> _results = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _targetOptions = Options.CurrentValue.CodeSearch.TargetDirectories
+            .Where(target => !string.IsNullOrWhiteSpace(target))
+            .Select(target => target.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        _targetsInput = string.Join(Environment.NewLine, _targetOptions);
+        await RefreshStatusAsync();
+    }
+
+    private async Task SearchAsync()
+    {
+        _isBusy = true;
+        _error = null;
+        try
+        {
+            var query = new CodeSearchQuery(
+                _query,
+                ParseTargets(_targetsInput),
+                Math.Clamp(_limit, 1, MaxLimit),
+                _rebuildIfStale,
+                _forceRebuild);
+
+            _results = await CodeSearchService.SearchAsync(query, CancellationToken.None);
+            await RefreshStatusAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private async Task RefreshStatusAsync()
+    {
+        _error = null;
+        try
+        {
+            _status = await CodeSearchService.GetStatusAsync(CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private static IReadOnlyList<string> ParseTargets(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return [];
+        }
+
+        return value
+            .Split(new[] { '\r', '\n', ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(target => !string.IsNullOrWhiteSpace(target))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static string BuildLabel(CodeSearchBuildProgress progress)
+    {
+        if (progress.IsRunning)
+        {
+            return $"{progress.ProgressPercentage}%";
+        }
+
+        return progress.State;
+    }
+}

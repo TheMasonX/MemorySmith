@@ -280,6 +280,10 @@ public class TagGovernanceTests
             Assert.That(markup, Does.Contain("ResetFilteredSettings"));
             Assert.That(navMarkup, Does.Contain("Href=\"/tags\""));
             Assert.That(navMarkup, Does.Contain("Tags"));
+            Assert.That(navMarkup, Does.Contain("Href=\"/code-search\""));
+            Assert.That(navMarkup, Does.Contain("Code Search"));
+            Assert.That(navMarkup, Does.Contain("Href=\"/training-workbench\""));
+            Assert.That(navMarkup, Does.Contain("Training"));
             Assert.That(navMarkup, Does.Contain("Href=\"/maintenance\""));
             Assert.That(navMarkup, Does.Contain("Maintenance"));
             Assert.That(navMarkup, Does.Not.Contain("Href=\"/variables\""));

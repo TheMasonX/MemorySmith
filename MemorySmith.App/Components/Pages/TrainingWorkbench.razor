@@ -1,0 +1,311 @@
+@page "/training-workbench"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = MemorySmithPolicies.CanAdminMemorySmith)]
+@inject IOptionsMonitor<MemorySmithOptions> Options
+@using System.Text.Json
+@using Microsoft.Extensions.Options
+
+<PageTitle>Training Workbench - MemorySmith</PageTitle>
+
+<div class="health-workbench">
+    <div class="health-header">
+        <MudText Typo="Typo.h4">Training Workbench</MudText>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync" Disabled="@_isBusy">Refresh</MudButton>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <MudAlert Severity="Severity.Error" Dense="true" Variant="Variant.Outlined" Class="mt-2">@_error</MudAlert>
+    }
+
+    @if (_snapshot is not null)
+    {
+        <div class="health-stat-row">
+            <div class="health-stat-card @(_snapshot.ChatTranscriptEnabled ? "is-core" : "is-deprecated")">
+                <span class="health-stat-label">Chat Transcript</span>
+                <span class="health-stat-value" style="font-size:1rem">@BoolLabel(_snapshot.ChatTranscriptEnabled)</span>
+            </div>
+            <div class="health-stat-card @(_snapshot.FeedbackEnabled ? "is-core" : "is-deprecated")">
+                <span class="health-stat-label">Feedback</span>
+                <span class="health-stat-value" style="font-size:1rem">@BoolLabel(_snapshot.FeedbackEnabled)</span>
+            </div>
+            <div class="health-stat-card @(_snapshot.PythonExecutableExists ? "is-core" : "is-deprecated")">
+                <span class="health-stat-label">Python Venv</span>
+                <span class="health-stat-value" style="font-size:1rem">@BoolLabel(_snapshot.PythonExecutableExists)</span>
+            </div>
+            <div class="health-stat-card @(_snapshot.HarnessScriptExists ? "is-core" : "is-deprecated")">
+                <span class="health-stat-label">Harness Script</span>
+                <span class="health-stat-value" style="font-size:1rem">@BoolLabel(_snapshot.HarnessScriptExists)</span>
+            </div>
+            <div class="health-stat-card @(_snapshot.TrainingReady ? "is-core" : "is-deprecated")">
+                <span class="health-stat-label">Readiness</span>
+                <span class="health-stat-value" style="font-size:1rem">@(_snapshot.TrainingReady ? "Ready" : "Needs setup")</span>
+            </div>
+        </div>
+
+        <div class="health-lower-grid" style="margin-top: 12px;">
+            <div class="health-lower-card">
+                <div class="health-section-title">Prerequisites</div>
+                <div class="health-config-grid">
+                    <span>Transcript path</span><strong>@_snapshot.TranscriptDirectory</strong>
+                    <span>Transcript files</span><strong>@_snapshot.TranscriptFileCount</strong>
+                    <span>Feedback enabled</span><strong>@BoolLabel(_snapshot.FeedbackEnabled)</strong>
+                    <span>Export path</span><strong>@_snapshot.ExportDirectory</strong>
+                    <span>Export files (.jsonl)</span><strong>@_snapshot.ExportFileCount</strong>
+                    <span>Runs path</span><strong>@_snapshot.RunsDirectory</strong>
+                    <span>Run directories</span><strong>@_snapshot.RunDirectoryCount</strong>
+                    <span>Python executable</span><strong>@_snapshot.PythonExecutablePath</strong>
+                    <span>Harness script</span><strong>@_snapshot.HarnessScriptPath</strong>
+                </div>
+            </div>
+
+            <div class="health-lower-card">
+                <div class="health-section-title">Current Contract</div>
+                <div class="health-config-grid">
+                    <span>Preference format</span><strong>@_snapshot.PreferenceFormat</strong>
+                    <span>Max run minutes</span><strong>@_snapshot.MaxRunMinutes</strong>
+                    <span>Active model tag</span><strong>@_snapshot.ActiveModelTag</strong>
+                    <span>Fallback model tag</span><strong>@_snapshot.FallbackModelTag</strong>
+                    <span>Store chat content</span><strong>@BoolLabel(_snapshot.StoreChatContent)</strong>
+                    <span>Transcript redaction</span><strong>@BoolLabel(_snapshot.TranscriptRedactionEnabled)</strong>
+                </div>
+            </div>
+        </div>
+    }
+
+    <MudPaper Class="pa-0 mt-4" Outlined="true">
+        <MudTable Items="@_runs" Dense="true" Hover="true" Breakpoint="Breakpoint.Sm" RowsPerPage="15" Class="health-table">
+            <HeaderContent>
+                <MudTh>Run</MudTh>
+                <MudTh>Phase</MudTh>
+                <MudTh>Last Event</MudTh>
+                <MudTh>Elapsed (s)</MudTh>
+                <MudTh>Records</MudTh>
+                <MudTh>Status File</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Run">@context.RunId</MudTd>
+                <MudTd DataLabel="Phase">@context.Phase</MudTd>
+                <MudTd DataLabel="Last Event">@context.LastEvent</MudTd>
+                <MudTd DataLabel="Elapsed">@context.ElapsedSecondsText</MudTd>
+                <MudTd DataLabel="Records">@context.RecordCountText</MudTd>
+                <MudTd DataLabel="Status File">@context.StatusPath</MudTd>
+            </RowTemplate>
+            <NoRecordsContent>
+                <MudText Typo="Typo.body2" Class="pa-4">No run artifacts found yet. Execute Scripts/Run-FinetuneHarness.ps1 to generate run telemetry and refresh this page.</MudText>
+            </NoRecordsContent>
+            <PagerContent>
+                <MudTablePager />
+            </PagerContent>
+        </MudTable>
+    </MudPaper>
+</div>
+
+@code {
+    private bool _isBusy;
+    private string? _error;
+    private TrainingReadinessSnapshot? _snapshot;
+    private IReadOnlyList<TrainingRunSummary> _runs = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _isBusy = true;
+        _error = null;
+        try
+        {
+            var training = Options.CurrentValue.Training;
+            _snapshot = BuildSnapshot(training);
+            _runs = await LoadRunSummariesAsync(_snapshot.RunsDirectory);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private static TrainingReadinessSnapshot BuildSnapshot(TrainingOptions training)
+    {
+        var transcriptDirectory = Path.GetFullPath(training.TranscriptDirectory);
+        var exportDirectory = Path.GetFullPath(training.TrainingDataExportPath);
+        var runsDirectory = Path.GetFullPath(training.RunsDirectory);
+        var pythonExecutablePath = Path.GetFullPath(Path.Combine(training.PythonVenvPath, "Scripts", "python.exe"));
+        var harnessScriptPath = Path.GetFullPath(training.PythonHarnessScript);
+
+        var transcriptFileCount = SafeCountFiles(transcriptDirectory, "*.jsonl");
+        var exportFileCount = SafeCountFiles(exportDirectory, "*.jsonl");
+        var runDirectoryCount = SafeCountDirectories(runsDirectory);
+
+        var transcriptPathReady = Directory.Exists(transcriptDirectory);
+        var exportPathReady = Directory.Exists(exportDirectory);
+        var runsPathReady = Directory.Exists(runsDirectory);
+        var pythonReady = File.Exists(pythonExecutablePath);
+        var harnessReady = File.Exists(harnessScriptPath);
+        var ready = training.ChatTranscriptEnabled
+            && training.FeedbackEnabled
+            && transcriptPathReady
+            && exportPathReady
+            && runsPathReady
+            && pythonReady
+            && harnessReady;
+
+        return new TrainingReadinessSnapshot(
+            training.ChatTranscriptEnabled,
+            training.StoreChatContent,
+            training.TranscriptRedactionEnabled,
+            training.FeedbackEnabled,
+            transcriptDirectory,
+            transcriptFileCount,
+            exportDirectory,
+            exportFileCount,
+            runsDirectory,
+            runDirectoryCount,
+            pythonExecutablePath,
+            pythonReady,
+            harnessScriptPath,
+            harnessReady,
+            training.PreferenceFormat.ToString(),
+            training.MaxRunMinutes,
+            training.ActiveModelTag,
+            training.FallbackModelTag,
+            ready);
+    }
+
+    private static async Task<IReadOnlyList<TrainingRunSummary>> LoadRunSummariesAsync(string runsDirectory)
+    {
+        if (!Directory.Exists(runsDirectory))
+        {
+            return [];
+        }
+
+        var runDirectories = Directory.GetDirectories(runsDirectory)
+            .OrderByDescending(path => path, StringComparer.OrdinalIgnoreCase)
+            .Take(40)
+            .ToList();
+
+        var results = new List<TrainingRunSummary>(runDirectories.Count);
+        foreach (var runDirectory in runDirectories)
+        {
+            var statusPath = Path.Combine(runDirectory, "status.json");
+            if (!File.Exists(statusPath))
+            {
+                continue;
+            }
+
+            var summary = await ParseRunSummaryAsync(runDirectory, statusPath);
+            if (summary is not null)
+            {
+                results.Add(summary);
+            }
+        }
+
+        return results;
+    }
+
+    private static async Task<TrainingRunSummary?> ParseRunSummaryAsync(string runDirectory, string statusPath)
+    {
+        try
+        {
+            await using var stream = File.OpenRead(statusPath);
+            using var document = await JsonDocument.ParseAsync(stream);
+            var root = document.RootElement;
+
+            var runId = GetString(root, "runId") ?? Path.GetFileName(runDirectory);
+            var phase = GetString(root, "phase") ?? "unknown";
+            var lastEvent = GetString(root, "lastEvent") ?? "-";
+            var elapsed = root.TryGetProperty("elapsedSeconds", out var elapsedElement) && elapsedElement.ValueKind == JsonValueKind.Number
+                ? elapsedElement.GetDouble().ToString("0.###")
+                : "-";
+
+            var recordCount = "-";
+            if (root.TryGetProperty("metrics", out var metricsElement)
+                && metricsElement.ValueKind == JsonValueKind.Object
+                && metricsElement.TryGetProperty("records", out var recordsElement)
+                && recordsElement.ValueKind == JsonValueKind.Number)
+            {
+                recordCount = recordsElement.GetInt32().ToString();
+            }
+
+            return new TrainingRunSummary(
+                runId,
+                phase,
+                lastEvent,
+                elapsed,
+                recordCount,
+                statusPath);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static int SafeCountFiles(string directory, string pattern)
+    {
+        if (!Directory.Exists(directory))
+        {
+            return 0;
+        }
+
+        return Directory.GetFiles(directory, pattern, SearchOption.TopDirectoryOnly).Length;
+    }
+
+    private static int SafeCountDirectories(string directory)
+    {
+        if (!Directory.Exists(directory))
+        {
+            return 0;
+        }
+
+        return Directory.GetDirectories(directory, "*", SearchOption.TopDirectoryOnly).Length;
+    }
+
+    private static string BoolLabel(bool value) => value ? "Enabled" : "Disabled";
+
+    private static string? GetString(JsonElement element, string propertyName)
+    {
+        if (!element.TryGetProperty(propertyName, out var value) || value.ValueKind != JsonValueKind.String)
+        {
+            return null;
+        }
+
+        return value.GetString();
+    }
+
+    private sealed record TrainingReadinessSnapshot(
+        bool ChatTranscriptEnabled,
+        bool StoreChatContent,
+        bool TranscriptRedactionEnabled,
+        bool FeedbackEnabled,
+        string TranscriptDirectory,
+        int TranscriptFileCount,
+        string ExportDirectory,
+        int ExportFileCount,
+        string RunsDirectory,
+        int RunDirectoryCount,
+        string PythonExecutablePath,
+        bool PythonExecutableExists,
+        string HarnessScriptPath,
+        bool HarnessScriptExists,
+        string PreferenceFormat,
+        int MaxRunMinutes,
+        string ActiveModelTag,
+        string FallbackModelTag,
+        bool TrainingReady);
+
+    private sealed record TrainingRunSummary(
+        string RunId,
+        string Phase,
+        string LastEvent,
+        string ElapsedSecondsText,
+        string RecordCountText,
+        string StatusPath);
+}

@@ -74,6 +74,19 @@ public class AppApiContractTests
     }
 
     [Test]
+    public async Task CodeSearchPageRoute_ReturnsSuccessAndContainsHeading()
+    {
+        var response = await _client.GetAsync("/code-search");
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+            Assert.That(body, Does.Contain("Code Search"));
+        });
+    }
+
+    [Test]
     public async Task RequestPipeline_EmitsProblemDetailsTraceIdAndStructuredRequestCorrelation()
     {
         var tempDir = Path.Combine(Path.GetTempPath(), $"memorysmith-request-pipeline-{Guid.NewGuid():N}");

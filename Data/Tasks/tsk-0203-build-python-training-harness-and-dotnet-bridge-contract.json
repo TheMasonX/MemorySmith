@@ -39,15 +39,21 @@
       "author": "AgentSmith",
       "body": "Added dependency preflight (`Scripts/Test-FinetuneHarnessPrereqs.ps1`) and runner integration with optional fail-fast mode. Executed second benchmarked run `sprint8-ft-20260528` and revalidated full repo (`Scripts/Validate-Repo.ps1`: 419 tests, 0 failures). Remaining scope is true LoRA execution path once pinned training environment dependencies are provisioned.",
       "createdAtUtc": "2026-05-28T23:25:00.0000000Z"
+    },
+    {
+      "id": "c-0203-4-20260529",
+      "author": "AgentSmith",
+      "body": "Added in-app harness observability via `/training-workbench`: latest run phases, last events, elapsed seconds, record counts, and resolved `status.json` paths are now visible in Blazor without terminal access. This improves operational visibility while preserving existing script-first execution semantics.",
+      "createdAtUtc": "2026-05-29T00:00:00.0000000Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-28T21:43:18.8947975Z",
-  "updatedAtUtc": "2026-05-28T23:25:00.0000000Z",
+  "updatedAtUtc": "2026-05-29T00:00:00.0000000Z",
   "completedAtUtc": null,
-  "revision": 3,
+  "revision": 4,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,
