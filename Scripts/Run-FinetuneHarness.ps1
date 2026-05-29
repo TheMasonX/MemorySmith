@@ -205,6 +205,7 @@ $request = [ordered]@{
     runId = $RunId
     trainMode = $TrainMode
     modelId = $ModelId
+    hfAuthConfigured = -not [string]::IsNullOrWhiteSpace($HfToken)
     exportPath = $resolvedExportPath
     transcriptDirectory = (Resolve-WorkflowPath $TranscriptDirectory)
     format = "FilteredSft"

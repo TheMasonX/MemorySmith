@@ -693,6 +693,10 @@ class Harness:
             "plannedMode": planned_mode,
             "fallbackCodes": fallback_codes,
         }
+        hf_auth_configured = self.request.get("hfAuthConfigured")
+        if isinstance(hf_auth_configured, bool):
+            done_metrics["hfAuthConfigured"] = hf_auth_configured
+
         for key, out_key in (
             ("steps", "trainSteps"),
             ("completedEpochs", "trainCompletedEpochs"),

@@ -173,6 +173,7 @@ public sealed class TrainingHarnessRunnerService
         {
             runId,
             trainMode = "auto",
+            hfAuthConfigured = !string.IsNullOrWhiteSpace(huggingFaceToken),
             exportPath = exportDirectory,
             transcriptDirectory = ResolvePath(appOptions.Training.TranscriptDirectory),
             format = appOptions.Training.PreferenceFormat.ToString(),
