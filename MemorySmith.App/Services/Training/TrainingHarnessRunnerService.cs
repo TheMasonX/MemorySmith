@@ -229,6 +229,15 @@ public sealed class TrainingHarnessRunnerService
             UseShellExecute = false,
             CreateNoWindow = true
         };
+        if (!startInfo.Environment.ContainsKey("HF_HUB_DISABLE_XET"))
+        {
+            startInfo.Environment["HF_HUB_DISABLE_XET"] = "1";
+        }
+
+        if (!startInfo.Environment.ContainsKey("HF_HUB_ENABLE_HF_TRANSFER"))
+        {
+            startInfo.Environment["HF_HUB_ENABLE_HF_TRANSFER"] = "0";
+        }
 
         using var process = new Process { StartInfo = startInfo, EnableRaisingEvents = true };
         process.Start();

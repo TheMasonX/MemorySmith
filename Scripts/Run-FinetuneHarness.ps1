@@ -103,6 +103,13 @@ function Initialize-TrainingScratchEnvironment {
     $env:TORCH_HOME = $torchHome
     $env:TMP = $tempDirectory
     $env:TEMP = $tempDirectory
+    # Prefer plain HTTP transfers for large model shards on local Windows hosts.
+    if ([string]::IsNullOrWhiteSpace($env:HF_HUB_DISABLE_XET)) {
+        $env:HF_HUB_DISABLE_XET = "1"
+    }
+    if ([string]::IsNullOrWhiteSpace($env:HF_HUB_ENABLE_HF_TRANSFER)) {
+        $env:HF_HUB_ENABLE_HF_TRANSFER = "0"
+    }
 }
 
 function Write-Utf8NoBomFile {
