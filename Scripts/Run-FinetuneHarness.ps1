@@ -156,9 +156,13 @@ if ($LASTEXITCODE -ne 0) {
     throw "Training dependency preflight execution failed"
 }
 $preflight = $preflightJson | ConvertFrom-Json
-if ($RequireTrainingDependencies -and -not $preflight.ready) {
+$enforceDependencyReadiness = $RequireTrainingDependencies -and -not [string]::Equals($TrainMode, "simulated", [System.StringComparison]::OrdinalIgnoreCase)
+if ($enforceDependencyReadiness -and -not $preflight.ready) {
     $missingText = if ($preflight.missing.Count -gt 0) { $preflight.missing -join ', ' } else { 'none' }
     throw "Training dependency preflight not ready for TrainMode '$TrainMode'. Missing: $missingText. Accelerator: $($preflight.accelerator)."
+}
+if ($RequireTrainingDependencies -and -not $enforceDependencyReadiness -and -not $preflight.ready) {
+    Write-Warning "RequireTrainingDependencies was set but TrainMode '$TrainMode' allows simulated execution; continuing despite preflight readiness=false."
 }
 if (-not $preflight.ready) {
     $missingText = if ($preflight.missing.Count -gt 0) { $preflight.missing -join ', ' } else { 'none' }

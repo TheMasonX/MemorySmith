@@ -57,6 +57,8 @@ Train mode scaffold:
 - `-TrainMode simulated`: force simulated mode for quick contract checks.
 - `-TrainMode lora`: explicit LoRA intent; currently reports a reasoned simulated fallback until a real trainer path is wired.
 
+`-RequireTrainingDependencies` remains strict for `auto` and `lora` intent. When combined with `-TrainMode simulated`, the runner logs a warning and continues so intentional simulation checks are not blocked.
+
 ## Produced Artifacts
 
 - Run request: `runs/sprint3-ft-20260528/request.json`

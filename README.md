@@ -51,6 +51,8 @@ The default bootstrap now targets the core GPU-capable training stack. Optional 
 
 Harness runs support explicit mode intent with `-TrainMode auto|simulated|lora`. The `lora` intent is currently scaffold-only and produces a reasoned simulated fallback while the real trainer path is pending.
 
+`-RequireTrainingDependencies` enforces accelerator-ready preflight for `auto`/`lora` intent. With `-TrainMode simulated`, the runner reports the preflight state but allows execution to continue.
+
 ## The Project Wiki
 
 `Data/Memories/` is the structured live wiki for this project. `Data/Pages/` is the markdown live wiki for longer-form user and agent-authored notes. The app defaults `MemorySmith:DataPath` to `../Data/Memories` and `MemorySmith:PagesPath` to `../Data/Pages`, so local runs read and write those records directly.
