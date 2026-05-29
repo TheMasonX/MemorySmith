@@ -6,9 +6,10 @@ param(
     [string]$TranscriptDirectory = "Data/Events/chat-transcripts",
     [string]$PythonVenvPath,
     [string]$ScratchRoot,
-    [ValidateSet("auto", "simulated", "lora")]
+    [ValidateSet("auto", "simulated", "lora", "infer")]
     [string]$TrainMode = "auto",
     [string]$ModelId = "Qwen/Qwen3.5-4B",
+    [string]$AdapterPath,
     [switch]$RequireTrainingDependencies,
     [switch]$DryRun
 )
@@ -204,6 +205,12 @@ $request = [ordered]@{
         sequenceLength = 512
     }
 }
+
+# Add adapterPath if provided (for inference mode)
+if (-not [string]::IsNullOrWhiteSpace($AdapterPath)) {
+    $request["adapterPath"] = (Resolve-WorkflowPath $AdapterPath)
+}
+
 $requestJson = $request | ConvertTo-Json -Depth 8
 Write-Utf8NoBomFile -Path $requestPath -Content $requestJson
 

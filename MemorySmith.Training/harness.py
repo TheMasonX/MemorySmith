@@ -36,11 +36,18 @@ class Harness:
     def resolve_training_mode(self) -> tuple[str, list[str]]:
         probe = self.request.get("dependencyProbe")
         requested_mode = str(self.request.get("trainMode") or "auto").strip().lower()
-        if requested_mode not in {"auto", "simulated", "lora"}:
+        if requested_mode not in {"auto", "simulated", "lora", "infer"}:
             requested_mode = "auto"
 
         if requested_mode == "simulated":
             return "simulated", ["train mode forced to simulated by request"]
+
+        if requested_mode == "infer":
+            # Inference mode requires adapter path but not full dependencies
+            adapter_path = self.request.get("adapterPath")
+            if not adapter_path:
+                return "simulated", ["infer mode requested but no adapterPath provided"]
+            return "inference-ready", []
 
         if not isinstance(probe, dict):
             return "simulated", ["dependency probe was not provided"]
@@ -374,6 +381,93 @@ class Harness:
             "learningRate": learning_rate,
         }
 
+    def infer_lora(self, adapter_path_str: str) -> dict[str, Any]:
+        import torch
+        from peft import PeftModel
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+
+        adapter_path = Path(adapter_path_str)
+        if not adapter_path.exists():
+            raise RuntimeError(f"Adapter path does not exist: {adapter_path_str}")
+
+        model_id = self.resolve_model_id()
+        cuda_available = torch.cuda.is_available()
+        torch_dtype = torch.bfloat16 if cuda_available and torch.cuda.is_bf16_supported() else torch.float16
+        inference_device = "cuda" if cuda_available else "cpu"
+
+        # Load base model
+        self.emit_event("infer.base_model_loading", {"modelId": model_id})
+        base_model = AutoModelForCausalLM.from_pretrained(
+            model_id,
+            torch_dtype=torch_dtype,
+            trust_remote_code=True,
+            device_map=None,
+            low_cpu_mem_usage=False,
+        )
+        base_model.to(inference_device)
+        base_model.eval()
+
+        # Load adapter and merge
+        self.emit_event("infer.adapter_loading", {"adapterPath": str(adapter_path)})
+        merged_model = PeftModel.from_pretrained(base_model, adapter_path)
+        merged_model = merged_model.merge_and_unload()
+        merged_model.eval()
+
+        # Load tokenizer
+        tokenizer = AutoTokenizer.from_pretrained(adapter_path, trust_remote_code=True)
+        if tokenizer.pad_token is None:
+            tokenizer.pad_token = tokenizer.eos_token
+
+        # Test prompt
+        test_prompt = "What is semantic search?"
+        self.emit_event("infer.prompt", {"text": test_prompt})
+
+        # Generate with base model
+        base_input = tokenizer(test_prompt, return_tensors="pt").to(inference_device)
+        with torch.no_grad():
+            base_output = base_model.generate(
+                base_input["input_ids"],
+                max_length=128,
+                top_p=0.9,
+                temperature=0.7,
+                do_sample=False,
+            )
+        base_text = tokenizer.decode(base_output[0], skip_special_tokens=True)
+
+        # Generate with merged model
+        merged_input = tokenizer(test_prompt, return_tensors="pt").to(inference_device)
+        with torch.no_grad():
+            merged_output = merged_model.generate(
+                merged_input["input_ids"],
+                max_length=128,
+                top_p=0.9,
+                temperature=0.7,
+                do_sample=False,
+            )
+        merged_text = tokenizer.decode(merged_output[0], skip_special_tokens=True)
+
+        self.emit_event("infer.base_output", {"length": len(base_text), "preview": base_text[:100]})
+        self.emit_event("infer.merged_output", {"length": len(merged_text), "preview": merged_text[:100]})
+
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
+        return {
+            "mode": "infer",
+            "trainMode": "infer",
+            "plannedMode": "inference-ready",
+            "fallbackCodes": [],
+            "reason": "executed LoRA adapter inference and comparison",
+            "modelId": model_id,
+            "adapterPath": str(adapter_path),
+            "device": inference_device,
+            "testPrompt": test_prompt,
+            "baseOutputLength": len(base_text),
+            "mergedOutputLength": len(merged_text),
+            "baseOutputPreview": base_text[:80],
+            "mergedOutputPreview": merged_text[:80],
+        }
+
     def write_benchmark(self, records: int, tokens_est: int, train_metrics: dict[str, Any], elapsed_export: float, elapsed_train: float, elapsed_eval: float) -> None:
         payload = {
             "runId": self.run_id,
@@ -472,6 +566,24 @@ class Harness:
                 reasons=train_reasons,
             )
             execution_mode = "dry-run"
+        elif planned_mode == "inference-ready" and requested_mode == "infer":
+            execution_mode = "infer"
+            try:
+                adapter_path = self.request.get("adapterPath")
+                train_metrics = self.infer_lora(adapter_path)
+            except Exception as ex:
+                train_reasons = [
+                    *train_reasons,
+                    f"inference runtime error: {ex}",
+                ]
+                execution_mode = "simulated"
+                train_metrics = self.simulate_train(
+                    records,
+                    dry_run=False,
+                    mode=execution_mode,
+                    planned_mode=planned_mode,
+                    reasons=train_reasons,
+                )
         elif planned_mode == "training-ready" and requested_mode in {"auto", "lora"}:
             execution_mode = "lora"
             try:
