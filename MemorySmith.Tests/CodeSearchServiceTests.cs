@@ -200,6 +200,36 @@ public class CodeSearchServiceTests
         });
     }
 
+    [TestCase("screwdriver", "MemorySmith.App/Services/ToolCatalog.cs")]
+    [TestCase("cli command runner", "MemorySmith.App/Services/CliRunner.cs")]
+    [TestCase("proposal review task", "MemorySmith.Core/Services/ProposalTaskBoard.cs")]
+    public async Task SearchAsync_RelevanceScorecard_ReturnsExpectedTopDocument(string query, string expectedTopDocument)
+    {
+        await File.WriteAllTextAsync(Path.Combine(_repoRoot, ".gitignore"), string.Empty);
+        await File.WriteAllTextAsync(
+            Path.Combine(_repoRoot, "MemorySmith.App", "Services", "ToolCatalog.cs"),
+            "namespace MemorySmith.App.Services;\npublic static class ToolCatalog\n{\n    public static string RegisterTool(string input) => input + \" tool utility harness\";\n}\n");
+        await File.WriteAllTextAsync(
+            Path.Combine(_repoRoot, "MemorySmith.App", "Services", "CliRunner.cs"),
+            "namespace MemorySmith.App.Services;\npublic static class CliRunner\n{\n    public static string RunCliTool(string input) => input + \" cli command tool runner\";\n}\n");
+        await File.WriteAllTextAsync(
+            Path.Combine(_repoRoot, "MemorySmith.Core", "Services", "ProposalTaskBoard.cs"),
+            "namespace MemorySmith.Core.Services;\npublic static class ProposalTaskBoard\n{\n    public static string ReviewProposalTask(string input) => input + \" proposal review task workflow\";\n}\n");
+        await File.WriteAllTextAsync(
+            Path.Combine(_repoRoot, "MemorySmith.Core", "Services", "Distractor.cs"),
+            "namespace MemorySmith.Core.Services;\npublic static class Distractor\n{\n    public static string BuildOpaquePipeline(string input) => input + \" latent unrelated vector\";\n}\n");
+
+        var service = CreateService(new ScrewdriverSemanticBiasEmbeddingProvider());
+
+        var results = await service.SearchAsync(new CodeSearchQuery(query, Limit: 5), CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(results, Is.Not.Empty, $"Expected results for query '{query}'.");
+            Assert.That(results[0].DocumentPath, Is.EqualTo(expectedTopDocument), $"Unexpected top document for query '{query}'.");
+        });
+    }
+
     [Test]
     public async Task SearchAsync_LexicalFallbackMatchesSnakeCaseQueryAgainstCamelCaseIdentifier()
     {

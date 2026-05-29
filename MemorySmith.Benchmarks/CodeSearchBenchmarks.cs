@@ -83,11 +83,17 @@ public class CodeSearchBenchmarks
 
             var toolLatencyMs = await MeasureWarmLatencyAsync(bench._service, bench._toolQuery, iterations: 20);
             var screwdriverLatencyMs = await MeasureWarmLatencyAsync(bench._service, bench._screwdriverQuery, iterations: 20);
+            var scorecard = await RunScorecardAsync(bench._service);
 
             Console.WriteLine($"CodeSearch Tool Query: {toolResults.Count} result(s), top={toolResults.FirstOrDefault()?.DocumentPath ?? "<none>"}");
             Console.WriteLine($"CodeSearch Screwdriver Query: {screwdriverResults.Count} result(s), top={screwdriverResults.FirstOrDefault()?.DocumentPath ?? "<none>"}");
             Console.WriteLine($"CodeSearch Tool Query Warm Avg: {toolLatencyMs:0.###} ms over 20 iterations");
             Console.WriteLine($"CodeSearch Screwdriver Query Warm Avg: {screwdriverLatencyMs:0.###} ms over 20 iterations");
+            Console.WriteLine($"CodeSearch Relevance Scorecard: {scorecard.passed}/{scorecard.total} passed");
+            foreach (var line in scorecard.lines)
+            {
+                Console.WriteLine($"  {line}");
+            }
         }
         finally
         {
@@ -105,6 +111,33 @@ public class CodeSearchBenchmarks
 
         sw.Stop();
         return sw.Elapsed.TotalMilliseconds / Math.Max(1, iterations);
+    }
+
+    private static async Task<(int passed, int total, List<string> lines)> RunScorecardAsync(CodeSearchService service)
+    {
+        var scorecard = new (string query, string expectedTop)[]
+        {
+            ("tool utility", "MemorySmith.App/Services/ToolCatalog.cs"),
+            ("screwdriver", "MemorySmith.App/Services/ToolCatalog.cs"),
+            ("opaque pipeline", "MemorySmith.Core/Services/UnrelatedPipeline.cs")
+        };
+
+        var lines = new List<string>(scorecard.Length);
+        var passed = 0;
+        foreach (var entry in scorecard)
+        {
+            var results = await service.SearchAsync(new CodeSearchQuery(entry.query, Limit: 5), CancellationToken.None);
+            var top = results.FirstOrDefault()?.DocumentPath ?? "<none>";
+            var ok = string.Equals(top, entry.expectedTop, StringComparison.OrdinalIgnoreCase);
+            if (ok)
+            {
+                passed++;
+            }
+
+            lines.Add($"[{(ok ? "PASS" : "FAIL")}] query='{entry.query}' expected='{entry.expectedTop}' actual='{top}'");
+        }
+
+        return (passed, scorecard.Length, lines);
     }
 
     private sealed class HashEmbeddingProvider : ITextEmbeddingProvider

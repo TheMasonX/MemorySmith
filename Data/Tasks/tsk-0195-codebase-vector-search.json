@@ -55,13 +55,19 @@
       "author": "AgentSmith",
       "body": "Added a second quality hardening pass: per-document result diversity (`MaxResultsPerDocument`, default `2`) to prevent one file from flooding top-k, plus regression `SearchAsync_DiversifiesResultsAcrossDocuments_WhenSingleFileWouldOtherwiseDominate`. Benchmark smoke now prints warm-query averages for code-search probes. Validation: `dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj --filter \"FullyQualifiedName~CodeSearchServiceTests\"` (22/22 passed). Spotcheck/benchmark: `dotnet run --project MemorySmith.Benchmarks -- --smoke` -> screwdriver top hit still `ToolCatalog.cs`; warm averages about `0.56-0.58 ms` over 20 iterations.",
       "createdAtUtc": "2026-05-29T02:20:00.0000000Z"
+    },
+    {
+      "id": "c-0195-7",
+      "author": "AgentSmith",
+      "body": "Expanded automated relevance guardrails with a multi-query scorecard regression (`SearchAsync_RelevanceScorecard_ReturnsExpectedTopDocument`) covering screwdriver/tool, cli tooling, and proposal-task phrasing. Benchmark smoke now emits a compact code-search scorecard pass rate with expected-vs-actual top hits for fast operator spotchecks. Validation: `dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj --filter \"FullyQualifiedName~CodeSearchServiceTests\"` and `dotnet run --project MemorySmith.Benchmarks -- --smoke`.",
+      "createdAtUtc": "2026-05-29T02:40:00.0000000Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-27T16:55:53.0214105Z",
-  "updatedAtUtc": "2026-05-29T02:20:00.0000000Z",
+  "updatedAtUtc": "2026-05-29T02:40:00.0000000Z",
   "completedAtUtc": "2026-05-27T18:20:00.0000000Z",
   "revision": 5,
   "isArchived": false,
