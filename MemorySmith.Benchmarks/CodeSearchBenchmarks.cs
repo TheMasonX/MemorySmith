@@ -2,6 +2,7 @@ using BenchmarkDotNet.Attributes;
 using MemorySmith.App.Services;
 using Microsoft.Extensions.Options;
 using System.Text.RegularExpressions;
+using System.Diagnostics;
 
 namespace MemorySmith.Benchmarks;
 
@@ -80,13 +81,30 @@ public class CodeSearchBenchmarks
             var toolResults = await bench._service.SearchAsync(bench._toolQuery, CancellationToken.None);
             var screwdriverResults = await bench._service.SearchAsync(bench._screwdriverQuery, CancellationToken.None);
 
+            var toolLatencyMs = await MeasureWarmLatencyAsync(bench._service, bench._toolQuery, iterations: 20);
+            var screwdriverLatencyMs = await MeasureWarmLatencyAsync(bench._service, bench._screwdriverQuery, iterations: 20);
+
             Console.WriteLine($"CodeSearch Tool Query: {toolResults.Count} result(s), top={toolResults.FirstOrDefault()?.DocumentPath ?? "<none>"}");
             Console.WriteLine($"CodeSearch Screwdriver Query: {screwdriverResults.Count} result(s), top={screwdriverResults.FirstOrDefault()?.DocumentPath ?? "<none>"}");
+            Console.WriteLine($"CodeSearch Tool Query Warm Avg: {toolLatencyMs:0.###} ms over 20 iterations");
+            Console.WriteLine($"CodeSearch Screwdriver Query Warm Avg: {screwdriverLatencyMs:0.###} ms over 20 iterations");
         }
         finally
         {
             bench.Cleanup();
         }
+    }
+
+    private static async Task<double> MeasureWarmLatencyAsync(CodeSearchService service, CodeSearchQuery query, int iterations)
+    {
+        var sw = Stopwatch.StartNew();
+        for (var index = 0; index < iterations; index++)
+        {
+            _ = await service.SearchAsync(query, CancellationToken.None);
+        }
+
+        sw.Stop();
+        return sw.Elapsed.TotalMilliseconds / Math.Max(1, iterations);
     }
 
     private sealed class HashEmbeddingProvider : ITextEmbeddingProvider

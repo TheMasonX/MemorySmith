@@ -271,21 +271,24 @@ public sealed class CodeSearchService : IDisposable
         if (TryGetQueryEmbedding(query.Query!, out var queryEmbedding))
         {
             var vectorCandidates = await LoadVectorCandidatesAsync(connection, normalizedTargets, expandedQueryTokens, limit, cancellationToken);
-            var vectorResults = vectorCandidates.Chunks
+            var vectorScored = vectorCandidates.Chunks
                 .Where(chunk => chunk.Embedding.Length == queryEmbedding.Length)
                 .Select(chunk =>
                 {
                     var rawScore = Dot(queryEmbedding, chunk.Embedding);
+                    var matchedTokenCount = CountMatchedTokens(chunk, expandedQueryTokens);
                     var lexicalScore = ScoreLexical(chunk, expandedQueryTokens);
                     var targetWeight = GetTargetWeight(chunk.Target, chunk.DocumentPath, queryTokens);
                     var hybridScore = ScoreHybrid(rawScore, lexicalScore);
-                    return (Chunk: chunk, RawScore: rawScore, LexicalScore: lexicalScore, TargetWeight: targetWeight, WeightedScore: hybridScore * targetWeight);
+                    return new ScoredChunk(chunk, rawScore, lexicalScore, targetWeight, hybridScore * targetWeight, matchedTokenCount);
                 })
                 .Where(entry => entry.WeightedScore > 0)
                 .OrderByDescending(entry => entry.WeightedScore)
                 .ThenBy(entry => entry.Chunk.DocumentPath, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(entry => entry.Chunk.StartLine)
-                .Take(limit)
+                .ToList();
+
+            var vectorResults = TakeBalancedByDocument(vectorScored, limit, _options.MaxResultsPerDocument)
                 .Select(entry => new CodeSearchResult(
                     entry.Chunk.Target,
                     entry.Chunk.DocumentPath,
@@ -307,21 +310,24 @@ public sealed class CodeSearchService : IDisposable
             if (vectorCandidates.UsedPrefilter)
             {
                 chunks = await LoadChunksAsync(connection, normalizedTargets, cancellationToken);
-                var fallbackVectorResults = chunks
+                var fallbackVectorScored = chunks
                     .Where(chunk => chunk.Embedding.Length == queryEmbedding.Length)
                     .Select(chunk =>
                     {
                         var rawScore = Dot(queryEmbedding, chunk.Embedding);
+                        var matchedTokenCount = CountMatchedTokens(chunk, expandedQueryTokens);
                         var lexicalScore = ScoreLexical(chunk, expandedQueryTokens);
                         var targetWeight = GetTargetWeight(chunk.Target, chunk.DocumentPath, queryTokens);
                         var hybridScore = ScoreHybrid(rawScore, lexicalScore);
-                        return (Chunk: chunk, RawScore: rawScore, LexicalScore: lexicalScore, TargetWeight: targetWeight, WeightedScore: hybridScore * targetWeight);
+                        return new ScoredChunk(chunk, rawScore, lexicalScore, targetWeight, hybridScore * targetWeight, matchedTokenCount);
                     })
                     .Where(entry => entry.WeightedScore > 0)
                     .OrderByDescending(entry => entry.WeightedScore)
                     .ThenBy(entry => entry.Chunk.DocumentPath, StringComparer.OrdinalIgnoreCase)
                     .ThenBy(entry => entry.Chunk.StartLine)
-                    .Take(limit)
+                    .ToList();
+
+                var fallbackVectorResults = TakeBalancedByDocument(fallbackVectorScored, limit, _options.MaxResultsPerDocument)
                     .Select(entry => new CodeSearchResult(
                         entry.Chunk.Target,
                         entry.Chunk.DocumentPath,
@@ -348,19 +354,21 @@ public sealed class CodeSearchService : IDisposable
             return CompleteSearch("empty-index", [], 0);
         }
 
-        var lexicalResults = chunks
+        var lexicalScored = chunks
             .Select(chunk =>
             {
                 var rawScore = ScoreLexical(chunk, expandedQueryTokens);
                 var matchedTokenCount = CountMatchedTokens(chunk, expandedQueryTokens);
                 var targetWeight = GetTargetWeight(chunk.Target, chunk.DocumentPath, queryTokens);
-                return (Chunk: chunk, RawScore: rawScore, MatchedTokenCount: matchedTokenCount, TargetWeight: targetWeight, WeightedScore: rawScore * targetWeight);
+                return new ScoredChunk(chunk, rawScore, rawScore, targetWeight, rawScore * targetWeight, matchedTokenCount);
             })
             .Where(entry => entry.WeightedScore > 0)
             .OrderByDescending(entry => entry.WeightedScore)
             .ThenBy(entry => entry.Chunk.DocumentPath, StringComparer.OrdinalIgnoreCase)
             .ThenBy(entry => entry.Chunk.StartLine)
-            .Take(limit)
+            .ToList();
+
+        var lexicalResults = TakeBalancedByDocument(lexicalScored, limit, _options.MaxResultsPerDocument)
             .Select(entry => new CodeSearchResult(
                 entry.Chunk.Target,
                 entry.Chunk.DocumentPath,
@@ -2076,6 +2084,36 @@ LIMIT @candidateLimit;";
         return matched;
     }
 
+    private static IReadOnlyList<ScoredChunk> TakeBalancedByDocument(IEnumerable<ScoredChunk> sortedEntries, int limit, int maxPerDocument)
+    {
+        var effectiveLimit = Math.Max(1, limit);
+        var perDocumentCap = Math.Max(1, maxPerDocument);
+        var selected = new List<ScoredChunk>(effectiveLimit);
+        var countsByDocument = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var entry in sortedEntries)
+        {
+            if (!countsByDocument.TryGetValue(entry.Chunk.DocumentPath, out var count))
+            {
+                count = 0;
+            }
+
+            if (count >= perDocumentCap)
+            {
+                continue;
+            }
+
+            selected.Add(entry);
+            countsByDocument[entry.Chunk.DocumentPath] = count + 1;
+            if (selected.Count >= effectiveLimit)
+            {
+                break;
+            }
+        }
+
+        return selected;
+    }
+
     private static double ScoreHybrid(double rawVectorScore, double lexicalScore)
     {
         if (lexicalScore <= 0)
@@ -2285,6 +2323,15 @@ LIMIT @candidateLimit;";
         string SearchText,
         float[] Embedding,
         DateTime IndexedAtUtc);
+
+    private sealed record ScoredChunk(
+        IndexedChunk Chunk,
+        double RawScore,
+        double LexicalScore,
+        double TargetWeight,
+        double WeightedScore,
+        int MatchedTokenCount);
+
 
     private static async Task EnsureColumnAsync(SqliteConnection connection, string columnName, string columnDefinition, CancellationToken cancellationToken)
     {

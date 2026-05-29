@@ -266,6 +266,7 @@ public class CodeSearchOptions
     public int MaxFileBytes { get; set; } = 512 * 1024;
     public int MaxChunkCharacters { get; set; } = 4000;
     public int MaxResults { get; set; } = 10;
+    public int MaxResultsPerDocument { get; set; } = 2;
 }
 
 public class GovernanceOptions

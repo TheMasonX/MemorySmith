@@ -173,6 +173,34 @@ public class CodeSearchServiceTests
     }
 
     [Test]
+    public async Task SearchAsync_DiversifiesResultsAcrossDocuments_WhenSingleFileWouldOtherwiseDominate()
+    {
+        await File.WriteAllTextAsync(Path.Combine(_repoRoot, ".gitignore"), string.Empty);
+        await File.WriteAllTextAsync(
+            Path.Combine(_repoRoot, "MemorySmith.App", "Services", "DominantToolFile.cs"),
+            "namespace MemorySmith.App.Services;\npublic static class DominantToolFile\n{\n    public static string ToolA() => \"tool utility harness driver\";\n    public static string ToolB() => \"tool utility harness driver\";\n    public static string ToolC() => \"tool utility harness driver\";\n    public static string ToolD() => \"tool utility harness driver\";\n}\n");
+        await File.WriteAllTextAsync(
+            Path.Combine(_repoRoot, "MemorySmith.Core", "Services", "SecondaryToolFile.cs"),
+            "namespace MemorySmith.Core.Services;\npublic static class SecondaryToolFile\n{\n    public static string RegisterTool() => \"tool utility\";\n}\n");
+
+        var service = CreateService(new QueryFailureEmbeddingProvider(), options =>
+        {
+            options.CodeSearch.ChunkLineCount = 3;
+            options.CodeSearch.ChunkOverlapLineCount = 0;
+            options.CodeSearch.MaxResultsPerDocument = 1;
+        });
+
+        var results = await service.SearchAsync(new CodeSearchQuery("tool utility", Limit: 3), CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(results.Count, Is.GreaterThanOrEqualTo(2));
+            Assert.That(results.Select(result => result.DocumentPath).Distinct(StringComparer.OrdinalIgnoreCase).Count(), Is.GreaterThanOrEqualTo(2));
+            Assert.That(results.Select(result => result.DocumentPath), Does.Contain("MemorySmith.Core/Services/SecondaryToolFile.cs"));
+        });
+    }
+
+    [Test]
     public async Task SearchAsync_LexicalFallbackMatchesSnakeCaseQueryAgainstCamelCaseIdentifier()
     {
         await File.WriteAllTextAsync(Path.Combine(_repoRoot, ".gitignore"), string.Empty);
