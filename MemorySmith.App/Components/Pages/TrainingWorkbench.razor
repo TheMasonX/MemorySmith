@@ -34,6 +34,13 @@
         <MudAlert Severity="Severity.Error" Dense="true" Variant="Variant.Outlined" Class="mt-2">@_error</MudAlert>
     }
 
+    @if (_snapshot is not null && !_snapshot.DependencyProbeReady)
+    {
+        <MudAlert Severity="Severity.Warning" Dense="true" Variant="Variant.Outlined" Class="mt-2">
+            Training runs are currently in simulated mode. @_snapshot.DependencyProbeSummary
+        </MudAlert>
+    }
+
     <MudPaper Class="pa-4 mt-3" Outlined="true">
         <MudText Typo="Typo.subtitle2">Training Settings Proxy</MudText>
         <MudText Typo="Typo.body2" Class="mt-1">These controls edit the same underlying admin configuration values used by the central Admin Configuration surface.</MudText>
@@ -119,6 +126,10 @@
                 <span class="health-stat-label">Harness Script</span>
                 <span class="health-stat-value" style="font-size:1rem">@BoolLabel(_snapshot.HarnessScriptExists)</span>
             </div>
+            <div class="health-stat-card @(_snapshot.DependencyProbeReady ? "is-core" : "is-deprecated")">
+                <span class="health-stat-label">Training Deps</span>
+                <span class="health-stat-value" style="font-size:1rem">@(_snapshot.DependencyProbeReady ? "Ready" : "Simulated")</span>
+            </div>
             <div class="health-stat-card @(_snapshot.TrainingReady ? "is-core" : "is-deprecated")">
                 <span class="health-stat-label">Readiness</span>
                 <span class="health-stat-value" style="font-size:1rem">@(_snapshot.TrainingReady ? "Ready" : "Needs setup")</span>
@@ -137,6 +148,8 @@
                     <span>Runs path</span><strong>@_snapshot.RunsDirectory</strong>
                     <span>Run directories</span><strong>@_snapshot.RunDirectoryCount</strong>
                     <span>Python executable</span><strong>@_snapshot.PythonExecutablePath</strong>
+                    <span>Python version</span><strong>@_snapshot.DependencyProbePythonVersion</strong>
+                    <span>Training dependencies</span><strong>@_snapshot.DependencyProbeSummary</strong>
                     <span>Harness script</span><strong>@_snapshot.HarnessScriptPath</strong>
                 </div>
             </div>
@@ -291,7 +304,8 @@
         try
         {
             var training = Options.CurrentValue.Training;
-            _snapshot = BuildSnapshot(training);
+            var dependencyProbe = await TrainingRunner.ProbeDependenciesAsync(CancellationToken.None);
+            _snapshot = BuildSnapshot(training, dependencyProbe);
             LoadTrainingSettings();
             _runs = await LoadRunSummariesAsync(_snapshot.RunsDirectory);
             _latestRunEvents = _runs.Count > 0
@@ -334,7 +348,7 @@
         }
     }
 
-    private static TrainingReadinessSnapshot BuildSnapshot(TrainingOptions training)
+    private static TrainingReadinessSnapshot BuildSnapshot(TrainingOptions training, TrainingDependencyProbeResult dependencyProbe)
     {
         var transcriptDirectory = Path.GetFullPath(training.TranscriptDirectory);
         var exportDirectory = Path.GetFullPath(training.TrainingDataExportPath);
@@ -357,7 +371,8 @@
             && exportPathReady
             && runsPathReady
             && pythonReady
-            && harnessReady;
+            && harnessReady
+            && dependencyProbe.Ready;
 
         return new TrainingReadinessSnapshot(
             training.ChatTranscriptEnabled,
@@ -372,6 +387,9 @@
             runDirectoryCount,
             pythonExecutablePath,
             pythonReady,
+            dependencyProbe.PythonVersion,
+            dependencyProbe.Ready,
+            dependencyProbe.Summary,
             harnessScriptPath,
             harnessReady,
             training.PreferenceFormat.ToString(),
@@ -860,6 +878,9 @@
         int RunDirectoryCount,
         string PythonExecutablePath,
         bool PythonExecutableExists,
+        string DependencyProbePythonVersion,
+        bool DependencyProbeReady,
+        string DependencyProbeSummary,
         string HarnessScriptPath,
         bool HarnessScriptExists,
         string PreferenceFormat,

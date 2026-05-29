@@ -322,6 +322,8 @@ public class TagGovernanceTests
             Assert.That(trainingMarkup, Does.Contain("MudAutocomplete T=\"string\""));
             Assert.That(trainingMarkup, Does.Contain("SaveSelectedTrainingSettingAsync"));
             Assert.That(trainingMarkup, Does.Contain("ExportTrainingSettingsAsync"));
+            Assert.That(trainingMarkup, Does.Contain("Training Deps"));
+            Assert.That(trainingMarkup, Does.Contain("simulated mode"));
             Assert.That(trainingMarkup, Does.Contain("Copy status.json path"));
             Assert.That(trainingMarkup, Does.Contain("Open events.jsonl in default app"));
             Assert.That(trainingMarkup, Does.Contain("Open benchmark.json in default app"));

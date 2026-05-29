@@ -16,6 +16,19 @@ public sealed record TrainingHarnessActiveRun(
 
 public sealed record TrainingHarnessLaunchResult(bool Started, string RunId, string Message);
 
+public sealed record TrainingDependencyProbeResult(
+    bool Ready,
+    string PythonVersion,
+    IReadOnlyList<string> MissingModules,
+    string? Error)
+{
+    public string Summary => !string.IsNullOrWhiteSpace(Error)
+        ? Error
+        : Ready
+            ? $"Ready ({PythonVersion})"
+            : $"Simulated mode: missing {string.Join(", ", MissingModules)} ({PythonVersion})";
+}
+
 public sealed class TrainingHarnessRunnerService
 {
     private readonly IOptionsMonitor<MemorySmithOptions> _options;
@@ -39,6 +52,60 @@ public sealed class TrainingHarnessRunnerService
         lock (_gate)
         {
             return _activeRun;
+        }
+    }
+
+    public async Task<TrainingDependencyProbeResult> ProbeDependenciesAsync(CancellationToken cancellationToken)
+    {
+        var pythonExecutable = ResolvePath(Path.Combine(_options.CurrentValue.Training.PythonVenvPath, "Scripts", "python.exe"));
+        if (!File.Exists(pythonExecutable))
+        {
+            return new TrainingDependencyProbeResult(false, "-", ["python"], $"Python executable not found: {pythonExecutable}");
+        }
+
+        const string probeScript = "import importlib.util, json, platform; modules=['torch','transformers','datasets','trl','peft','unsloth']; missing=[name for name in modules if importlib.util.find_spec(name) is None]; print(json.dumps({'python': platform.python_version(), 'missing': missing, 'ready': len(missing) == 0}))";
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = pythonExecutable,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+        startInfo.ArgumentList.Add("-c");
+        startInfo.ArgumentList.Add(probeScript);
+
+        using var process = new Process { StartInfo = startInfo };
+        process.Start();
+
+        var stdoutTask = process.StandardOutput.ReadToEndAsync();
+        var stderrTask = process.StandardError.ReadToEndAsync();
+
+        try
+        {
+            await process.WaitForExitAsync(cancellationToken);
+            var stdout = await stdoutTask;
+            var stderr = await stderrTask;
+            if (process.ExitCode != 0)
+            {
+                return new TrainingDependencyProbeResult(false, "-", [], string.IsNullOrWhiteSpace(stderr) ? "Training dependency probe failed." : stderr.Trim());
+            }
+
+            using var document = JsonDocument.Parse(stdout);
+            var root = document.RootElement;
+            var pythonVersion = root.TryGetProperty("python", out var pythonElement) && pythonElement.ValueKind == JsonValueKind.String
+                ? pythonElement.GetString() ?? "-"
+                : "-";
+            var ready = root.TryGetProperty("ready", out var readyElement) && readyElement.ValueKind == JsonValueKind.True;
+            var missing = root.TryGetProperty("missing", out var missingElement) && missingElement.ValueKind == JsonValueKind.Array
+                ? missingElement.EnumerateArray().Select(element => element.GetString() ?? string.Empty).Where(value => !string.IsNullOrWhiteSpace(value)).ToList()
+                : [];
+
+            return new TrainingDependencyProbeResult(ready, pythonVersion, missing, null);
+        }
+        catch (Exception ex)
+        {
+            return new TrainingDependencyProbeResult(false, "-", [], ex.Message);
         }
     }
 
@@ -76,6 +143,8 @@ public sealed class TrainingHarnessRunnerService
             return new TrainingHarnessLaunchResult(false, runId, $"Harness script not found: {harnessScript}");
         }
 
+        var dependencyProbe = await ProbeDependenciesAsync(cancellationToken);
+
         var requestPath = Path.Combine(workDirectory, "request.json");
         var request = new
         {
@@ -85,7 +154,14 @@ public sealed class TrainingHarnessRunnerService
             format = appOptions.Training.PreferenceFormat.ToString(),
             activeModelTag = appOptions.Training.ActiveModelTag,
             fallbackModelTag = appOptions.Training.FallbackModelTag,
-            maxRunMinutes = appOptions.Training.MaxRunMinutes
+            maxRunMinutes = appOptions.Training.MaxRunMinutes,
+            dependencyProbe = new
+            {
+                python = dependencyProbe.PythonVersion,
+                ready = dependencyProbe.Ready,
+                missing = dependencyProbe.MissingModules,
+                error = dependencyProbe.Error
+            }
         };
 
         await File.WriteAllTextAsync(requestPath, JsonSerializer.Serialize(request), cancellationToken);
@@ -97,7 +173,8 @@ public sealed class TrainingHarnessRunnerService
         }
 
         _ = Task.Run(() => RunHarnessAsync(active, pythonExecutable, harnessScript, requestPath, appOptions.Training.MaxRunMinutes), CancellationToken.None);
-        return new TrainingHarnessLaunchResult(true, runId, $"Started run {runId}.");
+        var modeSuffix = dependencyProbe.Ready ? string.Empty : $" {dependencyProbe.Summary}";
+        return new TrainingHarnessLaunchResult(true, runId, $"Started run {runId}.{modeSuffix}");
     }
 
     private async Task RunHarnessAsync(TrainingHarnessActiveRun run, string pythonExecutable, string harnessScript, string requestPath, int maxRunMinutes)
