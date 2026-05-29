@@ -63,6 +63,11 @@ public sealed class AdminSettingsService
         }
 
         SetJsonValue(root, descriptor.Key.Split(':'), convertedValue);
+        if (!TryValidateCrossSettingConstraints(root, out var crossSettingError))
+        {
+            return new AdminSettingUpdateResult(false, crossSettingError ?? "The setting combination is invalid.");
+        }
+
         Directory.CreateDirectory(Path.GetDirectoryName(_settingsPath)!);
         var tempPath = _settingsPath + ".tmp";
         await File.WriteAllTextAsync(tempPath, root.ToJsonString(JsonOptions) + Environment.NewLine, cancellationToken);
@@ -94,6 +99,64 @@ public sealed class AdminSettingsService
         return string.IsNullOrWhiteSpace(Convert.ToString(convertedValue, CultureInfo.InvariantCulture))
             ? "Cleared"
             : "Configured";
+    }
+
+    private bool TryValidateCrossSettingConstraints(JsonObject root, out string? error)
+    {
+        error = null;
+
+        var current = _options.CurrentValue.CodeSearch;
+        var hybridVectorWeight = ResolveCodeSearchDouble(root, "HybridVectorWeight", current.HybridVectorWeight);
+        var hybridLexicalWeight = ResolveCodeSearchDouble(root, "HybridLexicalWeight", current.HybridLexicalWeight);
+        var minCoverageWeight = ResolveCodeSearchDouble(root, "MinTokenCoverageWeight", current.MinTokenCoverageWeight);
+        var maxCoverageWeight = ResolveCodeSearchDouble(root, "MaxTokenCoverageWeight", current.MaxTokenCoverageWeight);
+
+        if (hybridVectorWeight <= 0 && hybridLexicalWeight <= 0)
+        {
+            error = "Code-search hybrid vector and lexical weights cannot both be zero.";
+            return false;
+        }
+
+        if (minCoverageWeight > maxCoverageWeight)
+        {
+            error = "Code-search min token coverage weight must be less than or equal to max token coverage weight.";
+            return false;
+        }
+
+        return true;
+    }
+
+    private static double ResolveCodeSearchDouble(JsonObject root, string codeSearchFieldName, double currentValue)
+    {
+        if (!TryGetJsonValue(root, out var value, "MemorySmith", "CodeSearch", codeSearchFieldName))
+        {
+            return currentValue;
+        }
+
+        return value switch
+        {
+            JsonValue jsonValue when jsonValue.TryGetValue<double>(out var number) => number,
+            JsonValue jsonValue when jsonValue.TryGetValue<float>(out var number) => number,
+            JsonValue jsonValue when jsonValue.TryGetValue<decimal>(out var number) => (double)number,
+            JsonValue jsonValue when jsonValue.TryGetValue<int>(out var number) => number,
+            JsonValue jsonValue when jsonValue.TryGetValue<long>(out var number) => number,
+            _ => currentValue
+        };
+    }
+
+    private static bool TryGetJsonValue(JsonObject root, out JsonNode? value, params string[] path)
+    {
+        value = root;
+        foreach (var segment in path)
+        {
+            if (value is not JsonObject obj || !obj.TryGetPropertyValue(segment, out value) || value is null)
+            {
+                value = null;
+                return false;
+            }
+        }
+
+        return value is not null;
     }
 
     private async Task<JsonObject> LoadSettingsRootAsync(CancellationToken cancellationToken)
@@ -129,6 +192,9 @@ public sealed class AdminSettingsService
             bool boolean => JsonValue.Create(boolean),
             int integer => JsonValue.Create(integer),
             long longValue => JsonValue.Create(longValue),
+            double doubleValue => JsonValue.Create(doubleValue),
+            float floatValue => JsonValue.Create(floatValue),
+            decimal decimalValue => JsonValue.Create(decimalValue),
             IReadOnlyList<string> strings => new JsonArray(strings.Select(item => (JsonNode?)JsonValue.Create(item)).ToArray()),
             _ => JsonValue.Create(Convert.ToString(value, CultureInfo.InvariantCulture))
         };
@@ -246,6 +312,15 @@ public sealed class AdminSettingsService
         EditableSettingDescriptor.Integer("MemorySmith:SemanticSearch:MaxIndexedTextCharacters", "Max indexed text characters", "Search", settings => settings.SemanticSearch.MaxIndexedTextCharacters, 500, 50000, "Maximum characters from each memory record considered for semantic indexing/ranking. Higher values improve long-record recall but increase embedding work."),
         EditableSettingDescriptor.String("MemorySmith:SemanticSearch:QueryPrefix", "Semantic query prefix", "Search", settings => settings.SemanticSearch.QueryPrefix, 100, "Prefix prepended to user queries for embedding models that distinguish query and passage text. Keep aligned with the selected embedding model's training convention."),
         EditableSettingDescriptor.String("MemorySmith:SemanticSearch:DocumentPrefix", "Semantic document prefix", "Search", settings => settings.SemanticSearch.DocumentPrefix, 100, "Prefix prepended to memory/page text before embedding. Keep aligned with the embedding model so query and document vectors stay comparable."),
+        EditableSettingDescriptor.Decimal("MemorySmith:CodeSearch:HybridVectorWeight", "Code-search hybrid vector weight", "Search", settings => settings.CodeSearch.HybridVectorWeight, 0, 2, "Weight applied to vector similarity in hybrid ranking. Increase to favor embedding similarity; decrease to favor lexical evidence."),
+        EditableSettingDescriptor.Decimal("MemorySmith:CodeSearch:HybridLexicalWeight", "Code-search hybrid lexical weight", "Search", settings => settings.CodeSearch.HybridLexicalWeight, 0, 2, "Weight applied to normalized lexical evidence in hybrid ranking."),
+        EditableSettingDescriptor.Decimal("MemorySmith:CodeSearch:ZeroLexicalEvidencePenalty", "Code-search zero lexical penalty", "Search", settings => settings.CodeSearch.ZeroLexicalEvidencePenalty, 0, 2, "Multiplier applied when vector candidates have no lexical evidence. Lower values demote semantic-only matches."),
+        EditableSettingDescriptor.Decimal("MemorySmith:CodeSearch:LexicalScoreSaturation", "Code-search lexical saturation", "Search", settings => settings.CodeSearch.LexicalScoreSaturation, 0.001, 100, "Saturation factor for lexical normalization in hybrid ranking. Higher values flatten lexical impact."),
+        EditableSettingDescriptor.Decimal("MemorySmith:CodeSearch:LexicalFrequencyBonusScale", "Code-search lexical frequency scale", "Search", settings => settings.CodeSearch.LexicalFrequencyBonusScale, 0, 5, "Scale factor for repeated-token lexical bonus. Keep modest to avoid keyword-stuffing bias."),
+        EditableSettingDescriptor.Decimal("MemorySmith:CodeSearch:MaxLexicalFrequencyBonusPerToken", "Code-search max lexical frequency bonus", "Search", settings => settings.CodeSearch.MaxLexicalFrequencyBonusPerToken, 0, 10, "Upper bound for per-token lexical repetition bonus."),
+        EditableSettingDescriptor.Decimal("MemorySmith:CodeSearch:MinTokenCoverageWeight", "Code-search min token coverage weight", "Search", settings => settings.CodeSearch.MinTokenCoverageWeight, 0, 3, "Weight applied to low token-coverage matches. Lower values penalize partial-intent matches more aggressively."),
+        EditableSettingDescriptor.Decimal("MemorySmith:CodeSearch:MaxTokenCoverageWeight", "Code-search max token coverage weight", "Search", settings => settings.CodeSearch.MaxTokenCoverageWeight, 0, 3, "Weight applied to high token-coverage matches. Higher values boost full-intent matches."),
+        EditableSettingDescriptor.Integer("MemorySmith:CodeSearch:VectorPrefilterFullScanFallbackCandidateCount", "Code-search sparse prefilter fallback candidate count", "Search", settings => settings.CodeSearch.VectorPrefilterFullScanFallbackCandidateCount, 0, 10000, "When vector prefilter yields this many or fewer candidates, run a full-index vector fallback pass to protect semantic recall for sparse lexical queries. Set 0 to disable."),
         EditableSettingDescriptor.Boolean("MemorySmith:TaskSearch:HybridSemanticEnabled", "Task hybrid semantic search", "Search", settings => settings.TaskSearch.HybridSemanticEnabled, "Enables hybrid lexical+semantic ranking for task list queries. Keep enabled for better task recall with reordered or loosely phrased queries."),
         EditableSettingDescriptor.String("MemorySmith:TaskAttachments:StoragePath", "Task attachment storage path", "Tasks", settings => settings.TaskAttachments.StoragePath, 500, "Directory where uploaded task attachment files are stored. Keep under artifacts/task-attachments for portable local artifact cleanup."),
         EditableSettingDescriptor.Integer("MemorySmith:TaskAttachments:MaxFileBytes", "Task attachment max bytes", "Tasks", settings => (int)Math.Min(settings.TaskAttachments.MaxFileBytes, int.MaxValue), 1024, 2147483647, "Maximum size accepted for one uploaded task attachment file."),
@@ -372,6 +447,8 @@ public sealed class AdminSettingsService
         IReadOnlyList<string> Options,
         int? Min,
         int? Max,
+        double? MinDecimal,
+        double? MaxDecimal,
         int? MaxLength,
         bool IsSensitive)
     {
@@ -419,6 +496,21 @@ public sealed class AdminSettingsService
                     }
 
                     value = integer;
+                    return true;
+                case AdminSettingValueKind.Decimal:
+                    if (!double.TryParse(rawValue, NumberStyles.Float, CultureInfo.InvariantCulture, out var number))
+                    {
+                        error = "Use a decimal number.";
+                        return false;
+                    }
+
+                    if (MinDecimal.HasValue && number < MinDecimal.Value || MaxDecimal.HasValue && number > MaxDecimal.Value)
+                    {
+                        error = $"Use a value between {MinDecimal?.ToString(CultureInfo.InvariantCulture)} and {MaxDecimal?.ToString(CultureInfo.InvariantCulture)}.";
+                        return false;
+                    }
+
+                    value = number;
                     return true;
                 case AdminSettingValueKind.NullableInteger:
                     if (string.IsNullOrWhiteSpace(rawValue))
@@ -472,22 +564,25 @@ public sealed class AdminSettingsService
         }
 
         public static EditableSettingDescriptor Boolean(string key, string label, string category, Func<MemorySmithOptions, bool> getValue, string? helpText = null) =>
-            new(key, label, category, helpText ?? DefaultHelpText(key), AdminSettingValueKind.Boolean, settings => getValue(settings), [], null, null, null, false);
+            new(key, label, category, helpText ?? DefaultHelpText(key), AdminSettingValueKind.Boolean, settings => getValue(settings), [], null, null, null, null, null, false);
 
         public static EditableSettingDescriptor Integer(string key, string label, string category, Func<MemorySmithOptions, int> getValue, int min, int max, string? helpText = null) =>
-            new(key, label, category, helpText ?? DefaultHelpText(key), AdminSettingValueKind.Integer, settings => getValue(settings), [], min, max, null, false);
+            new(key, label, category, helpText ?? DefaultHelpText(key), AdminSettingValueKind.Integer, settings => getValue(settings), [], min, max, null, null, null, false);
+
+        public static EditableSettingDescriptor Decimal(string key, string label, string category, Func<MemorySmithOptions, double> getValue, double min, double max, string? helpText = null) =>
+            new(key, label, category, helpText ?? DefaultHelpText(key), AdminSettingValueKind.Decimal, settings => getValue(settings), [], null, null, min, max, null, false);
 
         public static EditableSettingDescriptor NullableInteger(string key, string label, string category, Func<MemorySmithOptions, int?> getValue, int min, int max, string? helpText = null) =>
-            new(key, label, category, helpText ?? DefaultHelpText(key), AdminSettingValueKind.NullableInteger, settings => getValue(settings), [], min, max, null, false);
+            new(key, label, category, helpText ?? DefaultHelpText(key), AdminSettingValueKind.NullableInteger, settings => getValue(settings), [], min, max, null, null, null, false);
 
         public static EditableSettingDescriptor Choice(string key, string label, string category, Func<MemorySmithOptions, string> getValue, IReadOnlyList<string> options, string? helpText = null) =>
-            new(key, label, category, helpText ?? DefaultHelpText(key), AdminSettingValueKind.Choice, settings => getValue(settings), options, null, null, null, false);
+            new(key, label, category, helpText ?? DefaultHelpText(key), AdminSettingValueKind.Choice, settings => getValue(settings), options, null, null, null, null, null, false);
 
         public static EditableSettingDescriptor String(string key, string label, string category, Func<MemorySmithOptions, string?> getValue, int maxLength, string? helpText = null, bool isSensitive = false) =>
-            new(key, label, category, helpText ?? DefaultHelpText(key), AdminSettingValueKind.String, settings => getValue(settings), [], null, null, maxLength, isSensitive);
+            new(key, label, category, helpText ?? DefaultHelpText(key), AdminSettingValueKind.String, settings => getValue(settings), [], null, null, null, null, maxLength, isSensitive);
 
         public static EditableSettingDescriptor StringList(string key, string label, string category, Func<MemorySmithOptions, IReadOnlyList<string>> getValue, string? helpText = null) =>
-            new(key, label, category, helpText ?? DefaultHelpText(key), AdminSettingValueKind.StringList, settings => getValue(settings), [], null, null, null, false);
+            new(key, label, category, helpText ?? DefaultHelpText(key), AdminSettingValueKind.StringList, settings => getValue(settings), [], null, null, null, null, null, false);
 
         private static string DefaultHelpText(string key) =>
             $"Controls {key}. Changes are written to the local MemorySmith settings override file and take effect after configuration reload when the owning service reads updated options; startup-only settings may still require an app restart.";
@@ -498,6 +593,7 @@ public enum AdminSettingValueKind
 {
     Boolean,
     Integer,
+    Decimal,
     NullableInteger,
     String,
     StringList,

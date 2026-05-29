@@ -16,6 +16,7 @@
 @inject IDialogService Dialogs
 @inject IJSRuntime JS
 @using Microsoft.Extensions.Options
+@using System.Globalization
 @using Microsoft.AspNetCore.WebUtilities
 @using System.Text.Json
 @using System.Text.Json.Nodes
@@ -209,6 +210,16 @@
                             </div>
                         </div>
                         <MudNumericField T="int?" Value="@_modelProfileEditor.ContextWindowTokens" ValueChanged="@((int? value) => _modelProfileEditor.ContextWindowTokens = value)" Label="Context tokens" Variant="Variant.Outlined" Margin="Margin.Dense" Min="512" Max="262144" Disabled="@_isBusy" />
+                        <MudSelect T="string" Value="@SelectedContextPresetValue" ValueChanged="OnContextPresetChangedAsync" Label="Context presets" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Disabled="@_isBusy">
+                            @foreach (var preset in ContextWindowPresetOptions)
+                            {
+                                <MudSelectItem T="string" Value="@preset.Key">@preset.Label</MudSelectItem>
+                            }
+                            @if (HasCustomContextWindow)
+                            {
+                                <MudSelectItem T="string" Value="@("custom")">Custom (@_modelProfileEditor.ContextWindowTokens?.ToString("n0") tokens)</MudSelectItem>
+                            }
+                        </MudSelect>
                         <MudTextField T="string" Value="@_modelProfileEditor.AllowedRolesText" ValueChanged="@((string value) => _modelProfileEditor.AllowedRolesText = value)" Label="Allowed roles" Variant="Variant.Outlined" Margin="Margin.Dense" Placeholder="Viewer, Editor, Admin" Disabled="@_isBusy" />
                         <MudTextField T="string" Value="@_modelProfileEditor.Description" ValueChanged="@((string value) => _modelProfileEditor.Description = value)" Label="Description" Variant="Variant.Outlined" Margin="Margin.Dense" Lines="2" Disabled="@_isBusy" />
                     </div>
@@ -219,6 +230,8 @@
                         <MudSwitch T="bool" Value="@_modelProfileEditor.IsProposalReviewDefault" ValueChanged="@((bool value) => _modelProfileEditor.IsProposalReviewDefault = value)" Label="Proposal reviews" Disabled="@_isBusy" />
                         <MudSwitch T="bool" Value="@_modelProfileEditor.IsAdminMaintenanceChatDefault" ValueChanged="@((bool value) => _modelProfileEditor.IsAdminMaintenanceChatDefault = value)" Label="Admin maintenance chat" Disabled="@_isBusy" />
                     </div>
+                    <small class="admin-setting-key">Recommended baseline for qwen3.5:4b is 24,576 context tokens.</small>
+                    <small class="admin-setting-key">@ModelVramEstimateHint</small>
                     <small class="admin-setting-key">Leave Allowed roles blank to allow any user with chat access. Admins can use every enabled profile.</small>
                     <div class="admin-model-editor-actions">
                         <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save" Disabled="@_isBusy" OnClick="SaveModelProfileAsync">Save profile</MudButton>
@@ -611,10 +624,21 @@
     private const int VariablesTabIndex = 4;
     private const int AuditTabIndex = 5;
     private const int HistoryTabIndex = 6;
+    private const int RecommendedQwen35ContextTokens = 24576;
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private static readonly IReadOnlyList<string> SortDirectionOptions = [DescendingSortDirection, AscendingSortDirection];
     private static readonly IReadOnlyList<string> AuditSortOptions = [AuditSortTimeValue, AuditSortSequenceValue, AuditSortActorValue, AuditSortActionValue, AuditSortTargetValue, AuditSortOutcomeValue];
     private static readonly IReadOnlyList<string> HistorySortOptions = [HistorySortCreatedValue, HistorySortTargetValue, HistorySortVersionValue, HistorySortFormatValue, HistorySortSizeValue, HistorySortArtifactValue];
+    private static readonly IReadOnlyList<ContextWindowPreset> ContextWindowPresetOptions =
+    [
+        new("provider-default", "Provider default", null),
+        new("4096", "4,096", 4096),
+        new("8192", "8,192", 8192),
+        new("16384", "16,384", 16384),
+        new("24576", "24,576 (Qwen3.5 4B)", RecommendedQwen35ContextTokens),
+        new("32768", "32,768", 32768),
+        new("65536", "65,536", 65536)
+    ];
     private IReadOnlyList<UserAdminRow> _userRows = [];
     private IReadOnlyList<RoleRecord> _roles = [];
     private IReadOnlyList<RoleRecord> _assignableRoles = [];
@@ -696,6 +720,31 @@
             : _modelProfileModelOptions.Count == 0
                 ? "No models were returned by this provider."
                 : $"{_modelProfileModelOptions.Count} provider model(s) available.";
+
+    private string SelectedContextPresetValue
+    {
+        get
+        {
+            if (_modelProfileEditor.ContextWindowTokens is null)
+            {
+                return "provider-default";
+            }
+
+            var tokenValue = _modelProfileEditor.ContextWindowTokens.Value;
+            return ContextWindowPresetOptions.Any(option => option.Tokens == tokenValue)
+                ? tokenValue.ToString(CultureInfo.InvariantCulture)
+                : "custom";
+        }
+    }
+
+    private bool HasCustomContextWindow =>
+        _modelProfileEditor.ContextWindowTokens is > 0
+        && ContextWindowPresetOptions.All(option => option.Tokens != _modelProfileEditor.ContextWindowTokens.Value);
+
+    private string ModelVramEstimateHint => BuildModelVramEstimateHint(SelectedModelForEditor, _modelProfileEditor.ContextWindowTokens);
+
+    private ChatModelSummary? SelectedModelForEditor =>
+        _modelProfileModelOptions.FirstOrDefault(option => string.Equals(option.Name, _modelProfileEditor.Model, StringComparison.OrdinalIgnoreCase));
 
     private string ActiveAdminSectionTitle => _activeAdminTabIndex switch
     {
@@ -895,6 +944,20 @@
     {
         _modelProfileEditor.Model = model;
         ApplySelectedModelMetadata(model);
+    }
+
+    private Task OnContextPresetChangedAsync(string value)
+    {
+        if (string.Equals(value, "provider-default", StringComparison.OrdinalIgnoreCase))
+        {
+            _modelProfileEditor.ContextWindowTokens = null;
+        }
+        else if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var tokens))
+        {
+            _modelProfileEditor.ContextWindowTokens = tokens;
+        }
+
+        return Task.CompletedTask;
     }
 
     private Task RefreshModelOptionsAsync() =>
@@ -1265,7 +1328,55 @@
         if (_modelProfileEditor.ContextWindowTokens is null && model?.ContextWindowTokens is > 0)
         {
             _modelProfileEditor.ContextWindowTokens = model.ContextWindowTokens;
+            return;
         }
+
+        if (_modelProfileEditor.ContextWindowTokens is null && IsQwen35FourBModel(modelName))
+        {
+            _modelProfileEditor.ContextWindowTokens = RecommendedQwen35ContextTokens;
+        }
+    }
+
+    private static bool IsQwen35FourBModel(string modelName) =>
+        modelName.Contains("qwen3.5", StringComparison.OrdinalIgnoreCase)
+        && modelName.Contains(":4b", StringComparison.OrdinalIgnoreCase);
+
+    private static string BuildModelVramEstimateHint(ChatModelSummary? model, int? contextWindowTokens)
+    {
+        var contextTokens = contextWindowTokens ?? RecommendedQwen35ContextTokens;
+        if (model is null)
+        {
+            return $"VRAM estimate appears after selecting a discovered model. For qwen3.5:4b, start at {RecommendedQwen35ContextTokens:n0} tokens.";
+        }
+
+        var baseModelGiB = EstimateModelGiB(model);
+        if (baseModelGiB is null)
+        {
+            return $"VRAM estimate unavailable for '{model.Name}'. Use {RecommendedQwen35ContextTokens:n0} tokens as the qwen3.5:4b baseline and verify on-host telemetry.";
+        }
+
+        var contextOverheadGiB = (contextTokens / 1024d) * 0.03d;
+        var workingSetGiB = (baseModelGiB.Value * 1.15d) + contextOverheadGiB;
+        var peakGiB = workingSetGiB * 1.35d;
+        return $"Estimated VRAM envelope for {model.Name} at {contextTokens:n0} tokens: {workingSetGiB:0.0}-{peakGiB:0.0} GiB (approximate, verify on target GPU).";
+    }
+
+    private static double? EstimateModelGiB(ChatModelSummary model)
+    {
+        if (model.Size is > 0)
+        {
+            return model.Size.Value / (1024d * 1024d * 1024d);
+        }
+
+        var match = System.Text.RegularExpressions.Regex.Match(model.Name, @"(?<!\d)(\d+(?:\.\d+)?)b(?![a-z])", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        if (!match.Success)
+        {
+            return null;
+        }
+
+        return double.TryParse(match.Groups[1].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var billions)
+            ? billions * 0.9d
+            : null;
     }
 
     private IChatProvider? ResolveChatProvider(string providerName) =>
@@ -1844,6 +1955,8 @@
             Description = profile.Description
         };
     }
+
+    private sealed record ContextWindowPreset(string Key, string Label, int? Tokens);
 
     private sealed class VarRow
     {

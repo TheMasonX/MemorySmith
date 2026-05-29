@@ -84,7 +84,12 @@ class Harness:
         if examples:
             return examples
 
-        # Seed data keeps the harness runnable until real transcript content is enabled.
+        starter_examples = self.load_starter_sft_examples()
+        if starter_examples:
+            self.emit_event("data.synthetic_examples_loaded", {"records": len(starter_examples)})
+            return starter_examples
+
+        # Final fallback keeps the harness runnable even if synthetic files are missing.
         return [
             {
                 "messages": [
@@ -92,15 +97,37 @@ class Harness:
                     {"role": "user", "content": "Summarize semantic search fallback behavior."},
                     {"role": "assistant", "content": "If ONNX embeddings are unavailable, semantic/hybrid routes return lexical-backed results with provider metadata explaining fallback reason."},
                 ]
-            },
-            {
-                "messages": [
-                    {"role": "system", "content": "You are MemorySmith Athena."},
-                    {"role": "user", "content": "How should citations be formatted?"},
-                    {"role": "assistant", "content": "Use resolvable links like memory:<id> and page:<slug>; avoid non-resolvable inline pseudo-citations."},
-                ]
-            },
+            }
         ]
+
+    def load_starter_sft_examples(self) -> list[dict[str, Any]]:
+        repo_root = Path(__file__).resolve().parents[1]
+        starter_files = [
+            repo_root / "MemorySmith.Training" / "synthetic" / "starter_sft.jsonl",
+            repo_root / "MemorySmith.Training" / "synthetic" / "starter_sft.expanded.jsonl",
+        ]
+
+        examples: list[dict[str, Any]] = []
+        for starter_file in starter_files:
+            if not starter_file.exists():
+                continue
+
+            with starter_file.open("r", encoding="utf-8") as handle:
+                for raw in handle:
+                    raw = raw.strip()
+                    if not raw:
+                        continue
+
+                    try:
+                        row = json.loads(raw)
+                    except json.JSONDecodeError:
+                        continue
+
+                    messages = row.get("messages")
+                    if isinstance(messages, list) and len(messages) >= 2:
+                        examples.append({"messages": messages})
+
+        return examples
 
     def write_export(self, examples: list[dict[str, Any]]) -> None:
         with self.paths.export_path.open("w", encoding="utf-8") as handle:
@@ -158,6 +185,12 @@ class Harness:
             json.dump(payload, handle, indent=2)
 
     def run(self, dry_run: bool) -> int:
+        template_path = Path(__file__).resolve().parents[1] / "MemorySmith.Core" / "Docs" / "Prompts" / "chat-template.jinja2"
+        if template_path.exists():
+            self.emit_event("template.chatml.ready", {"path": str(template_path)})
+        else:
+            self.emit_event("template.chatml.missing", {"path": str(template_path)})
+
         self.emit_event("run.started", {"dryRun": dry_run})
         self.write_status("data", "run.started")
 

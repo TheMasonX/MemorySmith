@@ -7,6 +7,7 @@
 @inject ISnackbar Snackbar
 @using Microsoft.Extensions.Options
 @using MemorySmith.Core.Models
+@implements IDisposable
 
 <PageTitle>Code Search - MemorySmith</PageTitle>
 
@@ -75,6 +76,12 @@
                 <span>State</span><strong>@_status.Build.State</strong>
                 <span>Provider status</span><strong>@_status.ProviderStatus</strong>
                 <span>Processed</span><strong>@_status.Build.ProcessedFileCount / @_status.Build.TotalFileCount</strong>
+                <span>Started</span><strong>@FormatTimestamp(_status.Build.StartedAtUtc)</strong>
+                <span>Last update</span><strong>@FormatTimestamp(_status.Build.UpdatedAtUtc)</strong>
+                <span>Completed</span><strong>@FormatCompletedOrEta(_status.Build)</strong>
+                <span>Elapsed</span><strong>@FormatDurationText(_status.Build)</strong>
+                <span>Conversion speed</span><strong>@FormatConversionSpeed(_status.Build)</strong>
+                <span>ETA</span><strong>@FormatEta(_status.Build)</strong>
                 <span>Reused</span><strong>@_status.Build.ReusedFileCount</strong>
                 <span>Updated</span><strong>@_status.Build.UpdatedFileCount</strong>
                 <span>Skipped</span><strong>@_status.Build.SkippedFileCount</strong>
@@ -141,6 +148,8 @@
     private CodeSearchStatus? _status;
     private IReadOnlyList<string> _targetOptions = [];
     private IReadOnlyList<CodeSearchResult> _results = [];
+    private readonly CancellationTokenSource _statusPollingCts = new();
+    private DateTime _lastStatusRefreshUtc = DateTime.MinValue;
 
     protected override async Task OnInitializedAsync()
     {
@@ -152,6 +161,13 @@
 
         _targetsInput = string.Join(Environment.NewLine, _targetOptions);
         await RefreshStatusAsync();
+        _ = RunStatusPollingAsync(_statusPollingCts.Token);
+    }
+
+    public void Dispose()
+    {
+        _statusPollingCts.Cancel();
+        _statusPollingCts.Dispose();
     }
 
     private async Task SearchAsync()
@@ -186,6 +202,7 @@
         try
         {
             _status = await CodeSearchService.GetStatusAsync(CancellationToken.None);
+            _lastStatusRefreshUtc = DateTime.UtcNow;
         }
         catch (Exception ex)
         {
@@ -215,6 +232,116 @@
         }
 
         return progress.State;
+    }
+
+    private async Task RunStatusPollingAsync(CancellationToken cancellationToken)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1.5));
+        while (await timer.WaitForNextTickAsync(cancellationToken))
+        {
+            if (_status?.Build.IsRunning != true)
+            {
+                continue;
+            }
+
+            if ((DateTime.UtcNow - _lastStatusRefreshUtc) < TimeSpan.FromSeconds(1.25))
+            {
+                continue;
+            }
+
+            await InvokeAsync(async () =>
+            {
+                if (_isBusy)
+                {
+                    return;
+                }
+
+                await RefreshStatusAsync();
+                StateHasChanged();
+            });
+        }
+    }
+
+    private static string FormatTimestamp(DateTime? value) =>
+        value is null ? "-" : new DateTimeOffset(DateTime.SpecifyKind(value.Value, DateTimeKind.Utc)).ToLocalTime().ToString("g");
+
+    private static string FormatCompletedOrEta(CodeSearchBuildProgress progress)
+    {
+        if (!progress.IsRunning)
+        {
+            return FormatTimestamp(progress.CompletedAtUtc);
+        }
+
+        var eta = EstimateEta(progress);
+        return eta is null ? "-" : new DateTimeOffset(DateTime.SpecifyKind(eta.Value, DateTimeKind.Utc)).ToLocalTime().ToString("g");
+    }
+
+    private static string FormatDurationText(CodeSearchBuildProgress progress)
+    {
+        var startedAt = progress.StartedAtUtc;
+        if (startedAt is null)
+        {
+            return "-";
+        }
+
+        var endUtc = progress.IsRunning ? DateTime.UtcNow : progress.CompletedAtUtc ?? DateTime.UtcNow;
+        var elapsed = endUtc - startedAt.Value;
+        return elapsed <= TimeSpan.Zero ? "<1s" : $"{elapsed.TotalSeconds:0.0}s";
+    }
+
+    private static string FormatConversionSpeed(CodeSearchBuildProgress progress)
+    {
+        var startedAt = progress.StartedAtUtc;
+        if (startedAt is null)
+        {
+            return "-";
+        }
+
+        var endUtc = progress.IsRunning ? DateTime.UtcNow : progress.CompletedAtUtc ?? DateTime.UtcNow;
+        var elapsedSeconds = Math.Max(1.0, (endUtc - startedAt.Value).TotalSeconds);
+        var filesPerMinute = (progress.ProcessedFileCount / elapsedSeconds) * 60.0;
+        return $"{filesPerMinute:0.0} files/min";
+    }
+
+    private static string FormatEta(CodeSearchBuildProgress progress)
+    {
+        if (!progress.IsRunning)
+        {
+            return "-";
+        }
+
+        var eta = EstimateEta(progress);
+        if (eta is null)
+        {
+            return "-";
+        }
+
+        var remaining = eta.Value - DateTime.UtcNow;
+        if (remaining <= TimeSpan.Zero)
+        {
+            return "<1s";
+        }
+
+        return $"{remaining.TotalSeconds:0.0}s";
+    }
+
+    private static DateTime? EstimateEta(CodeSearchBuildProgress progress)
+    {
+        if (!progress.IsRunning || progress.StartedAtUtc is null || progress.TotalFileCount <= 0 || progress.ProcessedFileCount <= 0)
+        {
+            return null;
+        }
+
+        var elapsedSeconds = Math.Max(1.0, (DateTime.UtcNow - progress.StartedAtUtc.Value).TotalSeconds);
+        var filesPerSecond = progress.ProcessedFileCount / elapsedSeconds;
+        if (filesPerSecond <= 0)
+        {
+            return null;
+        }
+
+        var remainingFiles = Math.Max(0, progress.TotalFileCount - progress.ProcessedFileCount);
+        var etaSeconds = remainingFiles / filesPerSecond;
+        return DateTime.UtcNow.AddSeconds(etaSeconds);
     }
 
     private void ResetTargetsToDefaults()

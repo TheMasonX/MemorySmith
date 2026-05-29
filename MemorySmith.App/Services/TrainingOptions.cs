@@ -8,8 +8,8 @@ public sealed class TrainingOptions
     public int TranscriptRetentionDays { get; set; } = 90;
     public bool TranscriptRedactionEnabled { get; set; } = true;
     public bool FeedbackEnabled { get; set; }
-    public string ActiveModelTag { get; set; } = "memorysmith-athena:latest";
-    public string FallbackModelTag { get; set; } = "gemma4:e4b";
+    public string ActiveModelTag { get; set; } = string.Empty;
+    public string FallbackModelTag { get; set; } = string.Empty;
     public string TrainingDataExportPath { get; set; } = Path.Combine("..", "Data", "Training", "exports");
     public string RunsDirectory { get; set; } = Path.Combine("..", "runs");
     public string PythonVenvPath { get; set; } = Path.Combine(".venv");

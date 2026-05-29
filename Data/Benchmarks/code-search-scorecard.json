@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "name": "code-search-scorecard",
+  "description": "Shared relevance probes for code-search quality and benchmark smoke checks.",
+  "probes": [
+    {
+      "query": "tool utility harness",
+      "expectedTopDocument": "MemorySmith.App/Services/ToolCatalog.cs",
+      "maxRank": 1,
+      "maxLatencyMs": 200
+    },
+    {
+      "query": "screwdriver",
+      "expectedTopDocument": "MemorySmith.App/Services/ToolCatalog.cs",
+      "maxRank": 1,
+      "maxLatencyMs": 200
+    },
+    {
+      "query": "cli command runner",
+      "expectedTopDocument": "MemorySmith.App/Services/CliRunner.cs",
+      "maxRank": 1,
+      "maxLatencyMs": 200
+    },
+    {
+      "query": "proposal review task",
+      "expectedTopDocument": "MemorySmith.Core/Services/ProposalTaskBoard.cs",
+      "maxRank": 1,
+      "maxLatencyMs": 200
+    },
+    {
+      "query": "opaque pipeline",
+      "expectedTopDocument": "MemorySmith.Core/Services/UnrelatedPipeline.cs",
+      "maxRank": 1,
+      "maxLatencyMs": 200
+    }
+  ]
+}

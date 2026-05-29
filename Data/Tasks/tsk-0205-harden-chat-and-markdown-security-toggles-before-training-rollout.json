@@ -19,7 +19,8 @@
   "attachments": [],
   "externalLinks": [],
   "linkedPages": [
-    "audits/vector-deepdive-5"
+    "audits/vector-deepdive-5",
+    "audits/vector-deepdive-5-validation-20260529"
   ],
   "comments": [
     {
@@ -45,15 +46,21 @@
       "author": "AgentSmith",
       "body": "Completed markdown sanitization coverage and runtime hardening follow-up. Added trusted-mode coverage for single-quoted, unquoted, and `srcset` attribute sanitization paths in `ChatMarkdownRenderer`, including disallowed URI-scheme filtering. Added configurable security headers with defaults and request-pipeline coverage: `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options`, and `Permissions-Policy`, including explicit disabled-path integration tests.",
       "createdAtUtc": "2026-05-29T00:45:00.0000000Z"
+    },
+    {
+      "id": "c-0205-5-20260529",
+      "author": "AgentSmith",
+      "body": "Audit-family validation note: the original Audit #5 clipboard/CSP/markdown hardening claims are now verified resolved in live code. Evidence checked on 2026-05-29: `ClipboardFetchExternalImagesEnabled` is default-off and admin-exposed, `Program.cs` emits the configured CSP header, and `PagesAndChatTests.cs` covers markdown sanitization for markdown links, single-quoted raw HTML attributes, unquoted trusted-mode attributes, and `srcset`. The surviving follow-up from this audit stream is now diagnostics overexposure, tracked separately in `TSK-0213`.",
+      "createdAtUtc": "2026-05-29T16:05:00.0000000Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-28T21:43:18.8947975Z",
-  "updatedAtUtc": "2026-05-29T00:45:00.0000000Z",
+  "updatedAtUtc": "2026-05-29T16:05:00.0000000Z",
   "completedAtUtc": "2026-05-29T00:45:00.0000000Z",
-  "revision": 4,
+  "revision": 5,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

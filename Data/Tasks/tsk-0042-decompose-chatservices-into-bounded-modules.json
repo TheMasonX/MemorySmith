@@ -29,14 +29,20 @@
       "author": "AgentSmith",
       "body": "Created from F-001 as Sprint 1 committed decomposition work.",
       "createdAtUtc": "2026-05-23T19:10:00.0000000Z"
+    },
+    {
+      "id": "c-0042-2-20260529",
+      "author": "AgentSmith",
+      "body": "Audit-family validation note: after re-checking Audit #5 and the paired general vector report on 2026-05-29, the broad maintainability complaint about `ChatServices.cs` still stands even though most of the earlier security findings were already closed under `TSK-0205`. `TSK-0212` now owns the narrower live parse/buffer fallback defects, while `TSK-0042` remains the larger readability/decomposition owner.",
+      "createdAtUtc": "2026-05-29T16:05:00.0000000Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-23T19:10:00.0000000Z",
-  "updatedAtUtc": "2026-05-23T19:10:00.0000000Z",
+  "updatedAtUtc": "2026-05-29T16:05:00.0000000Z",
   "completedAtUtc": null,
-  "revision": 1,
+  "revision": 2,
   "isArchived": false
 }

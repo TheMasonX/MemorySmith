@@ -124,10 +124,6 @@ public sealed class CodeSearchService : IDisposable
 {
     private const int MaxCachedQueryEmbeddings = 256;
     private const int MaxCachedQueryResults = 128;
-    private const double HybridVectorWeight = 0.75;
-    private const double HybridLexicalWeight = 0.25;
-    private const double ZeroLexicalEvidencePenalty = 0.72;
-    private const double LexicalScoreSaturation = 4.0;
     private static readonly Regex TokenRegex = new("[A-Za-z0-9_]+", RegexOptions.Compiled);
     private static readonly Regex IdentifierSplitRegex = new("(?<=[a-z0-9])(?=[A-Z])|_+", RegexOptions.Compiled);
     private static readonly Dictionary<string, string[]> QuerySynonyms = new(StringComparer.OrdinalIgnoreCase)
@@ -155,6 +151,14 @@ public sealed class CodeSearchService : IDisposable
     private readonly string _dataRoot;
     private readonly string _repositoryRoot;
     private readonly string _indexDatabasePath;
+    private readonly double _hybridVectorWeight;
+    private readonly double _hybridLexicalWeight;
+    private readonly double _zeroLexicalEvidencePenalty;
+    private readonly double _lexicalScoreSaturation;
+    private readonly double _lexicalFrequencyBonusScale;
+    private readonly double _maxLexicalFrequencyBonusPerToken;
+    private readonly double _minTokenCoverageWeight;
+    private readonly double _maxTokenCoverageWeight;
     private CodeSearchBuildProgress _buildProgress = CodeSearchBuildProgress.Idle;
     private long _resultCacheGeneration;
     private long _queryTelemetryCounter;
@@ -229,6 +233,14 @@ public sealed class CodeSearchService : IDisposable
         _dataRoot = ResolveDataDeploymentRoot(_settings.DataPath);
         _repositoryRoot = ResolveRepositoryRoot(_dataRoot, _options.RepositoryRootPath);
         _indexDatabasePath = Path.Combine(_dataRoot, "Graph", "code-search", "code-search.db");
+        _hybridVectorWeight = Math.Clamp(_options.HybridVectorWeight, 0.0, 2.0);
+        _hybridLexicalWeight = Math.Clamp(_options.HybridLexicalWeight, 0.0, 2.0);
+        _zeroLexicalEvidencePenalty = Math.Clamp(_options.ZeroLexicalEvidencePenalty, 0.0, 2.0);
+        _lexicalScoreSaturation = Math.Max(0.001, _options.LexicalScoreSaturation);
+        _lexicalFrequencyBonusScale = Math.Clamp(_options.LexicalFrequencyBonusScale, 0.0, 2.0);
+        _maxLexicalFrequencyBonusPerToken = Math.Clamp(_options.MaxLexicalFrequencyBonusPerToken, 0.0, 10.0);
+        _minTokenCoverageWeight = Math.Clamp(_options.MinTokenCoverageWeight, 0.0, 3.0);
+        _maxTokenCoverageWeight = Math.Clamp(_options.MaxTokenCoverageWeight, _minTokenCoverageWeight, 3.0);
     }
 
     public async Task<IReadOnlyList<CodeSearchResult>> SearchAsync(CodeSearchQuery query, CancellationToken cancellationToken)
@@ -276,11 +288,12 @@ public sealed class CodeSearchService : IDisposable
                 .Select(chunk =>
                 {
                     var rawScore = Dot(queryEmbedding, chunk.Embedding);
-                    var matchedTokenCount = CountMatchedTokens(chunk, expandedQueryTokens);
+                    var matchedTokenCount = CountMatchedTokens(chunk, queryTokens);
                     var lexicalScore = ScoreLexical(chunk, expandedQueryTokens);
                     var targetWeight = GetTargetWeight(chunk.Target, chunk.DocumentPath, queryTokens);
                     var hybridScore = ScoreHybrid(rawScore, lexicalScore);
-                    return new ScoredChunk(chunk, rawScore, lexicalScore, targetWeight, hybridScore * targetWeight, matchedTokenCount);
+                    var coverageWeight = ScoreTokenCoverageWeight(matchedTokenCount, queryTokens.Count);
+                    return new ScoredChunk(chunk, rawScore, lexicalScore, targetWeight, coverageWeight, hybridScore * targetWeight * coverageWeight, matchedTokenCount);
                 })
                 .Where(entry => entry.WeightedScore > 0)
                 .OrderByDescending(entry => entry.WeightedScore)
@@ -297,17 +310,19 @@ public sealed class CodeSearchService : IDisposable
                     entry.Chunk.EndLine,
                     Math.Round(entry.WeightedScore, 6),
                     BuildSnippet(entry.Chunk.Snippet, query.Query!),
-                    BuildVectorMatchReason(entry.RawScore, entry.LexicalScore, entry.TargetWeight),
+                    BuildVectorMatchReason(entry.RawScore, entry.LexicalScore, entry.TargetWeight, entry.CoverageWeight),
                     entry.Chunk.IndexedAtUtc))
                 .ToList();
 
-            if (vectorResults.Count > 0)
+            var shouldRunSparseFallback = vectorCandidates.UsedPrefilter && ShouldRunSparsePrefilterFallback(vectorCandidates.Chunks.Count);
+
+            if (vectorResults.Count > 0 && !shouldRunSparseFallback)
             {
                 CacheResults(resultCacheKey, vectorResults);
                 return CompleteSearch(vectorCandidates.UsedPrefilter ? "vector-prefilter" : "vector", vectorResults, vectorCandidates.Chunks.Count);
             }
 
-            if (vectorCandidates.UsedPrefilter)
+            if (vectorCandidates.UsedPrefilter && (vectorResults.Count == 0 || shouldRunSparseFallback))
             {
                 chunks = await LoadChunksAsync(connection, normalizedTargets, cancellationToken);
                 var fallbackVectorScored = chunks
@@ -315,11 +330,12 @@ public sealed class CodeSearchService : IDisposable
                     .Select(chunk =>
                     {
                         var rawScore = Dot(queryEmbedding, chunk.Embedding);
-                        var matchedTokenCount = CountMatchedTokens(chunk, expandedQueryTokens);
+                        var matchedTokenCount = CountMatchedTokens(chunk, queryTokens);
                         var lexicalScore = ScoreLexical(chunk, expandedQueryTokens);
                         var targetWeight = GetTargetWeight(chunk.Target, chunk.DocumentPath, queryTokens);
                         var hybridScore = ScoreHybrid(rawScore, lexicalScore);
-                        return new ScoredChunk(chunk, rawScore, lexicalScore, targetWeight, hybridScore * targetWeight, matchedTokenCount);
+                        var coverageWeight = ScoreTokenCoverageWeight(matchedTokenCount, queryTokens.Count);
+                        return new ScoredChunk(chunk, rawScore, lexicalScore, targetWeight, coverageWeight, hybridScore * targetWeight * coverageWeight, matchedTokenCount);
                     })
                     .Where(entry => entry.WeightedScore > 0)
                     .OrderByDescending(entry => entry.WeightedScore)
@@ -336,15 +352,24 @@ public sealed class CodeSearchService : IDisposable
                         entry.Chunk.EndLine,
                         Math.Round(entry.WeightedScore, 6),
                         BuildSnippet(entry.Chunk.Snippet, query.Query!),
-                        BuildVectorMatchReason(entry.RawScore, entry.LexicalScore, entry.TargetWeight),
+                        BuildVectorMatchReason(entry.RawScore, entry.LexicalScore, entry.TargetWeight, entry.CoverageWeight),
                         entry.Chunk.IndexedAtUtc))
                     .ToList();
 
                 if (fallbackVectorResults.Count > 0)
                 {
                     CacheResults(resultCacheKey, fallbackVectorResults);
-                    return CompleteSearch("vector-full-fallback", fallbackVectorResults, chunks.Count);
+                    var mode = shouldRunSparseFallback && vectorResults.Count > 0
+                        ? "vector-sparse-fallback"
+                        : "vector-full-fallback";
+                    return CompleteSearch(mode, fallbackVectorResults, chunks.Count);
                 }
+            }
+
+            if (vectorResults.Count > 0)
+            {
+                CacheResults(resultCacheKey, vectorResults);
+                return CompleteSearch(vectorCandidates.UsedPrefilter ? "vector-prefilter" : "vector", vectorResults, vectorCandidates.Chunks.Count);
             }
         }
 
@@ -358,9 +383,10 @@ public sealed class CodeSearchService : IDisposable
             .Select(chunk =>
             {
                 var rawScore = ScoreLexical(chunk, expandedQueryTokens);
-                var matchedTokenCount = CountMatchedTokens(chunk, expandedQueryTokens);
+                var matchedTokenCount = CountMatchedTokens(chunk, queryTokens);
                 var targetWeight = GetTargetWeight(chunk.Target, chunk.DocumentPath, queryTokens);
-                return new ScoredChunk(chunk, rawScore, rawScore, targetWeight, rawScore * targetWeight, matchedTokenCount);
+                var coverageWeight = ScoreTokenCoverageWeight(matchedTokenCount, queryTokens.Count);
+                return new ScoredChunk(chunk, rawScore, rawScore, targetWeight, coverageWeight, rawScore * targetWeight * coverageWeight, matchedTokenCount);
             })
             .Where(entry => entry.WeightedScore > 0)
             .OrderByDescending(entry => entry.WeightedScore)
@@ -377,7 +403,7 @@ public sealed class CodeSearchService : IDisposable
                 entry.Chunk.EndLine,
                 Math.Round(entry.WeightedScore, 6),
                 BuildSnippet(entry.Chunk.Snippet, query.Query!),
-                BuildLexicalMatchReason(entry.MatchedTokenCount, entry.TargetWeight),
+                BuildLexicalMatchReason(entry.MatchedTokenCount, queryTokens.Count, entry.TargetWeight, entry.CoverageWeight),
                 entry.Chunk.IndexedAtUtc))
             .ToList();
 
@@ -1755,21 +1781,24 @@ CREATE INDEX IF NOT EXISTS IX_CodeSearchBuildLog_ConfigState ON CodeSearchBuildL
         documentPath.Contains("/Benchmarks/", StringComparison.OrdinalIgnoreCase) ||
         documentPath.Contains("Benchmark", StringComparison.OrdinalIgnoreCase);
 
-    private static string BuildVectorMatchReason(double rawScore, double lexicalScore, double targetWeight)
+    private static string BuildVectorMatchReason(double rawScore, double lexicalScore, double targetWeight, double coverageWeight)
     {
         var lexicalEvidence = lexicalScore > 0
             ? $", lexical evidence {lexicalScore:0.###}"
             : ", no lexical evidence";
+        var coverageEvidence = coverageWeight < 0.999 || coverageWeight > 1.001
+            ? $", token coverage weight {coverageWeight:0.###}"
+            : string.Empty;
 
         return targetWeight < 0.999
-            ? $"Code embedding cosine similarity {rawScore:0.###}{lexicalEvidence} (target weight {targetWeight:0.###}, hybrid rerank)."
-            : $"Code embedding cosine similarity {rawScore:0.###}{lexicalEvidence} (hybrid rerank).";
+            ? $"Code embedding cosine similarity {rawScore:0.###}{lexicalEvidence}{coverageEvidence} (target weight {targetWeight:0.###}, hybrid rerank)."
+            : $"Code embedding cosine similarity {rawScore:0.###}{lexicalEvidence}{coverageEvidence} (hybrid rerank).";
     }
 
-    private static string BuildLexicalMatchReason(int matchedTokenCount, double targetWeight) =>
+    private static string BuildLexicalMatchReason(int matchedTokenCount, int totalTokenCount, double targetWeight, double coverageWeight) =>
         targetWeight < 0.999
-            ? $"Lexical fallback matched {matchedTokenCount} query token(s) in indexed code (target weight {targetWeight:0.###})."
-            : $"Lexical fallback matched {matchedTokenCount} query token(s) in indexed code.";
+            ? $"Lexical fallback matched {matchedTokenCount}/{Math.Max(1, totalTokenCount)} query token(s) in indexed code (coverage weight {coverageWeight:0.###}, target weight {targetWeight:0.###})."
+            : $"Lexical fallback matched {matchedTokenCount}/{Math.Max(1, totalTokenCount)} query token(s) in indexed code (coverage weight {coverageWeight:0.###}).";
 
     private void LogQueryTiming(string queryText, IReadOnlySet<string> targets, int limit, string mode, int resultCount, int scannedChunkCount, long queryStartTimestamp)
     {
@@ -1819,6 +1848,12 @@ CREATE INDEX IF NOT EXISTS IX_CodeSearchBuildLog_ConfigState ON CodeSearchBuildL
         var maximum = Math.Max(minimum, _options.VectorCandidateMaximum);
         var scaled = Math.Max(limit * Math.Max(1, _options.VectorCandidateMultiplier), minimum);
         return Math.Clamp(scaled, minimum, maximum);
+    }
+
+    private bool ShouldRunSparsePrefilterFallback(int candidateCount)
+    {
+        var threshold = Math.Max(0, _options.VectorPrefilterFullScanFallbackCandidateCount);
+        return threshold > 0 && candidateCount > 0 && candidateCount <= threshold;
     }
 
     private async Task<VectorCandidateLoadResult> LoadVectorCandidatesAsync(SqliteConnection connection, IReadOnlySet<string> targets, IReadOnlySet<string> queryTokens, int limit, CancellationToken cancellationToken)
@@ -2037,7 +2072,7 @@ LIMIT @candidateLimit;";
         return sum;
     }
 
-    private static double ScoreLexical(IndexedChunk chunk, IReadOnlySet<string> queryTokens)
+    private double ScoreLexical(IndexedChunk chunk, IReadOnlySet<string> queryTokens)
     {
         if (queryTokens.Count == 0)
         {
@@ -2054,7 +2089,12 @@ LIMIT @candidateLimit;";
                 continue;
             }
 
-            score += occurrences;
+            score += 1.0;
+            if (occurrences > 1)
+            {
+                score += Math.Min(_maxLexicalFrequencyBonusPerToken, Math.Log2(occurrences) * _lexicalFrequencyBonusScale);
+            }
+
             if (chunk.DocumentPath.Contains(token, StringComparison.OrdinalIgnoreCase))
             {
                 score += 1.5;
@@ -2114,15 +2154,26 @@ LIMIT @candidateLimit;";
         return selected;
     }
 
-    private static double ScoreHybrid(double rawVectorScore, double lexicalScore)
+    private double ScoreHybrid(double rawVectorScore, double lexicalScore)
     {
         if (lexicalScore <= 0)
         {
-            return rawVectorScore * ZeroLexicalEvidencePenalty;
+            return rawVectorScore * _zeroLexicalEvidencePenalty;
         }
 
-        var normalizedLexical = lexicalScore / (lexicalScore + LexicalScoreSaturation);
-        return (rawVectorScore * HybridVectorWeight) + (normalizedLexical * HybridLexicalWeight);
+        var normalizedLexical = lexicalScore / (lexicalScore + _lexicalScoreSaturation);
+        return (rawVectorScore * _hybridVectorWeight) + (normalizedLexical * _hybridLexicalWeight);
+    }
+
+    private double ScoreTokenCoverageWeight(int matchedTokenCount, int totalTokenCount)
+    {
+        if (totalTokenCount <= 0)
+        {
+            return 1.0;
+        }
+
+        var ratio = Math.Clamp((double)matchedTokenCount / totalTokenCount, 0.0, 1.0);
+        return _minTokenCoverageWeight + ((_maxTokenCoverageWeight - _minTokenCoverageWeight) * ratio);
     }
 
     private static int CountOccurrences(string haystack, string needle)
@@ -2329,6 +2380,7 @@ LIMIT @candidateLimit;";
         double RawScore,
         double LexicalScore,
         double TargetWeight,
+        double CoverageWeight,
         double WeightedScore,
         int MatchedTokenCount);
 

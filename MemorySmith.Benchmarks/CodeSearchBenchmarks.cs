@@ -3,6 +3,7 @@ using MemorySmith.App.Services;
 using Microsoft.Extensions.Options;
 using System.Text.RegularExpressions;
 using System.Diagnostics;
+using System.Text.Json;
 
 namespace MemorySmith.Benchmarks;
 
@@ -28,6 +29,12 @@ public class CodeSearchBenchmarks
         await File.WriteAllTextAsync(
             Path.Combine(_tempRoot, "MemorySmith.App", "Services", "ToolCatalog.cs"),
             "namespace MemorySmith.App.Services;\npublic static class ToolCatalog\n{\n    public static string RegisterTool(string input) => input + \" utility harness\";\n}\n");
+        await File.WriteAllTextAsync(
+            Path.Combine(_tempRoot, "MemorySmith.App", "Services", "CliRunner.cs"),
+            "namespace MemorySmith.App.Services;\npublic static class CliRunner\n{\n    public static string RunCliTool(string input) => input + \" cli command runner\";\n}\n");
+        await File.WriteAllTextAsync(
+            Path.Combine(_tempRoot, "MemorySmith.Core", "Services", "ProposalTaskBoard.cs"),
+            "namespace MemorySmith.Core.Services;\npublic static class ProposalTaskBoard\n{\n    public static string ReviewProposalTask(string input) => input + \" proposal review task workflow\";\n}\n");
         await File.WriteAllTextAsync(
             Path.Combine(_tempRoot, "MemorySmith.Core", "Services", "UnrelatedPipeline.cs"),
             "namespace MemorySmith.Core.Services;\npublic static class UnrelatedPipeline\n{\n    public static string BuildOpaquePipeline(string input) => input + \" opaque\";\n}\n");
@@ -115,30 +122,57 @@ public class CodeSearchBenchmarks
 
     private static async Task<(int passed, int total, List<string> lines)> RunScorecardAsync(CodeSearchService service)
     {
-        var scorecard = new (string query, string expectedTop)[]
-        {
-            ("tool utility", "MemorySmith.App/Services/ToolCatalog.cs"),
-            ("screwdriver", "MemorySmith.App/Services/ToolCatalog.cs"),
-            ("opaque pipeline", "MemorySmith.Core/Services/UnrelatedPipeline.cs")
-        };
+        var scorecard = LoadScorecardProbes();
 
         var lines = new List<string>(scorecard.Length);
         var passed = 0;
         foreach (var entry in scorecard)
         {
-            var results = await service.SearchAsync(new CodeSearchQuery(entry.query, Limit: 5), CancellationToken.None);
+            var results = await service.SearchAsync(new CodeSearchQuery(entry.Query, Limit: 5), CancellationToken.None);
             var top = results.FirstOrDefault()?.DocumentPath ?? "<none>";
-            var ok = string.Equals(top, entry.expectedTop, StringComparison.OrdinalIgnoreCase);
+            var ok = string.Equals(top, entry.ExpectedTopDocument, StringComparison.OrdinalIgnoreCase);
             if (ok)
             {
                 passed++;
             }
 
-            lines.Add($"[{(ok ? "PASS" : "FAIL")}] query='{entry.query}' expected='{entry.expectedTop}' actual='{top}'");
+            lines.Add($"[{(ok ? "PASS" : "FAIL")}] query='{entry.Query}' expected='{entry.ExpectedTopDocument}' actual='{top}'");
         }
 
         return (passed, scorecard.Length, lines);
     }
+
+    private static CodeSearchScorecardProbe[] LoadScorecardProbes()
+    {
+        var root = FindRepositoryRoot();
+        var path = Path.Combine(root, "Data", "Benchmarks", "code-search-scorecard.json");
+        var payload = JsonSerializer.Deserialize<CodeSearchScorecardDocument>(File.ReadAllText(path), new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        });
+
+        return payload?.Probes?.ToArray() ?? [];
+    }
+
+    private static string FindRepositoryRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "MemorySmith.slnx")))
+            {
+                return directory.FullName;
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new DirectoryNotFoundException("Could not locate MemorySmith.slnx from benchmark output directory.");
+    }
+
+    private sealed record CodeSearchScorecardDocument(CodeSearchScorecardProbe[] Probes);
+
+    private sealed record CodeSearchScorecardProbe(string Query, string ExpectedTopDocument, int MaxRank, int MaxLatencyMs);
 
     private sealed class HashEmbeddingProvider : ITextEmbeddingProvider
     {

@@ -1,0 +1,46 @@
+{
+  "id": "tsk-0211-harden-code-search-sqlite-storage-and-query-hot-path",
+  "key": "TSK-0211",
+  "title": "Harden code-search SQLite storage and query hot path",
+  "description": "Problem: the validated 2026-05-28 review of CodeSearchService shows the repo-code index still pays avoidable latency and memory costs in its storage and hot-query path. Chunk embeddings are persisted as JSON text (EmbeddingJson) and deserialized into fresh float arrays on every read, SQLite connections are opened with pooling disabled and no WAL or performance PRAGMAs, the query hot path still uses a scalar managed dot product, and the lexical fallback tail contains a misleading indentation defect. These issues compound once the code corpus grows beyond the current benchmark fixture and they are not covered by an existing task that owns the SQLite layer rather than ANN research.\n\nDesired outcome: keep the current local-first code-search behavior, but remove the avoidable storage/query overhead so larger indexes remain predictable and easier to evolve toward ANN later.\n\nScope:\n- In scope: migrate code-search chunk embeddings from JSON text to a binary representation with a safe migration/backfill path; preserve deterministic fallback when vectors are unavailable.\n- In scope: enable a reviewed SQLite runtime profile for code search, including pooling and appropriate read-heavy PRAGMAs, and add targeted tests or diagnostics that prove the chosen profile is active.\n- In scope: replace the scalar dot-product hot loop with the best available vector primitive in the current target framework, and remove duplicate hot-path allocations where evidence already shows redundant work.\n- In scope: fix the lexical-tail indentation defect and add narrowly scoped regression coverage or benchmark assertions where practical.\n- Out of scope: ANN or sqlite-vec adoption itself; keep that in the separate ANN planning track.\n- Out of scope: AST-aware chunking or cross-encoder reranking.\n\nAcceptance criteria:\n- Code-search embeddings are no longer stored only as JSON text in the primary chunk table.\n- The runtime connection/profile path for code search is explicit, reviewed, and validated under focused tests or diagnostics.\n- The query hot path no longer uses the current manual scalar dot-product loop when a framework primitive is available.\n- The lexical fallback tail is structurally clean and covered by a targeted validation path.\n- Existing code-search ranking and benchmark guardrails still pass after the storage/runtime changes.\n\nValidation:\n- Run focused CodeSearchServiceTests and CodeSearchBenchmarkTests coverage for storage migration, ranking parity, and hot-path regressions.\n- Run the code-search benchmark smoke command and capture before/after latency notes.\n- Run ./Scripts/Test-TaskRecords.ps1 after task metadata changes.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "AgentSmith",
+  "labels": [
+    "search",
+    "code-search",
+    "performance",
+    "reliability",
+    "sqlite"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "audits/vector-search-audit-6",
+    "audits/vector-search-audit-6-validation-20260528",
+    "research/vector-search/index"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0211-20260528",
+      "author": "AgentSmith",
+      "body": "Created after validating Audit #6 against the live repo. Evidence: MemorySmith.App/Services/CodeSearchService.cs still persists vectors as EmbeddingJson TEXT, deserializes them back into float arrays, opens SQLite with Pooling = false, applies no WAL/performance PRAGMAs in EnsureDatabaseAsync/OpenConnectionAsync, and still uses the manual Dot loop in the query scorer.",
+      "createdAtUtc": "2026-05-28T20:46:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-28T20:46:00.0000000Z",
+  "updatedAtUtc": "2026-05-28T20:46:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

@@ -1,0 +1,319 @@
+@page "/models"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = MemorySmithPolicies.CanAdminMemorySmith)]
+@inject ChatModelProfileService ModelProfiles
+@inject IEnumerable<IChatProvider> ChatProviders
+@inject ISnackbar Snackbar
+@using MemorySmith.Core.Models
+@using System.Globalization
+
+<PageTitle>Models - MemorySmith</PageTitle>
+
+<div class="health-workbench">
+    <div class="health-header">
+        <MudText Typo="Typo.h4">Models</MudText>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync" Disabled="@_isBusy">Refresh</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="StartNewAsync" Disabled="@_isBusy">New model profile</MudButton>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <MudAlert Severity="Severity.Error" Dense="true" Variant="Variant.Outlined" Class="mt-2">@_error</MudAlert>
+    }
+
+    <div style="display:grid; grid-template-columns:minmax(260px, 320px) minmax(0, 1fr); gap:12px; margin-top:12px;">
+        <MudPaper Class="pa-2" Outlined="true">
+            <MudText Typo="Typo.subtitle2" Class="px-2 py-1">Model Profiles</MudText>
+            <MudList T="string" Dense="true">
+                @foreach (var profile in _profiles)
+                {
+                    <MudListItem T="string" OnClick="@(() => SelectProfileAsync(profile))" Class="@ProfileItemClass(profile)">
+                        <div style="display:flex; flex-direction:column; gap:2px; width:100%;">
+                            <strong>@profile.DisplayName</strong>
+                            <small>@profile.Provider / @profile.Model</small>
+                        </div>
+                    </MudListItem>
+                }
+            </MudList>
+        </MudPaper>
+
+        <MudPaper Class="pa-4" Outlined="true">
+            <MudText Typo="Typo.subtitle2">@(_editor.IsNew ? "Create model profile" : $"Edit: {_editor.Name}")</MudText>
+            <div class="health-config-grid" style="margin-top:10px;">
+                <span>Name</span>
+                <MudTextField T="string" Value="@_editor.Name" ValueChanged="@((string value) => _editor.Name = value)" Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="@_isBusy" />
+
+                <span>Provider</span>
+                <MudSelect T="string" Value="@_editor.Provider" ValueChanged="OnProviderChangedAsync" Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="@(_isBusy || _isLoadingModels)">
+                    @foreach (var provider in ModelProfiles.ProviderOptions)
+                    {
+                        <MudSelectItem T="string" Value="@provider">@provider</MudSelectItem>
+                    }
+                </MudSelect>
+
+                <span>Model</span>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <MudSelect T="string" Value="@_editor.Model" ValueChanged="OnModelChanged" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Disabled="@(_isBusy || _isLoadingModels || _discoveredModels.Count == 0)">
+                        @foreach (var item in _discoveredModels)
+                        {
+                            <MudSelectItem T="string" Value="@item.Name">@item.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                    <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Small" Color="Color.Primary" Disabled="@(_isBusy || _isLoadingModels)" OnClick="RefreshModelsAsync" aria-label="Refresh models" title="Refresh models" />
+                </div>
+
+                <span>Context tokens</span>
+                <MudNumericField T="int?" Value="@_editor.ContextWindowTokens" ValueChanged="@((int? value) => _editor.ContextWindowTokens = value)" Variant="Variant.Outlined" Margin="Margin.Dense" Min="512" Max="262144" Disabled="@_isBusy" />
+
+                <span>Allowed roles</span>
+                <MudTextField T="string" Value="@_editor.AllowedRolesText" ValueChanged="@((string value) => _editor.AllowedRolesText = value)" Variant="Variant.Outlined" Margin="Margin.Dense" Placeholder="Viewer, Editor, Admin" Disabled="@_isBusy" />
+
+                <span>Description</span>
+                <MudTextField T="string" Value="@_editor.Description" ValueChanged="@((string value) => _editor.Description = value)" Variant="Variant.Outlined" Margin="Margin.Dense" Lines="2" Disabled="@_isBusy" />
+            </div>
+
+            <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:8px;">
+                <MudSwitch T="bool" Value="@_editor.Enabled" ValueChanged="@((bool value) => _editor.Enabled = value)" Label="Enabled" Disabled="@_isBusy" />
+                <MudSwitch T="bool" Value="@_editor.IsDefault" ValueChanged="@((bool value) => _editor.IsDefault = value)" Label="Default chat model" Disabled="@_isBusy" />
+                <MudSwitch T="bool" Value="@_editor.IsMaintenanceRunDefault" ValueChanged="@((bool value) => _editor.IsMaintenanceRunDefault = value)" Label="Maintenance runs" Disabled="@_isBusy" />
+                <MudSwitch T="bool" Value="@_editor.IsProposalReviewDefault" ValueChanged="@((bool value) => _editor.IsProposalReviewDefault = value)" Label="Proposal reviews" Disabled="@_isBusy" />
+                <MudSwitch T="bool" Value="@_editor.IsAdminMaintenanceChatDefault" ValueChanged="@((bool value) => _editor.IsAdminMaintenanceChatDefault = value)" Label="Admin maintenance chat" Disabled="@_isBusy" />
+            </div>
+
+            <div style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save" OnClick="SaveAsync" Disabled="@_isBusy">Save</MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Warning" StartIcon="@Icons.Material.Filled.Delete" OnClick="DeleteAsync" Disabled="@(_isBusy || _editor.IsNew)">Delete</MudButton>
+                <MudButton Variant="Variant.Text" OnClick="StartNewAsync" Disabled="@_isBusy">Clear</MudButton>
+            </div>
+
+            <small>@_modelsStatus</small>
+        </MudPaper>
+    </div>
+</div>
+
+@code {
+    private bool _isBusy;
+    private bool _isLoadingModels;
+    private string? _error;
+    private string _modelsStatus = string.Empty;
+    private IReadOnlyList<ChatModelProfileView> _profiles = [];
+    private IReadOnlyList<ChatModelSummary> _discoveredModels = [];
+    private ModelEditor _editor = ModelEditor.New();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _isBusy = true;
+        _error = null;
+        try
+        {
+            _profiles = ModelProfiles.ListProfiles();
+            await RefreshModelsAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private async Task SelectProfileAsync(ChatModelProfileView profile)
+    {
+        _editor = ModelEditor.From(profile);
+        await RefreshModelsAsync();
+    }
+
+    private async Task StartNewAsync()
+    {
+        _editor = ModelEditor.New();
+        await RefreshModelsAsync();
+    }
+
+    private async Task OnProviderChangedAsync(string provider)
+    {
+        _editor.Provider = provider;
+        _editor.Model = string.Empty;
+        _editor.ContextWindowTokens = null;
+        await RefreshModelsAsync();
+    }
+
+    private void OnModelChanged(string model)
+    {
+        _editor.Model = model;
+        var discovered = _discoveredModels.FirstOrDefault(item => string.Equals(item.Name, model, StringComparison.OrdinalIgnoreCase));
+        if (_editor.ContextWindowTokens is null && discovered?.ContextWindowTokens is > 0)
+        {
+            _editor.ContextWindowTokens = discovered.ContextWindowTokens;
+        }
+    }
+
+    private async Task RefreshModelsAsync()
+    {
+        _isLoadingModels = true;
+        _modelsStatus = "Loading models from provider...";
+        try
+        {
+            var provider = ChatProviders.FirstOrDefault(candidate => string.Equals(candidate.Name, _editor.Provider, StringComparison.OrdinalIgnoreCase));
+            if (provider is null)
+            {
+                _discoveredModels = [];
+                _modelsStatus = $"Provider '{_editor.Provider}' is not registered.";
+                return;
+            }
+
+            var models = await provider.ListModelsAsync(CancellationToken.None);
+            _discoveredModels = models.OrderBy(item => item.Name, StringComparer.OrdinalIgnoreCase).ToList();
+            _modelsStatus = _discoveredModels.Count == 0 ? "No models discovered for this provider." : $"Discovered {_discoveredModels.Count} model(s).";
+            if (string.IsNullOrWhiteSpace(_editor.Model) && _discoveredModels.FirstOrDefault() is { } firstModel)
+            {
+                _editor.Model = firstModel.Name;
+                if (_editor.ContextWindowTokens is null && firstModel.ContextWindowTokens is > 0)
+                {
+                    _editor.ContextWindowTokens = firstModel.ContextWindowTokens;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _modelsStatus = $"Model discovery failed: {ex.Message}";
+            _discoveredModels = [];
+        }
+        finally
+        {
+            _isLoadingModels = false;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        _isBusy = true;
+        _error = null;
+        try
+        {
+            var result = await ModelProfiles.UpsertAsync(new ChatModelProfileUpsertRequest(
+                _editor.Id,
+                _editor.Name,
+                _editor.Provider,
+                _editor.Model,
+                _editor.ContextWindowTokens,
+                _editor.Enabled,
+                _editor.IsDefault,
+                _editor.IsMaintenanceRunDefault,
+                _editor.IsProposalReviewDefault,
+                _editor.IsAdminMaintenanceChatDefault,
+                ParseRoles(_editor.AllowedRolesText),
+                _editor.Description), CancellationToken.None);
+
+            if (!result.Succeeded)
+            {
+                Snackbar.Add(result.Error ?? "Could not save model profile.", Severity.Error);
+                return;
+            }
+
+            Snackbar.Add("Model profile saved.", Severity.Success);
+            _profiles = ModelProfiles.ListProfiles();
+            _editor = result.Profile is null ? ModelEditor.New() : ModelEditor.From(result.Profile);
+            await RefreshModelsAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (_editor.IsNew)
+        {
+            return;
+        }
+
+        _isBusy = true;
+        _error = null;
+        try
+        {
+            var result = await ModelProfiles.DeleteAsync(_editor.Id!, CancellationToken.None);
+            if (!result.Succeeded)
+            {
+                Snackbar.Add(result.Error ?? "Could not delete model profile.", Severity.Error);
+                return;
+            }
+
+            Snackbar.Add("Model profile deleted.", Severity.Success);
+            _profiles = ModelProfiles.ListProfiles();
+            _editor = ModelEditor.New();
+            await RefreshModelsAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private static IReadOnlyList<string> ParseRoles(string text) =>
+        string.IsNullOrWhiteSpace(text)
+            ? []
+            : text.Split([',', ';', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Where(value => !string.IsNullOrWhiteSpace(value))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+    private string ProfileItemClass(ChatModelProfileView profile) =>
+        string.Equals(profile.Id, _editor.Id, StringComparison.OrdinalIgnoreCase)
+            ? "mud-list-item-clickable mud-selected-item"
+            : "mud-list-item-clickable";
+
+    private sealed class ModelEditor
+    {
+        public string? Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Provider { get; set; } = "Ollama";
+        public string Model { get; set; } = string.Empty;
+        public int? ContextWindowTokens { get; set; }
+        public bool Enabled { get; set; } = true;
+        public bool IsDefault { get; set; } = true;
+        public bool IsMaintenanceRunDefault { get; set; }
+        public bool IsProposalReviewDefault { get; set; }
+        public bool IsAdminMaintenanceChatDefault { get; set; }
+        public string AllowedRolesText { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public bool IsNew => string.IsNullOrWhiteSpace(Id);
+
+        public static ModelEditor New() => new();
+
+        public static ModelEditor From(ChatModelProfileView profile) => new()
+        {
+            Id = profile.IsImplicit ? null : profile.Id,
+            Name = profile.Name,
+            Provider = profile.Provider,
+            Model = profile.Model,
+            ContextWindowTokens = profile.ContextWindowTokens,
+            Enabled = profile.Enabled,
+            IsDefault = profile.IsDefault,
+            IsMaintenanceRunDefault = profile.IsMaintenanceRunDefault,
+            IsProposalReviewDefault = profile.IsProposalReviewDefault,
+            IsAdminMaintenanceChatDefault = profile.IsAdminMaintenanceChatDefault,
+            AllowedRolesText = string.Join(", ", profile.AllowedRoles),
+            Description = profile.Description
+        };
+    }
+}

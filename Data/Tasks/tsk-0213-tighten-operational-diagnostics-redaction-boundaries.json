@@ -1,0 +1,45 @@
+{
+  "id": "tsk-0213-tighten-operational-diagnostics-redaction-boundaries",
+  "key": "TSK-0213",
+  "title": "Tighten operational diagnostics redaction boundaries",
+  "description": "Problem: the 2026-05-29 validation pass for Audit #5 and the broader vector-search report confirmed that `/api/diagnostics` is admin-only, but the runtime snapshot still serializes whole `ChatOptions` and `TelemetryOptions` objects from `MemorySmith.App/Services/OperationalDiagnosticsService.cs`. That means exact `OllamaEndpoint`, `OtlpEndpoint`, and prompt-path values still flow through an endpoint whose own description says it returns redacted runtime configuration, and `MemorySmith.Tests/AppApiContractTests.cs` currently only asserts API-key absence rather than bounded disclosure of network targets and file-path-like settings. `MemorySmith.App/Components/Pages/HealthStats.razor` also formats telemetry export using the exact OTLP endpoint string. The issue is lower-risk than the original audit implied because `MemorySmith.App/Controllers/DiagnosticsController.cs` is protected by `CanAdminMemorySmith`, but the current contract still fails the repo's stated bar for explicit, reviewable diagnostics redaction boundaries.\n\nDesired outcome: diagnostics and health surfaces should expose operational posture clearly without serializing raw endpoint, prompt-path, or similar environment-specific values by default. Operators should still be able to tell whether chat/telemetry are enabled, which provider/model family is active, and whether exporters are configured, but the default JSON/UI contract should be bounded and intentionally redacted.\n\nScope:\n- In scope: define a smaller/redacted diagnostics contract for chat and telemetry configuration in `OperationalDiagnosticsService` rather than returning full options objects.\n- In scope: replace raw endpoint/prompt-path display with summarized or masked values on diagnostics surfaces that currently promise redaction.\n- In scope: expand focused API/UI tests so `Diagnostics_ReturnsRedactedConfigurationAndPathStatus` or successor coverage proves raw endpoint and prompt-path values are not emitted.\n- Out of scope: removing the admin authorization requirement, redesigning the whole health page, or hiding every local path currently shown on `/health` where the product deliberately chose explicit path visibility.\n\nAcceptance criteria:\n- `/api/diagnostics` no longer serializes raw `OllamaEndpoint`, `OtlpEndpoint`, or prompt-path-like values by default.\n- The diagnostics payload still communicates chat provider/model posture and telemetry/export posture in a bounded form that operators can reason about.\n- Focused tests assert both redaction and retained observability value.\n- Any remaining exact-value reveal path, if kept, is explicit and intentional rather than incidental serialization of full options objects.\n\nValidation:\n- Run focused diagnostics/API tests covering `/api/diagnostics` redaction behavior.\n- Run any focused health/markup coverage affected by the diagnostics presentation change.\n- Run `./Scripts/Test-TaskRecords.ps1` after task metadata changes.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "AgentSmith",
+  "labels": [
+    "diagnostics",
+    "observability",
+    "privacy",
+    "security"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "audits/vector-deepdive-5",
+    "audits/vector-deepdive-5-validation-20260529",
+    "research/vector-search/index"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0213-20260529",
+      "author": "AgentSmith",
+      "body": "Created after the audit-family validation pass confirmed `/api/diagnostics` is admin-only but still serializes full `ChatOptions` and `TelemetryOptions`, including raw `OllamaEndpoint`, `OtlpEndpoint`, and prompt-path-like values, while the current regression only asserts API-key absence.",
+      "createdAtUtc": "2026-05-29T16:05:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-29T16:05:00.0000000Z",
+  "updatedAtUtc": "2026-05-29T16:05:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

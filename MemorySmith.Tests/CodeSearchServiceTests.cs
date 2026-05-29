@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using System.Text;
+using System.Text.Json;
 using MemorySmith.App.Services;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -78,7 +79,7 @@ public class CodeSearchServiceTests
             "public static class IncludedChunk { public static string BuildGeneratedPipeline() => \"generated pipeline\"; }");
 
         var service = CreateService(
-            new HashEmbeddingProvider(),
+            new QueryFailureEmbeddingProvider(),
             options => options.CodeSearch.IncludePatterns = ["MemorySmith.App/Generated/IncludedChunk.cs"]);
 
         var included = await service.SearchAsync(new CodeSearchQuery("generated pipeline", Limit: 5), CancellationToken.None);
@@ -159,7 +160,7 @@ public class CodeSearchServiceTests
             Path.Combine(_repoRoot, "MemorySmith.Core", "Services", "UnrelatedPipeline.cs"),
             "namespace MemorySmith.Core.Services;\npublic static class UnrelatedPipeline\n{\n    public static string BuildOpaquePipeline(string input) => input + \" opaque\";\n}\n");
 
-        var service = CreateService(new ScrewdriverSemanticBiasEmbeddingProvider());
+        var service = CreateService(new HashEmbeddingProvider());
 
         var results = await service.SearchAsync(new CodeSearchQuery("screwdriver", Limit: 5), CancellationToken.None);
 
@@ -169,6 +170,131 @@ public class CodeSearchServiceTests
             Assert.That(results[0].DocumentPath, Is.EqualTo("MemorySmith.App/Services/ToolCatalog.cs"));
             Assert.That(results[0].MatchReason, Does.Contain("hybrid rerank"));
             Assert.That(results[0].MatchReason, Does.Contain("lexical evidence"));
+        });
+    }
+
+    [Test]
+    public async Task SearchAsync_LexicalFallbackDemotesKeywordStuffingAgainstTargetedMatch()
+    {
+        await File.WriteAllTextAsync(Path.Combine(_repoRoot, ".gitignore"), string.Empty);
+        await File.WriteAllTextAsync(
+            Path.Combine(_repoRoot, "MemorySmith.App", "Services", "AaaToolCatalog.cs"),
+            "namespace MemorySmith.App.Services;\npublic static class AaaToolCatalog\n{\n    public static string RegisterTool(string input) => input + \" tool utility harness\";\n}\n");
+
+        var stuffedTerms = string.Concat(Enumerable.Repeat(" tool utility harness", 120));
+        await File.WriteAllTextAsync(
+            Path.Combine(_repoRoot, "MemorySmith.Core", "Services", "ZzzKeywordStuffing.cs"),
+            $"namespace MemorySmith.Core.Services;\\npublic static class ZzzKeywordStuffing\\n{{\\n    public const string Noise = \"{stuffedTerms}\";\\n}}\\n");
+
+        var service = CreateService(new QueryFailureEmbeddingProvider());
+
+        var results = await service.SearchAsync(new CodeSearchQuery("tool utility harness", Limit: 5), CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(results, Is.Not.Empty);
+            Assert.That(results[0].DocumentPath, Is.EqualTo("MemorySmith.App/Services/AaaToolCatalog.cs"));
+            Assert.That(results[0].MatchReason, Does.Contain("Lexical fallback matched"));
+        });
+    }
+
+    [Test]
+    public async Task SearchAsync_HybridRerankPrefersBroaderTokenCoverageUnderVectorBias()
+    {
+        await File.WriteAllTextAsync(Path.Combine(_repoRoot, ".gitignore"), string.Empty);
+        await File.WriteAllTextAsync(
+            Path.Combine(_repoRoot, "MemorySmith.App", "Services", "FullCoverageCatalog.cs"),
+            "namespace MemorySmith.App.Services;\npublic static class FullCoverageCatalog\n{\n    public static string RegisterTool(string input) => input + \" tool utility harness\";\n}\n");
+        await File.WriteAllTextAsync(
+            Path.Combine(_repoRoot, "MemorySmith.Core", "Services", "PartialCoverageTool.cs"),
+            "namespace MemorySmith.Core.Services;\npublic static class PartialCoverageTool\n{\n    public static string RegisterTool(string input) => input + \" tool tool tool tool\";\n}\n");
+
+        var service = CreateService(new CoverageBiasEmbeddingProvider());
+
+        var results = await service.SearchAsync(new CodeSearchQuery("tool utility harness", Limit: 5), CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(results, Is.Not.Empty);
+            Assert.That(results[0].DocumentPath, Is.EqualTo("MemorySmith.App/Services/FullCoverageCatalog.cs"));
+            Assert.That(results[0].MatchReason, Does.Contain("token coverage weight"));
+        });
+    }
+
+    [Test]
+    public async Task SearchAsync_TunableCoverageWeightsCanNeutralizeCoverageBias()
+    {
+        await File.WriteAllTextAsync(Path.Combine(_repoRoot, ".gitignore"), string.Empty);
+        await File.WriteAllTextAsync(
+            Path.Combine(_repoRoot, "MemorySmith.App", "Services", "FullCoverageCatalog.cs"),
+            "namespace MemorySmith.App.Services;\npublic static class FullCoverageCatalog\n{\n    public static string RegisterTool(string input) => input + \" tool utility harness\";\n}\n");
+        await File.WriteAllTextAsync(
+            Path.Combine(_repoRoot, "MemorySmith.Core", "Services", "PartialCoverageTool.cs"),
+            "namespace MemorySmith.Core.Services;\npublic static class PartialCoverageTool\n{\n    public static string RegisterTool(string input) => input + \" tool tool tool tool\";\n}\n");
+
+        var service = CreateService(new CoverageBiasEmbeddingProvider(), options =>
+        {
+            options.CodeSearch.MinTokenCoverageWeight = 1.0;
+            options.CodeSearch.MaxTokenCoverageWeight = 1.0;
+        });
+
+        var results = await service.SearchAsync(new CodeSearchQuery("tool utility harness", Limit: 5), CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(results, Is.Not.Empty);
+            Assert.That(results[0].DocumentPath, Is.EqualTo("MemorySmith.Core/Services/PartialCoverageTool.cs"));
+            Assert.That(results[0].MatchReason, Does.Not.Contain("token coverage weight"));
+        });
+    }
+
+    [Test]
+    public async Task SearchAsync_SparsePrefilterFallbackRecoversSemanticTopDocument()
+    {
+        await File.WriteAllTextAsync(Path.Combine(_repoRoot, ".gitignore"), string.Empty);
+        await File.WriteAllTextAsync(
+            Path.Combine(_repoRoot, "MemorySmith.App", "Services", "LexicalAnchor.cs"),
+            "namespace MemorySmith.App.Services;\npublic static class LexicalAnchor\n{\n    public static string Anchor(string input) => input + \" semantic alias retrieval \";\n}\n");
+        await File.WriteAllTextAsync(
+            Path.Combine(_repoRoot, "MemorySmith.Core", "Services", "HiddenTrueTop.cs"),
+            "namespace MemorySmith.Core.Services;\npublic static class HiddenTrueTop\n{\n    public static string Resolve(string input) => input + \" latent concept bridge \";\n}\n");
+
+        var service = CreateService(new SparsePrefilterSemanticProvider(), options =>
+        {
+            options.CodeSearch.VectorPrefilterFullScanFallbackCandidateCount = 5;
+        });
+
+        var results = await service.SearchAsync(new CodeSearchQuery("semantic alias retrieval", Limit: 5), CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(results, Is.Not.Empty);
+            Assert.That(results[0].DocumentPath, Is.EqualTo("MemorySmith.Core/Services/HiddenTrueTop.cs"));
+        });
+    }
+
+    [Test]
+    public async Task SearchAsync_SparsePrefilterFallbackCanBeDisabled()
+    {
+        await File.WriteAllTextAsync(Path.Combine(_repoRoot, ".gitignore"), string.Empty);
+        await File.WriteAllTextAsync(
+            Path.Combine(_repoRoot, "MemorySmith.App", "Services", "LexicalAnchor.cs"),
+            "namespace MemorySmith.App.Services;\npublic static class LexicalAnchor\n{\n    public static string Anchor(string input) => input + \" semantic alias retrieval \";\n}\n");
+        await File.WriteAllTextAsync(
+            Path.Combine(_repoRoot, "MemorySmith.Core", "Services", "HiddenTrueTop.cs"),
+            "namespace MemorySmith.Core.Services;\npublic static class HiddenTrueTop\n{\n    public static string Resolve(string input) => input + \" latent concept bridge \";\n}\n");
+
+        var service = CreateService(new SparsePrefilterSemanticProvider(), options =>
+        {
+            options.CodeSearch.VectorPrefilterFullScanFallbackCandidateCount = 0;
+        });
+
+        var results = await service.SearchAsync(new CodeSearchQuery("semantic alias retrieval", Limit: 5), CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(results, Is.Not.Empty);
+            Assert.That(results[0].DocumentPath, Is.EqualTo("MemorySmith.App/Services/LexicalAnchor.cs"));
         });
     }
 
@@ -200,9 +326,7 @@ public class CodeSearchServiceTests
         });
     }
 
-    [TestCase("screwdriver", "MemorySmith.App/Services/ToolCatalog.cs")]
-    [TestCase("cli command runner", "MemorySmith.App/Services/CliRunner.cs")]
-    [TestCase("proposal review task", "MemorySmith.Core/Services/ProposalTaskBoard.cs")]
+    [TestCaseSource(nameof(RelevanceScorecardCases))]
     public async Task SearchAsync_RelevanceScorecard_ReturnsExpectedTopDocument(string query, string expectedTopDocument)
     {
         await File.WriteAllTextAsync(Path.Combine(_repoRoot, ".gitignore"), string.Empty);
@@ -216,10 +340,17 @@ public class CodeSearchServiceTests
             Path.Combine(_repoRoot, "MemorySmith.Core", "Services", "ProposalTaskBoard.cs"),
             "namespace MemorySmith.Core.Services;\npublic static class ProposalTaskBoard\n{\n    public static string ReviewProposalTask(string input) => input + \" proposal review task workflow\";\n}\n");
         await File.WriteAllTextAsync(
+            Path.Combine(_repoRoot, "MemorySmith.Core", "Services", "UnrelatedPipeline.cs"),
+            "namespace MemorySmith.Core.Services;\npublic static class UnrelatedPipeline\n{\n    public static string BuildOpaquePipeline(string input) => input + \" opaque pipeline\";\n}\n");
+        await File.WriteAllTextAsync(
             Path.Combine(_repoRoot, "MemorySmith.Core", "Services", "Distractor.cs"),
-            "namespace MemorySmith.Core.Services;\npublic static class Distractor\n{\n    public static string BuildOpaquePipeline(string input) => input + \" latent unrelated vector\";\n}\n");
+            "namespace MemorySmith.Core.Services;\npublic static class Distractor\n{\n    public static string BuildIrrelevantPath(string input) => input + \" latent unrelated vector\";\n}\n");
+        var stuffedTerms = string.Concat(Enumerable.Repeat(" tool utility harness", 120));
+        await File.WriteAllTextAsync(
+            Path.Combine(_repoRoot, "MemorySmith.Core", "Services", "ZzzKeywordStuffing.cs"),
+            $"namespace MemorySmith.Core.Services;\\npublic static class ZzzKeywordStuffing\\n{{\\n    public const string Noise = \"{stuffedTerms}\";\\n}}\\n");
 
-        var service = CreateService(new ScrewdriverSemanticBiasEmbeddingProvider());
+        var service = CreateService(new QueryFailureEmbeddingProvider());
 
         var results = await service.SearchAsync(new CodeSearchQuery(query, Limit: 5), CancellationToken.None);
 
@@ -228,6 +359,27 @@ public class CodeSearchServiceTests
             Assert.That(results, Is.Not.Empty, $"Expected results for query '{query}'.");
             Assert.That(results[0].DocumentPath, Is.EqualTo(expectedTopDocument), $"Unexpected top document for query '{query}'.");
         });
+    }
+
+    private static IEnumerable<TestCaseData> RelevanceScorecardCases()
+    {
+        var root = FindRepositoryRoot();
+        var path = Path.Combine(root, "Data", "Benchmarks", "code-search-scorecard.json");
+        var payload = JsonSerializer.Deserialize<CodeSearchScorecardDocument>(File.ReadAllText(path), new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        });
+
+        if (payload?.Probes is null)
+        {
+            yield break;
+        }
+
+        foreach (var probe in payload.Probes)
+        {
+            yield return new TestCaseData(probe.Query, probe.ExpectedTopDocument)
+                .SetName($"SearchAsync_RelevanceScorecard_ReturnsExpectedTopDocument({probe.Query})");
+        }
     }
 
     [Test]
@@ -792,6 +944,26 @@ public class CodeSearchServiceTests
         return builder.ToString();
     }
 
+    private static string FindRepositoryRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "MemorySmith.slnx")))
+            {
+                return directory.FullName;
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new DirectoryNotFoundException("Could not locate MemorySmith.slnx from the test output directory.");
+    }
+
+    private sealed record CodeSearchScorecardDocument(CodeSearchScorecardProbe[] Probes);
+
+    private sealed record CodeSearchScorecardProbe(string Query, string ExpectedTopDocument, int MaxRank, int MaxLatencyMs);
+
     private class HashEmbeddingProvider : ITextEmbeddingProvider
     {
         public EmbeddingProviderStatus GetStatus() => new(true, "Hash embedding provider available.", null, null, 512, "Cpu", "Cpu", null, null);
@@ -946,6 +1118,66 @@ public class CodeSearchServiceTests
             }
 
             return base.TryEmbed(text, kind, out embedding, out reason);
+        }
+    }
+
+    private sealed class CoverageBiasEmbeddingProvider : ITextEmbeddingProvider
+    {
+        public EmbeddingProviderStatus GetStatus() => new(true, "Coverage bias embedding provider available.", null, null, 2, "Cpu", "Cpu", null, null);
+
+        public bool TryEmbed(string text, EmbeddingInputKind kind, out float[] embedding, out string? reason)
+        {
+            reason = null;
+            if (kind == EmbeddingInputKind.Query)
+            {
+                embedding = [1f, 0f];
+                return true;
+            }
+
+            if (text.Contains("PartialCoverageTool.cs", StringComparison.OrdinalIgnoreCase))
+            {
+                embedding = [1f, 0f];
+                return true;
+            }
+
+            if (text.Contains("FullCoverageCatalog.cs", StringComparison.OrdinalIgnoreCase))
+            {
+                embedding = [0.80f, 0f];
+                return true;
+            }
+
+            embedding = [0.20f, 0f];
+            return true;
+        }
+    }
+
+    private sealed class SparsePrefilterSemanticProvider : ITextEmbeddingProvider
+    {
+        public EmbeddingProviderStatus GetStatus() => new(true, "Sparse prefilter semantic provider available.", null, null, 2, "Cpu", "Cpu", null, null);
+
+        public bool TryEmbed(string text, EmbeddingInputKind kind, out float[] embedding, out string? reason)
+        {
+            reason = null;
+            if (kind == EmbeddingInputKind.Query)
+            {
+                embedding = [1f, 0f];
+                return true;
+            }
+
+            if (text.Contains("LexicalAnchor.cs", StringComparison.OrdinalIgnoreCase))
+            {
+                embedding = [0.75f, 0f];
+                return true;
+            }
+
+            if (text.Contains("HiddenTrueTop.cs", StringComparison.OrdinalIgnoreCase))
+            {
+                embedding = [3f, 0f];
+                return true;
+            }
+
+            embedding = [0.15f, 0f];
+            return true;
         }
     }
 

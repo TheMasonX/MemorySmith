@@ -5,16 +5,23 @@
 @inject VarResolver VarResolver
 @inject IJSRuntime JS
 @inject ISnackbar Snackbar
+@inject TrainingHarnessRunnerService TrainingRunner
 @using System.Text.Json
 @using Microsoft.Extensions.Options
 @using MemorySmith.Core.Models
+@using MemorySmith.App.Services.Training
+@implements IDisposable
 
 <PageTitle>Training Workbench - MemorySmith</PageTitle>
 
 <div class="health-workbench">
     <div class="health-header">
         <MudText Typo="Typo.h4">Training Workbench</MudText>
-        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync" Disabled="@_isBusy">Refresh</MudButton>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync" Disabled="@_isBusy">Refresh</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PlayArrow" Disabled="@(_isBusy || _isLaunchingRun || _activeRun?.IsRunning == true)" OnClick="StartTrainingRunAsync">Start training run</MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Science" Disabled="@(_isBusy || _isLaunchingRun || _activeRun?.IsRunning == true)" OnClick="StartDryRunAsync">Start dry run</MudButton>
+        </div>
     </div>
 
     @if (!string.IsNullOrWhiteSpace(_error))
@@ -24,6 +31,17 @@
 
     @if (_snapshot is not null)
     {
+        @if (_activeRun is not null)
+        {
+            <MudAlert Severity="@(_activeRun.IsRunning ? Severity.Info : (_activeRun.ExitCode == 0 ? Severity.Success : Severity.Warning))" Dense="true" Variant="Variant.Outlined" Class="mt-2">
+                Run @_activeRun.RunId - @(_activeRun.IsRunning ? "running" : (_activeRun.ExitCode == 0 ? "completed" : "finished with issues"))
+                @if (!string.IsNullOrWhiteSpace(_activeRun.LastError))
+                {
+                    <span> (@_activeRun.LastError)</span>
+                }
+            </MudAlert>
+        }
+
         <div class="health-stat-row">
             <div class="health-stat-card @(_snapshot.ChatTranscriptEnabled ? "is-core" : "is-deprecated")">
                 <span class="health-stat-label">Chat Transcript</span>
@@ -123,7 +141,7 @@
                 </MudTd>
             </RowTemplate>
             <NoRecordsContent>
-                <MudText Typo="Typo.body2" Class="pa-4">No run artifacts found yet. Execute Scripts/Run-FinetuneHarness.ps1 to generate run telemetry and refresh this page.</MudText>
+                <MudText Typo="Typo.body2" Class="pa-4">No run artifacts found yet. Start a run from this page to generate telemetry and artifacts.</MudText>
             </NoRecordsContent>
             <PagerContent>
                 <MudTablePager />
@@ -153,14 +171,24 @@
 
 @code {
     private bool _isBusy;
+    private bool _isLaunchingRun;
     private string? _error;
     private TrainingReadinessSnapshot? _snapshot;
     private IReadOnlyList<TrainingRunSummary> _runs = [];
     private IReadOnlyList<TrainingRunEvent> _latestRunEvents = [];
+    private TrainingHarnessActiveRun? _activeRun;
+    private readonly CancellationTokenSource _pollingCts = new();
 
     protected override async Task OnInitializedAsync()
     {
         await LoadAsync();
+        _ = PollRunsAsync(_pollingCts.Token);
+    }
+
+    public void Dispose()
+    {
+        _pollingCts.Cancel();
+        _pollingCts.Dispose();
     }
 
     private async Task LoadAsync()
@@ -175,6 +203,7 @@
             _latestRunEvents = _runs.Count > 0
                 ? await LoadRecentEventsAsync(_runs[0].EventsPath)
                 : [];
+            _activeRun = TrainingRunner.GetActiveRun();
         }
         catch (Exception ex)
         {
@@ -521,5 +550,67 @@
         var sourceLink = new SourceLink { Label = Path.GetFileName(path), Uri = path };
         var openResult = await VarResolver.OpenWithDefaultAppAsync(sourceLink);
         Snackbar.Add(openResult.Message, openResult.Opened ? Severity.Success : Severity.Warning);
+    }
+
+    private async Task StartTrainingRunAsync() =>
+        await StartRunInternalAsync(dryRun: false);
+
+    private async Task StartDryRunAsync() =>
+        await StartRunInternalAsync(dryRun: true);
+
+    private async Task StartRunInternalAsync(bool dryRun)
+    {
+        _isLaunchingRun = true;
+        _error = null;
+        try
+        {
+            var launch = await TrainingRunner.StartRunAsync(dryRun, CancellationToken.None);
+            if (!launch.Started)
+            {
+                Snackbar.Add(launch.Message, Severity.Warning);
+                return;
+            }
+
+            Snackbar.Add(launch.Message, Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _isLaunchingRun = false;
+        }
+    }
+
+    private async Task PollRunsAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(2));
+            while (await timer.WaitForNextTickAsync(cancellationToken))
+            {
+                await InvokeAsync(async () =>
+                {
+                    if (_isBusy || _isLaunchingRun)
+                    {
+                        return;
+                    }
+
+                    var active = TrainingRunner.GetActiveRun();
+                    if (active?.IsRunning == true || (_activeRun?.IsRunning == true && active?.IsRunning == false))
+                    {
+                        await LoadAsync();
+                        StateHasChanged();
+                    }
+                });
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Page disposal cancels polling.
+        }
     }
 }

@@ -14,33 +14,91 @@ public sealed class TagPolicy
     public List<TagNamespacePolicy> Namespaces { get; set; } = [];
     public PlainTagPolicy PlainTags { get; set; } = new();
 
-    public static TagPolicy CreateDefault() => new()
+    public static TagPolicy CreateDefault()
     {
-        Namespaces =
-        [
-            new() { Name = "kind", Cardinality = "single", ValueKind = "enum", AllowedValues = ["fact", "rule", "procedure", "decision", "plan", "research", "guide", "concept", "issue", "example", "index"] },
-            new() { Name = "priority", Cardinality = "single", ValueKind = "enum", AllowedValues = ["critical", "high", "normal", "low"] },
-            new() { Name = "audience", Cardinality = "many", ValueKind = "enum", AllowedValues = ["agent", "human", "chat", "developer", "admin"] },
-            new() { Name = "scope", Cardinality = "many", ValueKind = "tag" },
-            new() { Name = "review-after", Cardinality = "single", ValueKind = "year-month" },
-            new() { Name = "expires", Cardinality = "single", ValueKind = "year-month" },
-            new() { Name = "stale-risk", Cardinality = "single", ValueKind = "year-month" },
-            new() { Name = "supersedes", Cardinality = "many", ValueKind = "memory-id" },
-            new() { Name = "superseded-by", Cardinality = "many", ValueKind = "memory-id" }
-        ],
-        PlainTags = new PlainTagPolicy
+        var fileBackedDefault = TryLoadFileBackedDefault();
+        if (fileBackedDefault is not null)
         {
-            Mode = "allowWithSuggestions",
-            Allowlist = ["admin", "api", "architecture", "benchmarks", "chat", "configuration", "context-pack", "current-state", "deterministic-test", "diagnostics", "documentation", "github", "governance", "graph-fixture", "hybrid-search", "maintenance", "mcp", "memory-system", "ollama", "pages", "project-wiki", "search", "security", "semantic-search", "settings", "source-links", "staleness", "storage", "structured-output", "tag-governance", "test-fixture", "tests", "ui"],
-            Blocklist = ["misc", "general", "important", "stuff", "todo", "notes", "old", "new", "core", "working", "deprecated", "unconsolidated"],
-            Aliases = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            return fileBackedDefault;
+        }
+
+        return new()
+        {
+            Namespaces =
+            [
+                new() { Name = "kind", Cardinality = "single", ValueKind = "enum", AllowedValues = ["fact", "rule", "procedure", "decision", "plan", "research", "guide", "concept", "issue", "example", "index"] },
+                new() { Name = "priority", Cardinality = "single", ValueKind = "enum", AllowedValues = ["critical", "high", "normal", "low"] },
+                new() { Name = "audience", Cardinality = "many", ValueKind = "enum", AllowedValues = ["agent", "human", "chat", "developer", "admin"] },
+                new() { Name = "scope", Cardinality = "many", ValueKind = "tag" },
+                new() { Name = "review-after", Cardinality = "single", ValueKind = "year-month" },
+                new() { Name = "expires", Cardinality = "single", ValueKind = "year-month" },
+                new() { Name = "stale-risk", Cardinality = "single", ValueKind = "year-month" },
+                new() { Name = "supersedes", Cardinality = "many", ValueKind = "memory-id" },
+                new() { Name = "superseded-by", Cardinality = "many", ValueKind = "memory-id" }
+            ],
+            PlainTags = new PlainTagPolicy
             {
-                ["retrieval"] = "search",
-                ["semantic-searching"] = "semantic-search",
-                ["model-context-protocol"] = "mcp"
+                Mode = "allowWithSuggestions",
+                Allowlist = ["admin", "api", "architecture", "benchmarks", "chat", "configuration", "context-pack", "current-state", "deterministic-test", "diagnostics", "documentation", "github", "governance", "graph-fixture", "hybrid-search", "maintenance", "mcp", "memory-system", "ollama", "pages", "project-wiki", "search", "security", "semantic-search", "settings", "source-links", "staleness", "storage", "structured-output", "tag-governance", "tasks", "test-fixture", "tests", "ui"],
+                Blocklist = ["misc", "general", "important", "stuff", "todo", "notes", "old", "new", "core", "working", "deprecated", "unconsolidated"],
+                Aliases = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["retrieval"] = "search",
+                    ["semantic-searching"] = "semantic-search",
+                    ["model-context-protocol"] = "mcp"
+                }
+            }
+        };
+    }
+
+    private static TagPolicy? TryLoadFileBackedDefault()
+    {
+        foreach (var path in EnumerateDefaultPolicyPaths())
+        {
+            if (!File.Exists(path))
+            {
+                continue;
+            }
+
+            try
+            {
+                var policy = JsonSerializer.Deserialize<TagPolicy>(File.ReadAllText(path), new JsonSerializerOptions(JsonSerializerDefaults.Web)
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+
+                if (policy is not null)
+                {
+                    policy.PlainTags ??= new PlainTagPolicy();
+                    policy.Namespaces ??= [];
+                    return policy;
+                }
+            }
+            catch
+            {
             }
         }
-    };
+
+        return null;
+    }
+
+    private static IEnumerable<string> EnumerateDefaultPolicyPaths()
+    {
+        if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("MEMORYSMITH_DEFAULT_TAG_POLICY_PATH")))
+        {
+            yield return Environment.GetEnvironmentVariable("MEMORYSMITH_DEFAULT_TAG_POLICY_PATH")!;
+        }
+
+        var baseDirectory = AppContext.BaseDirectory;
+        yield return Path.Combine(baseDirectory, "Data", "Policies", "tag-policy.json");
+
+        var current = new DirectoryInfo(baseDirectory);
+        for (var level = 0; level < 8 && current is not null; level++)
+        {
+            yield return Path.Combine(current.FullName, "Data", "Policies", "tag-policy.json");
+            current = current.Parent;
+        }
+    }
 }
 
 public sealed class TagNamespacePolicy

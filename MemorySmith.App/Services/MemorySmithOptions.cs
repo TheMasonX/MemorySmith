@@ -260,6 +260,7 @@ public class CodeSearchOptions
     public int VectorCandidateMultiplier { get; set; } = 12;
     public int VectorCandidateMinimum { get; set; } = 100;
     public int VectorCandidateMaximum { get; set; } = 400;
+    public int VectorPrefilterFullScanFallbackCandidateCount { get; set; } = 24;
     public bool QueryTimingTelemetryEnabled { get; set; }
     public int QueryTimingLogInterval { get; set; } = 100;
     public int QueryTimingSlowThresholdMilliseconds { get; set; } = 500;
@@ -267,6 +268,14 @@ public class CodeSearchOptions
     public int MaxChunkCharacters { get; set; } = 4000;
     public int MaxResults { get; set; } = 10;
     public int MaxResultsPerDocument { get; set; } = 2;
+    public double HybridVectorWeight { get; set; } = 0.75;
+    public double HybridLexicalWeight { get; set; } = 0.25;
+    public double ZeroLexicalEvidencePenalty { get; set; } = 0.72;
+    public double LexicalScoreSaturation { get; set; } = 4.0;
+    public double LexicalFrequencyBonusScale { get; set; } = 0.1;
+    public double MaxLexicalFrequencyBonusPerToken { get; set; } = 0.35;
+    public double MinTokenCoverageWeight { get; set; } = 0.65;
+    public double MaxTokenCoverageWeight { get; set; } = 1.15;
 }
 
 public class GovernanceOptions
@@ -318,7 +327,7 @@ public class ChatOptions
     public string DefaultModelProfileId { get; set; } = string.Empty;
     public List<ChatModelProfileOptions> ModelProfiles { get; set; } = [];
     public string OllamaEndpoint { get; set; } = "http://localhost:11434";
-    public string OllamaModel { get; set; } = "gemma4:e4b";
+    public string OllamaModel { get; set; } = string.Empty;
     public int? OllamaContextWindowTokens { get; set; }
     public string GitHubModel { get; set; } = "gpt-4.1";
     public string? GitHubCliPath { get; set; }
@@ -415,7 +424,7 @@ public class MaintenanceAgentOptions
     public string OllamaEndpoint { get; set; } = "http://localhost:11434";
 
     [JsonPropertyName("model")]
-    public string Model { get; set; } = "gemma4:e4b";
+    public string Model { get; set; } = string.Empty;
 
     public string? ModelProfileId { get; set; }
 

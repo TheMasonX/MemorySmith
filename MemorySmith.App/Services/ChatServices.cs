@@ -466,7 +466,7 @@ public sealed partial class OllamaChatProvider : IChatProvider
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(TimeSpan.FromSeconds(Math.Clamp(chatOptions.RequestTimeoutSeconds, 5, 600)));
 
-        var model = string.IsNullOrWhiteSpace(request.Model) ? chatOptions.OllamaModel : request.Model.Trim();
+        var model = await ResolveModelNameAsync(request.Model, chatOptions, timeout.Token);
         var endpoint = new Uri(new Uri(chatOptions.OllamaEndpoint.TrimEnd('/') + "/"), "api/chat");
         var payload = new Dictionary<string, object?>
         {
@@ -498,7 +498,7 @@ public sealed partial class OllamaChatProvider : IChatProvider
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(TimeSpan.FromSeconds(Math.Clamp(chatOptions.RequestTimeoutSeconds, 5, 600)));
 
-        var model = string.IsNullOrWhiteSpace(request.Model) ? chatOptions.OllamaModel : request.Model.Trim();
+        var model = await ResolveModelNameAsync(request.Model, chatOptions, timeout.Token);
         var endpoint = new Uri(new Uri(chatOptions.OllamaEndpoint.TrimEnd('/') + "/"), "api/chat");
         var payload = new Dictionary<string, object?>
         {
@@ -673,6 +673,28 @@ public sealed partial class OllamaChatProvider : IChatProvider
             .Where(model => !string.IsNullOrWhiteSpace(model.Name))
             .OrderBy(model => model.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
+    }
+
+    private async Task<string> ResolveModelNameAsync(string? requestedModel, ChatOptions chatOptions, CancellationToken cancellationToken)
+    {
+        if (!string.IsNullOrWhiteSpace(requestedModel))
+        {
+            return requestedModel.Trim();
+        }
+
+        if (!string.IsNullOrWhiteSpace(chatOptions.OllamaModel))
+        {
+            return chatOptions.OllamaModel.Trim();
+        }
+
+        var models = await ListModelsAsync(cancellationToken);
+        var preferred = models.FirstOrDefault(model => model.IsPreferred) ?? models.FirstOrDefault();
+        if (preferred is not null && !string.IsNullOrWhiteSpace(preferred.Name))
+        {
+            return preferred.Name;
+        }
+
+        throw new InvalidOperationException("No Ollama model is configured and provider model discovery returned no models.");
     }
 
     private static ChatModelSummary ReadOllamaModel(JsonElement model)

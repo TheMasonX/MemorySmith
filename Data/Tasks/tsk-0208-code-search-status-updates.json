@@ -1,0 +1,31 @@
+﻿{
+  "id": "tsk-0208-code-search-status-updates",
+  "key": "TSK-0208",
+  "title": "Code Search Status Updates",
+  "description": "The code search doesn\u0027t update status without refreshing. This made it confusing when I searched, and nothing was happening on the screen (the search button was just stuck disabled). Really, it had started rebuilding, but didn\u0027t update till I refreshed and it was at 22%",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-29T00:21:17.0141819Z",
+  "updatedAtUtc": "2026-05-29T00:21:17.0141819Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

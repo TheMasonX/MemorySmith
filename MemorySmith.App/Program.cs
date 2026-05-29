@@ -496,6 +496,7 @@ try
     builder.Services.AddSingleton<ChatIntentInterceptor>();
     builder.Services.AddSingleton<IChatTranscriptWriter, ChatTranscriptWriter>();
     builder.Services.AddSingleton<IChatFeedbackStore, SqliteChatFeedbackStore>();
+    builder.Services.AddSingleton<TrainingHarnessRunnerService>();
     builder.Services.AddScoped<IChatAgent, MemoryChatAgent>();
 
     var maintenanceEnabled = builder.Configuration.GetValue("MemorySmith:Maintenance:Enabled", true);

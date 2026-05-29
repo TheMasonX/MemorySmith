@@ -245,8 +245,12 @@ public class TagGovernanceTests
             Assert.That(markup, Does.Contain("ChatModelProfileService ModelProfiles"));
             Assert.That(markup, Does.Contain("IEnumerable<IChatProvider> ChatProviders"));
             Assert.That(markup, Does.Contain("OnModelProfileProviderChangedAsync"));
+            Assert.That(markup, Does.Contain("OnContextPresetChangedAsync"));
             Assert.That(markup, Does.Contain("_modelProfileModelOptions"));
             Assert.That(markup, Does.Contain("admin-model-select-field"));
+            Assert.That(markup, Does.Contain("Context presets"));
+            Assert.That(markup, Does.Contain("ModelVramEstimateHint"));
+            Assert.That(markup, Does.Contain("Estimated VRAM envelope"));
             Assert.That(markup, Does.Contain("admin-row-actions"));
             Assert.That(markup, Does.Contain("DuplicateModelProfileAsync"));
             Assert.That(markup, Does.Contain("Icons.Material.Filled.ContentCopy"));
@@ -283,6 +287,8 @@ public class TagGovernanceTests
             Assert.That(navMarkup, Does.Contain("Tags"));
             Assert.That(navMarkup, Does.Contain("Href=\"/code-search\""));
             Assert.That(navMarkup, Does.Contain("Code Search"));
+            Assert.That(navMarkup, Does.Contain("Href=\"/models\""));
+            Assert.That(navMarkup, Does.Contain("Models"));
             Assert.That(navMarkup, Does.Contain("Href=\"/training-workbench\""));
             Assert.That(navMarkup, Does.Contain("Training"));
             Assert.That(navMarkup, Does.Contain("Href=\"/maintenance\""));
@@ -661,6 +667,39 @@ public class TagGovernanceTests
             Assert.That(appsettings, Does.Contain("\"ActionUx\""));
             Assert.That(appsettings, Does.Contain("\"DefaultAction\": \"accept\""));
             Assert.That(appsettings, Does.Contain("\"RevisionRequired\": true"));
+        });
+    }
+
+    [Test]
+    public void AdminSettings_ExposeCodeSearchRankingTuningKnobs()
+    {
+        var source = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "Services", "AdminSettingsService.cs"));
+        var appsettings = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "appsettings.json"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(source, Does.Contain("MemorySmith:CodeSearch:HybridVectorWeight"));
+            Assert.That(source, Does.Contain("MemorySmith:CodeSearch:HybridLexicalWeight"));
+            Assert.That(source, Does.Contain("MemorySmith:CodeSearch:ZeroLexicalEvidencePenalty"));
+            Assert.That(source, Does.Contain("MemorySmith:CodeSearch:LexicalScoreSaturation"));
+            Assert.That(source, Does.Contain("MemorySmith:CodeSearch:LexicalFrequencyBonusScale"));
+            Assert.That(source, Does.Contain("MemorySmith:CodeSearch:MaxLexicalFrequencyBonusPerToken"));
+            Assert.That(source, Does.Contain("MemorySmith:CodeSearch:MinTokenCoverageWeight"));
+            Assert.That(source, Does.Contain("MemorySmith:CodeSearch:MaxTokenCoverageWeight"));
+            Assert.That(source, Does.Contain("MemorySmith:CodeSearch:VectorPrefilterFullScanFallbackCandidateCount"));
+            Assert.That(source, Does.Contain("Code-search min token coverage weight"));
+            Assert.That(source, Does.Contain("Code-search max token coverage weight"));
+            Assert.That(source, Does.Contain("Code-search sparse prefilter fallback candidate count"));
+
+            Assert.That(appsettings, Does.Contain("\"HybridVectorWeight\": 0.75"));
+            Assert.That(appsettings, Does.Contain("\"HybridLexicalWeight\": 0.25"));
+            Assert.That(appsettings, Does.Contain("\"ZeroLexicalEvidencePenalty\": 0.72"));
+            Assert.That(appsettings, Does.Contain("\"LexicalScoreSaturation\": 4.0"));
+            Assert.That(appsettings, Does.Contain("\"LexicalFrequencyBonusScale\": 0.1"));
+            Assert.That(appsettings, Does.Contain("\"MaxLexicalFrequencyBonusPerToken\": 0.35"));
+            Assert.That(appsettings, Does.Contain("\"MinTokenCoverageWeight\": 0.65"));
+            Assert.That(appsettings, Does.Contain("\"MaxTokenCoverageWeight\": 1.15"));
+            Assert.That(appsettings, Does.Contain("\"VectorPrefilterFullScanFallbackCandidateCount\": 24"));
         });
     }
 
