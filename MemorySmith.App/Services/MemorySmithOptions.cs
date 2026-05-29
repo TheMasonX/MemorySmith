@@ -266,7 +266,7 @@ public class CodeSearchOptions
     public int QueryTimingSlowThresholdMilliseconds { get; set; } = 500;
     public int MaxFileBytes { get; set; } = 512 * 1024;
     public int MaxChunkCharacters { get; set; } = 4000;
-    public int MaxResults { get; set; } = 10;
+    public int MaxResults { get; set; } = 100;
     public int MaxResultsPerDocument { get; set; } = 2;
     public double HybridVectorWeight { get; set; } = 0.75;
     public double HybridLexicalWeight { get; set; } = 0.25;

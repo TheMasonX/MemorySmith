@@ -21,7 +21,7 @@
     <MudPaper Class="pa-4" Outlined="true">
         <div class="admin-filter-bar" aria-label="Code search query controls">
             <MudTextField T="string" Value="@_query" ValueChanged="@((string value) => _query = value)" Label="Search query" Variant="Variant.Outlined" Margin="Margin.Dense" Class="admin-filter-input" Immediate="true" />
-            <MudNumericField T="int" Value="@_limit" ValueChanged="@((int value) => _limit = Math.Clamp(value, 1, MaxLimit))" Min="1" Max="@MaxLimit" Label="Limit" Variant="Variant.Outlined" Margin="Margin.Dense" Class="admin-filter-select" />
+            <MudNumericField T="int" Value="@_limit" ValueChanged="@((int value) => _limit = Math.Clamp(value, 1, MaxLimit))" Min="1" Max="@MaxLimit" Label="Limit" HelperText="@($"Operator cap: {MaxLimit}")" Variant="Variant.Outlined" Margin="Margin.Dense" Class="admin-filter-select" />
             <MudSwitch T="bool" Value="@_rebuildIfStale" ValueChanged="@((bool value) => _rebuildIfStale = value)" Label="Rebuild if stale" Color="Color.Primary" />
             <MudSwitch T="bool" Value="@_forceRebuild" ValueChanged="@((bool value) => _forceRebuild = value)" Label="Force rebuild" Color="Color.Warning" />
             <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Search" Disabled="@(_isBusy || string.IsNullOrWhiteSpace(_query))" OnClick="SearchAsync">Search</MudButton>
@@ -107,7 +107,7 @@
             <MudPaper Class="pa-0" Outlined="true">
                 <div class="pa-3" style="border-bottom:1px solid var(--mud-palette-lines-default);">
                     <MudText Typo="Typo.subtitle2">Results</MudText>
-                    <small>@_results.Count result(s) returned. Requested limit: @_limit.</small>
+                    <small>@_results.Count result(s) returned. Requested limit: @_limit. Operator cap: @MaxLimit.</small>
                 </div>
                 <div style="max-height:680px; overflow:auto;">
                     @foreach (var result in _results)
@@ -172,8 +172,6 @@
 </div>
 
 @code {
-    private const int MaxLimit = 100;
-
     private bool _isBusy;
     private string _query = string.Empty;
     private string _targetsInput = string.Empty;
@@ -190,6 +188,8 @@
     private string? _resultPanelError;
     private readonly CancellationTokenSource _statusPollingCts = new();
     private DateTime _lastStatusRefreshUtc = DateTime.MinValue;
+
+    private int MaxLimit => Math.Clamp(Options.CurrentValue.CodeSearch.MaxResults, 1, 500);
 
     protected override async Task OnInitializedAsync()
     {

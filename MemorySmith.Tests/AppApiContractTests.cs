@@ -1032,6 +1032,9 @@ Line two",
                 Assert.That(settings.Select(setting => setting.Key), Does.Contain("MemorySmith:Database:UseWal"));
                 Assert.That(settings.Select(setting => setting.Key), Does.Contain("MemorySmith:SourceLinks:AllowedFileRoots"));
                 Assert.That(settings.Select(setting => setting.Key), Does.Contain("MemorySmith:MaintenanceAgent:ResourceProbe:BusyProcessNames"));
+                Assert.That(settings.Select(setting => setting.Key), Does.Contain("MemorySmith:CodeSearch:MaxResults"));
+                Assert.That(settings.Select(setting => setting.Key), Does.Contain("MemorySmith:Training:ActiveModelTag"));
+                Assert.That(settings.Select(setting => setting.Key), Does.Contain("MemorySmith:Training:FallbackModelTag"));
                 Assert.That(settings.Single(setting => setting.Key == "MemorySmith:ApiKey").IsSensitive, Is.True);
                 Assert.That(updateResponse.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
                 Assert.That(defaultVisibilityResponse.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
@@ -1102,6 +1105,10 @@ Line two",
             Assert.That(body, Does.Contain("paths"));
             Assert.That(body, Does.Contain("storageDiagnostics"));
             Assert.That(body, Does.Not.Contain("apiKey\""));
+            Assert.That(body, Does.Not.Contain("http://localhost:11434"));
+            Assert.That(body, Does.Not.Contain("http://localhost:4317"));
+            Assert.That(body, Does.Not.Contain("wiki-chat-agent.md"));
+            Assert.That(body, Does.Contain("[redacted-configured]"));
         });
     }
 

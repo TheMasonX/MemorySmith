@@ -281,6 +281,11 @@ public class TagGovernanceTests
             Assert.That(markup, Does.Contain("admin-settings-nav"));
             Assert.That(markup, Does.Contain("_settingsDirtyOnly"));
             Assert.That(markup, Does.Contain("admin-setting-dirty-indicator"));
+            Assert.That(markup, Does.Contain("SaveVisibleDirtySettingsAsync"));
+            Assert.That(markup, Does.Contain("Save All Changes"));
+            Assert.That(markup, Does.Contain("Config Import/Export"));
+            Assert.That(markup, Does.Contain("ExportVisibleSettingsAsync"));
+            Assert.That(markup, Does.Contain("ApplyImportedSettingsToVisibleAsync"));
             Assert.That(markup, Does.Contain("DataLabel=\"Setting\""));
             Assert.That(markup, Does.Contain("ResetFilteredSettings"));
             Assert.That(navMarkup, Does.Contain("Href=\"/tags\""));
@@ -307,10 +312,16 @@ public class TagGovernanceTests
         Assert.Multiple(() =>
         {
             Assert.That(codeSearchMarkup, Does.Contain("Copy file and line range"));
+            Assert.That(codeSearchMarkup, Does.Contain("Copy snippet text"));
+            Assert.That(codeSearchMarkup, Does.Contain("Operator cap"));
             Assert.That(codeSearchMarkup, Does.Contain("Open file in default app"));
             Assert.That(codeSearchMarkup, Does.Contain("CopyResultLocationAsync"));
             Assert.That(codeSearchMarkup, Does.Contain("OpenResultAsync"));
             Assert.That(codeSearchMarkup, Does.Contain("Icons.Material.Filled.OpenInNew"));
+            Assert.That(trainingMarkup, Does.Contain("Training Settings Proxy"));
+            Assert.That(trainingMarkup, Does.Contain("MudAutocomplete T=\"string\""));
+            Assert.That(trainingMarkup, Does.Contain("SaveSelectedTrainingSettingAsync"));
+            Assert.That(trainingMarkup, Does.Contain("ExportTrainingSettingsAsync"));
             Assert.That(trainingMarkup, Does.Contain("Copy status.json path"));
             Assert.That(trainingMarkup, Does.Contain("Open events.jsonl in default app"));
             Assert.That(trainingMarkup, Does.Contain("Open benchmark.json in default app"));

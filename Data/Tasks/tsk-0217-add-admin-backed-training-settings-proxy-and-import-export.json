@@ -1,0 +1,50 @@
+{
+  "id": "tsk-0217-add-admin-backed-training-settings-proxy-and-import-export",
+  "key": "TSK-0217",
+  "title": "Add admin-backed training settings proxy and config import/export",
+  "description": "Problem: operators can reach the Training Workbench but cannot directly edit the training settings needed to launch and benchmark runs from that page. Model-related training values such as active/fallback training tags are also not exposed in the central Admin Configuration surface. Desired outcome: keep Admin Configuration as the single source of truth for editable settings while allowing admin-only local proxies such as the Training Workbench to edit the same underlying values, with first-pass searchable training-setting selection, last-used persistence, and import/export affordances for training/general config slices.",
+  "type": "Task",
+  "status": "Done",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "TheMasonX",
+  "labels": [
+    "training",
+    "admin",
+    "config",
+    "ux"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "audits/local-finetuning",
+    "audits/local-finetuning-ux-notes"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0217-20260529",
+      "author": "AgentSmith",
+      "body": "Created from operator feedback after the first training workbench pass: the route was admin-only, but launch-critical settings still required a detour into the generic Admin Configuration surface and some training values were not exposed there at all.",
+      "createdAtUtc": "2026-05-29T05:20:00.0000000Z"
+    },
+    {
+      "id": "c-implementation-0217-20260529",
+      "author": "AgentSmith",
+      "body": "Implemented an admin-backed training settings proxy directly in `TrainingWorkbench.razor` using `AdminSettingsService`, including searchable setting selection, last-used persistence via local storage, selected/all training-setting save flows, and training-scope import/export text transfer. Central admin config was extended to expose `MemorySmith:Training:ActiveModelTag` and `MemorySmith:Training:FallbackModelTag`, and Admin Configuration gained general import/export plus Save Visible/Save All split with tooltips.",
+      "createdAtUtc": "2026-05-29T05:35:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-29T05:20:00.0000000Z",
+  "updatedAtUtc": "2026-05-29T05:35:00.0000000Z",
+  "completedAtUtc": "2026-05-29T05:35:00.0000000Z",
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

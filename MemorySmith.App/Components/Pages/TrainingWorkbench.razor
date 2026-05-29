@@ -2,12 +2,14 @@
 @rendermode InteractiveServer
 @attribute [Authorize(Policy = MemorySmithPolicies.CanAdminMemorySmith)]
 @inject IOptionsMonitor<MemorySmithOptions> Options
+@inject AdminSettingsService Settings
 @inject VarResolver VarResolver
 @inject IJSRuntime JS
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
 @inject TrainingHarnessRunnerService TrainingRunner
 @using System.Text.Json
+@using System.Text.Json.Nodes
 @using Microsoft.Extensions.Options
 @using MemorySmith.Core.Models
 @using MemorySmith.App.Services.Training
@@ -31,6 +33,61 @@
     {
         <MudAlert Severity="Severity.Error" Dense="true" Variant="Variant.Outlined" Class="mt-2">@_error</MudAlert>
     }
+
+    <MudPaper Class="pa-4 mt-3" Outlined="true">
+        <MudText Typo="Typo.subtitle2">Training Settings Proxy</MudText>
+        <MudText Typo="Typo.body2" Class="mt-1">These controls edit the same underlying admin configuration values used by the central Admin Configuration surface.</MudText>
+
+        <div class="admin-filter-bar" aria-label="Training setting proxy controls">
+            <MudAutocomplete T="string"
+                             Value="@_selectedTrainingSettingKey"
+                             ValueChanged="OnTrainingSettingSelectedAsync"
+                             SearchFunc="SearchTrainingSettingsAsync"
+                             ToStringFunc="TrainingSettingDisplay"
+                             Label="Training setting"
+                             Variant="Variant.Outlined"
+                             Margin="Margin.Dense"
+                             Dense="true"
+                             Clearable="false"
+                             ResetValueOnEmptyText="false"
+                             CoerceText="true"
+                             Class="admin-filter-input" />
+            <MudTooltip Text="Save the currently selected training setting only.">
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Save" Disabled="@(_isBusy || SelectedTrainingSetting is null || !SelectedTrainingSetting.IsDirty)" OnClick="SaveSelectedTrainingSettingAsync">Save Selected</MudButton>
+            </MudTooltip>
+            <MudTooltip Text="Reset the currently selected training setting back to its last saved value.">
+                <MudButton Variant="Variant.Text" Color="Color.Secondary" Size="Size.Small" StartIcon="@Icons.Material.Filled.RestartAlt" Disabled="@(_isBusy || SelectedTrainingSetting is null || !SelectedTrainingSetting.IsDirty)" OnClick="ResetSelectedTrainingSetting">Reset Selected</MudButton>
+            </MudTooltip>
+            <MudTooltip Text="Save every pending training-setting change on this page.">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.DoneAll" Disabled="@(_isBusy || TrainingDirtyCount == 0)" OnClick="SaveAllTrainingSettingsAsync">Save Training Changes (@TrainingDirtyCount)</MudButton>
+            </MudTooltip>
+        </div>
+
+        @if (SelectedTrainingSetting is { } selectedSetting)
+        {
+            <div class="health-config-grid" style="margin-top:8px;">
+                <span>Setting</span><strong>@selectedSetting.Item.Label</strong>
+                <span>Key</span><strong>@selectedSetting.Item.Key</strong>
+                <span>Category</span><strong>@selectedSetting.Item.Category</strong>
+                <span>Status</span><strong>@(selectedSetting.IsDirty ? "Pending changes" : "Saved")</strong>
+            </div>
+            <MudText Typo="Typo.body2" Class="mt-2">@selectedSetting.Item.HelpText</MudText>
+            <div class="mt-2">@TrainingSettingEditor(selectedSetting)</div>
+        }
+
+        <div class="admin-settings-save-all-row" style="margin-top:8px; justify-content:flex-start;">
+            <MudTooltip Text="Export the current training-setting values into the transfer box below.">
+                <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Small" StartIcon="@Icons.Material.Filled.UploadFile" Disabled="@_isBusy" OnClick="ExportTrainingSettingsAsync">Export Training Settings</MudButton>
+            </MudTooltip>
+            <MudTooltip Text="Copy the current training-settings JSON to the clipboard.">
+                <MudButton Variant="Variant.Text" Color="Color.Secondary" Size="Size.Small" StartIcon="@Icons.Material.Filled.ContentCopy" Disabled="@(_isBusy || string.IsNullOrWhiteSpace(_trainingSettingsTransferPayload))" OnClick="CopyTrainingSettingsTransferPayloadAsync">Copy JSON</MudButton>
+            </MudTooltip>
+            <MudTooltip Text="Apply imported JSON to matching training settings as pending changes without saving yet.">
+                <MudButton Variant="Variant.Outlined" Color="Color.Info" Size="Size.Small" StartIcon="@Icons.Material.Filled.Download" Disabled="@(_isBusy || string.IsNullOrWhiteSpace(_trainingSettingsTransferPayload))" OnClick="ApplyImportedTrainingSettingsAsync">Import Training Settings</MudButton>
+            </MudTooltip>
+        </div>
+        <MudTextField T="string" Value="@_trainingSettingsTransferPayload" ValueChanged="@((string value) => _trainingSettingsTransferPayload = value)" Label="Training settings transfer JSON" Variant="Variant.Outlined" Margin="Margin.Dense" Lines="5" HelperText="Export writes JSON here. Paste JSON here to import matching training settings as pending changes, then save the selected setting or all training changes." />
+    </MudPaper>
 
     @if (_snapshot is not null)
     {
@@ -173,6 +230,8 @@
 </div>
 
 @code {
+    private const string LastTrainingSettingStorageKey = "memorysmith.training.last-setting";
+
     private bool _isBusy;
     private bool _isLaunchingRun;
     private string? _error;
@@ -180,12 +239,43 @@
     private IReadOnlyList<TrainingRunSummary> _runs = [];
     private IReadOnlyList<TrainingRunEvent> _latestRunEvents = [];
     private TrainingHarnessActiveRun? _activeRun;
+    private IReadOnlyList<TrainingSettingRow> _trainingSettings = [];
+    private string? _selectedTrainingSettingKey;
+    private string _trainingSettingsTransferPayload = string.Empty;
+    private bool _hydratedLastTrainingSetting;
     private readonly CancellationTokenSource _pollingCts = new();
+
+    private TrainingSettingRow? SelectedTrainingSetting => _trainingSettings.FirstOrDefault(row => string.Equals(row.Item.Key, _selectedTrainingSettingKey, StringComparison.OrdinalIgnoreCase))
+        ?? _trainingSettings.FirstOrDefault();
+
+    private int TrainingDirtyCount => _trainingSettings.Count(row => row.IsDirty);
 
     protected override async Task OnInitializedAsync()
     {
         await LoadAsync();
         _ = PollRunsAsync(_pollingCts.Token);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _hydratedLastTrainingSetting)
+        {
+            return;
+        }
+
+        _hydratedLastTrainingSetting = true;
+        var lastUsed = await JS.InvokeAsync<string?>("localStorage.getItem", LastTrainingSettingStorageKey);
+        if (!string.IsNullOrWhiteSpace(lastUsed) && _trainingSettings.Any(row => string.Equals(row.Item.Key, lastUsed, StringComparison.OrdinalIgnoreCase)))
+        {
+            _selectedTrainingSettingKey = lastUsed;
+        }
+        else if (SelectedTrainingSetting is { } selected)
+        {
+            _selectedTrainingSettingKey = selected.Item.Key;
+            await JS.InvokeVoidAsync("localStorage.setItem", LastTrainingSettingStorageKey, selected.Item.Key);
+        }
+
+        await InvokeAsync(StateHasChanged);
     }
 
     public void Dispose()
@@ -202,6 +292,7 @@
         {
             var training = Options.CurrentValue.Training;
             _snapshot = BuildSnapshot(training);
+            LoadTrainingSettings();
             _runs = await LoadRunSummariesAsync(_snapshot.RunsDirectory);
             _latestRunEvents = _runs.Count > 0
                 ? await LoadRecentEventsAsync(_runs[0].EventsPath)
@@ -215,6 +306,31 @@
         finally
         {
             _isBusy = false;
+        }
+    }
+
+    private void LoadTrainingSettings()
+    {
+        var pendingByKey = _trainingSettings
+            .Where(row => row.IsDirty)
+            .ToDictionary(row => row.Item.Key, row => row.PendingValue, StringComparer.OrdinalIgnoreCase);
+
+        _trainingSettings = Settings.ListEditableSettings()
+            .Where(item => string.Equals(item.Category, "Training", StringComparison.OrdinalIgnoreCase))
+            .Select(item => new TrainingSettingRow(item, pendingByKey.TryGetValue(item.Key, out var pendingValue) ? pendingValue : null))
+            .OrderBy(row => row.Item.Label, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (_trainingSettings.Count == 0)
+        {
+            _selectedTrainingSettingKey = null;
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_selectedTrainingSettingKey)
+            || _trainingSettings.All(row => !string.Equals(row.Item.Key, _selectedTrainingSettingKey, StringComparison.OrdinalIgnoreCase)))
+        {
+            _selectedTrainingSettingKey = _trainingSettings[0].Item.Key;
         }
     }
 
@@ -487,6 +603,240 @@
 
     private void OpenModels() => Navigation.NavigateTo("/models");
 
+    private Task<IEnumerable<string>> SearchTrainingSettingsAsync(string? value, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        IEnumerable<TrainingSettingRow> matches = _trainingSettings;
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            matches = matches.Where(row => row.Item.Label.Contains(value, StringComparison.OrdinalIgnoreCase)
+                || row.Item.Key.Contains(value, StringComparison.OrdinalIgnoreCase)
+                || row.Item.HelpText.Contains(value, StringComparison.OrdinalIgnoreCase));
+        }
+
+        return Task.FromResult(matches.Select(row => row.Item.Key));
+    }
+
+    private string TrainingSettingDisplay(string? key)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            return string.Empty;
+        }
+
+        var row = _trainingSettings.FirstOrDefault(item => string.Equals(item.Item.Key, key, StringComparison.OrdinalIgnoreCase));
+        return row is null ? key : $"{row.Item.Label} ({row.Item.Key})";
+    }
+
+    private async Task OnTrainingSettingSelectedAsync(string? key)
+    {
+        _selectedTrainingSettingKey = key;
+        if (!string.IsNullOrWhiteSpace(key))
+        {
+            await JS.InvokeVoidAsync("localStorage.setItem", LastTrainingSettingStorageKey, key);
+        }
+    }
+
+    private RenderFragment TrainingSettingEditor(TrainingSettingRow row) => builder =>
+    {
+        switch (row.Item.ValueKind)
+        {
+            case nameof(AdminSettingValueKind.Boolean):
+                builder.OpenComponent<MudSwitch<bool>>(0);
+                builder.AddAttribute(1, "Value", bool.TryParse(row.PendingValue, out var boolean) && boolean);
+                builder.AddAttribute(2, "ValueChanged", EventCallback.Factory.Create<bool>(this, value => row.PendingValue = value ? "true" : "false"));
+                builder.AddAttribute(3, "Disabled", _isBusy || _isLaunchingRun);
+                builder.CloseComponent();
+                break;
+            case nameof(AdminSettingValueKind.Choice):
+                builder.OpenComponent<MudSelect<string>>(10);
+                builder.AddAttribute(11, "Value", row.PendingValue);
+                builder.AddAttribute(12, "ValueChanged", EventCallback.Factory.Create<string>(this, value => row.PendingValue = value ?? string.Empty));
+                builder.AddAttribute(13, "Dense", true);
+                builder.AddAttribute(14, "Variant", Variant.Outlined);
+                builder.AddAttribute(15, "Margin", Margin.Dense);
+                builder.AddAttribute(16, "Disabled", _isBusy || _isLaunchingRun);
+                builder.AddAttribute(17, "ChildContent", (RenderFragment)(selectBuilder =>
+                {
+                    var sequence = 0;
+                    foreach (var option in row.Item.Options)
+                    {
+                        selectBuilder.OpenComponent<MudSelectItem<string>>(sequence++);
+                        selectBuilder.AddAttribute(sequence++, "Value", option);
+                        selectBuilder.AddContent(sequence++, option);
+                        selectBuilder.CloseComponent();
+                    }
+                }));
+                builder.CloseComponent();
+                break;
+            case nameof(AdminSettingValueKind.StringList):
+                builder.OpenComponent<MudTextField<string>>(20);
+                builder.AddAttribute(21, "Value", row.PendingValue);
+                builder.AddAttribute(22, "ValueChanged", EventCallback.Factory.Create<string>(this, value => row.PendingValue = value ?? string.Empty));
+                builder.AddAttribute(23, "Variant", Variant.Outlined);
+                builder.AddAttribute(24, "Margin", Margin.Dense);
+                builder.AddAttribute(25, "Lines", 3);
+                builder.AddAttribute(26, "Disabled", _isBusy || _isLaunchingRun);
+                builder.CloseComponent();
+                break;
+            default:
+                builder.OpenComponent<MudTextField<string>>(30);
+                builder.AddAttribute(31, "Value", row.PendingValue);
+                builder.AddAttribute(32, "ValueChanged", EventCallback.Factory.Create<string>(this, value => row.PendingValue = value ?? string.Empty));
+                builder.AddAttribute(33, "Variant", Variant.Outlined);
+                builder.AddAttribute(34, "Margin", Margin.Dense);
+                builder.AddAttribute(35, "Disabled", _isBusy || _isLaunchingRun);
+                builder.AddAttribute(36, "InputType", row.Item.IsSensitive ? InputType.Password : InputType.Text);
+                builder.CloseComponent();
+                break;
+        }
+    };
+
+    private void ResetSelectedTrainingSetting()
+    {
+        SelectedTrainingSetting?.Reset();
+    }
+
+    private async Task SaveSelectedTrainingSettingAsync()
+    {
+        if (SelectedTrainingSetting is not { } row || !row.IsDirty)
+        {
+            return;
+        }
+
+        await SaveTrainingSettingsAsync([row]);
+    }
+
+    private async Task SaveAllTrainingSettingsAsync()
+    {
+        var dirtyRows = _trainingSettings.Where(row => row.IsDirty).ToList();
+        if (dirtyRows.Count == 0)
+        {
+            Snackbar.Add("No pending training-setting changes to save.", Severity.Info);
+            return;
+        }
+
+        await SaveTrainingSettingsAsync(dirtyRows);
+    }
+
+    private async Task SaveTrainingSettingsAsync(IReadOnlyList<TrainingSettingRow> rowsToSave)
+    {
+        var preserve = _trainingSettings
+            .Where(row => row.IsDirty && rowsToSave.All(candidate => !string.Equals(candidate.Item.Key, row.Item.Key, StringComparison.OrdinalIgnoreCase)))
+            .ToDictionary(row => row.Item.Key, row => row.PendingValue, StringComparer.OrdinalIgnoreCase);
+        var failures = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var saved = 0;
+
+        _isBusy = true;
+        try
+        {
+            foreach (var row in rowsToSave)
+            {
+                var result = await Settings.UpdateAsync(new AdminSettingUpdateRequest(row.Item.Key, row.PendingValue), CancellationToken.None);
+                if (result.Succeeded)
+                {
+                    saved++;
+                    continue;
+                }
+
+                failures[row.Item.Key] = row.PendingValue;
+                Snackbar.Add(result.Error ?? $"{row.Item.Label} could not be saved.", Severity.Error);
+            }
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+
+        await LoadAsync();
+        foreach (var row in _trainingSettings)
+        {
+            if (preserve.TryGetValue(row.Item.Key, out var pendingValue) || failures.TryGetValue(row.Item.Key, out pendingValue))
+            {
+                row.PendingValue = pendingValue;
+            }
+        }
+
+        if (saved > 0)
+        {
+            Snackbar.Add($"Saved {saved} training setting{(saved == 1 ? string.Empty : "s")}.", Severity.Success);
+        }
+    }
+
+    private Task ExportTrainingSettingsAsync()
+    {
+        var payload = new JsonObject();
+        foreach (var row in _trainingSettings.OrderBy(row => row.Item.Key, StringComparer.OrdinalIgnoreCase))
+        {
+            payload[row.Item.Key] = row.PendingValue;
+        }
+
+        _trainingSettingsTransferPayload = payload.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
+        Snackbar.Add("Training settings exported to the transfer box.", Severity.Success);
+        return Task.CompletedTask;
+    }
+
+    private async Task CopyTrainingSettingsTransferPayloadAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_trainingSettingsTransferPayload))
+        {
+            return;
+        }
+
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", _trainingSettingsTransferPayload);
+        Snackbar.Add("Training settings JSON copied.", Severity.Success);
+    }
+
+    private Task ApplyImportedTrainingSettingsAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_trainingSettingsTransferPayload))
+        {
+            Snackbar.Add("Paste training-settings JSON into the transfer box first.", Severity.Info);
+            return Task.CompletedTask;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(_trainingSettingsTransferPayload);
+            if (document.RootElement.ValueKind != JsonValueKind.Object)
+            {
+                Snackbar.Add("Training settings import JSON must be an object keyed by setting name.", Severity.Error);
+                return Task.CompletedTask;
+            }
+
+            var applied = 0;
+            foreach (var property in document.RootElement.EnumerateObject())
+            {
+                var row = _trainingSettings.FirstOrDefault(item => string.Equals(item.Item.Key, property.Name, StringComparison.OrdinalIgnoreCase));
+                if (row is null)
+                {
+                    continue;
+                }
+
+                row.PendingValue = property.Value.ValueKind switch
+                {
+                    JsonValueKind.String => property.Value.GetString() ?? string.Empty,
+                    JsonValueKind.True => "true",
+                    JsonValueKind.False => "false",
+                    JsonValueKind.Null => string.Empty,
+                    JsonValueKind.Array => string.Join(Environment.NewLine, property.Value.EnumerateArray().Select(element => element.ToString())),
+                    _ => property.Value.ToString()
+                };
+                applied++;
+            }
+
+            Snackbar.Add(applied == 0
+                ? "No imported values matched the training settings list."
+                : $"Applied {applied} imported training setting value{(applied == 1 ? string.Empty : "s")} as pending changes.", applied == 0 ? Severity.Info : Severity.Success);
+        }
+        catch (JsonException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+
+        return Task.CompletedTask;
+    }
+
     private static string? GetString(JsonElement element, string propertyName)
     {
         if (!element.TryGetProperty(propertyName, out var value) || value.ValueKind != JsonValueKind.String)
@@ -535,6 +885,21 @@
         string TimestampText,
         string EventName,
         string DataSummary);
+
+    private sealed class TrainingSettingRow
+    {
+        public TrainingSettingRow(AdminSettingItem item, string? pendingValue = null)
+        {
+            Item = item;
+            PendingValue = pendingValue ?? item.Value;
+        }
+
+        public AdminSettingItem Item { get; }
+        public string PendingValue { get; set; }
+        public bool IsDirty => !string.Equals(PendingValue, Item.Value, StringComparison.Ordinal);
+
+        public void Reset() => PendingValue = Item.Value;
+    }
 
     private async Task CopyTextAsync(string value)
     {

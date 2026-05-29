@@ -290,8 +290,35 @@
             }
 
             <div class="admin-settings-save-all-row">
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save" Disabled="@(_isBusy || DirtySettingCount == 0)" OnClick="SaveAllDirtySettingsAsync">Save All Changes (@DirtySettingCount)</MudButton>
+                <MudTooltip Text="Save only the pending changes that match the current filters.">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.FilterAlt" Disabled="@(_isBusy || FilteredDirtySettingCount == 0)" OnClick="SaveVisibleDirtySettingsAsync">Save Visible (@FilteredDirtySettingCount)</MudButton>
+                </MudTooltip>
+                <MudTooltip Text="Save every pending config change, including rows outside the current filters.">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save" Disabled="@(_isBusy || DirtySettingCount == 0)" OnClick="SaveAllDirtySettingsAsync">Save All Changes (@DirtySettingCount)</MudButton>
+                </MudTooltip>
             </div>
+
+            <MudPaper Class="pa-4 mb-3" Outlined="true">
+                <MudText Typo="Typo.subtitle2">Config Import/Export</MudText>
+                <div class="admin-settings-save-all-row" style="margin-top:8px; justify-content:flex-start;">
+                    <MudTooltip Text="Export the settings that match the current filters into the transfer box below.">
+                        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Small" StartIcon="@Icons.Material.Filled.UploadFile" Disabled="@_isBusy" OnClick="ExportVisibleSettingsAsync">Export Visible</MudButton>
+                    </MudTooltip>
+                    <MudTooltip Text="Export every editable admin setting into the transfer box below.">
+                        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Inventory2" Disabled="@_isBusy" OnClick="ExportAllSettingsAsync">Export All</MudButton>
+                    </MudTooltip>
+                    <MudTooltip Text="Copy the current transfer JSON to the clipboard.">
+                        <MudButton Variant="Variant.Text" Color="Color.Secondary" Size="Size.Small" StartIcon="@Icons.Material.Filled.ContentCopy" Disabled="@(_isBusy || string.IsNullOrWhiteSpace(_settingsTransferPayload))" OnClick="CopySettingsTransferPayloadAsync">Copy JSON</MudButton>
+                    </MudTooltip>
+                    <MudTooltip Text="Apply imported JSON to matching settings in the current filtered view without saving yet.">
+                        <MudButton Variant="Variant.Outlined" Color="Color.Info" Size="Size.Small" StartIcon="@Icons.Material.Filled.Download" Disabled="@(_isBusy || string.IsNullOrWhiteSpace(_settingsTransferPayload))" OnClick="ApplyImportedSettingsToVisibleAsync">Import To Visible</MudButton>
+                    </MudTooltip>
+                    <MudTooltip Text="Apply imported JSON to every matching editable setting without saving yet.">
+                        <MudButton Variant="Variant.Outlined" Color="Color.Info" Size="Size.Small" StartIcon="@Icons.Material.Filled.DownloadDone" Disabled="@(_isBusy || string.IsNullOrWhiteSpace(_settingsTransferPayload))" OnClick="ApplyImportedSettingsToAllAsync">Import To All</MudButton>
+                    </MudTooltip>
+                </div>
+                <MudTextField T="string" Value="@_settingsTransferPayload" ValueChanged="@((string value) => _settingsTransferPayload = value)" Label="Settings transfer JSON" Variant="Variant.Outlined" Margin="Margin.Dense" Lines="6" HelperText="Export writes JSON here. Paste JSON here to import matching editable settings as pending changes, then Save Visible or Save All." />
+            </MudPaper>
 
             @if (FilteredEditableSettingGroups.Count == 0)
             {
@@ -365,7 +392,12 @@
                 </div>
 
                 <div class="admin-settings-save-all-row">
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save" Disabled="@(_isBusy || DirtySettingCount == 0)" OnClick="SaveAllDirtySettingsAsync">Save All Changes (@DirtySettingCount)</MudButton>
+                    <MudTooltip Text="Save only the pending changes that match the current filters.">
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.FilterAlt" Disabled="@(_isBusy || FilteredDirtySettingCount == 0)" OnClick="SaveVisibleDirtySettingsAsync">Save Visible (@FilteredDirtySettingCount)</MudButton>
+                    </MudTooltip>
+                    <MudTooltip Text="Save every pending config change, including rows outside the current filters.">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save" Disabled="@(_isBusy || DirtySettingCount == 0)" OnClick="SaveAllDirtySettingsAsync">Save All Changes (@DirtySettingCount)</MudButton>
+                    </MudTooltip>
                 </div>
             }
 
@@ -670,6 +702,7 @@
     private string _settingsSearch = string.Empty;
     private string _settingsCategory = AllFilterValue;
     private bool _settingsDirtyOnly;
+    private string _settingsTransferPayload = string.Empty;
     private HashSet<string> _expandedSettingGroups = new(StringComparer.OrdinalIgnoreCase);
     private HashSet<string> _knownSettingCategories = new(StringComparer.OrdinalIgnoreCase);
     private string _configurationSearch = string.Empty;
@@ -1233,21 +1266,28 @@
         _isBusy = false;
     }
 
-    private async Task SaveAllDirtySettingsAsync()
+    private async Task SaveVisibleDirtySettingsAsync() =>
+        await SaveDirtySettingsAsync(FilteredEditableSettings.Where(row => row.IsDirty).ToList(), "visible setting");
+
+    private async Task SaveAllDirtySettingsAsync() =>
+        await SaveDirtySettingsAsync(_editableSettings.Where(row => row.IsDirty).ToList(), "setting");
+
+    private async Task SaveDirtySettingsAsync(IReadOnlyList<EditableConfigurationRow> rowsToSave, string noun)
     {
-        var dirtyRows = _editableSettings.Where(row => row.IsDirty).ToList();
-        if (dirtyRows.Count == 0)
+        if (rowsToSave.Count == 0)
         {
-            Snackbar.Add("No pending setting changes to save.", Severity.Info);
+            Snackbar.Add($"No pending {noun} changes to save.", Severity.Info);
             return;
         }
 
+        var attemptedKeys = rowsToSave.Select(row => row.Item.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var pendingToPreserve = CaptureDirtySettingValues(excludeKeys: attemptedKeys);
         _isBusy = true;
         var failureMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var errors = new List<string>();
         var successCount = 0;
 
-        foreach (var row in dirtyRows)
+        foreach (var row in rowsToSave)
         {
             var result = await Settings.UpdateAsync(new AdminSettingUpdateRequest(row.Item.Key, row.PendingValue), CancellationToken.None);
             if (result.Succeeded)
@@ -1262,26 +1302,30 @@
 
         _isBusy = false;
         await LoadAsync();
-        RestoreDirtySettingValues(failureMap);
+        RestoreDirtySettingValues(MergePendingSettings(pendingToPreserve, failureMap));
 
         if (successCount > 0)
         {
-            Snackbar.Add($"Saved {successCount} setting{(successCount == 1 ? string.Empty : "s")}.", Severity.Success);
+            Snackbar.Add($"Saved {successCount} {noun}{(successCount == 1 ? string.Empty : "s")}.", Severity.Success);
         }
 
         if (errors.Count > 0)
         {
-            Snackbar.Add($"{errors.Count} setting save error{(errors.Count == 1 ? string.Empty : "s")}.", Severity.Warning);
+            Snackbar.Add($"{errors.Count} {noun} save error{(errors.Count == 1 ? string.Empty : "s")}.", Severity.Warning);
         }
     }
 
-    private Dictionary<string, string> CaptureDirtySettingValues(string? excludeKey = null)
+    private Dictionary<string, string> CaptureDirtySettingValues(string? excludeKey = null) =>
+        CaptureDirtySettingValues(string.IsNullOrWhiteSpace(excludeKey)
+            ? null
+            : new HashSet<string>([excludeKey], StringComparer.OrdinalIgnoreCase));
+
+    private Dictionary<string, string> CaptureDirtySettingValues(ISet<string>? excludeKeys)
     {
         var pending = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var row in _editableSettings.Where(item => item.IsDirty))
         {
-            if (!string.IsNullOrWhiteSpace(excludeKey)
-                && string.Equals(row.Item.Key, excludeKey, StringComparison.OrdinalIgnoreCase))
+            if (excludeKeys is not null && excludeKeys.Contains(row.Item.Key))
             {
                 continue;
             }
@@ -1305,6 +1349,124 @@
             {
                 row.PendingValue = pendingValue;
             }
+        }
+    }
+
+    private static Dictionary<string, string> MergePendingSettings(IReadOnlyDictionary<string, string> left, IReadOnlyDictionary<string, string> right)
+    {
+        var merged = new Dictionary<string, string>(left, StringComparer.OrdinalIgnoreCase);
+        foreach (var (key, value) in right)
+        {
+            merged[key] = value;
+        }
+
+        return merged;
+    }
+
+    private Task ExportVisibleSettingsAsync()
+    {
+        _settingsTransferPayload = SerializeSettingValues(FilteredEditableSettings);
+        Snackbar.Add("Visible settings exported to the transfer box.", Severity.Success);
+        return Task.CompletedTask;
+    }
+
+    private Task ExportAllSettingsAsync()
+    {
+        _settingsTransferPayload = SerializeSettingValues(_editableSettings);
+        Snackbar.Add("All editable settings exported to the transfer box.", Severity.Success);
+        return Task.CompletedTask;
+    }
+
+    private async Task CopySettingsTransferPayloadAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_settingsTransferPayload))
+        {
+            return;
+        }
+
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", _settingsTransferPayload);
+        Snackbar.Add("Settings JSON copied.", Severity.Success);
+    }
+
+    private Task ApplyImportedSettingsToVisibleAsync() =>
+        ApplyImportedSettingsAsync(FilteredEditableSettings, "visible");
+
+    private Task ApplyImportedSettingsToAllAsync() =>
+        ApplyImportedSettingsAsync(_editableSettings, "all matching");
+
+    private Task ApplyImportedSettingsAsync(IReadOnlyList<EditableConfigurationRow> rows, string scopeLabel)
+    {
+        if (!TryParseImportedSettingValues(_settingsTransferPayload, out var values, out var error))
+        {
+            Snackbar.Add(error ?? "Settings JSON could not be parsed.", Severity.Error);
+            return Task.CompletedTask;
+        }
+
+        var applied = 0;
+        foreach (var row in rows)
+        {
+            if (values.TryGetValue(row.Item.Key, out var importedValue))
+            {
+                row.PendingValue = importedValue;
+                applied++;
+            }
+        }
+
+        Snackbar.Add(applied == 0
+            ? $"No imported settings matched the {scopeLabel} scope."
+            : $"Applied {applied} imported setting value{(applied == 1 ? string.Empty : "s")} to the {scopeLabel} scope as pending changes.", applied == 0 ? Severity.Info : Severity.Success);
+        return Task.CompletedTask;
+    }
+
+    private static string SerializeSettingValues(IEnumerable<EditableConfigurationRow> rows)
+    {
+        var payload = new JsonObject();
+        foreach (var row in rows.OrderBy(item => item.Item.Key, StringComparer.OrdinalIgnoreCase))
+        {
+            payload[row.Item.Key] = row.PendingValue;
+        }
+
+        return payload.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
+    }
+
+    private static bool TryParseImportedSettingValues(string payload, out Dictionary<string, string> values, out string? error)
+    {
+        values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        error = null;
+        if (string.IsNullOrWhiteSpace(payload))
+        {
+            error = "Paste exported settings JSON into the transfer box first.";
+            return false;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(payload);
+            if (document.RootElement.ValueKind != JsonValueKind.Object)
+            {
+                error = "Settings import JSON must be an object keyed by config setting name.";
+                return false;
+            }
+
+            foreach (var property in document.RootElement.EnumerateObject())
+            {
+                values[property.Name] = property.Value.ValueKind switch
+                {
+                    JsonValueKind.String => property.Value.GetString() ?? string.Empty,
+                    JsonValueKind.True => "true",
+                    JsonValueKind.False => "false",
+                    JsonValueKind.Null => string.Empty,
+                    JsonValueKind.Array => string.Join(Environment.NewLine, property.Value.EnumerateArray().Select(element => element.ToString())),
+                    _ => property.Value.ToString()
+                };
+            }
+
+            return true;
+        }
+        catch (JsonException ex)
+        {
+            error = ex.Message;
+            return false;
         }
     }
 
