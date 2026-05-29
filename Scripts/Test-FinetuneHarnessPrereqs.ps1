@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$PythonVenvPath = ".venv",
+    [string]$PythonVenvPath,
     [switch]$AsJson,
     [switch]$FailOnMissing
 )
@@ -8,24 +8,81 @@ param(
 $ErrorActionPreference = "Stop"
 
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
-$pythonExe = Join-Path $repoRoot (Join-Path $PythonVenvPath "Scripts/python.exe")
+
+function Resolve-WorkflowPath {
+    param([Parameter(Mandatory = $true)][string]$PathValue)
+
+    if ([string]::IsNullOrWhiteSpace($PathValue)) {
+        throw "Path value must not be empty."
+    }
+
+    if ([System.IO.Path]::IsPathRooted($PathValue)) {
+        return [System.IO.Path]::GetFullPath($PathValue)
+    }
+
+    return [System.IO.Path]::GetFullPath((Join-Path $repoRoot $PathValue))
+}
+
+function Get-DefaultTrainingVenvPath {
+    $preferredRoots = @()
+    if ($IsWindows -and (Test-Path "D:\temp")) {
+        $preferredRoots += "D:\temp\memorysmith-training\.venv"
+    }
+
+    $preferredRoots += @(
+        (Join-Path $repoRoot ".venv-training"),
+        (Join-Path $repoRoot ".venv")
+    )
+
+    foreach ($candidate in $preferredRoots) {
+        $windowsPython = Join-Path $candidate "Scripts\python.exe"
+        $unixPython = Join-Path $candidate "bin/python"
+        if ((Test-Path $windowsPython) -or (Test-Path $unixPython)) {
+            return $candidate
+        }
+    }
+
+    if ($IsWindows -and (Test-Path "D:\temp")) {
+        return "D:\temp\memorysmith-training\.venv"
+    }
+
+    return (Join-Path $repoRoot ".venv")
+}
+
+function Resolve-PythonExecutable {
+    param([Parameter(Mandatory = $true)][string]$VenvRoot)
+
+    $windowsPython = Join-Path $VenvRoot "Scripts\python.exe"
+    if ((Test-Path $windowsPython) -or $IsWindows) {
+        return $windowsPython
+    }
+
+    return (Join-Path $VenvRoot "bin/python")
+}
+
+if ([string]::IsNullOrWhiteSpace($PythonVenvPath)) {
+    $PythonVenvPath = Get-DefaultTrainingVenvPath
+}
+
+$resolvedVenvPath = Resolve-WorkflowPath $PythonVenvPath
+$pythonExe = Resolve-PythonExecutable $resolvedVenvPath
 if (-not (Test-Path $pythonExe)) {
     throw "Python executable not found at $pythonExe"
 }
 
-$probe = @"
+$probe = @'
 import importlib.util
 import json
 import platform
-modules = ["torch", "transformers", "datasets", "trl", "peft", "unsloth"]
+modules = ['torch', 'transformers', 'datasets', 'trl', 'peft', 'unsloth']
 missing = [name for name in modules if importlib.util.find_spec(name) is None]
 payload = {
-  "python": platform.python_version(),
-  "missing": missing,
-  "ready": len(missing) == 0
+    'python': platform.python_version(),
+    'missing': missing,
+    'ready': len(missing) == 0
 }
 print(json.dumps(payload))
-"@
+'@
 
 $result = & $pythonExe -c $probe
 if ($LASTEXITCODE -ne 0) {

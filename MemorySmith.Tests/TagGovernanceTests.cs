@@ -648,6 +648,31 @@ public class TagGovernanceTests
     }
 
     [Test]
+    public void TrainingBootstrapScripts_AndDocs_ExposeDedicatedScratchWorkflow()
+    {
+        var root = FindRepositoryRoot();
+        var runbook = File.ReadAllText(Path.Combine(root, "Data", "Pages", "guides", "local-finetune-harness-runbook.md"));
+        var configReference = File.ReadAllText(Path.Combine(root, "Data", "Pages", "guides", "configuration-reference.md"));
+        var readme = File.ReadAllText(Path.Combine(root, "README.md"));
+        var setupScript = Path.Combine(root, "Scripts", "Setup-FinetuneTrainingEnv.ps1");
+        var bashScript = Path.Combine(root, "Scripts", "setup-finetune-training-env.sh");
+        var requirements = Path.Combine(root, "Scripts", "training", "requirements-training.txt");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(File.Exists(setupScript), Is.True);
+            Assert.That(File.Exists(bashScript), Is.True);
+            Assert.That(File.Exists(requirements), Is.True);
+            Assert.That(runbook, Does.Contain("Setup-FinetuneTrainingEnv.ps1"));
+            Assert.That(runbook, Does.Contain("D:\\temp\\memorysmith-training"));
+            Assert.That(configReference, Does.Contain("Scripts/Setup-FinetuneTrainingEnv.ps1"));
+            Assert.That(configReference, Does.Contain("MemorySmith__SettingsOverridePath"));
+            Assert.That(readme, Does.Contain("Local Fine-Tune Bootstrap"));
+            Assert.That(readme, Does.Contain("Run-FinetuneHarness.ps1 -RunId ft-smoke -RequireTrainingDependencies"));
+        });
+    }
+
+    [Test]
     public void AdminSettings_ExposeClipboardExternalFetchPolicyControl()
     {
         var source = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "Services", "AdminSettingsService.cs"));

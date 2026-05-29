@@ -118,7 +118,7 @@ Operator check: when environment behavior does not match the intended profile, v
 | `Setup:AllowLoopbackBootstrap` | Allows anonymous first-admin setup from loopback | `/admin/setup` |
 | `Setup:BootstrapTokenHash` | Token-gated setup alternative | write-only secret state |
 | `RateLimits:*` | Local auth throttling and lockout | local login error behavior |
-| `Providers:{GitHub|Google|Microsoft}:*` | OAuth provider enablement and credentials | provider rows in `/admin`; only runtime-registered providers are advertised as active sign-in methods |
+| `Providers:{GitHub\|Google\|Microsoft}:*` | OAuth provider enablement and credentials | provider rows in `/admin`; only runtime-registered providers are advertised as active sign-in methods |
 
 Clamp rule: Admin access is not granted by broad anonymous/default-role settings. Admin routes still require an authenticated Admin claim.
 
@@ -209,8 +209,12 @@ Important exception: `Chat:ModelProfiles`, `DefaultModelProfileId`, and maintena
 
 Operational scripts:
 
+- `Scripts/Setup-FinetuneTrainingEnv.ps1` provisions a dedicated Python 3.12/3.11 training venv, defaults heavyweight scratch/cache state to `D:\temp\memorysmith-training` on Windows, and writes a local override file for `Training:PythonVenvPath` and `Training:RunsDirectory`.
+- `Scripts/setup-finetune-training-env.sh` is the matching bash-oriented bootstrap for Linux/WSL-style environments.
 - `Scripts/Test-FinetuneHarnessPrereqs.ps1` validates whether training dependencies are installed in the configured venv.
-- `Scripts/Run-FinetuneHarness.ps1` runs the harness bridge and writes request/status/events/benchmark artifacts.
+- `Scripts/Run-FinetuneHarness.ps1` runs the harness bridge, defaults runs and caches to the configured scratch root, and writes request/status/events/benchmark artifacts.
+
+Operator note: prefer an override file or `MemorySmith__SettingsOverridePath` environment variable for machine-specific training paths. Do not commit local scratch or cache directories into shared repo defaults.
 
 ## Maintenance Agent
 

@@ -353,7 +353,7 @@
         var transcriptDirectory = Path.GetFullPath(training.TranscriptDirectory);
         var exportDirectory = Path.GetFullPath(training.TrainingDataExportPath);
         var runsDirectory = Path.GetFullPath(training.RunsDirectory);
-        var pythonExecutablePath = Path.GetFullPath(Path.Combine(training.PythonVenvPath, "Scripts", "python.exe"));
+        var pythonExecutablePath = ResolveTrainingPythonExecutablePath(training.PythonVenvPath);
         var harnessScriptPath = Path.GetFullPath(training.PythonHarnessScript);
 
         var transcriptFileCount = SafeCountFiles(transcriptDirectory, "*.jsonl");
@@ -397,6 +397,18 @@
             training.ActiveModelTag,
             training.FallbackModelTag,
             ready);
+    }
+
+    private static string ResolveTrainingPythonExecutablePath(string pythonVenvPath)
+    {
+        var venvRoot = Path.GetFullPath(pythonVenvPath);
+        var windowsPython = Path.Combine(venvRoot, "Scripts", "python.exe");
+        if (File.Exists(windowsPython) || OperatingSystem.IsWindows())
+        {
+            return windowsPython;
+        }
+
+        return Path.Combine(venvRoot, "bin", "python");
     }
 
     private static async Task<IReadOnlyList<TrainingRunSummary>> LoadRunSummariesAsync(string runsDirectory)

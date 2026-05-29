@@ -57,7 +57,7 @@ public sealed class TrainingHarnessRunnerService
 
     public async Task<TrainingDependencyProbeResult> ProbeDependenciesAsync(CancellationToken cancellationToken)
     {
-        var pythonExecutable = ResolvePath(Path.Combine(_options.CurrentValue.Training.PythonVenvPath, "Scripts", "python.exe"));
+        var pythonExecutable = ResolvePythonExecutable(_options.CurrentValue.Training.PythonVenvPath);
         if (!File.Exists(pythonExecutable))
         {
             return new TrainingDependencyProbeResult(false, "-", ["python"], $"Python executable not found: {pythonExecutable}");
@@ -128,7 +128,7 @@ public sealed class TrainingHarnessRunnerService
         var workDirectory = Path.Combine(runsDirectory, runId);
         Directory.CreateDirectory(workDirectory);
 
-        var pythonExecutable = ResolvePath(Path.Combine(appOptions.Training.PythonVenvPath, "Scripts", "python.exe"));
+        var pythonExecutable = ResolvePythonExecutable(appOptions.Training.PythonVenvPath);
         var harnessScript = ResolvePath(appOptions.Training.PythonHarnessScript);
         var exportDirectory = ResolvePath(appOptions.Training.TrainingDataExportPath);
         Directory.CreateDirectory(exportDirectory);
@@ -268,6 +268,18 @@ public sealed class TrainingHarnessRunnerService
 
     private string ResolveRepositoryRoot() =>
         Path.GetFullPath(Path.Combine(_environment.ContentRootPath, ".."));
+
+    private string ResolvePythonExecutable(string configuredVenvPath)
+    {
+        var venvRoot = ResolvePath(configuredVenvPath);
+        var windowsPython = Path.Combine(venvRoot, "Scripts", "python.exe");
+        if (File.Exists(windowsPython) || OperatingSystem.IsWindows())
+        {
+            return windowsPython;
+        }
+
+        return Path.Combine(venvRoot, "bin", "python");
+    }
 
     private string ResolvePath(string configuredPath)
     {

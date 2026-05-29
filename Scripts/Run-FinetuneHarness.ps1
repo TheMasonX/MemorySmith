@@ -1,10 +1,11 @@
 [CmdletBinding()]
 param(
     [string]$RunId = (Get-Date -Format "yyyyMMdd-HHmmss"),
-    [string]$WorkRoot = "runs",
+    [string]$WorkRoot,
     [string]$ExportPath = "Data/Training/exports",
     [string]$TranscriptDirectory = "Data/Events/chat-transcripts",
-    [string]$PythonVenvPath = ".venv",
+    [string]$PythonVenvPath,
+    [string]$ScratchRoot,
     [switch]$RequireTrainingDependencies,
     [switch]$DryRun
 )
@@ -12,9 +13,108 @@ param(
 $ErrorActionPreference = "Stop"
 
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
-$workDir = Join-Path $repoRoot (Join-Path $WorkRoot $RunId)
+
+function Resolve-WorkflowPath {
+    param([Parameter(Mandatory = $true)][string]$PathValue)
+
+    if ([string]::IsNullOrWhiteSpace($PathValue)) {
+        throw "Path value must not be empty."
+    }
+
+    if ([System.IO.Path]::IsPathRooted($PathValue)) {
+        return [System.IO.Path]::GetFullPath($PathValue)
+    }
+
+    return [System.IO.Path]::GetFullPath((Join-Path $repoRoot $PathValue))
+}
+
+function Get-DefaultScratchRoot {
+    if ($IsWindows -and (Test-Path "D:\temp")) {
+        return "D:\temp\memorysmith-training"
+    }
+
+    return (Join-Path $repoRoot "artifacts\training-scratch")
+}
+
+function Get-DefaultTrainingVenvPath {
+    $preferredRoots = @()
+    if ($IsWindows -and (Test-Path "D:\temp")) {
+        $preferredRoots += "D:\temp\memorysmith-training\.venv"
+    }
+
+    $preferredRoots += @(
+        (Join-Path $repoRoot ".venv-training"),
+        (Join-Path $repoRoot ".venv")
+    )
+
+    foreach ($candidate in $preferredRoots) {
+        $windowsPython = Join-Path $candidate "Scripts\python.exe"
+        $unixPython = Join-Path $candidate "bin/python"
+        if ((Test-Path $windowsPython) -or (Test-Path $unixPython)) {
+            return $candidate
+        }
+    }
+
+    if ($IsWindows -and (Test-Path "D:\temp")) {
+        return "D:\temp\memorysmith-training\.venv"
+    }
+
+    return (Join-Path $repoRoot ".venv")
+}
+
+function Resolve-PythonExecutable {
+    param([Parameter(Mandatory = $true)][string]$VenvRoot)
+
+    $windowsPython = Join-Path $VenvRoot "Scripts\python.exe"
+    if ((Test-Path $windowsPython) -or $IsWindows) {
+        return $windowsPython
+    }
+
+    return (Join-Path $VenvRoot "bin/python")
+}
+
+function Initialize-TrainingScratchEnvironment {
+    param([Parameter(Mandatory = $true)][string]$Root)
+
+    $resolvedRoot = Resolve-WorkflowPath $Root
+    $hfHome = Join-Path $resolvedRoot "hf-home"
+    $hfHubCache = Join-Path $hfHome "hub"
+    $datasetsCache = Join-Path $hfHome "datasets"
+    $torchHome = Join-Path $resolvedRoot "torch-home"
+    $tempDirectory = Join-Path $resolvedRoot "temp"
+
+    foreach ($directory in @($resolvedRoot, $hfHome, $hfHubCache, $datasetsCache, $torchHome, $tempDirectory)) {
+        New-Item -ItemType Directory -Force -Path $directory | Out-Null
+    }
+
+    $env:HF_HOME = $hfHome
+    $env:HF_HUB_CACHE = $hfHubCache
+    $env:TRANSFORMERS_CACHE = $hfHubCache
+    $env:HF_DATASETS_CACHE = $datasetsCache
+    $env:TORCH_HOME = $torchHome
+    $env:TMP = $tempDirectory
+    $env:TEMP = $tempDirectory
+}
+
+if ([string]::IsNullOrWhiteSpace($ScratchRoot)) {
+    $ScratchRoot = Get-DefaultScratchRoot
+}
+
+if ([string]::IsNullOrWhiteSpace($WorkRoot)) {
+    $WorkRoot = Join-Path $ScratchRoot "runs"
+}
+
+if ([string]::IsNullOrWhiteSpace($PythonVenvPath)) {
+    $PythonVenvPath = Get-DefaultTrainingVenvPath
+}
+
+Initialize-TrainingScratchEnvironment -Root $ScratchRoot
+
+$resolvedWorkRoot = Resolve-WorkflowPath $WorkRoot
+$workDir = Join-Path $resolvedWorkRoot $RunId
 $requestPath = Join-Path $workDir "request.json"
-$pythonExe = Join-Path $repoRoot (Join-Path $PythonVenvPath "Scripts/python.exe")
+$resolvedVenvPath = Resolve-WorkflowPath $PythonVenvPath
+$pythonExe = Resolve-PythonExecutable $resolvedVenvPath
 $harnessPath = Join-Path $repoRoot "MemorySmith.Training/harness.py"
 $preflightScript = Join-Path $repoRoot "Scripts/Test-FinetuneHarnessPrereqs.ps1"
 
@@ -28,7 +128,7 @@ if (-not (Test-Path $preflightScript)) {
     throw "Preflight script not found at $preflightScript"
 }
 
-$preflightJson = & $preflightScript -PythonVenvPath $PythonVenvPath -AsJson
+$preflightJson = & $preflightScript -PythonVenvPath $resolvedVenvPath -AsJson
 if ($LASTEXITCODE -ne 0) {
     throw "Training dependency preflight execution failed"
 }
@@ -41,12 +141,13 @@ if (-not $preflight.ready) {
 }
 
 New-Item -ItemType Directory -Path $workDir -Force | Out-Null
-New-Item -ItemType Directory -Path (Join-Path $repoRoot $ExportPath) -Force | Out-Null
+$resolvedExportPath = Resolve-WorkflowPath $ExportPath
+New-Item -ItemType Directory -Path $resolvedExportPath -Force | Out-Null
 
 $request = [ordered]@{
     runId = $RunId
-    exportPath = (Resolve-Path (Join-Path $repoRoot $ExportPath)).Path
-    transcriptDirectory = (Join-Path $repoRoot $TranscriptDirectory)
+    exportPath = $resolvedExportPath
+    transcriptDirectory = (Resolve-WorkflowPath $TranscriptDirectory)
     format = "FilteredSft"
     dependencyProbe = [ordered]@{
         python = $preflight.python
@@ -61,18 +162,18 @@ $request = [ordered]@{
 }
 $request | ConvertTo-Json -Depth 8 | Set-Content -Encoding UTF8 $requestPath
 
-$args = @(
+$processArguments = @(
     $harnessPath,
     "--run-id", $RunId,
     "--request", $requestPath,
     "--workdir", $workDir
 )
 if ($DryRun) {
-    $args += "--dry-run"
+    $processArguments += "--dry-run"
 }
 
 Write-Host "Starting harness run $RunId"
-& $pythonExe @args
+& $pythonExe @processArguments
 $exitCode = $LASTEXITCODE
 if ($exitCode -ne 0) {
     throw "Harness failed with exit code $exitCode"
@@ -86,3 +187,4 @@ Write-Host "Run completed."
 Write-Host "Status:    $statusPath"
 Write-Host "Events:    $eventsPath"
 Write-Host "Benchmark: $benchmarkPath"
+Write-Host "Scratch:   $(Resolve-WorkflowPath $ScratchRoot)"
