@@ -200,7 +200,10 @@ public sealed class TrainingHarnessRunnerService
 
         _ = Task.Run(() => RunHarnessAsync(active, pythonExecutable, harnessScript, requestPath, appOptions.Training.MaxRunMinutes, huggingFaceToken), CancellationToken.None);
         var modeSuffix = dependencyProbe.Ready ? string.Empty : $" {dependencyProbe.Summary}";
-        return new TrainingHarnessLaunchResult(true, runId, $"Started run {runId}.{modeSuffix}");
+        var authSuffix = string.IsNullOrWhiteSpace(huggingFaceToken)
+            ? " HF auth: not configured."
+            : " HF auth: configured.";
+        return new TrainingHarnessLaunchResult(true, runId, $"Started run {runId}.{modeSuffix}{authSuffix}");
     }
 
     private async Task RunHarnessAsync(TrainingHarnessActiveRun run, string pythonExecutable, string harnessScript, string requestPath, int maxRunMinutes, string? huggingFaceToken)
