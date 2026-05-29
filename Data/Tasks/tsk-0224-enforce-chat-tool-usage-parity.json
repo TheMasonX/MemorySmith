@@ -1,0 +1,45 @@
+{
+  "id": "tsk-0224-enforce-chat-tool-usage-parity",
+  "key": "TSK-0224",
+  "title": "Enforce chat tool usage parity",
+  "description": "Problem: MemorySmith currently has multiple tool-availability surfaces: runtime tool descriptors in `ChatToolCatalog.cs`, MCP exposure in `McpController.cs`, documented public MCP tables in `README.md`, and chat/agent guidance in `wiki-chat-agent.md`. The differences are partly intentional, but there is no strong parity contract ensuring chat tool usage documentation and runtime capability messages stay perfectly aligned.\n\nDesired outcome: define and test a perfect parity contract so Chat mode, Agent mode, MCP mode, and coding-agent integrations all agree on which tools are available, which are forbidden, and which policy gates explain the difference.\n\nScope:\n- In scope: document explicit parity rules and intentional exceptions across README, prompt docs, and runtime descriptors.\n- In scope: add focused tests or validation scripts that detect drift in chat tool usage contracts.\n- In scope: ensure chat tool usage remains perfectly aligned with the actual intercepted tool subset and capability gating.\n- Out of scope: removing all mode distinctions; the goal is verified parity, not forced identical tool sets everywhere.\n\nValidation:\n- Focused parity checks or tests fail when prompt/docs/runtime drift and pass when they align.
+- Updated docs clearly describe the allowed tool set for each mode and any intentional exception.
+\nConfidence target: 92%.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": null,
+  "reporter": "AgentSmith",
+  "labels": [
+    "chat",
+    "mcp",
+    "parity",
+    "prompt-runtime"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "requests/mcp-authoring-usability-and-chat-tool-parity-20260529"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0224-20260529",
+      "author": "AgentSmith",
+      "body": "Created from self-review to make chat tool usage parity a first-class contract across runtime descriptors, prompt docs, MCP docs, and coding-agent expectations.",
+      "createdAtUtc": "2026-05-29T20:05:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-29T20:05:00.0000000Z",
+  "updatedAtUtc": "2026-05-29T20:05:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

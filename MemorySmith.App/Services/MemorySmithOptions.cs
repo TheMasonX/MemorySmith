@@ -117,6 +117,7 @@ public class AuthOptions
     public string AuthenticatedDefaultRole { get; set; } = "Viewer";
     public bool AutoEditorForAuthenticatedUsers { get; set; }
     public bool LocalPasswordEnabled { get; set; } = true;
+    public bool AllowAdminCreateLocalUsers { get; set; }
     public bool RequireHttpsForRemoteAuth { get; set; } = true;
     public bool OpenLocalEditorCompatibility { get; set; } = true;
     public AuthSetupOptions Setup { get; set; } = new();

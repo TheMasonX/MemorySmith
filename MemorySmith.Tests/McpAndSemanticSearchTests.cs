@@ -189,10 +189,59 @@ public class McpAndSemanticSearchTests
     }
 
     [Test]
-    public async Task McpTaskTools_ListAndMutateTasks()
+    public async Task McpSafeDefaults_HideSensitiveAndWriteToolsUntilExplicitlyEnabled()
     {
         var dataPath = ProjectWikiFixture.CopyToTemp(_tempRoot);
         await using var factory = CreateFactory(dataPath);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/mcp", new
+        {
+            JsonRpc = "2.0",
+            Id = "safe-defaults",
+            Method = "tools/list"
+        }, JsonSerializerOptions.Web);
+
+        response.EnsureSuccessStatusCode();
+        using var document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+        var toolNames = document.RootElement
+            .GetProperty("result")
+            .GetProperty("tools")
+            .EnumerateArray()
+            .Select(tool => tool.GetProperty("name").GetString())
+            .ToList();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(toolNames, Does.Contain("memorysmith_search"));
+            Assert.That(toolNames, Does.Contain("memorysmith_context_pack"));
+            Assert.That(toolNames, Does.Contain("memorysmith_task_list"));
+            Assert.That(toolNames, Does.Contain("memorysmith_task_get"));
+            Assert.That(toolNames, Does.Not.Contain("memorysmith_source_bundle"));
+            Assert.That(toolNames, Does.Not.Contain("memorysmith_find_by_source"));
+            Assert.That(toolNames, Does.Not.Contain("memorysmith_code_search_merge_shard"));
+            Assert.That(toolNames, Does.Not.Contain("memorysmith_task_create"));
+            Assert.That(toolNames, Does.Not.Contain("memorysmith_task_update"));
+            Assert.That(toolNames, Does.Not.Contain("memorysmith_task_set_status"));
+            Assert.That(toolNames, Does.Not.Contain("memorysmith_task_add_comment"));
+            Assert.That(toolNames, Does.Not.Contain("memorysmith_task_add_attachment"));
+            Assert.That(toolNames, Does.Not.Contain("memorysmith_page_save"));
+            Assert.That(toolNames, Does.Not.Contain("memorysmith_page_delete"));
+        });
+    }
+
+    [Test]
+    public async Task McpTaskTools_ListAndMutateTasks()
+    {
+        var dataPath = ProjectWikiFixture.CopyToTemp(_tempRoot);
+        await using var factory = CreateFactory(dataPath, new Dictionary<string, string?>
+        {
+            ["MemorySmith:Mcp:EnabledTools:0"] = "memorysmith_task_create",
+            ["MemorySmith:Mcp:EnabledTools:1"] = "memorysmith_task_update",
+            ["MemorySmith:Mcp:EnabledTools:2"] = "memorysmith_task_set_status",
+            ["MemorySmith:Mcp:EnabledTools:3"] = "memorysmith_task_add_comment",
+            ["MemorySmith:Mcp:EnabledTools:4"] = "memorysmith_task_add_attachment"
+        });
         using var client = factory.CreateClient();
 
         var listToolsResponse = await client.PostAsJsonAsync("/mcp", new
@@ -818,7 +867,8 @@ public class McpAndSemanticSearchTests
                 {
                     ["MemorySmith:DataPath"] = memoryPath,
                     ["MemorySmith:EventLogPath"] = Path.Combine(_tempRoot, "Events", "audit.log"),
-                    ["MemorySmith:Maintenance:Enabled"] = "false"
+                    ["MemorySmith:Maintenance:Enabled"] = "false",
+                    ["MemorySmith:ApiKey"] = string.Empty
                 };
 
                 if (overrides is not null)

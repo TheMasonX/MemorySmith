@@ -1,0 +1,43 @@
+{
+  "id": "tsk-0223-add-mcp-backed-agent-authoring-bridge",
+  "key": "TSK-0223",
+  "title": "Add MCP-backed agent authoring bridge",
+  "description": "Problem: MemorySmith already exposes task and page mutation tools through the local MCP runtime, but coding-agent sessions like this one cannot call those repo-local MCP tools directly. That forces manual JSON/file authoring for tasks and pages even when a safer product-native write path exists.\n\nDesired outcome: provide a supported authoring bridge so coding agents can create/update tasks and draft page writes through MemorySmith MCP instead of manually editing storage files.\n\nScope:\n- In scope: expose MemorySmith MCP tools to the coding-agent environment directly, or add a thin local helper that submits validated MCP `tools/call` requests to the app.\n- In scope: support the highest-value authoring flows first: task create/update/status/comment and proposal-first page authoring.\n- In scope: document prerequisites and validation for local authoring via the bridge.\n- Out of scope: broad external network tool integration unrelated to MemorySmith local workflows.\n\nValidation:\n- End-to-end proof that a coding-agent workflow can create at least one task through the bridge without manual file editing.\n- Focused docs describing how the bridge is available and what approval/policy gates apply.\n\nConfidence target: 94%.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": null,
+  "reporter": "AgentSmith",
+  "labels": [
+    "mcp",
+    "authoring",
+    "tasks",
+    "agent-experience"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "requests/mcp-authoring-usability-and-chat-tool-parity-20260529"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0223-20260529",
+      "author": "AgentSmith",
+      "body": "Created from self-review after confirming the repo runtime has MCP task/page mutation tools, but this coding-agent environment cannot call them directly, forcing manual task JSON authoring.",
+      "createdAtUtc": "2026-05-29T20:05:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-29T20:05:00.0000000Z",
+  "updatedAtUtc": "2026-05-29T20:05:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

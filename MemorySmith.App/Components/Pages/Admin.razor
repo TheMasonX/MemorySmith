@@ -10,6 +10,7 @@
 @inject AdminSettingsService Settings
 @inject ChatModelProfileService ModelProfiles
 @inject IEnumerable<IChatProvider> ChatProviders
+@inject MemorySmithLocalAuthService Auth
 @inject VarResolver VarResolver
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
@@ -29,7 +30,9 @@
             <MudText Typo="Typo.h5">Admin</MudText>
             <span class="wiki-count">Users, OAuth, models, settings, audit, history</span>
         </div>
-        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync">Refresh</MudButton>
+        <MudTooltip Text="Refresh admin data">
+            <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync" aria-label="Refresh" />
+        </MudTooltip>
     </section>
 
     <section class="admin-section-summary" aria-label="Active admin section" aria-live="polite">
@@ -42,6 +45,46 @@
 
     <MudTabs Rounded="false" Elevation="0" Class="admin-tabs" ActivePanelIndex="@_activeAdminTabIndex" ActivePanelIndexChanged="OnAdminTabChanged">
         <MudTabPanel Text="Users" Icon="@Icons.Material.Filled.People">
+            <div class="admin-panel-grid">
+                <section class="health-lower-card admin-form-panel" aria-label="Create local user account">
+                    <div class="wiki-commandbar profile-sectionbar">
+                        <div class="wiki-title-block">
+                            <MudText Typo="Typo.h6">Create Local User</MudText>
+                            <span class="wiki-count">Default off</span>
+                        </div>
+                    </div>
+
+                    @if (!Options.CurrentValue.Auth.LocalPasswordEnabled)
+                    {
+                        <MudAlert Severity="Severity.Warning" Dense="true">Local password sign-in is disabled globally. Enable it before creating local-only test accounts.</MudAlert>
+                    }
+                    else if (!Options.CurrentValue.Auth.AllowAdminCreateLocalUsers)
+                    {
+                        <MudAlert Severity="Severity.Info" Dense="true">Admin-created local users are disabled. Turn on <strong>Allow admin-created local users</strong> in Admin Configuration to create local-only test accounts from this page.</MudAlert>
+                    }
+                    else
+                    {
+                        <div class="admin-form-stack">
+                            <MudTextField T="string" Value="@_newLocalUserDisplayName" ValueChanged="@((string value) => _newLocalUserDisplayName = value)" Label="Display name" Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="@_isBusy" />
+                            <MudTextField T="string" Value="@_newLocalUserEmail" ValueChanged="@((string value) => _newLocalUserEmail = value)" Label="Email" Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="@_isBusy" />
+                            <MudSelect T="string" Value="@_newLocalUserRole" ValueChanged="@((string value) => _newLocalUserRole = value)" Label="Role" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Disabled="@_isBusy">
+                                @foreach (var role in _assignableRoles)
+                                {
+                                    <MudSelectItem T="string" Value="@role.Name">@role.Name</MudSelectItem>
+                                }
+                            </MudSelect>
+                            <MudTextField T="string" Value="@_newLocalUserPassword" ValueChanged="@((string value) => _newLocalUserPassword = value)" Label="Password" InputType="InputType.Password" Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="@_isBusy" />
+                            <MudTextField T="string" Value="@_newLocalUserConfirmPassword" ValueChanged="@((string value) => _newLocalUserConfirmPassword = value)" Label="Confirm password" InputType="InputType.Password" Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="@_isBusy" />
+                            <small class="admin-setting-key">Creates a non-admin local password account. Use this for test accounts or controlled local-only users. Passwords must be at least 15 characters.</small>
+                            <div class="admin-model-editor-actions">
+                                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PersonAdd" Disabled="@_isBusy" OnClick="CreateLocalUserAsync">Create local user</MudButton>
+                                <MudButton Variant="Variant.Outlined" Disabled="@_isBusy" OnClick="ResetNewLocalUserForm">Clear</MudButton>
+                            </div>
+                        </div>
+                    }
+                </section>
+            </div>
+
             <MudTable Items="@_userRows" Dense="true" Breakpoint="Breakpoint.Sm" Class="health-table admin-grid-table admin-users-table">
                 <HeaderContent>
                     <MudTh>User</MudTh>
@@ -60,7 +103,7 @@
                     </MudTd>
                     <MudTd DataLabel="Email">
                         <div class="admin-user-secondary">
-                            <SensitiveValue Value="@context.User.Email" Summary="@MaskEmail(context.User.Email)" Label="@($"{context.User.DisplayName} email")" Class="admin-sensitive-value" EmptyText="-" AllowReveal="false" />
+                            <SensitiveValue Value="@context.User.Email" Summary="@MaskEmail(context.User.Email)" Label="@($"{context.User.DisplayName} email")" Class="admin-sensitive-value" EmptyText="-" AllowReveal="true" />
                         </div>
                     </MudTd>
                     <MudTd DataLabel="Status">@(context.User.IsDisabled ? "Disabled" : "Active")</MudTd>
@@ -700,6 +743,11 @@
     private IReadOnlyList<ChatModelSummary> _modelProfileModelOptions = [];
     private Dictionary<string, int> _providerLinkCounts = new(StringComparer.OrdinalIgnoreCase);
     private string _settingsSearch = string.Empty;
+    private string _newLocalUserDisplayName = string.Empty;
+    private string _newLocalUserEmail = string.Empty;
+    private string _newLocalUserRole = MemorySmithRoles.Viewer;
+    private string _newLocalUserPassword = string.Empty;
+    private string _newLocalUserConfirmPassword = string.Empty;
     private string _settingsCategory = AllFilterValue;
     private bool _settingsDirtyOnly;
     private string _settingsTransferPayload = string.Empty;
@@ -873,6 +921,12 @@
         }
 
         _userRows = rows;
+        if (_assignableRoles.Any(role => string.Equals(role.Name, _newLocalUserRole, StringComparison.OrdinalIgnoreCase)) == false)
+        {
+            _newLocalUserRole = _assignableRoles.FirstOrDefault(role => string.Equals(role.Name, MemorySmithRoles.Viewer, StringComparison.OrdinalIgnoreCase))?.Name
+                ?? _assignableRoles.FirstOrDefault()?.Name
+                ?? MemorySmithRoles.Viewer;
+        }
         _providers = await Database.ProviderLinks.ListProvidersAsync(CancellationToken.None);
         _modelProfiles = ModelProfiles.ListProfiles();
         _audit = (await Database.AuditLogs.QueryAsync(new AuditLogQuery(PageSize: 100), CancellationToken.None)).Data;
@@ -888,6 +942,58 @@
         _configurationItems = BuildConfigurationItems();
         LoadVariables();
         await LoadModelOptionsAsync(_modelProfileEditor.Provider, _modelProfileEditor.Model, silent: true);
+    }
+
+    private void ResetNewLocalUserForm()
+    {
+        _newLocalUserDisplayName = string.Empty;
+        _newLocalUserEmail = string.Empty;
+        _newLocalUserPassword = string.Empty;
+        _newLocalUserConfirmPassword = string.Empty;
+        _newLocalUserRole = _assignableRoles.FirstOrDefault(role => string.Equals(role.Name, MemorySmithRoles.Viewer, StringComparison.OrdinalIgnoreCase))?.Name
+            ?? _assignableRoles.FirstOrDefault()?.Name
+            ?? MemorySmithRoles.Viewer;
+    }
+
+    private async Task CreateLocalUserAsync()
+    {
+        if (!Options.CurrentValue.Auth.LocalPasswordEnabled)
+        {
+            Snackbar.Add("Local password sign-in is disabled.", Severity.Warning);
+            return;
+        }
+
+        if (!Options.CurrentValue.Auth.AllowAdminCreateLocalUsers)
+        {
+            Snackbar.Add("Admin-created local users are disabled.", Severity.Warning);
+            return;
+        }
+
+        if (!string.Equals(_newLocalUserPassword, _newLocalUserConfirmPassword, StringComparison.Ordinal))
+        {
+            Snackbar.Add("Passwords do not match.", Severity.Error);
+            return;
+        }
+
+        _isBusy = true;
+        var result = await Auth.CreateLocalUserAsync(
+            _newLocalUserDisplayName,
+            _newLocalUserEmail,
+            _newLocalUserPassword,
+            _newLocalUserRole,
+            CurrentUser.UserId,
+            CancellationToken.None);
+        _isBusy = false;
+
+        if (!result.Succeeded)
+        {
+            Snackbar.Add(result.Error ?? "Local user creation failed.", Severity.Error);
+            return;
+        }
+
+        Snackbar.Add($"Created local user {result.User?.DisplayName ?? _newLocalUserDisplayName}.", Severity.Success);
+        ResetNewLocalUserForm();
+        await LoadAsync();
     }
 
     private async Task ChangeUserRoleAsync(UserAdminRow row, string roleName)

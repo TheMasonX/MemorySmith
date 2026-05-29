@@ -38,14 +38,21 @@
   ],
   "externalLinks": [],
   "linkedPages": [],
-  "comments": [],
+  "comments": [
+    {
+      "id": "c-detail-0215-20260529",
+      "author": "AgentSmith",
+      "body": "This report currently bundles several distinct task-workbench issues: attachment affordances (`+` button and tooltip expectations), edit-state loss when uploading attachments alongside description edits, comments/artifacts/history panel sizing/scroll behavior, new-task description height, upload button wrapping/highlight coverage, and optional bounded hover previews for image/text attachments. It is still useful as a capture task, but implementation will go faster if follow-up work either phases these by surface or creates child tasks for composer, layout/scrolling, and preview behavior.",
+      "createdAtUtc": "2026-05-29T16:56:00.0000000Z"
+    }
+  ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-29T05:27:26.6584525Z",
-  "updatedAtUtc": "2026-05-29T05:35:02.7038543Z",
+  "updatedAtUtc": "2026-05-29T16:56:00.0000000Z",
   "completedAtUtc": null,
-  "revision": 7,
+  "revision": 8,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

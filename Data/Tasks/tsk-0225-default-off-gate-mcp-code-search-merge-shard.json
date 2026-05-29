@@ -1,0 +1,43 @@
+{
+  "id": "tsk-0225-default-off-gate-mcp-code-search-merge-shard",
+  "key": "TSK-0225",
+  "title": "Default-off gate MCP code-search merge shard tool",
+  "description": "Problem: `memorysmith_code_search_merge_shard` is implemented in `MemorySmith.App/Services/ChatToolCatalog.cs` as an MCP-available write tool, but it is not part of the public MCP contract documented in `README.md`. The tool merges external shard databases into the main code-search index and is operationally specialized enough that exposing it by default increases accidental or unclear write surface area for normal MCP clients.\n\nDesired outcome: keep shard-merge functionality available for explicit admin/indexing scenarios, but make it default-off at the MCP descriptor level so operators must opt in via `MemorySmith:Mcp:EnabledTools`.\n\nScope:\n- In scope: mark the tool descriptor default-off for MCP, preserve explicit opt-in support through `EnabledTools`, and document the intended admin-only use.\n- In scope: add focused tests covering `tools/list` visibility and explicit re-enable behavior.\n- Out of scope: removing shard-merge implementation entirely or redesigning code-search index architecture.\n\nValidation:\n- Focused MCP/controller tests for disabled-by-default visibility and enabled override behavior.\n- README or request-page note confirms the tool is internal/admin-oriented.\n\nConfidence target: 90%.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": null,
+  "reporter": "AgentSmith",
+  "labels": [
+    "mcp",
+    "code-search",
+    "governance",
+    "security"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "requests/mcp-tool-surface-recommendations-20260529"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0225-20260529",
+      "author": "AgentSmith",
+      "body": "Created from MCP surface review after confirming `memorysmith_code_search_merge_shard` is a real MCP write tool in `ChatToolCatalog.cs` but is not part of the public README MCP table and should be default-off unless explicitly enabled.",
+      "createdAtUtc": "2026-05-29T19:25:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-29T19:25:00.0000000Z",
+  "updatedAtUtc": "2026-05-29T19:25:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

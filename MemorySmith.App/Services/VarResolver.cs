@@ -77,48 +77,43 @@ public partial class VarResolver
         if (!File.Exists(fullPath))
             return new SourceContent(resolved, null, "file", link.StartLine, link.EndLine, Exists: false);
 
-        var lines = await File.ReadAllLinesAsync(fullPath);
-
         var before = Math.Max(0, _options.SourceLinks.ReadContextLinesBefore);
         var after = Math.Max(0, _options.SourceLinks.ReadContextLinesAfter);
         var hasRequestedWindow = link.StartLine.HasValue || link.EndLine.HasValue;
         int startIdx;
-        int endIdx;
+        int? endIdx;
 
         if (hasRequestedWindow)
         {
             startIdx = link.StartLine.HasValue ? Math.Max(0, link.StartLine.Value - 1 - before) : 0;
             endIdx = link.EndLine.HasValue
-                ? Math.Min(lines.Length - 1, link.EndLine.Value - 1 + after)
-                : (link.StartLine.HasValue ? Math.Min(lines.Length - 1, link.StartLine.Value - 1 + after) : lines.Length - 1);
+                ? Math.Max(startIdx, link.EndLine.Value - 1 + after)
+                : (link.StartLine.HasValue ? Math.Max(startIdx, link.StartLine.Value - 1 + after) : null);
         }
         else if (_options.SourceLinks.AllowUnrestrictedSourceReads)
         {
             startIdx = 0;
-            endIdx = lines.Length - 1;
+            endIdx = null;
         }
         else
         {
             startIdx = 0;
-            endIdx = Math.Min(lines.Length - 1, 49);
+            endIdx = 49;
         }
 
-        var content = string.Join('\n', lines[startIdx..(endIdx + 1)]);
-
-        if (content.Length > maxBytes)
-            content = content[..maxBytes] + $"\n[... truncated — {content.Length - maxBytes} more chars]";
+        var content = await ReadSelectedContentAsync(fullPath, startIdx, endIdx, maxBytes);
 
         return new SourceContent(fullPath, content, "file", link.StartLine, link.EndLine, Exists: true);
     }
 
-    public Task<SourceOpenResult> OpenWithDefaultAppAsync(SourceLink link)
+    public Task<SourceOpenResult> OpenWithDefaultAppAsync(SourceLink link, IEnumerable<string>? additionalAllowedRoots = null)
     {
         if (!_options.SourceLinks.AllowOpenWithDefaultApp)
         {
             return Task.FromResult(new SourceOpenResult(false, Resolve(link.Uri), "Opening source links with the default app is disabled."));
         }
 
-        if (!TryResolveLocalFile(link, out var fullPath, out var message))
+        if (!TryResolveLocalFile(link, out var fullPath, out var message, additionalAllowedRoots))
         {
             return Task.FromResult(new SourceOpenResult(false, Resolve(link.Uri), message ?? "Source link could not be opened."));
         }
@@ -135,7 +130,7 @@ public partial class VarResolver
         }
     }
 
-    public bool TryResolveLocalFile(SourceLink link, out string fullPath, out string? message)
+    public bool TryResolveLocalFile(SourceLink link, out string fullPath, out string? message, IEnumerable<string>? additionalAllowedRoots = null)
     {
         var resolved = Resolve(link.Uri);
         fullPath = resolved;
@@ -160,7 +155,7 @@ public partial class VarResolver
             return false;
         }
 
-        if (!TryAuthorizeSourcePath(fullPath, out message))
+        if (!TryAuthorizeSourcePath(fullPath, out message, additionalAllowedRoots))
         {
             return false;
         }
@@ -228,7 +223,61 @@ public partial class VarResolver
         return Math.Min(requestedBytes, configuredMax);
     }
 
-    private bool TryAuthorizeSourcePath(string fullPath, out string? message)
+    private static async Task<string> ReadSelectedContentAsync(string fullPath, int startIdx, int? endIdx, int maxBytes)
+    {
+        using var stream = File.OpenRead(fullPath);
+        using var reader = new StreamReader(stream);
+
+        var builder = new StringBuilder(Math.Min(maxBytes, 4096));
+        var lineIndex = 0;
+        var totalSelectedChars = 0;
+        var firstSelectedLine = true;
+
+        while (await reader.ReadLineAsync() is { } line)
+        {
+            if (lineIndex < startIdx)
+            {
+                lineIndex++;
+                continue;
+            }
+
+            if (endIdx.HasValue && lineIndex > endIdx.Value)
+            {
+                break;
+            }
+
+            var separatorLength = firstSelectedLine ? 0 : 1;
+            totalSelectedChars += separatorLength + line.Length;
+
+            var remaining = maxBytes - builder.Length;
+            if (remaining > 0)
+            {
+                if (!firstSelectedLine)
+                {
+                    builder.Append('\n');
+                    remaining--;
+                }
+
+                if (remaining > 0)
+                {
+                    builder.Append(line.AsSpan(0, Math.Min(remaining, line.Length)));
+                }
+            }
+
+            firstSelectedLine = false;
+            lineIndex++;
+        }
+
+        var content = builder.ToString();
+        if (totalSelectedChars > maxBytes)
+        {
+            content += $"\n[... truncated — {totalSelectedChars - maxBytes} more chars]";
+        }
+
+        return content;
+    }
+
+    private bool TryAuthorizeSourcePath(string fullPath, out string? message, IEnumerable<string>? additionalAllowedRoots = null)
     {
         if (IsDeniedSourcePath(fullPath, out message))
         {
@@ -241,7 +290,7 @@ public partial class VarResolver
             return true;
         }
 
-        var roots = GetAllowedSourceRoots();
+        var roots = GetAllowedSourceRoots(additionalAllowedRoots);
         if (roots.Any(root => IsUnderRoot(fullPath, root)))
         {
             message = null;
@@ -267,7 +316,7 @@ public partial class VarResolver
         return false;
     }
 
-    private List<string> GetAllowedSourceRoots()
+    private List<string> GetAllowedSourceRoots(IEnumerable<string>? additionalAllowedRoots = null)
     {
         var vars = _varStore.Load();
         var roots = new List<string>();
@@ -286,6 +335,17 @@ public partial class VarResolver
             if (TryNormalizePath(resolvedRoot, out var root))
             {
                 roots.Add(root);
+            }
+        }
+
+        if (additionalAllowedRoots is not null)
+        {
+            foreach (var additionalRoot in additionalAllowedRoots)
+            {
+                if (TryNormalizePath(additionalRoot, out var root))
+                {
+                    roots.Add(root);
+                }
             }
         }
 

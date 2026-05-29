@@ -53,7 +53,7 @@ If this is low impact (cleanup, formatting, direct retrieval), skip council and 
 If this is high impact, continue.
 
 2. Build a bounded evidence pack.
-Prefer MemorySmith tools and local project evidence first.
+Prefer MCP MemorySmith tools and local project evidence first.
 Minimum pack should include:
 - Relevant pages in Data/Pages
 - Relevant core memories in Data/Memories/Core
@@ -61,6 +61,9 @@ Minimum pack should include:
 - Source-linked code evidence when claims depend on implementation
 - Tests and benchmarks when behavior is affected (gold standard)
 - If tests or benchmarks are not possible in exceptional circumstances, document why, add alternative evidence, and define a follow-up validation gate
+
+For repeatable report formatting, generate an evidence bundle using:
+- `pwsh ./Scripts/SkillHooks/New-CouncilEvidenceBundle.ps1 -Decision <topic> ...`
 
 3. Select council seats.
 Use at least 3 seats (default) and expand toward all 6 for major architecture decisions:

@@ -110,6 +110,32 @@ public class ChatToolCatalogAndInterceptTests
     }
 
     [Test]
+    public void ChatToolCatalog_DefaultsSensitiveAndWriteMcpToolsOff()
+    {
+        var catalog = new ChatToolCatalog();
+        var defaultOnMcp = catalog.McpTools.Where(tool => tool.EnabledByDefaultInMcp).Select(tool => tool.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var defaultOffMcp = catalog.McpTools.Where(tool => !tool.EnabledByDefaultInMcp).Select(tool => tool.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(defaultOffMcp, Does.Contain("memorysmith_source_bundle"));
+            Assert.That(defaultOffMcp, Does.Contain("memorysmith_find_by_source"));
+            Assert.That(defaultOffMcp, Does.Contain("memorysmith_code_search_merge_shard"));
+            Assert.That(defaultOffMcp, Does.Contain("memorysmith_task_create"));
+            Assert.That(defaultOffMcp, Does.Contain("memorysmith_task_update"));
+            Assert.That(defaultOffMcp, Does.Contain("memorysmith_task_set_status"));
+            Assert.That(defaultOffMcp, Does.Contain("memorysmith_task_add_comment"));
+            Assert.That(defaultOffMcp, Does.Contain("memorysmith_task_add_attachment"));
+            Assert.That(defaultOffMcp, Does.Contain("memorysmith_page_save"));
+            Assert.That(defaultOffMcp, Does.Contain("memorysmith_page_delete"));
+            Assert.That(defaultOnMcp, Does.Contain("memorysmith_search"));
+            Assert.That(defaultOnMcp, Does.Contain("memorysmith_context_pack"));
+            Assert.That(defaultOnMcp, Does.Contain("memorysmith_task_list"));
+            Assert.That(defaultOnMcp, Does.Contain("memorysmith_task_get"));
+        });
+    }
+
+    [Test]
     public async Task PageGetTool_RejectsSlugWithPathTraversal()
     {
         var pages = new FilePageService(_tempDir);

@@ -338,7 +338,8 @@ public class SecurityAndSourceLinkTests
             ["MemorySmith:DataPath"] = dataPath,
             ["MemorySmith:VarsPath"] = varsPath,
             ["MemorySmith:SourceLinks:MaxReadBytes"] = "32",
-            ["MemorySmith:SourceLinks:AllowedFileRootVariables:0"] = "AllowedRoot"
+            ["MemorySmith:SourceLinks:AllowedFileRootVariables:0"] = "AllowedRoot",
+            ["MemorySmith:Mcp:EnabledTools:0"] = "memorysmith_source_bundle"
         });
         using var client = factory.CreateClient();
 
@@ -564,6 +565,39 @@ public class SecurityAndSourceLinkTests
     }
 
     [Test]
+    public async Task VarResolver_OpenWithDefaultApp_AllowsAdditionalRootsWithoutChangingGlobalPolicy()
+    {
+        var blockedRoot = Path.Combine(_tempRoot, "training-runs");
+        Directory.CreateDirectory(blockedRoot);
+        var artifactPath = Path.Combine(blockedRoot, "status.json");
+        await File.WriteAllTextAsync(artifactPath, "{}");
+
+        var varsPath = Path.Combine(_tempRoot, "vars.json");
+        new FileVarStore(varsPath).Save(new Dictionary<string, string> { ["AllowedRoot"] = Path.Combine(_tempRoot, "allowed") + Path.DirectorySeparatorChar });
+        var resolver = new CapturingVarResolver(
+            new FileVarStore(varsPath),
+            Options.Create(new MemorySmithOptions
+            {
+                SourceLinks = new SourceLinkOptions
+                {
+                    AllowOpenWithDefaultApp = true,
+                    AllowedFileRootVariables = ["AllowedRoot"]
+                }
+            }));
+
+        var blockedResult = await resolver.OpenWithDefaultAppAsync(new SourceLink { Uri = artifactPath });
+        var allowedResult = await resolver.OpenWithDefaultAppAsync(new SourceLink { Uri = artifactPath }, [blockedRoot]);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(blockedResult.Opened, Is.False);
+            Assert.That(blockedResult.Message, Does.Contain("outside the configured allowed source roots"));
+            Assert.That(allowedResult.Opened, Is.True);
+            Assert.That(resolver.CapturedStartInfo, Is.Not.Null);
+        });
+    }
+
+    [Test]
     public void FileVarStore_Load_RecordsDiagnosticsForCorruptVarsFile()
     {
         var varsPath = Path.Combine(_tempRoot, "vars.json");
@@ -595,7 +629,8 @@ public class SecurityAndSourceLinkTests
                     ["MemorySmith:Database:ConnectionString"] = $"Data Source={Path.Combine(_tempRoot, "memorysmith.db")};Pooling=False",
                     ["MemorySmith:Audit:JsonlPath"] = Path.Combine(_tempRoot, "Events", "audit-{yyyy}-W{week}.jsonl"),
                     ["MemorySmith:History:RootPath"] = Path.Combine(_tempRoot, ".history"),
-                    ["MemorySmith:Maintenance:Enabled"] = "false"
+                    ["MemorySmith:Maintenance:Enabled"] = "false",
+                    ["MemorySmith:ApiKey"] = string.Empty
                 };
 
                 if (overrides is not null)

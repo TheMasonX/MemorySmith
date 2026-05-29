@@ -290,7 +290,10 @@ public class SearchBenchmarkTests
     public async Task McpSourceBundleTool_ReturnsEntries_ForKnownRecord()
     {
         var dataPath = ProjectWikiFixture.CopyToTemp(_tempRoot);
-        await using var factory = CreateHttpFactory(dataPath);
+        await using var factory = CreateHttpFactory(dataPath, new Dictionary<string, string?>
+        {
+            ["MemorySmith:Mcp:EnabledTools:0"] = "memorysmith_source_bundle"
+        });
         using var client = factory.CreateClient();
 
         var response = await client.PostAsJsonAsync("/mcp", new
@@ -323,7 +326,10 @@ public class SearchBenchmarkTests
     public async Task McpFindBySourceTool_ReturnsMappedRecords()
     {
         var dataPath = ProjectWikiFixture.CopyToTemp(_tempRoot);
-        await using var factory = CreateHttpFactory(dataPath);
+        await using var factory = CreateHttpFactory(dataPath, new Dictionary<string, string?>
+        {
+            ["MemorySmith:Mcp:EnabledTools:0"] = "memorysmith_find_by_source"
+        });
         using var client = factory.CreateClient();
 
         var response = await client.PostAsJsonAsync("/mcp", new
@@ -347,7 +353,7 @@ public class SearchBenchmarkTests
     }
 
     [Test]
-    public async Task McpToolsList_IncludesSourceBundleAndFindBySource()
+    public async Task McpToolsList_HidesSensitiveSourceToolsUntilEnabled()
     {
         var dataPath = ProjectWikiFixture.CopyToTemp(_tempRoot);
         await using var factory = CreateHttpFactory(dataPath);
@@ -370,8 +376,8 @@ public class SearchBenchmarkTests
             .Select(t => t.GetProperty("name").GetString())
             .ToList();
 
-        Assert.That(toolNames, Does.Contain("memorysmith_source_bundle"));
-        Assert.That(toolNames, Does.Contain("memorysmith_find_by_source"));
+        Assert.That(toolNames, Does.Not.Contain("memorysmith_source_bundle"));
+        Assert.That(toolNames, Does.Not.Contain("memorysmith_find_by_source"));
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
@@ -394,17 +400,28 @@ public class SearchBenchmarkTests
         TestContext.Out.WriteLine($"  [{elapsedMs,4} ms] {probe.Query}");
     }
 
-    private WebApplicationFactory<Program> CreateHttpFactory(string memoryPath) =>
+    private WebApplicationFactory<Program> CreateHttpFactory(string memoryPath, IReadOnlyDictionary<string, string?>? overrides = null) =>
         new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
             builder.ConfigureAppConfiguration((_, config) =>
             {
-                config.AddInMemoryCollection(new Dictionary<string, string?>
+                var settings = new Dictionary<string, string?>
                 {
                     ["MemorySmith:DataPath"] = memoryPath,
                     ["MemorySmith:EventLogPath"] = Path.Combine(_tempRoot, "Events", "audit.log"),
-                    ["MemorySmith:Maintenance:Enabled"] = "false"
-                });
+                    ["MemorySmith:Maintenance:Enabled"] = "false",
+                    ["MemorySmith:ApiKey"] = string.Empty
+                };
+
+                if (overrides is not null)
+                {
+                    foreach (var item in overrides)
+                    {
+                        settings[item.Key] = item.Value;
+                    }
+                }
+
+                config.AddInMemoryCollection(settings);
             });
         });
 

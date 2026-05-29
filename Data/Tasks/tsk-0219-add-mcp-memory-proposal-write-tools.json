@@ -1,0 +1,45 @@
+{
+  "id": "tsk-0219-add-mcp-memory-proposal-write-tools",
+  "key": "TSK-0219",
+  "title": "Add MCP memory proposal and write tools",
+  "description": "Problem: external MCP clients can read memories and pages, but they cannot submit governed memory edit proposals through the same approval workflow used by the chat agent and maintenance flows. That leaves a read/write asymmetry in the MCP surface and pushes clients toward ad hoc output instead of first-class proposal workflows.\n\nDesired outcome: expose proposal-first MCP tools for memory edits, and only consider direct write tools when governance, approval mode, and write-root policy clearly allow them.\n\nScope:\n- In scope: define and implement a proposal-first MCP surface such as `memorysmith_memory_propose` or equivalent for governed memory edits.\n- In scope: reuse existing proposal storage, approval, and audit semantics rather than inventing a second mutation path.\n- In scope: document whether direct write tools remain unavailable, admin-only, or configuration-gated.\n- Out of scope: bypassing proposal review for normal external MCP usage.\n\nValidation:\n- Focused tests proving external MCP clients can submit valid proposals without bypassing approval gates.
+- Docs/prompts updated to distinguish read tools from proposal-capable mutation tools.
+\nConfidence target: 84%.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": null,
+  "reporter": "AgentSmith",
+  "labels": [
+    "mcp",
+    "memories",
+    "proposals",
+    "governance"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "requests/mcp-tool-surface-recommendations-20260529"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0219-20260529",
+      "author": "AgentSmith",
+      "body": "Created from MCP surface review to close the current read-only gap for external memory clients without bypassing the existing proposal-first governance model.",
+      "createdAtUtc": "2026-05-29T19:25:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-29T19:25:00.0000000Z",
+  "updatedAtUtc": "2026-05-29T19:25:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

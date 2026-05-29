@@ -3610,6 +3610,9 @@ body {
     display: inline-flex;
     flex: 0 0 auto;
     gap: 2px;
+    margin-left: 4px;
+    padding-left: 8px;
+    border-left: 1px solid var(--vscode-border);
 }
 
 .profile-sensitive-summary,

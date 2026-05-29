@@ -35,6 +35,8 @@ bld/
 
 # Secrets file, which may contain sensitive information such as API keys, connection strings, etc.
 [Ss]ecrets.json
+.secrets/
+.secrets/*
 
 # Visual Studio 2015/2017 cache/options directory
 .vs/

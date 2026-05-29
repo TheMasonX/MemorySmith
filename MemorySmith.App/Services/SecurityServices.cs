@@ -607,6 +607,82 @@ public sealed class MemorySmithLocalAuthService
         return new AuthResult(true, null, user);
     }
 
+    public async Task<AuthResult> CreateLocalUserAsync(string displayName, string? email, string password, string roleName, string? actorUserId, CancellationToken cancellationToken)
+    {
+        var auth = _options.CurrentValue.Auth;
+        if (!auth.LocalPasswordEnabled)
+        {
+            return new AuthResult(false, "Local password sign-in is disabled.");
+        }
+
+        if (!auth.AllowAdminCreateLocalUsers)
+        {
+            return new AuthResult(false, "Admin-created local users are disabled.");
+        }
+
+        displayName = displayName.Trim();
+        if (string.IsNullOrWhiteSpace(displayName))
+        {
+            return new AuthResult(false, "Display name is required.");
+        }
+
+        if (password.Length < 15)
+        {
+            return new AuthResult(false, "Password must be at least 15 characters.");
+        }
+
+        var normalizedDisplayName = Normalize(displayName);
+        var existingName = await _database.Users.GetByNormalizedDisplayNameAsync(normalizedDisplayName, cancellationToken);
+        if (existingName is not null)
+        {
+            return new AuthResult(false, "That display name is already in use.");
+        }
+
+        var normalizedEmail = string.IsNullOrWhiteSpace(email) ? null : Normalize(email);
+        if (!string.IsNullOrWhiteSpace(normalizedEmail))
+        {
+            var existingEmail = await _database.Users.GetByNormalizedEmailAsync(normalizedEmail, cancellationToken);
+            if (existingEmail is not null)
+            {
+                return new AuthResult(false, "That email address is already in use.");
+            }
+        }
+
+        roleName = string.IsNullOrWhiteSpace(roleName) ? MemorySmithRoles.Viewer : roleName.Trim();
+        if (string.Equals(roleName, MemorySmithRoles.Admin, StringComparison.OrdinalIgnoreCase))
+        {
+            return new AuthResult(false, "Admin accounts are not created from this flow.");
+        }
+
+        var availableRoles = await _database.Roles.ListRolesAsync(cancellationToken);
+        if (!availableRoles.Any(role => string.Equals(role.Name, roleName, StringComparison.OrdinalIgnoreCase)))
+        {
+            return new AuthResult(false, "The selected role is not valid.");
+        }
+
+        var now = DateTime.UtcNow;
+        var user = new UserAccount
+        {
+            UserId = Guid.NewGuid().ToString("N"),
+            DisplayName = displayName,
+            NormalizedDisplayName = normalizedDisplayName,
+            Email = string.IsNullOrWhiteSpace(email) ? null : email.Trim(),
+            NormalizedEmail = normalizedEmail,
+            LocalPasswordEnabled = true,
+            SecurityStamp = Guid.NewGuid().ToString("N"),
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now,
+            PasswordHash = null
+        };
+        user.PasswordHash = PasswordHasher.HashPassword(user, password);
+
+        await _database.Users.CreateAsync(user, cancellationToken);
+        await _database.Roles.AssignRoleAsync(user.UserId, roleName, actorUserId, cancellationToken);
+        await EnsureLocalPasswordLinkAsync(user, cancellationToken);
+        await _audit.RecordAsync("account.local_user.created", "User", user.UserId, MemorySmithAuditOutcomes.Success, details: new { user.DisplayName, user.Email, roleName }, cancellationToken: cancellationToken);
+        return new AuthResult(true, null, user);
+    }
+
     public async Task<AuthResult> SetLocalPasswordAsync(string userId, string? currentPassword, string newPassword, CancellationToken cancellationToken)
     {
         if (!_options.CurrentValue.Auth.LocalPasswordEnabled)

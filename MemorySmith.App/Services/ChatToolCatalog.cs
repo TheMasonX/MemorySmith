@@ -320,7 +320,8 @@ public sealed class ChatToolCatalog
                     SourceCount = entries.Count,
                     Entries = entries
                 }, ToolJsonOptions), ContextItems: records.Select(ToMemoryContextItem).ToList());
-            });
+            },
+            EnabledByDefaultInMcp: false);
 
         yield return new ChatToolDescriptor(
             "memorysmith_find_by_source",
@@ -369,7 +370,8 @@ public sealed class ChatToolCatalog
                 }).ToList();
 
                 return new ChatToolExecutionResult(JsonSerializer.Serialize(result, ToolJsonOptions), ContextItems: matches.Select(ToMemoryContextItem).ToList());
-            });
+            },
+            EnabledByDefaultInMcp: false);
 
         yield return new ChatToolDescriptor(
             "memorysmith_code_search",
@@ -471,7 +473,8 @@ public sealed class ChatToolCatalog
                 var preferNewer = ReadBool(args, "preferNewer", true);
                 var result = await ctx.CodeSearch.MergeShardAsync(shardPath, preferNewer, ct);
                 return JsonToolResult(result);
-            });
+            },
+            EnabledByDefaultInMcp: false);
 
         // ---------- New tools (Phase 2 of ChatCapabilityImprovements plan) ----------
 
@@ -744,6 +747,7 @@ public sealed class ChatToolCatalog
                     return new ChatToolExecutionResult(ex.Message, IsError: true);
                 }
             },
+            EnabledByDefaultInMcp: false,
             AvailableInAgent: true);
 
         yield return new ChatToolDescriptor(
@@ -796,6 +800,7 @@ public sealed class ChatToolCatalog
                     return new ChatToolExecutionResult(ex.Message, IsError: true);
                 }
             },
+            EnabledByDefaultInMcp: false,
             AvailableInAgent: true);
 
         yield return new ChatToolDescriptor(
@@ -830,6 +835,7 @@ public sealed class ChatToolCatalog
                     return new ChatToolExecutionResult(ex.Message, IsError: true);
                 }
             },
+            EnabledByDefaultInMcp: false,
             AvailableInAgent: true);
 
         yield return new ChatToolDescriptor(
@@ -864,6 +870,7 @@ public sealed class ChatToolCatalog
                     return new ChatToolExecutionResult(ex.Message, IsError: true);
                 }
             },
+            EnabledByDefaultInMcp: false,
             AvailableInAgent: true);
 
         yield return new ChatToolDescriptor(
@@ -901,6 +908,7 @@ public sealed class ChatToolCatalog
                     return new ChatToolExecutionResult(ex.Message, IsError: true);
                 }
             },
+            EnabledByDefaultInMcp: false,
             AvailableInAgent: true);
 
         yield return new ChatToolDescriptor(
@@ -964,7 +972,8 @@ public sealed class ChatToolCatalog
 
                 var saved = await ctx.Pages.SaveAsync(new PageSaveRequest(slug, title, markdown, resolvedMinimumRole), ct);
                 return new ChatToolExecutionResult($"Page saved. Slug: {saved.Slug}  Title: {saved.Title}  Updated: {saved.LastUpdatedUtc:O}");
-            });
+            },
+            EnabledByDefaultInMcp: false);
 
         yield return new ChatToolDescriptor(
             "memorysmith_page_delete",
@@ -998,7 +1007,8 @@ public sealed class ChatToolCatalog
                 return new ChatToolExecutionResult(deleted
                     ? $"Page '{slug}' deleted."
                     : $"No page found with slug '{slug}'.");
-            });
+            },
+            EnabledByDefaultInMcp: false);
     }
 
     // ---------- Schema builders ----------

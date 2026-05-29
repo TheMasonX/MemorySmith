@@ -22,8 +22,9 @@
     <div class="health-header">
         <MudText Typo="Typo.h4">Training Workbench</MudText>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
-            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync" Disabled="@_isBusy">Refresh</MudButton>
-            <MudButton Variant="Variant.Outlined" Color="Color.Info" StartIcon="@Icons.Material.Filled.Tune" Disabled="@_isBusy" OnClick="OpenTrainingConfig">Training settings</MudButton>
+            <MudTooltip Text="Refresh training status and run history">
+                <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync" Disabled="@_isBusy" aria-label="Refresh" />
+            </MudTooltip>
             <MudButton Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.SmartToy" Disabled="@_isBusy" OnClick="OpenModels">Models</MudButton>
             <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PlayArrow" Disabled="@(_isBusy || _isLaunchingRun || _activeRun?.IsRunning == true)" OnClick="StartTrainingRunAsync">Start training run</MudButton>
             <MudButton Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Science" Disabled="@(_isBusy || _isLaunchingRun || _activeRun?.IsRunning == true)" OnClick="StartDryRunAsync">Start dry run</MudButton>
@@ -948,8 +949,26 @@
         }
 
         var sourceLink = new SourceLink { Label = Path.GetFileName(path), Uri = path };
-        var openResult = await VarResolver.OpenWithDefaultAppAsync(sourceLink);
+        var openResult = await VarResolver.OpenWithDefaultAppAsync(sourceLink, GetTrainingArtifactRoots());
         Snackbar.Add(openResult.Message, openResult.Opened ? Severity.Success : Severity.Warning);
+    }
+
+    private IEnumerable<string> GetTrainingArtifactRoots()
+    {
+        if (_snapshot is null)
+        {
+            return [];
+        }
+
+        return new[]
+        {
+            _snapshot.TranscriptDirectory,
+            _snapshot.ExportDirectory,
+            _snapshot.RunsDirectory,
+            Path.GetDirectoryName(_snapshot.PythonExecutablePath) ?? string.Empty,
+            Path.GetDirectoryName(_snapshot.HarnessScriptPath) ?? string.Empty
+        }
+        .Where(path => !string.IsNullOrWhiteSpace(path));
     }
 
     private async Task StartTrainingRunAsync() =>

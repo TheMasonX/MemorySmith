@@ -1015,14 +1015,14 @@ public sealed class GitHubCopilotChatProvider : IChatProvider
     private static string FormatGitHubPrompt(IReadOnlyList<ChatMessage> messages) =>
         string.Join("\n\n", messages.Select(message => $"{message.Role.ToUpperInvariant()}:\n{message.Content}"));
 
-    private static List<UserMessageDataAttachmentsItem>? BuildGitHubAttachments(IReadOnlyList<ChatAttachment>? attachments)
+    private static List<UserMessageAttachment>? BuildGitHubAttachments(IReadOnlyList<ChatAttachment>? attachments)
     {
         if (attachments is null)
         {
             return null;
         }
 
-        var result = new List<UserMessageDataAttachmentsItem>();
+        var result = new List<UserMessageAttachment>();
         foreach (var attachment in attachments.Where(attachment => attachment.IsImage))
         {
             var payload = ChatAttachmentFiles.ReadTrustedImageBase64(attachment);
@@ -1031,9 +1031,10 @@ public sealed class GitHubCopilotChatProvider : IChatProvider
                 continue;
             }
 
-            result.Add(new UserMessageDataAttachmentsItemBlob
+            result.Add(new UserMessageAttachmentBlob
             {
                 Data = payload,
+                DisplayName = attachment.Name,
                 MimeType = string.IsNullOrWhiteSpace(attachment.ContentType) ? "image/png" : attachment.ContentType
             });
         }
@@ -1264,6 +1265,7 @@ public sealed class GitHubCopilotChatProvider : IChatProvider
 
 public sealed partial class MemoryChatAgent : IChatAgent
 {
+    private const string UntrustedDataRole = "user";
     private static readonly Regex SafeIdPattern = SafeMemoryIdRegex();
     private static readonly JsonSerializerOptions ToolJsonOptions = new(JsonSerializerDefaults.Web)
     {
@@ -1496,7 +1498,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
                 var toolResults = await ExecuteToolCallsAsync(toolCalls, request.Mode, RequiresAgentWriteApproval(request), cancellationToken);
                 accessedContext.AddRange(ExtractToolContext(toolResults));
                 messages.Add(new ChatMessage("assistant", providerResponse.Content));
-                messages.Add(new ChatMessage("system", FormatToolResults(toolResults)));
+                messages.Add(new ChatMessage(UntrustedDataRole, FormatToolResults(toolResults)));
                 var toolResultTrace = toolResults
                     .Select(result => new ChatTraceEvent(
                         ChatTraceKinds.ToolResult,
@@ -1578,7 +1580,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
             var toolResults = await ExecuteToolCallsAsync(toolCalls, request.Mode, RequiresAgentWriteApproval(request), cancellationToken);
             accessedContext.AddRange(ExtractToolContext(toolResults));
             messages.Add(new ChatMessage("assistant", providerResponse.Content));
-            messages.Add(new ChatMessage("system", FormatToolResults(toolResults)));
+            messages.Add(new ChatMessage(UntrustedDataRole, FormatToolResults(toolResults)));
         }
     }
 
@@ -2539,18 +2541,18 @@ public sealed partial class MemoryChatAgent : IChatAgent
             new("system", BuildSystemPrompt(request, provider.Capabilities, contextPlan)),
             new("system", FormatCurrentUser()),
             new("system", FormatCapabilityContext(request, provider, contextPlan)),
-            new("system", FormatContext(context))
+            new(UntrustedDataRole, FormatContext(context))
         };
 
         if (interceptResults.Count > 0)
         {
-            messages.Add(new ChatMessage("system", FormatInterceptResults(interceptResults)));
+            messages.Add(new ChatMessage(UntrustedDataRole, FormatInterceptResults(interceptResults)));
         }
 
         var attachments = FormatAttachments(request.Attachments, options.MaxAttachmentCharacters);
         if (!string.IsNullOrWhiteSpace(attachments))
         {
-            messages.Add(new ChatMessage("system", attachments));
+            messages.Add(new ChatMessage(UntrustedDataRole, attachments));
         }
 
         if (request.History is not null)

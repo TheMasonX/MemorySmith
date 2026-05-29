@@ -157,7 +157,11 @@ public class SemanticToolQualityTests
     public async Task McpTools_ExposeSchemasAndUsefulOutputs()
     {
         var dataPath = ProjectWikiFixture.CopyToTemp(_tempRoot);
-        await using var factory = CreateFactory(dataPath);
+        await using var factory = CreateFactory(dataPath, new Dictionary<string, string?>
+        {
+            ["MemorySmith:Mcp:EnabledTools:0"] = "memorysmith_source_bundle",
+            ["MemorySmith:Mcp:EnabledTools:1"] = "memorysmith_find_by_source"
+        });
         using var client = factory.CreateClient();
 
         var toolsList = await PostJsonRpcAsync(client, new
@@ -250,7 +254,7 @@ public class SemanticToolQualityTests
         });
     }
 
-    private WebApplicationFactory<Program> CreateFactory(string memoryPath) =>
+    private WebApplicationFactory<Program> CreateFactory(string memoryPath, IReadOnlyDictionary<string, string?>? overrides = null) =>
         new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
             var varsPath = Path.Combine(_tempRoot, "vars.json");
@@ -266,13 +270,24 @@ public class SemanticToolQualityTests
             builder.UseEnvironment("Development");
             builder.ConfigureAppConfiguration((_, config) =>
             {
-                config.AddInMemoryCollection(new Dictionary<string, string?>
+                var settings = new Dictionary<string, string?>
                 {
                     ["MemorySmith:DataPath"] = memoryPath,
                     ["MemorySmith:EventLogPath"] = Path.Combine(_tempRoot, "Events", "quality-audit.log"),
                     ["MemorySmith:VarsPath"] = varsPath,
-                    ["MemorySmith:Maintenance:Enabled"] = "false"
-                });
+                    ["MemorySmith:Maintenance:Enabled"] = "false",
+                    ["MemorySmith:ApiKey"] = string.Empty
+                };
+
+                if (overrides is not null)
+                {
+                    foreach (var item in overrides)
+                    {
+                        settings[item.Key] = item.Value;
+                    }
+                }
+
+                config.AddInMemoryCollection(settings);
             });
         });
 
