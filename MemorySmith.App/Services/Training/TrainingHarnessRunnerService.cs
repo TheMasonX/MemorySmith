@@ -237,7 +237,7 @@ public sealed class TrainingHarnessRunnerService
         {
             FileName = pythonExecutable,
             Arguments = string.Join(" ", arguments),
-            WorkingDirectory = ResolveRepositoryRoot(),
+            WorkingDirectory = Path.GetDirectoryName(harnessScript) ?? AppContext.BaseDirectory,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
@@ -320,9 +320,6 @@ public sealed class TrainingHarnessRunnerService
         }
     }
 
-    private string ResolveRepositoryRoot() =>
-        Path.GetFullPath(Path.Combine(_environment.ContentRootPath, ".."));
-
     private static string? ResolveEnvironmentSecret(string environmentVariableName)
     {
         if (string.IsNullOrWhiteSpace(environmentVariableName))
@@ -336,30 +333,12 @@ public sealed class TrainingHarnessRunnerService
 
     private string ResolvePythonExecutable(string configuredVenvPath)
     {
-        var venvRoot = ResolvePath(configuredVenvPath);
-        var windowsPython = Path.Combine(venvRoot, "Scripts", "python.exe");
-        if (File.Exists(windowsPython) || OperatingSystem.IsWindows())
-        {
-            return windowsPython;
-        }
-
-        return Path.Combine(venvRoot, "bin", "python");
+        return TrainingPathResolver.ResolvePythonExecutablePath(configuredVenvPath, _environment.ContentRootPath);
     }
 
     private string ResolvePath(string configuredPath)
     {
-        if (Path.IsPathRooted(configuredPath))
-        {
-            return Path.GetFullPath(configuredPath);
-        }
-
-        var repositoryRootCandidate = Path.GetFullPath(Path.Combine(ResolveRepositoryRoot(), configuredPath));
-        if (File.Exists(repositoryRootCandidate) || Directory.Exists(repositoryRootCandidate) || configuredPath.StartsWith(".", StringComparison.Ordinal))
-        {
-            return repositoryRootCandidate;
-        }
-
-        return Path.GetFullPath(Path.Combine(_environment.ContentRootPath, configuredPath));
+        return TrainingPathResolver.ResolveConfiguredPath(configuredPath, _environment.ContentRootPath);
     }
 
     private static string Quote(string value) =>

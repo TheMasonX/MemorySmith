@@ -7,6 +7,7 @@
 @inject IJSRuntime JS
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
+@inject IWebHostEnvironment HostEnvironment
 @inject TrainingHarnessRunnerService TrainingRunner
 @using System.Text.Json
 @using System.Text.Json.Nodes
@@ -306,7 +307,7 @@
         {
             var training = Options.CurrentValue.Training;
             var dependencyProbe = await TrainingRunner.ProbeDependenciesAsync(CancellationToken.None);
-            _snapshot = BuildSnapshot(training, dependencyProbe);
+            _snapshot = BuildSnapshot(training, dependencyProbe, HostEnvironment.ContentRootPath);
             LoadTrainingSettings();
             _runs = await LoadRunSummariesAsync(_snapshot.RunsDirectory);
             _latestRunEvents = _runs.Count > 0
@@ -349,13 +350,13 @@
         }
     }
 
-    private static TrainingReadinessSnapshot BuildSnapshot(TrainingOptions training, TrainingDependencyProbeResult dependencyProbe)
+    private static TrainingReadinessSnapshot BuildSnapshot(TrainingOptions training, TrainingDependencyProbeResult dependencyProbe, string contentRootPath)
     {
-        var transcriptDirectory = Path.GetFullPath(training.TranscriptDirectory);
-        var exportDirectory = Path.GetFullPath(training.TrainingDataExportPath);
-        var runsDirectory = Path.GetFullPath(training.RunsDirectory);
-        var pythonExecutablePath = ResolveTrainingPythonExecutablePath(training.PythonVenvPath);
-        var harnessScriptPath = Path.GetFullPath(training.PythonHarnessScript);
+        var transcriptDirectory = TrainingPathResolver.ResolveConfiguredPath(training.TranscriptDirectory, contentRootPath);
+        var exportDirectory = TrainingPathResolver.ResolveConfiguredPath(training.TrainingDataExportPath, contentRootPath);
+        var runsDirectory = TrainingPathResolver.ResolveConfiguredPath(training.RunsDirectory, contentRootPath);
+        var pythonExecutablePath = ResolveTrainingPythonExecutablePath(training.PythonVenvPath, contentRootPath);
+        var harnessScriptPath = TrainingPathResolver.ResolveConfiguredPath(training.PythonHarnessScript, contentRootPath);
 
         var transcriptFileCount = SafeCountFiles(transcriptDirectory, "*.jsonl");
         var exportFileCount = SafeCountFiles(exportDirectory, "*.jsonl");
@@ -400,16 +401,9 @@
             ready);
     }
 
-    private static string ResolveTrainingPythonExecutablePath(string pythonVenvPath)
+    private static string ResolveTrainingPythonExecutablePath(string pythonVenvPath, string contentRootPath)
     {
-        var venvRoot = Path.GetFullPath(pythonVenvPath);
-        var windowsPython = Path.Combine(venvRoot, "Scripts", "python.exe");
-        if (File.Exists(windowsPython) || OperatingSystem.IsWindows())
-        {
-            return windowsPython;
-        }
-
-        return Path.Combine(venvRoot, "bin", "python");
+        return TrainingPathResolver.ResolvePythonExecutablePath(pythonVenvPath, contentRootPath);
     }
 
     private static async Task<IReadOnlyList<TrainingRunSummary>> LoadRunSummariesAsync(string runsDirectory)
