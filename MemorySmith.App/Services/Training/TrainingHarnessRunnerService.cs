@@ -20,13 +20,24 @@ public sealed record TrainingDependencyProbeResult(
     bool Ready,
     string PythonVersion,
     IReadOnlyList<string> MissingModules,
+    IReadOnlyList<string> OptionalMissingModules,
+    bool AcceleratorReady,
+    string? Accelerator,
     string? Error)
 {
     public string Summary => !string.IsNullOrWhiteSpace(Error)
         ? Error
-        : Ready
-            ? $"Ready ({PythonVersion})"
-            : $"Simulated mode: missing {string.Join(", ", MissingModules)} ({PythonVersion})";
+        : !AcceleratorReady
+            ? $"Simulated mode: accelerator unavailable ({PythonVersion}{FormatAcceleratorSuffix()})"
+            : MissingModules.Count > 0
+                ? $"Simulated mode: missing {string.Join(", ", MissingModules)} ({PythonVersion}{FormatAcceleratorSuffix()})"
+                : OptionalMissingModules.Count > 0
+                    ? $"Ready without optional {string.Join(", ", OptionalMissingModules)} ({PythonVersion}{FormatAcceleratorSuffix()})"
+                    : $"Ready ({PythonVersion}{FormatAcceleratorSuffix()})";
+
+    private string FormatAcceleratorSuffix() => string.IsNullOrWhiteSpace(Accelerator)
+        ? string.Empty
+        : $"; {Accelerator}";
 }
 
 public sealed class TrainingHarnessRunnerService
@@ -60,10 +71,10 @@ public sealed class TrainingHarnessRunnerService
         var pythonExecutable = ResolvePythonExecutable(_options.CurrentValue.Training.PythonVenvPath);
         if (!File.Exists(pythonExecutable))
         {
-            return new TrainingDependencyProbeResult(false, "-", ["python"], $"Python executable not found: {pythonExecutable}");
+            return new TrainingDependencyProbeResult(false, "-", ["python"], [], false, null, $"Python executable not found: {pythonExecutable}");
         }
 
-        const string probeScript = "import importlib.util, json, platform; modules=['torch','transformers','datasets','trl','peft','unsloth']; missing=[name for name in modules if importlib.util.find_spec(name) is None]; print(json.dumps({'python': platform.python_version(), 'missing': missing, 'ready': len(missing) == 0}))";
+        const string probeScript = "import importlib.util, json, platform; required=['torch','transformers','datasets','trl','peft']; optional=['unsloth']; missing_required=[name for name in required if importlib.util.find_spec(name) is None]; missing_optional=[name for name in optional if importlib.util.find_spec(name) is None]; cuda_available=False; cuda_version=None; device_name=None; accelerator='cpu-only'; torch_error=None; exec(\"try:\\n import torch\\n cuda_available = bool(torch.cuda.is_available())\\n cuda_version = getattr(torch.version, 'cuda', None)\\n device_name = torch.cuda.get_device_name(0) if cuda_available and torch.cuda.device_count() > 0 else None\\n accelerator = device_name or ('cuda ' + str(cuda_version) if cuda_version else 'cpu-only')\\nexcept Exception as ex:\\n torch_error = str(ex)\\n\", globals(), locals()); ready=(len(missing_required)==0 and cuda_available and torch_error is None); print(json.dumps({'python': platform.python_version(), 'missing': missing_required, 'optionalMissing': missing_optional, 'cudaAvailable': cuda_available, 'cudaVersion': cuda_version, 'deviceName': device_name, 'accelerator': accelerator, 'torchError': torch_error, 'ready': ready}))";
         var startInfo = new ProcessStartInfo
         {
             FileName = pythonExecutable,
@@ -88,7 +99,7 @@ public sealed class TrainingHarnessRunnerService
             var stderr = await stderrTask;
             if (process.ExitCode != 0)
             {
-                return new TrainingDependencyProbeResult(false, "-", [], string.IsNullOrWhiteSpace(stderr) ? "Training dependency probe failed." : stderr.Trim());
+                return new TrainingDependencyProbeResult(false, "-", [], [], false, null, string.IsNullOrWhiteSpace(stderr) ? "Training dependency probe failed." : stderr.Trim());
             }
 
             using var document = JsonDocument.Parse(stdout);
@@ -100,12 +111,22 @@ public sealed class TrainingHarnessRunnerService
             var missing = root.TryGetProperty("missing", out var missingElement) && missingElement.ValueKind == JsonValueKind.Array
                 ? missingElement.EnumerateArray().Select(element => element.GetString() ?? string.Empty).Where(value => !string.IsNullOrWhiteSpace(value)).ToList()
                 : [];
+            var optionalMissing = root.TryGetProperty("optionalMissing", out var optionalMissingElement) && optionalMissingElement.ValueKind == JsonValueKind.Array
+                ? optionalMissingElement.EnumerateArray().Select(element => element.GetString() ?? string.Empty).Where(value => !string.IsNullOrWhiteSpace(value)).ToList()
+                : [];
+            var acceleratorReady = root.TryGetProperty("cudaAvailable", out var acceleratorElement) && acceleratorElement.ValueKind == JsonValueKind.True;
+            var accelerator = root.TryGetProperty("accelerator", out var acceleratorElement2) && acceleratorElement2.ValueKind == JsonValueKind.String
+                ? acceleratorElement2.GetString()
+                : null;
+            var torchError = root.TryGetProperty("torchError", out var torchErrorElement) && torchErrorElement.ValueKind == JsonValueKind.String
+                ? torchErrorElement.GetString()
+                : null;
 
-            return new TrainingDependencyProbeResult(ready, pythonVersion, missing, null);
+            return new TrainingDependencyProbeResult(ready, pythonVersion, missing, optionalMissing, acceleratorReady, accelerator, string.IsNullOrWhiteSpace(torchError) ? null : torchError);
         }
         catch (Exception ex)
         {
-            return new TrainingDependencyProbeResult(false, "-", [], ex.Message);
+            return new TrainingDependencyProbeResult(false, "-", [], [], false, null, ex.Message);
         }
     }
 
@@ -160,6 +181,9 @@ public sealed class TrainingHarnessRunnerService
                 python = dependencyProbe.PythonVersion,
                 ready = dependencyProbe.Ready,
                 missing = dependencyProbe.MissingModules,
+                optionalMissing = dependencyProbe.OptionalMissingModules,
+                acceleratorReady = dependencyProbe.AcceleratorReady,
+                accelerator = dependencyProbe.Accelerator,
                 error = dependencyProbe.Error
             }
         };

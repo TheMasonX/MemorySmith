@@ -80,12 +80,36 @@ $probe = @'
 import importlib.util
 import json
 import platform
-modules = ['torch', 'transformers', 'datasets', 'trl', 'peft', 'unsloth']
-missing = [name for name in modules if importlib.util.find_spec(name) is None]
+required_modules = ['torch', 'transformers', 'datasets', 'trl', 'peft']
+optional_modules = ['unsloth']
+missing_required = [name for name in required_modules if importlib.util.find_spec(name) is None]
+missing_optional = [name for name in optional_modules if importlib.util.find_spec(name) is None]
+cuda_available = False
+cuda_version = None
+device_name = None
+accelerator = 'cpu-only'
+torch_error = None
+try:
+    import torch
+    cuda_available = bool(torch.cuda.is_available())
+    cuda_version = getattr(torch.version, 'cuda', None)
+    device_name = torch.cuda.get_device_name(0) if cuda_available and torch.cuda.device_count() > 0 else None
+    accelerator = device_name or (f'cuda {cuda_version}' if cuda_version else 'cpu-only')
+except Exception as ex:
+    if 'torch' not in missing_required:
+        torch_error = str(ex)
+
+ready = len(missing_required) == 0 and cuda_available and not torch_error
 payload = {
     'python': platform.python_version(),
-    'missing': missing,
-    'ready': len(missing) == 0
+    'missing': missing_required,
+    'optionalMissing': missing_optional,
+    'cudaAvailable': cuda_available,
+    'cudaVersion': cuda_version,
+    'deviceName': device_name,
+    'accelerator': accelerator,
+    'torchError': torch_error,
+    'ready': ready
 }
 print(json.dumps(payload))
 '@
@@ -103,10 +127,23 @@ if ($AsJson) {
 else {
     Write-Host "Python version: $($payload.python)"
     if ($payload.ready) {
-        Write-Host "Training dependencies: ready"
+        Write-Host "Training dependencies: ready ($($payload.accelerator))"
     }
     else {
-        Write-Host "Training dependencies missing: $($payload.missing -join ', ')"
+        if ($payload.missing.Count -gt 0) {
+            Write-Host "Training dependencies missing: $($payload.missing -join ', ')"
+        }
+        else {
+            Write-Host "Training accelerator unavailable: $($payload.accelerator)"
+        }
+
+        if ($payload.optionalMissing.Count -gt 0) {
+            Write-Host "Optional training extras missing: $($payload.optionalMissing -join ', ')"
+        }
+
+        if (-not [string]::IsNullOrWhiteSpace($payload.torchError)) {
+            Write-Host "Torch probe warning: $($payload.torchError)"
+        }
     }
 }
 

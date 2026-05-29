@@ -27,7 +27,7 @@ Bash bootstrap (future-compatible path for Linux/WSL operators):
 
 The recommended local training scratch root is `D:\temp\memorysmith-training` on Windows. This keeps heavyweight Hugging Face caches, torch wheels, temporary files, and run artifacts off the repo drive while leaving exported datasets and the final tuned model location under explicit operator control.
 
-`Setup-FinetuneTrainingEnv.ps1` now provisions a dedicated Python 3.12/3.11 venv, installs the LoRA stack, writes a local override file at `artifacts/MemorySmith.App/appsettings.LocalOverrides.json`, and can persist the scratch/cache environment variables plus `MemorySmith__SettingsOverridePath` for future app launches.
+`Setup-FinetuneTrainingEnv.ps1` now provisions a dedicated Python 3.12/3.11 venv, installs the core GPU-capable LoRA stack, writes a local override file at `artifacts/MemorySmith.App/appsettings.LocalOverrides.json`, and can persist the scratch/cache environment variables plus `MemorySmith__SettingsOverridePath` for future app launches. Optional `Unsloth` installation is opt-in for Windows workflows.
 
 Key defaults:
 
@@ -42,6 +42,14 @@ If you want a dry bootstrap without package installs, run:
 ```powershell
 ./Scripts/Setup-FinetuneTrainingEnv.ps1 -SkipDependencyInstall
 ```
+
+If you want to include optional Unsloth packages during bootstrap, run:
+
+```powershell
+./Scripts/Setup-FinetuneTrainingEnv.ps1 -IncludeUnsloth -AllowCpuFallback
+```
+
+Operator note: preflight now requires both core dependencies and a visible accelerator before reporting ready.
 
 ## Produced Artifacts
 
@@ -69,7 +77,7 @@ Second run (`sprint8-ft-20260528`) with dependency-preflight wiring produced the
 
 ## Constraints and Next Step
 
-If the configured training venv is missing the LoRA stack (`torch`, `transformers`, `datasets`, `trl`, `peft`, `unsloth`), the harness executes export/eval/benchmark with simulated training steps. The runner prints this state up-front via preflight and can be configured to fail fast with `-RequireTrainingDependencies`.
+If the configured training venv is missing the core LoRA stack (`torch`, `transformers`, `datasets`, `trl`, `peft`) or no accelerator is available, the harness executes export/eval/benchmark with simulated training steps. Optional `unsloth` is surfaced separately and does not block base readiness by default. The runner prints this state up-front via preflight and can be configured to fail fast with `-RequireTrainingDependencies`.
 
 Next action for real fine-tuning:
 

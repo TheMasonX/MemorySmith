@@ -657,17 +657,22 @@ public class TagGovernanceTests
         var setupScript = Path.Combine(root, "Scripts", "Setup-FinetuneTrainingEnv.ps1");
         var bashScript = Path.Combine(root, "Scripts", "setup-finetune-training-env.sh");
         var requirements = Path.Combine(root, "Scripts", "training", "requirements-training.txt");
+        var unslothRequirements = Path.Combine(root, "Scripts", "training", "requirements-training-unsloth.txt");
 
         Assert.Multiple(() =>
         {
             Assert.That(File.Exists(setupScript), Is.True);
             Assert.That(File.Exists(bashScript), Is.True);
             Assert.That(File.Exists(requirements), Is.True);
+            Assert.That(File.Exists(unslothRequirements), Is.True);
             Assert.That(runbook, Does.Contain("Setup-FinetuneTrainingEnv.ps1"));
             Assert.That(runbook, Does.Contain("D:\\temp\\memorysmith-training"));
+            Assert.That(runbook, Does.Contain("IncludeUnsloth"));
             Assert.That(configReference, Does.Contain("Scripts/Setup-FinetuneTrainingEnv.ps1"));
             Assert.That(configReference, Does.Contain("MemorySmith__SettingsOverridePath"));
+            Assert.That(configReference, Does.Contain("accelerator readiness"));
             Assert.That(readme, Does.Contain("Local Fine-Tune Bootstrap"));
+            Assert.That(readme, Does.Contain("core GPU-capable training stack"));
             Assert.That(readme, Does.Contain("Run-FinetuneHarness.ps1 -RunId ft-smoke -RequireTrainingDependencies"));
         });
     }

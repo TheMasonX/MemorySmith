@@ -7,6 +7,8 @@ param(
     [string]$OverridePath = "artifacts/MemorySmith.App/appsettings.LocalOverrides.json",
     [ValidateSet("cu128", "cpu")]
     [string]$TorchFlavor = "cu128",
+    [switch]$IncludeUnsloth,
+    [switch]$AllowCpuFallback,
     [switch]$InstallPythonIfMissing,
     [switch]$PersistUserEnvironment,
     [switch]$RecreateVenv,
@@ -18,6 +20,7 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path $PSScriptRoot -Parent
 $requirementsPath = Join-Path $repoRoot "Scripts\training\requirements-training.txt"
+$unslothRequirementsPath = Join-Path $repoRoot "Scripts\training\requirements-training-unsloth.txt"
 $preflightScript = Join-Path $repoRoot "Scripts\Test-FinetuneHarnessPrereqs.ps1"
 
 function Test-IsWindowsPlatform {
@@ -284,10 +287,14 @@ if (-not (Test-Path $requirementsPath)) {
     throw "Training requirements file not found: $requirementsPath"
 }
 
+if ($IncludeUnsloth -and -not (Test-Path $unslothRequirementsPath)) {
+    throw "Optional Unsloth requirements file not found: $unslothRequirementsPath"
+}
+
 Write-Host "Using Python $($launcher.Version) with venv at $resolvedVenvPath"
 
 if (-not $SkipDependencyInstall) {
-    & $venvPython -m pip install --upgrade pip setuptools wheel
+    & $venvPython -m pip install --upgrade pip "setuptools<82" wheel
     if ($LASTEXITCODE -ne 0) {
         throw "Failed to upgrade pip toolchain in training virtual environment"
     }
@@ -302,14 +309,32 @@ if (-not $SkipDependencyInstall) {
     if ($LASTEXITCODE -ne 0) {
         throw "Failed to install training requirements from $requirementsPath"
     }
+
+    if ($IncludeUnsloth) {
+        & $venvPython -m pip install -r $unslothRequirementsPath
+        if ($LASTEXITCODE -ne 0) {
+            throw "Failed to install optional Unsloth requirements from $unslothRequirementsPath"
+        }
+    }
 }
 
 Write-LocalOverrideFile -Path $resolvedOverridePath -TrainingVenvPath $resolvedVenvPath -RunsDirectory $runsDirectory
 
 Write-Host "Running training dependency preflight..."
-& $preflightScript -PythonVenvPath $resolvedVenvPath
+$preflightJson = & $preflightScript -PythonVenvPath $resolvedVenvPath -AsJson
 if ($LASTEXITCODE -ne 0) {
     throw "Training dependency preflight failed after environment setup"
+}
+
+$preflight = $preflightJson | ConvertFrom-Json
+if (-not $AllowCpuFallback -and -not $preflight.ready) {
+    $missingText = if ($preflight.missing.Count -gt 0) { $preflight.missing -join ', ' } else { 'none' }
+    $optionalText = if ($preflight.optionalMissing.Count -gt 0) { $preflight.optionalMissing -join ', ' } else { 'none' }
+    throw "Training environment installed but accelerator-ready preflight failed. Required missing: $missingText. Optional missing: $optionalText. Accelerator: $($preflight.accelerator)."
+}
+
+if ($preflight.optionalMissing.Count -gt 0) {
+    Write-Host "Optional training extras missing: $($preflight.optionalMissing -join ', ')"
 }
 
 Write-Host "Training environment ready."
@@ -318,4 +343,6 @@ Write-Host "Training venv:          $resolvedVenvPath"
 Write-Host "Runs directory:         $runsDirectory"
 Write-Host "Local override file:    $resolvedOverridePath"
 Write-Host "Persisted env vars:     $PersistUserEnvironment"
+Write-Host "Accelerator ready:      $($preflight.ready) [$($preflight.accelerator)]"
+Write-Host "Optional extras:        $(if ($preflight.optionalMissing.Count -eq 0) { 'all present' } else { $preflight.optionalMissing -join ', ' })"
 Write-Host "Suggested run command:  ./Scripts/Run-FinetuneHarness.ps1 -PythonVenvPath '$resolvedVenvPath' -WorkRoot '$runsDirectory' -ScratchRoot '$resolvedScratchRoot' -RequireTrainingDependencies -RunId ft-smoke-$(Get-Date -Format yyyyMMdd-HHmmss)"
