@@ -214,6 +214,8 @@ Operational scripts:
 - `Scripts/Test-FinetuneHarnessPrereqs.ps1` validates both dependency imports and accelerator readiness in the configured venv.
 - `Scripts/Run-FinetuneHarness.ps1` runs the harness bridge, defaults runs and caches to the configured scratch root, writes request/status/events/benchmark artifacts, and accepts `-TrainMode auto|simulated|lora` to declare execution intent.
 
+`Run-FinetuneHarness.ps1 -RequireTrainingDependencies` enforces readiness for `auto` and `lora` intent. With `-TrainMode simulated`, the script logs the preflight state and continues execution for explicit simulation workflows.
+
 Current Windows note: optional `Unsloth` packages are intentionally excluded from the default bootstrap path and can be enabled with `-IncludeUnsloth` when that stack is explicitly being tested.
 
 Operator note: prefer an override file or `MemorySmith__SettingsOverridePath` environment variable for machine-specific training paths. Do not commit local scratch or cache directories into shared repo defaults.
