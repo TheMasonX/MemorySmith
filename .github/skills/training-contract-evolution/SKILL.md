@@ -8,6 +8,8 @@ disable-model-invocation: false
 
 # Training Contract Evolution
 
+Inherits from `task-core-loop`.
+
 Internal workflow for safe contract changes across training surfaces.
 
 ## Scope
@@ -16,12 +18,13 @@ Internal workflow for safe contract changes across training surfaces.
 - Benchmark payload metrics.
 - Event payload consistency.
 
-## Procedure
-1. Define contract change and affected surfaces.
-2. Update all producers.
-3. Verify consumer assumptions and UI render paths.
-4. Validate via focused tests and one strict run artifact check.
-5. Confirm non-secret policy for persisted fields.
+## Procedure Additions
+1. Apply `task-core-loop` steps first.
+2. Define contract change and affected surfaces.
+3. Update all producers.
+4. Verify consumer assumptions and UI render paths.
+5. Validate via focused tests and one strict run artifact check.
+6. Confirm non-secret policy for persisted fields.
 
 ## Compatibility Rules
 - Additive fields preferred.

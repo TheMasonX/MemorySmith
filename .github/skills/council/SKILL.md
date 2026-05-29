@@ -1,5 +1,5 @@
 ---
-name: llm-council-review
+name: council
 description: 'Run a MemorySmith LLM council review for high-impact decisions. Use when evaluating schema changes, retrieval/search behavior, chat or agent write governance, wiki conventions, or long-term architecture tradeoffs with explicit dissent, risks, confidence, and acceptance criteria.'
 argument-hint: 'Decision topic and scope to review'
 user-invocable: true
@@ -8,7 +8,15 @@ disable-model-invocation: false
 
 # LLM Council Review for MemorySmith
 
+Inherits from `task-core-loop`.
+
 Use this skill to run a structured, evidence-first, multi-perspective decision review.
+
+## Subagent Permission Policy
+
+- Default to a single-agent, self-simulated council analysis.
+- Do not invoke subagents for council seats unless the user gives explicit permission in the current request.
+- If explicit permission is not present, proceed with self-simulated seats and document that choice in the report.
 
 ## Outcome
 
@@ -71,6 +79,8 @@ Give each seat the same evidence and require:
 - Assumptions
 - Open questions
 - Confidence percentage
+
+Subagent usage note: only run seats via subagents when explicit user permission is provided. Otherwise run all seats in-process.
 
 5. Branch on disagreement.
 If seats materially disagree, do not flatten to consensus.

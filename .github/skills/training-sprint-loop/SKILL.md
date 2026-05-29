@@ -8,7 +8,9 @@ disable-model-invocation: false
 
 # Training Sprint Loop
 
-Use this skill for short, repeatable delivery rounds where each round ends in a pushed checkpoint and CI status update.
+Inherits from `task-core-loop`.
+
+Use this skill for short, repeatable training-focused delivery rounds where each round ends in a pushed checkpoint and CI status update.
 
 ## Use When
 - You want commit/push/review/fix/repeat cadence.
@@ -19,14 +21,11 @@ Use this skill for short, repeatable delivery rounds where each round ends in a 
 - Validation scope (focused tests, strict GPU run, or both).
 - Commit scope (files that must be included/excluded).
 
-## Procedure
-1. Audit current branch and CI status.
-2. Implement the smallest viable slice.
-3. Run narrow validations first; expand only on failure/uncertainty.
-4. Verify working tree and stage only scoped files.
-5. Commit with a single-purpose message.
-6. Push and capture CI run IDs/status.
-7. Record evidence, assumptions, risks, and confidence.
+## Procedure Additions
+1. Apply all `task-core-loop` steps first.
+2. Add strict or focused training validation for the changed slice.
+3. Push and capture CI status with conservative checks.
+4. Record run-artifact evidence (`status.json`, `benchmark.json`, event traces) when relevant.
 
 ## Conservative CI Mode
 - Prefer one `gh run list` status refresh per round.

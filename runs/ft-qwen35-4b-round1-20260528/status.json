@@ -1,0 +1,13 @@
+{
+  "runId": "ft-qwen35-4b-round1-20260528",
+  "phase": "done",
+  "startedAt": "2026-05-29T05:01:30.173863+00:00",
+  "elapsedSeconds": 0.02,
+  "lastEvent": "run.completed",
+  "metrics": {
+    "records": 28,
+    "events": 19
+  },
+  "warnings": [],
+  "errors": []
+}

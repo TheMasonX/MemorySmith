@@ -14,7 +14,7 @@ After PR #13, MemorySmith should prioritize measurement-backed governance UX and
 - [AI Memory Suite Implementation Plan](../plans/ai-memory-suite-implementation-plan.md) for the phased governance roadmap and explicit still-gated work.
 - [Core Memory System Improvements RFC](../plans/temp-plan.md) for convention-first, validation-first schema discipline.
 - [Search and Chat](../guides/search-and-chat.md) for current search modes, chat tool behavior, retrieval habits, and council triggers.
-- [Council Workflow](llm-council.md) and `.github/skills/llm-council-review/SKILL.md` for council method and completion checks.
+- [Council Workflow](llm-council.md) and `.github/skills/council/SKILL.md` (slash command: `/council`) for council method and completion checks.
 - [PR 13 Search Diagnostics Follow-Up](pr13-search-diagnostics-council-review-20260521.md) for the just-merged diagnostics, hot-path hardening, and no-ranking-change constraint.
 - `MemorySmith.Core/Docs/Plans/SemantingSearch.md` for ONNX/vector-search aspirations and current exact in-memory cosine implementation notes.
 - `MemorySmith.Core/Docs/Plans/ChatCapabilityImprovements_20260518.md` for the chat/tool-call gap analysis and context-planner direction.

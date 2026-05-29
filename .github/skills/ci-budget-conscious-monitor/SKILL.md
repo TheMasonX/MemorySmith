@@ -8,6 +8,8 @@ disable-model-invocation: false
 
 # CI Budget-Conscious Monitor
 
+Inherits from `task-core-loop`.
+
 Use this skill to monitor CI in a cost-aware way.
 
 ## Policy
@@ -15,9 +17,10 @@ Use this skill to monitor CI in a cost-aware way.
 - Prefer snapshot checks over continuous watch.
 - Escalate polling frequency only for active failures or user-requested live monitoring.
 
-## Procedure
-1. Capture latest CI snapshot by branch and/or head SHA.
-2. Map push and PR runs to current commit.
+## Procedure Additions
+1. Apply `task-core-loop` evidence and output discipline.
+2. Capture latest CI snapshot via script hook first:
+	- `pwsh ./Scripts/SkillHooks/Get-CiSnapshot.ps1 -Branch <branch> -Commit <sha>`
 3. Classify state: queued, in_progress, success, failure, stale.
 4. For queued/in_progress: report once and continue local work.
 5. For failure: pull failing job details and isolate first actionable failure.

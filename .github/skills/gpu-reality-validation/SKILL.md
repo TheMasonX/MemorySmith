@@ -8,6 +8,8 @@ disable-model-invocation: false
 
 # GPU Reality Validation
 
+Inherits from `task-core-loop`.
+
 Use this skill to validate that a run executed real GPU training and produced expected artifacts.
 
 ## Validation Gates
@@ -18,11 +20,12 @@ Use this skill to validate that a run executed real GPU training and produced ex
 - Adapter artifacts are present.
 - Key telemetry fields are present and coherent.
 
-## Procedure
-1. Run strict mode with required dependencies enabled.
-2. Read `status.json`, `benchmark.json`, and relevant `events.jsonl` lines.
-3. Confirm gate results and summarize any drift.
-4. If drift exists, classify as runtime, contract, or environment issue and propose next fix slice.
+## Procedure Additions
+1. Apply `task-core-loop` evidence discipline.
+2. Run strict mode with required dependencies enabled.
+3. Read `status.json`, `benchmark.json`, and relevant `events.jsonl` lines.
+4. Confirm gate results and summarize any drift.
+5. If drift exists, classify as runtime, contract, or environment issue and propose next fix slice.
 
 ## Output
 - Pass/fail by gate.

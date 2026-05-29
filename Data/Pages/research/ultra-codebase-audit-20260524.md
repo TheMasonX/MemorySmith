@@ -13,7 +13,7 @@
 - Planned validation gates are executable or explicitly deferred.
 
 ## Evidence Reviewed
-- Product/source-of-truth docs: `README.md`, `.github/copilot-instructions.md`, `.github/agents/smith.agent.md`, `.github/skills/codebase-audit-sprint-planner/SKILL.md`, `.github/skills/llm-council-review/SKILL.md`.
+- Product/source-of-truth docs: `README.md`, `.github/copilot-instructions.md`, `.github/agents/smith.agent.md`, `.github/skills/codebase-audit-sprint-planner/SKILL.md`, `.github/skills/council/SKILL.md` (slash command: `/council`).
 - Project wiki memories: `Data/Memories/Core/project-wiki-active-architecture.json`, `project-wiki-validation-command.json`, `project-wiki-test-architecture.json`, `project-wiki-chat-agent-provider.json`, `project-wiki-source-link-security-boundaries.json`, `project-wiki-operational-diagnostics-dashboard.json`.
 - Prior trackers/audits: `logs/agent-smith-20260524-codebase-audit-ci-testing.md`, `logs/agent-smith-20260523-codebase-audit-task-vetting.md`, `logs/agent-smith-20260524-source-governance-sprint.md`, `Audit_20260521_191625.md`.
 - Current task tracker at audit time: 111 JSON task records parsed, status distribution `Backlog=95`, `Done=15`, `Archived=1`, and one duplicate key pair for `TSK-0060`. Follow-up on 2026-05-24 resolved this collision by renumbering the screenshot task to `TSK-0117` and adding `Scripts/Test-TaskRecords.ps1`.

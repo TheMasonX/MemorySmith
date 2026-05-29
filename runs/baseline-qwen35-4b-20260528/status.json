@@ -1,0 +1,13 @@
+{
+  "runId": "baseline-qwen35-4b-20260528",
+  "phase": "done",
+  "startedAt": "2026-05-29T05:01:26.415694+00:00",
+  "elapsedSeconds": 0.024,
+  "lastEvent": "run.completed",
+  "metrics": {
+    "records": 28,
+    "events": 7
+  },
+  "warnings": [],
+  "errors": []
+}

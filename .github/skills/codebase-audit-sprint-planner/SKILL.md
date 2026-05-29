@@ -8,6 +8,8 @@ disable-model-invocation: false
 
 # Codebase Audit to Sprint Plan
 
+Inherits from `task-core-loop`.
+
 Use this skill to perform a comprehensive codebase audit, then distill evidence into an actionable sprint backlog and task documents.
 
 ## Outcome
@@ -18,7 +20,7 @@ Produce a delivery package with:
 - Sprint plan with goals, capacity assumptions, and sequencing
 - Task documents ready for implementation handoff
 - Explicit assumptions, open questions, risks, and confidence percentages
-- Escalated critical decisions through llm-council-review (or self-simulated council fallback)
+- Escalated critical decisions through /council (or self-simulated council analysis)
 
 ## Use When
 
@@ -30,7 +32,7 @@ Use this workflow when you need:
 
 Do not use this workflow for one-file fixes, superficial style reviews, or ad hoc brainstorming without evidence collection.
 
-For high-impact architecture, governance, schema, retrieval/search, or agent-write decisions, invoke llm-council-review when available.
+For high-impact architecture, governance, schema, retrieval/search, or agent-write decisions, invoke /council.
 
 ## Inputs
 
@@ -82,7 +84,8 @@ If evidence is weak, contradictory, or stale:
 - Do not promote to high-priority implementation without validation
 
 6. Escalate critical decisions to council review.
-For high-impact decisions, run llm-council-review before final sprint commitment.
+For high-impact decisions, run /council before final sprint commitment.
+Default to self-simulated council analysis. Use subagents only when the user has given explicit permission in the current request.
 If direct council invocation is not feasible, run a self-simulated critical analysis with explicit seats:
 - Source-Grounded Archivist
 - Data Model Architect
@@ -152,7 +155,7 @@ If no objective baseline exists, schedule instrumentation or benchmark tasks bef
 If the request is discovery/planning only, do not require immediate execution of tests or benchmarks. Instead, include explicit deferred validation tasks and gates in sprint scope.
 
 - Branch F: Council-triggered governance review
-If a finding affects schema, retrieval behavior, trust/safety boundaries, or long-lived architecture, require llm-council-review before final sprint commitment. If unavailable, require self-simulated council output with explicit dissent.
+If a finding affects schema, retrieval behavior, trust/safety boundaries, or long-lived architecture, require /council before final sprint commitment. If unavailable, require self-simulated council output with explicit dissent.
 
 ## Completion Checks
 
@@ -276,7 +279,7 @@ Run a full deep-dive codebase audit for <scope>.
 Then convert findings into <N> sprint plans and implementation-ready `/tasks` records, using markdown sprint pages only for narrative summaries or longer design detail.
 Use severity, confidence percentages, explicit assumptions, and open questions.
 Require evidence links for all high-impact findings.
-Invoke llm-council-review for high-impact decisions; if unavailable, run a self-simulated critical council analysis.
+Invoke /council for high-impact decisions; if unavailable, run a self-simulated critical council analysis.
 ```
 
 ## References
@@ -286,4 +289,4 @@ Invoke llm-council-review for high-impact decisions; if unavailable, run a self-
 - MemorySmith.Core/Docs/Plans
 - MemorySmith.Core/Docs/Reviews
 - MemorySmith.Core/Docs/ProgressReports
-- .github/skills/llm-council-review/SKILL.md
+- .github/skills/council/SKILL.md (command name: `council`)

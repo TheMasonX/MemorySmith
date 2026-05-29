@@ -1,0 +1,53 @@
+﻿{
+  "id": "tsk-0215-task-layout-changes",
+  "key": "TSK-0215",
+  "title": "Task Layout Changes",
+  "description": "The attachments should use a simple \u002B button with tooltip, and give more horizontal space to the searchable combobox\nUploading a screenshot with other text changes (description) wipes those changes\nDifficult to use the comments/artifacts/history section, as it does not resize and I cannot scroll down into it (I can only scroll the tiny view area).\nNew task description should fill the area down to the buttons\nUpload file button should not line break, and highlight is not fully covering it\nImage uploads (and possibly text) should preview on hover (if enabled in config). Needs to have filesize/dimension bounds to avoid preview attempts on massive files. Needs link highlighting (it\u0027s clickable, just not color-coded).",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future"
+  ],
+  "attachments": [
+    {
+      "id": "a-6bec3a695ec245aba70518ec8d1e437b",
+      "name": "Screenshot 2026-05-29 002559.png",
+      "kind": "file",
+      "uri": "/artifacts/task-attachments/tsk-0215-task-layout-changes/screenshot-2026-05-29-002559.png",
+      "addedAtUtc": "2026-05-29T05:28:34.3432402Z"
+    },
+    {
+      "id": "a-e966abafdbe245b4bb50ee945a939379",
+      "name": "Screenshot 2026-05-29 002744.png",
+      "kind": "file",
+      "uri": "/artifacts/task-attachments/tsk-0215-task-layout-changes/screenshot-2026-05-29-002744.png",
+      "addedAtUtc": "2026-05-29T05:28:37.6806588Z"
+    },
+    {
+      "id": "a-615b5fa8e567466da5c8f19e7cb7a5b5",
+      "name": "Screenshot 2026-05-29 003033.png",
+      "kind": "file",
+      "uri": "/artifacts/task-attachments/tsk-0215-task-layout-changes/screenshot-2026-05-29-003033.png",
+      "addedAtUtc": "2026-05-29T05:30:38.7535006Z"
+    }
+  ],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-29T05:27:26.6584525Z",
+  "updatedAtUtc": "2026-05-29T05:35:02.7038543Z",
+  "completedAtUtc": null,
+  "revision": 7,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

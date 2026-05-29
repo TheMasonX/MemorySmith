@@ -1,0 +1,33 @@
+{
+  "runId": "baseline-qwen35-4b-20260528",
+  "records": 28,
+  "estimatedTokens": 1057,
+  "train": {
+    "steps": 0,
+    "finalLoss": null,
+    "mode": "dry-run"
+  },
+  "timingsSeconds": {
+    "export": 0.017,
+    "train": 0.001,
+    "eval": 0.001,
+    "total": 0.024
+  },
+  "throughput": {
+    "recordsPerSecond": 1547.124,
+    "tokensPerSecondEstimate": 58403.921
+  },
+  "environment": {
+    "python": "3.14.3 (tags/v3.14.3:323c59a, Feb  3 2026, 16:04:56) [MSC v.1944 64 bit (AMD64)]",
+    "argv": [
+      "C:\\Users\\norrt\\source\\repos\\MemorySmith\\MemorySmith.Training\\harness.py",
+      "--run-id",
+      "baseline-qwen35-4b-20260528",
+      "--request",
+      "C:\\Users\\norrt\\source\\repos\\MemorySmith\\runs\\baseline-qwen35-4b-20260528\\request.json",
+      "--workdir",
+      "C:\\Users\\norrt\\source\\repos\\MemorySmith\\runs\\baseline-qwen35-4b-20260528",
+      "--dry-run"
+    ]
+  }
+}

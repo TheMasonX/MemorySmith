@@ -1,0 +1,20 @@
+{"event": "template.chatml.ready", "data": {"path": "C:\\Users\\norrt\\source\\repos\\MemorySmith\\MemorySmith.Core\\Docs\\Prompts\\chat-template.jinja2"}, "ts": "2026-05-29T05:01:30.153789+00:00", "runId": "ft-qwen35-4b-round1-20260528"}
+{"event": "run.started", "data": {"dryRun": false}, "ts": "2026-05-29T05:01:30.154242+00:00", "runId": "ft-qwen35-4b-round1-20260528"}
+{"event": "data.synthetic_examples_loaded", "data": {"records": 28}, "ts": "2026-05-29T05:01:30.161387+00:00", "runId": "ft-qwen35-4b-round1-20260528"}
+{"event": "data.exported", "data": {"records": 28, "exportPath": "C:\\Users\\norrt\\source\\repos\\MemorySmith\\Data\\Training\\exports\\ft-qwen35-4b-round1-20260528.sft.jsonl"}, "ts": "2026-05-29T05:01:30.163281+00:00", "runId": "ft-qwen35-4b-round1-20260528"}
+{"event": "train.step", "data": {"step": 1, "totalSteps": 112, "loss": 1.7863}, "ts": "2026-05-29T05:01:30.165670+00:00", "runId": "ft-qwen35-4b-round1-20260528"}
+{"event": "train.step", "data": {"step": 11, "totalSteps": 112, "loss": 1.6694}, "ts": "2026-05-29T05:01:30.166066+00:00", "runId": "ft-qwen35-4b-round1-20260528"}
+{"event": "train.step", "data": {"step": 21, "totalSteps": 112, "loss": 1.5585}, "ts": "2026-05-29T05:01:30.166401+00:00", "runId": "ft-qwen35-4b-round1-20260528"}
+{"event": "train.step", "data": {"step": 31, "totalSteps": 112, "loss": 1.4525}, "ts": "2026-05-29T05:01:30.166715+00:00", "runId": "ft-qwen35-4b-round1-20260528"}
+{"event": "train.step", "data": {"step": 41, "totalSteps": 112, "loss": 1.354}, "ts": "2026-05-29T05:01:30.167126+00:00", "runId": "ft-qwen35-4b-round1-20260528"}
+{"event": "train.step", "data": {"step": 51, "totalSteps": 112, "loss": 1.2633}, "ts": "2026-05-29T05:01:30.167463+00:00", "runId": "ft-qwen35-4b-round1-20260528"}
+{"event": "train.step", "data": {"step": 61, "totalSteps": 112, "loss": 1.1777}, "ts": "2026-05-29T05:01:30.167799+00:00", "runId": "ft-qwen35-4b-round1-20260528"}
+{"event": "train.step", "data": {"step": 71, "totalSteps": 112, "loss": 1.0948}, "ts": "2026-05-29T05:01:30.168114+00:00", "runId": "ft-qwen35-4b-round1-20260528"}
+{"event": "train.step", "data": {"step": 81, "totalSteps": 112, "loss": 1.0216}, "ts": "2026-05-29T05:01:30.168461+00:00", "runId": "ft-qwen35-4b-round1-20260528"}
+{"event": "train.step", "data": {"step": 91, "totalSteps": 112, "loss": 0.9533}, "ts": "2026-05-29T05:01:30.168823+00:00", "runId": "ft-qwen35-4b-round1-20260528"}
+{"event": "train.step", "data": {"step": 101, "totalSteps": 112, "loss": 0.8889}, "ts": "2026-05-29T05:01:30.169114+00:00", "runId": "ft-qwen35-4b-round1-20260528"}
+{"event": "train.step", "data": {"step": 111, "totalSteps": 112, "loss": 0.8287}, "ts": "2026-05-29T05:01:30.169413+00:00", "runId": "ft-qwen35-4b-round1-20260528"}
+{"event": "train.completed", "data": {"steps": 112, "finalLoss": 0.8234, "mode": "simulated"}, "ts": "2026-05-29T05:01:30.169684+00:00", "runId": "ft-qwen35-4b-round1-20260528"}
+{"event": "eval.completed", "data": {"passed": true, "records": 28}, "ts": "2026-05-29T05:01:30.171449+00:00", "runId": "ft-qwen35-4b-round1-20260528"}
+{"event": "benchmark.written", "data": {"path": "C:\\Users\\norrt\\source\\repos\\MemorySmith\\runs\\ft-qwen35-4b-round1-20260528\\benchmark.json"}, "ts": "2026-05-29T05:01:30.173490+00:00", "runId": "ft-qwen35-4b-round1-20260528"}
+{"event": "run.completed", "data": {"records": 28, "events": 19}, "ts": "2026-05-29T05:01:30.174703+00:00", "runId": "ft-qwen35-4b-round1-20260528"}
