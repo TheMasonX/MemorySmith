@@ -8,6 +8,7 @@ param(
     [string]$ScratchRoot,
     [ValidateSet("auto", "simulated", "lora")]
     [string]$TrainMode = "auto",
+    [string]$ModelId = "Qwen/Qwen3.5-4B",
     [switch]$RequireTrainingDependencies,
     [switch]$DryRun
 )
@@ -177,6 +178,7 @@ New-Item -ItemType Directory -Path $resolvedExportPath -Force | Out-Null
 $request = [ordered]@{
     runId = $RunId
     trainMode = $TrainMode
+    modelId = $ModelId
     exportPath = $resolvedExportPath
     transcriptDirectory = (Resolve-WorkflowPath $TranscriptDirectory)
     format = "FilteredSft"
@@ -190,9 +192,9 @@ $request = [ordered]@{
         error = $preflight.torchError
     }
     hyperparameters = [ordered]@{
-        epochs = 3
+        epochs = 1
         learningRate = 0.0002
-        sequenceLength = 4096
+        sequenceLength = 512
     }
 }
 $requestJson = $request | ConvertTo-Json -Depth 8

@@ -50,9 +50,6 @@ class Harness:
         accelerator_ready = bool(probe.get("acceleratorReady"))
         accelerator = str(probe.get("accelerator") or "").strip()
 
-        if requested_mode == "lora":
-            reasons.append("train mode lora requested but lora runner is not implemented yet")
-
         missing = probe.get("missing")
         if isinstance(missing, list) and missing:
             reasons.append(f"missing core deps: {', '.join(str(item) for item in missing)}")
@@ -69,8 +66,6 @@ class Harness:
             reasons.append(f"accelerator unavailable: {accelerator or 'unknown'}")
 
         if ready and accelerator_ready:
-            if requested_mode == "lora":
-                return "simulated", reasons
             return "training-ready", reasons
 
         if not reasons:
@@ -222,6 +217,164 @@ class Harness:
             "reason": "; ".join(reasons),
         }
 
+    def resolve_model_id(self) -> str:
+        candidate = str(
+            self.request.get("modelId")
+            or self.request.get("activeModelTag")
+            or self.request.get("fallbackModelTag")
+            or ""
+        ).strip()
+        if not candidate:
+            return "Qwen/Qwen3.5-4B"
+
+        alias = candidate.lower()
+        if "/" in candidate:
+            return candidate
+
+        # Allow Ollama-style tags in request files and map to HF model IDs.
+        if alias.startswith("qwen3.5"):
+            return "Qwen/Qwen3.5-4B"
+        if alias.startswith("qwen3"):
+            return "Qwen/Qwen3-4B"
+
+        return candidate
+
+    def resolve_hyperparameters(self) -> tuple[int, int, float]:
+        hyperparameters = self.request.get("hyperparameters")
+        if not isinstance(hyperparameters, dict):
+            return 1, 512, 2e-4
+
+        epochs = int(hyperparameters.get("epochs") or 1)
+        sequence_length = int(hyperparameters.get("sequenceLength") or 512)
+        learning_rate = float(hyperparameters.get("learningRate") or 2e-4)
+
+        # Keep defaults bounded for an 8GB class laptop GPU.
+        epochs = max(1, min(epochs, 3))
+        sequence_length = max(128, min(sequence_length, 1024))
+        learning_rate = max(1e-6, min(learning_rate, 5e-3))
+        return epochs, sequence_length, learning_rate
+
+    def to_training_text(self, rows: list[dict[str, Any]]) -> list[str]:
+        texts: list[str] = []
+        for row in rows:
+            messages = row.get("messages")
+            if not isinstance(messages, list):
+                continue
+
+            turns: list[str] = []
+            for message in messages:
+                role = str(message.get("role") or "").strip()
+                content = str(message.get("content") or "").strip()
+                if role and content:
+                    turns.append(f"<{role}>\n{content}")
+
+            if turns:
+                texts.append("\n\n".join(turns))
+        return texts
+
+    def train_lora(self, rows: list[dict[str, Any]]) -> dict[str, Any]:
+        import torch
+        from peft import LoraConfig, get_peft_model
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+
+        model_id = self.resolve_model_id()
+        epochs, sequence_length, learning_rate = self.resolve_hyperparameters()
+        offload_dir = self.paths.workdir / "offload"
+        offload_dir.mkdir(parents=True, exist_ok=True)
+
+        tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
+        if tokenizer.pad_token is None:
+            tokenizer.pad_token = tokenizer.eos_token
+
+        cuda_available = torch.cuda.is_available()
+        torch_dtype = torch.bfloat16 if cuda_available and torch.cuda.is_bf16_supported() else torch.float16
+        model = AutoModelForCausalLM.from_pretrained(
+            model_id,
+            torch_dtype=torch_dtype,
+            trust_remote_code=True,
+            device_map="auto",
+            low_cpu_mem_usage=True,
+            max_memory={0: "7600MiB", "cpu": "28GiB"},
+            offload_folder=str(offload_dir),
+        )
+
+        lora_config = LoraConfig(
+            r=8,
+            lora_alpha=16,
+            lora_dropout=0.05,
+            target_modules=["q_proj", "k_proj", "v_proj", "o_proj"],
+            bias="none",
+            task_type="CAUSAL_LM",
+        )
+        model = get_peft_model(model, lora_config)
+        model.train()
+
+        texts = self.to_training_text(rows)
+        if not texts:
+            raise RuntimeError("No valid training records were found in the exported dataset.")
+
+        # Keep session fast and deterministic for workstation smoke fine-tuning.
+        max_steps = min(max(1, len(texts) * epochs), 8)
+        optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
+
+        losses: list[float] = []
+        for step in range(max_steps):
+            text = texts[step % len(texts)]
+            encoded = tokenizer(
+                text,
+                truncation=True,
+                max_length=sequence_length,
+                return_tensors="pt",
+            )
+
+            input_ids = encoded["input_ids"].to(model.device)
+            attention_mask = encoded["attention_mask"].to(model.device)
+
+            outputs = model(
+                input_ids=input_ids,
+                attention_mask=attention_mask,
+                labels=input_ids,
+            )
+            loss = outputs.loss
+            loss.backward()
+            optimizer.step()
+            optimizer.zero_grad(set_to_none=True)
+
+            loss_value = float(loss.detach().cpu().item())
+            losses.append(loss_value)
+            self.emit_event(
+                "train.step",
+                {
+                    "step": step + 1,
+                    "totalSteps": max_steps,
+                    "loss": round(loss_value, 4),
+                },
+            )
+
+        adapter_path = self.paths.workdir / "adapter"
+        adapter_path.mkdir(parents=True, exist_ok=True)
+        model.save_pretrained(adapter_path)
+        tokenizer.save_pretrained(adapter_path)
+
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
+        final_loss = losses[-1] if losses else None
+        return {
+            "steps": max_steps,
+            "finalLoss": round(final_loss, 4) if final_loss is not None else None,
+            "mode": "lora",
+            "trainMode": "lora",
+            "plannedMode": "training-ready",
+            "fallbackCodes": [],
+            "reason": "executed real LoRA training",
+            "modelId": model_id,
+            "adapterPath": str(adapter_path),
+            "device": "cuda" if cuda_available else "cpu",
+            "sequenceLength": sequence_length,
+            "learningRate": learning_rate,
+        }
+
     def write_benchmark(self, records: int, tokens_est: int, train_metrics: dict[str, Any], elapsed_export: float, elapsed_train: float, elapsed_eval: float) -> None:
         payload = {
             "runId": self.run_id,
@@ -275,6 +428,8 @@ class Harness:
                 codes.append("dependency_probe_error")
             elif "forced to simulated" in reason:
                 codes.append("forced_simulated_mode")
+            elif "runtime error" in reason:
+                codes.append("trainer_runtime_error")
 
         # Preserve order while de-duplicating.
         unique_codes: list[str] = []
@@ -307,12 +462,44 @@ class Harness:
         requested_mode = str(self.request.get("trainMode") or "auto").strip().lower()
         planned_mode, train_reasons = self.resolve_training_mode()
         execution_mode = "simulated"
-        if planned_mode == "training-ready":
-            train_reasons = [
-                *train_reasons,
-                "real trainer path is not implemented yet; executing simulated trainer",
-            ]
-        fallback_codes = self.as_fallback_codes(train_reasons)
+        train_metrics: dict[str, Any]
+
+        if dry_run:
+            train_metrics = self.simulate_train(
+                records,
+                dry_run=True,
+                mode="dry-run",
+                planned_mode=planned_mode,
+                reasons=train_reasons,
+            )
+            execution_mode = "dry-run"
+        elif planned_mode == "training-ready" and requested_mode in {"auto", "lora"}:
+            execution_mode = "lora"
+            try:
+                train_metrics = self.train_lora(examples)
+            except Exception as ex:
+                train_reasons = [
+                    *train_reasons,
+                    f"real trainer runtime error: {ex}",
+                ]
+                execution_mode = "simulated"
+                train_metrics = self.simulate_train(
+                    records,
+                    dry_run=False,
+                    mode=execution_mode,
+                    planned_mode=planned_mode,
+                    reasons=train_reasons,
+                )
+        else:
+            train_metrics = self.simulate_train(
+                records,
+                dry_run=False,
+                mode=execution_mode,
+                planned_mode=planned_mode,
+                reasons=train_reasons,
+            )
+
+        fallback_codes = train_metrics.get("fallbackCodes") or self.as_fallback_codes(train_reasons)
 
         self.emit_event(
             "train.mode",
@@ -323,13 +510,6 @@ class Harness:
                 "fallbackCodes": fallback_codes,
                 "reasons": train_reasons,
             },
-        )
-        train_metrics = self.simulate_train(
-            records,
-            dry_run=dry_run,
-            mode=execution_mode,
-            planned_mode=planned_mode,
-            reasons=train_reasons,
         )
         train_warnings = self.as_warning_messages(execution_mode, train_reasons)
         elapsed_train = time.perf_counter() - train_start
