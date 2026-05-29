@@ -301,7 +301,7 @@ class Harness:
         training_device = "cuda" if cuda_available else "cpu"
         model = AutoModelForCausalLM.from_pretrained(
             model_id,
-            torch_dtype=torch_dtype,
+            dtype=torch_dtype,
             trust_remote_code=True,
             device_map=None,
             low_cpu_mem_usage=False,
@@ -438,7 +438,7 @@ class Harness:
         self.emit_event("infer.base_model_loading", {"modelId": model_id})
         base_model = AutoModelForCausalLM.from_pretrained(
             model_id,
-            torch_dtype=torch_dtype,
+            dtype=torch_dtype,
             trust_remote_code=True,
             device_map=None,
             low_cpu_mem_usage=False,
