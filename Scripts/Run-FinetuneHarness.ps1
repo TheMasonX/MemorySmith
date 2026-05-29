@@ -10,6 +10,7 @@ param(
     [string]$TrainMode = "auto",
     [string]$ModelId = "Qwen/Qwen3.5-4B",
     [string]$AdapterPath,
+    [string]$HfToken,
     [int]$Epochs = 1,
     [double]$LearningRate = 0.0002,
     [int]$SequenceLength = 512,
@@ -117,6 +118,18 @@ function Initialize-TrainingScratchEnvironment {
     }
 }
 
+function Initialize-HuggingFaceAuthEnvironment {
+    param([string]$Token)
+
+    if ([string]::IsNullOrWhiteSpace($Token)) {
+        return
+    }
+
+    # Support both common variable names used by hub clients.
+    $env:HF_TOKEN = $Token
+    $env:HUGGING_FACE_HUB_TOKEN = $Token
+}
+
 function Write-Utf8NoBomFile {
     param(
         [Parameter(Mandatory = $true)][string]$Path,
@@ -145,6 +158,7 @@ if ([string]::IsNullOrWhiteSpace($PythonVenvPath)) {
 }
 
 Initialize-TrainingScratchEnvironment -Root $ScratchRoot
+Initialize-HuggingFaceAuthEnvironment -Token $HfToken
 
 $resolvedWorkRoot = Resolve-WorkflowPath $WorkRoot
 $workDir = Join-Path $resolvedWorkRoot $RunId
