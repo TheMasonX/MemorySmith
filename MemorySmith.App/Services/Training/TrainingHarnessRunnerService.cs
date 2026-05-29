@@ -170,6 +170,7 @@ public sealed class TrainingHarnessRunnerService
         var request = new
         {
             runId,
+            trainMode = "auto",
             exportPath = exportDirectory,
             transcriptDirectory = ResolvePath(appOptions.Training.TranscriptDirectory),
             format = appOptions.Training.PreferenceFormat.ToString(),

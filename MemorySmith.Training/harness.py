@@ -35,6 +35,13 @@ class Harness:
 
     def resolve_training_mode(self) -> tuple[str, list[str]]:
         probe = self.request.get("dependencyProbe")
+        requested_mode = str(self.request.get("trainMode") or "auto").strip().lower()
+        if requested_mode not in {"auto", "simulated", "lora"}:
+            requested_mode = "auto"
+
+        if requested_mode == "simulated":
+            return "simulated", ["train mode forced to simulated by request"]
+
         if not isinstance(probe, dict):
             return "simulated", ["dependency probe was not provided"]
 
@@ -42,6 +49,9 @@ class Harness:
         ready = bool(probe.get("ready"))
         accelerator_ready = bool(probe.get("acceleratorReady"))
         accelerator = str(probe.get("accelerator") or "").strip()
+
+        if requested_mode == "lora":
+            reasons.append("train mode lora requested but lora runner is not implemented yet")
 
         missing = probe.get("missing")
         if isinstance(missing, list) and missing:
@@ -59,6 +69,8 @@ class Harness:
             reasons.append(f"accelerator unavailable: {accelerator or 'unknown'}")
 
         if ready and accelerator_ready:
+            if requested_mode == "lora":
+                return "simulated", reasons
             return "training-ready", reasons
 
         if not reasons:
@@ -243,8 +255,9 @@ class Harness:
 
         train_start = time.perf_counter()
         self.write_status("train", "train.started")
+        requested_mode = str(self.request.get("trainMode") or "auto").strip().lower()
         train_mode, train_reasons = self.resolve_training_mode()
-        self.emit_event("train.mode", {"mode": train_mode, "reasons": train_reasons})
+        self.emit_event("train.mode", {"requested": requested_mode, "mode": train_mode, "reasons": train_reasons})
         train_metrics = self.simulate_train(records, dry_run=dry_run, mode=train_mode, reasons=train_reasons)
         elapsed_train = time.perf_counter() - train_start
         self.emit_event("train.completed", train_metrics)

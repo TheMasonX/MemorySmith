@@ -6,6 +6,8 @@ param(
     [string]$TranscriptDirectory = "Data/Events/chat-transcripts",
     [string]$PythonVenvPath,
     [string]$ScratchRoot,
+    [ValidateSet("auto", "simulated", "lora")]
+    [string]$TrainMode = "auto",
     [switch]$RequireTrainingDependencies,
     [switch]$DryRun
 )
@@ -170,6 +172,7 @@ New-Item -ItemType Directory -Path $resolvedExportPath -Force | Out-Null
 
 $request = [ordered]@{
     runId = $RunId
+    trainMode = $TrainMode
     exportPath = $resolvedExportPath
     transcriptDirectory = (Resolve-WorkflowPath $TranscriptDirectory)
     format = "FilteredSft"
