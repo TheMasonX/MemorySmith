@@ -10,6 +10,10 @@ param(
     [string]$TrainMode = "auto",
     [string]$ModelId = "Qwen/Qwen3.5-4B",
     [string]$AdapterPath,
+    [int]$Epochs = 1,
+    [double]$LearningRate = 0.0002,
+    [int]$SequenceLength = 512,
+    [int]$MaxTrainSteps = 0,
     [switch]$RequireTrainingDependencies,
     [switch]$DryRun
 )
@@ -200,10 +204,14 @@ $request = [ordered]@{
         error = $preflight.torchError
     }
     hyperparameters = [ordered]@{
-        epochs = 1
-        learningRate = 0.0002
-        sequenceLength = 512
+        epochs = $Epochs
+        learningRate = $LearningRate
+        sequenceLength = $SequenceLength
     }
+}
+
+if ($MaxTrainSteps -gt 0) {
+    $request.hyperparameters["maxTrainSteps"] = $MaxTrainSteps
 }
 
 # Add adapterPath if provided (for inference mode)

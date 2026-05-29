@@ -246,20 +246,25 @@ class Harness:
 
         return candidate
 
-    def resolve_hyperparameters(self) -> tuple[int, int, float]:
+    def resolve_hyperparameters(self) -> tuple[int, int, float, int | None]:
         hyperparameters = self.request.get("hyperparameters")
         if not isinstance(hyperparameters, dict):
-            return 1, 512, 2e-4
+            return 1, 512, 2e-4, None
 
         epochs = int(hyperparameters.get("epochs") or 1)
         sequence_length = int(hyperparameters.get("sequenceLength") or 512)
         learning_rate = float(hyperparameters.get("learningRate") or 2e-4)
+        max_train_steps_raw = hyperparameters.get("maxTrainSteps")
 
         # Keep defaults bounded for an 8GB class laptop GPU.
         epochs = max(1, min(epochs, 3))
         sequence_length = max(128, min(sequence_length, 1024))
         learning_rate = max(1e-6, min(learning_rate, 5e-3))
-        return epochs, sequence_length, learning_rate
+        max_train_steps = None
+        if max_train_steps_raw is not None:
+            max_train_steps = max(1, min(int(max_train_steps_raw), 256))
+
+        return epochs, sequence_length, learning_rate, max_train_steps
 
     def to_training_text(self, rows: list[dict[str, Any]]) -> list[str]:
         texts: list[str] = []
@@ -285,7 +290,7 @@ class Harness:
         from transformers import AutoModelForCausalLM, AutoTokenizer
 
         model_id = self.resolve_model_id()
-        epochs, sequence_length, learning_rate = self.resolve_hyperparameters()
+        epochs, sequence_length, learning_rate, max_train_steps = self.resolve_hyperparameters()
 
         tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
         if tokenizer.pad_token is None:
@@ -319,11 +324,15 @@ class Harness:
         if not texts:
             raise RuntimeError("No valid training records were found in the exported dataset.")
 
-        # Keep session fast and deterministic for workstation smoke fine-tuning.
-        max_steps = min(max(1, len(texts) * epochs), 8)
+        # By default run full per-epoch coverage; optional cap keeps long runs bounded.
+        steps_per_epoch = max(1, len(texts))
+        computed_steps = steps_per_epoch * epochs
+        max_steps = min(computed_steps, max_train_steps) if max_train_steps is not None else computed_steps
         optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 
         losses: list[float] = []
+        loss_per_epoch: list[dict[str, Any]] = []
+
         for step in range(max_steps):
             text = texts[step % len(texts)]
             encoded = tokenizer(
@@ -348,11 +357,18 @@ class Harness:
 
             loss_value = float(loss.detach().cpu().item())
             losses.append(loss_value)
+            
+            # Track per-epoch summary
+            epoch_num = (step // len(texts)) + 1
+            step_in_epoch = (step % len(texts)) + 1
+            
             self.emit_event(
                 "train.step",
                 {
                     "step": step + 1,
                     "totalSteps": max_steps,
+                    "epoch": epoch_num,
+                    "stepInEpoch": step_in_epoch,
                     "loss": round(loss_value, 4),
                 },
             )
@@ -366,9 +382,32 @@ class Harness:
             torch.cuda.empty_cache()
 
         final_loss = losses[-1] if losses else None
+        initial_loss = losses[0] if losses else None
+        
+        # Calculate epoch summaries
+        for epoch_idx in range(epochs):
+            start_step = epoch_idx * steps_per_epoch
+            end_step = min(start_step + steps_per_epoch, len(losses))
+            if start_step < len(losses):
+                epoch_losses = losses[start_step:end_step]
+                loss_per_epoch.append({
+                    "epoch": epoch_idx + 1,
+                    "initialLoss": round(epoch_losses[0], 4) if epoch_losses else None,
+                    "finalLoss": round(epoch_losses[-1], 4) if epoch_losses else None,
+                    "minLoss": round(min(epoch_losses), 4) if epoch_losses else None,
+                    "maxLoss": round(max(epoch_losses), 4) if epoch_losses else None,
+                    "steps": len(epoch_losses),
+                })
+
         return {
             "steps": max_steps,
+            "epochs": epochs,
+            "stepsPerEpoch": steps_per_epoch,
+            "maxTrainSteps": max_train_steps,
             "finalLoss": round(final_loss, 4) if final_loss is not None else None,
+            "initialLoss": round(initial_loss, 4) if initial_loss is not None else None,
+            "losses": [round(l, 4) for l in losses],
+            "lossPerEpoch": loss_per_epoch,
             "mode": "lora",
             "trainMode": "lora",
             "plannedMode": "training-ready",
