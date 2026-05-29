@@ -42,12 +42,14 @@ Use the PowerShell bootstrap to provision a dedicated training environment inste
 ```powershell
 ./Scripts/Setup-FinetuneTrainingEnv.ps1 -InstallPythonIfMissing -PersistUserEnvironment
 ./Scripts/Test-FinetuneHarnessPrereqs.ps1
-./Scripts/Run-FinetuneHarness.ps1 -RunId ft-smoke -RequireTrainingDependencies
+./Scripts/Run-FinetuneHarness.ps1 -RunId ft-smoke -TrainMode auto -RequireTrainingDependencies
 ```
 
 On Windows, the bootstrap prefers `D:\temp\memorysmith-training` for heavyweight scratch state, caches, and run artifacts. The script writes an override file at `artifacts/MemorySmith.App/appsettings.LocalOverrides.json`; with `-PersistUserEnvironment` it also sets `MemorySmith__SettingsOverridePath` so app launches use the dedicated training venv and runs directory automatically.
 
 The default bootstrap now targets the core GPU-capable training stack. Optional `Unsloth` installation is opt-in (`-IncludeUnsloth`) because its current Windows resolver path can move the environment to a CPU-only torch build.
+
+Harness runs support explicit mode intent with `-TrainMode auto|simulated|lora`. The `lora` intent is currently scaffold-only and produces a reasoned simulated fallback while the real trainer path is pending.
 
 ## The Project Wiki
 

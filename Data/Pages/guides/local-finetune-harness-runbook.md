@@ -8,7 +8,7 @@ This runbook captures the current in-repo training harness flow for local fine-t
 
 ```powershell
 ./Scripts/Setup-FinetuneTrainingEnv.ps1 -InstallPythonIfMissing -PersistUserEnvironment
-./Scripts/Run-FinetuneHarness.ps1 -RunId sprint3-ft-20260528 -RequireTrainingDependencies
+./Scripts/Run-FinetuneHarness.ps1 -RunId sprint3-ft-20260528 -TrainMode auto -RequireTrainingDependencies
 ```
 
 Preflight only:
@@ -50,6 +50,12 @@ If you want to include optional Unsloth packages during bootstrap, run:
 ```
 
 Operator note: preflight now requires both core dependencies and a visible accelerator before reporting ready.
+
+Train mode scaffold:
+
+- `-TrainMode auto` (default): uses dependency probe signal to decide whether the run is training-ready or simulated.
+- `-TrainMode simulated`: force simulated mode for quick contract checks.
+- `-TrainMode lora`: explicit LoRA intent; currently reports a reasoned simulated fallback until a real trainer path is wired.
 
 ## Produced Artifacts
 

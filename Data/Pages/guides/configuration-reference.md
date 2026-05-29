@@ -212,7 +212,7 @@ Operational scripts:
 - `Scripts/Setup-FinetuneTrainingEnv.ps1` provisions a dedicated Python 3.12/3.11 training venv, defaults heavyweight scratch/cache state to `D:\temp\memorysmith-training` on Windows, installs the core GPU-capable training stack, and writes a local override file for `Training:PythonVenvPath` and `Training:RunsDirectory`.
 - `Scripts/setup-finetune-training-env.sh` is the matching bash-oriented bootstrap for Linux/WSL-style environments.
 - `Scripts/Test-FinetuneHarnessPrereqs.ps1` validates both dependency imports and accelerator readiness in the configured venv.
-- `Scripts/Run-FinetuneHarness.ps1` runs the harness bridge, defaults runs and caches to the configured scratch root, and writes request/status/events/benchmark artifacts.
+- `Scripts/Run-FinetuneHarness.ps1` runs the harness bridge, defaults runs and caches to the configured scratch root, writes request/status/events/benchmark artifacts, and accepts `-TrainMode auto|simulated|lora` to declare execution intent.
 
 Current Windows note: optional `Unsloth` packages are intentionally excluded from the default bootstrap path and can be enabled with `-IncludeUnsloth` when that stack is explicitly being tested.
 

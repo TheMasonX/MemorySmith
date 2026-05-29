@@ -668,12 +668,15 @@ public class TagGovernanceTests
             Assert.That(runbook, Does.Contain("Setup-FinetuneTrainingEnv.ps1"));
             Assert.That(runbook, Does.Contain("D:\\temp\\memorysmith-training"));
             Assert.That(runbook, Does.Contain("IncludeUnsloth"));
+            Assert.That(runbook, Does.Contain("TrainMode"));
             Assert.That(configReference, Does.Contain("Scripts/Setup-FinetuneTrainingEnv.ps1"));
             Assert.That(configReference, Does.Contain("MemorySmith__SettingsOverridePath"));
             Assert.That(configReference, Does.Contain("accelerator readiness"));
+            Assert.That(configReference, Does.Contain("-TrainMode auto|simulated|lora"));
             Assert.That(readme, Does.Contain("Local Fine-Tune Bootstrap"));
             Assert.That(readme, Does.Contain("core GPU-capable training stack"));
-            Assert.That(readme, Does.Contain("Run-FinetuneHarness.ps1 -RunId ft-smoke -RequireTrainingDependencies"));
+            Assert.That(readme, Does.Contain("-TrainMode auto|simulated|lora"));
+            Assert.That(readme, Does.Contain("Run-FinetuneHarness.ps1 -RunId ft-smoke -TrainMode auto -RequireTrainingDependencies"));
         });
     }
 
