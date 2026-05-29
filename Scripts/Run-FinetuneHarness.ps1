@@ -155,10 +155,13 @@ if ($LASTEXITCODE -ne 0) {
 }
 $preflight = $preflightJson | ConvertFrom-Json
 if ($RequireTrainingDependencies -and -not $preflight.ready) {
-    throw "Training dependencies missing: $($preflight.missing -join ', ')"
+    $missingText = if ($preflight.missing.Count -gt 0) { $preflight.missing -join ', ' } else { 'none' }
+    throw "Training dependency preflight not ready. Missing: $missingText. Accelerator: $($preflight.accelerator)."
 }
 if (-not $preflight.ready) {
-    Write-Warning "Training dependencies missing. Harness run will execute in simulated mode. Missing: $($preflight.missing -join ', ')"
+    $missingText = if ($preflight.missing.Count -gt 0) { $preflight.missing -join ', ' } else { 'none' }
+    $optionalText = if ($preflight.optionalMissing.Count -gt 0) { $preflight.optionalMissing -join ', ' } else { 'none' }
+    Write-Warning "Training preflight not ready. Harness run will execute in simulated mode. Missing: $missingText. Optional missing: $optionalText. Accelerator: $($preflight.accelerator)."
 }
 
 New-Item -ItemType Directory -Path $workDir -Force | Out-Null
@@ -174,6 +177,10 @@ $request = [ordered]@{
         python = $preflight.python
         ready = $preflight.ready
         missing = @($preflight.missing)
+        optionalMissing = @($preflight.optionalMissing)
+        acceleratorReady = $preflight.cudaAvailable
+        accelerator = $preflight.accelerator
+        error = $preflight.torchError
     }
     hyperparameters = [ordered]@{
         epochs = 3

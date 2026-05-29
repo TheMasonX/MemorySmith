@@ -33,6 +33,39 @@ class Harness:
         self.phase_started_at = time.perf_counter()
         self.events_written = 0
 
+    def resolve_training_mode(self) -> tuple[str, list[str]]:
+        probe = self.request.get("dependencyProbe")
+        if not isinstance(probe, dict):
+            return "simulated", ["dependency probe was not provided"]
+
+        reasons: list[str] = []
+        ready = bool(probe.get("ready"))
+        accelerator_ready = bool(probe.get("acceleratorReady"))
+        accelerator = str(probe.get("accelerator") or "").strip()
+
+        missing = probe.get("missing")
+        if isinstance(missing, list) and missing:
+            reasons.append(f"missing core deps: {', '.join(str(item) for item in missing)}")
+
+        optional_missing = probe.get("optionalMissing")
+        if isinstance(optional_missing, list) and optional_missing:
+            reasons.append(f"missing optional deps: {', '.join(str(item) for item in optional_missing)}")
+
+        probe_error = str(probe.get("error") or "").strip()
+        if probe_error:
+            reasons.append(f"probe error: {probe_error}")
+
+        if not accelerator_ready:
+            reasons.append(f"accelerator unavailable: {accelerator or 'unknown'}")
+
+        if ready and accelerator_ready:
+            return "training-ready", reasons
+
+        if not reasons:
+            reasons.append("dependency probe reported not ready")
+
+        return "simulated", reasons
+
     def emit_event(self, event: str, data: dict[str, Any]) -> None:
         payload = {"event": event, "data": data, "ts": utc_now(), "runId": self.run_id}
         line = json.dumps(payload, ensure_ascii=True)
@@ -148,9 +181,9 @@ class Harness:
                 records += 1
         return records, tokens_est
 
-    def simulate_train(self, records: int, dry_run: bool) -> dict[str, Any]:
+    def simulate_train(self, records: int, dry_run: bool, mode: str, reasons: list[str]) -> dict[str, Any]:
         if dry_run:
-            return {"steps": 0, "finalLoss": None, "mode": "dry-run"}
+            return {"steps": 0, "finalLoss": None, "mode": "dry-run", "trainMode": mode, "reason": "; ".join(reasons)}
 
         steps = max(10, records * 4)
         loss = 1.8
@@ -158,7 +191,13 @@ class Harness:
             loss = max(0.15, loss * (0.992 + random.random() * 0.002))
             if idx % 10 == 0:
                 self.emit_event("train.step", {"step": idx + 1, "totalSteps": steps, "loss": round(loss, 4)})
-        return {"steps": steps, "finalLoss": round(loss, 4), "mode": "simulated"}
+        return {
+            "steps": steps,
+            "finalLoss": round(loss, 4),
+            "mode": "simulated",
+            "trainMode": mode,
+            "reason": "; ".join(reasons),
+        }
 
     def write_benchmark(self, records: int, tokens_est: int, train_metrics: dict[str, Any], elapsed_export: float, elapsed_train: float, elapsed_eval: float) -> None:
         payload = {
@@ -204,7 +243,9 @@ class Harness:
 
         train_start = time.perf_counter()
         self.write_status("train", "train.started")
-        train_metrics = self.simulate_train(records, dry_run=dry_run)
+        train_mode, train_reasons = self.resolve_training_mode()
+        self.emit_event("train.mode", {"mode": train_mode, "reasons": train_reasons})
+        train_metrics = self.simulate_train(records, dry_run=dry_run, mode=train_mode, reasons=train_reasons)
         elapsed_train = time.perf_counter() - train_start
         self.emit_event("train.completed", train_metrics)
         self.write_status("train", "train.completed", train_metrics)
