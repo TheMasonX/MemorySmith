@@ -324,7 +324,7 @@
     private static string FormatTagPolicyStatus(TagPolicyLoadStatus status) =>
         status.LoadedFromFile ? $"Loaded / {status.Path}" : $"Fallback ({status.Reason}) / {status.Path}";
 
-    private static string FormatChatProvider(ChatOptions chat) =>
+    private static string FormatChatProvider(OperationalDiagnosticsChatConfiguration chat) =>
         $"{chat.Provider} / Ollama:{chat.OllamaModel} / GitHub:{chat.GitHubModel} / {chat.SystemPromptPath}";
 
     private static string FormatSemanticSearch(SemanticSearchOptions semanticSearch, EmbeddingProviderStatus status) =>
@@ -337,7 +337,7 @@
     private static string FormatExecutionProvider(string provider, string? device) =>
         string.IsNullOrWhiteSpace(device) ? provider : $"{provider} ({device})";
 
-    private static string FormatTelemetryExport(TelemetryOptions telemetry)
+    private static string FormatTelemetryExport(OperationalDiagnosticsTelemetryConfiguration telemetry)
     {
         if (!telemetry.ExporterEnabled)
         {
