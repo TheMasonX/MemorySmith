@@ -193,9 +193,16 @@ class Harness:
                 records += 1
         return records, tokens_est
 
-    def simulate_train(self, records: int, dry_run: bool, mode: str, reasons: list[str]) -> dict[str, Any]:
+    def simulate_train(self, records: int, dry_run: bool, mode: str, planned_mode: str, reasons: list[str]) -> dict[str, Any]:
         if dry_run:
-            return {"steps": 0, "finalLoss": None, "mode": "dry-run", "trainMode": mode, "reason": "; ".join(reasons)}
+            return {
+                "steps": 0,
+                "finalLoss": None,
+                "mode": "dry-run",
+                "trainMode": mode,
+                "plannedMode": planned_mode,
+                "reason": "; ".join(reasons),
+            }
 
         steps = max(10, records * 4)
         loss = 1.8
@@ -208,6 +215,7 @@ class Harness:
             "finalLoss": round(loss, 4),
             "mode": "simulated",
             "trainMode": mode,
+            "plannedMode": planned_mode,
             "reason": "; ".join(reasons),
         }
 
@@ -256,9 +264,30 @@ class Harness:
         train_start = time.perf_counter()
         self.write_status("train", "train.started")
         requested_mode = str(self.request.get("trainMode") or "auto").strip().lower()
-        train_mode, train_reasons = self.resolve_training_mode()
-        self.emit_event("train.mode", {"requested": requested_mode, "mode": train_mode, "reasons": train_reasons})
-        train_metrics = self.simulate_train(records, dry_run=dry_run, mode=train_mode, reasons=train_reasons)
+        planned_mode, train_reasons = self.resolve_training_mode()
+        execution_mode = "simulated"
+        if planned_mode == "training-ready":
+            train_reasons = [
+                *train_reasons,
+                "real trainer path is not implemented yet; executing simulated trainer",
+            ]
+
+        self.emit_event(
+            "train.mode",
+            {
+                "requested": requested_mode,
+                "plannedMode": planned_mode,
+                "mode": execution_mode,
+                "reasons": train_reasons,
+            },
+        )
+        train_metrics = self.simulate_train(
+            records,
+            dry_run=dry_run,
+            mode=execution_mode,
+            planned_mode=planned_mode,
+            reasons=train_reasons,
+        )
         elapsed_train = time.perf_counter() - train_start
         self.emit_event("train.completed", train_metrics)
         self.write_status("train", "train.completed", train_metrics)
