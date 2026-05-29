@@ -686,16 +686,26 @@ class Harness:
             self.emit_event("run.failed", {"reason": "Insufficient records for eval gate"})
             return 2
 
+        done_metrics: dict[str, Any] = {
+            "records": records,
+            "events": self.events_written,
+            "trainMode": execution_mode,
+            "plannedMode": planned_mode,
+            "fallbackCodes": fallback_codes,
+        }
+        for key, out_key in (
+            ("steps", "trainSteps"),
+            ("completedEpochs", "trainCompletedEpochs"),
+            ("finalLoss", "trainFinalLoss"),
+        ):
+            value = train_metrics.get(key)
+            if isinstance(value, (int, float)):
+                done_metrics[out_key] = value
+
         self.write_status(
             "done",
             "run.completed",
-            {
-                "records": records,
-                "events": self.events_written,
-                "trainMode": execution_mode,
-                "plannedMode": planned_mode,
-                "fallbackCodes": fallback_codes,
-            },
+            done_metrics,
             warnings=train_warnings,
         )
         self.emit_event("run.completed", {"records": records, "events": self.events_written})
