@@ -61,13 +61,19 @@
       "author": "AgentSmith",
       "body": "Expanded automated relevance guardrails with a multi-query scorecard regression (`SearchAsync_RelevanceScorecard_ReturnsExpectedTopDocument`) covering screwdriver/tool, cli tooling, and proposal-task phrasing. Benchmark smoke now emits a compact code-search scorecard pass rate with expected-vs-actual top hits for fast operator spotchecks. Validation: `dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj --filter \"FullyQualifiedName~CodeSearchServiceTests\"` and `dotnet run --project MemorySmith.Benchmarks -- --smoke`.",
       "createdAtUtc": "2026-05-29T02:40:00.0000000Z"
+    },
+    {
+      "id": "c-0195-8",
+      "author": "AgentSmith",
+      "body": "Normalized memory/tag quality for the wiki corpus by adding audited tag aliases and `tasks` allowlist support in `Data/Policies/tag-policy.json`, then added `project-wiki-code-search-relevance-suite` so recent code-search ranking and benchmark contracts are captured as durable project memory. Added `CodeSearchBenchmarkTests` to enforce both relevance scorecard rank targets and warm throughput baseline in NUnit benchmark category. Validation: `./Scripts/Test-MemoryRecords.ps1` (2/2 passed), `dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj --filter \"FullyQualifiedName~CodeSearchServiceTests|FullyQualifiedName~CodeSearchBenchmarkTests\"` (27/27 passed), and `dotnet run --project MemorySmith.Benchmarks -- --smoke` (`CodeSearch Relevance Scorecard: 3/3 passed`, warm averages about `0.53-0.54 ms`).",
+      "createdAtUtc": "2026-05-29T03:05:00.0000000Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-27T16:55:53.0214105Z",
-  "updatedAtUtc": "2026-05-29T02:40:00.0000000Z",
+  "updatedAtUtc": "2026-05-29T03:05:00.0000000Z",
   "completedAtUtc": "2026-05-27T18:20:00.0000000Z",
   "revision": 5,
   "isArchived": false,
