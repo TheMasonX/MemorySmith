@@ -279,8 +279,6 @@ class Harness:
 
         model_id = self.resolve_model_id()
         epochs, sequence_length, learning_rate = self.resolve_hyperparameters()
-        offload_dir = self.paths.workdir / "offload"
-        offload_dir.mkdir(parents=True, exist_ok=True)
 
         tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
         if tokenizer.pad_token is None:
@@ -288,15 +286,16 @@ class Harness:
 
         cuda_available = torch.cuda.is_available()
         torch_dtype = torch.bfloat16 if cuda_available and torch.cuda.is_bf16_supported() else torch.float16
+        training_device = "cuda" if cuda_available else "cpu"
         model = AutoModelForCausalLM.from_pretrained(
             model_id,
             torch_dtype=torch_dtype,
             trust_remote_code=True,
-            device_map="auto",
-            low_cpu_mem_usage=True,
-            max_memory={0: "7600MiB", "cpu": "28GiB"},
-            offload_folder=str(offload_dir),
+            device_map=None,
+            low_cpu_mem_usage=False,
         )
+        model.to(training_device)
+        model.config.use_cache = False
 
         lora_config = LoraConfig(
             r=8,
@@ -327,8 +326,8 @@ class Harness:
                 return_tensors="pt",
             )
 
-            input_ids = encoded["input_ids"].to(model.device)
-            attention_mask = encoded["attention_mask"].to(model.device)
+            input_ids = encoded["input_ids"].to(training_device)
+            attention_mask = encoded["attention_mask"].to(training_device)
 
             outputs = model(
                 input_ids=input_ids,
@@ -370,7 +369,7 @@ class Harness:
             "reason": "executed real LoRA training",
             "modelId": model_id,
             "adapterPath": str(adapter_path),
-            "device": "cuda" if cuda_available else "cpu",
+            "device": training_device,
             "sequenceLength": sequence_length,
             "learningRate": learning_rate,
         }
