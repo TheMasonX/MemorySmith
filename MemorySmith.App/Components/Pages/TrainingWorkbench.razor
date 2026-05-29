@@ -102,6 +102,7 @@
         {
             <MudAlert Severity="@(_activeRun.IsRunning ? Severity.Info : (_activeRun.ExitCode == 0 ? Severity.Success : Severity.Warning))" Dense="true" Variant="Variant.Outlined" Class="mt-2">
                 Run @_activeRun.RunId - @(_activeRun.IsRunning ? "running" : (_activeRun.ExitCode == 0 ? "completed" : "finished with issues"))
+                <span> (HF auth: @(_activeRun.HfAuthConfigured ? "configured" : "not configured"))</span>
                 @if (!string.IsNullOrWhiteSpace(_activeRun.LastError))
                 {
                     <span> (@_activeRun.LastError)</span>

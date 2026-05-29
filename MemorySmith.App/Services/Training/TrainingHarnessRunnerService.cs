@@ -10,6 +10,7 @@ public sealed record TrainingHarnessActiveRun(
     bool DryRun,
     DateTime StartedAtUtc,
     string WorkDirectory,
+    bool HfAuthConfigured,
     int? ExitCode,
     string? LastError,
     bool IsRunning);
@@ -192,7 +193,15 @@ public sealed class TrainingHarnessRunnerService
 
         await File.WriteAllTextAsync(requestPath, JsonSerializer.Serialize(request), cancellationToken);
 
-        var active = new TrainingHarnessActiveRun(runId, dryRun, DateTime.UtcNow, workDirectory, null, null, true);
+        var active = new TrainingHarnessActiveRun(
+            runId,
+            dryRun,
+            DateTime.UtcNow,
+            workDirectory,
+            !string.IsNullOrWhiteSpace(huggingFaceToken),
+            null,
+            null,
+            true);
         lock (_gate)
         {
             _activeRun = active;
