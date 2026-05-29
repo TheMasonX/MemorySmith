@@ -312,6 +312,7 @@ class Harness:
                 *train_reasons,
                 "real trainer path is not implemented yet; executing simulated trainer",
             ]
+        fallback_codes = self.as_fallback_codes(train_reasons)
 
         self.emit_event(
             "train.mode",
@@ -319,7 +320,7 @@ class Harness:
                 "requested": requested_mode,
                 "plannedMode": planned_mode,
                 "mode": execution_mode,
-                "fallbackCodes": self.as_fallback_codes(train_reasons),
+                "fallbackCodes": fallback_codes,
                 "reasons": train_reasons,
             },
         )
@@ -355,7 +356,13 @@ class Harness:
         self.write_status(
             "done",
             "run.completed",
-            {"records": records, "events": self.events_written},
+            {
+                "records": records,
+                "events": self.events_written,
+                "trainMode": execution_mode,
+                "plannedMode": planned_mode,
+                "fallbackCodes": fallback_codes,
+            },
             warnings=train_warnings,
         )
         self.emit_event("run.completed", {"records": records, "events": self.events_written})
