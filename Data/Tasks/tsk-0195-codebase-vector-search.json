@@ -43,13 +43,19 @@
       "author": "AgentSmith",
       "body": "Closed high-ROI UI polish by adding actionable result controls directly in `/code-search`: copy file/line range and open source file through source-link policy checks (`CopyResultLocationAsync`, `OpenResultAsync`). Added regression guard in `TagGovernanceTests.CodeSearchAndTrainingWorkbenchMarkup_ExposeActionableCopyAndOpenControls`. Focused validation: `dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj --filter \"FullyQualifiedName~TagGovernanceTests|FullyQualifiedName~CodeSearchPageRoute_ReturnsSuccessAndContainsHeading|FullyQualifiedName~TrainingWorkbenchPage_WithAnonymousAdminConfig_DoesNotRenderWorkbenchForSignedOutUser|FullyQualifiedName~TrainingWorkbenchPage_AdminSession_ReturnsHeading\"` (38/38 passed).",
       "createdAtUtc": "2026-05-29T01:00:00.0000000Z"
+    },
+    {
+      "id": "c-0195-5",
+      "author": "AgentSmith",
+      "body": "Improved relevance for low-overlap semantic queries by adding synonym-aware query expansion and hybrid vector/lexical reranking with a no-lexical-evidence penalty in `CodeSearchService`. Added regression `SearchAsync_HybridRerankPromotesToolingResultForScrewdriverQuery` to prove `screwdriver` promotes tooling results instead of unrelated high-cosine chunks. Validation: `dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj --filter \"FullyQualifiedName~CodeSearchServiceTests\"` (21/21 passed) and benchmark smoke `dotnet run --project MemorySmith.Benchmarks -- --smoke` shows `CodeSearch Screwdriver Query` top hit `MemorySmith.App/Services/ToolCatalog.cs`.",
+      "createdAtUtc": "2026-05-29T02:00:00.0000000Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-27T16:55:53.0214105Z",
-  "updatedAtUtc": "2026-05-29T01:00:00.0000000Z",
+  "updatedAtUtc": "2026-05-29T02:00:00.0000000Z",
   "completedAtUtc": "2026-05-27T18:20:00.0000000Z",
   "revision": 5,
   "isArchived": false,

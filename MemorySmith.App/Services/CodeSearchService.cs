@@ -124,8 +124,24 @@ public sealed class CodeSearchService : IDisposable
 {
     private const int MaxCachedQueryEmbeddings = 256;
     private const int MaxCachedQueryResults = 128;
+    private const double HybridVectorWeight = 0.75;
+    private const double HybridLexicalWeight = 0.25;
+    private const double ZeroLexicalEvidencePenalty = 0.72;
+    private const double LexicalScoreSaturation = 4.0;
     private static readonly Regex TokenRegex = new("[A-Za-z0-9_]+", RegexOptions.Compiled);
     private static readonly Regex IdentifierSplitRegex = new("(?<=[a-z0-9])(?=[A-Z])|_+", RegexOptions.Compiled);
+    private static readonly Dictionary<string, string[]> QuerySynonyms = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["tool"] = ["tools", "tooling", "utility", "utilities", "harness", "script", "scripts", "cli"],
+        ["tools"] = ["tool", "tooling", "utility", "utilities", "harness", "script", "scripts", "cli"],
+        ["tooling"] = ["tool", "tools", "utility", "utilities", "harness", "script", "scripts", "cli"],
+        ["utility"] = ["tool", "tools", "tooling", "utilities", "harness", "script", "scripts"],
+        ["utilities"] = ["tool", "tools", "tooling", "utility", "harness", "script", "scripts"],
+        ["screwdriver"] = ["tool", "tools", "tooling", "utility", "driver", "drivers"],
+        ["hammer"] = ["tool", "tools", "tooling", "utility"],
+        ["wrench"] = ["tool", "tools", "tooling", "utility"],
+        ["pliers"] = ["tool", "tools", "tooling", "utility"]
+    };
 
     private readonly ITextEmbeddingProvider _embeddingProvider;
     private readonly MemorySmithOptions _settings;
@@ -231,6 +247,7 @@ public sealed class CodeSearchService : IDisposable
         var normalizedTargets = NormalizeTargets(query.Targets);
         var limit = Math.Clamp(query.Limit, 1, Math.Max(1, _options.MaxResults));
         var queryTokens = Tokenize(query.Query!);
+        var expandedQueryTokens = ExpandQueryTokens(queryTokens);
 
         IReadOnlyList<CodeSearchResult> CompleteSearch(string mode, IReadOnlyList<CodeSearchResult> results, int scannedChunkCount = 0)
         {
@@ -253,14 +270,16 @@ public sealed class CodeSearchService : IDisposable
 
         if (TryGetQueryEmbedding(query.Query!, out var queryEmbedding))
         {
-            var vectorCandidates = await LoadVectorCandidatesAsync(connection, normalizedTargets, queryTokens, limit, cancellationToken);
+            var vectorCandidates = await LoadVectorCandidatesAsync(connection, normalizedTargets, expandedQueryTokens, limit, cancellationToken);
             var vectorResults = vectorCandidates.Chunks
                 .Where(chunk => chunk.Embedding.Length == queryEmbedding.Length)
                 .Select(chunk =>
                 {
                     var rawScore = Dot(queryEmbedding, chunk.Embedding);
+                    var lexicalScore = ScoreLexical(chunk, expandedQueryTokens);
                     var targetWeight = GetTargetWeight(chunk.Target, chunk.DocumentPath, queryTokens);
-                    return (Chunk: chunk, RawScore: rawScore, TargetWeight: targetWeight, WeightedScore: rawScore * targetWeight);
+                    var hybridScore = ScoreHybrid(rawScore, lexicalScore);
+                    return (Chunk: chunk, RawScore: rawScore, LexicalScore: lexicalScore, TargetWeight: targetWeight, WeightedScore: hybridScore * targetWeight);
                 })
                 .Where(entry => entry.WeightedScore > 0)
                 .OrderByDescending(entry => entry.WeightedScore)
@@ -275,7 +294,7 @@ public sealed class CodeSearchService : IDisposable
                     entry.Chunk.EndLine,
                     Math.Round(entry.WeightedScore, 6),
                     BuildSnippet(entry.Chunk.Snippet, query.Query!),
-                    BuildVectorMatchReason(entry.RawScore, entry.TargetWeight),
+                    BuildVectorMatchReason(entry.RawScore, entry.LexicalScore, entry.TargetWeight),
                     entry.Chunk.IndexedAtUtc))
                 .ToList();
 
@@ -293,8 +312,10 @@ public sealed class CodeSearchService : IDisposable
                     .Select(chunk =>
                     {
                         var rawScore = Dot(queryEmbedding, chunk.Embedding);
+                        var lexicalScore = ScoreLexical(chunk, expandedQueryTokens);
                         var targetWeight = GetTargetWeight(chunk.Target, chunk.DocumentPath, queryTokens);
-                        return (Chunk: chunk, RawScore: rawScore, TargetWeight: targetWeight, WeightedScore: rawScore * targetWeight);
+                        var hybridScore = ScoreHybrid(rawScore, lexicalScore);
+                        return (Chunk: chunk, RawScore: rawScore, LexicalScore: lexicalScore, TargetWeight: targetWeight, WeightedScore: hybridScore * targetWeight);
                     })
                     .Where(entry => entry.WeightedScore > 0)
                     .OrderByDescending(entry => entry.WeightedScore)
@@ -309,7 +330,7 @@ public sealed class CodeSearchService : IDisposable
                         entry.Chunk.EndLine,
                         Math.Round(entry.WeightedScore, 6),
                         BuildSnippet(entry.Chunk.Snippet, query.Query!),
-                        BuildVectorMatchReason(entry.RawScore, entry.TargetWeight),
+                        BuildVectorMatchReason(entry.RawScore, entry.LexicalScore, entry.TargetWeight),
                         entry.Chunk.IndexedAtUtc))
                     .ToList();
 
@@ -330,9 +351,10 @@ public sealed class CodeSearchService : IDisposable
         var lexicalResults = chunks
             .Select(chunk =>
             {
-                var rawScore = ScoreLexical(chunk, queryTokens);
+                var rawScore = ScoreLexical(chunk, expandedQueryTokens);
+                var matchedTokenCount = CountMatchedTokens(chunk, expandedQueryTokens);
                 var targetWeight = GetTargetWeight(chunk.Target, chunk.DocumentPath, queryTokens);
-                return (Chunk: chunk, RawScore: rawScore, TargetWeight: targetWeight, WeightedScore: rawScore * targetWeight);
+                return (Chunk: chunk, RawScore: rawScore, MatchedTokenCount: matchedTokenCount, TargetWeight: targetWeight, WeightedScore: rawScore * targetWeight);
             })
             .Where(entry => entry.WeightedScore > 0)
             .OrderByDescending(entry => entry.WeightedScore)
@@ -347,7 +369,7 @@ public sealed class CodeSearchService : IDisposable
                 entry.Chunk.EndLine,
                 Math.Round(entry.WeightedScore, 6),
                 BuildSnippet(entry.Chunk.Snippet, query.Query!),
-                BuildLexicalMatchReason(queryTokens.Count, entry.TargetWeight),
+                BuildLexicalMatchReason(entry.MatchedTokenCount, entry.TargetWeight),
                 entry.Chunk.IndexedAtUtc))
             .ToList();
 
@@ -1725,10 +1747,16 @@ CREATE INDEX IF NOT EXISTS IX_CodeSearchBuildLog_ConfigState ON CodeSearchBuildL
         documentPath.Contains("/Benchmarks/", StringComparison.OrdinalIgnoreCase) ||
         documentPath.Contains("Benchmark", StringComparison.OrdinalIgnoreCase);
 
-    private static string BuildVectorMatchReason(double rawScore, double targetWeight) =>
-        targetWeight < 0.999
-            ? $"Code embedding cosine similarity {rawScore:0.###} (target weight {targetWeight:0.###})."
-            : $"Code embedding cosine similarity {rawScore:0.###}.";
+    private static string BuildVectorMatchReason(double rawScore, double lexicalScore, double targetWeight)
+    {
+        var lexicalEvidence = lexicalScore > 0
+            ? $", lexical evidence {lexicalScore:0.###}"
+            : ", no lexical evidence";
+
+        return targetWeight < 0.999
+            ? $"Code embedding cosine similarity {rawScore:0.###}{lexicalEvidence} (target weight {targetWeight:0.###}, hybrid rerank)."
+            : $"Code embedding cosine similarity {rawScore:0.###}{lexicalEvidence} (hybrid rerank).";
+    }
 
     private static string BuildLexicalMatchReason(int matchedTokenCount, double targetWeight) =>
         targetWeight < 0.999
@@ -2028,6 +2056,37 @@ LIMIT @candidateLimit;";
         return score;
     }
 
+    private static int CountMatchedTokens(IndexedChunk chunk, IReadOnlySet<string> queryTokens)
+    {
+        if (queryTokens.Count == 0)
+        {
+            return 0;
+        }
+
+        var haystack = chunk.DocumentPath + "\n" + chunk.SearchText;
+        var matched = 0;
+        foreach (var token in queryTokens)
+        {
+            if (CountOccurrences(haystack, token) > 0)
+            {
+                matched++;
+            }
+        }
+
+        return matched;
+    }
+
+    private static double ScoreHybrid(double rawVectorScore, double lexicalScore)
+    {
+        if (lexicalScore <= 0)
+        {
+            return rawVectorScore * ZeroLexicalEvidencePenalty;
+        }
+
+        var normalizedLexical = lexicalScore / (lexicalScore + LexicalScoreSaturation);
+        return (rawVectorScore * HybridVectorWeight) + (normalizedLexical * HybridLexicalWeight);
+    }
+
     private static int CountOccurrences(string haystack, string needle)
     {
         if (string.IsNullOrWhiteSpace(needle))
@@ -2055,6 +2114,31 @@ LIMIT @candidateLimit;";
         }
 
         return tokens;
+    }
+
+    private static IReadOnlySet<string> ExpandQueryTokens(IReadOnlySet<string> queryTokens)
+    {
+        var expanded = new HashSet<string>(queryTokens, StringComparer.OrdinalIgnoreCase);
+        foreach (var token in queryTokens)
+        {
+            if (QuerySynonyms.TryGetValue(token, out var synonyms))
+            {
+                foreach (var synonym in synonyms)
+                {
+                    AddTokenVariants(expanded, synonym);
+                }
+            }
+
+            if (token.EndsWith("driver", StringComparison.OrdinalIgnoreCase) && token.Length > "driver".Length + 1)
+            {
+                var prefix = token[..^"driver".Length];
+                AddTokenVariants(expanded, prefix);
+                AddTokenVariants(expanded, "driver");
+                AddTokenVariants(expanded, "tool");
+            }
+        }
+
+        return expanded;
     }
 
     private static void AddTokenVariants(HashSet<string> tokens, string value)

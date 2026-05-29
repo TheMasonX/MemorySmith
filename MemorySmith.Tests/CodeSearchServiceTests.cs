@@ -149,6 +149,30 @@ public class CodeSearchServiceTests
     }
 
     [Test]
+    public async Task SearchAsync_HybridRerankPromotesToolingResultForScrewdriverQuery()
+    {
+        await File.WriteAllTextAsync(Path.Combine(_repoRoot, ".gitignore"), string.Empty);
+        await File.WriteAllTextAsync(
+            Path.Combine(_repoRoot, "MemorySmith.App", "Services", "ToolCatalog.cs"),
+            "namespace MemorySmith.App.Services;\npublic static class ToolCatalog\n{\n    public static string RegisterTool(string input) => input + \" utility harness\";\n}\n");
+        await File.WriteAllTextAsync(
+            Path.Combine(_repoRoot, "MemorySmith.Core", "Services", "UnrelatedPipeline.cs"),
+            "namespace MemorySmith.Core.Services;\npublic static class UnrelatedPipeline\n{\n    public static string BuildOpaquePipeline(string input) => input + \" opaque\";\n}\n");
+
+        var service = CreateService(new ScrewdriverSemanticBiasEmbeddingProvider());
+
+        var results = await service.SearchAsync(new CodeSearchQuery("screwdriver", Limit: 5), CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(results, Is.Not.Empty);
+            Assert.That(results[0].DocumentPath, Is.EqualTo("MemorySmith.App/Services/ToolCatalog.cs"));
+            Assert.That(results[0].MatchReason, Does.Contain("hybrid rerank"));
+            Assert.That(results[0].MatchReason, Does.Contain("lexical evidence"));
+        });
+    }
+
+    [Test]
     public async Task SearchAsync_LexicalFallbackMatchesSnakeCaseQueryAgainstCamelCaseIdentifier()
     {
         await File.WriteAllTextAsync(Path.Combine(_repoRoot, ".gitignore"), string.Empty);
@@ -893,6 +917,36 @@ public class CodeSearchServiceTests
             }
 
             embedding = [0.25f, 0f];
+            return true;
+        }
+    }
+
+    private sealed class ScrewdriverSemanticBiasEmbeddingProvider : ITextEmbeddingProvider
+    {
+        public EmbeddingProviderStatus GetStatus() => new(true, "Screwdriver semantic bias provider available.", null, null, 2, "Cpu", "Cpu", null, null);
+
+        public bool TryEmbed(string text, EmbeddingInputKind kind, out float[] embedding, out string? reason)
+        {
+            reason = null;
+            if (kind == EmbeddingInputKind.Query)
+            {
+                embedding = [1f, 0f];
+                return true;
+            }
+
+            if (text.Contains("UnrelatedPipeline.cs", StringComparison.OrdinalIgnoreCase))
+            {
+                embedding = [0.99f, 0f];
+                return true;
+            }
+
+            if (text.Contains("ToolCatalog.cs", StringComparison.OrdinalIgnoreCase))
+            {
+                embedding = [0.92f, 0f];
+                return true;
+            }
+
+            embedding = [0.3f, 0f];
             return true;
         }
     }
