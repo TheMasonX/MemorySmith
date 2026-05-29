@@ -399,11 +399,14 @@ class Harness:
                     "steps": len(epoch_losses),
                 })
 
+        completed_epochs = max_steps / float(steps_per_epoch)
+
         return {
             "steps": max_steps,
             "epochs": epochs,
             "stepsPerEpoch": steps_per_epoch,
             "maxTrainSteps": max_train_steps,
+            "completedEpochs": round(completed_epochs, 4),
             "finalLoss": round(final_loss, 4) if final_loss is not None else None,
             "initialLoss": round(initial_loss, 4) if initial_loss is not None else None,
             "losses": [round(l, 4) for l in losses],
