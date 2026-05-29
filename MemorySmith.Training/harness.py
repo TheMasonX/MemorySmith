@@ -243,6 +243,16 @@ class Harness:
         with self.paths.benchmark_path.open("w", encoding="utf-8") as handle:
             json.dump(payload, handle, indent=2)
 
+    @staticmethod
+    def as_warning_messages(mode: str, reasons: list[str]) -> list[str]:
+        if mode != "simulated":
+            return []
+
+        if not reasons:
+            return ["Simulated training mode active."]
+
+        return [f"Simulated training mode: {reason}" for reason in reasons]
+
     def run(self, dry_run: bool) -> int:
         template_path = Path(__file__).resolve().parents[1] / "MemorySmith.Core" / "Docs" / "Prompts" / "chat-template.jinja2"
         if template_path.exists():
@@ -288,9 +298,10 @@ class Harness:
             planned_mode=planned_mode,
             reasons=train_reasons,
         )
+        train_warnings = self.as_warning_messages(execution_mode, train_reasons)
         elapsed_train = time.perf_counter() - train_start
         self.emit_event("train.completed", train_metrics)
-        self.write_status("train", "train.completed", train_metrics)
+        self.write_status("train", "train.completed", train_metrics, warnings=train_warnings)
 
         eval_start = time.perf_counter()
         self.write_status("eval", "eval.started")
@@ -309,7 +320,12 @@ class Harness:
             self.emit_event("run.failed", {"reason": "Insufficient records for eval gate"})
             return 2
 
-        self.write_status("done", "run.completed", {"records": records, "events": self.events_written})
+        self.write_status(
+            "done",
+            "run.completed",
+            {"records": records, "events": self.events_written},
+            warnings=train_warnings,
+        )
         self.emit_event("run.completed", {"records": records, "events": self.events_written})
         return 0
 
