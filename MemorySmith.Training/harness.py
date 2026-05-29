@@ -194,6 +194,7 @@ class Harness:
         return records, tokens_est
 
     def simulate_train(self, records: int, dry_run: bool, mode: str, planned_mode: str, reasons: list[str]) -> dict[str, Any]:
+        fallback_codes = self.as_fallback_codes(reasons)
         if dry_run:
             return {
                 "steps": 0,
@@ -201,6 +202,7 @@ class Harness:
                 "mode": "dry-run",
                 "trainMode": mode,
                 "plannedMode": planned_mode,
+                "fallbackCodes": fallback_codes,
                 "reason": "; ".join(reasons),
             }
 
@@ -216,6 +218,7 @@ class Harness:
             "mode": "simulated",
             "trainMode": mode,
             "plannedMode": planned_mode,
+            "fallbackCodes": fallback_codes,
             "reason": "; ".join(reasons),
         }
 
@@ -253,6 +256,34 @@ class Harness:
 
         return [f"Simulated training mode: {reason}" for reason in reasons]
 
+    @staticmethod
+    def as_fallback_codes(reasons: list[str]) -> list[str]:
+        codes: list[str] = []
+        lowered = [reason.lower() for reason in reasons]
+        for reason in lowered:
+            if "lora" in reason and "not implemented" in reason:
+                codes.append("lora_not_implemented")
+            elif "real trainer" in reason and "not implemented" in reason:
+                codes.append("trainer_not_implemented")
+            elif "accelerator unavailable" in reason:
+                codes.append("accelerator_unavailable")
+            elif "missing core deps" in reason:
+                codes.append("missing_core_dependencies")
+            elif "missing optional deps" in reason:
+                codes.append("missing_optional_dependencies")
+            elif "probe error" in reason:
+                codes.append("dependency_probe_error")
+            elif "forced to simulated" in reason:
+                codes.append("forced_simulated_mode")
+
+        # Preserve order while de-duplicating.
+        unique_codes: list[str] = []
+        for code in codes:
+            if code not in unique_codes:
+                unique_codes.append(code)
+
+        return unique_codes
+
     def run(self, dry_run: bool) -> int:
         template_path = Path(__file__).resolve().parents[1] / "MemorySmith.Core" / "Docs" / "Prompts" / "chat-template.jinja2"
         if template_path.exists():
@@ -288,6 +319,7 @@ class Harness:
                 "requested": requested_mode,
                 "plannedMode": planned_mode,
                 "mode": execution_mode,
+                "fallbackCodes": self.as_fallback_codes(train_reasons),
                 "reasons": train_reasons,
             },
         )
