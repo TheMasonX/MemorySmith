@@ -9,6 +9,12 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 
+function Test-IsWindowsPlatform {
+    return [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Windows)
+}
+
+$isWindowsPlatform = Test-IsWindowsPlatform
+
 function Resolve-WorkflowPath {
     param([Parameter(Mandatory = $true)][string]$PathValue)
 
@@ -25,7 +31,7 @@ function Resolve-WorkflowPath {
 
 function Get-DefaultTrainingVenvPath {
     $preferredRoots = @()
-    if ($IsWindows -and (Test-Path "D:\temp")) {
+    if ($isWindowsPlatform -and (Test-Path "D:\temp")) {
         $preferredRoots += "D:\temp\memorysmith-training\.venv"
     }
 
@@ -42,7 +48,7 @@ function Get-DefaultTrainingVenvPath {
         }
     }
 
-    if ($IsWindows -and (Test-Path "D:\temp")) {
+    if ($isWindowsPlatform -and (Test-Path "D:\temp")) {
         return "D:\temp\memorysmith-training\.venv"
     }
 
@@ -53,7 +59,7 @@ function Resolve-PythonExecutable {
     param([Parameter(Mandatory = $true)][string]$VenvRoot)
 
     $windowsPython = Join-Path $VenvRoot "Scripts\python.exe"
-    if ((Test-Path $windowsPython) -or $IsWindows) {
+    if ((Test-Path $windowsPython) -or $isWindowsPlatform) {
         return $windowsPython
     }
 

@@ -14,6 +14,12 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 
+function Test-IsWindowsPlatform {
+    return [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Windows)
+}
+
+$isWindowsPlatform = Test-IsWindowsPlatform
+
 function Resolve-WorkflowPath {
     param([Parameter(Mandatory = $true)][string]$PathValue)
 
@@ -29,7 +35,7 @@ function Resolve-WorkflowPath {
 }
 
 function Get-DefaultScratchRoot {
-    if ($IsWindows -and (Test-Path "D:\temp")) {
+    if ($isWindowsPlatform -and (Test-Path "D:\temp")) {
         return "D:\temp\memorysmith-training"
     }
 
@@ -38,7 +44,7 @@ function Get-DefaultScratchRoot {
 
 function Get-DefaultTrainingVenvPath {
     $preferredRoots = @()
-    if ($IsWindows -and (Test-Path "D:\temp")) {
+    if ($isWindowsPlatform -and (Test-Path "D:\temp")) {
         $preferredRoots += "D:\temp\memorysmith-training\.venv"
     }
 
@@ -55,7 +61,7 @@ function Get-DefaultTrainingVenvPath {
         }
     }
 
-    if ($IsWindows -and (Test-Path "D:\temp")) {
+    if ($isWindowsPlatform -and (Test-Path "D:\temp")) {
         return "D:\temp\memorysmith-training\.venv"
     }
 
@@ -66,7 +72,7 @@ function Resolve-PythonExecutable {
     param([Parameter(Mandatory = $true)][string]$VenvRoot)
 
     $windowsPython = Join-Path $VenvRoot "Scripts\python.exe"
-    if ((Test-Path $windowsPython) -or $IsWindows) {
+    if ((Test-Path $windowsPython) -or $isWindowsPlatform) {
         return $windowsPython
     }
 
@@ -94,6 +100,21 @@ function Initialize-TrainingScratchEnvironment {
     $env:TORCH_HOME = $torchHome
     $env:TMP = $tempDirectory
     $env:TEMP = $tempDirectory
+}
+
+function Write-Utf8NoBomFile {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string]$Content
+    )
+
+    $directory = Split-Path $Path -Parent
+    if (-not [string]::IsNullOrWhiteSpace($directory)) {
+        New-Item -ItemType Directory -Force -Path $directory | Out-Null
+    }
+
+    $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+    [System.IO.File]::WriteAllText($Path, $Content, $utf8NoBom)
 }
 
 if ([string]::IsNullOrWhiteSpace($ScratchRoot)) {
@@ -160,7 +181,8 @@ $request = [ordered]@{
         sequenceLength = 4096
     }
 }
-$request | ConvertTo-Json -Depth 8 | Set-Content -Encoding UTF8 $requestPath
+$requestJson = $request | ConvertTo-Json -Depth 8
+Write-Utf8NoBomFile -Path $requestPath -Content $requestJson
 
 $processArguments = @(
     $harnessPath,

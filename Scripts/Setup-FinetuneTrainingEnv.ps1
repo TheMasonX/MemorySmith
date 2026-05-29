@@ -20,6 +20,49 @@ $repoRoot = Split-Path $PSScriptRoot -Parent
 $requirementsPath = Join-Path $repoRoot "Scripts\training\requirements-training.txt"
 $preflightScript = Join-Path $repoRoot "Scripts\Test-FinetuneHarnessPrereqs.ps1"
 
+function Test-IsWindowsPlatform {
+    return [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Windows)
+}
+
+function ConvertTo-HashtableCompat {
+    param([Parameter(Mandatory = $false)]$InputObject)
+
+    if ($null -eq $InputObject) {
+        return @{}
+    }
+
+    if ($InputObject -is [System.Collections.IDictionary]) {
+        $dictionary = @{}
+        foreach ($key in $InputObject.Keys) {
+            $dictionary[$key] = ConvertTo-HashtableCompat $InputObject[$key]
+        }
+
+        return $dictionary
+    }
+
+    if ($InputObject -is [System.Collections.IEnumerable] -and -not ($InputObject -is [string])) {
+        $items = @()
+        foreach ($item in $InputObject) {
+            $items += ,(ConvertTo-HashtableCompat $item)
+        }
+
+        return $items
+    }
+
+    if ($InputObject -is [psobject]) {
+        $dictionary = @{}
+        foreach ($property in $InputObject.PSObject.Properties) {
+            $dictionary[$property.Name] = ConvertTo-HashtableCompat $property.Value
+        }
+
+        return $dictionary
+    }
+
+    return $InputObject
+}
+
+$isWindowsPlatform = Test-IsWindowsPlatform
+
 function Resolve-WorkflowPath {
     param([Parameter(Mandatory = $true)][string]$PathValue)
 
@@ -31,7 +74,7 @@ function Resolve-WorkflowPath {
 }
 
 function Get-DefaultScratchRoot {
-    if ($IsWindows -and (Test-Path "D:\temp")) {
+    if ($isWindowsPlatform -and (Test-Path "D:\temp")) {
         return "D:\temp\memorysmith-training"
     }
 
@@ -67,7 +110,7 @@ function Resolve-PythonLauncher {
 function Install-PythonRuntime {
     param([Parameter(Mandatory = $true)][string]$Version)
 
-    if (-not $IsWindows) {
+    if (-not $isWindowsPlatform) {
         throw "Automatic Python installation is only implemented in the PowerShell bootstrap for Windows. Install Python $Version manually and rerun."
     }
 
@@ -92,6 +135,21 @@ function Resolve-TorchIndexUrl {
     }
 }
 
+function Write-Utf8NoBomFile {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string]$Content
+    )
+
+    $directory = Split-Path $Path -Parent
+    if (-not [string]::IsNullOrWhiteSpace($directory)) {
+        New-Item -ItemType Directory -Force -Path $directory | Out-Null
+    }
+
+    $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+    [System.IO.File]::WriteAllText($Path, $Content, $utf8NoBom)
+}
+
 function Write-LocalOverrideFile {
     param(
         [Parameter(Mandatory = $true)][string]$Path,
@@ -102,7 +160,13 @@ function Write-LocalOverrideFile {
     $existing = @{}
     if (Test-Path $Path) {
         try {
-            $existing = Get-Content $Path -Raw | ConvertFrom-Json -AsHashtable
+            $raw = Get-Content $Path -Raw
+            if ((Get-Command ConvertFrom-Json).Parameters.ContainsKey("AsHashtable")) {
+                $existing = $raw | ConvertFrom-Json -AsHashtable
+            }
+            else {
+                $existing = ConvertTo-HashtableCompat ($raw | ConvertFrom-Json)
+            }
         }
         catch {
             $existing = @{}
@@ -128,7 +192,8 @@ function Write-LocalOverrideFile {
         New-Item -ItemType Directory -Force -Path $directory | Out-Null
     }
 
-    $existing | ConvertTo-Json -Depth 10 | Set-Content -Path $Path -Encoding UTF8
+    $json = $existing | ConvertTo-Json -Depth 10
+    Write-Utf8NoBomFile -Path $Path -Content $json
 }
 
 if ([string]::IsNullOrWhiteSpace($ScratchRoot)) {
@@ -182,7 +247,7 @@ if (-not (Test-Path $resolvedVenvPath)) {
     }
 }
 
-$venvPython = if ($IsWindows) {
+$venvPython = if ($isWindowsPlatform) {
     Join-Path $resolvedVenvPath "Scripts\python.exe"
 }
 else {
