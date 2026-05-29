@@ -263,7 +263,7 @@
                         <span>@category</span>
                         @if (dirtyCount > 0)
                         {
-                            <span class="admin-settings-nav-count">@dirtyCount changed</span>
+                            <span class="admin-settings-nav-count-chip" aria-label="@($"{dirtyCount} changed setting{(dirtyCount == 1 ? string.Empty : "s")}")">#@dirtyCount</span>
                         }
                     </MudButton>
                 }
@@ -279,6 +279,18 @@
                     }
                 </MudSelect>
                 <MudSwitch T="bool" Value="@_settingsDirtyOnly" ValueChanged="@((bool value) => _settingsDirtyOnly = value)" Label="Changed only" Color="Color.Primary" Class="admin-settings-dirty-toggle" />
+            </div>
+
+            @if (IsTrainingSettingsView)
+            {
+                <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Outlined" Class="mb-2">
+                    Training runtime toggles are editable here. Model profiles are managed on the dedicated Models page.
+                    <MudButton Variant="Variant.Text" Size="Size.Small" StartIcon="@Icons.Material.Filled.SmartToy" OnClick="OpenModelsPage">Open Models</MudButton>
+                </MudAlert>
+            }
+
+            <div class="admin-settings-save-all-row">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save" Disabled="@(_isBusy || DirtySettingCount == 0)" OnClick="SaveAllDirtySettingsAsync">Save All Changes (@DirtySettingCount)</MudButton>
             </div>
 
             @if (FilteredEditableSettingGroups.Count == 0)
@@ -350,6 +362,10 @@
                             </MudTable>
                         </details>
                     }
+                </div>
+
+                <div class="admin-settings-save-all-row">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save" Disabled="@(_isBusy || DirtySettingCount == 0)" OnClick="SaveAllDirtySettingsAsync">Save All Changes (@DirtySettingCount)</MudButton>
                 </div>
             }
 
@@ -1162,8 +1178,15 @@
 
     private int GetDirtySettingCount(string category) => _editableSettings.Count(row => row.IsDirty && string.Equals(row.Item.Category, category, StringComparison.OrdinalIgnoreCase));
 
+    private bool IsTrainingSettingsView =>
+        string.Equals(_settingsCategory, "Training", StringComparison.OrdinalIgnoreCase)
+        || (IsAllFilter(_settingsCategory) && FilteredEditableSettingGroups.Any(group => string.Equals(group.Category, "Training", StringComparison.OrdinalIgnoreCase)));
+
+    private void OpenModelsPage() => Navigation.NavigateTo("/models");
+
     private async Task SaveSettingAsync(EditableConfigurationRow row)
     {
+        var pendingChanges = CaptureDirtySettingValues(excludeKey: row.Item.Key);
         _isBusy = true;
         var result = await Settings.UpdateAsync(new AdminSettingUpdateRequest(row.Item.Key, row.PendingValue), CancellationToken.None);
         if (result.Succeeded)
@@ -1171,6 +1194,7 @@
             Snackbar.Add($"{row.Item.Label} saved.", Severity.Success);
             _isBusy = false;
             await LoadAsync();
+            RestoreDirtySettingValues(pendingChanges);
             return;
         }
 
@@ -1193,6 +1217,7 @@
             return;
         }
 
+        var pendingChanges = CaptureDirtySettingValues(excludeKey: row.Item.Key);
         _isBusy = true;
         var result = await Settings.UpdateAsync(new AdminSettingUpdateRequest(row.Item.Key, string.Empty), CancellationToken.None);
         if (result.Succeeded)
@@ -1200,11 +1225,87 @@
             Snackbar.Add($"{row.Item.Label} cleared.", Severity.Success);
             _isBusy = false;
             await LoadAsync();
+            RestoreDirtySettingValues(pendingChanges);
             return;
         }
 
         Snackbar.Add(result.Error ?? "Setting could not be cleared.", Severity.Error);
         _isBusy = false;
+    }
+
+    private async Task SaveAllDirtySettingsAsync()
+    {
+        var dirtyRows = _editableSettings.Where(row => row.IsDirty).ToList();
+        if (dirtyRows.Count == 0)
+        {
+            Snackbar.Add("No pending setting changes to save.", Severity.Info);
+            return;
+        }
+
+        _isBusy = true;
+        var failureMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var errors = new List<string>();
+        var successCount = 0;
+
+        foreach (var row in dirtyRows)
+        {
+            var result = await Settings.UpdateAsync(new AdminSettingUpdateRequest(row.Item.Key, row.PendingValue), CancellationToken.None);
+            if (result.Succeeded)
+            {
+                successCount++;
+                continue;
+            }
+
+            failureMap[row.Item.Key] = row.PendingValue;
+            errors.Add($"{row.Item.Label}: {result.Error ?? "save failed"}");
+        }
+
+        _isBusy = false;
+        await LoadAsync();
+        RestoreDirtySettingValues(failureMap);
+
+        if (successCount > 0)
+        {
+            Snackbar.Add($"Saved {successCount} setting{(successCount == 1 ? string.Empty : "s")}.", Severity.Success);
+        }
+
+        if (errors.Count > 0)
+        {
+            Snackbar.Add($"{errors.Count} setting save error{(errors.Count == 1 ? string.Empty : "s")}.", Severity.Warning);
+        }
+    }
+
+    private Dictionary<string, string> CaptureDirtySettingValues(string? excludeKey = null)
+    {
+        var pending = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var row in _editableSettings.Where(item => item.IsDirty))
+        {
+            if (!string.IsNullOrWhiteSpace(excludeKey)
+                && string.Equals(row.Item.Key, excludeKey, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            pending[row.Item.Key] = row.PendingValue;
+        }
+
+        return pending;
+    }
+
+    private void RestoreDirtySettingValues(IReadOnlyDictionary<string, string> pendingByKey)
+    {
+        if (pendingByKey.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var row in _editableSettings)
+        {
+            if (pendingByKey.TryGetValue(row.Item.Key, out var pendingValue))
+            {
+                row.PendingValue = pendingValue;
+            }
+        }
     }
 
     private int ProviderLinkCount(string providerName) => _providerLinkCounts.TryGetValue(providerName, out var count) ? count : 0;

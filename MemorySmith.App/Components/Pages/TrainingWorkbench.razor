@@ -5,6 +5,7 @@
 @inject VarResolver VarResolver
 @inject IJSRuntime JS
 @inject ISnackbar Snackbar
+@inject NavigationManager Navigation
 @inject TrainingHarnessRunnerService TrainingRunner
 @using System.Text.Json
 @using Microsoft.Extensions.Options
@@ -19,6 +20,8 @@
         <MudText Typo="Typo.h4">Training Workbench</MudText>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
             <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync" Disabled="@_isBusy">Refresh</MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Info" StartIcon="@Icons.Material.Filled.Tune" Disabled="@_isBusy" OnClick="OpenTrainingConfig">Training settings</MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.SmartToy" Disabled="@_isBusy" OnClick="OpenModels">Models</MudButton>
             <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PlayArrow" Disabled="@(_isBusy || _isLaunchingRun || _activeRun?.IsRunning == true)" OnClick="StartTrainingRunAsync">Start training run</MudButton>
             <MudButton Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Science" Disabled="@(_isBusy || _isLaunchingRun || _activeRun?.IsRunning == true)" OnClick="StartDryRunAsync">Start dry run</MudButton>
         </div>
@@ -479,6 +482,10 @@
     }
 
     private static string BoolLabel(bool value) => value ? "Enabled" : "Disabled";
+
+    private void OpenTrainingConfig() => Navigation.NavigateTo("/admin");
+
+    private void OpenModels() => Navigation.NavigateTo("/models");
 
     private static string? GetString(JsonElement element, string propertyName)
     {

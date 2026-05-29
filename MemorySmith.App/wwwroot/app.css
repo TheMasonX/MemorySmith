@@ -2854,6 +2854,27 @@ body {
     text-transform: uppercase;
 }
 
+.admin-settings-nav-count-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 26px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--vscode-red) 22%, transparent);
+    color: var(--vscode-red);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    line-height: 1;
+}
+
+.admin-settings-save-all-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 10px;
+}
+
 .admin-settings-dirty-toggle {
     margin-inline-start: auto;
 }
