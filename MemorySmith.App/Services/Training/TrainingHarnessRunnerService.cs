@@ -167,6 +167,7 @@ public sealed class TrainingHarnessRunnerService
         var dependencyProbe = await ProbeDependenciesAsync(cancellationToken);
 
         var requestPath = Path.Combine(workDirectory, "request.json");
+        var huggingFaceToken = ResolveEnvironmentSecret(appOptions.Training.HuggingFaceTokenEnvironmentVariable);
         var request = new
         {
             runId,
@@ -197,12 +198,12 @@ public sealed class TrainingHarnessRunnerService
             _activeRun = active;
         }
 
-        _ = Task.Run(() => RunHarnessAsync(active, pythonExecutable, harnessScript, requestPath, appOptions.Training.MaxRunMinutes), CancellationToken.None);
+        _ = Task.Run(() => RunHarnessAsync(active, pythonExecutable, harnessScript, requestPath, appOptions.Training.MaxRunMinutes, huggingFaceToken), CancellationToken.None);
         var modeSuffix = dependencyProbe.Ready ? string.Empty : $" {dependencyProbe.Summary}";
         return new TrainingHarnessLaunchResult(true, runId, $"Started run {runId}.{modeSuffix}");
     }
 
-    private async Task RunHarnessAsync(TrainingHarnessActiveRun run, string pythonExecutable, string harnessScript, string requestPath, int maxRunMinutes)
+    private async Task RunHarnessAsync(TrainingHarnessActiveRun run, string pythonExecutable, string harnessScript, string requestPath, int maxRunMinutes, string? huggingFaceToken)
     {
         var timeout = TimeSpan.FromMinutes(Math.Clamp(maxRunMinutes, 1, 1440));
         using var timeoutCts = new CancellationTokenSource(timeout);
@@ -237,6 +238,12 @@ public sealed class TrainingHarnessRunnerService
         if (!startInfo.Environment.ContainsKey("HF_HUB_ENABLE_HF_TRANSFER"))
         {
             startInfo.Environment["HF_HUB_ENABLE_HF_TRANSFER"] = "0";
+        }
+
+        if (!string.IsNullOrWhiteSpace(huggingFaceToken))
+        {
+            startInfo.Environment["HF_TOKEN"] = huggingFaceToken;
+            startInfo.Environment["HUGGING_FACE_HUB_TOKEN"] = huggingFaceToken;
         }
 
         using var process = new Process { StartInfo = startInfo, EnableRaisingEvents = true };
@@ -302,6 +309,17 @@ public sealed class TrainingHarnessRunnerService
 
     private string ResolveRepositoryRoot() =>
         Path.GetFullPath(Path.Combine(_environment.ContentRootPath, ".."));
+
+    private static string? ResolveEnvironmentSecret(string environmentVariableName)
+    {
+        if (string.IsNullOrWhiteSpace(environmentVariableName))
+        {
+            return null;
+        }
+
+        var value = Environment.GetEnvironmentVariable(environmentVariableName.Trim());
+        return string.IsNullOrWhiteSpace(value) ? null : value;
+    }
 
     private string ResolvePythonExecutable(string configuredVenvPath)
     {

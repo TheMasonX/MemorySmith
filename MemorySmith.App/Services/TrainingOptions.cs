@@ -14,6 +14,7 @@ public sealed class TrainingOptions
     public string RunsDirectory { get; set; } = Path.Combine("..", "runs");
     public string PythonVenvPath { get; set; } = Path.Combine(".venv");
     public string PythonHarnessScript { get; set; } = Path.Combine("MemorySmith.Training", "harness.py");
+    public string HuggingFaceTokenEnvironmentVariable { get; set; } = "HF_TOKEN";
     public int MaxRunMinutes { get; set; } = 360;
     public PreferenceExportFormat PreferenceFormat { get; set; } = PreferenceExportFormat.FilteredSft;
     public List<string> ExcludePrincipalIds { get; set; } = [];
