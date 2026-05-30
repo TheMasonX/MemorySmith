@@ -15,7 +15,8 @@
     "mcp",
     "security",
     "tests",
-    "documentation"
+    "documentation",
+    "chat"
   ],
   "attachments": [],
   "externalLinks": [],
@@ -28,16 +29,16 @@
       "id": "c-create-0151-20260525",
       "author": "AgentSmith",
       "body": "Created during 2026-05-25 deepdive audit. Evidence: README.md MCP tools table lists permissions but does not spell out page minimum-role filtering or SensitiveRead authorization semantics; ChatToolCatalog.cs CanViewPage falls back from CurrentUser to ClaimsPrincipal, and McpController.cs gates ChatToolRisk.SensitiveRead through CanReadSourceBundleAsync.",
-      "createdAtUtc": "2026-05-25T15:24:00.0000000Z"
+      "createdAtUtc": "2026-05-25T15:24:00Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
-  "createdAtUtc": "2026-05-25T15:24:00.0000000Z",
-  "updatedAtUtc": "2026-05-25T15:24:00.0000000Z",
+  "createdAtUtc": "2026-05-25T15:24:00Z",
+  "updatedAtUtc": "2026-05-30T22:40:56.4912095Z",
   "completedAtUtc": null,
-  "revision": 1,
+  "revision": 2,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

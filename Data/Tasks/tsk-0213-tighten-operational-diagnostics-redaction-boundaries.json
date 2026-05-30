@@ -14,7 +14,8 @@
     "diagnostics",
     "observability",
     "privacy",
-    "security"
+    "security",
+    "chat"
   ],
   "attachments": [],
   "externalLinks": [],
@@ -28,22 +29,22 @@
       "id": "c-create-0213-20260529",
       "author": "AgentSmith",
       "body": "Created after the audit-family validation pass confirmed `/api/diagnostics` is admin-only but still serializes full `ChatOptions` and `TelemetryOptions`, including raw `OllamaEndpoint`, `OtlpEndpoint`, and prompt-path-like values, while the current regression only asserts API-key absence.",
-      "createdAtUtc": "2026-05-29T16:05:00.0000000Z"
+      "createdAtUtc": "2026-05-29T16:05:00Z"
     },
     {
       "id": "c-implementation-0213-20260529",
       "author": "AgentSmith",
       "body": "Implemented shape-preserving diagnostics redaction in `MemorySmith.App/Services/OperationalDiagnosticsService.cs`: endpoint/path-like values in chat, telemetry, and configured URLs now emit `[redacted-configured]` instead of raw values. Expanded `MemorySmith.Tests/AppApiContractTests.cs` assertions to verify raw `localhost` endpoints and prompt-path literals are absent. Focused diagnostics contract test run passed (35 passed, 0 failed).",
-      "createdAtUtc": "2026-05-29T16:50:00.0000000Z"
+      "createdAtUtc": "2026-05-29T16:50:00Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
-  "createdAtUtc": "2026-05-29T16:05:00.0000000Z",
-  "updatedAtUtc": "2026-05-29T16:50:00.0000000Z",
-  "completedAtUtc": "2026-05-29T16:50:00.0000000Z",
-  "revision": 2,
+  "createdAtUtc": "2026-05-29T16:05:00Z",
+  "updatedAtUtc": "2026-05-30T22:40:56.5230126Z",
+  "completedAtUtc": "2026-05-29T16:50:00Z",
+  "revision": 3,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

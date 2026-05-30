@@ -14,7 +14,8 @@
     "mcp",
     "proposals",
     "governance",
-    "workflow"
+    "workflow",
+    "chat"
   ],
   "attachments": [],
   "externalLinks": [],
@@ -26,16 +27,16 @@
       "id": "c-create-0226-20260529",
       "author": "AgentSmith",
       "body": "Created from MCP surface review because `/proposals` is a first-class workflow but the external MCP catalog has no proposal list/get/action tools.",
-      "createdAtUtc": "2026-05-29T19:25:00.0000000Z"
+      "createdAtUtc": "2026-05-29T19:25:00Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
-  "createdAtUtc": "2026-05-29T19:25:00.0000000Z",
-  "updatedAtUtc": "2026-05-29T19:25:00.0000000Z",
+  "createdAtUtc": "2026-05-29T19:25:00Z",
+  "updatedAtUtc": "2026-05-30T22:40:56.5290275Z",
   "completedAtUtc": null,
-  "revision": 1,
+  "revision": 2,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

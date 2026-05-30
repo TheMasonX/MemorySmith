@@ -1,0 +1,43 @@
+{
+  "id": "tsk-0243-deliver-chat-ux-table-stakes-pass-for-copy-composer-shimmer-and-turn-controls",
+  "key": "TSK-0243",
+  "title": "Deliver chat UX table-stakes pass for copy, composer, shimmer, and turn controls",
+  "description": "Vetted from Audit #7 section 4 and section 7 usability findings. Implement code block copy affordance, auto-resizing composer, non-literal streaming pending indicator, message edit/regenerate controls, transcript live-region semantics, and feedback clear behavior.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "AgentSmith",
+  "labels": [
+    "chat",
+    "ux",
+    "accessibility",
+    "sprint-20260530-b"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "audits/chat-training-audit-7-20260530"
+  ],
+  "comments": [
+    {
+      "author": "AgentSmith",
+      "id": "c-create-tsk-0243-20260530",
+      "createdAtUtc": "2026-05-30T22:21:20.9043446Z",
+      "body": "Created from vetted findings in Data/Pages/move-to-audit.md after direct code checks across Chat.razor, ChatServices.cs, ChatToolCatalog.cs, McpController.cs, and training harness files."
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-30T22:21:20.9043446Z",
+  "updatedAtUtc": "2026-05-30T22:40:56.5639367Z",
+  "completedAtUtc": null,
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

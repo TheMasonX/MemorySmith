@@ -15,7 +15,8 @@
     "css",
     "pyodide",
     "accessibility",
-    "vetted"
+    "vetted",
+    "chat"
   ],
   "attachments": [],
   "externalLinks": [],
@@ -25,9 +26,9 @@
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-24T20:55:33.9800632Z",
-  "updatedAtUtc": "2026-05-24T20:55:33.9800632Z",
+  "updatedAtUtc": "2026-05-30T22:40:56.4631323Z",
   "completedAtUtc": null,
-  "revision": 1,
+  "revision": 2,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

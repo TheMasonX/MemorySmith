@@ -15,7 +15,8 @@
     "ui",
     "maintenance",
     "responsive",
-    "audit-vetted"
+    "audit-vetted",
+    "chat"
   ],
   "attachments": [],
   "externalLinks": [],
@@ -27,22 +28,22 @@
       "id": "c-0121-1",
       "author": "AgentSmith",
       "body": "Created from 2026-05-25 live browser audit and screenshot: no hard route break, but the narrow Maintenance view has cramped nested history panels and clipped long text above the chat controls.",
-      "createdAtUtc": "2026-05-25T00:00:00.0000000Z"
+      "createdAtUtc": "2026-05-25T00:00:00Z"
     },
     {
       "id": "c-0121-2",
       "author": "AgentSmith",
       "body": "Completed by moving Maintenance history/transcript scrolling into explicit panel-body containers, increasing readable narrow-width panel height, and wrapping long proposal ids behind visible links with tooltips instead of leaving them as raw cramped header text. Validation: `dotnet test .\\MemorySmith.Tests\\MemorySmith.Tests.csproj -c Release --filter \"Name~MaintenanceMarkup_ExposesStandaloneTraceChatAndActionHistoryPage\" --logger \"console;verbosity=minimal\"` passed 1/1. Browser validation in sandbox `artifacts/browser-validation/tsk-0121/20260526-115543-fresh/` at `http://127.0.0.1:5118/maintenance` confirmed narrow-width trace and proposal history panels had clearer scrollable reading space, long proposal ids remained readable without horizontal overflow, and the Maintenance chat controls stayed reachable below the history panels. Screenshots: `maintenance-narrow.png`, `maintenance-desktop.png`.",
-      "createdAtUtc": "2026-05-26T16:55:48.0000000Z"
+      "createdAtUtc": "2026-05-26T16:55:48Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
-  "createdAtUtc": "2026-05-25T00:00:00.0000000Z",
-  "updatedAtUtc": "2026-05-26T16:55:48.0000000Z",
-  "completedAtUtc": "2026-05-26T16:55:48.0000000Z",
-  "revision": 2,
+  "createdAtUtc": "2026-05-25T00:00:00Z",
+  "updatedAtUtc": "2026-05-30T22:40:56.4788859Z",
+  "completedAtUtc": "2026-05-26T16:55:48Z",
+  "revision": 3,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

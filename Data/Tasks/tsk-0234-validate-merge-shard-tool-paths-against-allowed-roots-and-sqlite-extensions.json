@@ -1,0 +1,44 @@
+{
+  "id": "tsk-0234-validate-merge-shard-tool-paths-against-allowed-roots-and-sqlite-extensions",
+  "key": "TSK-0234",
+  "title": "Validate merge-shard tool paths against allowed roots and sqlite extensions",
+  "description": "Vetted from Audit #7 finding 2.4. Default-off gating exists, but shardPath validation remains missing when enabled. Enforce allowed roots, canonicalized path checks, and extension allow-list for merge-shard inputs.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "AgentSmith",
+  "labels": [
+    "mcp",
+    "code-search",
+    "security",
+    "sprint-20260530-c",
+    "chat"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "audits/chat-training-audit-7-20260530"
+  ],
+  "comments": [
+    {
+      "author": "AgentSmith",
+      "id": "c-create-tsk-0234-20260530",
+      "createdAtUtc": "2026-05-30T22:21:20.9043446Z",
+      "body": "Created from vetted findings in Data/Pages/move-to-audit.md after direct code checks across Chat.razor, ChatServices.cs, ChatToolCatalog.cs, McpController.cs, and training harness files."
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-30T22:21:20.9043446Z",
+  "updatedAtUtc": "2026-05-30T22:40:56.5523633Z",
+  "completedAtUtc": null,
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

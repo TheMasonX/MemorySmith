@@ -1,0 +1,43 @@
+{
+  "id": "tsk-0245-recover-gracefully-from-malformed-ollama-ndjson-stream-lines",
+  "key": "TSK-0245",
+  "title": "Recover gracefully from malformed Ollama NDJSON stream lines",
+  "description": "Vetted from Audit #7 finding 10.5. Per-line JSON parse failures in streaming should not hard-fail the entire assistant turn. Add resilient parse handling, preserve accumulated content, and emit diagnostics for malformed chunks.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Critical",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "AgentSmith",
+  "labels": [
+    "chat",
+    "ollama",
+    "reliability",
+    "sprint-20260530-a"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "audits/chat-training-audit-7-20260530"
+  ],
+  "comments": [
+    {
+      "author": "AgentSmith",
+      "id": "c-create-tsk-0245-20260530",
+      "createdAtUtc": "2026-05-30T22:21:20.9043446Z",
+      "body": "Created from vetted findings in Data/Pages/move-to-audit.md after direct code checks across Chat.razor, ChatServices.cs, ChatToolCatalog.cs, McpController.cs, and training harness files."
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-30T22:21:20.9043446Z",
+  "updatedAtUtc": "2026-05-30T22:40:56.5664075Z",
+  "completedAtUtc": null,
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

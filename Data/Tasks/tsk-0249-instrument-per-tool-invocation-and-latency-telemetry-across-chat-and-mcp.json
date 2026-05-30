@@ -1,0 +1,43 @@
+{
+  "id": "tsk-0249-instrument-per-tool-invocation-and-latency-telemetry-across-chat-and-mcp",
+  "key": "TSK-0249",
+  "title": "Instrument per-tool invocation and latency telemetry across chat and MCP",
+  "description": "Missing task from Audit #7 finding 6.1. Add per-tool invocation counters, latency histograms, and error tags for both chat and MCP execution paths with low-cardinality dimensions and privacy-safe payload handling.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "AgentSmith",
+  "labels": [
+    "chat",
+    "mcp",
+    "observability",
+    "sprint-20260530-c"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "audits/chat-training-audit-7-20260530"
+  ],
+  "comments": [
+    {
+      "createdAtUtc": "2026-05-30T22:41:43.2891965Z",
+      "author": "AgentSmith",
+      "id": "c-create-tsk-0249-20260530",
+      "body": "Created during follow-up gap review after chat task tagging and sprint planning pass."
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-30T22:41:43.2891965Z",
+  "updatedAtUtc": "2026-05-30T22:41:43.2891965Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

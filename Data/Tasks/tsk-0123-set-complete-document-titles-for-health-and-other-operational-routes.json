@@ -15,7 +15,8 @@
     "ui",
     "health",
     "routes",
-    "audit-vetted"
+    "audit-vetted",
+    "chat"
   ],
   "attachments": [],
   "externalLinks": [],
@@ -27,22 +28,22 @@
       "id": "c-0123-1",
       "author": "AgentSmith",
       "body": "Created from 2026-05-25 live browser audit: `/health` returned an empty document title while other primary routes had route-specific titles.",
-      "createdAtUtc": "2026-05-25T00:00:00.0000000Z"
+      "createdAtUtc": "2026-05-25T00:00:00Z"
     },
     {
       "id": "c-0123-2",
       "author": "AgentSmith",
       "body": "Implemented by normalizing primary route PageTitle values to the `Route - MemorySmith` convention and adding route-smoke title assertions for `/memories`, `/pages`, `/chat`, `/tasks`, and `/health`. Validation: `dotnet build .\\MemorySmith.App\\MemorySmith.App.csproj --nologo` succeeded, and `MEMORYSMITH_BASE_URL=http://127.0.0.1:5099 npm run test:route-smoke` passed 5/5 against a Development local server on 2026-05-25.",
-      "createdAtUtc": "2026-05-25T06:34:00.0000000Z"
+      "createdAtUtc": "2026-05-25T06:34:00Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
-  "createdAtUtc": "2026-05-25T00:00:00.0000000Z",
-  "updatedAtUtc": "2026-05-25T06:34:00.0000000Z",
-  "completedAtUtc": "2026-05-25T06:34:00.0000000Z",
-  "revision": 2,
+  "createdAtUtc": "2026-05-25T00:00:00Z",
+  "updatedAtUtc": "2026-05-30T22:40:56.4803153Z",
+  "completedAtUtc": "2026-05-25T06:34:00Z",
+  "revision": 3,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

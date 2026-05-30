@@ -16,7 +16,8 @@
     "benchmarks",
     "ci",
     "observability",
-    "sprint-3"
+    "sprint-3",
+    "chat"
   ],
   "attachments": [],
   "externalLinks": [],
@@ -30,16 +31,16 @@
       "id": "c-create-0115-20260524",
       "author": "AgentSmith",
       "body": "Created from ultra audit findings F-007 and F-008. Evidence: benchmark commands and search-quality probes exist, but .github/workflows/ci.yml has no benchmark budget comparison lane.",
-      "createdAtUtc": "2026-05-24T19:56:00.0000000Z"
+      "createdAtUtc": "2026-05-24T19:56:00Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
-  "createdAtUtc": "2026-05-24T19:56:00.0000000Z",
-  "updatedAtUtc": "2026-05-24T19:56:00.0000000Z",
+  "createdAtUtc": "2026-05-24T19:56:00Z",
+  "updatedAtUtc": "2026-05-30T22:40:56.4738179Z",
   "completedAtUtc": null,
-  "revision": 1,
+  "revision": 2,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

@@ -291,6 +291,17 @@ def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def load_existing_results(path: Path) -> dict[str, Any]:
+    with path.open("r", encoding="utf-8") as handle:
+        data = json.load(handle)
+
+    base = data.get("base")
+    if not isinstance(base, dict) or "summary" not in base or "rows" not in base:
+        raise SystemExit(f"Base results file is missing required data: {path}")
+
+    return base
+
+
 def load_base_model(model_id: str) -> tuple[AutoModelForCausalLM, AutoTokenizer]:
     dtype = torch.bfloat16 if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else torch.float16
     tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
@@ -328,6 +339,7 @@ def main() -> int:
     parser.add_argument("--model-id", default="Qwen/Qwen3.5-4B")
     parser.add_argument("--adapter-path", required=True)
     parser.add_argument("--output", required=True)
+    parser.add_argument("--base-results", help="Reuse an existing benchmark JSON file for the base side instead of rerunning the base model.")
     parser.add_argument("--max-new-tokens", type=int, default=96)
     parser.add_argument("--batch-size", type=int, default=8)
     args = parser.parse_args()
@@ -341,19 +353,30 @@ def main() -> int:
 
     cases = build_cases()
 
-    print(f"[{utc_now_iso()}] Running base model evaluation ({len(cases)} cases)")
-    base_model, base_tokenizer = load_base_model(args.model_id)
-    base_rows = generate_outputs(
-        base_model,
-        base_tokenizer,
-        cases,
-        args.max_new_tokens,
-        args.batch_size,
-        "base",
-    )
-    del base_model
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
+    if args.base_results:
+        base_results_path = Path(args.base_results)
+        if not base_results_path.exists():
+            raise SystemExit(f"Base results file does not exist: {base_results_path}")
+
+        print(f"[{utc_now_iso()}] Reusing base results from {base_results_path}")
+        base = load_existing_results(base_results_path)
+        base_rows = base["rows"]
+        base_summary = base["summary"]
+    else:
+        print(f"[{utc_now_iso()}] Running base model evaluation ({len(cases)} cases)")
+        base_model, base_tokenizer = load_base_model(args.model_id)
+        base_rows = generate_outputs(
+            base_model,
+            base_tokenizer,
+            cases,
+            args.max_new_tokens,
+            args.batch_size,
+            "base",
+        )
+        del base_model
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        base_summary = summarize(base_rows)
 
     print(f"[{utc_now_iso()}] Running tuned model evaluation ({len(cases)} cases)")
     tuned_model, tuned_tokenizer = load_tuned_model(args.model_id, adapter_path)
@@ -373,11 +396,12 @@ def main() -> int:
         "generatedAtUtc": utc_now_iso(),
         "modelId": args.model_id,
         "adapterPath": str(adapter_path),
+        "baseSource": str(Path(args.base_results).resolve()) if args.base_results else None,
         "caseCount": len(cases),
         "perToolCases": 5,
         "toolsCovered": sorted({c.tool for c in cases}),
         "base": {
-            "summary": summarize(base_rows),
+            "summary": base_summary,
             "rows": base_rows,
         },
         "tuned": {

@@ -15,7 +15,8 @@
     "inference",
     "ollama",
     "runtime",
-    "ux"
+    "ux",
+    "chat"
   ],
   "attachments": [],
   "externalLinks": [],
@@ -34,16 +35,16 @@
       "id": "c-0202-2-20260528",
       "author": "AgentSmith",
       "body": "Implemented Ollama payload wiring so configured MemorySmith:Chat:OllamaContextWindowTokens emits options.num_ctx for both complete and streaming chat requests. Added provider regression test coverage. Remaining scope: stricter context-window governance UX and limits policy follow-up.",
-      "createdAtUtc": "2026-05-28T23:20:00.0000000Z"
+      "createdAtUtc": "2026-05-28T23:20:00Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-28T21:43:18.8947975Z",
-  "updatedAtUtc": "2026-05-28T23:20:00.0000000Z",
+  "updatedAtUtc": "2026-05-30T22:40:56.5185821Z",
   "completedAtUtc": null,
-  "revision": 2,
+  "revision": 3,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

@@ -1,0 +1,43 @@
+{
+  "id": "tsk-0237-add-chat-stream-idle-watchdogs-and-bounded-backpressure-channels",
+  "key": "TSK-0237",
+  "title": "Add chat stream idle watchdogs and bounded backpressure channels",
+  "description": "Vetted from Audit #7 findings 3.1 and 3.2. Add per-chunk idle detection for Ollama streams and bounded channel/backpressure plus idle watchdog for GitHub/Copilot streaming to avoid indefinite hangs and unbounded buffering.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "AgentSmith",
+  "labels": [
+    "chat",
+    "streaming",
+    "reliability",
+    "sprint-20260530-b"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "audits/chat-training-audit-7-20260530"
+  ],
+  "comments": [
+    {
+      "author": "AgentSmith",
+      "id": "c-create-tsk-0237-20260530",
+      "createdAtUtc": "2026-05-30T22:21:20.9043446Z",
+      "body": "Created from vetted findings in Data/Pages/move-to-audit.md after direct code checks across Chat.razor, ChatServices.cs, ChatToolCatalog.cs, McpController.cs, and training harness files."
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-30T22:21:20.9043446Z",
+  "updatedAtUtc": "2026-05-30T22:40:56.5563263Z",
+  "completedAtUtc": null,
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

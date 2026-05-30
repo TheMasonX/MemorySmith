@@ -16,7 +16,8 @@
     "pages",
     "tasks",
     "memories",
-    "audit-vetted"
+    "audit-vetted",
+    "chat"
   ],
   "attachments": [],
   "externalLinks": [],
@@ -28,7 +29,7 @@
       "id": "c-0120-1",
       "author": "AgentSmith",
       "body": "Created from 2026-05-25 live browser audit: dense Pages and Tasks lists clipped long titles; this should be made discoverable without expanding the rows by default.",
-      "createdAtUtc": "2026-05-25T00:00:00.0000000Z"
+      "createdAtUtc": "2026-05-25T00:00:00Z"
     },
     {
       "id": "c-0120-2",
@@ -40,10 +41,10 @@
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
-  "createdAtUtc": "2026-05-25T00:00:00.0000000Z",
-  "updatedAtUtc": "2026-05-27T13:39:49.8255805Z",
+  "createdAtUtc": "2026-05-25T00:00:00Z",
+  "updatedAtUtc": "2026-05-30T22:40:56.4778204Z",
   "completedAtUtc": "2026-05-27T13:39:49.8255805Z",
-  "revision": 2,
+  "revision": 3,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

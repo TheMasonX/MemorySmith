@@ -1,8 +1,8 @@
-﻿{
+{
   "id": "tsk-0149-chat-proposals",
   "key": "TSK-0149",
   "title": "Chat Proposals",
-  "description": "Chat Proposals should not be separate from the standard proposal system. A chat proposal generates a system proposal for audit verification. The \u0022Approve/Approve All\u0022 UI in the trace (which should actually be in the chat itself, a separate issue) would include a link to this that would show the actual content (opened in a new window)",
+  "description": "Chat Proposals should not be separate from the standard proposal system. A chat proposal generates a system proposal for audit verification. The \"Approve/Approve All\" UI in the trace (which should actually be in the chat itself, a separate issue) would include a link to this that would show the actual content (opened in a new window)",
   "type": "Task",
   "status": "Backlog",
   "priority": "Medium",
@@ -11,7 +11,8 @@
   "assigneeCustomText": null,
   "reporter": "TheMasonX",
   "labels": [
-    "future"
+    "future",
+    "chat"
   ],
   "attachments": [],
   "externalLinks": [],
@@ -21,9 +22,9 @@
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-25T15:17:35.7553827Z",
-  "updatedAtUtc": "2026-05-25T15:17:35.7553827Z",
+  "updatedAtUtc": "2026-05-30T22:40:56.4898346Z",
   "completedAtUtc": null,
-  "revision": 1,
+  "revision": 2,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,
