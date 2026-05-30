@@ -73,6 +73,8 @@ project.lock.json
 project.fragment.lock.json
 artifacts/
 MemorySmith.App/appsettings.LocalDevelopment.json
+MemorySmith.App/appsettings.LocalOverrides.json
+MemorySmith.App/appsettings.Secrets.json
 
 # ASP.NET Scaffolding
 ScaffoldingReadMe.txt

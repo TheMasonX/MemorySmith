@@ -6,6 +6,12 @@ I reviewed the active distilled corpus and recent A/B evaluation results between
 
 Key conclusion: the corpus has improved tool-call envelope compliance, but still under-trains **tool routing precision**. In the latest continuation benchmark, tuned model envelope validity reached 85%, yet expected tool match remained 21.7%, with over-selection of `memorysmith_search`.
 
+## Executive Summary
+
+The current corpus is good at getting the model to emit valid tool-call JSON, but it is still not good enough at choosing the right tool. The model keeps collapsing ambiguous routing prompts into `memorysmith_search`, especially when the correct answer should be `memorysmith_unified_search`, `memorysmith_hybrid_search`, `memorysmith_semantic_search`, or a known-id `*_get` call.
+
+I added a focused tool-selection augmentation shard to address that gap, but the latest benchmark still shows routing as the primary remaining problem. The practical next step is more contrastive examples that separate broad discovery from exact lookups and from known-id retrieval.
+
 ## Evidence
 
 - Corpus reviewed: `Data/Training/distilled-all-categories-20260529/distilled-all-categories-20260529.sft.jsonl`
@@ -58,6 +64,15 @@ The shard includes mini contrast examples for:
 - exact-term lookup (`memorysmith_search`)
 - conceptual recall (`memorysmith_semantic_search`)
 - broad cross-surface discovery (`memorysmith_unified_search`)
+
+### 4) Continued refinement after benchmark review
+
+The shard now also includes explicit contrast cases for:
+
+- broad discovery vs exact-term search
+- known-memory-id retrieval via `memorysmith_get`
+- known-page retrieval via `memorysmith_page_get`
+- task lookup via `memorysmith_task_get` and `memorysmith_task_list`
 
 ## Additional Recommendations (Next Batch)
 

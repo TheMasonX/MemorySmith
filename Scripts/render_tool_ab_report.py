@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -30,10 +30,14 @@ def tool_row(tool: str, base: dict[str, Any], tuned: dict[str, Any]) -> str:
 
 
 def brief(text: str, limit: int = 160) -> str:
-    s = " ".join((text or "").split())
+    s = " ".join((text or "").replace("<think>", "[think]").replace("</think>", "[/think]").split())
     if len(s) <= limit:
         return s
     return s[: limit - 3] + "..."
+
+
+def compact_table_row(cells: list[str]) -> str:
+    return "| " + " | ".join(cells) + " |"
 
 
 def main() -> int:
@@ -84,7 +88,7 @@ def main() -> int:
     lines: list[str] = []
     lines.append("# Tool A/B Spot Check - Base vs Tuned (2026-05-30)")
     lines.append("")
-    lines.append(f"Generated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%SZ')}")
+    lines.append(f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%SZ')}")
     lines.append("")
     lines.append("## Scope")
     lines.append("")
@@ -96,7 +100,7 @@ def main() -> int:
     lines.append("## Headline Metrics")
     lines.append("")
     lines.append("| Metric | Base | Tuned | Delta |")
-    lines.append("|---|---:|---:|---:|")
+    lines.append("| --- | ---: | ---: | ---: |")
     b_total = int(base_summary.get("total", 0))
     t_total = int(tuned_summary.get("total", 0))
     b_env = int(base_summary.get("envelopeValid", 0))
@@ -109,7 +113,7 @@ def main() -> int:
     lines.append("## Per-Tool Results")
     lines.append("")
     lines.append("| Tool | Cases | Base envelope | Base tool match | Tuned envelope | Tuned tool match | Delta envelope | Delta tool match |")
-    lines.append("|---|---:|---:|---:|---:|---:|---:|---:|")
+    lines.append("| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
     for tool in tools:
         lines.append(tool_row(tool, base_by_tool.get(tool, {}), tuned_by_tool.get(tool, {})))
 

@@ -4,7 +4,9 @@ param(
     [string]$FallbackPythonVersion = "3.11",
     [string]$ScratchRoot,
     [string]$VenvPath,
-    [string]$OverridePath = "artifacts/MemorySmith.App/appsettings.LocalOverrides.json",
+    [string]$OverridePath = "MemorySmith.App/appsettings.LocalOverrides.json",
+    [ValidateRange(512, 262144)]
+    [int]$OllamaContextWindowTokens = 24576,
     [ValidateSet("cu128", "cpu")]
     [string]$TorchFlavor = "cu128",
     [switch]$IncludeUnsloth,
@@ -157,7 +159,8 @@ function Write-LocalOverrideFile {
     param(
         [Parameter(Mandatory = $true)][string]$Path,
         [Parameter(Mandatory = $true)][string]$TrainingVenvPath,
-        [Parameter(Mandatory = $true)][string]$RunsDirectory
+        [Parameter(Mandatory = $true)][string]$RunsDirectory,
+        [Parameter(Mandatory = $true)][int]$ContextWindowTokens
     )
 
     $existing = @{}
@@ -184,11 +187,16 @@ function Write-LocalOverrideFile {
         $existing["MemorySmith"]["Training"] = @{}
     }
 
+    if (-not $existing["MemorySmith"].ContainsKey("Chat")) {
+        $existing["MemorySmith"]["Chat"] = @{}
+    }
+
     $existing["MemorySmith"]["Training"]["PythonVenvPath"] = $TrainingVenvPath
     $existing["MemorySmith"]["Training"]["RunsDirectory"] = $RunsDirectory
     $existing["MemorySmith"]["Training"]["PythonHarnessScript"] = "MemorySmith.Training/harness.py"
     $existing["MemorySmith"]["Training"]["TrainingDataExportPath"] = "../Data/Training/exports"
     $existing["MemorySmith"]["Training"]["TranscriptDirectory"] = "../Data/Events/chat-transcripts"
+    $existing["MemorySmith"]["Chat"]["OllamaContextWindowTokens"] = $ContextWindowTokens
 
     $directory = Split-Path $Path -Parent
     if (-not [string]::IsNullOrWhiteSpace($directory)) {
@@ -275,6 +283,8 @@ foreach ($entry in $sessionEnv.GetEnumerator()) {
     Set-Item -Path ("Env:" + $entry.Key) -Value $entry.Value
 }
 
+Set-Item -Path "Env:MemorySmith__SettingsOverridePath" -Value $resolvedOverridePath
+
 if ($PersistUserEnvironment) {
     foreach ($entry in $sessionEnv.GetEnumerator()) {
         [Environment]::SetEnvironmentVariable($entry.Key, $entry.Value, "User")
@@ -318,7 +328,7 @@ if (-not $SkipDependencyInstall) {
     }
 }
 
-Write-LocalOverrideFile -Path $resolvedOverridePath -TrainingVenvPath $resolvedVenvPath -RunsDirectory $runsDirectory
+Write-LocalOverrideFile -Path $resolvedOverridePath -TrainingVenvPath $resolvedVenvPath -RunsDirectory $runsDirectory -ContextWindowTokens $OllamaContextWindowTokens
 
 Write-Host "Running training dependency preflight..."
 $preflightJson = & $preflightScript -PythonVenvPath $resolvedVenvPath -AsJson
@@ -342,6 +352,7 @@ Write-Host "Scratch root:           $resolvedScratchRoot"
 Write-Host "Training venv:          $resolvedVenvPath"
 Write-Host "Runs directory:         $runsDirectory"
 Write-Host "Local override file:    $resolvedOverridePath"
+Write-Host "Chat context window:    $OllamaContextWindowTokens"
 Write-Host "Persisted env vars:     $PersistUserEnvironment"
 Write-Host "Accelerator ready:      $($preflight.ready) [$($preflight.accelerator)]"
 Write-Host "Optional extras:        $(if ($preflight.optionalMissing.Count -eq 0) { 'all present' } else { $preflight.optionalMissing -join ', ' })"
