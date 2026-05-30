@@ -225,6 +225,9 @@ csx/
 e2e/playwright-report/
 e2e/test-results/
 
+# Local temporary workspace artifacts
+Temp/
+
 # Microsoft Azure Emulator
 ecf/
 rcf/

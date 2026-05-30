@@ -7,6 +7,9 @@
     const mermaidRestrictionModes = new Set(["standard", "restricted", "strict"]);
     const reconnectRecoveryStorageKey = "memorysmith.reconnect.resumeFailedReloadAt.v1";
     const reconnectRecoveryCooldownMs = 15000;
+    const routeTitleFallbacks = Object.freeze({
+        "/health": "Health - MemorySmith"
+    });
     let mermaidSequence = 0;
     let mermaidTheme = null;
     let mermaidThemeWatcher = null;
@@ -72,6 +75,75 @@
     }
 
     initializeReconnectRecovery();
+
+    window.memorySmith.setDocumentTitle = function (title) {
+        const normalizedTitle = typeof title === "string" ? title.trim() : "";
+        if (!normalizedTitle) {
+            return;
+        }
+
+        let titleElement = document.head ? document.head.querySelector("title") : null;
+        if (!titleElement && document.head) {
+            titleElement = document.createElement("title");
+            document.head.appendChild(titleElement);
+        }
+
+        if (titleElement) {
+            titleElement.textContent = normalizedTitle;
+        }
+
+        document.title = normalizedTitle;
+    };
+
+    function expectedRouteTitle(pathname) {
+        if (!pathname) {
+            return "";
+        }
+
+        return routeTitleFallbacks[pathname] || "";
+    }
+
+    function ensureRouteTitleFallback() {
+        const expectedTitle = expectedRouteTitle(window.location && window.location.pathname);
+        if (!expectedTitle) {
+            return;
+        }
+
+        const titleElement = document.head ? document.head.querySelector("title") : null;
+        const currentTitle = typeof document.title === "string" ? document.title.trim() : "";
+        const currentTagTitle = titleElement && typeof titleElement.textContent === "string"
+            ? titleElement.textContent.trim()
+            : "";
+
+        if (currentTitle === expectedTitle && currentTagTitle === expectedTitle) {
+            return;
+        }
+
+        window.memorySmith.setDocumentTitle(expectedTitle);
+    }
+
+    function initializeRouteTitleFallback() {
+        ensureRouteTitleFallback();
+
+        if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", ensureRouteTitleFallback, { once: true });
+        }
+
+        window.addEventListener("pageshow", ensureRouteTitleFallback);
+        window.addEventListener("popstate", ensureRouteTitleFallback);
+        window.setInterval(ensureRouteTitleFallback, 750);
+
+        if (document.head && typeof MutationObserver === "function") {
+            const observer = new MutationObserver(ensureRouteTitleFallback);
+            observer.observe(document.head, {
+                childList: true,
+                subtree: true,
+                characterData: true
+            });
+        }
+    }
+
+    initializeRouteTitleFallback();
 
     function markdownRoot(root, options) {
         if (root && typeof root.querySelectorAll === "function") {

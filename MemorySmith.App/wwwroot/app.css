@@ -5143,6 +5143,29 @@ body {
         min-height: 0;
     }
 
+    .tasks-workbench .mud-tabs,
+    .tasks-workbench .mud-tabs-panels,
+    .tasks-workbench .mud-tab-panel {
+        height: auto;
+    }
+
+    .tasks-workbench .mud-tabs {
+        display: block;
+        flex: 0 0 auto;
+    }
+
+    .tasks-workbench .mud-tabs-tabbar {
+        position: relative;
+        z-index: 1;
+    }
+
+    .tasks-workbench .mud-tabs-panels {
+        flex: 0 0 auto;
+        min-height: 150px;
+        position: relative;
+        z-index: 0;
+    }
+
     .tasks-workbench .mud-tabs-panels {
         overflow: auto;
     }

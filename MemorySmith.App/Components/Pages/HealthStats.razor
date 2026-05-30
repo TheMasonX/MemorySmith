@@ -1,5 +1,6 @@
 @page "/health"
 @rendermode InteractiveServer
+@inject IJSRuntime JS
 @inject MemoryApplicationService Memories
 @inject IMemoryChangePublisher Publisher
 @inject OperationalDiagnosticsService Diagnostics
@@ -266,6 +267,12 @@
         Publisher.MemoryChanged += OnMemoryChangedAsync;
         Publisher.StatsChanged += OnStatsChangedAsync;
         await RefreshAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Restore the head title after interactive hydration; /health intermittently loses it.
+        await SafeJsInterop.TryInvokeVoidAsync(JS, "memorySmith.setDocumentTitle", "Health - MemorySmith");
     }
 
     private async Task RefreshAsync()

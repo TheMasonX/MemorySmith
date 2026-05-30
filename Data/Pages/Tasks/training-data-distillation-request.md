@@ -5,6 +5,30 @@
 **Status:** Open  
 **Audience:** AI agent (Athena or equivalent) with access to MemorySmith MCP tools
 
+## Supplemental Delivery Note (2026-05-30)
+
+Hyperagent delivered **55 validated JSONL examples** across all 9 target categories with 29 unique real memory/page IDs from the live knowledge base. Tool call envelope verification passed for the required shape:
+
+`{"toolCalls":[{"name":"...","arguments":{...}}]}`
+
+Category coverage summary:
+
+| Category | Count | Notes |
+|---|---:|---|
+| Single-tool retrieval | 15 | unified(3), hybrid(2), semantic(2), lexical(2), page_search(2), code_search(4) |
+| Context pack + multi-reference | 8 | context_pack with backlinks, grounded multi-source answers |
+| Direct get by ID/slug | 5 | memorysmith_get(3), page_get(2) |
+| Task browsing | 5 | task_list(4), task_get(1) with filters |
+| Code search | 5 | realistic codebase questions |
+| Multi-turn | 6 | 4+ messages each |
+| Agent-mode writes | 4 | strict JSON with reply/memoryWrites/pageWrites |
+| Graceful failure | 4 | acknowledges gaps, suggests resources |
+| Citation-focused | 3 | explicit `- Source: memory:` footers |
+
+Validation claim from Hyperagent: **55/55 valid JSON**, **0 confabulated IDs**, correct tool-call envelope on all 53 tool-call examples, and all `memory:` / `page:` references came from verified inventory.
+
+Important training-quality note: Hyperagent reports it initially produced an incorrect tool envelope (`{"tool":"..."}`) before correction, matching audit concern TRAIN-001. The delivered dataset now uses the exact envelope expected by the C# `ReadToolCalls` parser.
+
 ---
 
 ## Context — Why This Exists

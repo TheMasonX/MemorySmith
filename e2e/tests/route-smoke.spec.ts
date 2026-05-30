@@ -100,10 +100,14 @@ const routes: SmokeRoute[] = [
     expectedTitle: 'Health - MemorySmith',
     assertReady: async (page) => {
       await expect(page.getByRole('heading', { name: 'Health & Activity', exact: true })).toBeVisible();
+      await page.waitForTimeout(1500);
+      await expect(page).toHaveTitle('Health - MemorySmith');
     },
     interact: async (page) => {
       await page.getByRole('button', { name: 'Refresh' }).click();
       await expect(page.getByRole('heading', { name: 'Health & Activity', exact: true })).toBeVisible();
+      await page.waitForTimeout(1500);
+      await expect(page).toHaveTitle('Health - MemorySmith');
     },
   },
   {
