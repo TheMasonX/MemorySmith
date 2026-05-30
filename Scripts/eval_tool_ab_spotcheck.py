@@ -303,8 +303,9 @@ def load_existing_results(path: Path) -> dict[str, Any]:
 
 
 def load_base_model(model_id: str) -> tuple[AutoModelForCausalLM, AutoTokenizer]:
+    trust_remote_code = False
     dtype = torch.bfloat16 if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else torch.float16
-    tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
+    tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=trust_remote_code)
     tokenizer.padding_side = "left"
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
@@ -312,7 +313,7 @@ def load_base_model(model_id: str) -> tuple[AutoModelForCausalLM, AutoTokenizer]
     model = AutoModelForCausalLM.from_pretrained(
         model_id,
         dtype=dtype,
-        trust_remote_code=True,
+        trust_remote_code=trust_remote_code,
         device_map=None,
         low_cpu_mem_usage=False,
     )
@@ -327,7 +328,7 @@ def load_tuned_model(model_id: str, adapter_path: Path) -> tuple[AutoModelForCau
     merged = merged.merge_and_unload()
     merged.eval()
 
-    tokenizer = AutoTokenizer.from_pretrained(str(adapter_path), trust_remote_code=True)
+    tokenizer = AutoTokenizer.from_pretrained(str(adapter_path), trust_remote_code=False)
     tokenizer.padding_side = "left"
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token

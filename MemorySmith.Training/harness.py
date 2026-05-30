@@ -33,6 +33,15 @@ class Harness:
         self.phase_started_at = time.perf_counter()
         self.events_written = 0
 
+    def resolve_trust_remote_code(self) -> bool:
+        raw = self.request.get("trustRemoteCode", False)
+        if isinstance(raw, bool):
+            return raw
+        if isinstance(raw, str):
+            normalized = raw.strip().lower()
+            return normalized in {"1", "true", "yes", "on"}
+        return bool(raw)
+
     def resolve_training_mode(self) -> tuple[str, list[str]]:
         probe = self.request.get("dependencyProbe")
         requested_mode = str(self.request.get("trainMode") or "auto").strip().lower()
@@ -149,10 +158,22 @@ class Harness:
 
     def load_starter_sft_examples(self) -> list[dict[str, Any]]:
         repo_root = Path(__file__).resolve().parents[1]
-        starter_files = [
+        starter_files: list[Path] = []
+
+        synthetic_paths = self.request.get("syntheticDataPaths")
+        if isinstance(synthetic_paths, list):
+            for value in synthetic_paths:
+                if isinstance(value, str) and value.strip():
+                    starter_files.append(Path(value.strip()).expanduser().resolve())
+
+        synthetic_path = self.request.get("syntheticDataPath")
+        if isinstance(synthetic_path, str) and synthetic_path.strip():
+            starter_files.append(Path(synthetic_path.strip()).expanduser().resolve())
+
+        starter_files.extend([
             repo_root / "MemorySmith.Training" / "synthetic" / "starter_sft.jsonl",
             repo_root / "MemorySmith.Training" / "synthetic" / "starter_sft.expanded.jsonl",
-        ]
+        ])
 
         examples: list[dict[str, Any]] = []
         for starter_file in starter_files:
@@ -266,22 +287,35 @@ class Harness:
 
         return epochs, sequence_length, learning_rate, max_train_steps
 
-    def to_training_text(self, rows: list[dict[str, Any]]) -> list[str]:
+    def to_training_text(self, rows: list[dict[str, Any]], tokenizer: Any) -> list[str]:
         texts: list[str] = []
         for row in rows:
             messages = row.get("messages")
             if not isinstance(messages, list):
                 continue
 
-            turns: list[str] = []
+            normalized_messages: list[dict[str, str]] = []
             for message in messages:
                 role = str(message.get("role") or "").strip()
                 content = str(message.get("content") or "").strip()
                 if role and content:
-                    turns.append(f"<{role}>\n{content}")
+                    normalized_messages.append({"role": role, "content": content})
 
-            if turns:
-                texts.append("\n\n".join(turns))
+            if not normalized_messages:
+                continue
+
+            if hasattr(tokenizer, "apply_chat_template"):
+                text = tokenizer.apply_chat_template(
+                    normalized_messages,
+                    tokenize=False,
+                    add_generation_prompt=False,
+                )
+            else:
+                turns = [f"<{m['role']}>\n{m['content']}" for m in normalized_messages]
+                text = "\n\n".join(turns)
+
+            if text:
+                texts.append(str(text))
         return texts
 
     def train_lora(self, rows: list[dict[str, Any]]) -> dict[str, Any]:
@@ -292,7 +326,8 @@ class Harness:
         model_id = self.resolve_model_id()
         epochs, sequence_length, learning_rate, max_train_steps = self.resolve_hyperparameters()
 
-        tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
+        trust_remote_code = self.resolve_trust_remote_code()
+        tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=trust_remote_code)
         if tokenizer.pad_token is None:
             tokenizer.pad_token = tokenizer.eos_token
 
@@ -302,7 +337,7 @@ class Harness:
         model = AutoModelForCausalLM.from_pretrained(
             model_id,
             dtype=torch_dtype,
-            trust_remote_code=True,
+            trust_remote_code=trust_remote_code,
             device_map=None,
             low_cpu_mem_usage=False,
         )
@@ -320,7 +355,7 @@ class Harness:
         model = get_peft_model(model, lora_config)
         model.train()
 
-        texts = self.to_training_text(rows)
+        texts = self.to_training_text(rows, tokenizer)
         if not texts:
             raise RuntimeError("No valid training records were found in the exported dataset.")
 
@@ -421,6 +456,7 @@ class Harness:
             "device": training_device,
             "sequenceLength": sequence_length,
             "learningRate": learning_rate,
+            "trustRemoteCode": trust_remote_code,
         }
 
     def infer_lora(self, adapter_path_str: str) -> dict[str, Any]:
@@ -433,6 +469,7 @@ class Harness:
             raise RuntimeError(f"Adapter path does not exist: {adapter_path_str}")
 
         model_id = self.resolve_model_id()
+        trust_remote_code = self.resolve_trust_remote_code()
         cuda_available = torch.cuda.is_available()
         torch_dtype = torch.bfloat16 if cuda_available and torch.cuda.is_bf16_supported() else torch.float16
         inference_device = "cuda" if cuda_available else "cpu"
@@ -442,7 +479,7 @@ class Harness:
         base_model = AutoModelForCausalLM.from_pretrained(
             model_id,
             dtype=torch_dtype,
-            trust_remote_code=True,
+            trust_remote_code=trust_remote_code,
             device_map=None,
             low_cpu_mem_usage=False,
         )
@@ -456,7 +493,7 @@ class Harness:
         merged_model.eval()
 
         # Load tokenizer
-        tokenizer = AutoTokenizer.from_pretrained(adapter_path, trust_remote_code=True)
+        tokenizer = AutoTokenizer.from_pretrained(adapter_path, trust_remote_code=trust_remote_code)
         if tokenizer.pad_token is None:
             tokenizer.pad_token = tokenizer.eos_token
 
@@ -508,6 +545,7 @@ class Harness:
             "mergedOutputLength": len(merged_text),
             "baseOutputPreview": base_text[:80],
             "mergedOutputPreview": merged_text[:80],
+            "trustRemoteCode": trust_remote_code,
         }
 
     def write_benchmark(self, records: int, tokens_est: int, train_metrics: dict[str, Any], elapsed_export: float, elapsed_train: float, elapsed_eval: float) -> None:

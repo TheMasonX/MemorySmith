@@ -9,12 +9,14 @@ param(
     [ValidateSet("auto", "simulated", "lora", "infer")]
     [string]$TrainMode = "auto",
     [string]$ModelId = "Qwen/Qwen3.5-4B",
+    [string[]]$SyntheticDataPath,
     [string]$AdapterPath,
     [string]$HfToken,
     [int]$Epochs = 1,
     [double]$LearningRate = 0.0002,
     [int]$SequenceLength = 512,
     [int]$MaxTrainSteps = 0,
+    [switch]$TrustRemoteCode,
     [switch]$RequireTrainingDependencies,
     [switch]$DryRun
 )
@@ -223,6 +225,7 @@ $request = [ordered]@{
         learningRate = $LearningRate
         sequenceLength = $SequenceLength
     }
+    trustRemoteCode = [bool]$TrustRemoteCode
 }
 
 if ($MaxTrainSteps -gt 0) {
@@ -232,6 +235,19 @@ if ($MaxTrainSteps -gt 0) {
 # Add adapterPath if provided (for inference mode)
 if (-not [string]::IsNullOrWhiteSpace($AdapterPath)) {
     $request["adapterPath"] = (Resolve-WorkflowPath $AdapterPath)
+}
+
+if ($SyntheticDataPath -and $SyntheticDataPath.Count -gt 0) {
+    $resolvedSynthetic = @()
+    foreach ($pathValue in $SyntheticDataPath) {
+        if (-not [string]::IsNullOrWhiteSpace($pathValue)) {
+            $resolvedSynthetic += (Resolve-WorkflowPath $pathValue)
+        }
+    }
+
+    if ($resolvedSynthetic.Count -gt 0) {
+        $request["syntheticDataPaths"] = $resolvedSynthetic
+    }
 }
 
 $requestJson = $request | ConvertTo-Json -Depth 8
