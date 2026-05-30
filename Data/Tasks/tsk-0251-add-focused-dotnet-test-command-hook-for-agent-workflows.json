@@ -1,0 +1,58 @@
+{
+  "id": "tsk-0251-add-focused-dotnet-test-command-hook-for-agent-workflows",
+  "key": "TSK-0251",
+  "title": "Add focused dotnet test command hook for agent workflows",
+  "description": "Problem: agents frequently rebuild long dotnet test filter commands by hand, increasing token usage and typo risk during focused validation loops. Existing workflow guidance already encourages script-driven operations where repeated command construction appears.
+
+Desired outcome: provide a stable hook script that produces focused dotnet test command payloads from test names/categories, with machine-readable output for agent reuse.
+
+Scope:
+- In scope: add Scripts/SkillHooks/New-FocusedDotnetTestCommand.ps1.
+- In scope: output a compact JSON contract including command text, computed filter, and warnings.
+- In scope: add focused usage docs in Scripts/SkillHooks/README.md.
+- Out of scope: replacing all test execution scripts or changing test discovery semantics.
+
+Validation:
+- Script smoke tests for one-name, multi-name, and empty input behavior.
+- Verify generated command executes successfully in at least one focused test scenario.
+
+Confidence target: 93%.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "AgentSmith",
+  "labels": [
+    "skills",
+    "scripts",
+    "devex",
+    "now",
+    "confidence-93"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "requests/skill-small-improvements-batch-20260529"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0251-20260530",
+      "author": "AgentSmith",
+      "body": "Created from self-review pass to convert repeated focused test command authoring into a reusable hook contract.",
+      "createdAtUtc": "2026-05-30T22:00:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-30T22:00:00.0000000Z",
+  "updatedAtUtc": "2026-05-30T22:00:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

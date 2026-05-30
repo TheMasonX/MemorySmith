@@ -443,11 +443,13 @@ public sealed partial class OllamaChatProvider : IChatProvider
 {
     private readonly HttpClient _httpClient;
     private readonly IOptionsMonitor<MemorySmithOptions> _options;
+    private readonly ILogger<OllamaChatProvider>? _logger;
 
-    public OllamaChatProvider(HttpClient httpClient, IOptionsMonitor<MemorySmithOptions> options)
+    public OllamaChatProvider(HttpClient httpClient, IOptionsMonitor<MemorySmithOptions> options, ILogger<OllamaChatProvider>? logger = null)
     {
         _httpClient = httpClient;
         _options = options;
+        _logger = logger;
     }
 
     public string Name => "Ollama";
@@ -489,6 +491,7 @@ public sealed partial class OllamaChatProvider : IChatProvider
 
         using var document = JsonDocument.Parse(body);
         var (content, thinking) = ReadOllamaContent(document.RootElement);
+        _logger?.LogDebug("Ollama complete response received for model {Model}. Reply chars: {ReplyLength}.", model, content.Length);
         return new ChatProviderResponse(content, Name, model, thinking, ReadOllamaUsage(document.RootElement));
     }
 
@@ -526,6 +529,7 @@ public sealed partial class OllamaChatProvider : IChatProvider
         var content = new StringBuilder();
         string? finalThinking = null;
         var emittedFinal = false;
+        var malformedLines = 0;
         await using var stream = await response.Content.ReadAsStreamAsync(timeout.Token);
         using var reader = new StreamReader(stream);
         while (true)
@@ -541,7 +545,20 @@ public sealed partial class OllamaChatProvider : IChatProvider
                 continue;
             }
 
-            using var document = JsonDocument.Parse(line);
+            JsonDocument document;
+            try
+            {
+                document = JsonDocument.Parse(line);
+            }
+            catch (JsonException)
+            {
+                // Preserve partial output when a provider emits one malformed stream line.
+                malformedLines++;
+                continue;
+            }
+
+            using (document)
+            {
             var root = document.RootElement;
             var delta = ReadOllamaDelta(root, out var thinkingDelta);
             if (!string.IsNullOrEmpty(delta))
@@ -565,12 +582,18 @@ public sealed partial class OllamaChatProvider : IChatProvider
                 emittedFinal = true;
                 yield return new ChatProviderChunk(string.Empty, null, visible, thinking, IsFinal: true, Name, model, Usage: usage);
             }
+            }
         }
 
         if (!emittedFinal && content.Length > 0)
         {
             var (visible, thinking) = SplitThinking(content.ToString(), finalThinking);
             yield return new ChatProviderChunk(string.Empty, null, visible, thinking, IsFinal: true, Name, model);
+        }
+
+        if (malformedLines > 0)
+        {
+            _logger?.LogWarning("Ollama stream for model {Model} skipped {MalformedLines} malformed JSON line(s).", model, malformedLines);
         }
     }
 
@@ -771,10 +794,12 @@ public sealed partial class OllamaChatProvider : IChatProvider
 public sealed class GitHubCopilotChatProvider : IChatProvider
 {
     private readonly IOptionsMonitor<MemorySmithOptions> _options;
+    private readonly ILogger<GitHubCopilotChatProvider>? _logger;
 
-    public GitHubCopilotChatProvider(IOptionsMonitor<MemorySmithOptions> options)
+    public GitHubCopilotChatProvider(IOptionsMonitor<MemorySmithOptions> options, ILogger<GitHubCopilotChatProvider>? logger = null)
     {
         _options = options;
+        _logger = logger;
     }
 
     public string Name => "GitHub";
@@ -830,6 +855,7 @@ public sealed class GitHubCopilotChatProvider : IChatProvider
         timeout.CancelAfter(TimeSpan.FromSeconds(Math.Clamp(chatOptions.RequestTimeoutSeconds, 5, 600)));
 
         var model = ResolveModel(request, chatOptions);
+        _logger?.LogDebug("Starting GitHub stream for model {Model}.", model);
         var channel = Channel.CreateUnbounded<ChatProviderChunk>();
         var content = new StringBuilder();
         var thinking = new StringBuilder();
@@ -912,6 +938,7 @@ public sealed class GitHubCopilotChatProvider : IChatProvider
                             Usage: usage));
                         break;
                     case SessionIdleEvent:
+                        _logger?.LogDebug("GitHub stream reached idle for model {Model}.", model);
                         channel.Writer.TryWrite(new ChatProviderChunk(
                             string.Empty,
                             null,
@@ -924,12 +951,14 @@ public sealed class GitHubCopilotChatProvider : IChatProvider
                         channel.Writer.TryComplete();
                         break;
                     case SessionErrorEvent error:
+                        _logger?.LogWarning("GitHub stream reported session error for model {Model}: {Message}", model, error.Data.Message);
                         channel.Writer.TryComplete(new InvalidOperationException(error.Data.Message));
                         break;
                 }
             }
             catch (Exception ex)
             {
+                _logger?.LogWarning(ex, "GitHub stream event handling failed for model {Model}.", model);
                 channel.Writer.TryComplete(ex);
             }
         });
@@ -944,6 +973,8 @@ public sealed class GitHubCopilotChatProvider : IChatProvider
         {
             yield return chunk;
         }
+
+        _logger?.LogDebug("GitHub stream completed for model {Model}.", model);
     }
 
     public async Task<IReadOnlyList<ChatModelSummary>> ListModelsAsync(CancellationToken cancellationToken)
@@ -1286,6 +1317,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
     private readonly ITaskService? _tasks;
     private readonly CodeSearchService? _codeSearch;
     private readonly IChatTranscriptWriter? _transcriptWriter;
+    private readonly ILogger<MemoryChatAgent>? _logger;
 
     public MemoryChatAgent(
         IEnumerable<IChatProvider> providers,
@@ -1298,7 +1330,8 @@ public sealed partial class MemoryChatAgent : IChatAgent
         MaintenanceProposalWorkflow? proposalWorkflow = null,
         ITaskService? tasks = null,
         CodeSearchService? codeSearch = null,
-        IChatTranscriptWriter? transcriptWriter = null)
+        IChatTranscriptWriter? transcriptWriter = null,
+        ILogger<MemoryChatAgent>? logger = null)
     {
         _providers = providers.ToList();
         if (_providers.Count == 0)
@@ -1316,6 +1349,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
         _tasks = tasks;
         _codeSearch = codeSearch;
         _transcriptWriter = transcriptWriter;
+        _logger = logger;
     }
 
     public async Task<MemoryChatResponse> SendAsync(MemoryChatRequest request, CancellationToken cancellationToken)
@@ -1326,6 +1360,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
         }
 
         var provider = ResolveProvider(request.Provider);
+        _logger?.LogDebug("Chat SendAsync started. Mode: {Mode}, Provider: {Provider}, RequestedModel: {Model}", request.Mode, provider.Name, request.Model ?? "(default)");
         var contextPlan = BuildContextPlan(request);
         var context = await BuildContextAsync(request, contextPlan, cancellationToken);
         var interceptResults = await RunIntentInterceptAsync(request.Message, request.Mode, cancellationToken);
@@ -1334,7 +1369,12 @@ public sealed partial class MemoryChatAgent : IChatAgent
         var toolLoop = await CompleteWithToolCallsAsync(provider, request, messages, cancellationToken);
         var providerResponse = toolLoop.Response;
 
-        return await BuildResponseAsync(request, providerResponse, MergeContext(context, accessedContext, toolLoop.AccessedContext), cancellationToken);
+        return await BuildResponseAsync(
+            request,
+            providerResponse,
+            MergeContext(context, accessedContext, toolLoop.AccessedContext),
+            new TranscriptExecutionMetrics(toolLoop.FirstTokenMs, toolLoop.TotalMs, toolLoop.IterationsUsed, toolLoop.ToolCalls),
+            cancellationToken);
     }
 
     public async IAsyncEnumerable<MemoryChatStreamUpdate> StreamAsync(MemoryChatRequest request, [EnumeratorCancellation] CancellationToken cancellationToken)
@@ -1345,6 +1385,12 @@ public sealed partial class MemoryChatAgent : IChatAgent
         }
 
         var provider = ResolveProvider(request.Provider);
+        _logger?.LogDebug("Chat StreamAsync started. Mode: {Mode}, Provider: {Provider}, RequestedModel: {Model}", request.Mode, provider.Name, request.Model ?? "(default)");
+        var streamStarted = Stopwatch.GetTimestamp();
+        int? firstTokenMs = null;
+        var transcriptToolCalls = new List<TurnToolCall>();
+        var streamIterationsUsed = 0;
+        var maxToolCallsPerTurn = Math.Clamp(_options.Value.Chat.MaxToolCallsPerTurn, 1, 10);
         var contextPlan = BuildContextPlan(request);
         var context = await BuildContextAsync(request, contextPlan, cancellationToken);
         var interceptResults = await RunIntentInterceptAsync(request.Message, request.Mode, cancellationToken);
@@ -1407,6 +1453,10 @@ public sealed partial class MemoryChatAgent : IChatAgent
                 {
                     thinking.Append(chunk.ThinkingDelta);
                 }
+                if (!firstTokenMs.HasValue && (!string.IsNullOrEmpty(chunk.ContentDelta) || !string.IsNullOrEmpty(chunk.ThinkingDelta)))
+                {
+                    firstTokenMs = ClampMilliseconds(Stopwatch.GetElapsedTime(streamStarted).TotalMilliseconds);
+                }
                 if (chunk.Usage is not null)
                 {
                     var usageForActiveCall = CompleteUsage(chunk.ProviderName, chunk.Model, messages, content.ToString(), chunk.Usage);
@@ -1457,7 +1507,12 @@ public sealed partial class MemoryChatAgent : IChatAgent
                         Content = "The model requested another MemorySmith wiki tool call after the configured tool-iteration limit. Try narrowing the request or increasing Chat:MaxToolIterations."
                     };
                     var limitedContext = MergeContext(context, accessedContext);
-                    var limitedResponse = await BuildResponseAsync(request, providerResponse, limitedContext, cancellationToken);
+                    var limitedResponse = await BuildResponseAsync(
+                        request,
+                        providerResponse,
+                        limitedContext,
+                        BuildTranscriptMetrics(streamStarted, firstTokenMs, streamIterationsUsed, transcriptToolCalls),
+                        cancellationToken);
                     yield return new MemoryChatStreamUpdate(IsFinal: true, Response: limitedResponse, Context: limitedContext, Usage: limitedResponse.Usage);
                     yield break;
                 }
@@ -1484,7 +1539,12 @@ public sealed partial class MemoryChatAgent : IChatAgent
                         Content = "Stopped before running the requested MemorySmith wiki tool call(s)."
                     };
                     var stoppedContext = MergeContext(context, accessedContext);
-                    var stoppedResponse = await BuildResponseAsync(request, providerResponse, stoppedContext, cancellationToken);
+                    var stoppedResponse = await BuildResponseAsync(
+                        request,
+                        providerResponse,
+                        stoppedContext,
+                        BuildTranscriptMetrics(streamStarted, firstTokenMs, streamIterationsUsed, transcriptToolCalls),
+                        cancellationToken);
                     yield return new MemoryChatStreamUpdate(
                         IsFinal: true,
                         Response: stoppedResponse,
@@ -1497,6 +1557,8 @@ public sealed partial class MemoryChatAgent : IChatAgent
 
                 var toolResults = await ExecuteToolCallsAsync(toolCalls, request.Mode, RequiresAgentWriteApproval(request), cancellationToken);
                 accessedContext.AddRange(ExtractToolContext(toolResults));
+                streamIterationsUsed++;
+                transcriptToolCalls.AddRange(ProjectTranscriptToolCalls(toolCalls, toolResults, maxToolCallsPerTurn));
                 messages.Add(new ChatMessage("assistant", providerResponse.Content));
                 messages.Add(new ChatMessage(UntrustedDataRole, FormatToolResults(toolResults)));
                 var toolResultTrace = toolResults
@@ -1523,7 +1585,12 @@ public sealed partial class MemoryChatAgent : IChatAgent
                         Content = "Stopped after running MemorySmith wiki tool call(s). The tool results are available in the trace; send a follow-up to continue from them."
                     };
                     var stoppedContext = MergeContext(context, accessedContext);
-                    var stoppedResponse = await BuildResponseAsync(request, providerResponse, stoppedContext, cancellationToken);
+                    var stoppedResponse = await BuildResponseAsync(
+                        request,
+                        providerResponse,
+                        stoppedContext,
+                        BuildTranscriptMetrics(streamStarted, firstTokenMs, streamIterationsUsed, transcriptToolCalls),
+                        cancellationToken);
                     yield return new MemoryChatStreamUpdate(
                         IsFinal: true,
                         Response: stoppedResponse,
@@ -1538,7 +1605,12 @@ public sealed partial class MemoryChatAgent : IChatAgent
             }
 
             var responseContext = MergeContext(context, accessedContext);
-            var response = await BuildResponseAsync(request, providerResponse, responseContext, cancellationToken);
+            var response = await BuildResponseAsync(
+                request,
+                providerResponse,
+                responseContext,
+                BuildTranscriptMetrics(streamStarted, firstTokenMs, streamIterationsUsed, transcriptToolCalls),
+                cancellationToken);
             yield return new MemoryChatStreamUpdate(IsFinal: true, Response: response, Context: responseContext, Usage: response.Usage);
             yield break;
         }
@@ -1550,10 +1622,15 @@ public sealed partial class MemoryChatAgent : IChatAgent
         IReadOnlyList<ChatMessage> initialMessages,
         CancellationToken cancellationToken)
     {
+        var started = Stopwatch.GetTimestamp();
+        int? firstTokenMs = null;
+        var transcriptToolCalls = new List<TurnToolCall>();
+        var iterationsUsed = 0;
         var messages = initialMessages.ToList();
         var accessedContext = new List<ChatContextItem>();
         ChatUsageSummary? aggregateUsage = null;
         var maxToolIterations = MaxToolIterations();
+        var maxToolCallsPerTurn = Math.Clamp(_options.Value.Chat.MaxToolCallsPerTurn, 1, 10);
         for (var iteration = 0; ; iteration++)
         {
             var providerResponse = await provider.CompleteAsync(
@@ -1562,11 +1639,19 @@ public sealed partial class MemoryChatAgent : IChatAgent
             var completedUsage = CompleteUsage(providerResponse.ProviderName, providerResponse.Model, messages, providerResponse.Content, providerResponse.Usage);
             aggregateUsage = MergeTurnUsage(aggregateUsage, completedUsage);
             providerResponse = providerResponse with { Usage = aggregateUsage };
+            firstTokenMs ??= ClampMilliseconds(Stopwatch.GetElapsedTime(started).TotalMilliseconds);
 
             var toolCalls = _options.Value.Chat.ToolCallsEnabled ? ReadToolCalls(providerResponse.Content) : [];
             if (toolCalls.Count == 0)
             {
-                return new ToolLoopResult(providerResponse, messages, accessedContext);
+                return new ToolLoopResult(
+                    providerResponse,
+                    messages,
+                    accessedContext,
+                    firstTokenMs ?? 0,
+                    ClampMilliseconds(Stopwatch.GetElapsedTime(started).TotalMilliseconds),
+                    iterationsUsed,
+                    transcriptToolCalls);
             }
 
             if (iteration >= maxToolIterations)
@@ -1574,11 +1659,19 @@ public sealed partial class MemoryChatAgent : IChatAgent
                 return new ToolLoopResult(providerResponse with
                 {
                     Content = "The model requested another MemorySmith wiki tool call after the configured tool-iteration limit. Try narrowing the request or increasing Chat:MaxToolIterations."
-                }, messages, accessedContext);
+                },
+                messages,
+                accessedContext,
+                firstTokenMs ?? 0,
+                ClampMilliseconds(Stopwatch.GetElapsedTime(started).TotalMilliseconds),
+                iterationsUsed,
+                transcriptToolCalls);
             }
 
             var toolResults = await ExecuteToolCallsAsync(toolCalls, request.Mode, RequiresAgentWriteApproval(request), cancellationToken);
             accessedContext.AddRange(ExtractToolContext(toolResults));
+            iterationsUsed++;
+            transcriptToolCalls.AddRange(ProjectTranscriptToolCalls(toolCalls, toolResults, maxToolCallsPerTurn));
             messages.Add(new ChatMessage("assistant", providerResponse.Content));
             messages.Add(new ChatMessage(UntrustedDataRole, FormatToolResults(toolResults)));
         }
@@ -1588,6 +1681,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
         MemoryChatRequest request,
         ChatProviderResponse providerResponse,
         IReadOnlyList<ChatContextItem> context,
+        TranscriptExecutionMetrics? executionMetrics,
         CancellationToken cancellationToken)
     {
         var turnId = Guid.NewGuid().ToString("N");
@@ -1630,7 +1724,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
                 TurnId: turnId);
         }
 
-        await TryWriteTranscriptAsync(turnId, request, response, providerResponse, context, cancellationToken);
+        await TryWriteTranscriptAsync(turnId, request, response, providerResponse, context, executionMetrics, cancellationToken);
         return response;
     }
 
@@ -1640,6 +1734,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
         MemoryChatResponse response,
         ChatProviderResponse providerResponse,
         IReadOnlyList<ChatContextItem> context,
+        TranscriptExecutionMetrics? executionMetrics,
         CancellationToken cancellationToken)
     {
         if (_transcriptWriter is null || !_options.Value.Training.ChatTranscriptEnabled)
@@ -1674,13 +1769,13 @@ public sealed partial class MemoryChatAgent : IChatAgent
             },
             Execution = new TurnExecution
             {
-                ToolCalls = [],
-                IterationsUsed = 0,
+                ToolCalls = executionMetrics?.ToolCalls.ToList() ?? [],
+                IterationsUsed = executionMetrics?.IterationsUsed ?? 0,
                 PromptTokens = providerResponse.Usage?.InputTokens,
                 CompletionTokens = providerResponse.Usage?.OutputTokens,
                 TotalTokens = providerResponse.Usage is null ? null : providerResponse.Usage.InputTokens + providerResponse.Usage.OutputTokens,
-                FirstTokenMs = 0,
-                TotalMs = 0
+                FirstTokenMs = executionMetrics?.FirstTokenMs ?? 0,
+                TotalMs = executionMetrics?.TotalMs ?? 0
             },
             Response = new TurnResponse
             {
@@ -1708,6 +1803,57 @@ public sealed partial class MemoryChatAgent : IChatAgent
         var contextPlan = BuildContextPlan(request);
         var systemPrompt = BuildSystemPrompt(request, provider.Capabilities, contextPlan);
         return ChatTranscriptWriter.Sha256Hex(systemPrompt);
+    }
+
+    private static TranscriptExecutionMetrics BuildTranscriptMetrics(
+        long startedTimestamp,
+        int? firstTokenMs,
+        int iterationsUsed,
+        IReadOnlyList<TurnToolCall> toolCalls)
+    {
+        var totalMs = ClampMilliseconds(Stopwatch.GetElapsedTime(startedTimestamp).TotalMilliseconds);
+        return new TranscriptExecutionMetrics(firstTokenMs ?? totalMs, totalMs, iterationsUsed, toolCalls.ToList());
+    }
+
+    private static int ClampMilliseconds(double milliseconds)
+    {
+        if (double.IsNaN(milliseconds) || double.IsInfinity(milliseconds) || milliseconds <= 0)
+        {
+            return 0;
+        }
+
+        return milliseconds >= int.MaxValue
+            ? int.MaxValue
+            : (int)Math.Round(milliseconds, MidpointRounding.AwayFromZero);
+    }
+
+    private static IReadOnlyList<TurnToolCall> ProjectTranscriptToolCalls(
+        IReadOnlyList<ChatToolCall> requestedCalls,
+        IReadOnlyList<ChatToolResult> results,
+        int maxCallsPerTurn)
+    {
+        var executedCount = Math.Min(Math.Min(requestedCalls.Count, maxCallsPerTurn), results.Count);
+        if (executedCount <= 0)
+        {
+            return [];
+        }
+
+        var projected = new List<TurnToolCall>(executedCount);
+        for (var index = 0; index < executedCount; index++)
+        {
+            var requested = requestedCalls[index];
+            var result = results[index];
+            projected.Add(new TurnToolCall
+            {
+                Name = requested.Name,
+                ArgumentsJson = requested.Arguments.ToJsonString(ToolJsonOptions),
+                LatencyMs = ClampMilliseconds(result.DurationMilliseconds ?? 0),
+                Succeeded = !result.IsError,
+                ErrorMessage = result.IsError ? Truncate(result.Content, 500) : null
+            });
+        }
+
+        return projected;
     }
 
     public async Task<AgentWriteApplyResult> ApplyAgentWritesAsync(
@@ -2419,7 +2565,8 @@ public sealed partial class MemoryChatAgent : IChatAgent
             return 0;
         }
 
-        return Math.Max(1, (int)Math.Ceiling(text.Length / 4.0));
+        // Use a slightly conservative default to reduce context-window overrun risk.
+        return Math.Max(1, (int)Math.Ceiling(text.Length / 3.0));
     }
 
     private ChatContextPlan BuildContextPlan(MemoryChatRequest request) =>
@@ -2536,33 +2683,89 @@ public sealed partial class MemoryChatAgent : IChatAgent
         ChatContextPlan contextPlan)
     {
         var options = _options.Value.Chat;
-        var messages = new List<ChatMessage>
-        {
-            new("system", BuildSystemPrompt(request, provider.Capabilities, contextPlan)),
-            new("system", FormatCurrentUser()),
-            new("system", FormatCapabilityContext(request, provider, contextPlan)),
-            new(UntrustedDataRole, FormatContext(context))
-        };
-
-        if (interceptResults.Count > 0)
-        {
-            messages.Add(new ChatMessage(UntrustedDataRole, FormatInterceptResults(interceptResults)));
-        }
+        var contextItems = context.ToList();
+        var historyMessages = request.History is null
+            ? new List<ChatMessage>()
+            : request.History
+                .Where(message => IsSupportedRole(message.Role) && !string.IsNullOrWhiteSpace(message.Content))
+                .TakeLast(Math.Clamp(options.MaxHistoryMessages, 0, 64))
+                .ToList();
 
         var attachments = FormatAttachments(request.Attachments, options.MaxAttachmentCharacters);
-        if (!string.IsNullOrWhiteSpace(attachments))
+
+        List<ChatMessage> Compose(IReadOnlyList<ChatContextItem> currentContext, IReadOnlyList<ChatMessage> currentHistory)
         {
-            messages.Add(new ChatMessage(UntrustedDataRole, attachments));
+            var composed = new List<ChatMessage>
+            {
+                new("system", BuildSystemPrompt(request, provider.Capabilities, contextPlan)),
+                new("system", FormatCurrentUser()),
+                new("system", FormatCapabilityContext(request, provider, contextPlan)),
+                new(UntrustedDataRole, FormatContext(currentContext))
+            };
+
+            if (interceptResults.Count > 0)
+            {
+                composed.Add(new ChatMessage(UntrustedDataRole, FormatInterceptResults(interceptResults)));
+            }
+
+            if (!string.IsNullOrWhiteSpace(attachments))
+            {
+                composed.Add(new ChatMessage(UntrustedDataRole, attachments));
+            }
+
+            composed.AddRange(currentHistory);
+            composed.Add(new ChatMessage("user", request.Message));
+            return composed;
         }
 
-        if (request.History is not null)
+        var messages = Compose(contextItems, historyMessages);
+        var resolvedModel = string.IsNullOrWhiteSpace(request.Model) ? DefaultModelForProvider(provider.Name) : request.Model.Trim();
+        var (contextWindowTokens, _) = ResolveUsageMetadata(provider.Name, resolvedModel);
+        if (!contextWindowTokens.HasValue || contextWindowTokens.Value <= 0)
         {
-            messages.AddRange(request.History
-                .Where(message => IsSupportedRole(message.Role) && !string.IsNullOrWhiteSpace(message.Content))
-                .TakeLast(Math.Clamp(options.MaxHistoryMessages, 0, 64)));
+            return messages;
         }
 
-        messages.Add(new ChatMessage("user", request.Message));
+        var budget = Math.Max(512, (int)Math.Floor(contextWindowTokens.Value * 0.90));
+        var droppedContext = 0;
+        var droppedHistory = 0;
+
+        while (EstimateTokens(messages) > budget && contextItems.Count > 0)
+        {
+            contextItems.RemoveAt(contextItems.Count - 1);
+            droppedContext++;
+            messages = Compose(contextItems, historyMessages);
+        }
+
+        while (EstimateTokens(messages) > budget && historyMessages.Count > 0)
+        {
+            historyMessages.RemoveAt(0);
+            droppedHistory++;
+            messages = Compose(contextItems, historyMessages);
+        }
+
+        if (droppedContext > 0 || droppedHistory > 0)
+        {
+            _logger?.LogInformation(
+                "Trimmed chat payload for context window. Provider: {Provider}, Model: {Model}, Budget: {Budget}, DroppedContextItems: {DroppedContextItems}, DroppedHistoryMessages: {DroppedHistoryMessages}, FinalEstimatedTokens: {FinalEstimatedTokens}",
+                provider.Name,
+                resolvedModel,
+                budget,
+                droppedContext,
+                droppedHistory,
+                EstimateTokens(messages));
+        }
+
+        if (EstimateTokens(messages) > budget)
+        {
+            _logger?.LogWarning(
+                "Chat payload still exceeds context budget after trimming. Provider: {Provider}, Model: {Model}, Budget: {Budget}, FinalEstimatedTokens: {FinalEstimatedTokens}",
+                provider.Name,
+                resolvedModel,
+                budget,
+                EstimateTokens(messages));
+        }
+
         return messages;
     }
 
@@ -3211,7 +3414,15 @@ public sealed partial class MemoryChatAgent : IChatAgent
         IReadOnlyList<AgentMemoryWriteProposal> ProposedMemoryWrites,
         IReadOnlyList<AgentPageWriteProposal> ProposedPageWrites,
         bool ParsedJson);
-    private sealed record ToolLoopResult(ChatProviderResponse Response, IReadOnlyList<ChatMessage> Messages, IReadOnlyList<ChatContextItem> AccessedContext);
+    private sealed record TranscriptExecutionMetrics(int FirstTokenMs, int TotalMs, int IterationsUsed, IReadOnlyList<TurnToolCall> ToolCalls);
+    private sealed record ToolLoopResult(
+        ChatProviderResponse Response,
+        IReadOnlyList<ChatMessage> Messages,
+        IReadOnlyList<ChatContextItem> AccessedContext,
+        int FirstTokenMs,
+        int TotalMs,
+        int IterationsUsed,
+        IReadOnlyList<TurnToolCall> ToolCalls);
     private sealed record ChatToolCall(string Name, JsonObject Arguments);
     private sealed record ChatToolResult(string Name, string Content, bool IsError, IReadOnlyList<ChatContextItem>? ContextItems = null, long? DurationMilliseconds = null);
 }

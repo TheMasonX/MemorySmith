@@ -474,6 +474,9 @@
     private const int MaxStoredAttachmentTextCharacters = 6000;
     private const int MaxStoredAttachmentImageCharacters = 12000;
     private const int NarrowChatViewportWidth = 640;
+    private const int MaxTurnRenderCacheEntries = 512;
+    private static readonly TimeSpan StreamRenderInterval = TimeSpan.FromMilliseconds(150);
+    private static readonly TimeSpan DraftPersistDebounce = TimeSpan.FromMilliseconds(800);
     private static readonly JsonSerializerOptions StorageJsonOptions = new(JsonSerializerDefaults.Web)
     {
         PropertyNameCaseInsensitive = true
@@ -517,11 +520,13 @@
     private string? _selectedTraceTurnId;
     private CancellationTokenSource? _responseTimerCts;
     private CancellationTokenSource? _sendCts;
+    private CancellationTokenSource? _draftPersistCts;
     private ChatRunControl? _activeRunControl;
     private DateTimeOffset? _responseStartedUtc;
     private TimeSpan _responseElapsed = TimeSpan.Zero;
     private int _streamedCharacters;
     private ChatUsageSummary? _currentUsage;
+    private readonly Dictionary<string, MarkupString> _turnRenderCache = new(StringComparer.Ordinal);
 
     private ChatSessionState ActiveSession =>
         _sessions.FirstOrDefault(session => session.Id == _activeSessionId) ?? _sessions.First();
@@ -1235,7 +1240,32 @@
     {
         _draft = args.Value?.ToString() ?? string.Empty;
         PersistActiveDraft();
-        await SaveSessionsAsync();
+        QueueDraftPersist();
+    }
+
+    private void QueueDraftPersist()
+    {
+        _draftPersistCts?.Cancel();
+        _draftPersistCts?.Dispose();
+        _draftPersistCts = new CancellationTokenSource();
+        _ = PersistDraftAfterDelayAsync(_draftPersistCts.Token);
+    }
+
+    private async Task PersistDraftAfterDelayAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await Task.Delay(DraftPersistDebounce, cancellationToken);
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+
+            await InvokeAsync(SaveSessionsAsync);
+        }
+        catch (OperationCanceledException)
+        {
+        }
     }
 
     private async Task OnResponseCommentInput(ChatTurnState turn, ChangeEventArgs args)
@@ -1326,6 +1356,7 @@
         _sendCts = sendCts;
         var runControl = new ChatRunControl();
         _activeRunControl = runControl;
+        var lastRenderUtc = DateTimeOffset.MinValue;
 
         try
         {
@@ -1381,8 +1412,14 @@
                     FinalizeActiveTraceEntries(pendingTurn);
                 }
 
-                _scrollPending = true;
-                await InvokeAsync(StateHasChanged);
+                var now = DateTimeOffset.UtcNow;
+                if (now - lastRenderUtc >= StreamRenderInterval || update.Response is not null)
+                {
+                    _scrollPending = true;
+                    await InvokeAsync(StateHasChanged);
+                    lastRenderUtc = now;
+                }
+
                 if (turnChanged && DateTimeOffset.UtcNow - lastStreamPersistUtc >= TimeSpan.FromSeconds(2))
                 {
                     session.UpdatedUtc = DateTimeOffset.UtcNow;
@@ -2071,6 +2108,8 @@
 
     private async Task SaveSessionsAsync()
     {
+        _draftPersistCts?.Cancel();
+
         if (!_hasLoadedSessions)
         {
             return;
@@ -2399,7 +2438,31 @@
 
     private static string LineageValue(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value.Trim();
 
-    private static MarkupString RenderTurnContent(ChatTurnState turn)
+    private MarkupString RenderTurnContent(ChatTurnState turn)
+    {
+        var isStreamingTurn = _isSending && ReferenceEquals(turn, ActiveSession.Turns.LastOrDefault());
+        if (!isStreamingTurn)
+        {
+            var cacheKey = $"{turn.Id}\n{turn.Content}";
+            if (_turnRenderCache.TryGetValue(cacheKey, out var cached))
+            {
+                return cached;
+            }
+
+            var rendered = RenderTurnContentCore(turn);
+            if (_turnRenderCache.Count >= MaxTurnRenderCacheEntries)
+            {
+                _turnRenderCache.Clear();
+            }
+
+            _turnRenderCache[cacheKey] = rendered;
+            return rendered;
+        }
+
+        return RenderTurnContentCore(turn);
+    }
+
+    private static MarkupString RenderTurnContentCore(ChatTurnState turn)
     {
         var html = ChatMarkdownRenderer.RenderHtml(turn.Content);
         var allowedPages = BuildPageAliasMap(turn).Values
@@ -2947,6 +3010,9 @@
         _sendCts?.Cancel();
         _sendCts?.Dispose();
         _sendCts = null;
+        _draftPersistCts?.Cancel();
+        _draftPersistCts?.Dispose();
+        _draftPersistCts = null;
         StopResponseTimer();
         if (_composerRegistered)
         {

@@ -48,10 +48,32 @@ Apply a small, low-risk batch of skill/tooling improvements that reduces repeate
 - Effort: low.
 - Confidence: 85%.
 
+### 5. Add a model-profile bootstrap hook for trained/default + stock comparator setup
+
+- Proposal: add `Scripts/SkillHooks/Ensure-TrainingModelProfiles.ps1`.
+- Purpose: verify required Ollama tags exist, optionally create a stock 24k comparator tag, and write a stable pair of model profiles (trained default + stock comparator) into the resolved settings override.
+- Output contract: machine-readable JSON with `resolvedSettingsPath`, `ollamaTags`, `createdTags`, `profileIds`, and `warnings`.
+- Classification: `Now`.
+- Impact: high (removes repeated manual setup drift before A/B sessions).
+- Effort: medium.
+- Confidence: 92%.
+
 ## Status
 
-`Requested`
+`InProgress`
+
+Execution tracking:
+
+- `TSK-0251` - focused dotnet test command hook
+- `TSK-0252` - skill contract lint script
+- `TSK-0253` - training model profile bootstrap hook
 
 ## Follow-Up
 
-- If approved, implement changes 1 and 2 first as a narrow batch and validate with `get_errors` plus script smoke checks.
+- Now:
+	- implement change 1 via `TSK-0251` (confidence 93%)
+	- implement change 2 via `TSK-0252` (confidence 90%)
+- Next:
+	- collapse duplicated CI wording to shared references (confidence 88%)
+- Later:
+	- add stable hook output schema README and examples (confidence 85%)

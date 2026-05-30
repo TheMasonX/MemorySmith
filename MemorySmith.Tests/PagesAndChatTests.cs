@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using System.Net;
 using System.Security.Claims;
+using System.Text.Json;
 
 namespace MemorySmith.Tests;
 
@@ -1982,9 +1983,70 @@ public class PagesAndChatTests
             Assert.That(response.TurnId, Is.Not.Null.And.Not.Empty);
             Assert.That(metadata, Does.Contain("\"SessionId\":\"session-123\""));
             Assert.That(metadata, Does.Contain(response.TurnId));
+            Assert.That(metadata, Does.Contain("\"FirstTokenMs\":"));
+            Assert.That(metadata, Does.Contain("\"TotalMs\":"));
             Assert.That(content, Does.Contain("assistant transcript reply"));
             Assert.That(content, Does.Contain("token=[REDACTED]"));
             Assert.That(content, Does.Not.Contain("abc123"));
+        });
+    }
+
+    [Test]
+    public async Task MemoryChatAgent_TranscriptIncludesToolTimingMetadata_WhenToolCallsExecute()
+    {
+        var memoryStore = new InMemoryMemoryStore();
+        var eventStore = new RecordingEventStore();
+        var publisher = new RecordingMemoryChangePublisher();
+        var memories = TestServiceFactory.CreateMemoryApplicationService(memoryStore, eventStore, publisher);
+        var pages = new FilePageService(_tempDir);
+        var options = CreateTaskToolOptions();
+        options.Training.ChatTranscriptEnabled = true;
+        options.Training.StoreChatContent = false;
+        options.Training.TranscriptDirectory = Path.Combine(_tempDir, "transcripts");
+        var tasks = CreateTaskService(options);
+        await tasks.CreateAsync(new TaskCreateRequest(
+            "Transcript Tool Timing",
+            "Tool timing metadata should be persisted in transcript execution records.",
+            "Task",
+            TaskStatuses.Ready,
+            TaskPriorities.Medium,
+            TaskAssigneeModes.Custom,
+            null,
+            "Agent",
+            "Test",
+            ["chat-tools"],
+            null,
+            null,
+            null), "Test", CancellationToken.None);
+
+        var provider = new SequencedChatProvider(
+            """
+            {"toolCalls":[{"name":"memorysmith_task_list","arguments":{"query":"Transcript Tool Timing","limit":5}}]}
+            """,
+            "Tool completed.");
+        var transcriptWriter = new ChatTranscriptWriter(new StaticOptionsMonitor<MemorySmithOptions>(options), NullLogger<ChatTranscriptWriter>.Instance);
+        var agent = new MemoryChatAgent([provider], memories, pages, Options.Create(options), tasks: tasks, transcriptWriter: transcriptWriter);
+
+        await agent.SendAsync(new MemoryChatRequest("Find transcript timing task", MemoryChatMode.Chat), CancellationToken.None);
+
+        var transcriptDir = Path.Combine(_tempDir, "transcripts");
+        var metadataPath = Directory.GetFiles(transcriptDir, "*.jsonl").Single(path => !path.EndsWith(".content.jsonl", StringComparison.OrdinalIgnoreCase));
+        var metadata = await File.ReadAllLinesAsync(metadataPath);
+        var latest = metadata.Last(line => !string.IsNullOrWhiteSpace(line));
+        using var document = JsonDocument.Parse(latest);
+        var execution = document.RootElement.GetProperty("Execution");
+        var toolCalls = execution.GetProperty("ToolCalls");
+        var toolCall = toolCalls[0];
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(execution.GetProperty("IterationsUsed").GetInt32(), Is.EqualTo(1));
+            Assert.That(execution.GetProperty("FirstTokenMs").GetInt32(), Is.GreaterThanOrEqualTo(0));
+            Assert.That(execution.GetProperty("TotalMs").GetInt32(), Is.GreaterThanOrEqualTo(execution.GetProperty("FirstTokenMs").GetInt32()));
+            Assert.That(toolCalls.GetArrayLength(), Is.EqualTo(1));
+            Assert.That(toolCall.GetProperty("Name").GetString(), Is.EqualTo("memorysmith_task_list"));
+            Assert.That(toolCall.GetProperty("LatencyMs").GetInt32(), Is.GreaterThanOrEqualTo(0));
+            Assert.That(toolCall.GetProperty("Succeeded").GetBoolean(), Is.True);
         });
     }
 

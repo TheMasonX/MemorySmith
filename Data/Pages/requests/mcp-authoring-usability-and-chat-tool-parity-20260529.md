@@ -73,9 +73,19 @@ is large enough that parity and usability drift are easy to introduce.
 
 ## Status
 
-`Requested`
+`InProgress`
+
+Active tracking:
+
+- `TSK-0224` (primary parity contract task)
 
 ## Follow-Up
 
 - Track execution in `TSK-0223` and `TSK-0224`.
 - Fold any resulting implementation into the prompt/runtime parity audit cadence and MCP recommendation backlog.
+
+### 2026-05-30 Self-Review Ordering
+
+- Now (confidence 92%): keep parity requirements explicit across prompt/runtime/docs and continue `TSK-0224` as the contract owner.
+- Next (confidence 90%): add scriptable parity drift checks that compare runtime tool catalog mode flags against documented/intercepted tool sets.
+- Later (confidence 88%): add coding-agent surface conformance checks once MCP bridge ergonomics from `TSK-0223` stabilize.
