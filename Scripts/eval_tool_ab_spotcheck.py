@@ -120,7 +120,14 @@ def build_cases() -> list[EvalCase]:
 
 def render_prompt(tokenizer: AutoTokenizer, user_prompt: str) -> str:
     messages = [
-        {"role": "system", "content": "You are Athena, MemorySmith's local wiki assistant."},
+        {
+            "role": "system",
+            "content": (
+                "You are Athena, MemorySmith's local wiki assistant. "
+                "When a search/retrieval action is requested, respond with exactly one JSON object "
+                "in the form {\"toolCalls\":[{\"name\":\"...\",\"arguments\":{...}}]} and no other text."
+            ),
+        },
         {"role": "user", "content": user_prompt},
     ]
 
@@ -287,6 +294,7 @@ def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
 def load_base_model(model_id: str) -> tuple[AutoModelForCausalLM, AutoTokenizer]:
     dtype = torch.bfloat16 if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else torch.float16
     tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
+    tokenizer.padding_side = "left"
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
@@ -309,6 +317,7 @@ def load_tuned_model(model_id: str, adapter_path: Path) -> tuple[AutoModelForCau
     merged.eval()
 
     tokenizer = AutoTokenizer.from_pretrained(str(adapter_path), trust_remote_code=True)
+    tokenizer.padding_side = "left"
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     return merged, tokenizer
