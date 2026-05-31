@@ -2058,6 +2058,41 @@ public class PagesAndChatTests
     }
 
     [Test]
+    public async Task OllamaChatProvider_StreamAsync_SkipsMalformedNdjsonLinesAndPreservesOutput()
+    {
+        var handler = new CapturingHandler("""
+        {"message":{"content":"hel"},"done":false}
+        NOT_JSON_LINE
+        {"message":{"content":"lo"},"done":false}
+        {"done":true}
+        """);
+        var logger = new RecordingLogger<OllamaChatProvider>();
+        var provider = new OllamaChatProvider(new HttpClient(handler), new StaticOptionsMonitor<MemorySmithOptions>(new MemorySmithOptions
+        {
+            Chat = new ChatOptions
+            {
+                OllamaEndpoint = "http://localhost:11434",
+                OllamaModel = "stream-model"
+            }
+        }), logger);
+
+        var chunks = new List<ChatProviderChunk>();
+        await foreach (var chunk in provider.StreamAsync(new ChatProviderRequest([new ChatMessage("user", "hello")], MemoryChatMode.Chat), CancellationToken.None))
+        {
+            chunks.Add(chunk);
+        }
+
+        var combinedLogs = string.Join(Environment.NewLine, logger.Messages);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(chunks.Where(chunk => !chunk.IsFinal).Select(chunk => chunk.ContentDelta), Is.EqualTo(new[] { "hel", "lo" }));
+            Assert.That(chunks.Single(chunk => chunk.IsFinal).FinalContent, Is.EqualTo("hello"));
+            Assert.That(combinedLogs, Does.Contain("skipped 1 malformed JSON line"));
+        });
+    }
+
+    [Test]
     public async Task OllamaChatProvider_StreamAsync_ThrowsTimeoutWhenNoChunkArrives()
     {
         var provider = new OllamaChatProvider(new HttpClient(new BlockingStreamHandler()), new StaticOptionsMonitor<MemorySmithOptions>(new MemorySmithOptions
