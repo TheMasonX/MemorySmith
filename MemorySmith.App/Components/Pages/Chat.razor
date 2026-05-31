@@ -459,6 +459,7 @@
 
 @code {
     private const string ChatStorageKey = "memorysmith.chat.sessions.v1";
+    private const string ChatDraftStorageKey = "memorysmith.chat.active-draft.v1";
     private const string ChatPreferencesStorageKey = "memorysmith.chat.preferences.v1";
     private const string MermaidThemeAuto = "auto";
     private const string MermaidThemeLight = "light";
@@ -696,6 +697,7 @@
         }
 
         _hasLoadedSessions = true;
+        await RestoreActiveDraftSnapshotAsync();
         await SaveSessionsAsync();
         await SavePreferencesAsync();
     }
@@ -1261,11 +1263,44 @@
                 return;
             }
 
-            await InvokeAsync(SaveSessionsAsync);
+            await InvokeAsync(SaveActiveDraftSnapshotAsync);
         }
         catch (OperationCanceledException)
         {
         }
+    }
+
+    private async Task SaveActiveDraftSnapshotAsync()
+    {
+        if (!_hasLoadedSessions)
+        {
+            return;
+        }
+
+        PersistActiveDraft();
+        var snapshot = new ChatDraftState
+        {
+            ActiveSessionId = _activeSessionId,
+            Draft = TrimForStorage(_draft, MaxStoredTurnCharacters),
+            PendingAttachments = _attachments.Select(TrimAttachmentForStorage).ToList()
+        };
+
+        await JS.InvokeVoidAsync("memorySmith.storage.setJson", ChatDraftStorageKey, snapshot);
+    }
+
+    private async Task RestoreActiveDraftSnapshotAsync()
+    {
+        var snapshot = await LoadStorageJsonAsync<ChatDraftState>(ChatDraftStorageKey, warnOnFailure: false);
+        if (snapshot is null || string.IsNullOrWhiteSpace(snapshot.ActiveSessionId) ||
+            !string.Equals(snapshot.ActiveSessionId, _activeSessionId, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        _draft = snapshot.Draft ?? string.Empty;
+        _attachments.Clear();
+        _attachments.AddRange(snapshot.PendingAttachments ?? []);
+        PersistActiveDraft();
     }
 
     private async Task OnResponseCommentInput(ChatTurnState turn, ChangeEventArgs args)
@@ -3036,6 +3071,13 @@
         public string Mode { get; set; } = string.Empty;
         public string MermaidThemeMode { get; set; } = MermaidThemeAuto;
         public string? ActiveSessionId { get; set; }
+    }
+
+    private sealed class ChatDraftState
+    {
+        public string ActiveSessionId { get; set; } = string.Empty;
+        public string Draft { get; set; } = string.Empty;
+        public List<ChatAttachment> PendingAttachments { get; set; } = [];
     }
 
     private enum ChatSidebarTab

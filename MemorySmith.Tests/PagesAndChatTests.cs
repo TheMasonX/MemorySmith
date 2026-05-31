@@ -1565,6 +1565,57 @@ public class PagesAndChatTests
     }
 
     [Test]
+    public void ChatRazor_OnDraftInput_DebouncesWithoutImmediateSessionSnapshotSave()
+    {
+        var markup = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "Components", "Pages", "Chat.razor"));
+        var methodBody = ExtractMethodBody(markup, "private async Task OnDraftInput(ChangeEventArgs args)");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(methodBody, Does.Contain("QueueDraftPersist();"));
+            Assert.That(methodBody, Does.Not.Contain("SaveSessionsAsync"));
+        });
+    }
+
+    [Test]
+    public void ChatRazor_DefinesStreamingRenderThrottleInterval()
+    {
+        var markup = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "Components", "Pages", "Chat.razor"));
+
+        Assert.That(markup, Does.Contain("private static readonly TimeSpan StreamRenderInterval = TimeSpan.FromMilliseconds(150);"));
+    }
+
+    [Test]
+    public void ChatRazor_RenderTurnContent_UsesBoundedCacheWithStreamingBypass()
+    {
+        var markup = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "Components", "Pages", "Chat.razor"));
+        var methodBody = ExtractMethodBody(markup, "private MarkupString RenderTurnContent(ChatTurnState turn)");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(methodBody, Does.Contain("var isStreamingTurn = _isSending && ReferenceEquals(turn, ActiveSession.Turns.LastOrDefault());"));
+            Assert.That(methodBody, Does.Contain("if (!isStreamingTurn)"));
+            Assert.That(methodBody, Does.Contain("_turnRenderCache.TryGetValue"));
+            Assert.That(methodBody, Does.Contain("if (_turnRenderCache.Count >= MaxTurnRenderCacheEntries)"));
+            Assert.That(methodBody, Does.Contain("_turnRenderCache.Clear();"));
+        });
+    }
+
+    [Test]
+    public void ChatRazor_PersistDraftAfterDelay_PersistsActiveDraftSnapshotOnly()
+    {
+        var markup = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "Components", "Pages", "Chat.razor"));
+        var methodBody = ExtractMethodBody(markup, "private async Task PersistDraftAfterDelayAsync(CancellationToken cancellationToken)");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(markup, Does.Contain("private const string ChatDraftStorageKey = \"memorysmith.chat.active-draft.v1\";"));
+            Assert.That(methodBody, Does.Contain("await InvokeAsync(SaveActiveDraftSnapshotAsync);"));
+            Assert.That(methodBody, Does.Not.Contain("SaveSessionsAsync"));
+        });
+    }
+
+    [Test]
     public async Task MemoryChatAgent_ExecutesInlineFencedToolCallJson()
     {
         var memoryStore = new InMemoryMemoryStore();
@@ -2626,6 +2677,50 @@ public class PagesAndChatTests
         }
 
         return copied;
+    }
+
+    private static string FindRepositoryRoot()
+    {
+        var current = new DirectoryInfo(AppContext.BaseDirectory);
+        while (current is not null)
+        {
+            if (File.Exists(Path.Combine(current.FullName, "MemorySmith.slnx")))
+            {
+                return current.FullName;
+            }
+
+            current = current.Parent;
+        }
+
+        throw new DirectoryNotFoundException("Unable to locate repository root from test base directory.");
+    }
+
+    private static string ExtractMethodBody(string source, string signature)
+    {
+        var start = source.IndexOf(signature, StringComparison.Ordinal);
+        Assert.That(start, Is.GreaterThanOrEqualTo(0), $"Expected to find method signature: {signature}");
+
+        var braceStart = source.IndexOf('{', start);
+        Assert.That(braceStart, Is.GreaterThanOrEqualTo(0), "Expected opening brace for method body.");
+
+        var depth = 0;
+        for (var i = braceStart; i < source.Length; i++)
+        {
+            if (source[i] == '{')
+            {
+                depth++;
+            }
+            else if (source[i] == '}')
+            {
+                depth--;
+                if (depth == 0)
+                {
+                    return source.Substring(braceStart + 1, i - braceStart - 1);
+                }
+            }
+        }
+
+        throw new InvalidOperationException($"Unable to parse method body for: {signature}");
     }
 
     private static bool HasToolMeasurement(
