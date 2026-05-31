@@ -226,9 +226,45 @@ public class McpAndSemanticSearchTests
             Assert.That(toolNames, Does.Not.Contain("memorysmith_task_set_status"));
             Assert.That(toolNames, Does.Not.Contain("memorysmith_task_add_comment"));
             Assert.That(toolNames, Does.Not.Contain("memorysmith_task_add_attachment"));
+            Assert.That(toolNames, Does.Not.Contain("memorysmith_memory_create"));
+            Assert.That(toolNames, Does.Not.Contain("memorysmith_memory_update"));
             Assert.That(toolNames, Does.Not.Contain("memorysmith_page_save"));
             Assert.That(toolNames, Does.Not.Contain("memorysmith_page_delete"));
         });
+    }
+
+    [Test]
+    public async Task McpMemoryMutationTools_RequireAutoAcceptApprovalMode()
+    {
+        var dataPath = ProjectWikiFixture.CopyToTemp(_tempRoot);
+        await using var factory = CreateFactory(dataPath, new Dictionary<string, string?>
+        {
+            ["MemorySmith:Mcp:EnabledTools:0"] = "memorysmith_memory_create",
+            ["MemorySmith:Chat:AgentWritesEnabled"] = "true",
+            ["MemorySmith:Chat:AgentWriteApprovalMode"] = AgentWriteApprovalModes.Manual
+        });
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/mcp", new
+        {
+            JsonRpc = "2.0",
+            Id = "memory-create-manual",
+            Method = "tools/call",
+            Params = new
+            {
+                Name = "memorysmith_memory_create",
+                Arguments = new
+                {
+                    Title = "Blocked Memory",
+                    Content = "Should not be created while approval mode is manual."
+                }
+            }
+        }, JsonSerializerOptions.Web);
+
+        response.EnsureSuccessStatusCode();
+        var text = await ExtractFirstToolTextAsync(response);
+
+        Assert.That(text, Does.Contain("requires Agent auto_accept mode"));
     }
 
     [Test]

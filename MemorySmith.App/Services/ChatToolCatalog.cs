@@ -40,7 +40,9 @@ public sealed record ChatToolExecutionContext(
     string? DefaultPageMinimumRole = null,
     VarResolver? Vars = null,
     ITaskService? Tasks = null,
-    CodeSearchService? CodeSearch = null)
+    CodeSearchService? CodeSearch = null,
+    bool AgentWritesEnabled = false,
+    bool AgentWriteAutoAccept = false)
 {
     public bool CanViewPage(string minimumRole) =>
         CurrentUser is not null
@@ -712,6 +714,119 @@ public sealed class ChatToolCatalog
             });
 
         yield return new ChatToolDescriptor(
+            "memorysmith_memory_create",
+            "Create a MemorySmith memory record. Requires Agent writes enabled and auto_accept approval mode.",
+            BuildMemoryCreateSchema(),
+            ChatToolRisk.Write,
+            AvailableInChat: false,
+            AvailableInMcp: true,
+            Execute: async (args, ctx, ct) =>
+            {
+                var governanceError = ValidateAgentWriteGovernance(ctx, "memorysmith_memory_create");
+                if (governanceError is not null)
+                {
+                    return governanceError;
+                }
+
+                var title = ReadString(args, "title");
+                var content = ReadString(args, "content");
+                if (string.IsNullOrWhiteSpace(title) || string.IsNullOrWhiteSpace(content))
+                {
+                    return new ChatToolExecutionResult("The memorysmith_memory_create tool requires non-empty title and content arguments.", IsError: true);
+                }
+
+                try
+                {
+                    var status = ReadMemoryStatus(args, "status", MemoryStatus.Working);
+                    var confidence = ReadDouble(args, "confidence", 0.5);
+                    var created = await ctx.Memories.CreateAsync(new MemoryRecord
+                    {
+                        Id = ReadString(args, "id") ?? string.Empty,
+                        Title = title,
+                        Content = content,
+                        Status = status,
+                        Confidence = confidence,
+                        Tags = ReadStringList(args, "tags")?.ToList() ?? [],
+                        References = ReadStringList(args, "references")?.ToList() ?? [],
+                        Conflicts = ReadStringList(args, "conflicts")?.ToList() ?? []
+                    }, ct);
+
+                    return JsonToolResult(new
+                    {
+                        Message = "Memory created.",
+                        Memory = created
+                    });
+                }
+                catch (ArgumentException ex)
+                {
+                    return new ChatToolExecutionResult(ex.Message, IsError: true);
+                }
+            },
+            EnabledByDefaultInMcp: false,
+            AvailableInAgent: true);
+
+        yield return new ChatToolDescriptor(
+            "memorysmith_memory_update",
+            "Update a MemorySmith memory record by id. Requires Agent writes enabled and auto_accept approval mode.",
+            BuildMemoryUpdateSchema(),
+            ChatToolRisk.Write,
+            AvailableInChat: false,
+            AvailableInMcp: true,
+            Execute: async (args, ctx, ct) =>
+            {
+                var governanceError = ValidateAgentWriteGovernance(ctx, "memorysmith_memory_update");
+                if (governanceError is not null)
+                {
+                    return governanceError;
+                }
+
+                var id = ReadString(args, "id");
+                if (string.IsNullOrWhiteSpace(id))
+                {
+                    return new ChatToolExecutionResult("The memorysmith_memory_update tool requires an id argument.", IsError: true);
+                }
+
+                try
+                {
+                    var existing = await ctx.Memories.GetAsync(id, ct);
+                    if (existing is null)
+                    {
+                        return new ChatToolExecutionResult($"No memory found for id '{id}'.");
+                    }
+
+                    var updated = new MemoryRecord
+                    {
+                        Id = existing.Id,
+                        Title = ReadString(args, "title") ?? existing.Title,
+                        Content = ReadString(args, "content") ?? existing.Content,
+                        Status = ReadMemoryStatus(args, "status", existing.Status),
+                        Confidence = ReadDouble(args, "confidence", existing.Confidence),
+                        Tags = ReadStringList(args, "tags")?.ToList() ?? existing.Tags.ToList(),
+                        References = ReadStringList(args, "references")?.ToList() ?? existing.References.ToList(),
+                        Conflicts = ReadStringList(args, "conflicts")?.ToList() ?? existing.Conflicts.ToList(),
+                        SourceLinks = existing.SourceLinks.ToList(),
+                        UsageCount = existing.UsageCount,
+                        LastUpdated = existing.LastUpdated
+                    };
+
+                    var saved = await ctx.Memories.UpdateAsync(id, updated, ct);
+                    return saved is null
+                        ? new ChatToolExecutionResult($"No memory found for id '{id}'.")
+                        : JsonToolResult(new
+                        {
+                            Message = "Memory updated.",
+                            Memory = saved
+                        });
+                }
+                catch (ArgumentException ex)
+                {
+                    return new ChatToolExecutionResult(ex.Message, IsError: true);
+                }
+            },
+            EnabledByDefaultInMcp: false,
+            AvailableInAgent: true);
+
+        yield return new ChatToolDescriptor(
             "memorysmith_task_create",
             "Create a MemorySmith task. Requires edit permission.",
             BuildTaskCreateSchema(),
@@ -1123,6 +1238,40 @@ public sealed class ChatToolCatalog
         }
     };
 
+    private static JsonObject BuildMemoryCreateSchema() => new()
+    {
+        ["type"] = "object",
+        ["properties"] = new JsonObject
+        {
+            ["id"] = new JsonObject { ["type"] = "string", ["description"] = "Optional memory id. Omit to auto-generate." },
+            ["title"] = new JsonObject { ["type"] = "string", ["description"] = "Memory title." },
+            ["content"] = new JsonObject { ["type"] = "string", ["description"] = "Memory content." },
+            ["status"] = new JsonObject { ["type"] = "string", ["description"] = "Memory status. Defaults to Working." },
+            ["confidence"] = new JsonObject { ["type"] = "number", ["description"] = "Memory confidence score." },
+            ["tags"] = new JsonObject { ["description"] = "Tags as an array, comma-separated string, or newline-separated string." },
+            ["references"] = new JsonObject { ["description"] = "References as an array, comma-separated string, or newline-separated string." },
+            ["conflicts"] = new JsonObject { ["description"] = "Conflicts as an array, comma-separated string, or newline-separated string." }
+        },
+        ["required"] = new JsonArray { "title", "content" }
+    };
+
+    private static JsonObject BuildMemoryUpdateSchema() => new()
+    {
+        ["type"] = "object",
+        ["properties"] = new JsonObject
+        {
+            ["id"] = new JsonObject { ["type"] = "string", ["description"] = "Memory id to update." },
+            ["title"] = new JsonObject { ["type"] = "string", ["description"] = "Replacement memory title." },
+            ["content"] = new JsonObject { ["type"] = "string", ["description"] = "Replacement memory content." },
+            ["status"] = new JsonObject { ["type"] = "string", ["description"] = "Replacement memory status." },
+            ["confidence"] = new JsonObject { ["type"] = "number", ["description"] = "Replacement confidence score." },
+            ["tags"] = new JsonObject { ["description"] = "Replacement tags as an array, comma-separated string, or newline-separated string." },
+            ["references"] = new JsonObject { ["description"] = "Replacement references as an array, comma-separated string, or newline-separated string." },
+            ["conflicts"] = new JsonObject { ["description"] = "Replacement conflicts as an array, comma-separated string, or newline-separated string." }
+        },
+        ["required"] = new JsonArray { "id" }
+    };
+
     private static JsonObject BuildTaskIdSchema() => new()
     {
         ["type"] = "object",
@@ -1319,6 +1468,26 @@ public sealed class ChatToolCatalog
         return value.TryGetValue<string>(out var text) && bool.TryParse(text, out boolean) ? boolean : fallback;
     }
 
+    public static double ReadDouble(JsonObject item, string name, double fallback)
+    {
+        if (GetProperty(item, name) is not JsonValue value)
+        {
+            return fallback;
+        }
+
+        if (value.TryGetValue<double>(out var number))
+        {
+            return number;
+        }
+
+        if (value.TryGetValue<string>(out var text) && double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out number))
+        {
+            return number;
+        }
+
+        throw new ArgumentException($"{name} must be a number.");
+    }
+
     public static MemoryStatus? ReadStatus(JsonObject item) =>
         Enum.TryParse<MemoryStatus>(ReadString(item, "status"), ignoreCase: true, out var status) ? status : null;
 
@@ -1372,6 +1541,37 @@ public sealed class ChatToolCatalog
 
     private static ChatToolExecutionResult MissingCodeSearchServiceResult(string toolName) =>
         new($"The {toolName} tool requires the code search service.", IsError: true);
+
+    private static ChatToolExecutionResult? ValidateAgentWriteGovernance(ChatToolExecutionContext ctx, string toolName)
+    {
+        if (!ctx.AgentWritesEnabled)
+        {
+            return new ChatToolExecutionResult("Agent write tools are disabled by configuration.", IsError: true);
+        }
+
+        if (!ctx.AgentWriteAutoAccept)
+        {
+            return new ChatToolExecutionResult($"MemorySmith tool '{toolName}' requires Agent auto_accept mode; direct mutation tool calls are disabled while Agent write approval is manual.", IsError: true);
+        }
+
+        return null;
+    }
+
+    private static MemoryStatus ReadMemoryStatus(JsonObject item, string name, MemoryStatus fallback)
+    {
+        var raw = ReadString(item, name);
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return fallback;
+        }
+
+        if (Enum.TryParse<MemoryStatus>(raw, ignoreCase: true, out var status))
+        {
+            return status;
+        }
+
+        throw new ArgumentException($"{name} must be one of: {string.Join(", ", Enum.GetNames<MemoryStatus>())}.");
+    }
 
     private static string Actor(ChatToolExecutionContext ctx)
     {

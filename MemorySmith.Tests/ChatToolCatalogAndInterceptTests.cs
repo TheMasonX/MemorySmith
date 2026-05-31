@@ -75,12 +75,16 @@ public class ChatToolCatalogAndInterceptTests
             Assert.That(chatTools.Contains("memorysmith_task_get"), Is.True);
             Assert.That(chatTools.Contains("memorysmith_task_create"), Is.False);
             Assert.That(chatTools.Contains("memorysmith_task_update"), Is.False);
+            Assert.That(chatTools.Contains("memorysmith_memory_create"), Is.False);
+            Assert.That(chatTools.Contains("memorysmith_memory_update"), Is.False);
             Assert.That(chatTools.Contains("memorysmith_page_save"), Is.False);
             Assert.That(agentTools.Contains("memorysmith_task_create"), Is.True);
             Assert.That(agentTools.Contains("memorysmith_task_update"), Is.True);
             Assert.That(agentTools.Contains("memorysmith_task_set_status"), Is.True);
             Assert.That(agentTools.Contains("memorysmith_task_add_comment"), Is.True);
             Assert.That(agentTools.Contains("memorysmith_task_add_attachment"), Is.True);
+            Assert.That(agentTools.Contains("memorysmith_memory_create"), Is.True);
+            Assert.That(agentTools.Contains("memorysmith_memory_update"), Is.True);
             Assert.That(agentTools.Contains("memorysmith_page_save"), Is.False);
             Assert.That(agentTools.Contains("memorysmith_page_delete"), Is.False);
         });
@@ -126,12 +130,90 @@ public class ChatToolCatalogAndInterceptTests
             Assert.That(defaultOffMcp, Does.Contain("memorysmith_task_set_status"));
             Assert.That(defaultOffMcp, Does.Contain("memorysmith_task_add_comment"));
             Assert.That(defaultOffMcp, Does.Contain("memorysmith_task_add_attachment"));
+            Assert.That(defaultOffMcp, Does.Contain("memorysmith_memory_create"));
+            Assert.That(defaultOffMcp, Does.Contain("memorysmith_memory_update"));
             Assert.That(defaultOffMcp, Does.Contain("memorysmith_page_save"));
             Assert.That(defaultOffMcp, Does.Contain("memorysmith_page_delete"));
             Assert.That(defaultOnMcp, Does.Contain("memorysmith_search"));
             Assert.That(defaultOnMcp, Does.Contain("memorysmith_context_pack"));
             Assert.That(defaultOnMcp, Does.Contain("memorysmith_task_list"));
             Assert.That(defaultOnMcp, Does.Contain("memorysmith_task_get"));
+        });
+    }
+
+    [Test]
+    public async Task MemoryMutationTools_RequireAgentWritesAndAutoAcceptMode()
+    {
+        var store = new InMemoryMemoryStore();
+        var memories = TestServiceFactory.CreateMemoryApplicationService(store, new RecordingEventStore(), new RecordingMemoryChangePublisher());
+        var pages = new FilePageService(_tempDir);
+
+        var catalog = new ChatToolCatalog();
+        Assert.That(catalog.TryGet("memorysmith_memory_create", out var createTool), Is.True);
+
+        var disabledResult = await createTool.Execute(new JsonObject
+        {
+            ["title"] = "Blocked by config",
+            ["content"] = "No write should occur."
+        }, new ChatToolExecutionContext(memories, pages, "test", AgentWritesEnabled: false, AgentWriteAutoAccept: false), CancellationToken.None);
+
+        var manualResult = await createTool.Execute(new JsonObject
+        {
+            ["title"] = "Blocked by approval",
+            ["content"] = "No write should occur."
+        }, new ChatToolExecutionContext(memories, pages, "test", AgentWritesEnabled: true, AgentWriteAutoAccept: false), CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(disabledResult.IsError, Is.True);
+            Assert.That(disabledResult.Text, Does.Contain("disabled by configuration"));
+            Assert.That(manualResult.IsError, Is.True);
+            Assert.That(manualResult.Text, Does.Contain("requires Agent auto_accept mode"));
+            Assert.That(store.LoadAll(), Is.Empty);
+        });
+    }
+
+    [Test]
+    public async Task MemoryMutationTools_CreateAndUpdateMemoryRecordInAutoAcceptMode()
+    {
+        var store = new InMemoryMemoryStore();
+        var memories = TestServiceFactory.CreateMemoryApplicationService(store, new RecordingEventStore(), new RecordingMemoryChangePublisher());
+        var pages = new FilePageService(_tempDir);
+        var ctx = new ChatToolExecutionContext(memories, pages, "test", AgentWritesEnabled: true, AgentWriteAutoAccept: true);
+
+        var catalog = new ChatToolCatalog();
+        Assert.That(catalog.TryGet("memorysmith_memory_create", out var createTool), Is.True);
+        Assert.That(catalog.TryGet("memorysmith_memory_update", out var updateTool), Is.True);
+
+        var createResult = await createTool.Execute(new JsonObject
+        {
+            ["id"] = "tool-created-memory",
+            ["title"] = "Tool Created Memory",
+            ["content"] = "Initial content.",
+            ["status"] = "Working",
+            ["confidence"] = 0.7,
+            ["tags"] = new JsonArray("tooling", "chat")
+        }, ctx, CancellationToken.None);
+
+        var updateResult = await updateTool.Execute(new JsonObject
+        {
+            ["id"] = "tool-created-memory",
+            ["content"] = "Updated content.",
+            ["status"] = "Core",
+            ["tags"] = new JsonArray("tooling", "updated")
+        }, ctx, CancellationToken.None);
+
+        var saved = store.Load("tool-created-memory");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(createResult.IsError, Is.False);
+            Assert.That(updateResult.IsError, Is.False);
+            Assert.That(saved, Is.Not.Null);
+            Assert.That(saved!.Title, Is.EqualTo("Tool Created Memory"));
+            Assert.That(saved.Content, Is.EqualTo("Updated content."));
+            Assert.That(saved.Status, Is.EqualTo(MemoryStatus.Core));
+            Assert.That(saved.Tags, Is.EquivalentTo(new[] { "tooling", "updated" }));
         });
     }
 

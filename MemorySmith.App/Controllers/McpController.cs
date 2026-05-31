@@ -156,7 +156,18 @@ public class McpController : ControllerBase
             ? JsonNode.Parse(argumentsElement.GetRawText()) as JsonObject ?? new JsonObject()
             : new JsonObject();
         var options = _options.CurrentValue;
-        var ctx = new ChatToolExecutionContext(_memories, _pages, Transport: "mcp", User: User, Auth: options.Auth, DefaultPageMinimumRole: options.Pages.DefaultMinimumRole, Vars: _vars, Tasks: _tasks, CodeSearch: _codeSearch);
+        var ctx = new ChatToolExecutionContext(
+            _memories,
+            _pages,
+            Transport: "mcp",
+            User: User,
+            Auth: options.Auth,
+            DefaultPageMinimumRole: options.Pages.DefaultMinimumRole,
+            Vars: _vars,
+            Tasks: _tasks,
+            CodeSearch: _codeSearch,
+            AgentWritesEnabled: options.Chat.AgentWritesEnabled,
+            AgentWriteAutoAccept: AgentWriteApprovalModes.IsAutoAccept(options.Chat.AgentWriteApprovalMode));
         var result = await tool.Execute(args, ctx, cancellationToken);
         RecordToolExecutionTelemetry(toolName, Stopwatch.GetElapsedTime(started).TotalMilliseconds, !result.IsError);
 

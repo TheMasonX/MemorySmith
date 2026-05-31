@@ -2484,7 +2484,17 @@ public sealed partial class MemoryChatAgent : IChatAgent
             return new ChatToolExecutionResult($"MemorySmith tool '{toolCall.Name}' requires Agent auto_accept mode; direct mutation tool calls are disabled while Agent write approval is manual.", IsError: true);
         }
 
-        var executionContext = new ChatToolExecutionContext(_memories, _pages, Transport: "chat", CurrentUser: _currentUser, Auth: _options.Value.Auth, DefaultPageMinimumRole: _options.Value.Pages.DefaultMinimumRole, Tasks: _tasks, CodeSearch: _codeSearch);
+        var executionContext = new ChatToolExecutionContext(
+            _memories,
+            _pages,
+            Transport: "chat",
+            CurrentUser: _currentUser,
+            Auth: _options.Value.Auth,
+            DefaultPageMinimumRole: _options.Value.Pages.DefaultMinimumRole,
+            Tasks: _tasks,
+            CodeSearch: _codeSearch,
+            AgentWritesEnabled: _options.Value.Chat.AgentWritesEnabled,
+            AgentWriteAutoAccept: IsAgentWriteAutoAcceptMode());
         return await tool.Execute(toolCall.Arguments, executionContext, cancellationToken);
     }
 
@@ -3031,7 +3041,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
             : "none";
         var mutationToolLine = request.Mode == MemoryChatMode.Agent
             ? !string.IsNullOrWhiteSpace(writeToolNames)
-                ? $"- Agent-only local mutation tools: enabled for explicit task changes in auto_accept mode ({writeToolNames}).\n"
+                ? $"- Agent-only local mutation tools: enabled for explicit user-requested task or memory changes in auto_accept mode ({writeToolNames}).\n"
                 : approvalRequired
                     ? "- Agent-only local mutation tools: unavailable while Agent write approval mode is manual.\n"
                     : "- Agent-only local mutation tools: unavailable for this request.\n"
@@ -3132,7 +3142,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
             : string.Empty;
         var writeToolInstruction = mode == MemoryChatMode.Agent
             ? !string.IsNullOrWhiteSpace(writeToolNames)
-                ? $"Agent-only mutation tools are also available for explicit user-requested task changes: {writeToolNames}. Do not use mutation tools for ordinary lookup questions. "
+                ? $"Agent-only mutation tools are also available for explicit user-requested task or memory changes: {writeToolNames}. Do not use mutation tools for ordinary lookup questions. "
                 : approvalRequired
                     ? "Mutation tool calls are not available because Agent write approval mode is manual; propose memory/page writes through strict Agent JSON instead, and ask the user to approve or use the task UI for task changes. "
                     : "No mutation tools are available for this request. "
