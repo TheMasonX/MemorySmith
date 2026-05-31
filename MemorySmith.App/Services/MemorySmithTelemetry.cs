@@ -16,6 +16,12 @@ public static class MemorySmithTelemetry
         Meter.CreateCounter<long>("memorysmith.operation.count", "count", "Count of bounded MemorySmith domain operations.");
     private static readonly Counter<long> OperationFailureCount =
         Meter.CreateCounter<long>("memorysmith.operation.failures", "count", "Count of failed bounded MemorySmith domain operations.");
+    private static readonly Histogram<double> ToolExecutionDurationMs =
+        Meter.CreateHistogram<double>("memorysmith.tool.execution.duration", "ms", "Duration of MemorySmith chat and MCP tool executions.");
+    private static readonly Counter<long> ToolExecutionCount =
+        Meter.CreateCounter<long>("memorysmith.tool.execution.count", "count", "Count of MemorySmith chat and MCP tool executions.");
+    private static readonly Counter<long> ToolExecutionFailureCount =
+        Meter.CreateCounter<long>("memorysmith.tool.execution.failures", "count", "Count of failed MemorySmith chat and MCP tool executions.");
 
     public static Activity? StartOperation(string operation, string category)
     {
@@ -45,6 +51,28 @@ public static class MemorySmithTelemetry
         if (!success)
         {
             OperationFailureCount.Add(1, tags);
+        }
+    }
+
+    public static void RecordToolExecution(string transport, string toolName, double elapsedMs, bool success)
+    {
+        var normalizedTransport = string.IsNullOrWhiteSpace(transport) ? "unknown" : transport.Trim().ToLowerInvariant();
+        var normalizedToolName = string.IsNullOrWhiteSpace(toolName) ? "unknown" : toolName.Trim();
+        var safeElapsedMs = double.IsNaN(elapsedMs) || double.IsInfinity(elapsedMs) || elapsedMs < 0 ? 0 : elapsedMs;
+
+        var tags = new TagList
+        {
+            { "memorysmith.transport", normalizedTransport },
+            { "memorysmith.tool", normalizedToolName },
+            { "memorysmith.success", success },
+            { "memorysmith.error", !success }
+        };
+
+        ToolExecutionCount.Add(1, tags);
+        ToolExecutionDurationMs.Record(safeElapsedMs, tags);
+        if (!success)
+        {
+            ToolExecutionFailureCount.Add(1, tags);
         }
     }
 }

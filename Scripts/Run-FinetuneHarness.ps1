@@ -130,6 +130,41 @@ function Initialize-HuggingFaceAuthEnvironment {
     # Support both common variable names used by hub clients.
     $env:HF_TOKEN = $Token
     $env:HUGGING_FACE_HUB_TOKEN = $Token
+    $env:HUGGINGFACEHUB_API_TOKEN = $Token
+    $env:HUGGINGFACE_HUB_TOKEN = $Token
+}
+
+function Resolve-HuggingFaceToken {
+    param([string]$ExplicitToken)
+
+    if (-not [string]::IsNullOrWhiteSpace($ExplicitToken)) {
+        return $ExplicitToken
+    }
+
+    $tokenVars = @(
+        'HF_TOKEN',
+        'HUGGING_FACE_HUB_TOKEN',
+        'HUGGINGFACEHUB_API_TOKEN',
+        'HUGGINGFACE_HUB_TOKEN'
+    )
+
+    foreach ($variableName in $tokenVars) {
+        $value = [Environment]::GetEnvironmentVariable($variableName, 'Process')
+        if (-not [string]::IsNullOrWhiteSpace($value)) {
+            return $value
+        }
+    }
+
+    foreach ($scope in @('User', 'Machine')) {
+        foreach ($variableName in $tokenVars) {
+            $value = [Environment]::GetEnvironmentVariable($variableName, $scope)
+            if (-not [string]::IsNullOrWhiteSpace($value)) {
+                return $value
+            }
+        }
+    }
+
+    return $null
 }
 
 function Write-Utf8NoBomFile {
@@ -160,7 +195,8 @@ if ([string]::IsNullOrWhiteSpace($PythonVenvPath)) {
 }
 
 Initialize-TrainingScratchEnvironment -Root $ScratchRoot
-Initialize-HuggingFaceAuthEnvironment -Token $HfToken
+$resolvedHfToken = Resolve-HuggingFaceToken -ExplicitToken $HfToken
+Initialize-HuggingFaceAuthEnvironment -Token $resolvedHfToken
 
 $resolvedWorkRoot = Resolve-WorkflowPath $WorkRoot
 $workDir = Join-Path $resolvedWorkRoot $RunId
@@ -207,7 +243,7 @@ $request = [ordered]@{
     runId = $RunId
     trainMode = $TrainMode
     modelId = $ModelId
-    hfAuthConfigured = -not [string]::IsNullOrWhiteSpace($HfToken)
+    hfAuthConfigured = -not [string]::IsNullOrWhiteSpace($resolvedHfToken)
     exportPath = $resolvedExportPath
     transcriptDirectory = (Resolve-WorkflowPath $TranscriptDirectory)
     format = "FilteredSft"

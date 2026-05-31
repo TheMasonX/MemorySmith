@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Diagnostics.Metrics;
 using System.Text.Json;
 using MemorySmith.App.Services;
 using Microsoft.AspNetCore.Hosting;
@@ -532,6 +533,88 @@ public class McpAndSemanticSearchTests
     }
 
     [Test]
+    public async Task McpTools_EmitToolExecutionTelemetry()
+    {
+        var dataPath = ProjectWikiFixture.CopyToTemp(_tempRoot);
+        var measurements = new List<ToolTelemetryMeasurement>();
+        using var listener = CreateToolExecutionListener(measurements);
+        await using var factory = CreateFactory(dataPath);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/mcp", new
+        {
+            JsonRpc = "2.0",
+            Id = "telemetry",
+            Method = "tools/call",
+            Params = new
+            {
+                Name = "memorysmith_context_pack",
+                Arguments = new
+                {
+                    Query = "MCP telemetry context pack",
+                    Tags = "project-wiki",
+                    Limit = 1,
+                    ReferenceDepth = 0,
+                    MaxContentChars = 500
+                }
+            }
+        }, JsonSerializerOptions.Web);
+
+        response.EnsureSuccessStatusCode();
+        var text = await ExtractFirstToolTextAsync(response);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(text, Does.Contain("Context Pack"));
+            Assert.That(HasToolMeasurement(measurements, "memorysmith.tool.execution.count", "mcp", "memorysmith_context_pack", success: true), Is.True);
+            Assert.That(HasToolMeasurement(measurements, "memorysmith.tool.execution.duration", "mcp", "memorysmith_context_pack", success: true), Is.True);
+        });
+    }
+
+    [Test]
+    public async Task McpTools_TruncateOversizedResponsesAndEmitMetadata()
+    {
+        var dataPath = ProjectWikiFixture.CopyToTemp(_tempRoot);
+        await using var factory = CreateFactory(dataPath, new Dictionary<string, string?>
+        {
+            ["MemorySmith:Mcp:MaxToolResponseCharacters"] = "300"
+        });
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/mcp", new
+        {
+            JsonRpc = "2.0",
+            Id = "truncate",
+            Method = "tools/call",
+            Params = new
+            {
+                Name = "memorysmith_get",
+                Arguments = new
+                {
+                    Id = "project-wiki-search-roadmap"
+                }
+            }
+        }, JsonSerializerOptions.Web);
+
+        response.EnsureSuccessStatusCode();
+
+        using var document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+        var result = document.RootElement.GetProperty("result");
+        var text = result.GetProperty("content")[0].GetProperty("text").GetString() ?? string.Empty;
+        var metadata = result.GetProperty("meta").GetProperty("memorysmith");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(text.Length, Is.LessThanOrEqualTo(300));
+            Assert.That(text, Does.EndWith("..."));
+            Assert.That(metadata.GetProperty("isTruncated").GetBoolean(), Is.True);
+            Assert.That(metadata.GetProperty("originalCharacters").GetInt32(), Is.GreaterThan(text.Length));
+            Assert.That(metadata.GetProperty("returnedCharacters").GetInt32(), Is.EqualTo(text.Length));
+            Assert.That(metadata.GetProperty("maxCharacters").GetInt32(), Is.EqualTo(300));
+        });
+    }
+
+    [Test]
     public async Task McpContextPackTool_AcceptsExplicitIds()
     {
         var dataPath = ProjectWikiFixture.CopyToTemp(_tempRoot);
@@ -760,7 +843,10 @@ public class McpAndSemanticSearchTests
     public async Task McpSearchTool_WithJsonFormat_ReturnsRetrievalEnvelope()
     {
         var dataPath = ProjectWikiFixture.CopyToTemp(_tempRoot);
-        await using var factory = CreateFactory(dataPath);
+        await using var factory = CreateFactory(dataPath, new Dictionary<string, string?>
+        {
+            ["MemorySmith:Mcp:MaxToolResponseCharacters"] = "50000"
+        });
         using var client = factory.CreateClient();
 
         var response = await client.PostAsJsonAsync("/mcp", new
@@ -892,4 +978,59 @@ public class McpAndSemanticSearchTests
             .GetProperty("text")
             .GetString() ?? string.Empty;
     }
+
+    private static MeterListener CreateToolExecutionListener(List<ToolTelemetryMeasurement> measurements)
+    {
+        var sync = new object();
+        var listener = new MeterListener();
+        listener.InstrumentPublished = (instrument, currentListener) =>
+        {
+            if (instrument.Meter.Name == MemorySmithTelemetry.MeterName && instrument.Name.StartsWith("memorysmith.tool.execution", StringComparison.Ordinal))
+            {
+                currentListener.EnableMeasurementEvents(instrument);
+            }
+        };
+        listener.SetMeasurementEventCallback<long>((instrument, measurement, tags, _) =>
+        {
+            lock (sync)
+            {
+                measurements.Add(new ToolTelemetryMeasurement(instrument.Name, measurement, CopyTags(tags)));
+            }
+        });
+        listener.SetMeasurementEventCallback<double>((instrument, measurement, tags, _) =>
+        {
+            lock (sync)
+            {
+                measurements.Add(new ToolTelemetryMeasurement(instrument.Name, measurement, CopyTags(tags)));
+            }
+        });
+        listener.Start();
+        return listener;
+    }
+
+    private static Dictionary<string, object?> CopyTags(ReadOnlySpan<KeyValuePair<string, object?>> tags)
+    {
+        var copied = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+        foreach (var tag in tags)
+        {
+            copied[tag.Key] = tag.Value;
+        }
+
+        return copied;
+    }
+
+    private static bool HasToolMeasurement(
+        IEnumerable<ToolTelemetryMeasurement> measurements,
+        string instrumentName,
+        string transport,
+        string toolName,
+        bool success) =>
+        measurements.Any(measurement =>
+            string.Equals(measurement.InstrumentName, instrumentName, StringComparison.Ordinal) &&
+            string.Equals(measurement.Tags.GetValueOrDefault("memorysmith.transport")?.ToString(), transport, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(measurement.Tags.GetValueOrDefault("memorysmith.tool")?.ToString(), toolName, StringComparison.Ordinal) &&
+            bool.TryParse(measurement.Tags.GetValueOrDefault("memorysmith.success")?.ToString(), out var taggedSuccess) &&
+            taggedSuccess == success);
+
+    private sealed record ToolTelemetryMeasurement(string InstrumentName, object Measurement, IReadOnlyDictionary<string, object?> Tags);
 }

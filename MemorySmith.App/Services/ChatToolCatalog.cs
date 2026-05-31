@@ -51,6 +51,9 @@ public sealed record ChatToolExecutionContext(
         CurrentUser is not null
             ? PageAccessLevels.CanSetMinimumRole(minimumRole, CurrentUser, Auth)
             : PageAccessLevels.CanSetMinimumRole(minimumRole, User, Auth);
+
+    public bool CanEditPage(string minimumRole) =>
+        CanSetPageMinimumRole(minimumRole);
 }
 
 public sealed record ChatToolExecutionResult(
@@ -579,8 +582,8 @@ public sealed class ChatToolCatalog
                     ["format"] = new JsonObject
                     {
                         ["type"] = "string",
-                        ["description"] = "Output format. Defaults to markdown; use json or envelope for structured agent parsing.",
-                        ["enum"] = new JsonArray { "markdown", "json", "envelope" }
+                        ["description"] = "Output format. Defaults to markdown; use json (or compatibility aliases envelope/json-v2) for structured agent parsing.",
+                        ["enum"] = new JsonArray { "markdown", "json", "envelope", "json-v2" }
                     }
                 },
                 ["required"] = new JsonArray { "query" }
@@ -998,9 +1001,9 @@ public sealed class ChatToolCatalog
                     return new ChatToolExecutionResult("The memorysmith_page_delete tool requires a slug argument.", IsError: true);
                 }
                 var existing = await ctx.Pages.GetAsync(slug, ct);
-                if (existing is not null && !ctx.CanViewPage(existing.MinimumRole))
+                if (existing is not null && !ctx.CanEditPage(existing.MinimumRole))
                 {
-                    return new ChatToolExecutionResult($"No page found with slug '{slug}'.", IsError: true);
+                    return new ChatToolExecutionResult("The caller is not authorized to delete that page.", IsError: true);
                 }
 
                 var deleted = await ctx.Pages.DeleteAsync(slug, ct);
@@ -1025,8 +1028,8 @@ public sealed class ChatToolCatalog
             ["format"] = new JsonObject
             {
                 ["type"] = "string",
-                ["description"] = "Output format. Defaults to markdown; use json or envelope for structured agent parsing.",
-                ["enum"] = new JsonArray { "markdown", "json", "envelope" }
+                ["description"] = "Output format. Defaults to markdown; use json (or compatibility aliases envelope/json-v2) for structured agent parsing.",
+                ["enum"] = new JsonArray { "markdown", "json", "envelope", "json-v2" }
             }
         }
     };

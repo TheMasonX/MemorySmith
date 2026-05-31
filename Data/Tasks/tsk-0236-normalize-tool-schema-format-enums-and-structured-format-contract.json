@@ -4,7 +4,7 @@
   "title": "Normalize tool schema format enums and structured-format contract",
   "description": "Vetted from Audit #7 finding 2.7. format enums and parser acceptance are inconsistent (json-v2/envelope/json variants). Align schema declarations with runtime parser support and add contract tests for all supported values.",
   "type": "Task",
-  "status": "Backlog",
+  "status": "Done",
   "priority": "Medium",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -28,15 +28,21 @@
       "id": "c-create-tsk-0236-20260530",
       "createdAtUtc": "2026-05-30T22:21:20.9043446Z",
       "body": "Created from vetted findings in Data/Pages/move-to-audit.md after direct code checks across Chat.razor, ChatServices.cs, ChatToolCatalog.cs, McpController.cs, and training harness files."
+    },
+    {
+      "author": "AgentSmith",
+      "id": "c-0236-2-20260531",
+      "createdAtUtc": "2026-05-31T00:51:00.0000000Z",
+      "body": "Normalized search-tool format contract declarations in `MemorySmith.App/Services/ChatToolCatalog.cs` so schema enums match runtime parser support (`markdown`, `json`, `envelope`, `json-v2`) and updated format descriptions to call out compatibility aliases explicitly. Added focused contract tests in `MemorySmith.Tests/ChatToolCatalogAndInterceptTests.cs`: `SearchToolSchemas_AdvertiseAllStructuredFormatAliases` and `SearchTool_AcceptsStructuredFormatAliases` (json/envelope/json-v2). Also hardened `MemorySmith.Tests/McpAndSemanticSearchTests.cs` retrieval-envelope test with explicit `MemorySmith:Mcp:MaxToolResponseCharacters=50000` override so format-contract assertions are not confounded by MCP payload capping. Validation: `dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj -c Release --filter \"Name~SearchToolSchemas_AdvertiseAllStructuredFormatAliases|Name~SearchTool_AcceptsStructuredFormatAliases|Name~SearchTool_WithJsonFormat_ReturnsEnvelopeAndContextDiagnostics|Name~McpSearchTool_WithJsonFormat_ReturnsRetrievalEnvelope\"` (6/6 passed). Live check: `Invoke-WebRequest https://localhost:7090/health -SkipCertificateCheck` returned `200`."
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-30T22:21:20.9043446Z",
-  "updatedAtUtc": "2026-05-30T22:40:56.5547416Z",
-  "completedAtUtc": null,
-  "revision": 2,
+  "updatedAtUtc": "2026-05-31T00:51:00.0000000Z",
+  "completedAtUtc": "2026-05-31T00:51:00.0000000Z",
+  "revision": 3,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

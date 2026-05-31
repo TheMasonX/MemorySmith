@@ -5,10 +5,13 @@ using MemorySmith.Core.Models;
 using MemorySmith.Storage;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using System.Net;
 using System.Security.Claims;
+using System.Diagnostics.Metrics;
+using System.Reflection;
 using System.Text.Json;
 
 namespace MemorySmith.Tests;
@@ -1410,6 +1413,42 @@ public class PagesAndChatTests
     }
 
     [Test]
+    public void GitHubCopilotChatProvider_FormatsPromptAsStructuredConversationEnvelope()
+    {
+        var method = typeof(GitHubCopilotChatProvider).GetMethod("FormatGitHubPrompt", BindingFlags.NonPublic | BindingFlags.Static);
+        Assert.That(method, Is.Not.Null, "Expected private GitHub prompt formatter to exist.");
+
+        var prompt = (string?)method!.Invoke(null, [new List<ChatMessage>
+        {
+            new("system", "System line 1\nSystem line 2"),
+            new("assistant", "Previous answer"),
+            new("user", "Final question with\nmultiple lines")
+        }]);
+
+        Assert.That(prompt, Is.Not.Null.And.Contains("<conversation-json>"));
+        Assert.That(prompt, Does.Not.Contain("SYSTEM:\n"));
+
+        var start = prompt!.IndexOf("<conversation-json>", StringComparison.Ordinal);
+        var end = prompt.IndexOf("</conversation-json>", StringComparison.Ordinal);
+        Assert.That(start, Is.GreaterThanOrEqualTo(0));
+        Assert.That(end, Is.GreaterThan(start));
+
+        var json = prompt.Substring(start + "<conversation-json>".Length, end - (start + "<conversation-json>".Length)).Trim();
+        using var document = JsonDocument.Parse(json);
+        var messages = document.RootElement.GetProperty("messages").EnumerateArray().ToList();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(messages, Has.Count.EqualTo(3));
+            Assert.That(messages[0].GetProperty("role").GetString(), Is.EqualTo("system"));
+            Assert.That(messages[0].GetProperty("content").GetString(), Is.EqualTo("System line 1\nSystem line 2"));
+            Assert.That(messages[1].GetProperty("role").GetString(), Is.EqualTo("assistant"));
+            Assert.That(messages[2].GetProperty("role").GetString(), Is.EqualTo("user"));
+            Assert.That(messages[2].GetProperty("content").GetString(), Is.EqualTo("Final question with\nmultiple lines"));
+        });
+    }
+
+    [Test]
     public async Task MemoryChatAgent_PreloadsVisiblePagesBeyondFirstTwoHundredHiddenResults()
     {
         var memoryStore = new InMemoryMemoryStore();
@@ -1478,6 +1517,50 @@ public class PagesAndChatTests
             Assert.That(toolResultMessage.Content, Does.Contain("tool-target"));
             Assert.That(response.Context.Select(item => item.Id), Does.Contain("tool-target"));
             Assert.That(response.Context.Single(item => item.Id == "tool-target").Origin, Is.EqualTo(ChatContextOrigins.Tool));
+        });
+    }
+
+    [Test]
+    public async Task MemoryChatAgent_EmitsLifecycleLogs_WithoutLeakingUserPrompt()
+    {
+        var memoryStore = new InMemoryMemoryStore();
+        var eventStore = new RecordingEventStore();
+        var publisher = new RecordingMemoryChangePublisher();
+        var memories = TestServiceFactory.CreateMemoryApplicationService(memoryStore, eventStore, publisher);
+        memoryStore.Save(new MemoryRecord
+        {
+            Id = "log-target",
+            Title = "Log Target",
+            Status = MemoryStatus.Core,
+            Content = "Log-target evidence.",
+            Tags = ["project-wiki", "tooling"]
+        });
+
+        var pages = new FilePageService(_tempDir);
+        var provider = new SequencedChatProvider(
+            """
+            {"toolCalls":[{"name":"memorysmith_get","arguments":{"id":"log-target"}}]}
+            """,
+            "Confirmed log-target.");
+        var logger = new RecordingLogger<MemoryChatAgent>();
+        var agent = new MemoryChatAgent([provider], memories, pages, Options.Create(new MemorySmithOptions()), logger: logger);
+        const string prompt = "Do not leak this token: TOP_SECRET_PROMPT_123";
+
+        var response = await agent.SendAsync(new MemoryChatRequest(prompt, MemoryChatMode.Chat), CancellationToken.None);
+        var combinedLogs = string.Join(Environment.NewLine, logger.Messages);
+        var eventIdNumbers = logger.EventIds.Select(eventId => eventId.Id).ToArray();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(response.Reply, Is.EqualTo("Confirmed log-target."));
+            Assert.That(combinedLogs, Does.Contain("Chat SendAsync started"));
+            Assert.That(combinedLogs, Does.Contain("context prepared"));
+            Assert.That(combinedLogs, Does.Contain("tool loop"));
+            Assert.That(combinedLogs, Does.Contain("executed requested tools"));
+            Assert.That(combinedLogs, Does.Not.Contain(prompt));
+            Assert.That(eventIdNumbers, Does.Contain(42001), "Expected stable context-plan EventId for SendAsync context preparation.");
+            Assert.That(eventIdNumbers, Does.Contain(42006), "Expected stable tool-loop start EventId.");
+            Assert.That(eventIdNumbers, Does.Contain(42009), "Expected stable tool-loop execution EventId.");
         });
     }
 
@@ -1691,6 +1774,59 @@ public class PagesAndChatTests
             Assert.That(response.Reply, Is.EqualTo("I could not create the task from Chat mode."));
             Assert.That(toolResultMessage.Content, Does.Contain("only available in Agent mode"));
             Assert.That(createdTasks, Is.Empty);
+        });
+    }
+
+    [Test]
+    public async Task MemoryChatAgent_EmitsToolExecutionTelemetry_ForSuccessfulAndRejectedChatTools()
+    {
+        var measurements = new List<ToolTelemetryMeasurement>();
+        using var listener = CreateToolExecutionListener(measurements);
+
+        var memoryStore = new InMemoryMemoryStore();
+        var eventStore = new RecordingEventStore();
+        var publisher = new RecordingMemoryChangePublisher();
+        var memories = TestServiceFactory.CreateMemoryApplicationService(memoryStore, eventStore, publisher);
+        var pages = new FilePageService(_tempDir);
+        var options = CreateTaskToolOptions();
+        var tasks = CreateTaskService(options);
+        await tasks.CreateAsync(new TaskCreateRequest(
+            "Chat Telemetry Task",
+            "Used to validate chat tool telemetry.",
+            "Task",
+            TaskStatuses.Ready,
+            TaskPriorities.Medium,
+            TaskAssigneeModes.Custom,
+            null,
+            "Agent",
+            "Test",
+            ["chat-tools"],
+            null,
+            null,
+            null), "Test", CancellationToken.None);
+
+        var successProvider = new SequencedChatProvider(
+            """
+            {"toolCalls":[{"name":"memorysmith_task_list","arguments":{"query":"Chat Telemetry Task","limit":5}}]}
+            """,
+            "Found it.");
+        var failureProvider = new SequencedChatProvider(
+            """
+            {"toolCalls":[{"name":"memorysmith_task_create","arguments":{"title":"Rejected In Chat Mode"}}]}
+            """,
+            "Rejected.");
+        var successAgent = new MemoryChatAgent([successProvider], memories, pages, Options.Create(options), tasks: tasks);
+        var failureAgent = new MemoryChatAgent([failureProvider], memories, pages, Options.Create(options), tasks: tasks);
+
+        await successAgent.SendAsync(new MemoryChatRequest("Find the telemetry task", MemoryChatMode.Chat), CancellationToken.None);
+        await failureAgent.SendAsync(new MemoryChatRequest("Create a task from chat", MemoryChatMode.Chat), CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(HasToolMeasurement(measurements, "memorysmith.tool.execution.count", "chat", "memorysmith_task_list", success: true), Is.True);
+            Assert.That(HasToolMeasurement(measurements, "memorysmith.tool.execution.duration", "chat", "memorysmith_task_list", success: true), Is.True);
+            Assert.That(HasToolMeasurement(measurements, "memorysmith.tool.execution.count", "chat", "memorysmith_task_create", success: false), Is.True);
+            Assert.That(HasToolMeasurement(measurements, "memorysmith.tool.execution.failures", "chat", "memorysmith_task_create", success: false), Is.True);
         });
     }
 
@@ -1919,6 +2055,31 @@ public class PagesAndChatTests
             Assert.That(chunks.Single(chunk => chunk.IsFinal).Usage, Is.EqualTo(new ChatUsageSummary(23, 5, 23, IsEstimate: false)));
             Assert.That(handler.Body, Does.Contain("\"stream\":true"));
         });
+    }
+
+    [Test]
+    public async Task OllamaChatProvider_StreamAsync_ThrowsTimeoutWhenNoChunkArrives()
+    {
+        var provider = new OllamaChatProvider(new HttpClient(new BlockingStreamHandler()), new StaticOptionsMonitor<MemorySmithOptions>(new MemorySmithOptions
+        {
+            Chat = new ChatOptions
+            {
+                OllamaEndpoint = "http://localhost:11434",
+                OllamaModel = "stream-model",
+                RequestTimeoutSeconds = 20
+            }
+        }));
+
+        async Task DrainAsync()
+        {
+            await foreach (var _ in provider.StreamAsync(new ChatProviderRequest([new ChatMessage("user", "hello")], MemoryChatMode.Chat), CancellationToken.None))
+            {
+                // Stream should never yield a chunk before the idle watchdog triggers.
+            }
+        }
+
+        var ex = Assert.ThrowsAsync<TimeoutException>(DrainAsync);
+        Assert.That(ex!.Message, Does.Contain("idle"));
     }
 
     [Test]
@@ -2323,6 +2484,41 @@ public class PagesAndChatTests
         }
     }
 
+    private sealed class BlockingStreamHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StreamContent(new NeverEndingReadStream())
+            });
+    }
+
+    private sealed class NeverEndingReadStream : Stream
+    {
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+
+        public override long Position
+        {
+            get => throw new NotSupportedException();
+            set => throw new NotSupportedException();
+        }
+
+        public override void Flush() => throw new NotSupportedException();
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            return 0;
+        }
+    }
+
     private sealed class FakeCurrentUserContext : ICurrentUserContext
     {
         public FakeCurrentUserContext(string userId, string displayName, IReadOnlyList<string> roles)
@@ -2340,6 +2536,77 @@ public class PagesAndChatTests
         public IReadOnlyList<string> Roles { get; }
         public string ActorKind => MemorySmithActorKinds.User;
     }
+
+    private sealed class RecordingLogger<T> : ILogger<T>
+    {
+        public List<string> Messages { get; } = [];
+        public List<EventId> EventIds { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            EventIds.Add(eventId);
+            Messages.Add(formatter(state, exception));
+        }
+    }
+
+    private static MeterListener CreateToolExecutionListener(List<ToolTelemetryMeasurement> measurements)
+    {
+        var sync = new object();
+        var listener = new MeterListener();
+        listener.InstrumentPublished = (instrument, currentListener) =>
+        {
+            if (instrument.Meter.Name == MemorySmithTelemetry.MeterName && instrument.Name.StartsWith("memorysmith.tool.execution", StringComparison.Ordinal))
+            {
+                currentListener.EnableMeasurementEvents(instrument);
+            }
+        };
+        listener.SetMeasurementEventCallback<long>((instrument, measurement, tags, _) =>
+        {
+            lock (sync)
+            {
+                measurements.Add(new ToolTelemetryMeasurement(instrument.Name, measurement, CopyTags(tags)));
+            }
+        });
+        listener.SetMeasurementEventCallback<double>((instrument, measurement, tags, _) =>
+        {
+            lock (sync)
+            {
+                measurements.Add(new ToolTelemetryMeasurement(instrument.Name, measurement, CopyTags(tags)));
+            }
+        });
+        listener.Start();
+        return listener;
+    }
+
+    private static Dictionary<string, object?> CopyTags(ReadOnlySpan<KeyValuePair<string, object?>> tags)
+    {
+        var copied = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+        foreach (var tag in tags)
+        {
+            copied[tag.Key] = tag.Value;
+        }
+
+        return copied;
+    }
+
+    private static bool HasToolMeasurement(
+        IEnumerable<ToolTelemetryMeasurement> measurements,
+        string instrumentName,
+        string transport,
+        string toolName,
+        bool success) =>
+        measurements.Any(measurement =>
+            string.Equals(measurement.InstrumentName, instrumentName, StringComparison.Ordinal) &&
+            string.Equals(measurement.Tags.GetValueOrDefault("memorysmith.transport")?.ToString(), transport, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(measurement.Tags.GetValueOrDefault("memorysmith.tool")?.ToString(), toolName, StringComparison.Ordinal) &&
+            bool.TryParse(measurement.Tags.GetValueOrDefault("memorysmith.success")?.ToString(), out var taggedSuccess) &&
+            taggedSuccess == success);
+
+    private sealed record ToolTelemetryMeasurement(string InstrumentName, object Measurement, IReadOnlyDictionary<string, object?> Tags);
 
     private sealed class StaticOptionsMonitor<T> : IOptionsMonitor<T>
     {

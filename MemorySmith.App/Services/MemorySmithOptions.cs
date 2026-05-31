@@ -320,6 +320,7 @@ public class McpOptions
 {
     public List<string> EnabledTools { get; set; } = [];
     public List<string> DisabledTools { get; set; } = [];
+    public int MaxToolResponseCharacters { get; set; } = 12000;
 }
 
 public class ChatOptions

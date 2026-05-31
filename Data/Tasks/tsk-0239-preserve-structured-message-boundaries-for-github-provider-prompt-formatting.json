@@ -4,7 +4,7 @@
   "title": "Preserve structured message boundaries for GitHub provider prompt formatting",
   "description": "Vetted from Audit #7 finding 10.3. Current GitHub prompt formatting flattens messages. Preserve role/message boundaries using structured API primitives when available, with compatibility fallback and evaluation checks on multi-turn quality.",
   "type": "Task",
-  "status": "Backlog",
+  "status": "Done",
   "priority": "High",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -27,15 +27,21 @@
       "id": "c-create-tsk-0239-20260530",
       "createdAtUtc": "2026-05-30T22:21:20.9043446Z",
       "body": "Created from vetted findings in Data/Pages/move-to-audit.md after direct code checks across Chat.razor, ChatServices.cs, ChatToolCatalog.cs, McpController.cs, and training harness files."
+    },
+    {
+      "author": "AgentSmith",
+      "id": "c-0239-2-20260530",
+      "createdAtUtc": "2026-05-30T23:38:00.0000000Z",
+      "body": "Implemented the compatibility fallback in `MemorySmith.App/Services/ChatServices.cs` after verifying the GitHub.Copilot.SDK `MessageOptions` surface only exposes a single `Prompt` field, not a structured messages collection. The GitHub provider now serializes the full conversation as a structured JSON envelope with ordered `role`/`content` items inside `<conversation-json>` markers instead of flattening messages into lossy `ROLE:` text blocks. Added regression coverage in `MemorySmith.Tests/PagesAndChatTests.cs` to prove multi-turn roles, order, and multiline content survive formatting. Validation: `dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj -c Release --filter \"Name~GitHubCopilotChatProvider_FormatsPromptAsStructuredConversationEnvelope|Name~ChatProviders_ReportCapabilityMetadata|Name~Chat\"` (110/110 passed)."
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-30T22:21:20.9043446Z",
-  "updatedAtUtc": "2026-05-30T22:40:56.5585975Z",
-  "completedAtUtc": null,
-  "revision": 2,
+  "updatedAtUtc": "2026-05-30T23:38:00.0000000Z",
+  "completedAtUtc": "2026-05-30T23:38:00.0000000Z",
+  "revision": 3,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

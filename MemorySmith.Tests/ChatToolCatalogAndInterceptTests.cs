@@ -235,6 +235,72 @@ public class ChatToolCatalogAndInterceptTests
     }
 
     [Test]
+    public void SearchToolSchemas_AdvertiseAllStructuredFormatAliases()
+    {
+        var catalog = new ChatToolCatalog();
+        Assert.That(catalog.TryGet("memorysmith_search", out var searchTool), Is.True);
+        Assert.That(catalog.TryGet("memorysmith_unified_search", out var unifiedSearchTool), Is.True);
+
+        static List<string> ReadFormatEnums(ChatToolDescriptor tool) =>
+            tool.InputSchema["properties"]?["format"]?["enum"]?.AsArray().Select(node => node?.GetValue<string>() ?? string.Empty).ToList()
+            ?? [];
+
+        var searchFormats = ReadFormatEnums(searchTool);
+        var unifiedFormats = ReadFormatEnums(unifiedSearchTool);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(searchFormats, Is.EquivalentTo(new[] { "markdown", "json", "envelope", "json-v2" }));
+            Assert.That(unifiedFormats, Is.EquivalentTo(new[] { "markdown", "json", "envelope", "json-v2" }));
+        });
+    }
+
+    [TestCase("json")]
+    [TestCase("envelope")]
+    [TestCase("json-v2")]
+    public async Task SearchTool_AcceptsStructuredFormatAliases(string format)
+    {
+        var store = new InMemoryMemoryStore();
+        var options = Options.Create(new MemorySmithOptions());
+        var diagnostics = new MemoryDiagnosticsService(
+            new TagPolicyService(options),
+            new VarResolver(new EmptyVarStore(), options),
+            store,
+            options);
+        var memories = TestServiceFactory.CreateMemoryApplicationService(
+            store,
+            new RecordingEventStore(),
+            new RecordingMemoryChangePublisher(),
+            diagnostics: diagnostics);
+        store.Save(new MemoryRecord
+        {
+            Id = "tool-format-alias-record",
+            Title = "Tool Format Alias Record",
+            Content = "structured search format alias contract",
+            Status = MemoryStatus.Core,
+            Tags = ["project-wiki"],
+            Confidence = 1
+        });
+
+        var catalog = new ChatToolCatalog();
+        Assert.That(catalog.TryGet("memorysmith_search", out var tool), Is.True);
+
+        var result = await tool.Execute(
+            new JsonObject { ["query"] = "structured search format alias", ["format"] = format },
+            new ChatToolExecutionContext(memories, new FilePageService(_tempDir), "test"),
+            CancellationToken.None);
+
+        var json = JsonNode.Parse(result.Text)!.AsObject();
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.IsError, Is.False);
+            Assert.That(result.Structured, Is.Not.Null);
+            Assert.That(json["schemaVersion"]!.GetValue<string>(), Is.EqualTo("memorysmith.retrieval-results.v1"));
+            Assert.That(json["results"]!.AsArray().Count, Is.GreaterThan(0));
+        });
+    }
+
+    [Test]
     public async Task PageSearchAndUnifiedSearchTools_ReturnVisibleMatchesBeyondFirstTwoHundredHiddenResults()
     {
         var pages = new FilePageService(_tempDir);
@@ -292,6 +358,56 @@ public class ChatToolCatalogAndInterceptTests
         {
             Assert.That(result.IsError, Is.True);
             Assert.That(result.Text, Does.Contain("not authorized"));
+        });
+    }
+
+    [Test]
+    public async Task PageDeleteTool_RejectsAnonymousCallerEvenForVisiblePage()
+    {
+        var pages = new FilePageService(_tempDir);
+        await pages.SaveAsync(new PageSaveRequest("public-delete-target", "Public Delete Target", "Body", PageAccessLevels.Anonymous), CancellationToken.None);
+
+        var catalog = new ChatToolCatalog();
+        Assert.That(catalog.TryGet("memorysmith_page_delete", out var tool), Is.True);
+
+        var anonymous = new ClaimsPrincipal(new ClaimsIdentity());
+        var ctx = new ChatToolExecutionContext(null!, pages, "test", User: anonymous, Auth: new AuthOptions());
+
+        var result = await tool.Execute(new JsonObject
+        {
+            ["slug"] = "public-delete-target"
+        }, ctx, CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.IsError, Is.True);
+            Assert.That(result.Text, Does.Contain("not authorized"));
+            Assert.That(File.Exists(Path.Combine(_tempDir, "public-delete-target.md")), Is.True);
+        });
+    }
+
+    [Test]
+    public async Task PageDeleteTool_AllowsEditorToDeleteNonAdminPage()
+    {
+        var pages = new FilePageService(_tempDir);
+        await pages.SaveAsync(new PageSaveRequest("editor-delete-target", "Editor Delete Target", "Body", PageAccessLevels.Authenticated), CancellationToken.None);
+
+        var catalog = new ChatToolCatalog();
+        Assert.That(catalog.TryGet("memorysmith_page_delete", out var tool), Is.True);
+
+        var editor = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Role, MemorySmithRoles.Editor)], "Test"));
+        var ctx = new ChatToolExecutionContext(null!, pages, "test", User: editor, Auth: new AuthOptions());
+
+        var result = await tool.Execute(new JsonObject
+        {
+            ["slug"] = "editor-delete-target"
+        }, ctx, CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.IsError, Is.False);
+            Assert.That(result.Text, Does.Contain("deleted"));
+            Assert.That(File.Exists(Path.Combine(_tempDir, "editor-delete-target.md")), Is.False);
         });
     }
 
