@@ -13,6 +13,7 @@ using System.Security.Claims;
 using System.Diagnostics.Metrics;
 using System.Reflection;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace MemorySmith.Tests;
 
@@ -1406,10 +1407,25 @@ public class PagesAndChatTests
         {
             Assert.That(ollama.Capabilities.SupportsStreaming, Is.True);
             Assert.That(ollama.Capabilities.SupportsImageInput, Is.True);
-            Assert.That(ollama.Capabilities.SupportsNativeToolCalls, Is.False);
+            Assert.That(ollama.Capabilities.SupportsNativeToolCalls, Is.True);
             Assert.That(github.Capabilities.ReportsContextWindowUsage, Is.True);
+            Assert.That(github.Capabilities.SupportsNativeToolCalls, Is.True);
             Assert.That(github.Capabilities.NativeToolCallStatus, Does.Contain("SDK"));
         });
+    }
+
+    [Test]
+    public void GitHubCopilotChatProvider_NormalizesNativeToolCallEventToFallbackEnvelope()
+    {
+        var method = typeof(GitHubCopilotChatProvider).GetMethod("ReadGitHubNativeToolCallEnvelope", BindingFlags.NonPublic | BindingFlags.Static);
+        Assert.That(method, Is.Not.Null, "Expected private native tool-call envelope reader to exist.");
+
+        var envelope = (string?)method!.Invoke(null, [new FakeGitHubToolCallEvent(
+            new FakeGitHubToolCallData("memorysmith_get", "{\"id\":\"project-wiki-search-roadmap\"}"))]);
+
+        Assert.That(envelope, Is.Not.Null.And.Contains("\"toolCalls\""));
+        Assert.That(envelope, Does.Contain("\"memorysmith_get\""));
+        Assert.That(envelope, Does.Contain("project-wiki-search-roadmap"));
     }
 
     [Test]
@@ -2077,6 +2093,98 @@ public class PagesAndChatTests
     }
 
     [Test]
+    public async Task OllamaChatProvider_IncludesNativeToolDefinitionsWhenProvided()
+    {
+        var handler = new CapturingHandler();
+        var provider = new OllamaChatProvider(new HttpClient(handler), new StaticOptionsMonitor<MemorySmithOptions>(new MemorySmithOptions
+        {
+            Chat = new ChatOptions
+            {
+                OllamaEndpoint = "http://localhost:11434",
+                OllamaModel = "llama3.1"
+            }
+        }));
+
+        await provider.CompleteAsync(new ChatProviderRequest(
+            [new ChatMessage("user", "hello")],
+            MemoryChatMode.Chat,
+            Tools:
+            [
+                new ChatProviderToolDefinition(
+                    "memorysmith_get",
+                    "Fetch one memory.",
+                    new JsonObject
+                    {
+                        ["type"] = "object",
+                        ["properties"] = new JsonObject
+                        {
+                            ["id"] = new JsonObject { ["type"] = "string" }
+                        }
+                    })
+            ]), CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(handler.Body, Does.Contain("\"tools\""));
+            Assert.That(handler.Body, Does.Contain("\"memorysmith_get\""));
+            Assert.That(handler.Body, Does.Contain("\"parameters\""));
+        });
+    }
+
+    [Test]
+    public async Task OllamaChatProvider_ConvertsNativeToolCallsIntoFallbackEnvelope()
+    {
+        var handler = new CapturingHandler("""
+        {
+          "message": {
+            "content": "",
+            "tool_calls": [
+              {
+                "function": {
+                  "name": "memorysmith_get",
+                  "arguments": { "id": "project-wiki-search-roadmap" }
+                }
+              }
+            ]
+          }
+        }
+        """);
+        var provider = new OllamaChatProvider(new HttpClient(handler), new StaticOptionsMonitor<MemorySmithOptions>(new MemorySmithOptions
+        {
+            Chat = new ChatOptions
+            {
+                OllamaEndpoint = "http://localhost:11434",
+                OllamaModel = "llama3.1"
+            }
+        }));
+
+        var response = await provider.CompleteAsync(new ChatProviderRequest(
+            [new ChatMessage("user", "hello")],
+            MemoryChatMode.Chat,
+            Tools:
+            [
+                new ChatProviderToolDefinition(
+                    "memorysmith_get",
+                    "Fetch one memory.",
+                    new JsonObject
+                    {
+                        ["type"] = "object",
+                        ["properties"] = new JsonObject
+                        {
+                            ["id"] = new JsonObject { ["type"] = "string" }
+                        }
+                    })
+            ]), CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(response.Content, Does.Contain("\"toolCalls\""));
+            Assert.That(response.Content, Does.Contain("\"memorysmith_get\""));
+            Assert.That(response.Content, Does.Contain("project-wiki-search-roadmap"));
+        });
+    }
+
+    [Test]
     public async Task OllamaChatProvider_StreamsLiveChunks()
     {
         var handler = new CapturingHandler("""
@@ -2568,6 +2676,28 @@ public class PagesAndChatTests
                 Content = new StringContent(_responseBody)
             };
         }
+    }
+
+    private sealed class FakeGitHubToolCallEvent
+    {
+        public FakeGitHubToolCallEvent(FakeGitHubToolCallData data)
+        {
+            Data = data;
+        }
+
+        public FakeGitHubToolCallData Data { get; }
+    }
+
+    private sealed class FakeGitHubToolCallData
+    {
+        public FakeGitHubToolCallData(string toolName, string arguments)
+        {
+            ToolName = toolName;
+            Arguments = arguments;
+        }
+
+        public string ToolName { get; }
+        public string Arguments { get; }
     }
 
     private sealed class BlockingStreamHandler : HttpMessageHandler

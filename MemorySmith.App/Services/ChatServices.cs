@@ -7,6 +7,7 @@ using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using System.Threading.Channels;
+using System.Reflection;
 using GitHub.Copilot.SDK;
 using MemorySmith.App.Services.Training;
 using MemorySmith.Core.Models;
@@ -57,7 +58,13 @@ public sealed record ChatProviderRequest(
     MemoryChatMode Mode,
     string? Model = null,
     IReadOnlyList<ChatAttachment>? Attachments = null,
-    string? Provider = null);
+    string? Provider = null,
+    IReadOnlyList<ChatProviderToolDefinition>? Tools = null);
+
+public sealed record ChatProviderToolDefinition(
+    string Name,
+    string Description,
+    JsonObject InputSchema);
 
 public sealed record ChatUsageSummary(
     int InputTokens,
@@ -459,8 +466,8 @@ public sealed partial class OllamaChatProvider : IChatProvider
         SupportsImageInput: true,
         SupportsStructuredResponses: false,
         ReportsContextWindowUsage: true,
-        SupportsNativeToolCalls: false,
-        NativeToolCallStatus: "Ollama chat uses MemorySmith's application-intercepted JSON-text tool protocol; native tool registration is not wired in this provider.");
+        SupportsNativeToolCalls: true,
+        NativeToolCallStatus: "Ollama native tool registration is enabled; MemorySmith preserves JSON-text tool extraction as a deterministic fallback.");
 
     public async Task<ChatProviderResponse> CompleteAsync(ChatProviderRequest request, CancellationToken cancellationToken)
     {
@@ -476,6 +483,11 @@ public sealed partial class OllamaChatProvider : IChatProvider
             ["stream"] = false,
             ["messages"] = BuildOllamaMessages(request)
         };
+        var tools = BuildOllamaTools(request.Tools);
+        if (tools is not null)
+        {
+            payload["tools"] = tools;
+        }
         var requestOptions = BuildOllamaRequestOptions(chatOptions);
         if (requestOptions is not null)
         {
@@ -491,6 +503,12 @@ public sealed partial class OllamaChatProvider : IChatProvider
 
         using var document = JsonDocument.Parse(body);
         var (content, thinking) = ReadOllamaContent(document.RootElement);
+        if (ReadOllamaToolCallEnvelope(document.RootElement) is { Length: > 0 } nativeToolEnvelope)
+        {
+            content = string.IsNullOrWhiteSpace(content)
+                ? nativeToolEnvelope
+                : content + Environment.NewLine + nativeToolEnvelope;
+        }
         _logger?.LogDebug("Ollama complete response received for model {Model}. Reply chars: {ReplyLength}.", model, content.Length);
         return new ChatProviderResponse(content, Name, model, thinking, ReadOllamaUsage(document.RootElement));
     }
@@ -510,6 +528,11 @@ public sealed partial class OllamaChatProvider : IChatProvider
             ["stream"] = true,
             ["messages"] = BuildOllamaMessages(request)
         };
+        var tools = BuildOllamaTools(request.Tools);
+        if (tools is not null)
+        {
+            payload["tools"] = tools;
+        }
         var requestOptions = BuildOllamaRequestOptions(chatOptions);
         if (requestOptions is not null)
         {
@@ -578,6 +601,11 @@ public sealed partial class OllamaChatProvider : IChatProvider
             if (!string.IsNullOrEmpty(delta))
             {
                 content.Append(delta);
+            }
+            var nativeToolEnvelope = request.Tools is { Count: > 0 } ? ReadOllamaToolCallEnvelope(root) : null;
+            if (!string.IsNullOrWhiteSpace(nativeToolEnvelope))
+            {
+                content.Append(nativeToolEnvelope);
             }
             if (!string.IsNullOrWhiteSpace(thinkingDelta))
             {
@@ -666,6 +694,128 @@ public sealed partial class OllamaChatProvider : IChatProvider
         }
 
         return options.Count == 0 ? null : options;
+    }
+
+    private static List<object>? BuildOllamaTools(IReadOnlyList<ChatProviderToolDefinition>? tools)
+    {
+        if (tools is null || tools.Count == 0)
+        {
+            return null;
+        }
+
+        return tools
+            .Where(tool => !string.IsNullOrWhiteSpace(tool.Name))
+            .Select(tool => (object)new Dictionary<string, object?>
+            {
+                ["type"] = "function",
+                ["function"] = new Dictionary<string, object?>
+                {
+                    ["name"] = tool.Name,
+                    ["description"] = tool.Description,
+                    ["parameters"] = tool.InputSchema
+                }
+            })
+            .ToList();
+    }
+
+    private static string? ReadOllamaToolCallEnvelope(JsonElement root)
+    {
+        if (!root.TryGetProperty("message", out var message) ||
+            !message.TryGetProperty("tool_calls", out var toolCallsElement) ||
+            toolCallsElement.ValueKind != JsonValueKind.Array)
+        {
+            return null;
+        }
+
+        var calls = new JsonArray();
+        foreach (var toolCall in toolCallsElement.EnumerateArray())
+        {
+            var name = ReadOllamaToolCallName(toolCall);
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                continue;
+            }
+
+            calls.Add(new JsonObject
+            {
+                ["name"] = name,
+                ["arguments"] = ReadOllamaToolCallArguments(toolCall)
+            });
+        }
+
+        if (calls.Count == 0)
+        {
+            return null;
+        }
+
+        return new JsonObject { ["toolCalls"] = calls }.ToJsonString();
+    }
+
+    private static string? ReadOllamaToolCallName(JsonElement toolCall)
+    {
+        if (toolCall.TryGetProperty("function", out var functionElement))
+        {
+            if (functionElement.TryGetProperty("name", out var nameElement) && nameElement.ValueKind == JsonValueKind.String)
+            {
+                return nameElement.GetString();
+            }
+        }
+
+        if (toolCall.TryGetProperty("name", out var directName) && directName.ValueKind == JsonValueKind.String)
+        {
+            return directName.GetString();
+        }
+
+        return null;
+    }
+
+    private static JsonObject ReadOllamaToolCallArguments(JsonElement toolCall)
+    {
+        if (toolCall.TryGetProperty("function", out var functionElement) &&
+            functionElement.TryGetProperty("arguments", out var functionArguments))
+        {
+            return ParseOllamaArguments(functionArguments);
+        }
+
+        if (toolCall.TryGetProperty("arguments", out var directArguments))
+        {
+            return ParseOllamaArguments(directArguments);
+        }
+
+        return new JsonObject();
+    }
+
+    private static JsonObject ParseOllamaArguments(JsonElement element)
+    {
+        if (element.ValueKind == JsonValueKind.Object)
+        {
+            return JsonNode.Parse(element.GetRawText())?.AsObject() ?? new JsonObject();
+        }
+
+        if (element.ValueKind == JsonValueKind.String)
+        {
+            var raw = element.GetString();
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                return new JsonObject();
+            }
+
+            try
+            {
+                var parsed = JsonNode.Parse(raw);
+                if (parsed is JsonObject parsedObject)
+                {
+                    return parsedObject;
+                }
+            }
+            catch
+            {
+            }
+
+            return new JsonObject { ["input"] = raw };
+        }
+
+        return new JsonObject();
     }
 
     private static string ReadOllamaDelta(JsonElement root, out string? thinkingDelta)
@@ -833,8 +983,8 @@ public sealed class GitHubCopilotChatProvider : IChatProvider
         SupportsImageInput: true,
         SupportsStructuredResponses: false,
         ReportsContextWindowUsage: true,
-        SupportsNativeToolCalls: false,
-        NativeToolCallStatus: "GitHub Copilot SDK streaming, attachments, model listing, and usage metadata are available, but this SDK path does not expose stable app-supplied native tool registration here; MemorySmith keeps the JSON-text tool fallback active.");
+        SupportsNativeToolCalls: true,
+        NativeToolCallStatus: "GitHub Copilot SDK path attempts native tool registration and normalizes native tool-call events into MemorySmith fallback envelopes; JSON-text extraction remains enabled as deterministic fallback.");
 
     public async Task<ChatProviderResponse> CompleteAsync(ChatProviderRequest request, CancellationToken cancellationToken)
     {
@@ -892,6 +1042,7 @@ public sealed class GitHubCopilotChatProvider : IChatProvider
         string? finalContent = null;
         string? finalThinking = null;
         ChatUsageSummary? usage = null;
+        var nativeToolEnvelopes = new List<string>();
         int? tokenLimit = null;
         int? currentTokens = null;
         var lastActivityTicks = Stopwatch.GetTimestamp();
@@ -1009,12 +1160,26 @@ public sealed class GitHubCopilotChatProvider : IChatProvider
                             Status: "Usage updated",
                             Usage: usage));
                         break;
+                    default:
+                        var nativeEnvelope = ReadGitHubNativeToolCallEnvelope(evt);
+                        if (!string.IsNullOrWhiteSpace(nativeEnvelope))
+                        {
+                            nativeToolEnvelopes.Add(nativeEnvelope);
+                        }
+                        break;
                     case SessionIdleEvent:
                         _logger?.LogDebug("GitHub stream reached idle for model {Model}.", model);
+                        var completedContent = finalContent ?? content.ToString();
+                        if (nativeToolEnvelopes.Count > 0)
+                        {
+                            completedContent = string.IsNullOrWhiteSpace(completedContent)
+                                ? string.Join(Environment.NewLine, nativeToolEnvelopes)
+                                : completedContent + Environment.NewLine + string.Join(Environment.NewLine, nativeToolEnvelopes);
+                        }
                         PublishChunk(new ChatProviderChunk(
                             string.Empty,
                             null,
-                            finalContent ?? content.ToString(),
+                            completedContent,
                             finalThinking ?? (thinking.Length == 0 ? null : thinking.ToString()),
                             IsFinal: true,
                             Name,
@@ -1035,11 +1200,14 @@ public sealed class GitHubCopilotChatProvider : IChatProvider
             }
         });
 
-        await session.SendAsync(new MessageOptions
+        var messageOptions = new MessageOptions
         {
             Prompt = FormatGitHubPrompt(request.Messages),
             Attachments = BuildGitHubAttachments(request.Attachments)
-        }, timeout.Token);
+        };
+        TryAttachGitHubNativeTools(messageOptions, request.Tools);
+
+        await session.SendAsync(messageOptions, timeout.Token);
 
         await foreach (var chunk in channel.Reader.ReadAllAsync(timeout.Token))
         {
@@ -1142,6 +1310,141 @@ public sealed class GitHubCopilotChatProvider : IChatProvider
 
     private static string NormalizeGitHubPromptRole(string role) =>
         string.IsNullOrWhiteSpace(role) ? "user" : role.Trim().ToLowerInvariant();
+
+    private void TryAttachGitHubNativeTools(MessageOptions options, IReadOnlyList<ChatProviderToolDefinition>? tools)
+    {
+        if (tools is null || tools.Count == 0)
+        {
+            return;
+        }
+
+        var property = typeof(MessageOptions).GetProperty("Tools", BindingFlags.Public | BindingFlags.Instance);
+        if (property is null || !property.CanWrite)
+        {
+            return;
+        }
+
+        try
+        {
+            if (property.PropertyType == typeof(string))
+            {
+                var jsonTools = tools.Select(tool => new
+                {
+                    tool.Name,
+                    tool.Description,
+                    InputSchema = tool.InputSchema
+                }).ToList();
+                property.SetValue(options, JsonSerializer.Serialize(jsonTools, GitHubPromptJsonOptions));
+                return;
+            }
+
+            if (property.PropertyType.IsAssignableFrom(typeof(List<ChatProviderToolDefinition>)))
+            {
+                property.SetValue(options, tools.ToList());
+                return;
+            }
+
+            if (property.PropertyType.IsAssignableFrom(typeof(List<object>)))
+            {
+                property.SetValue(options, tools.Select(tool => (object)new Dictionary<string, object?>
+                {
+                    ["name"] = tool.Name,
+                    ["description"] = tool.Description,
+                    ["inputSchema"] = tool.InputSchema
+                }).ToList());
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug(ex, "GitHub native tool registration could not be attached to MessageOptions via reflection.");
+        }
+    }
+
+    private static string? ReadGitHubNativeToolCallEnvelope(object evt)
+    {
+        if (evt is null)
+        {
+            return null;
+        }
+
+        var data = ReadObjectProperty(evt, "Data") ?? evt;
+        var name = ReadStringProperty(data, "ToolName")
+            ?? ReadStringProperty(data, "Name")
+            ?? ReadStringProperty(data, "FunctionName");
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return null;
+        }
+
+        var argumentsNode = ReadGitHubToolArguments(data);
+        var envelope = new JsonObject
+        {
+            ["toolCalls"] = new JsonArray
+            {
+                new JsonObject
+                {
+                    ["name"] = name,
+                    ["arguments"] = argumentsNode
+                }
+            }
+        };
+
+        return envelope.ToJsonString();
+    }
+
+    private static JsonObject ReadGitHubToolArguments(object data)
+    {
+        var rawArguments = ReadObjectProperty(data, "Arguments")
+            ?? ReadObjectProperty(data, "ToolArguments")
+            ?? ReadObjectProperty(data, "Parameters")
+            ?? ReadObjectProperty(data, "Input");
+        if (rawArguments is null)
+        {
+            return new JsonObject();
+        }
+
+        if (rawArguments is JsonObject jsonObject)
+        {
+            return jsonObject;
+        }
+
+        if (rawArguments is string rawText)
+        {
+            if (string.IsNullOrWhiteSpace(rawText))
+            {
+                return new JsonObject();
+            }
+
+            try
+            {
+                var parsed = JsonNode.Parse(rawText);
+                if (parsed is JsonObject parsedObject)
+                {
+                    return parsedObject;
+                }
+            }
+            catch
+            {
+            }
+
+            return new JsonObject { ["input"] = rawText };
+        }
+
+        try
+        {
+            var serialized = JsonSerializer.Serialize(rawArguments, GitHubPromptJsonOptions);
+            var parsed = JsonNode.Parse(serialized);
+            if (parsed is JsonObject parsedObject)
+            {
+                return parsedObject;
+            }
+        }
+        catch
+        {
+        }
+
+        return new JsonObject { ["input"] = rawArguments.ToString() ?? string.Empty };
+    }
 
     private static List<UserMessageAttachment>? BuildGitHubAttachments(IReadOnlyList<ChatAttachment>? attachments)
     {
@@ -1578,8 +1881,10 @@ public sealed partial class MemoryChatAgent : IChatAgent
             var thinking = new StringBuilder();
             ChatProviderChunk? finalChunk = null;
             var bufferVisibleContent = _options.Value.Chat.ToolCallsEnabled;
+            var approvalRequired = RequiresAgentWriteApproval(request);
+            var providerTools = BuildProviderToolDefinitions(request.Mode, approvalRequired);
 
-            await foreach (var chunk in provider.StreamAsync(new ChatProviderRequest(messages, request.Mode, request.Model, request.Attachments, provider.Name), cancellationToken))
+            await foreach (var chunk in provider.StreamAsync(new ChatProviderRequest(messages, request.Mode, request.Model, request.Attachments, provider.Name, providerTools), cancellationToken))
             {
                 if (!string.IsNullOrEmpty(chunk.ContentDelta))
                 {
@@ -1797,8 +2102,10 @@ public sealed partial class MemoryChatAgent : IChatAgent
             maxToolCallsPerTurn);
         for (var iteration = 0; ; iteration++)
         {
+            var approvalRequired = RequiresAgentWriteApproval(request);
+            var providerTools = BuildProviderToolDefinitions(request.Mode, approvalRequired);
             var providerResponse = await provider.CompleteAsync(
-                new ChatProviderRequest(messages, request.Mode, request.Model, request.Attachments, provider.Name),
+                new ChatProviderRequest(messages, request.Mode, request.Model, request.Attachments, provider.Name, providerTools),
                 cancellationToken);
             var completedUsage = CompleteUsage(providerResponse.ProviderName, providerResponse.Model, messages, providerResponse.Content, providerResponse.Usage);
             aggregateUsage = MergeTurnUsage(aggregateUsage, completedUsage);
@@ -1845,7 +2152,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
                 transcriptToolCalls);
             }
 
-            var toolResults = await ExecuteToolCallsAsync(toolCalls, request.Mode, RequiresAgentWriteApproval(request), cancellationToken);
+            var toolResults = await ExecuteToolCallsAsync(toolCalls, request.Mode, approvalRequired, cancellationToken);
             _logger?.LogInformation(
                 ChatLogEvents.ToolLoopExecuted,
                 "Chat tool loop executed requested tools. Provider: {Provider}, Iteration: {Iteration}, RequestedToolCount: {RequestedToolCount}, ExecutedToolCount: {ExecutedToolCount}, ToolErrors: {ToolErrors}",
@@ -2265,6 +2572,23 @@ public sealed partial class MemoryChatAgent : IChatAgent
 
     private int MaxToolIterations() =>
         _options.Value.Chat.ToolCallsEnabled ? Math.Clamp(_options.Value.Chat.MaxToolIterations, 0, 5) : 0;
+
+    private IReadOnlyList<ChatProviderToolDefinition> BuildProviderToolDefinitions(MemoryChatMode mode, bool approvalRequired)
+    {
+        if (!_options.Value.Chat.ToolCallsEnabled)
+        {
+            return [];
+        }
+
+        var includeWriteTools = mode == MemoryChatMode.Agent && CanApplyAgentWrites() && !approvalRequired;
+        return _toolCatalog.ToolsForMode(mode)
+            .Where(tool => tool.Risk == ChatToolRisk.ReadOnly || (includeWriteTools && tool.Risk == ChatToolRisk.Write))
+            .Select(tool => new ChatProviderToolDefinition(
+                tool.Name,
+                tool.Description,
+                JsonNode.Parse(tool.InputSchema.ToJsonString())?.AsObject() ?? new JsonObject()))
+            .ToList();
+    }
 
     private static ChatUsageSummary MergeTurnUsage(ChatUsageSummary? current, ChatUsageSummary next) =>
         current is null
