@@ -1,6 +1,8 @@
 using System.Text.Json.Nodes;
 using MemorySmith.App.Services;
 using MemorySmith.Core.Models;
+using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using System.Security.Claims;
 using NUnit.Framework;
@@ -493,6 +495,88 @@ public class ChatToolCatalogAndInterceptTests
         });
     }
 
+    [Test]
+    public async Task CodeSearchMergeShardTool_RejectsShardPathOutsideAllowedRoots()
+    {
+        var repoRoot = Path.Combine(_tempDir, "repo");
+        Directory.CreateDirectory(repoRoot);
+        using var codeSearch = CreateCodeSearchService(repoRoot);
+
+        var outsideRoot = Path.Combine(Path.GetTempPath(), "MemorySmithMergeShardOutside", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(outsideRoot);
+        var shardPath = Path.Combine(outsideRoot, "outside.db");
+        CreateEmptyShardDatabase(shardPath);
+
+        var catalog = new ChatToolCatalog();
+        Assert.That(catalog.TryGet("memorysmith_code_search_merge_shard", out var tool), Is.True);
+        var ctx = new ChatToolExecutionContext(null!, new FilePageService(_tempDir), "test", CodeSearch: codeSearch);
+
+        var result = await tool.Execute(new JsonObject
+        {
+            ["shardPath"] = shardPath
+        }, ctx, CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.IsError, Is.True);
+            Assert.That(result.Text, Does.Contain("configured code-search roots"));
+        });
+    }
+
+    [Test]
+    public async Task CodeSearchMergeShardTool_RejectsNonSqliteExtensionEvenInsideAllowedRoot()
+    {
+        var repoRoot = Path.Combine(_tempDir, "repo");
+        Directory.CreateDirectory(repoRoot);
+        using var codeSearch = CreateCodeSearchService(repoRoot);
+
+        var invalidExtensionPath = Path.Combine(repoRoot, "not-a-shard.txt");
+        await File.WriteAllTextAsync(invalidExtensionPath, "not sqlite");
+
+        var catalog = new ChatToolCatalog();
+        Assert.That(catalog.TryGet("memorysmith_code_search_merge_shard", out var tool), Is.True);
+        var ctx = new ChatToolExecutionContext(null!, new FilePageService(_tempDir), "test", CodeSearch: codeSearch);
+
+        var result = await tool.Execute(new JsonObject
+        {
+            ["shardPath"] = invalidExtensionPath
+        }, ctx, CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.IsError, Is.True);
+            Assert.That(result.Text, Does.Contain("SQLite shard file extension"));
+        });
+    }
+
+    [Test]
+    public async Task CodeSearchMergeShardTool_AllowsSqliteShardInsideAllowedRoot()
+    {
+        var repoRoot = Path.Combine(_tempDir, "repo");
+        Directory.CreateDirectory(repoRoot);
+        using var codeSearch = CreateCodeSearchService(repoRoot);
+
+        var shardPath = Path.Combine(repoRoot, "allowed-shard.db");
+        CreateEmptyShardDatabase(shardPath);
+
+        var catalog = new ChatToolCatalog();
+        Assert.That(catalog.TryGet("memorysmith_code_search_merge_shard", out var tool), Is.True);
+        var ctx = new ChatToolExecutionContext(null!, new FilePageService(_tempDir), "test", CodeSearch: codeSearch);
+
+        var result = await tool.Execute(new JsonObject
+        {
+            ["shardPath"] = shardPath,
+            ["preferNewer"] = true
+        }, ctx, CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.IsError, Is.False);
+            Assert.That(result.Text, Does.Contain("insertedChunkCount"));
+            Assert.That(result.Text, Does.Contain("totalShardChunkCount"));
+        });
+    }
+
     [TestCase("search the wiki for durable evidence", "memorysmith_unified_search")]
     [TestCase("search the codebase for widget parser", "memorysmith_code_search")]
     [TestCase("find records about caching layer", "memorysmith_unified_search")]
@@ -516,5 +600,67 @@ public class ChatToolCatalogAndInterceptTests
     {
         var interceptor = new ChatIntentInterceptor();
         Assert.That(interceptor.TryMatch(message), Is.Null);
+    }
+
+    private CodeSearchService CreateCodeSearchService(string repositoryRoot)
+    {
+        var dataPath = Path.Combine(_tempDir, "data", "Memories");
+        Directory.CreateDirectory(dataPath);
+
+        var options = new MemorySmithOptions
+        {
+            DataPath = dataPath,
+            CodeSearch = new CodeSearchOptions
+            {
+                RepositoryRootPath = repositoryRoot,
+                TargetDirectories = ["MemorySmith.App"],
+                IncludedFileExtensions = [".cs"],
+                MaxResults = 10
+            }
+        };
+
+        return new CodeSearchService(new TestEmbeddingProvider(), Options.Create(options), NullLogger<CodeSearchService>.Instance);
+    }
+
+    private static void CreateEmptyShardDatabase(string databasePath)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(databasePath)!);
+        using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+        {
+            DataSource = databasePath
+        }.ToString());
+        connection.Open();
+
+        using var command = connection.CreateCommand();
+        command.CommandText = @"
+CREATE TABLE IF NOT EXISTS CodeSearchChunks (
+    TargetKey TEXT NOT NULL,
+    DocumentPath TEXT NOT NULL,
+    AbsolutePath TEXT NOT NULL,
+    ChunkId INTEGER NOT NULL,
+    SourceHash TEXT NOT NULL,
+    SourceLengthBytes INTEGER NOT NULL,
+    SourceLastWriteUtc TEXT NOT NULL,
+    ConfigurationHash TEXT NOT NULL,
+    StartLine INTEGER NOT NULL,
+    EndLine INTEGER NOT NULL,
+    Snippet TEXT NOT NULL,
+    SearchText TEXT NOT NULL,
+    EmbeddingJson TEXT,
+    IndexedAtUtc TEXT NOT NULL
+);";
+        command.ExecuteNonQuery();
+    }
+
+    private sealed class TestEmbeddingProvider : ITextEmbeddingProvider
+    {
+        public EmbeddingProviderStatus GetStatus() => new(true, "ok", null, null, 8, "cpu", "cpu", null, null);
+
+        public bool TryEmbed(string text, EmbeddingInputKind kind, out float[] embedding, out string? reason)
+        {
+            embedding = new float[8];
+            reason = null;
+            return true;
+        }
     }
 }

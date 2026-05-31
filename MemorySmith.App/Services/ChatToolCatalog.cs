@@ -70,6 +70,8 @@ public sealed record ChatToolExecutionResult(
 /// </summary>
 public sealed class ChatToolCatalog
 {
+    private static readonly string[] MergeShardAllowedExtensions = [".db", ".sqlite", ".sqlite3"];
+
     public static readonly JsonSerializerOptions ToolJsonOptions = new(JsonSerializerDefaults.Web)
     {
         WriteIndented = true
@@ -475,8 +477,36 @@ public sealed class ChatToolCatalog
                     return new ChatToolExecutionResult("The memorysmith_code_search_merge_shard tool requires a non-empty shardPath argument.", IsError: true);
                 }
 
+                if (!Path.IsPathFullyQualified(shardPath))
+                {
+                    return new ChatToolExecutionResult("The memorysmith_code_search_merge_shard tool requires an absolute shardPath.", IsError: true);
+                }
+
+                string canonicalShardPath;
+                try
+                {
+                    canonicalShardPath = Path.GetFullPath(shardPath);
+                }
+                catch (Exception)
+                {
+                    return new ChatToolExecutionResult("The memorysmith_code_search_merge_shard tool received an invalid shardPath.", IsError: true);
+                }
+
+                var extension = Path.GetExtension(canonicalShardPath);
+                if (!MergeShardAllowedExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase))
+                {
+                    return new ChatToolExecutionResult("The memorysmith_code_search_merge_shard tool requires a SQLite shard file extension (.db, .sqlite, .sqlite3).", IsError: true);
+                }
+
+                var status = await ctx.CodeSearch.GetStatusAsync(ct);
+                var allowedRoots = ResolveMergeShardAllowedRoots(status);
+                if (!IsPathWithinAnyRoot(canonicalShardPath, allowedRoots))
+                {
+                    return new ChatToolExecutionResult("The memorysmith_code_search_merge_shard tool only allows shardPath values under configured code-search roots.", IsError: true);
+                }
+
                 var preferNewer = ReadBool(args, "preferNewer", true);
-                var result = await ctx.CodeSearch.MergeShardAsync(shardPath, preferNewer, ct);
+                var result = await ctx.CodeSearch.MergeShardAsync(canonicalShardPath, preferNewer, ct);
                 return JsonToolResult(result);
             },
             EnabledByDefaultInMcp: false);
@@ -1624,6 +1654,52 @@ public sealed class ChatToolCatalog
         string.Equals(format, "json", StringComparison.OrdinalIgnoreCase) ||
         string.Equals(format, "envelope", StringComparison.OrdinalIgnoreCase) ||
         string.Equals(format, "json-v2", StringComparison.OrdinalIgnoreCase);
+
+    private static IReadOnlyList<string> ResolveMergeShardAllowedRoots(CodeSearchStatus status)
+    {
+        var roots = new List<string>();
+        if (!string.IsNullOrWhiteSpace(status.RepositoryRoot))
+        {
+            roots.Add(Path.GetFullPath(status.RepositoryRoot));
+        }
+
+        var indexDirectory = Path.GetDirectoryName(status.IndexPath);
+        if (!string.IsNullOrWhiteSpace(indexDirectory))
+        {
+            roots.Add(Path.GetFullPath(indexDirectory));
+        }
+
+        return roots.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
+    private static bool IsPathWithinAnyRoot(string candidatePath, IReadOnlyList<string> roots)
+    {
+        var normalizedCandidate = Path.GetFullPath(candidatePath)
+            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+        foreach (var root in roots)
+        {
+            if (string.IsNullOrWhiteSpace(root))
+            {
+                continue;
+            }
+
+            var normalizedRoot = Path.GetFullPath(root)
+                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            if (string.Equals(normalizedCandidate, normalizedRoot, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            var rootWithSeparator = normalizedRoot + Path.DirectorySeparatorChar;
+            if (normalizedCandidate.StartsWith(rootWithSeparator, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     public static string Truncate(string? value, int maxCharacters)
     {
