@@ -1,0 +1,33 @@
+{
+  "Id": "project-wiki-training-workbench-current",
+  "Content": "MemorySmith includes a local fine-tune pipeline at /training-workbench (Admin-only). The system has three layers: (1) Data plane \u2014 ChatTranscriptWriter captures turn metadata and content to daily JSONL files with configurable redaction (Bearer tokens, api_key/secret patterns); SqliteChatFeedbackStore stores thumbs up/down ratings per turn. (2) Orchestration \u2014 TrainingHarnessRunnerService probes Python dependencies (torch, transformers, trl, peft), launches harness.py as a subprocess with timeout management, and reports live status. (3) Execution \u2014 harness.py supports simulated mode (no GPU), LoRA/QLoRA training with batched steps, cosine LR schedule, gradient checkpointing, and 4-bit quantization via BitsAndBytesConfig. Training data comes from chat transcripts or synthetic starter examples. The workbench UI shows dependency status, run history, settings proxy controls, and a start/dry-run launcher. All training config is under MemorySmith:Training with defaults that keep the harness in simulated mode until CUDA is available.",
+  "Title": "Training Workbench and Fine-Tune Harness",
+  "Status": 2,
+  "Confidence": 0.85,
+  "Tags": [
+    "project-wiki",
+    "training",
+    "fine-tune",
+    "harness",
+    "current-state",
+    "kind:fact"
+  ],
+  "References": [],
+  "Conflicts": [],
+  "SourceLinks": [
+    {
+      "Label": "TrainingWorkbench.razor",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Components/Pages/TrainingWorkbench.razor",
+      "StartLine": 1,
+      "EndLine": 60
+    },
+    {
+      "Label": "harness.py",
+      "Uri": "%MemorySmithRepo%MemorySmith.Training/harness.py",
+      "StartLine": 1,
+      "EndLine": 50
+    }
+  ],
+  "UsageCount": 0,
+  "LastUpdated": "2026-06-01T20:14:21Z"
+}
