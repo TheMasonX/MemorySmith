@@ -18,7 +18,7 @@ Make PR review delivery less token-expensive by avoiding repeated chat polling a
 
 - Added `Scripts/SkillHooks/Wait-PrReviewState.ps1`.
 - Added `Scripts/SkillHooks/Get-CiSnapshot.ps1`.
-- Updated user skill `C:/Users/norrt/.copilot/skills/pr-review-delivery/SKILL.md` with script-driven wait policy.
+- Updated canonical repo skill `.github/skills/pr-review-delivery/SKILL.md` with script-driven wait policy.
 - Updated CI monitor skill guidance to prefer script hook usage.
 
 ## Follow-Up

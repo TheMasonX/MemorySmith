@@ -7,7 +7,7 @@ Apply a small, low-risk batch of skill/tooling improvements that reduces repeate
 ## Why This Batch Exists (Evidence)
 
 - The tracker shows frequent repeated focused-test command construction with long `dotnet test --filter` strings and repeated validator triads (`Scripts/Test-TaskRecords.ps1`, `Scripts/Test-PageLinks.ps1`, `Scripts/Test-PagePathLiterals.ps1`) in many rounds.
-- CI monitoring guidance is currently duplicated across `.github/agents/smith.agent.md`, `.github/skills/ci-budget-conscious-monitor/SKILL.md`, and `.github/skills/training-sprint-loop/SKILL.md`.
+- CI monitoring guidance is currently duplicated across `.github/agents/smith.agent.md`, `.github/skills/ci-status-monitor/SKILL.md`, and `.github/skills/training-sprint-loop/SKILL.md`.
 - Skill inheritance and MCP-first adoption now exist, but there is no lightweight repo check that enforces those contracts.
 
 ## Proposed Small Changes
@@ -34,7 +34,7 @@ Apply a small, low-risk batch of skill/tooling improvements that reduces repeate
 
 ### 3. Collapse duplicated CI-mode wording into one reference block
 
-- Proposal: keep authoritative CI-mode policy in `.github/skills/ci-budget-conscious-monitor/SKILL.md` and shorten repeated copies in other skills to one-line references.
+- Proposal: keep authoritative CI-mode policy in `.github/skills/ci-status-monitor/SKILL.md` and shorten repeated copies in other skills to one-line references.
 - Classification: `Next`.
 - Impact: medium (token and maintenance reduction).
 - Effort: low.
@@ -71,9 +71,9 @@ Execution tracking:
 ## Follow-Up
 
 - Now:
-	- implement change 1 via `TSK-0251` (confidence 93%)
-	- implement change 2 via `TSK-0252` (confidence 90%)
+  - implement change 1 via `TSK-0251` (confidence 93%)
+  - implement change 2 via `TSK-0252` (confidence 90%)
 - Next:
-	- collapse duplicated CI wording to shared references (confidence 88%)
+  - collapse duplicated CI wording to shared references (confidence 88%)
 - Later:
-	- add stable hook output schema README and examples (confidence 85%)
+  - add stable hook output schema README and examples (confidence 85%)

@@ -17,6 +17,9 @@ h1:focus {
     --vscode-green: #89d185;
     --vscode-yellow: #cca700;
     --vscode-red: #f14c4c;
+    --app-titlebar-height: 48px;
+    --app-drawer-width: 272px;
+    --chat-sidebar-width: clamp(320px, 34vw, 460px);
 }
 
 html,
@@ -31,15 +34,29 @@ body {
     font-family: "Segoe UI", Roboto, Arial, sans-serif;
 }
 
-.mud-main-content {
-    min-height: 100vh;
-    padding-top: 48px !important;
+.app-shell {
+    --app-titlebar-height: 48px;
 }
 
-.mud-appbar,
-.mud-toolbar {
+.app-shell.is-titlebar-collapsed {
+    --app-titlebar-height: 32px;
+}
+
+.app-shell .mud-main-content {
+    min-height: 100vh;
+    padding-top: var(--app-titlebar-height) !important;
+}
+
+.app-titlebar,
+.app-titlebar .mud-toolbar {
     min-height: 48px;
     height: 48px;
+}
+
+.app-titlebar.is-collapsed,
+.app-titlebar.is-collapsed .mud-toolbar {
+    min-height: 32px;
+    height: 32px;
 }
 
 .app-main-content {
@@ -47,7 +64,7 @@ body {
 }
 
 .app-content {
-    height: calc(100vh - 48px);
+    height: calc(100vh - var(--app-titlebar-height));
     overflow: auto;
     overflow-x: hidden;
     padding: 8px 12px 18px;
@@ -67,18 +84,18 @@ body {
     background: var(--vscode-panel) !important;
     border-right: 1px solid var(--vscode-border);
     color: var(--vscode-text);
-    width: 220px !important;
-    min-width: 220px !important;
+    width: var(--app-drawer-width) !important;
+    min-width: var(--app-drawer-width) !important;
 }
 
 .app-drawer.mud-drawer {
-    width: 220px !important;
-    min-width: 220px !important;
+    width: var(--app-drawer-width) !important;
+    min-width: var(--app-drawer-width) !important;
 }
 
 /* Keep the responsive closed drawer fully off-canvas at the customized width. */
 .app-drawer.mud-drawer-pos-left.mud-drawer--closed {
-    left: -220px !important;
+    left: calc(var(--app-drawer-width) * -1) !important;
 }
 
 .app-drawer .mud-drawer-header {
@@ -93,6 +110,21 @@ body {
 
 .app-drawer .mud-nav-link-icon {
     margin-right: 12px;
+}
+
+.app-drawer .mud-drawer-content {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.app-drawer .mud-navmenu {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-bottom: 10px;
 }
 
 .wiki-workbench {
@@ -1545,7 +1577,7 @@ body {
 }
 
 .chat-workbench.is-sidebar-open {
-    grid-template-columns: minmax(0, 1fr) clamp(280px, 30%, 380px);
+    grid-template-columns: minmax(0, 1fr) var(--chat-sidebar-width);
 }
 
 .chat-shell,
@@ -4505,7 +4537,7 @@ body {
 
 @media (max-width: 1400px) {
     .chat-workbench.is-sidebar-open {
-        grid-template-columns: minmax(0, 1fr) clamp(300px, 30%, 360px);
+        grid-template-columns: minmax(0, 1fr) clamp(300px, 33vw, 420px);
     }
 }
 
@@ -4553,7 +4585,7 @@ body {
     }
 
     .chat-workbench.is-sidebar-open {
-        grid-template-columns: minmax(0, 1fr) clamp(220px, 28%, 300px);
+        grid-template-columns: minmax(0, 1fr) clamp(260px, 35vw, 340px);
     }
 
     .chat-toolbar {
@@ -4633,6 +4665,11 @@ body {
 }
 
 @media (max-width: 780px) {
+    .chat-workbench.is-sidebar-open {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: minmax(0, 1fr) minmax(200px, 38vh);
+    }
+
     .tasks-quick-create-pane {
         grid-template-columns: minmax(0, 1fr);
         grid-template-areas:
@@ -5268,7 +5305,8 @@ body {
     }
 
     .chat-workbench.is-sidebar-open {
-        grid-template-columns: minmax(0, 1fr) clamp(160px, 44%, 220px);
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: minmax(0, 1fr) minmax(220px, 42vh);
     }
 
     .chat-workbench,

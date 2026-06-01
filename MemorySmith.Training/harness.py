@@ -267,25 +267,48 @@ class Harness:
 
         return candidate
 
-    def resolve_hyperparameters(self) -> tuple[int, int, float, int | None]:
+    def resolve_hyperparameters(self) -> tuple[int, int, float, int | None, int, int, bool]:
         hyperparameters = self.request.get("hyperparameters")
         if not isinstance(hyperparameters, dict):
-            return 1, 512, 2e-4, None
+            return 1, 512, 2e-4, None, 1, 0, True
 
         epochs = int(hyperparameters.get("epochs") or 1)
         sequence_length = int(hyperparameters.get("sequenceLength") or 512)
         learning_rate = float(hyperparameters.get("learningRate") or 2e-4)
         max_train_steps_raw = hyperparameters.get("maxTrainSteps")
+        gradient_accumulation_steps = int(hyperparameters.get("gradientAccumulationSteps") or 1)
+        warmup_steps = int(hyperparameters.get("warmupSteps") or 0)
+        shuffle_each_epoch_raw = hyperparameters.get("shuffleEachEpoch")
 
         # Keep defaults bounded for an 8GB class laptop GPU.
         epochs = max(1, min(epochs, 3))
         sequence_length = max(128, min(sequence_length, 1024))
         learning_rate = max(1e-6, min(learning_rate, 5e-3))
+        gradient_accumulation_steps = max(1, min(gradient_accumulation_steps, 64))
+        warmup_steps = max(0, min(warmup_steps, 100000))
+
+        if shuffle_each_epoch_raw is None:
+            shuffle_each_epoch = True
+        elif isinstance(shuffle_each_epoch_raw, bool):
+            shuffle_each_epoch = shuffle_each_epoch_raw
+        elif isinstance(shuffle_each_epoch_raw, str):
+            shuffle_each_epoch = shuffle_each_epoch_raw.strip().lower() in {"1", "true", "yes", "on"}
+        else:
+            shuffle_each_epoch = bool(shuffle_each_epoch_raw)
+
         max_train_steps = None
         if max_train_steps_raw is not None:
             max_train_steps = max(1, min(int(max_train_steps_raw), 256))
 
-        return epochs, sequence_length, learning_rate, max_train_steps
+        return (
+            epochs,
+            sequence_length,
+            learning_rate,
+            max_train_steps,
+            gradient_accumulation_steps,
+            warmup_steps,
+            shuffle_each_epoch,
+        )
 
     def to_training_text(self, rows: list[dict[str, Any]], tokenizer: Any) -> list[str]:
         texts: list[str] = []
@@ -324,7 +347,15 @@ class Harness:
         from transformers import AutoModelForCausalLM, AutoTokenizer
 
         model_id = self.resolve_model_id()
-        epochs, sequence_length, learning_rate, max_train_steps = self.resolve_hyperparameters()
+        (
+            epochs,
+            sequence_length,
+            learning_rate,
+            max_train_steps,
+            gradient_accumulation_steps,
+            warmup_steps,
+            shuffle_each_epoch,
+        ) = self.resolve_hyperparameters()
 
         trust_remote_code = self.resolve_trust_remote_code()
         tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=trust_remote_code)
@@ -363,13 +394,30 @@ class Harness:
         steps_per_epoch = max(1, len(texts))
         computed_steps = steps_per_epoch * epochs
         max_steps = min(computed_steps, max_train_steps) if max_train_steps is not None else computed_steps
+        effective_warmup_steps = min(warmup_steps, max_steps)
         optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
+        scheduler = None
+        if effective_warmup_steps > 0:
+            scheduler = torch.optim.lr_scheduler.LambdaLR(
+                optimizer,
+                lr_lambda=lambda step: min(1.0, float(step + 1) / float(effective_warmup_steps)),
+            )
+        optimizer.zero_grad(set_to_none=True)
 
         losses: list[float] = []
         loss_per_epoch: list[dict[str, Any]] = []
+        epoch_order: list[int] = []
+        rng = random.Random(42)
 
         for step in range(max_steps):
-            text = texts[step % len(texts)]
+            step_in_epoch = (step % steps_per_epoch) + 1
+            if step_in_epoch == 1:
+                epoch_order = list(range(len(texts)))
+                if shuffle_each_epoch:
+                    rng.shuffle(epoch_order)
+
+            text_index = epoch_order[step_in_epoch - 1] if epoch_order else (step % len(texts))
+            text = texts[text_index]
             encoded = tokenizer(
                 text,
                 truncation=True,
@@ -385,17 +433,23 @@ class Harness:
                 attention_mask=attention_mask,
                 labels=input_ids,
             )
-            loss = outputs.loss
+            loss = outputs.loss / gradient_accumulation_steps
             loss.backward()
-            optimizer.step()
-            optimizer.zero_grad(set_to_none=True)
 
-            loss_value = float(loss.detach().cpu().item())
+            is_optimizer_step = ((step + 1) % gradient_accumulation_steps == 0) or (step + 1 == max_steps)
+            if is_optimizer_step:
+                optimizer.step()
+                optimizer.zero_grad(set_to_none=True)
+                if scheduler is not None:
+                    scheduler.step()
+
+            loss_value = float(outputs.loss.detach().cpu().item())
             losses.append(loss_value)
-            
+
             # Track per-epoch summary
             epoch_num = (step // len(texts)) + 1
-            step_in_epoch = (step % len(texts)) + 1
+            token_count = int(attention_mask.sum().detach().cpu().item())
+            current_lr = float(optimizer.param_groups[0]["lr"])
             
             self.emit_event(
                 "train.step",
@@ -405,6 +459,9 @@ class Harness:
                     "epoch": epoch_num,
                     "stepInEpoch": step_in_epoch,
                     "loss": round(loss_value, 4),
+                    "tokenCount": token_count,
+                    "optimizerStep": is_optimizer_step,
+                    "learningRate": round(current_lr, 8),
                 },
             )
 
@@ -456,6 +513,9 @@ class Harness:
             "device": training_device,
             "sequenceLength": sequence_length,
             "learningRate": learning_rate,
+            "gradientAccumulationSteps": gradient_accumulation_steps,
+            "warmupSteps": effective_warmup_steps,
+            "shuffleEachEpoch": shuffle_each_epoch,
             "trustRemoteCode": trust_remote_code,
         }
 

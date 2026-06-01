@@ -4,6 +4,10 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.Data.Sqlite;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Text;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -215,6 +219,11 @@ public sealed class CodeSearchService : IDisposable
         long EmbeddingMilliseconds,
         int EmbeddingCallCount,
         int EmbeddedChunkCount);
+
+    private sealed record ParsedChunk(
+        int StartLine,
+        int EndLine,
+        string ChunkText);
 
     private sealed record VectorCandidateLoadResult(
         List<IndexedChunk> Chunks,
@@ -808,30 +817,14 @@ public sealed class CodeSearchService : IDisposable
         string configurationHash,
         bool canEmbed)
     {
-        var chunkLineCount = Math.Max(5, _options.ChunkLineCount);
-        var overlapLineCount = Math.Clamp(_options.ChunkOverlapLineCount, 0, Math.Max(0, chunkLineCount - 1));
         var chunkingStopwatch = Stopwatch.StartNew();
         var lines = sourceText.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n').Split('\n');
-        var preparedChunks = new List<PreparedChunk>();
-        var step = Math.Max(1, chunkLineCount - overlapLineCount);
+        var parsedChunks = BuildParsedChunks(documentPath, sourceText, lines);
+        var preparedChunks = new List<PreparedChunk>(parsedChunks.Count);
         var chunkIndex = 0;
 
-        for (var startLineIndex = 0; startLineIndex < lines.Length; startLineIndex += step)
+        foreach (var parsedChunk in parsedChunks)
         {
-            var startLine = startLineIndex + 1;
-            var endLine = Math.Min(lines.Length, startLineIndex + chunkLineCount);
-            var chunkLines = lines.Skip(startLineIndex).Take(endLine - startLineIndex).ToArray();
-            var chunkText = string.Join('\n', chunkLines).Trim();
-            if (string.IsNullOrWhiteSpace(chunkText))
-            {
-                continue;
-            }
-
-            if (chunkText.Length > _options.MaxChunkCharacters)
-            {
-                chunkText = chunkText[..Math.Max(1, _options.MaxChunkCharacters)].TrimEnd();
-            }
-
             preparedChunks.Add(new PreparedChunk(
                 target,
                 documentPath,
@@ -841,11 +834,11 @@ public sealed class CodeSearchService : IDisposable
                 sourceLengthBytes,
                 sourceLastWriteUtc,
                 configurationHash,
-                startLine,
-                endLine,
-                BuildSnippet(chunkText, chunkText),
-                chunkText,
-                BuildEmbeddingText(documentPath, chunkText)));
+                parsedChunk.StartLine,
+                parsedChunk.EndLine,
+                BuildSnippet(parsedChunk.ChunkText, parsedChunk.ChunkText),
+                parsedChunk.ChunkText,
+                BuildEmbeddingText(documentPath, parsedChunk.ChunkText)));
         }
 
         chunkingStopwatch.Stop();
@@ -882,6 +875,306 @@ public sealed class CodeSearchService : IDisposable
             embeddingResult.EmbeddingMilliseconds,
             embeddingResult.EmbeddingCallCount,
             embeddingResult.EmbeddedChunkCount);
+    }
+
+    private List<ParsedChunk> BuildParsedChunks(string documentPath, string sourceText, string[] lines)
+    {
+        if (!_options.ParserPipelineEnabled)
+        {
+            return BuildFixedWindowChunks(lines);
+        }
+
+        var strategyOrder = NormalizeParserStrategyOrder(_options.ParserStrategyOrder);
+        foreach (var strategy in strategyOrder)
+        {
+            switch (strategy)
+            {
+                case "roslyn":
+                    if (TryBuildRoslynChunks(documentPath, sourceText, lines, out var roslynChunks))
+                    {
+                        return roslynChunks;
+                    }
+
+                    break;
+                case "treesitter":
+                    if (TryBuildTreeSitterChunks(documentPath, sourceText, lines, out var treeSitterChunks))
+                    {
+                        return treeSitterChunks;
+                    }
+
+                    break;
+                case "heuristic":
+                    if (TryBuildHeuristicChunks(lines, out var heuristicChunks))
+                    {
+                        return heuristicChunks;
+                    }
+
+                    break;
+                case "fixedwindow":
+                    return BuildFixedWindowChunks(lines);
+            }
+        }
+
+        return BuildFixedWindowChunks(lines);
+    }
+
+    private static List<string> NormalizeParserStrategyOrder(IReadOnlyList<string>? configuredOrder)
+    {
+        var order = new List<string>();
+        foreach (var value in configuredOrder ?? [])
+        {
+            var normalized = value?.Trim().ToLowerInvariant();
+            if (normalized is not ("roslyn" or "treesitter" or "heuristic" or "fixedwindow"))
+            {
+                continue;
+            }
+
+            if (!order.Contains(normalized, StringComparer.Ordinal))
+            {
+                order.Add(normalized);
+            }
+        }
+
+        if (order.Count == 0)
+        {
+            order.AddRange(["roslyn", "treesitter", "heuristic", "fixedwindow"]);
+        }
+
+        if (!order.Contains("fixedwindow", StringComparer.Ordinal))
+        {
+            order.Add("fixedwindow");
+        }
+
+        return order;
+    }
+
+    private bool TryBuildRoslynChunks(string documentPath, string sourceText, string[] lines, out List<ParsedChunk> chunks)
+    {
+        chunks = [];
+        if (!_options.RoslynChunkingEnabled || !documentPath.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        try
+        {
+            var syntaxTree = CSharpSyntaxTree.ParseText(sourceText);
+            if (syntaxTree.GetRoot() is not CompilationUnitSyntax root)
+            {
+                return false;
+            }
+
+            foreach (var member in root.Members)
+            {
+                CollectRoslynMemberChunks(member, syntaxTree, lines, chunks);
+            }
+
+            chunks = chunks
+                .OrderBy(chunk => chunk.StartLine)
+                .ThenBy(chunk => chunk.EndLine)
+                .ToList();
+
+            return chunks.Count > 0;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Roslyn chunking failed for {DocumentPath}; parser pipeline will continue.", documentPath);
+            chunks = [];
+            return false;
+        }
+    }
+
+    private void CollectRoslynMemberChunks(MemberDeclarationSyntax member, SyntaxTree syntaxTree, string[] lines, List<ParsedChunk> chunks)
+    {
+        switch (member)
+        {
+            case BaseNamespaceDeclarationSyntax namespaceDeclaration:
+                foreach (var namespacedMember in namespaceDeclaration.Members)
+                {
+                    CollectRoslynMemberChunks(namespacedMember, syntaxTree, lines, chunks);
+                }
+
+                return;
+
+            case TypeDeclarationSyntax typeDeclaration:
+                if (typeDeclaration.Members.Count == 0)
+                {
+                    TryAddChunkFromSpan(typeDeclaration.Span, syntaxTree, lines, chunks);
+                    return;
+                }
+
+                foreach (var typeMember in typeDeclaration.Members)
+                {
+                    CollectRoslynTypeMemberChunks(typeMember, syntaxTree, lines, chunks);
+                }
+
+                return;
+
+            case EnumDeclarationSyntax enumDeclaration:
+                TryAddChunkFromSpan(enumDeclaration.Span, syntaxTree, lines, chunks);
+                return;
+
+            default:
+                TryAddChunkFromSpan(member.Span, syntaxTree, lines, chunks);
+                return;
+        }
+    }
+
+    private void CollectRoslynTypeMemberChunks(MemberDeclarationSyntax member, SyntaxTree syntaxTree, string[] lines, List<ParsedChunk> chunks)
+    {
+        if (member is TypeDeclarationSyntax nestedType)
+        {
+            if (nestedType.Members.Count == 0)
+            {
+                TryAddChunkFromSpan(nestedType.Span, syntaxTree, lines, chunks);
+                return;
+            }
+
+            foreach (var nestedMember in nestedType.Members)
+            {
+                CollectRoslynTypeMemberChunks(nestedMember, syntaxTree, lines, chunks);
+            }
+
+            return;
+        }
+
+        TryAddChunkFromSpan(member.Span, syntaxTree, lines, chunks);
+    }
+
+    private void TryAddChunkFromSpan(TextSpan span, SyntaxTree syntaxTree, string[] lines, List<ParsedChunk> chunks)
+    {
+        var lineSpan = syntaxTree.GetLineSpan(span);
+        var startLine = lineSpan.StartLinePosition.Line + 1;
+        var endLine = lineSpan.EndLinePosition.Line + 1;
+        if (!TryGetChunkText(lines, startLine, endLine, out var chunkText))
+        {
+            return;
+        }
+
+        chunks.Add(new ParsedChunk(startLine, endLine, chunkText));
+    }
+
+    private bool TryBuildTreeSitterChunks(string documentPath, string sourceText, string[] lines, out List<ParsedChunk> chunks)
+    {
+        chunks = [];
+        if (!_options.TreeSitterChunkingEnabled)
+        {
+            return false;
+        }
+
+        _logger.LogDebug(
+            "Tree-sitter chunking is configured in parser order for {DocumentPath}, but implementation is not available yet. Falling back to next parser strategy.",
+            documentPath);
+        return false;
+    }
+
+    private bool TryBuildHeuristicChunks(string[] lines, out List<ParsedChunk> chunks)
+    {
+        chunks = [];
+        if (!_options.HeuristicChunkingEnabled)
+        {
+            return false;
+        }
+
+        var maxChunkLines = Math.Max(6, _options.ChunkLineCount * 2);
+        var currentStart = -1;
+
+        for (var lineIndex = 0; lineIndex < lines.Length; lineIndex++)
+        {
+            var line = lines[lineIndex];
+            var isBlank = string.IsNullOrWhiteSpace(line);
+
+            if (currentStart < 0)
+            {
+                if (!isBlank)
+                {
+                    currentStart = lineIndex;
+                }
+
+                continue;
+            }
+
+            var reachedLimit = (lineIndex - currentStart + 1) >= maxChunkLines;
+            if (!isBlank && !reachedLimit)
+            {
+                continue;
+            }
+
+            var endIndex = isBlank ? lineIndex - 1 : lineIndex;
+            var startLine = currentStart + 1;
+            var endLine = endIndex + 1;
+            if (TryGetChunkText(lines, startLine, endLine, out var chunkText))
+            {
+                chunks.Add(new ParsedChunk(startLine, endLine, chunkText));
+            }
+
+            currentStart = isBlank ? -1 : lineIndex + 1;
+        }
+
+        if (currentStart >= 0)
+        {
+            var startLine = currentStart + 1;
+            var endLine = lines.Length;
+            if (TryGetChunkText(lines, startLine, endLine, out var trailingChunk))
+            {
+                chunks.Add(new ParsedChunk(startLine, endLine, trailingChunk));
+            }
+        }
+
+        return chunks.Count > 0;
+    }
+
+    private List<ParsedChunk> BuildFixedWindowChunks(string[] lines)
+    {
+        var chunkLineCount = Math.Max(5, _options.ChunkLineCount);
+        var overlapLineCount = Math.Clamp(_options.ChunkOverlapLineCount, 0, Math.Max(0, chunkLineCount - 1));
+        var step = Math.Max(1, chunkLineCount - overlapLineCount);
+        var chunks = new List<ParsedChunk>();
+
+        for (var startLineIndex = 0; startLineIndex < lines.Length; startLineIndex += step)
+        {
+            var startLine = startLineIndex + 1;
+            var endLine = Math.Min(lines.Length, startLineIndex + chunkLineCount);
+            if (!TryGetChunkText(lines, startLine, endLine, out var chunkText))
+            {
+                continue;
+            }
+
+            chunks.Add(new ParsedChunk(startLine, endLine, chunkText));
+        }
+
+        return chunks;
+    }
+
+    private bool TryGetChunkText(string[] lines, int startLine, int endLine, out string chunkText)
+    {
+        chunkText = string.Empty;
+        if (lines.Length == 0 || startLine < 1 || endLine < startLine)
+        {
+            return false;
+        }
+
+        var clampedStart = Math.Min(lines.Length, Math.Max(1, startLine));
+        var clampedEnd = Math.Min(lines.Length, Math.Max(clampedStart, endLine));
+        var chunkLines = lines.Skip(clampedStart - 1).Take(clampedEnd - clampedStart + 1);
+        var text = string.Join('\n', chunkLines).Trim();
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return false;
+        }
+
+        if (text.Length > _options.MaxChunkCharacters)
+        {
+            text = text[..Math.Max(1, _options.MaxChunkCharacters)].TrimEnd();
+        }
+
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return false;
+        }
+
+        chunkText = text;
+        return true;
     }
 
     private EmbeddingBatchResult EmbedPreparedChunks(IReadOnlyList<PreparedChunk> preparedChunks)
@@ -1670,6 +1963,11 @@ CREATE INDEX IF NOT EXISTS IX_CodeSearchBuildLog_ConfigState ON CodeSearchBuildL
         var vocabularyPath = ResolveDataAwarePath(_semanticOptions.VocabularyPath);
         var payload = string.Join('|',
             _repositoryRoot,
+            _options.ParserPipelineEnabled,
+            string.Join(';', _options.ParserStrategyOrder.Select(value => value.Trim().ToLowerInvariant())),
+            _options.RoslynChunkingEnabled,
+            _options.TreeSitterChunkingEnabled,
+            _options.HeuristicChunkingEnabled,
             string.Join(';', _options.TargetDirectories.Select(value => value.Trim())),
             string.Join(';', _options.IncludedFileExtensions.Select(NormalizeExtension)),
             string.Join(';', _options.IncludePatterns.Select(value => value.Trim())),

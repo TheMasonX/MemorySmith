@@ -1,0 +1,31 @@
+﻿{
+  "id": "tsk-0258-main-header-expander-removal",
+  "key": "TSK-0258",
+  "title": "Main Header Expander Removal",
+  "description": "An agent misinterpreted my request to make the training information card header collapsible by clicking anywhere on the header bar and made the main header for the site collapsible. Please make the intended fix instead",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-31T20:13:55.5586695Z",
+  "updatedAtUtc": "2026-05-31T20:13:55.5586695Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

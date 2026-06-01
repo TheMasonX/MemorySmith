@@ -52,7 +52,9 @@ This is repeated often enough to justify a standard skill and one helper hook.
 
 ## Status
 
-`Requested`
+`Deferred`
+
+Triage note (2026-05-31): keep repo skill count within 8-10 and avoid adding a second PR-delivery skill. The canonical `.github/skills/pr-review-delivery/SKILL.md` now covers end-to-end PR handling. Keep this request scoped to hook-script enhancements only.
 
 ## Acceptance Criteria
 

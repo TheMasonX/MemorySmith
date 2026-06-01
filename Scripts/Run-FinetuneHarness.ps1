@@ -15,6 +15,9 @@ param(
     [int]$Epochs = 1,
     [double]$LearningRate = 0.0002,
     [int]$SequenceLength = 512,
+    [int]$GradientAccumulationSteps = 1,
+    [int]$WarmupSteps = 0,
+    [bool]$ShuffleEachEpoch = $true,
     [int]$MaxTrainSteps = 0,
     [switch]$TrustRemoteCode,
     [switch]$RequireTrainingDependencies,
@@ -260,6 +263,9 @@ $request = [ordered]@{
         epochs = $Epochs
         learningRate = $LearningRate
         sequenceLength = $SequenceLength
+        gradientAccumulationSteps = $GradientAccumulationSteps
+        warmupSteps = $WarmupSteps
+        shuffleEachEpoch = $ShuffleEachEpoch
     }
     trustRemoteCode = [bool]$TrustRemoteCode
 }

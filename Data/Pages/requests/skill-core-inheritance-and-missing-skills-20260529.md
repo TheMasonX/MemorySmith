@@ -10,8 +10,8 @@ Extract shared task workflow into a common base, then let specialized skills add
 - Refactor existing skills to inherit from `task-core-loop`.
 - Add missing user-visible skills:
   - `task-delivery-sprint-loop`
-  - `prompt-runtime-parity-audit`
-  - `wiki-memory-hygiene-audit`
+  - `runtime-parity-audit`
+  - `wiki-hygiene-audit`
 
 ## Status
 
@@ -21,9 +21,11 @@ Extract shared task workflow into a common base, then let specialized skills add
 
 - Added `.github/skills/task-core-loop/SKILL.md`.
 - Added `.github/skills/task-delivery-sprint-loop/SKILL.md`.
-- Added `.github/skills/prompt-runtime-parity-audit/SKILL.md`.
-- Added `.github/skills/wiki-memory-hygiene-audit/SKILL.md`.
+- Added `.github/skills/runtime-parity-audit/SKILL.md`.
+- Added `.github/skills/wiki-hygiene-audit/SKILL.md`.
 - Updated existing skills to reference inheritance model.
+
+Rename note (2026-05-31): canonical names were later simplified from `prompt-runtime-parity-audit` and `wiki-memory-hygiene-audit` to `runtime-parity-audit` and `wiki-hygiene-audit` for clearer skill identity.
 
 ## Follow-Up
 

@@ -55,7 +55,7 @@ public class CodeSearchServiceTests
         {
             Assert.That(results, Is.Not.Empty);
             Assert.That(results[0].DocumentPath, Is.EqualTo("MemorySmith.App/Services/WidgetParser.cs"));
-            Assert.That(results[0].StartLine, Is.EqualTo(1));
+            Assert.That(results[0].StartLine, Is.EqualTo(4));
             Assert.That(results[0].MatchReason, Does.Contain("cosine similarity"));
             Assert.That(File.Exists(Path.Combine(_repoRoot, "Data", "Graph", "code-search", "code-search.db")), Is.True);
             Assert.That(status.IndexedFileCount, Is.EqualTo(2));
@@ -323,6 +323,48 @@ public class CodeSearchServiceTests
             Assert.That(results.Count, Is.GreaterThanOrEqualTo(2));
             Assert.That(results.Select(result => result.DocumentPath).Distinct(StringComparer.OrdinalIgnoreCase).Count(), Is.GreaterThanOrEqualTo(2));
             Assert.That(results.Select(result => result.DocumentPath), Does.Contain("MemorySmith.Core/Services/SecondaryToolFile.cs"));
+        });
+    }
+
+    [Test]
+    public async Task SearchAsync_RoslynParserPipelineProducesFewerCSharpChunksThanFixedWindow()
+    {
+        await File.WriteAllTextAsync(Path.Combine(_repoRoot, ".gitignore"), string.Empty);
+        await File.WriteAllTextAsync(
+            Path.Combine(_repoRoot, "MemorySmith.App", "Services", "ParserDemo.cs"),
+            "namespace MemorySmith.App.Services;\npublic static class ParserDemo\n{\n    public static string FirstMethod(string input)\n    {\n        return input + \"first_token\";\n    }\n\n    public static string SecondMethod(string input)\n    {\n        return input + \"second_token\";\n    }\n}\n");
+
+        var fixedWindowService = CreateService(new QueryFailureEmbeddingProvider(), options =>
+        {
+            options.CodeSearch.ParserPipelineEnabled = true;
+            options.CodeSearch.ParserStrategyOrder = ["fixedwindow"];
+            options.CodeSearch.RoslynChunkingEnabled = false;
+            options.CodeSearch.ChunkLineCount = 3;
+            options.CodeSearch.ChunkOverlapLineCount = 0;
+        });
+
+        await fixedWindowService.SearchAsync(new CodeSearchQuery("SecondMethod second_token", Limit: 5, ForceRebuild: true), CancellationToken.None);
+        var fixedWindowStatus = await fixedWindowService.GetStatusAsync(CancellationToken.None);
+
+        var roslynService = CreateService(new QueryFailureEmbeddingProvider(), options =>
+        {
+            options.CodeSearch.ParserPipelineEnabled = true;
+            options.CodeSearch.ParserStrategyOrder = ["roslyn", "heuristic", "fixedwindow"];
+            options.CodeSearch.RoslynChunkingEnabled = true;
+            options.CodeSearch.HeuristicChunkingEnabled = true;
+            options.CodeSearch.ChunkLineCount = 3;
+            options.CodeSearch.ChunkOverlapLineCount = 0;
+        });
+
+        var roslynResults = await roslynService.SearchAsync(new CodeSearchQuery("SecondMethod second_token", Limit: 5, ForceRebuild: true), CancellationToken.None);
+        var roslynStatus = await roslynService.GetStatusAsync(CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(roslynResults, Is.Not.Empty);
+            Assert.That(roslynResults[0].DocumentPath, Is.EqualTo("MemorySmith.App/Services/ParserDemo.cs"));
+            Assert.That(fixedWindowStatus.IndexedChunkCount, Is.GreaterThan(roslynStatus.IndexedChunkCount));
+            Assert.That(roslynStatus.IndexedChunkCount, Is.EqualTo(2), "Roslyn member chunking should produce one chunk per method for this fixture.");
         });
     }
 

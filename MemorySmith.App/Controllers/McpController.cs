@@ -210,7 +210,9 @@ public class McpController : ControllerBase
     }
 
     private static bool ContainsTool(IEnumerable<string> configuredTools, string toolName) =>
-        configuredTools.Any(configured => string.Equals(configured, toolName, StringComparison.OrdinalIgnoreCase));
+        configuredTools.Any(configured =>
+            string.Equals(configured, "*", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(configured, toolName, StringComparison.OrdinalIgnoreCase));
 
     private async Task<bool> CanReadSourceBundleAsync() =>
         (await _authorization.AuthorizeAsync(User, null, MemorySmithPolicies.CanReadSourceBundle)).Succeeded;
