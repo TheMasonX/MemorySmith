@@ -65,6 +65,7 @@ BenchmarkDotNet.Artifacts/
 
 # Local embedding/model artifacts
 Data/Models/
+Data/Graph/code-search/code-search.db
 *.onnx
 .venv*/
 
