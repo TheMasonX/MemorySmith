@@ -53,6 +53,12 @@ def main() -> int:
     with input_path.open("r", encoding="utf-8") as handle:
         data = json.load(handle)
 
+    run_label = input_path.stem
+    if run_label.startswith("tool-ab-spotcheck-"):
+        run_label = run_label[len("tool-ab-spotcheck-"):]
+    if run_label.endswith(".data"):
+        run_label = run_label[: -len(".data")]
+
     base = data["base"]
     tuned = data["tuned"]
     base_summary = base["summary"]
@@ -86,7 +92,7 @@ def main() -> int:
     persistent_fail = [r for r in both_rows if not r["baseMatch"] and not r["tunedMatch"]]
 
     lines: list[str] = []
-    lines.append("# Tool A/B Spot Check - Base vs Tuned (2026-05-30)")
+    lines.append(f"# Tool A/B Spot Check - {run_label} (Base vs Tuned)")
     lines.append("")
     lines.append(f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%SZ')}")
     lines.append("")

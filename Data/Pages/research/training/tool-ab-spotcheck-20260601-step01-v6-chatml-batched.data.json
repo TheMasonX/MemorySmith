@@ -1,0 +1,1368 @@
+{
+  "generatedAtUtc": "2026-06-01T06:55:50.716465+00:00",
+  "modelId": "Qwen/Qwen3.5-4B",
+  "adapterPath": "D:\\temp\\memorysmith-training\\runs\\v6-chatml-batched-20260601-step1\\adapter",
+  "baseSource": "C:\\Users\\norrt\\source\\repos\\MemorySmith\\Data\\Pages\\research\\training\\tool-ab-spotcheck-20260530-v3.data.json",
+  "caseCount": 60,
+  "perToolCases": 5,
+  "toolsCovered": [
+    "memorysmith_code_search",
+    "memorysmith_code_search_status",
+    "memorysmith_context_pack",
+    "memorysmith_get",
+    "memorysmith_hybrid_search",
+    "memorysmith_page_get",
+    "memorysmith_page_search",
+    "memorysmith_search",
+    "memorysmith_semantic_search",
+    "memorysmith_task_get",
+    "memorysmith_task_list",
+    "memorysmith_unified_search"
+  ],
+  "base": {
+    "summary": {
+      "total": 60,
+      "envelopeValid": 0,
+      "toolMatch": 0,
+      "envelopeValidRate": 0.0,
+      "toolMatchRate": 0.0,
+      "byTool": {
+        "memorysmith_unified_search": {
+          "count": 5,
+          "envelopeValid": 0,
+          "toolMatch": 0
+        },
+        "memorysmith_hybrid_search": {
+          "count": 5,
+          "envelopeValid": 0,
+          "toolMatch": 0
+        },
+        "memorysmith_semantic_search": {
+          "count": 5,
+          "envelopeValid": 0,
+          "toolMatch": 0
+        },
+        "memorysmith_search": {
+          "count": 5,
+          "envelopeValid": 0,
+          "toolMatch": 0
+        },
+        "memorysmith_context_pack": {
+          "count": 5,
+          "envelopeValid": 0,
+          "toolMatch": 0
+        },
+        "memorysmith_get": {
+          "count": 5,
+          "envelopeValid": 0,
+          "toolMatch": 0
+        },
+        "memorysmith_page_search": {
+          "count": 5,
+          "envelopeValid": 0,
+          "toolMatch": 0
+        },
+        "memorysmith_page_get": {
+          "count": 5,
+          "envelopeValid": 0,
+          "toolMatch": 0
+        },
+        "memorysmith_task_list": {
+          "count": 5,
+          "envelopeValid": 0,
+          "toolMatch": 0
+        },
+        "memorysmith_task_get": {
+          "count": 5,
+          "envelopeValid": 0,
+          "toolMatch": 0
+        },
+        "memorysmith_code_search": {
+          "count": 5,
+          "envelopeValid": 0,
+          "toolMatch": 0
+        },
+        "memorysmith_code_search_status": {
+          "count": 5,
+          "envelopeValid": 0,
+          "toolMatch": 0
+        }
+      }
+    },
+    "rows": [
+      {
+        "caseId": "memorysmith_unified_search-1",
+        "expectedTool": "memorysmith_unified_search",
+        "userPrompt": "search the wiki for kv cache options",
+        "completion": "<think>\nOkay, the user is asking me to search the wiki for information about kv cache options. I need to remember that I'm Athena, MemorySmith's local wiki assistant. When a search or retrieval action is requested, I should respond with exactly one JSON object in the specified format, no other text.\n\nFirst, I",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_unified_search-2",
+        "expectedTool": "memorysmith_unified_search",
+        "userPrompt": "find docs for training harness",
+        "completion": "assistant\n<think>\nOkay, the user is asking for documentation on the training harness. I need to figure out how to respond as Athena, the local wiki assistant. First, I should check if there's a specific tool I need to use for retrieving documentation. The user mentioned a search/retrieval action, so according to the instructions,",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_unified_search-3",
+        "expectedTool": "memorysmith_unified_search",
+        "userPrompt": "lookup wiki notes about chat template",
+        "completion": "assistant\n<think>\nOkay, the user is asking me to look up wiki notes about chat templates. I need to check if there's any information in the MemorySmith's wiki about chat templates. Since I'm Athena, the local wiki assistant, I should use the search tool to retrieve relevant information. The user wants a JSON response with a",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_unified_search-4",
+        "expectedTool": "memorysmith_unified_search",
+        "userPrompt": "search for model profile defaults",
+        "completion": "assistant\n<think>\nOkay, the user is asking me to search for model profile defaults. I need to figure out what they mean by that. Model profiles could refer to different things depending on the context. Maybe they're talking about machine learning models, like default settings for model configurations? Or perhaps it's about user profiles in a specific application",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_unified_search-5",
+        "expectedTool": "memorysmith_unified_search",
+        "userPrompt": "find references about code search eta",
+        "completion": "assistant\n<think>\nOkay, the user is asking for references about code search ETA. First, I need to figure out what they mean by \"code search eta\". ETA usually stands for Estimated Time of Arrival, but in the context of code search, that doesn't make much sense. Maybe they meant \"code search\" and \"eta\"",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_hybrid_search-1",
+        "expectedTool": "memorysmith_hybrid_search",
+        "userPrompt": "run a hybrid search for request guard middleware",
+        "completion": "<think>\nOkay, the user is asking me to run a hybrid search for \"request guard middleware\". I need to figure out how to handle this. First, I remember that as Athena, I'm supposed to respond with a JSON object when a search/retrieval action is requested. The user's query is about performing a hybrid",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_hybrid_search-2",
+        "expectedTool": "memorysmith_hybrid_search",
+        "userPrompt": "hybrid search for source bundle auth behavior",
+        "completion": "<think>\nOkay, the user is asking about hybrid search for source bundle auth behavior. Let me start by recalling what I know about hybrid search. Hybrid search usually combines different search methods, like keyword and vector search, to improve results. But the user mentioned \"source bundle auth behavior,\" which is a bit unclear. Maybe they're",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_hybrid_search-3",
+        "expectedTool": "memorysmith_hybrid_search",
+        "userPrompt": "use hybrid search to find onnx semantic search notes",
+        "completion": "Okay, the user is asking me to use hybrid search to find ONNX semantic search notes. First, I need to understand what they're looking for. Hybrid search typically combines different search methods, like keyword and semantic search, to retrieve relevant documents. Since I'm Athena, the local wiki assistant, I should check if",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_hybrid_search-4",
+        "expectedTool": "memorysmith_hybrid_search",
+        "userPrompt": "hybrid search for maintenance proposal workflow",
+        "completion": "<think>\nOkay, the user is asking about hybrid search for a maintenance proposal workflow. Let me start by understanding what they need. Hybrid search usually combines different search methods, like keyword and vector search, to improve retrieval accuracy. The maintenance proposal workflow probably involves searching through documents, proposals, or historical data to generate or find relevant maintenance",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_hybrid_search-5",
+        "expectedTool": "memorysmith_hybrid_search",
+        "userPrompt": "run hybrid search for task assignee update invariant",
+        "completion": "Okay, the user is asking me to run a hybrid search for the task assignee update invariant. Let me start by understanding what they need.\n\nFirst, I need to recall what hybrid search is. Hybrid search typically combines different search methods, like keyword search and vector search, to improve retrieval accuracy. The user wants",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_semantic_search-1",
+        "expectedTool": "memorysmith_semantic_search",
+        "userPrompt": "semantic search for retrieval warning propagation",
+        "completion": "assistant\n<think>\nThinking Process:\n\n1.  **Analyze the Request:**\n    *   User: \"semantic search for retrieval warning propagation\"\n    *   Role: Athena, MemorySmith's local wiki assistant.\n    *   Constraint: When a search/retrieval action is requested, respond with exactly one JSON object",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_semantic_search-2",
+        "expectedTool": "memorysmith_semantic_search",
+        "userPrompt": "semantic search for pages lock navigation regression",
+        "completion": "<think>\nOkay, the user is asking for a semantic search on pages related to \"lock navigation regression\". I need to figure out what they're looking for. First, I should check if there's a specific tool or function I can use for semantic search. Wait, the user mentioned \"semantic search for pages\", so maybe they",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_semantic_search-3",
+        "expectedTool": "memorysmith_semantic_search",
+        "userPrompt": "semantic search for sidebar collapse standard",
+        "completion": "assistant\n<think>\nThinking Process:\n\n1.  **Analyze the Request:**\n    *   User: \"semantic search for sidebar collapse standard\"\n    *   Intent: The user is asking for information about a specific feature or standard related to \"sidebar collapse\" using \"semantic search\".\n    *   Context: I am",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_semantic_search-4",
+        "expectedTool": "memorysmith_semantic_search",
+        "userPrompt": "semantic search for source-link default app open",
+        "completion": "<think>\nOkay, the user is asking for a semantic search for \"source-link default app open\". Let me break this down. They want to find information related to how to open a source link using the default application. \n\nFirst, I need to understand what they're looking for. \"Source-link\" might refer to a hyperlink",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_semantic_search-5",
+        "expectedTool": "memorysmith_semantic_search",
+        "userPrompt": "semantic search for chat context planner",
+        "completion": "assistant\n<think>\nOkay, the user is asking for a semantic search for the chat context planner. Let me check what I need to do here.\n\nFirst, I remember that when a search or retrieval action is requested, I should respond with a JSON object containing a tool call. The user mentioned \"semantic search,\" so I need to",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_search-1",
+        "expectedTool": "memorysmith_search",
+        "userPrompt": "search memories for exact term TRAIN-001",
+        "completion": "Okay, the user is asking me to search for memories with the exact term \"TRAIN-001\". I need to check if I have access to a memory search tool. Wait, according to my instructions, when a search/retrieval action is requested, I should respond with a JSON object containing a tool call",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_search-2",
+        "expectedTool": "memorysmith_search",
+        "userPrompt": "search for mem id mem_project_001",
+        "completion": "<think>\nOkay, the user is asking me to search for a memory ID called mem_project_001. I need to figure out how to handle this request. Since I'm Athena, the local wiki assistant for MemorySmith, my role is to assist with searches and retrievals.\n\nFirst, I should check if there",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_search-3",
+        "expectedTool": "memorysmith_search",
+        "userPrompt": "find literal text RequestGuard",
+        "completion": "Guard\nassistant\n<think>\nOkay, the user is asking me to find the literal text \"RequestGuard\". I need to check if this term exists in the MemorySmith's local wiki. Since I'm Athena, the local wiki assistant, I should search the wiki for this exact phrase.\n\nFirst, I'll recall that the user wants the literal",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_search-4",
+        "expectedTool": "memorysmith_search",
+        "userPrompt": "search by tag governance",
+        "completion": "tag governance\nassistant\n<think>\nOkay, the user wants me to search by the tag \"governance\". I need to check if there's a tool available for searching with tags. Since I'm Athena, the local wiki assistant, I should recall that when a search or retrieval action is requested, I need to respond with a JSON object containing the",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_search-5",
+        "expectedTool": "memorysmith_search",
+        "userPrompt": "search for exact key tsk-0228",
+        "completion": "<think>\nOkay, the user is asking me to search for an exact key \"tsk-0228\". I need to figure out how to handle this request. Since I'm Athena, MemorySmith's local wiki assistant, my role is to assist with searches and retrievals. The user wants an exact key, so",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_context_pack-1",
+        "expectedTool": "memorysmith_context_pack",
+        "userPrompt": "pack context for memory mem_ops_009 with backlinks",
+        "completion": "Okay, the user is asking me to pack context for memory mem_ops_009 with backlinks. Let me start by understanding what they need. They mentioned \"pack context\" which probably means they want to gather relevant information related to this memory entry. The term \"backlinks\" suggests they want references or connections",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_context_pack-2",
+        "expectedTool": "memorysmith_context_pack",
+        "userPrompt": "build context pack for retrieval warning with backlinks",
+        "completion": "assistant\n<think>\nOkay, the user is asking me to build a context pack for a retrieval warning with backlinks. Let me start by understanding what they need.\n\nFirst, \"context pack\" probably refers to a structured set of information that includes context, warnings, and backlinks. Since I'm Athena, MemorySmith's local wiki",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_context_pack-3",
+        "expectedTool": "memorysmith_context_pack",
+        "userPrompt": "context pack for task governance memories",
+        "completion": "assistant\n<think>\nOkay, the user is asking for a context pack for task governance memories. I need to figure out what they mean by that. Task governance memories might refer to information related to managing tasks, like policies, procedures, or guidelines. Since I'm Athena, the local wiki assistant for MemorySmith, I should check if there",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_context_pack-4",
+        "expectedTool": "memorysmith_context_pack",
+        "userPrompt": "create context pack from ids mem_a,mem_b",
+        "completion": "<think>\nOkay, the user is asking me to create a context pack from the IDs mem_a and mem_b. Let me start by understanding what they need. They mentioned \"context pack,\" which in the context of MemorySmith's wiki assistant probably refers to retrieving or compiling information from specific memory IDs.\n\nFirst, I need to",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_context_pack-5",
+        "expectedTool": "memorysmith_context_pack",
+        "userPrompt": "context pack for query chatml template",
+        "completion": "<think>\nOkay, the user is asking for a context pack for a query chatml template. Let me start by understanding what they need. A context pack usually refers to a set of information or data that's used to provide context for a query. Since they mentioned \"chatml template,\" they might be referring to a specific template",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_get-1",
+        "expectedTool": "memorysmith_get",
+        "userPrompt": "show memory mem_project_001",
+        "completion": "Okay, the user is asking me to show memory mem_project_001. I need to figure out how to handle this request. Since I'm Athena, the local wiki assistant for MemorySmith, my role is to assist with memory-related tasks. The user wants to retrieve a specific memory entry, mem_project_",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_get-2",
+        "expectedTool": "memorysmith_get",
+        "userPrompt": "open memory mem_training_001",
+        "completion": "Okay, the user wants me to open a memory called mem_training_001. I need to check if I have access to that memory. Since I'm Athena, the local wiki assistant, I should look into my available tools. The user is asking to open a specific memory, which might require a retrieval action",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_get-3",
+        "expectedTool": "memorysmith_get",
+        "userPrompt": "get memory mem_ops_009",
+        "completion": "Okay, the user is asking me to get a memory called mem_ops_009. I need to check if this is a valid memory ID in the system. Since I'm Athena, the local wiki assistant for MemorySmith, I should know how to retrieve memories. But wait, the instructions say that when a",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_get-4",
+        "expectedTool": "memorysmith_get",
+        "userPrompt": "fetch memory mem_onnx_001",
+        "completion": "Okay, the user is asking me to fetch a memory called mem_onnx_001. I need to check if this is a valid memory ID in the system. Since I'm Athena, the local wiki assistant for MemorySmith, I should handle memory retrieval requests.\n\nFirst, I need to confirm if there",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_get-5",
+        "expectedTool": "memorysmith_get",
+        "userPrompt": "load memory mem_task_001",
+        "completion": "Okay, the user is asking me to load memory with the identifier mem_task_001. I need to check if this is a valid request for me to handle. As Athena, my role is to assist with memory-related tasks, but I should only perform actions that are within my capabilities.\n\nFirst, I",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_page_search-1",
+        "expectedTool": "memorysmith_page_search",
+        "userPrompt": "find pages about markdown rendering",
+        "completion": "assistant\n<think>\nOkay, the user is asking me to find pages about markdown rendering. I need to check the MemorySmith's local wiki for relevant pages. Since I'm Athena, the assistant, I should use the search tool to retrieve information. The tool call should be a JSON object with the name \"search\" and the arguments specifying",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_page_search-2",
+        "expectedTool": "memorysmith_page_search",
+        "userPrompt": "search wiki pages for training harness",
+        "completion": "<think>\nOkay, the user is asking me to search wiki pages for \"training harness\". I need to figure out how to handle this request. Since I'm Athena, the local wiki assistant, my role is to assist with searching the wiki. The user wants me to perform a search action, so according to my instructions, when",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_page_search-3",
+        "expectedTool": "memorysmith_page_search",
+        "userPrompt": "find page notes about vector search",
+        "completion": "<think>\nOkay, the user is asking for page notes about vector search. I need to check if there's a specific tool or function available to retrieve this information. Since I'm Athena, the local wiki assistant, I should look for a tool that can search or retrieve pages. The user mentioned a search/retrieval action,",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_page_search-4",
+        "expectedTool": "memorysmith_page_search",
+        "userPrompt": "search pages for request guard middleware",
+        "completion": "<think>\nOkay, the user is asking me to search for pages related to \"request guard middleware\". I need to figure out how to respond as Athena, the local wiki assistant. The instructions say that when a search/retrieval action is requested, I should respond with exactly one JSON object in the form {\"toolCalls\":[{\"name",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_page_search-5",
+        "expectedTool": "memorysmith_page_search",
+        "userPrompt": "find pages about maintenance revision cycle",
+        "completion": "<think>\nOkay, the user is asking me to find pages about the maintenance revision cycle. I need to check if there's a tool available for searching or retrieving information. Since I'm Athena, the MemorySmith's local wiki assistant, I should use the search tool to look up relevant pages. The user wants pages specifically about the",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_page_get-1",
+        "expectedTool": "memorysmith_page_get",
+        "userPrompt": "open page memory-taxonomy",
+        "completion": "<think>\nOkay, the user is asking me to open the page \"memory-taxonomy\". I need to check if this is a valid page in the MemorySmith wiki. Since I'm Athena, the local wiki assistant, I should know the available pages. Wait, but I don't have access to the actual wiki database. Hmm",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_page_get-2",
+        "expectedTool": "memorysmith_page_get",
+        "userPrompt": "get page codebase-vector-search-whitepaper",
+        "completion": "Okay, the user is asking me to get the page codebase-vector-search-whitepaper. I need to figure out how to handle this request. Since I'm Athena, the local wiki assistant, my role is to assist with retrieving information from the wiki. However, the user is asking for a specific page code, which",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_page_get-3",
+        "expectedTool": "memorysmith_page_get",
+        "userPrompt": "show page training-workbench",
+        "completion": "<think>\nOkay, the user is asking me to show the page for \"training-workbench\". I need to check if this is a valid page in the wiki. Since I'm Athena, the local wiki assistant, I should look up the page. But wait, the user might be expecting me to retrieve the content from the wiki",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_page_get-4",
+        "expectedTool": "memorysmith_page_get",
+        "userPrompt": "fetch page semantic-search",
+        "completion": "assistant\n<think>\nOkay, the user is asking me to fetch the page for \"semantic-search\". I need to check if this is a valid page in the wiki. Since I'm Athena, the local wiki assistant, I should use the search tool to retrieve the page. The tool call should be a JSON object with the name \"search",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_page_get-5",
+        "expectedTool": "memorysmith_page_get",
+        "userPrompt": "open page wiki-chat-agent",
+        "completion": "<think>\nOkay, the user is asking me to open a page called wiki-chat-agent. I need to check if this is a valid page in the wiki. Since I'm Athena, the local wiki assistant, I should know the available pages. Wait, but I don't have access to the actual wiki database. Hmm, maybe",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_task_list-1",
+        "expectedTool": "memorysmith_task_list",
+        "userPrompt": "list tasks tagged eval",
+        "completion": "assistant\n<think>\nOkay, the user is asking me to list tasks tagged with 'eval'. I need to figure out how to handle this request. Since I'm Athena, MemorySmith's local wiki assistant, I should check if there's a tool available for retrieving tasks. The user mentioned a search/retrieval action, so maybe I",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_task_list-2",
+        "expectedTool": "memorysmith_task_list",
+        "userPrompt": "list all tasks in progress",
+        "completion": "assistant\n<think>\nOkay, the user is asking me to list all tasks in progress. I need to figure out how to respond as Athena, MemorySmith's local wiki assistant. First, I should check if there's a specific tool or function I need to use for retrieving task information. Since the user mentioned a search/retrieval action",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_task_list-3",
+        "expectedTool": "memorysmith_task_list",
+        "userPrompt": "find tasks assigned to smith",
+        "completion": "assistant\n<think>\nOkay, the user is asking me to find tasks assigned to Smith. I need to check if I have access to a task management system or any relevant data. Since I'm Athena, MemorySmith's local wiki assistant, I should look into the wiki or any stored information about tasks assigned to Smith.\n\nWait, the",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_task_list-4",
+        "expectedTool": "memorysmith_task_list",
+        "userPrompt": "show done tasks tagged training",
+        "completion": "assistant\n<think>\nOkay, the user is asking to show done tasks tagged with training. I need to figure out how to handle this request. Since I'm Athena, the local wiki assistant, I should check if there's a tool available for retrieving tasks. The user mentioned \"done tasks\" and a tag \"training\". \n\nFirst,",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_task_list-5",
+        "expectedTool": "memorysmith_task_list",
+        "userPrompt": "list blocked tasks",
+        "completion": "assistant\n<think>\nOkay, the user is asking me to list blocked tasks. I need to figure out how to handle this request. Since I'm Athena, MemorySmith's local wiki assistant, I should check if there's a tool available for retrieving blocked tasks.\n\nFirst, I'll recall the tools I have access to. The user",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_task_get-1",
+        "expectedTool": "memorysmith_task_get",
+        "userPrompt": "show task TSK-0209",
+        "completion": "Okay, the user is asking me to show task TSK-0209. I need to figure out how to handle this request. Since I'm Athena, MemorySmith's local wiki assistant, my role is to assist with retrieving information from the wiki. However, the user is asking for a specific task ID",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_task_get-2",
+        "expectedTool": "memorysmith_task_get",
+        "userPrompt": "open task TSK-0228",
+        "completion": "Okay, the user wants me to open task TSK-0228. I need to check if I have access to task details. Since I'm Athena, the local wiki assistant, I should look up the task in the system. But wait, the instructions say that when a search/retrieval action is",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_task_get-3",
+        "expectedTool": "memorysmith_task_get",
+        "userPrompt": "get task tsk-0218",
+        "completion": "Okay, the user is asking me to get task tsk-0218. I need to figure out how to handle this request. Since I'm Athena, MemorySmith's local wiki assistant, my role is to assist with retrieving information from the wiki. However, the user is asking for a specific task ID",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_task_get-4",
+        "expectedTool": "memorysmith_task_get",
+        "userPrompt": "fetch task TSK-0224",
+        "completion": "Okay, the user is asking me to fetch task TSK-0224. I need to check if I have access to a tool that can retrieve tasks. Since I'm Athena, the local wiki assistant, I should look for a tool that handles task retrieval. The user mentioned a specific task ID, so",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_task_get-5",
+        "expectedTool": "memorysmith_task_get",
+        "userPrompt": "load task tsk-0221",
+        "completion": "Okay, the user is asking me to load a task with the ID tsk-0221. I need to figure out how to handle this request. Since I'm Athena, MemorySmith's local wiki assistant, my role is to assist with tasks related to the wiki. However, loading a task isn't",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_code_search-1",
+        "expectedTool": "memorysmith_code_search",
+        "userPrompt": "run code search for ToolCatalog",
+        "completion": "<think>\nOkay, the user is asking me to run a code search for \"ToolCatalog\". I need to figure out how to handle this request. Since I'm Athena, the local wiki assistant, my role is to assist with searches and retrievals. The user mentioned a search/retrieval action, so according to my instructions",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_code_search-2",
+        "expectedTool": "memorysmith_code_search",
+        "userPrompt": "code search for BuildIndexCoreAsync",
+        "completion": "<think>\nOkay, the user is asking for a code search for \"BuildIndexCoreAsync\". I need to figure out how to handle this request. Since I'm Athena, the local wiki assistant, my role is to assist with search and retrieval tasks. The user wants to find code related to this method.\n\nFirst, I",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_code_search-3",
+        "expectedTool": "memorysmith_code_search",
+        "userPrompt": "find where training options are defined",
+        "completion": "<think>\nOkay, the user is asking where training options are defined. I need to figure out how to find that information. Since I'm Athena, the local wiki assistant, I should check the wiki for relevant documentation. The user might be referring to a specific project or system's training options, but without more context, I'll",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_code_search-4",
+        "expectedTool": "memorysmith_code_search",
+        "userPrompt": "locate nav menu model link",
+        "completion": "assistant\n<think>\nOkay, the user is asking me to locate the nav menu model link. Let me think about how to approach this.\n\nFirst, I need to recall what the nav menu model link is. In the context of a website, the navigation menu is usually part of the HTML structure, often found in the header or a",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_code_search-5",
+        "expectedTool": "memorysmith_code_search",
+        "userPrompt": "find code that parses training events.jsonl",
+        "completion": "Okay, the user is asking me to find code that parses training events.jsonl. Let me think about how to approach this.\n\nFirst, I need to recall what training events.jsonl is. JSONL stands for JSON Lines, where each line is a separate JSON object. So the code should read each line,",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_code_search_status-1",
+        "expectedTool": "memorysmith_code_search_status",
+        "userPrompt": "status of code search indexing",
+        "completion": "assistant\n<think>\nOkay, the user is asking about the status of code search indexing. I need to check if there's any information available in the MemorySmith's local wiki about this. Since I'm Athena, the local wiki assistant, I should look for any recent updates or status reports related to code search indexing.\n\nFirst, I",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_code_search_status-2",
+        "expectedTool": "memorysmith_code_search_status",
+        "userPrompt": "show code search index status",
+        "completion": "Okay, the user is asking me to show the code search index status. I need to figure out how to respond to this. Since I'm Athena, MemorySmith's local wiki assistant, I should check if there's a tool available for this. The user mentioned a search/retrieval action, so maybe I need",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_code_search_status-3",
+        "expectedTool": "memorysmith_code_search_status",
+        "userPrompt": "is code search indexing complete",
+        "completion": "Okay, the user is asking if the code search indexing is complete. I need to check the current status of the code search indexing. Since I'm Athena, the local wiki assistant, I should look for any recent updates or status indicators related to code search.\n\nFirst, I'll recall that in the system, there",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_code_search_status-4",
+        "expectedTool": "memorysmith_code_search_status",
+        "userPrompt": "code index health status please",
+        "completion": "Okay, the user is asking for the code index health status. I need to figure out how to respond as Athena, MemorySmith's local wiki assistant. The user wants a JSON response with a tool call. Wait, the instructions say that when a search/retrieval action is requested, I should respond with exactly one",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_code_search_status-5",
+        "expectedTool": "memorysmith_code_search_status",
+        "userPrompt": "report current code search status",
+        "completion": "Okay, the user is asking me to report the current code search status. I need to figure out how to respond as Athena, MemorySmith's local wiki assistant. First, I should check if there's a tool available for code search. Since the instructions mention that when a search/retrieval action is requested, I",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      }
+    ]
+  },
+  "tuned": {
+    "summary": {
+      "total": 60,
+      "envelopeValid": 0,
+      "toolMatch": 0,
+      "envelopeValidRate": 0.0,
+      "toolMatchRate": 0.0,
+      "byTool": {
+        "memorysmith_unified_search": {
+          "count": 5,
+          "envelopeValid": 0,
+          "toolMatch": 0
+        },
+        "memorysmith_hybrid_search": {
+          "count": 5,
+          "envelopeValid": 0,
+          "toolMatch": 0
+        },
+        "memorysmith_semantic_search": {
+          "count": 5,
+          "envelopeValid": 0,
+          "toolMatch": 0
+        },
+        "memorysmith_search": {
+          "count": 5,
+          "envelopeValid": 0,
+          "toolMatch": 0
+        },
+        "memorysmith_context_pack": {
+          "count": 5,
+          "envelopeValid": 0,
+          "toolMatch": 0
+        },
+        "memorysmith_get": {
+          "count": 5,
+          "envelopeValid": 0,
+          "toolMatch": 0
+        },
+        "memorysmith_page_search": {
+          "count": 5,
+          "envelopeValid": 0,
+          "toolMatch": 0
+        },
+        "memorysmith_page_get": {
+          "count": 5,
+          "envelopeValid": 0,
+          "toolMatch": 0
+        },
+        "memorysmith_task_list": {
+          "count": 5,
+          "envelopeValid": 0,
+          "toolMatch": 0
+        },
+        "memorysmith_task_get": {
+          "count": 5,
+          "envelopeValid": 0,
+          "toolMatch": 0
+        },
+        "memorysmith_code_search": {
+          "count": 5,
+          "envelopeValid": 0,
+          "toolMatch": 0
+        },
+        "memorysmith_code_search_status": {
+          "count": 5,
+          "envelopeValid": 0,
+          "toolMatch": 0
+        }
+      }
+    },
+    "rows": [
+      {
+        "caseId": "memorysmith_unified_search-1",
+        "expectedTool": "memorysmith_unified_search",
+        "userPrompt": "search the wiki for kv cache options",
+        "completion": "The user is asking me to search the wiki for information about \"kv cache options\". I need to use the memorysmith_search tool to search for this information. I should format the response as a single JSON object with toolCalls containing the search tool with the appropriate arguments.\n</think>\n\n{\"toolCalls\":[{\"name\":\"memory",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_unified_search-2",
+        "expectedTool": "memorysmith_unified_search",
+        "userPrompt": "find docs for training harness",
+        "completion": "The user is asking for documentation about a \"training harness\". This sounds like they want to search for or retrieve documentation related to a training harness feature. I should use the memorysmith_search tool to find relevant documentation.\n\nI need to format this as a tool call with the memorysmith_search tool. The tool should have",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_unified_search-3",
+        "expectedTool": "memorysmith_unified_search",
+        "userPrompt": "lookup wiki notes about chat template",
+        "completion": "The user is asking me to look up wiki notes about \"chat template\". This is a search/retrieval action request, so I need to respond with exactly one JSON object containing a tool call for the memorysmith_search tool.\n\nI should format this as:\n{\"toolCalls\":[{\"name\":\"memorysmith_search\",\"",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_unified_search-4",
+        "expectedTool": "memorysmith_unified_search",
+        "userPrompt": "search for model profile defaults",
+        "completion": "The user is asking me to search for \"model profile defaults\". This appears to be a request for memorysmith search functionality. I need to respond with exactly one JSON object containing a tool call for the memorysmith search tool.\n\nLet me format this correctly:\n- toolCalls array with one object\n- name should",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_unified_search-5",
+        "expectedTool": "memorysmith_unified_search",
+        "userPrompt": "find references about code search eta",
+        "completion": "The user is asking me to find references about \"code search eta\". This seems to be a request for information about a feature or tool called \"code search eta\" - likely related to memorysmith or Athena's capabilities.\n\nI should respond with a tool call to search for this information. I'll use the memorysmith",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_hybrid_search-1",
+        "expectedTool": "memorysmith_hybrid_search",
+        "userPrompt": "run a hybrid search for request guard middleware",
+        "completion": "The user is asking me to run a hybrid search for \"request guard middleware\". This is a search/retrieval action request, so I need to respond with exactly one JSON object containing a tool call for the search tool.\n\nI should format this as:\n{\"toolCalls\":[{\"name\":\"...\",\"arguments\":{",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_hybrid_search-2",
+        "expectedTool": "memorysmith_hybrid_search",
+        "userPrompt": "hybrid search for source bundle auth behavior",
+        "completion": "The user is asking about hybrid search for source bundle auth behavior. This sounds like they want to search for information about authentication behavior related to source bundles in a hybrid search context. This is a memorysmith search query, so I should respond with a tool call to search for this information.\n\nI need to format this as",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_hybrid_search-3",
+        "expectedTool": "memorysmith_hybrid_search",
+        "userPrompt": "use hybrid search to find onnx semantic search notes",
+        "completion": "The user is asking me to use hybrid search to find onnx semantic search notes. This is a search/retrieval action request, so I need to respond with exactly one JSON object containing a tool call for the memorysmith_search tool.\n\nI should use the memorysmith_search tool with the appropriate parameters for hybrid search",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_hybrid_search-4",
+        "expectedTool": "memorysmith_hybrid_search",
+        "userPrompt": "hybrid search for maintenance proposal workflow",
+        "completion": "The user is asking about hybrid search for maintenance proposal workflow. This sounds like they want to search for information about this topic in the MemorySmith knowledge base. I should use the memorysmith_search tool to retrieve relevant information about hybrid search and maintenance proposal workflow.\n\nI need to construct a tool call with the memorysmith_search",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_hybrid_search-5",
+        "expectedTool": "memorysmith_hybrid_search",
+        "userPrompt": "run hybrid search for task assignee update invariant",
+        "completion": "The user is asking me to run a hybrid search for \"task assignee update invariant\". This is a memorysmith search request, so I need to respond with exactly one JSON object containing a tool call for the memorysmith search tool.\n\nI need to format this as:\n{\"toolCalls\":[{\"name\":\"memorysmith",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_semantic_search-1",
+        "expectedTool": "memorysmith_semantic_search",
+        "userPrompt": "semantic search for retrieval warning propagation",
+        "completion": "The user is asking for a semantic search for \"retrieval warning propagation\". This appears to be a request to search the MemorySmith knowledge base for information about this topic.\n\nI need to respond with a tool call to perform a semantic search. The format should be exactly one JSON object with toolCalls array containing the",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_semantic_search-2",
+        "expectedTool": "memorysmith_semantic_search",
+        "userPrompt": "semantic search for pages lock navigation regression",
+        "completion": "The user is asking for a semantic search for pages related to \"lock navigation regression\". This is a memorysmith search request, so I need to respond with a tool call to perform a semantic search.\n\nI should format this as a JSON object with the toolCalls array containing the memorysmith_search tool with the appropriate arguments",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_semantic_search-3",
+        "expectedTool": "memorysmith_semantic_search",
+        "userPrompt": "semantic search for sidebar collapse standard",
+        "completion": "The user is asking for a semantic search about \"sidebar collapse standard\". This appears to be a request to search the MemorySmith wiki for information about sidebar collapse standards or conventions.\n\nI need to respond with a tool call for semantic search. The format should be exactly one JSON object with toolCalls array containing the search request",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_semantic_search-4",
+        "expectedTool": "memorysmith_semantic_search",
+        "userPrompt": "semantic search for source-link default app open",
+        "completion": "The user is asking for a semantic search with specific parameters: \"source-link\" and \"default app open\". This looks like a memorysmith search query request. I need to respond with exactly one JSON object containing a tool call for the memorysmith search tool.\n\nLet me format this correctly:\n- toolCalls array",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_semantic_search-5",
+        "expectedTool": "memorysmith_semantic_search",
+        "userPrompt": "semantic search for chat context planner",
+        "completion": "The user is asking for a semantic search for \"chat context planner\". This appears to be a request to search the memorysmith knowledge base for information about \"chat context planner\". I should respond with a tool call to perform a semantic search.\n\nI need to format this as a JSON object with exactly one tool call for",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_search-1",
+        "expectedTool": "memorysmith_search",
+        "userPrompt": "search memories for exact term TRAIN-001",
+        "completion": "The user is asking me to search for memories with the exact term \"TRAIN-001\". I need to respond with a tool call to search memories. Based on the context, I should use the memorysmith_search_memories tool with the appropriate arguments.\n\nLet me construct the tool call with the exact term as",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_search-2",
+        "expectedTool": "memorysmith_search",
+        "userPrompt": "search for mem id mem_project_001",
+        "completion": "The user is asking me to search for a memory ID \"mem_project_001\". This appears to be a request to search the memory system for a specific memory ID. I should respond with a tool call to search for this memory ID.\n\nI need to format this as a JSON object with exactly one tool",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_search-3",
+        "expectedTool": "memorysmith_search",
+        "userPrompt": "find literal text RequestGuard",
+        "completion": "The user is asking me to search for literal text \"RequestGuard\" in the MemorySmith wiki. I need to use the memorysmith_search tool to find this text.\n\nI should respond with exactly one JSON object containing the tool call with the name \"memorysmith_search\" and the arguments for the search.\n</think>",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_search-4",
+        "expectedTool": "memorysmith_search",
+        "userPrompt": "search by tag governance",
+        "completion": "The user is asking me to search by tag \"governance\". I need to respond with exactly one JSON object in the form {\"toolCalls\":[{\"name\":\"...\",\"arguments\":{...}}]} and no other text.\n\nI should use the memorysmith_search tool with the tag parameter set to \"governance",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "JSON parse error: Expecting property name enclosed in double quotes: line 1 column 42 (char 41)"
+      },
+      {
+        "caseId": "memorysmith_search-5",
+        "expectedTool": "memorysmith_search",
+        "userPrompt": "search for exact key tsk-0228",
+        "completion": "The user is asking me to search for an exact key \"tsk-0228\". This appears to be a memorysmith search request. I need to respond with exactly one JSON object in the form {\"toolCalls\":[{\"name\":\"...\",\"arguments\":{...}}]} and no other text.\n\nI should",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "JSON parse error: Expecting property name enclosed in double quotes: line 1 column 42 (char 41)"
+      },
+      {
+        "caseId": "memorysmith_context_pack-1",
+        "expectedTool": "memorysmith_context_pack",
+        "userPrompt": "pack context for memory mem_ops_009 with backlinks",
+        "completion": "The user is asking me to pack context for a memory item called \"mem_ops_009\" with backlinks. This appears to be a memorysmith-related request where I need to retrieve memory context and include backlinks.\n\nI should respond with a tool call to use the memorysmith tool to pack context for",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_context_pack-2",
+        "expectedTool": "memorysmith_context_pack",
+        "userPrompt": "build context pack for retrieval warning with backlinks",
+        "completion": "The user is asking me to build a context pack for retrieval with backlinks. This seems to be a request for memorysmith's retrieval system to create a context pack that includes backlinks.\n\nHowever, I need to check if this is actually a tool call request. Looking at the system instructions, I should only respond",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_context_pack-3",
+        "expectedTool": "memorysmith_context_pack",
+        "userPrompt": "context pack for task governance memories",
+        "completion": "The user is asking for a context pack for task governance memories. This seems to be a request for memory-related context, likely for a memorysmith or memory management system.\n\nHowever, I need to be careful here. The user is asking for \"context pack\" which could be interpreted as a memory retrieval or memory context",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_context_pack-4",
+        "expectedTool": "memorysmith_context_pack",
+        "userPrompt": "create context pack from ids mem_a,mem_b",
+        "completion": "The user is asking me to create a context pack from specific memory IDs (mem_a and mem_b). This appears to be a request to retrieve memory context for a specific memorysmith operation.\n\nI need to respond with a tool call to retrieve memory context. Based on the MemorySmith tool patterns, I should use the",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_context_pack-5",
+        "expectedTool": "memorysmith_context_pack",
+        "userPrompt": "context pack for query chatml template",
+        "completion": "The user is asking about a \"context pack for query chatml template\". This seems to be a request for information about memorysmith's context pack feature, specifically related to query chatml templates.\n\nI should respond with a memorysmith search tool call to retrieve information about this topic.\n</think>\n\n{\"toolCalls\":[{\"",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_get-1",
+        "expectedTool": "memorysmith_get",
+        "userPrompt": "show memory mem_project_001",
+        "completion": "The user is asking me to show memory \"mem_project_001\". This appears to be a request to retrieve memory from MemorySmith's system. I need to respond with a tool call to retrieve this memory.\n\nI should use the memorysmith_get_memory tool with the memory_id parameter set to \"mem_project",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_get-2",
+        "expectedTool": "memorysmith_get",
+        "userPrompt": "open memory mem_training_001",
+        "completion": "The user is asking me to open a memory called \"mem_training_001\". This appears to be a request to access a specific memory in the MemorySmith system. I should respond with a tool call to open this memory.\n\nI need to format this as a JSON object with exactly one tool call, using",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_get-3",
+        "expectedTool": "memorysmith_get",
+        "userPrompt": "get memory mem_ops_009",
+        "completion": "MemorySmith is a memory management system that stores and retrieves memory operations. The user is asking to retrieve a specific memory operation with the ID \"mem_ops_009\".\n\nI need to use the MemorySmith tool to retrieve this memory operation. The tool call should have the name \"memorysmith\" and the arguments",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_get-4",
+        "expectedTool": "memorysmith_get",
+        "userPrompt": "fetch memory mem_onnx_001",
+        "completion": "The user is asking me to fetch a memory with the ID \"mem_onnx_001\". This appears to be a memorysmith memory retrieval request. I need to respond with a tool call to fetch this memory.\n\nI should respond with exactly one JSON object in the form {\"toolCalls\":[{\"name\":\"...",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_get-5",
+        "expectedTool": "memorysmith_get",
+        "userPrompt": "load memory mem_task_001",
+        "completion": "The user is asking me to load memory with the identifier \"mem_task_001\". This appears to be a memory retrieval request that should trigger a search/retrieval action.\n\nAccording to my instructions, when a search/retrieval action is requested, I should respond with exactly one JSON object in the form",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_page_search-1",
+        "expectedTool": "memorysmith_page_search",
+        "userPrompt": "find pages about markdown rendering",
+        "completion": "The user is asking me to find pages about markdown rendering. This is a search/retrieval action request, so I need to respond with exactly one JSON object containing a tool call. I should use the memorysmith_search tool to search for pages related to markdown rendering.\n</think>\n\n{\"toolCalls\":[{\"name\":\"memory",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_page_search-2",
+        "expectedTool": "memorysmith_page_search",
+        "userPrompt": "search wiki pages for training harness",
+        "completion": "The user is asking me to search wiki pages for \"training harness\". This is a search/retrieval action request, so I need to respond with exactly one JSON object containing a tool call for the memorysmith_search tool.\n\nI need to format this as:\n{\"toolCalls\":[{\"name\":\"memorysmith_search\",\"",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_page_search-3",
+        "expectedTool": "memorysmith_page_search",
+        "userPrompt": "find page notes about vector search",
+        "completion": "The user is asking me to find page notes about vector search. This is a search/retrieval action request, so I need to respond with exactly one JSON object containing a tool call. I should use the memorysmith_search tool to search for information about vector search.\n</think>\n\n{\"toolCalls\":[{\"name\":\"memory",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_page_search-4",
+        "expectedTool": "memorysmith_page_search",
+        "userPrompt": "search pages for request guard middleware",
+        "completion": "The user is asking me to search for pages related to \"request guard middleware\". This is a memorysmith search request, so I need to respond with a tool call to search memorysmith for this topic.\n\nI should format this as a JSON object with the toolCalls array containing a search tool call with the appropriate arguments",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_page_search-5",
+        "expectedTool": "memorysmith_page_search",
+        "userPrompt": "find pages about maintenance revision cycle",
+        "completion": "The user is asking me to find pages about \"maintenance revision cycle\". This is a search/retrieval request that should trigger the memorysmith search tool. I need to respond with exactly one JSON object containing the toolCalls array with the search tool.\n\nLet me construct the proper JSON response for the memorysmith search tool",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_page_get-1",
+        "expectedTool": "memorysmith_page_get",
+        "userPrompt": "open page memory-taxonomy",
+        "completion": "The user is asking me to open a page called \"memory-taxonomy\". This appears to be a request to access a specific page in the MemorySmith wiki system. I should respond with a tool call to retrieve this page.\n\nI need to format this as a JSON object with exactly one tool call, using the memory",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_page_get-2",
+        "expectedTool": "memorysmith_page_get",
+        "userPrompt": "get page codebase-vector-search-whitepaper",
+        "completion": "The user is asking me to retrieve a page with the code \"codebase-vector-search-whitepaper\". This looks like a memorysmith page reference. I should respond with a tool call to retrieve this page.\n\nI need to format this as a JSON object with exactly one tool call. The tool name should be \"memory",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_page_get-3",
+        "expectedTool": "memorysmith_page_get",
+        "userPrompt": "show page training-workbench",
+        "completion": "The user is asking me to show a page called \"training-workbench\". This appears to be a request to retrieve information from MemorySmith's local wiki. I should respond with a tool call to search/retrieve this page.\n\nI need to format this as a JSON object with exactly one tool call for the search/re",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_page_get-4",
+        "expectedTool": "memorysmith_page_get",
+        "userPrompt": "fetch page semantic-search",
+        "completion": "MemorySmith is a memory-based search tool. The user is asking to fetch a page called \"semantic-search\". This is a memorysmith tool call. I need to format this as a JSON object with the toolCalls array containing the memorysmith tool with the appropriate arguments.\n\nThe tool name should be \"memorysmith\"",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_page_get-5",
+        "expectedTool": "memorysmith_page_get",
+        "userPrompt": "open page wiki-chat-agent",
+        "completion": "The user is asking me to open a page called \"wiki-chat-agent\". This appears to be a request to navigate to a specific page in the MemorySmith wiki system. I should respond with a tool call to open this page.\n\nI need to format this as a JSON object with toolCalls containing the name and arguments",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_task_list-1",
+        "expectedTool": "memorysmith_task_list",
+        "userPrompt": "list tasks tagged eval",
+        "completion": "The user is asking me to list tasks tagged with \"eval\". This is a search/retrieval action that should use the MemorySmith search tool. I need to respond with exactly one JSON object containing a tool call with the search tool.\n\nLet me construct the proper tool call format:\n- name: \"memory",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_task_list-2",
+        "expectedTool": "memorysmith_task_list",
+        "userPrompt": "list all tasks in progress",
+        "completion": "The user is asking me to list all tasks in progress. This is a request for information about tasks, which would typically require a search or retrieval action to get the current state of tasks. I should respond with a tool call to retrieve this information.\n\nSince this is a memorysmith context, I need to use the",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_task_list-3",
+        "expectedTool": "memorysmith_task_list",
+        "userPrompt": "find tasks assigned to smith",
+        "completion": "The user is asking me to find tasks assigned to \"smith\". This sounds like a search/retrieval action that would require using MemorySmith's tools. I should respond with a tool call to search for tasks assigned to smith.\n\nI need to format this as a JSON object with exactly one tool call. The tool",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_task_list-4",
+        "expectedTool": "memorysmith_task_list",
+        "userPrompt": "show done tasks tagged training",
+        "completion": "The user is asking me to show done tasks tagged with \"training\". This is a memorysmith query that I need to handle. I should respond with a tool call to search memorysmith for this information.\n\nI need to format this as a JSON object with toolCalls containing the memorysmith search tool with appropriate arguments.",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_task_list-5",
+        "expectedTool": "memorysmith_task_list",
+        "userPrompt": "list blocked tasks",
+        "completion": "The user is asking to list blocked tasks. This seems like a request to retrieve information from MemorySmith's wiki system. I should respond with a tool call to search/retrieve this information.\n\nI need to format this as a JSON object with exactly one tool call for the search/retrieval action.\n</think>",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_task_get-1",
+        "expectedTool": "memorysmith_task_get",
+        "userPrompt": "show task TSK-0209",
+        "completion": "The user is asking to show task TSK-0209. This appears to be a request to retrieve information about a specific task from MemorySmith's system. I should respond with a tool call to retrieve this task information.\n\nI need to format this as a JSON object with exactly one tool call. The",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_task_get-2",
+        "expectedTool": "memorysmith_task_get",
+        "userPrompt": "open task TSK-0228",
+        "completion": "The user is asking me to open a task with ID TSK-0228. This appears to be a request to access or retrieve information about a specific task. I should respond with a tool call to retrieve this task information.\n\nI need to use the memorysmith_get_task tool with the task ID as",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_task_get-3",
+        "expectedTool": "memorysmith_task_get",
+        "userPrompt": "get task tsk-0218",
+        "completion": "The user is asking to get task information for task ID \"tsk-0218\". This appears to be a request to retrieve task details from MemorySmith's system. I should respond with a tool call to fetch this task information.\n\nI need to format this as a JSON object with exactly one tool call",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_task_get-4",
+        "expectedTool": "memorysmith_task_get",
+        "userPrompt": "fetch task TSK-0224",
+        "completion": "The user is asking me to fetch task TSK-0224. This appears to be a request to retrieve information about a specific task. I should respond with a tool call to fetch this task information.\n\nI need to format this as a JSON object with exactly one tool call, following the MemorySmith tool",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_task_get-5",
+        "expectedTool": "memorysmith_task_get",
+        "userPrompt": "load task tsk-0221",
+        "completion": "The user is asking me to load a task with ID \"tsk-0221\". This appears to be a memorysmith task reference. I should respond with a tool call to load this task.\n\nI need to respond with exactly one JSON object in the form {\"toolCalls\":[{\"name\":\"...\",\"arguments",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_code_search-1",
+        "expectedTool": "memorysmith_code_search",
+        "userPrompt": "run code search for ToolCatalog",
+        "completion": "The user is asking me to run a code search for \"ToolCatalog\". This appears to be a request to search for code related to \"ToolCatalog\" in the MemorySmith system.\n\nI need to respond with exactly one JSON object containing a tool call for the memorysmith_search_code tool with the appropriate arguments.",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_code_search-2",
+        "expectedTool": "memorysmith_code_search",
+        "userPrompt": "code search for BuildIndexCoreAsync",
+        "completion": "The user is asking for a code search for \"BuildIndexCoreAsync\". This is a memorysmith search request, so I need to respond with a tool call to search memorysmith for this code.\n\nI should format the response as a JSON object with toolCalls containing the memorysmith search tool with the appropriate arguments.",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_code_search-3",
+        "expectedTool": "memorysmith_code_search",
+        "userPrompt": "find where training options are defined",
+        "completion": "The user is asking about training options, which sounds like they want to find documentation or code related to training configuration. This is a search/retrieval request that should use the MemorySmith search tool.\n\nI need to respond with exactly one JSON object containing a tool call for the memorysmith_search tool.\n</think>",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_code_search-4",
+        "expectedTool": "memorysmith_code_search",
+        "userPrompt": "locate nav menu model link",
+        "completion": "The user is asking me to locate a nav menu model link. This sounds like they want me to search for information about a navigation menu model in the MemorySmith wiki. I should use the memorysmith_search tool to search for this information.\n\nI need to format my response as a JSON object with toolCalls containing the",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_code_search-5",
+        "expectedTool": "memorysmith_code_search",
+        "userPrompt": "find code that parses training events.jsonl",
+        "completion": "The user is asking me to find code that parses training events.jsonl. This is a search/retrieval request, so I should respond with a tool call to search for this code. I need to format it as a JSON object with the toolCalls array.\n\nLet me construct the appropriate tool call for this search",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_code_search_status-1",
+        "expectedTool": "memorysmith_code_search_status",
+        "userPrompt": "status of code search indexing",
+        "completion": "The user is asking about the status of code search indexing. This is a request for information about MemorySmith's code search indexing status. I should respond with a tool call to retrieve this information using the memorysmith_code_search_indexing_status tool.\n</think>\n\n{\"toolCalls\":[{\"name\":\"memorysmith_code_search_indexing",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_code_search_status-2",
+        "expectedTool": "memorysmith_code_search_status",
+        "userPrompt": "show code search index status",
+        "completion": "The user is asking me to show the code search index status. This is a request for information about the code search index, which is likely a memorysmith feature. I should respond with a tool call to retrieve this information.\n\nI need to use the memorysmith tool to get the code search index status. Let me",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_code_search_status-3",
+        "expectedTool": "memorysmith_code_search_status",
+        "userPrompt": "is code search indexing complete",
+        "completion": "The user is asking about code search indexing completion status. This is a specific query about the MemorySmith system's code search functionality. I should respond with a tool call to search for information about code search indexing status.\n\nI need to use the memorysmith_search tool to find information about code search indexing completion.\n</think>",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_code_search_status-4",
+        "expectedTool": "memorysmith_code_search_status",
+        "userPrompt": "code index health status please",
+        "completion": "The user is asking for code index health status. This sounds like they want to check the health status of a code index, which is likely a memorysmith feature. I should use the memorysmith tool to retrieve this information.\n\nI need to respond with exactly one JSON object containing a tool call for memorysmith with the",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      },
+      {
+        "caseId": "memorysmith_code_search_status-5",
+        "expectedTool": "memorysmith_code_search_status",
+        "userPrompt": "report current code search status",
+        "completion": "The user is asking me to report the current code search status. This seems like a request to check the status of a code search operation. I should respond with a tool call to check the search status.\n\nI need to use the memorysmith tool to check the search status. Let me construct the appropriate tool call.",
+        "envelopeValid": false,
+        "predictedTool": null,
+        "toolMatch": false,
+        "parseError": "No JSON object found"
+      }
+    ]
+  }
+}

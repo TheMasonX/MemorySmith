@@ -882,7 +882,7 @@
 
     private static string BuildLossPointStyle(IReadOnlyList<TrainingLossPoint> points, int index)
     {
-        if (points.Count == 0)
+        if (points.Count == 0 || index < 0 || index >= points.Count)
         {
             return "left:0%; top:50%;";
         }
