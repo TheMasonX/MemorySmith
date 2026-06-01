@@ -1,0 +1,50 @@
+{
+  "id": "tsk-0268-add-reverse-reference-view-for-memories-and-pages",
+  "key": "TSK-0268",
+  "title": "Add Reverse-Reference View for Memories and Pages",
+  "description": "MemorySmith memories can reference other memories via the References array, and pages can link to other pages via markdown links. However, the current UI and search surface only let you follow references *forward* (from a record to what it cites). There is no way to discover what else *points to* a given record — a critical navigation gap. This is the 'Reverse Reference Generator' gap identified in the June 2026 LLMWikiServer parity review.\n\n### Motivation\nWhen editing or deprecating a Core memory, an agent or human needs to know what Working records depend on it so they can cascade updates or add Conflicts entries. Without reverse-reference lookup, this requires a full-text search that silently misses structured References array entries. This is also a prerequisite for the F5 Knowledge Graph Visualization killer feature (Audit #5).\n\n### Acceptance Criteria\n- memorysmith_context_pack response includes a reverse_references field listing record IDs that cite the requested ID in their References array (additive, non-breaking change)\n- The /memories workbench detail panel shows an 'Incoming References' section\n- The /pages viewer shows 'Linked from' backlinks derived from scanning PageSlug mentions in markdown\n- API endpoint GET /api/memories/{id}/reverse-references returns the reverse-reference list\n- Reverse-reference data is built on load (or incrementally indexed) without a separate build step\n\n### Extensions to Consider\n- Include Conflicts back-links (records that list this record as a conflict)\n- Add reverse-reference count to the memory list view as a sort/filter column\n- Expose via MCP as memorysmith_reverse_references tool for agent use\n- Add a 'knowledge graph' depth-2 view using the forward + reverse references (F5 prerequisite)\n\n### Relationship to Existing Features\nThe /tags Tag Manager provides forward tag diagnostics. This task adds the backward direction for record References specifically. The Knowledge Graph Visualization (F5 from Audit #5) is a related but larger feature; reverse references are a prerequisite for it.\n\n### Source\nOriginated from external parity review (LLMWikiServer, June 2026). Memory: external-parity-observations-20260601.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "agent-parity-review",
+  "labels": [
+    "navigation",
+    "wiki",
+    "context-pack",
+    "parity-review",
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "guides/agent-workflow-guide"
+  ],
+  "comments": [
+    {
+      "Id": "c-reverse-ref-source-note",
+      "Author": "agent-parity-review",
+      "Body": "Navigation gap identified in June 2026 external parity review (LLMWikiServer). Also a prerequisite for F5 Knowledge Graph Visualization from Audit #5 killer features list. The memorysmith_context_pack reverse_references field addition is the highest-ROI first slice — it would let Athena automatically check for dependents before proposing any status change on a Core record.",
+      "CreatedAtUtc": "2026-06-01T00:00:00Z"
+    },
+    {
+      "Id": "c-reverse-ref-priority",
+      "Author": "council-product-seat",
+      "Body": "Council review (2026-06-01): Product seat raised priority from Medium to High. Rationale: without backward traversal, cascading updates on Core records requires a manual full-text search that silently misses structured References entries. For a knowledge-base tool, backward navigation is a fundamental deficit. Additionally, this task gates the F5 Knowledge Graph killer feature from Audit #5.",
+      "CreatedAtUtc": "2026-06-01T00:00:00Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-06-01T00:00:00Z",
+  "updatedAtUtc": "2026-06-01T00:00:00Z",
+  "completedAtUtc": null,
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

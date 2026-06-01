@@ -1,0 +1,51 @@
+{
+  "id": "tsk-0267-add-api-diagnostics-endpoint-for-effective-config",
+  "key": "TSK-0267",
+  "title": "Add /api/diagnostics Endpoint for Effective Runtime Config",
+  "description": "MemorySmith's current /health endpoint returns a binary up/down check. External agents and operators need richer runtime introspection: whether the embedding provider is reachable, index build state (clean/stale/building/error), and memory-store health (file count, parse-error count). This is the 'Diagnostics API' gap identified in the June 2026 LLMWikiServer parity review.\n\n### Motivation\nAthena and external MCP clients currently call memorysmith_search to probe system state, which is wasteful and unreliable. A dedicated /api/diagnostics endpoint would let any caller confirm the system is genuinely functional before issuing a workload.\n\n### Acceptance Criteria\n- GET /api/diagnostics returns HTTP 200 with a JSON body containing:\n  - embeddingProvider: { reachable: bool } — NO model name or endpoint URL in the base response\n  - chatProvider: { reachable: bool } — NO provider name or endpoint URL in the base response\n  - codeSearchIndex: { status: \"clean\"|\"stale\"|\"building\"|\"error\", indexedFileCount, lastBuildUtc }\n  - memoryStore: { totalCount, parseErrorCount }\n  - version: string (major.minor.patch only, no commit hash)\n- Base endpoint is authorized by CanViewMemorySmith policy (same as /api/health)\n- A privileged variant GET /api/diagnostics/full requires CanAdminMemorySmith policy and adds:\n  - embeddingProvider.modelName, embeddingProvider.vectorDimension\n  - chatProvider.name, chatProvider.latencyMs\n  - memoryStore.workingCount, memoryStore.coreCount\n- Neither variant is exposed unauthenticated, including in LocalDev SecurityProfile\n- Response schema is documented under Data/Pages\n- Rate-limit the endpoint in production SecurityProfiles (RemoteHardened minimum)\n\n### Security Notes (raised in council review, 2026-06-01)\n- The base /api/diagnostics is deliberately scoped to minimum-necessary fields to avoid leaking stack topology to any viewer-level account. Provider names and model identifiers are privileged fields that map your internal infrastructure.\n- If SecurityProfile == LocalDev and the instance is 100% local, stricter gating is still recommended — habits formed here carry forward if the profile ever changes.\n- Do not add a MCP tool (memorysmith_diagnostics) that bypasses this policy gating.\n\n### Extensions to Consider\n- Hook security profile into rate-limit tier automatically\n- Add /api/diagnostics/full variant gated by admin role (already in acceptance criteria above)\n- Expose a minimal MCP tool memorysmith_system_status that calls the base /api/diagnostics and returns only the reachable booleans and index status — never the full admin detail\n\n### Source\nOriginated from external parity review (LLMWikiServer, June 2026). Memory: external-parity-observations-20260601.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "agent-parity-review",
+  "labels": [
+    "api",
+    "diagnostics",
+    "observability",
+    "security",
+    "parity-review",
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "guides/agent-workflow-guide"
+  ],
+  "comments": [
+    {
+      "Id": "c-diagnostics-source-note",
+      "Author": "agent-parity-review",
+      "Body": "Feature gap identified in June 2026 external parity review (LLMWikiServer). See memory external-parity-observations-20260601 for full context. The external agent noted that without this, agents must resort to memorysmith_search probes to confirm the system is live — inefficient and fragile.",
+      "CreatedAtUtc": "2026-06-01T00:00:00Z"
+    },
+    {
+      "Id": "c-diagnostics-council-security",
+      "Author": "council-security-seat",
+      "Body": "Council review (2026-06-01): Security seat flagged that a naive implementation returning model names and provider endpoints to any CanViewMemorySmith user would create an information-disclosure surface. Acceptance criteria updated to split base (reachable booleans + counts only) from /full (privileged detail). Rate-limiting added to RemoteHardened profile requirement. Neither variant should be unauthenticated.",
+      "CreatedAtUtc": "2026-06-01T00:00:00Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-06-01T00:00:00Z",
+  "updatedAtUtc": "2026-06-01T00:00:00Z",
+  "completedAtUtc": null,
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}
