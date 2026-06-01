@@ -15,7 +15,8 @@
     "ui",
     "tooltips",
     "consistency",
-    "audit-vetted"
+    "audit-vetted",
+    "chat"
   ],
   "attachments": [],
   "externalLinks": [],
@@ -27,7 +28,7 @@
       "id": "c-0119-1",
       "author": "AgentSmith",
       "body": "Created from 2026-05-25 live browser audit: multiple icon-only toolbar buttons had aria labels but no tooltip/title, while nearby controls such as Pages focus reading already use tooltips.",
-      "createdAtUtc": "2026-05-25T00:00:00.0000000Z"
+      "createdAtUtc": "2026-05-25T00:00:00Z"
     },
     {
       "id": "c-0119-2",
@@ -39,10 +40,10 @@
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
-  "createdAtUtc": "2026-05-25T00:00:00.0000000Z",
-  "updatedAtUtc": "2026-05-25T14:41:23.0729398Z",
+  "createdAtUtc": "2026-05-25T00:00:00Z",
+  "updatedAtUtc": "2026-05-30T22:40:56.4766813Z",
   "completedAtUtc": "2026-05-25T14:41:23.0729398Z",
-  "revision": 2,
+  "revision": 3,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

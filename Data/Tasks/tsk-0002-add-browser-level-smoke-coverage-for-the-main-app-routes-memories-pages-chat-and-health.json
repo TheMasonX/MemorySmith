@@ -16,7 +16,8 @@
     "future",
     "audit-vetted",
     "quality",
-    "ui"
+    "ui",
+    "chat"
   ],
   "Attachments": [],
   "ExternalLinks": [],
@@ -35,13 +36,13 @@
       "Id": "c-audit-vet-0002",
       "Author": "AgentSmith",
       "Body": "Audit triage: still actionable. README documents the core routes, but current repo evidence points to API/component checks rather than a repeatable browser-route smoke baseline.",
-      "CreatedAtUtc": "2026-05-24T03:20:00.0000000Z"
+      "CreatedAtUtc": "2026-05-24T03:20:00Z"
     },
     {
       "Id": "c-review-0002-20260524",
       "Author": "AgentSmith",
       "Body": "Review round: remains Backlog. No dedicated browser-route smoke workflow with persisted per-route artifacts was found in Scripts or tests; keep open until route smoke automation is shipped.",
-      "CreatedAtUtc": "2026-05-24T04:40:00.0000000Z"
+      "CreatedAtUtc": "2026-05-24T04:40:00Z"
     },
     {
       "Id": "c-impl-0002-20260525",
@@ -54,8 +55,8 @@
   "ParentId": null,
   "DueDateUtc": null,
   "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z",
-  "UpdatedAtUtc": "2026-05-25T02:24:56.4938183Z",
+  "UpdatedAtUtc": "2026-05-30T22:40:56.4163213Z",
   "CompletedAtUtc": "2026-05-25T02:24:56.4938183Z",
-  "Revision": 4,
+  "Revision": 5,
   "IsArchived": false
 }

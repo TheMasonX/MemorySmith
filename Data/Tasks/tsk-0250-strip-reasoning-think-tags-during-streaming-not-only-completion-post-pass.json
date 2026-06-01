@@ -1,0 +1,43 @@
+{
+  "id": "tsk-0250-strip-reasoning-think-tags-during-streaming-not-only-completion-post-pass",
+  "key": "TSK-0250",
+  "title": "Strip reasoning think tags during streaming, not only completion post-pass",
+  "description": "Missing task from Audit #7 finding 6.3. Add incremental scrub of think tags in streaming deltas so users do not see raw reasoning tag artifacts mid-response while preserving final content correctness.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Low",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "AgentSmith",
+  "labels": [
+    "chat",
+    "streaming",
+    "ux",
+    "sprint-20260530-c"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "audits/chat-training-audit-7-20260530"
+  ],
+  "comments": [
+    {
+      "createdAtUtc": "2026-05-30T22:41:43.2891965Z",
+      "author": "AgentSmith",
+      "id": "c-create-tsk-0250-20260530",
+      "body": "Created during follow-up gap review after chat task tagging and sprint planning pass."
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-30T22:41:43.2891965Z",
+  "updatedAtUtc": "2026-05-30T22:41:43.2891965Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

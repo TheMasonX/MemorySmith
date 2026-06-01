@@ -1,0 +1,50 @@
+{
+  "id": "tsk-0233-add-mcp-tool-response-size-limits-and-truncation-metadata",
+  "key": "TSK-0233",
+  "title": "Add MCP tool response size limits and truncation metadata",
+  "description": "Vetted from Audit #7 finding 2.3. MCP tool responses currently return unbounded text payloads. Add configurable response cap with deterministic truncation metadata so clients can detect incomplete payloads and request narrower reads.",
+  "type": "Task",
+  "status": "Done",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "AgentSmith",
+  "labels": [
+    "mcp",
+    "api",
+    "safety",
+    "sprint-20260530-c",
+    "chat"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "audits/chat-training-audit-7-20260530"
+  ],
+  "comments": [
+    {
+      "author": "AgentSmith",
+      "id": "c-create-tsk-0233-20260530",
+      "createdAtUtc": "2026-05-30T22:21:20.9043446Z",
+      "body": "Created from vetted findings in Data/Pages/move-to-audit.md after direct code checks across Chat.razor, ChatServices.cs, ChatToolCatalog.cs, McpController.cs, and training harness files."
+    },
+    {
+      "author": "AgentSmith",
+      "id": "c-0233-2-20260530",
+      "createdAtUtc": "2026-05-30T23:41:00.0000000Z",
+      "body": "Implemented MCP-specific response size governance in `MemorySmith.App/Controllers/McpController.cs` and `MemorySmith.App/Services/MemorySmithOptions.cs`. `tools/call` responses now clamp text to configurable `MemorySmith:Mcp:MaxToolResponseCharacters` and emit deterministic metadata under `result.meta.memorysmith` with `isTruncated`, `originalCharacters`, `returnedCharacters`, and `maxCharacters`. Added admin exposure in `MemorySmith.App/Services/AdminSettingsService.cs` plus default config in `MemorySmith.App/appsettings.json`. Added focused regression coverage in `MemorySmith.Tests/McpAndSemanticSearchTests.cs` proving oversized payloads truncate and surface metadata. Validation: `dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj -c Release --filter \"Name~McpTools_TruncateOversizedResponsesAndEmitMetadata|Name~McpTools_EmitToolExecutionTelemetry|Name~McpContextPackTool_ReturnsHybridResultsWithLinkedContext|Name~McpToolsList_ExposesWikiSearchTools\"` (4/4 passed). Live check: `Invoke-WebRequest https://localhost:7090/health -SkipCertificateCheck` returned `200`."
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-30T22:21:20.9043446Z",
+  "updatedAtUtc": "2026-05-30T23:41:00.0000000Z",
+  "completedAtUtc": "2026-05-30T23:41:00.0000000Z",
+  "revision": 3,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

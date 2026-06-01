@@ -1,0 +1,55 @@
+{
+  "id": "tsk-0240-capture-real-transcript-timing-and-per-tool-duration-metadata",
+  "key": "TSK-0240",
+  "title": "Capture real transcript timing and per-tool duration metadata",
+  "description": "Vetted from Audit #7 findings 10.4 and 10.6. Transcript export currently records zero timing and misses tool duration details. Capture first-token and total duration using stopwatch instrumentation and persist per-tool timing metadata in transcript records.",
+  "type": "Task",
+  "status": "Done",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "AgentSmith",
+  "labels": [
+    "chat",
+    "training",
+    "telemetry",
+    "sprint-20260530-b"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "audits/chat-training-audit-7-20260530"
+  ],
+  "comments": [
+    {
+      "author": "AgentSmith",
+      "id": "c-create-tsk-0240-20260530",
+      "createdAtUtc": "2026-05-30T22:21:20.9043446Z",
+      "body": "Created from vetted findings in Data/Pages/move-to-audit.md after direct code checks across Chat.razor, ChatServices.cs, ChatToolCatalog.cs, McpController.cs, and training harness files."
+    },
+    {
+      "author": "AgentSmith",
+      "id": "c-inprogress-tsk-0240-20260531",
+      "createdAtUtc": "2026-05-31T19:00:00.0000000Z",
+      "body": "Moved to InProgress for closure validation pass. MCP task_set_status returned 401 Missing or invalid X-Api-Key; using local task-file fallback per sprint-loop guidance."
+    },
+    {
+      "author": "AgentSmith",
+      "id": "c-evidence-tsk-0240-20260531",
+      "createdAtUtc": "2026-05-31T19:10:00.0000000Z",
+      "body": "## Evidence Update\n\n- Summary: Validated transcript timing and per-tool duration metadata capture; task implementation already present and passing focused regression coverage.\n- Changed files:\n  - Data/Tasks/tsk-0240-capture-real-transcript-timing-and-per-tool-duration-metadata.json\n- Validation commands:\n  - dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj -c Release --filter Name~MemoryChatAgent_WritesTranscriptAndContent_WhenTrainingCaptureEnabled|Name~MemoryChatAgent_TranscriptIncludesToolTimingMetadata_WhenToolCallsExecute\n  - pwsh -NoLogo -NoProfile -File Scripts/Test-TaskRecords.ps1\n- Validation results:\n  - PASS: 2 selected tests passed, 0 failed.\n  - PASS: Checked 251 task record(s); keys and ids are unique.\n- Confidence: 89%\n- Open questions:\n  - MCP task API is still returning 401 Missing or invalid X-Api-Key; should we prioritize key rotation to restore MCP-first updates?\n- MCP fallback note:\n  - MCP task comment/status tools returned 401 Missing or invalid X-Api-Key; persisted evidence and final status transition locally in task JSON."
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-30T22:21:20.9043446Z",
+  "updatedAtUtc": "2026-05-31T19:10:00.0000000Z",
+  "completedAtUtc": "2026-05-31T19:10:00.0000000Z",
+  "revision": 4,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

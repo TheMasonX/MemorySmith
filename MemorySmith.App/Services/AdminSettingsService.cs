@@ -63,6 +63,11 @@ public sealed class AdminSettingsService
         }
 
         SetJsonValue(root, descriptor.Key.Split(':'), convertedValue);
+        if (!TryValidateCrossSettingConstraints(root, out var crossSettingError))
+        {
+            return new AdminSettingUpdateResult(false, crossSettingError ?? "The setting combination is invalid.");
+        }
+
         Directory.CreateDirectory(Path.GetDirectoryName(_settingsPath)!);
         var tempPath = _settingsPath + ".tmp";
         await File.WriteAllTextAsync(tempPath, root.ToJsonString(JsonOptions) + Environment.NewLine, cancellationToken);
@@ -94,6 +99,64 @@ public sealed class AdminSettingsService
         return string.IsNullOrWhiteSpace(Convert.ToString(convertedValue, CultureInfo.InvariantCulture))
             ? "Cleared"
             : "Configured";
+    }
+
+    private bool TryValidateCrossSettingConstraints(JsonObject root, out string? error)
+    {
+        error = null;
+
+        var current = _options.CurrentValue.CodeSearch;
+        var hybridVectorWeight = ResolveCodeSearchDouble(root, "HybridVectorWeight", current.HybridVectorWeight);
+        var hybridLexicalWeight = ResolveCodeSearchDouble(root, "HybridLexicalWeight", current.HybridLexicalWeight);
+        var minCoverageWeight = ResolveCodeSearchDouble(root, "MinTokenCoverageWeight", current.MinTokenCoverageWeight);
+        var maxCoverageWeight = ResolveCodeSearchDouble(root, "MaxTokenCoverageWeight", current.MaxTokenCoverageWeight);
+
+        if (hybridVectorWeight <= 0 && hybridLexicalWeight <= 0)
+        {
+            error = "Code-search hybrid vector and lexical weights cannot both be zero.";
+            return false;
+        }
+
+        if (minCoverageWeight > maxCoverageWeight)
+        {
+            error = "Code-search min token coverage weight must be less than or equal to max token coverage weight.";
+            return false;
+        }
+
+        return true;
+    }
+
+    private static double ResolveCodeSearchDouble(JsonObject root, string codeSearchFieldName, double currentValue)
+    {
+        if (!TryGetJsonValue(root, out var value, "MemorySmith", "CodeSearch", codeSearchFieldName))
+        {
+            return currentValue;
+        }
+
+        return value switch
+        {
+            JsonValue jsonValue when jsonValue.TryGetValue<double>(out var number) => number,
+            JsonValue jsonValue when jsonValue.TryGetValue<float>(out var number) => number,
+            JsonValue jsonValue when jsonValue.TryGetValue<decimal>(out var number) => (double)number,
+            JsonValue jsonValue when jsonValue.TryGetValue<int>(out var number) => number,
+            JsonValue jsonValue when jsonValue.TryGetValue<long>(out var number) => number,
+            _ => currentValue
+        };
+    }
+
+    private static bool TryGetJsonValue(JsonObject root, out JsonNode? value, params string[] path)
+    {
+        value = root;
+        foreach (var segment in path)
+        {
+            if (value is not JsonObject obj || !obj.TryGetPropertyValue(segment, out value) || value is null)
+            {
+                value = null;
+                return false;
+            }
+        }
+
+        return value is not null;
     }
 
     private async Task<JsonObject> LoadSettingsRootAsync(CancellationToken cancellationToken)
@@ -129,6 +192,9 @@ public sealed class AdminSettingsService
             bool boolean => JsonValue.Create(boolean),
             int integer => JsonValue.Create(integer),
             long longValue => JsonValue.Create(longValue),
+            double doubleValue => JsonValue.Create(doubleValue),
+            float floatValue => JsonValue.Create(floatValue),
+            decimal decimalValue => JsonValue.Create(decimalValue),
             IReadOnlyList<string> strings => new JsonArray(strings.Select(item => (JsonNode?)JsonValue.Create(item)).ToArray()),
             _ => JsonValue.Create(Convert.ToString(value, CultureInfo.InvariantCulture))
         };
@@ -145,6 +211,16 @@ public sealed class AdminSettingsService
         EditableSettingDescriptor.Choice("MemorySmith:SecurityProfile", "Security profile", "Security", settings => MemorySmithSecurityProfiles.Normalize(settings.SecurityProfile), MemorySmithSecurityProfiles.All, "Preset for related security defaults: local-dev for permissive local iteration, secure-local for dogfood/local default, and remote-hardened for exposed instances. Explicit settings still appear separately for review."),
         EditableSettingDescriptor.Boolean("MemorySmith:AllowRemoteApi", "Allow remote API", "Security", settings => settings.AllowRemoteApi, "Allows non-loopback HTTP API/MCP requests through the request guard. Remote API/MCP requests are blocked until a shared API key is configured; keep disabled unless the instance also has a network boundary and intentional remote access policy."),
         EditableSettingDescriptor.String("MemorySmith:ApiKey", "Shared API key", "Security", settings => settings.ApiKey, 500, "Write-only shared API key accepted by API and MCP requests when configured. Required for non-loopback API/MCP access when Allow remote API is enabled. The UI never echoes the existing value; enter a new value only when rotating or clearing the key.", isSensitive: true),
+        EditableSettingDescriptor.Boolean("MemorySmith:ContentSecurityPolicyEnabled", "Enable Content-Security-Policy header", "Security", settings => settings.ContentSecurityPolicyEnabled, "Emits the configured Content-Security-Policy response header on app requests. Keep enabled for defense-in-depth against script injection."),
+        EditableSettingDescriptor.String("MemorySmith:ContentSecurityPolicy", "Content-Security-Policy value", "Security", settings => settings.ContentSecurityPolicy, 4000, "Raw Content-Security-Policy header value applied when CSP is enabled. Tune directives for deployment-specific script/style/connect requirements."),
+        EditableSettingDescriptor.Boolean("MemorySmith:XContentTypeOptionsEnabled", "Enable X-Content-Type-Options header", "Security", settings => settings.XContentTypeOptionsEnabled, "Adds the X-Content-Type-Options response header for MIME-sniffing defense on browsers."),
+        EditableSettingDescriptor.String("MemorySmith:XContentTypeOptions", "X-Content-Type-Options value", "Security", settings => settings.XContentTypeOptions, 100, "Response value for X-Content-Type-Options. Use nosniff unless a legacy client requires custom behavior."),
+        EditableSettingDescriptor.Boolean("MemorySmith:ReferrerPolicyEnabled", "Enable Referrer-Policy header", "Security", settings => settings.ReferrerPolicyEnabled, "Adds Referrer-Policy response header control for outbound referrer disclosure."),
+        EditableSettingDescriptor.String("MemorySmith:ReferrerPolicy", "Referrer-Policy value", "Security", settings => settings.ReferrerPolicy, 100, "Response value for Referrer-Policy. strict-origin-when-cross-origin is a practical default for local and LAN deployments."),
+        EditableSettingDescriptor.Boolean("MemorySmith:XFrameOptionsEnabled", "Enable X-Frame-Options header", "Security", settings => settings.XFrameOptionsEnabled, "Adds X-Frame-Options clickjacking defense header on responses."),
+        EditableSettingDescriptor.String("MemorySmith:XFrameOptions", "X-Frame-Options value", "Security", settings => settings.XFrameOptions, 40, "Response value for X-Frame-Options. Use DENY unless same-origin framing is explicitly required."),
+        EditableSettingDescriptor.Boolean("MemorySmith:PermissionsPolicyEnabled", "Enable Permissions-Policy header", "Security", settings => settings.PermissionsPolicyEnabled, "Adds Permissions-Policy response header to constrain browser feature access."),
+        EditableSettingDescriptor.String("MemorySmith:PermissionsPolicy", "Permissions-Policy value", "Security", settings => settings.PermissionsPolicy, 1000, "Response value for Permissions-Policy. Keep restrictive defaults unless a route explicitly needs additional browser capabilities."),
 
         EditableSettingDescriptor.Choice("MemorySmith:Database:Provider", "Database provider", "Database", settings => settings.Database.Provider, ["SQLite"], "Database backend used by the active app host. SQLite is the supported provider in this repository; changing this is a deployment-level operation."),
         EditableSettingDescriptor.String("MemorySmith:Database:ConnectionString", "Database connection string", "Database", settings => settings.Database.ConnectionString, 1000, "Write-only SQLite connection string for users, roles, provider links, audit logs, and version history. Changing it points the app at a different metadata database and normally requires restart/revalidation.", isSensitive: true),
@@ -157,6 +233,7 @@ public sealed class AdminSettingsService
         EditableSettingDescriptor.Choice("MemorySmith:Auth:AuthenticatedDefaultRole", "Default signed-in role", "Auth", settings => MemorySmithPermissionHandler.NormalizeAuthenticatedDefaultRole(settings.Auth.AuthenticatedDefaultRole), [MemorySmithRoles.Viewer, MemorySmithRoles.Editor], "Role assigned to newly signed-in users when they do not already have an explicit role. Admin is intentionally not an allowed default; promote admins from the Users tab."),
         EditableSettingDescriptor.Boolean("MemorySmith:Auth:AutoEditorForAuthenticatedUsers", "Auto editor for signed-in users", "Auth", settings => settings.Auth.AutoEditorForAuthenticatedUsers, "Treats authenticated users as editors for normal wiki editing flows. It does not grant Admin privileges, settings access, audit access, or restore permissions."),
         EditableSettingDescriptor.Boolean("MemorySmith:Auth:LocalPasswordEnabled", "Local password sign-in", "Auth", settings => settings.Auth.LocalPasswordEnabled, "Enables MemorySmith's built-in username/password provider alongside external providers. Disable only when external provider login is fully configured and tested."),
+        EditableSettingDescriptor.Boolean("MemorySmith:Auth:AllowAdminCreateLocalUsers", "Allow admin-created local users", "Auth", settings => settings.Auth.AllowAdminCreateLocalUsers, "Allows admins to create additional local password accounts for testing or controlled operator use from the Users tab. Keep disabled by default unless you intentionally want local-only accounts beyond the bootstrap admin."),
         EditableSettingDescriptor.Boolean("MemorySmith:Auth:RequireHttpsForRemoteAuth", "Require HTTPS for remote auth", "Auth", settings => settings.Auth.RequireHttpsForRemoteAuth, "Blocks remote authentication flows over plain HTTP while still allowing loopback development. Keep enabled for any non-local deployment to protect cookies and OAuth redirects."),
         EditableSettingDescriptor.Boolean("MemorySmith:Auth:OpenLocalEditorCompatibility", "Pre-setup local write compatibility", "Auth", settings => settings.Auth.OpenLocalEditorCompatibility, "Preserves local editor compatibility before first-admin setup. This does not satisfy Admin policies after setup and should remain a bootstrap compatibility valve only."),
         EditableSettingDescriptor.Boolean("MemorySmith:Auth:Setup:AllowLoopbackBootstrap", "Allow loopback bootstrap", "Auth", settings => settings.Auth.Setup.AllowLoopbackBootstrap, "Allows first-admin setup from loopback when no admin exists. Disable after provisioning in stricter deployments that require token-based bootstrap only."),
@@ -219,6 +296,8 @@ public sealed class AdminSettingsService
 
         EditableSettingDescriptor.Choice("MemorySmith:Pages:DefaultMinimumRole", "Default page visibility", "Pages", settings => PageAccessLevels.Normalize(settings.Pages.DefaultMinimumRole), PageAccessLevels.All, "Default minimum role for newly saved wiki pages when no page-specific visibility is supplied. Anonymous exposes the page publicly; Authenticated/Admin restrict access."),
         EditableSettingDescriptor.Boolean("MemorySmith:Pages:AllowRawHtml", "Allow raw page HTML", "Pages", settings => settings.Pages.AllowRawHtml, "Allows trusted markdown pages to render raw HTML. Keep disabled for safer local wiki rendering unless you fully trust page authors and content."),
+        EditableSettingDescriptor.Boolean("MemorySmith:Markdown:MermaidEnabled", "Enable Mermaid diagrams", "Pages", settings => settings.Markdown.MermaidEnabled, "Enables Mermaid diagram rendering in markdown surfaces (chat, pages, memories). Disable to show Mermaid code blocks as plain text only."),
+        EditableSettingDescriptor.Choice("MemorySmith:Markdown:MermaidRestrictionMode", "Mermaid restriction mode", "Pages", settings => MermaidRestrictionModes.Normalize(settings.Markdown.MermaidRestrictionMode), MermaidRestrictionModes.All, "Controls Mermaid policy strictness. standard allows broad syntax, restricted blocks risky directives and oversized diagrams, and strict allows only safe diagram families with tighter size limits."),
 
         EditableSettingDescriptor.Boolean("MemorySmith:SemanticSearch:EmbeddingsEnabled", "Semantic embeddings enabled", "Search", settings => settings.SemanticSearch.EmbeddingsEnabled, "Enables ONNX embedding search when model and vocabulary assets are available. When unavailable, MemorySmith falls back to local token semantic scoring and reports provider metadata."),
         EditableSettingDescriptor.String("MemorySmith:SemanticSearch:ModelPath", "Embedding model path", "Search", settings => settings.SemanticSearch.ModelPath, 500, "Path to the ONNX embedding model used for semantic ranking. Keep paired with the matching vocabulary file to avoid falling back to token scoring."),
@@ -234,10 +313,36 @@ public sealed class AdminSettingsService
         EditableSettingDescriptor.Integer("MemorySmith:SemanticSearch:MaxIndexedTextCharacters", "Max indexed text characters", "Search", settings => settings.SemanticSearch.MaxIndexedTextCharacters, 500, 50000, "Maximum characters from each memory record considered for semantic indexing/ranking. Higher values improve long-record recall but increase embedding work."),
         EditableSettingDescriptor.String("MemorySmith:SemanticSearch:QueryPrefix", "Semantic query prefix", "Search", settings => settings.SemanticSearch.QueryPrefix, 100, "Prefix prepended to user queries for embedding models that distinguish query and passage text. Keep aligned with the selected embedding model's training convention."),
         EditableSettingDescriptor.String("MemorySmith:SemanticSearch:DocumentPrefix", "Semantic document prefix", "Search", settings => settings.SemanticSearch.DocumentPrefix, 100, "Prefix prepended to memory/page text before embedding. Keep aligned with the embedding model so query and document vectors stay comparable."),
+        EditableSettingDescriptor.Decimal("MemorySmith:CodeSearch:HybridVectorWeight", "Code-search hybrid vector weight", "Search", settings => settings.CodeSearch.HybridVectorWeight, 0, 2, "Weight applied to vector similarity in hybrid ranking. Increase to favor embedding similarity; decrease to favor lexical evidence."),
+        EditableSettingDescriptor.Decimal("MemorySmith:CodeSearch:HybridLexicalWeight", "Code-search hybrid lexical weight", "Search", settings => settings.CodeSearch.HybridLexicalWeight, 0, 2, "Weight applied to normalized lexical evidence in hybrid ranking."),
+        EditableSettingDescriptor.Decimal("MemorySmith:CodeSearch:ZeroLexicalEvidencePenalty", "Code-search zero lexical penalty", "Search", settings => settings.CodeSearch.ZeroLexicalEvidencePenalty, 0, 2, "Multiplier applied when vector candidates have no lexical evidence. Lower values demote semantic-only matches."),
+        EditableSettingDescriptor.Decimal("MemorySmith:CodeSearch:LexicalScoreSaturation", "Code-search lexical saturation", "Search", settings => settings.CodeSearch.LexicalScoreSaturation, 0.001, 100, "Saturation factor for lexical normalization in hybrid ranking. Higher values flatten lexical impact."),
+        EditableSettingDescriptor.Decimal("MemorySmith:CodeSearch:LexicalFrequencyBonusScale", "Code-search lexical frequency scale", "Search", settings => settings.CodeSearch.LexicalFrequencyBonusScale, 0, 5, "Scale factor for repeated-token lexical bonus. Keep modest to avoid keyword-stuffing bias."),
+        EditableSettingDescriptor.Decimal("MemorySmith:CodeSearch:MaxLexicalFrequencyBonusPerToken", "Code-search max lexical frequency bonus", "Search", settings => settings.CodeSearch.MaxLexicalFrequencyBonusPerToken, 0, 10, "Upper bound for per-token lexical repetition bonus."),
+        EditableSettingDescriptor.Decimal("MemorySmith:CodeSearch:MinTokenCoverageWeight", "Code-search min token coverage weight", "Search", settings => settings.CodeSearch.MinTokenCoverageWeight, 0, 3, "Weight applied to low token-coverage matches. Lower values penalize partial-intent matches more aggressively."),
+        EditableSettingDescriptor.Decimal("MemorySmith:CodeSearch:MaxTokenCoverageWeight", "Code-search max token coverage weight", "Search", settings => settings.CodeSearch.MaxTokenCoverageWeight, 0, 3, "Weight applied to high token-coverage matches. Higher values boost full-intent matches."),
+        EditableSettingDescriptor.Integer("MemorySmith:CodeSearch:VectorPrefilterFullScanFallbackCandidateCount", "Code-search sparse prefilter fallback candidate count", "Search", settings => settings.CodeSearch.VectorPrefilterFullScanFallbackCandidateCount, 0, 10000, "When vector prefilter yields this many or fewer candidates, run a full-index vector fallback pass to protect semantic recall for sparse lexical queries. Set 0 to disable."),
+        EditableSettingDescriptor.Integer("MemorySmith:CodeSearch:MaxResults", "Code-search max results", "Search", settings => settings.CodeSearch.MaxResults, 1, 500, "Operator cap for one code-search query. Per-query limits cannot exceed this value."),
+        EditableSettingDescriptor.Integer("MemorySmith:CodeSearch:MaxResultsPerDocument", "Code-search max results per document", "Search", settings => settings.CodeSearch.MaxResultsPerDocument, 1, 50, "Maximum number of snippets returned from the same document in one code-search query."),
         EditableSettingDescriptor.Boolean("MemorySmith:TaskSearch:HybridSemanticEnabled", "Task hybrid semantic search", "Search", settings => settings.TaskSearch.HybridSemanticEnabled, "Enables hybrid lexical+semantic ranking for task list queries. Keep enabled for better task recall with reordered or loosely phrased queries."),
         EditableSettingDescriptor.String("MemorySmith:TaskAttachments:StoragePath", "Task attachment storage path", "Tasks", settings => settings.TaskAttachments.StoragePath, 500, "Directory where uploaded task attachment files are stored. Keep under artifacts/task-attachments for portable local artifact cleanup."),
         EditableSettingDescriptor.Integer("MemorySmith:TaskAttachments:MaxFileBytes", "Task attachment max bytes", "Tasks", settings => (int)Math.Min(settings.TaskAttachments.MaxFileBytes, int.MaxValue), 1024, 2147483647, "Maximum size accepted for one uploaded task attachment file."),
         EditableSettingDescriptor.String("MemorySmith:Governance:TagPolicyPath", "Tag policy path", "Governance", settings => settings.Governance.TagPolicyPath, 500, "Path to the JSON tag policy that drives tag namespaces, allow/block lists, aliases, diagnostics, and the Tag Manager editor."),
+
+        EditableSettingDescriptor.Boolean("MemorySmith:Training:ChatTranscriptEnabled", "Chat transcript capture enabled", "Training", settings => settings.Training.ChatTranscriptEnabled, "When enabled, assistant turns are written to transcript JSONL for fine-tuning/export workflows."),
+        EditableSettingDescriptor.Boolean("MemorySmith:Training:StoreChatContent", "Store chat transcript content", "Training", settings => settings.Training.StoreChatContent, "When enabled alongside transcript capture, literal user/assistant text is written to companion content files for training export."),
+        EditableSettingDescriptor.Integer("MemorySmith:Training:TranscriptRetentionDays", "Transcript retention days", "Training", settings => settings.Training.TranscriptRetentionDays, 1, 3650, "Maximum age in days for transcript files before automatic cleanup removes stale files."),
+        EditableSettingDescriptor.Boolean("MemorySmith:Training:TranscriptRedactionEnabled", "Transcript redaction enabled", "Training", settings => settings.Training.TranscriptRedactionEnabled, "Redacts common token, secret, and authorization patterns before transcript content is written."),
+        EditableSettingDescriptor.Boolean("MemorySmith:Training:FeedbackEnabled", "Chat feedback capture enabled", "Training", settings => settings.Training.FeedbackEnabled, "Enables server-side thumbs/feedback persistence for training signal collection APIs."),
+        EditableSettingDescriptor.Integer("MemorySmith:Training:MaxRunMinutes", "Training run max minutes", "Training", settings => settings.Training.MaxRunMinutes, 1, 1440, "Maximum wall-clock minutes allowed for a local training run before timeout/abort safeguards."),
+        EditableSettingDescriptor.Choice("MemorySmith:Training:PreferenceFormat", "Training preference format", "Training", settings => settings.Training.PreferenceFormat.ToString(), ["FilteredSft", "Dpo", "Orpo"], "Preferred export format for model-improvement data. FilteredSft is the default staged format."),
+        EditableSettingDescriptor.String("MemorySmith:Training:ActiveModelTag", "Active training model tag", "Training", settings => settings.Training.ActiveModelTag, 200, "Current promoted or preferred model tag used by training workflows when an explicit target is needed."),
+        EditableSettingDescriptor.String("MemorySmith:Training:FallbackModelTag", "Fallback training model tag", "Training", settings => settings.Training.FallbackModelTag, 200, "Fallback base model tag used when no promoted fine-tuned training target is configured."),
+        EditableSettingDescriptor.String("MemorySmith:Training:TranscriptDirectory", "Transcript directory", "Training", settings => settings.Training.TranscriptDirectory, 500, "Directory for daily chat transcript JSONL files used by fine-tuning export workflows."),
+        EditableSettingDescriptor.String("MemorySmith:Training:TrainingDataExportPath", "Training export path", "Training", settings => settings.Training.TrainingDataExportPath, 500, "Directory where curated SFT/DPO/ORPO training exports are written."),
+        EditableSettingDescriptor.String("MemorySmith:Training:RunsDirectory", "Training runs directory", "Training", settings => settings.Training.RunsDirectory, 500, "Directory containing per-run training/eval artifacts and status outputs."),
+        EditableSettingDescriptor.String("MemorySmith:Training:PythonVenvPath", "Training Python venv path", "Training", settings => settings.Training.PythonVenvPath, 500, "Path to the Python virtual environment used by the training harness bridge."),
+        EditableSettingDescriptor.String("MemorySmith:Training:PythonHarnessScript", "Training harness script", "Training", settings => settings.Training.PythonHarnessScript, 500, "Path to the Python harness entrypoint script invoked by .NET orchestration."),
 
         EditableSettingDescriptor.Boolean("MemorySmith:Maintenance:Enabled", "Maintenance enabled", "Maintenance", settings => settings.Maintenance.Enabled, "Enables background maintenance loops for triage, indexing, consolidation, and related housekeeping. Disable for isolated tests or when manually controlling maintenance jobs."),
         EditableSettingDescriptor.Integer("MemorySmith:Maintenance:TriageMinutes", "Triage interval minutes", "Maintenance", settings => settings.Maintenance.TriageMinutes, 1, 1440, "How often the maintenance host evaluates records for status transitions, diagnostics, and warning-first deprecation recommendations."),
@@ -262,8 +367,9 @@ public sealed class AdminSettingsService
         EditableSettingDescriptor.StringList("MemorySmith:SourceLinks:DeniedFileRootVariables", "Denied source root variables", "Source links", settings => settings.SourceLinks.DeniedFileRootVariables, "Variable names, one per line, whose resolved paths are always blocked for source reads/open operations."),
         EditableSettingDescriptor.StringList("MemorySmith:SourceLinks:DeniedFileRoots", "Denied source root paths", "Source links", settings => settings.SourceLinks.DeniedFileRoots, "Absolute filesystem roots, one per line, that are always blocked for source reads/open operations even if a broader read mode is enabled."),
 
-        EditableSettingDescriptor.StringList("MemorySmith:Mcp:EnabledTools", "Enabled MCP tools", "MCP", settings => settings.Mcp.EnabledTools, "MCP tool names, one per line, that are explicitly enabled even when the tool's risk class would otherwise default off. Disabled tools still take precedence."),
-        EditableSettingDescriptor.StringList("MemorySmith:Mcp:DisabledTools", "Disabled MCP tools", "MCP", settings => settings.Mcp.DisabledTools, "MCP tool names, one per line, to hide from tools/list and reject during tools/call. Use this to turn off source-aware or deployment-specific tools without changing code."),
+        EditableSettingDescriptor.StringList("MemorySmith:Mcp:EnabledTools", "Enabled MCP tools", "MCP", settings => settings.Mcp.EnabledTools, "MCP tool names, one per line, to opt specific sensitive-read or write tools into the external MCP surface. Safe read tools stay on by default; disabled tools still take precedence over this list."),
+        EditableSettingDescriptor.StringList("MemorySmith:Mcp:DisabledTools", "Disabled MCP tools", "MCP", settings => settings.Mcp.DisabledTools, "MCP tool names, one per line, to hide from tools/list and reject during tools/call. Use this to lock down even normally safe read tools for stricter deployments or narrower automation profiles."),
+        EditableSettingDescriptor.Integer("MemorySmith:Mcp:MaxToolResponseCharacters", "Max MCP tool response characters", "MCP", settings => settings.Mcp.MaxToolResponseCharacters, 256, 200000, "Maximum characters returned in one MCP tool response payload before MemorySmith truncates the text and emits deterministic truncation metadata. Keep this bounded so external MCP clients can detect incomplete payloads and retry with narrower reads."),
 
         EditableSettingDescriptor.Choice("MemorySmith:Chat:Provider", "Default chat provider", "Chat", settings => settings.Chat.Provider, ["Ollama", "GitHubCopilot"], "Default provider selected for MemorySmith chat when a request does not explicitly choose a provider. Provider capability metadata is shown in chat config."),
         EditableSettingDescriptor.String("MemorySmith:Chat:OllamaEndpoint", "Ollama endpoint", "Chat", settings => settings.Chat.OllamaEndpoint, 200, "Base URL for the local Ollama chat API. The app uses it for model listing, completion, streaming, image input, and usage estimates when Ollama is selected."),
@@ -285,6 +391,7 @@ public sealed class AdminSettingsService
         EditableSettingDescriptor.Integer("MemorySmith:Chat:MaxAttachmentCharacters", "Max attachment characters", "Chat", settings => settings.Chat.MaxAttachmentCharacters, 0, 500000, "Maximum extracted text characters accepted from user attachments for one chat request before truncation."),
         EditableSettingDescriptor.Integer("MemorySmith:Chat:MaxAttachmentBytes", "Max attachment bytes", "Chat", settings => (int)Math.Min(settings.Chat.MaxAttachmentBytes, int.MaxValue), 0, 2147483647, "Maximum uploaded attachment size in bytes for chat. Image attachments may also require provider/model vision support."),
         EditableSettingDescriptor.Integer("MemorySmith:Chat:AttachmentTempFileRetentionHours", "Attachment temp retention hours", "Chat", settings => settings.Chat.AttachmentTempFileRetentionHours, 1, 720, "Maximum age for chat image attachment temp files before the Chat route cleans them up. Cleanup logs counts only, not local file paths."),
+        EditableSettingDescriptor.Boolean("MemorySmith:Chat:ClipboardFetchExternalImagesEnabled", "Fetch external clipboard image URLs", "Chat", settings => settings.Chat.ClipboardFetchExternalImagesEnabled, "When enabled, clipboard HTML/plain-text image URLs may be fetched over HTTP/HTTPS and attached as images. Keep disabled to avoid unprompted network fetches during paste."),
         EditableSettingDescriptor.Boolean("MemorySmith:Chat:ToolCallsEnabled", "Tool calls enabled", "Chat", settings => settings.Chat.ToolCallsEnabled, "Allows the app-intercepted MemorySmith tool-call protocol in chat/agent responses. Chat mode exposes read-only memory/page/task lookup tools; Agent mode can additionally use gated mutation tools."),
         EditableSettingDescriptor.Integer("MemorySmith:Chat:MaxToolIterations", "Max tool iterations", "Chat", settings => settings.Chat.MaxToolIterations, 0, 10, "Maximum follow-up model/tool result loops allowed after a provider requests MemorySmith wiki tools. Bounds recursive tool use."),
         EditableSettingDescriptor.Integer("MemorySmith:Chat:MaxToolCallsPerTurn", "Max tool calls per turn", "Chat", settings => settings.Chat.MaxToolCallsPerTurn, 0, 20, "Maximum MemorySmith wiki tool calls accepted from one model response. Prevents one turn from running too many local searches or gets."),
@@ -346,6 +453,8 @@ public sealed class AdminSettingsService
         IReadOnlyList<string> Options,
         int? Min,
         int? Max,
+        double? MinDecimal,
+        double? MaxDecimal,
         int? MaxLength,
         bool IsSensitive)
     {
@@ -393,6 +502,21 @@ public sealed class AdminSettingsService
                     }
 
                     value = integer;
+                    return true;
+                case AdminSettingValueKind.Decimal:
+                    if (!double.TryParse(rawValue, NumberStyles.Float, CultureInfo.InvariantCulture, out var number))
+                    {
+                        error = "Use a decimal number.";
+                        return false;
+                    }
+
+                    if (MinDecimal.HasValue && number < MinDecimal.Value || MaxDecimal.HasValue && number > MaxDecimal.Value)
+                    {
+                        error = $"Use a value between {MinDecimal?.ToString(CultureInfo.InvariantCulture)} and {MaxDecimal?.ToString(CultureInfo.InvariantCulture)}.";
+                        return false;
+                    }
+
+                    value = number;
                     return true;
                 case AdminSettingValueKind.NullableInteger:
                     if (string.IsNullOrWhiteSpace(rawValue))
@@ -446,22 +570,25 @@ public sealed class AdminSettingsService
         }
 
         public static EditableSettingDescriptor Boolean(string key, string label, string category, Func<MemorySmithOptions, bool> getValue, string? helpText = null) =>
-            new(key, label, category, helpText ?? DefaultHelpText(key), AdminSettingValueKind.Boolean, settings => getValue(settings), [], null, null, null, false);
+            new(key, label, category, helpText ?? DefaultHelpText(key), AdminSettingValueKind.Boolean, settings => getValue(settings), [], null, null, null, null, null, false);
 
         public static EditableSettingDescriptor Integer(string key, string label, string category, Func<MemorySmithOptions, int> getValue, int min, int max, string? helpText = null) =>
-            new(key, label, category, helpText ?? DefaultHelpText(key), AdminSettingValueKind.Integer, settings => getValue(settings), [], min, max, null, false);
+            new(key, label, category, helpText ?? DefaultHelpText(key), AdminSettingValueKind.Integer, settings => getValue(settings), [], min, max, null, null, null, false);
+
+        public static EditableSettingDescriptor Decimal(string key, string label, string category, Func<MemorySmithOptions, double> getValue, double min, double max, string? helpText = null) =>
+            new(key, label, category, helpText ?? DefaultHelpText(key), AdminSettingValueKind.Decimal, settings => getValue(settings), [], null, null, min, max, null, false);
 
         public static EditableSettingDescriptor NullableInteger(string key, string label, string category, Func<MemorySmithOptions, int?> getValue, int min, int max, string? helpText = null) =>
-            new(key, label, category, helpText ?? DefaultHelpText(key), AdminSettingValueKind.NullableInteger, settings => getValue(settings), [], min, max, null, false);
+            new(key, label, category, helpText ?? DefaultHelpText(key), AdminSettingValueKind.NullableInteger, settings => getValue(settings), [], min, max, null, null, null, false);
 
         public static EditableSettingDescriptor Choice(string key, string label, string category, Func<MemorySmithOptions, string> getValue, IReadOnlyList<string> options, string? helpText = null) =>
-            new(key, label, category, helpText ?? DefaultHelpText(key), AdminSettingValueKind.Choice, settings => getValue(settings), options, null, null, null, false);
+            new(key, label, category, helpText ?? DefaultHelpText(key), AdminSettingValueKind.Choice, settings => getValue(settings), options, null, null, null, null, null, false);
 
         public static EditableSettingDescriptor String(string key, string label, string category, Func<MemorySmithOptions, string?> getValue, int maxLength, string? helpText = null, bool isSensitive = false) =>
-            new(key, label, category, helpText ?? DefaultHelpText(key), AdminSettingValueKind.String, settings => getValue(settings), [], null, null, maxLength, isSensitive);
+            new(key, label, category, helpText ?? DefaultHelpText(key), AdminSettingValueKind.String, settings => getValue(settings), [], null, null, null, null, maxLength, isSensitive);
 
         public static EditableSettingDescriptor StringList(string key, string label, string category, Func<MemorySmithOptions, IReadOnlyList<string>> getValue, string? helpText = null) =>
-            new(key, label, category, helpText ?? DefaultHelpText(key), AdminSettingValueKind.StringList, settings => getValue(settings), [], null, null, null, false);
+            new(key, label, category, helpText ?? DefaultHelpText(key), AdminSettingValueKind.StringList, settings => getValue(settings), [], null, null, null, null, null, false);
 
         private static string DefaultHelpText(string key) =>
             $"Controls {key}. Changes are written to the local MemorySmith settings override file and take effect after configuration reload when the owning service reads updated options; startup-only settings may still require an app restart.";
@@ -472,6 +599,7 @@ public enum AdminSettingValueKind
 {
     Boolean,
     Integer,
+    Decimal,
     NullableInteger,
     String,
     StringList,

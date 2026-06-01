@@ -45,9 +45,9 @@ Still gated:
 ## Evidence Reviewed
 
 - [Core Memory System Improvements RFC](temp-plan.md) - convention-first and evidence-gated direction.
-- [Deep Research Intake Notes](../research/deep-research-intake-20260520.md) and [temp-deep-research-response](../research/temp-deep-research-response.md) - external research synthesis on tag governance, staleness, JSON tool outputs, chunking, and council workflows.
+- [Deep Research Intake Notes](../research/deep-research-intake-20260520.md) - external research synthesis on tag governance, staleness, JSON tool outputs, chunking, and council workflows.
 - [Search and Chat](../guides/search-and-chat.md) - current human/agent retrieval guidance.
-- [Council Workflow](../council/llm-council.md) and `.github/skills/llm-council-review/SKILL.md` - required council method.
+- [Council Workflow](../council/llm-council.md) and `.github/skills/council/SKILL.md` (slash command: `/council`) - required council method.
 - [Schemas/memory.schema.json](../../Schemas/memory.schema.json) and [MemoryRecord.cs](../../MemorySmith.Core/Models/MemoryRecord.cs) - current flat record model.
 - [MemoryApplicationService.cs](../../MemorySmith.App/Services/MemoryApplicationService.cs) - current search, validation, context pack, and CRUD behavior.
 - [MemoryMaintenanceTasks.cs](../../MemorySmith.App/Services/MemoryMaintenanceTasks.cs), [MemoryMaintenanceService.cs](../../MemorySmith.App/Services/MemoryMaintenanceService.cs), and [MemoryStateMachine.cs](../../MemorySmith.Core/StateMachine/MemoryStateMachine.cs) - current automatic status transitions and deprecation behavior.

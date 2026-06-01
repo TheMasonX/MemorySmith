@@ -142,7 +142,7 @@ If behavior is unexpected, check configured paths first:
 
 Place model assets under `Data/Models`:
 
-- `embedding-model.onnx`
+- `e5-base-v2.onnx`
 - `vocab.txt`
 
 Use relative configuration values:
@@ -150,7 +150,7 @@ Use relative configuration values:
 ```json
 {
   "EmbeddingsEnabled": true,
-  "ModelPath": "Models/embedding-model.onnx",
+  "ModelPath": "Models/e5-base-v2.onnx",
   "VocabularyPath": "Models/vocab.txt",
   "TokenizerKind": "WordPiece",
   "PoolingMode": "Mean"
@@ -219,3 +219,4 @@ Use this checklist while collecting images later:
 - [ ] SYS-SETUP-11 data folder tree
 - [ ] SYS-SETUP-12 semantic provider enabled status
 - [ ] SYS-SETUP-13 health path-mismatch troubleshooting example
+

@@ -14,7 +14,8 @@
     "refactor",
     "tests",
     "maintainability",
-    "sprint-1"
+    "sprint-1",
+    "chat"
   ],
   "attachments": [],
   "externalLinks": [],
@@ -27,21 +28,21 @@
       "id": "c-create-0044-20260523",
       "author": "AgentSmith",
       "body": "Created from F-003 as Sprint 1 committed test-maintainability work.",
-      "createdAtUtc": "2026-05-23T19:14:00.0000000Z"
+      "createdAtUtc": "2026-05-23T19:14:00Z"
     },
     {
       "id": "c-reprioritize-0044-20260523",
       "author": "AgentSmith",
       "body": "Reprioritized to Medium after severity review: improves maintainability and triage speed but is lower immediate risk than active security and availability hardening items.",
-      "createdAtUtc": "2026-05-23T23:58:00.0000000Z"
+      "createdAtUtc": "2026-05-23T23:58:00Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
-  "createdAtUtc": "2026-05-23T19:14:00.0000000Z",
-  "updatedAtUtc": "2026-05-23T23:58:00.0000000Z",
+  "createdAtUtc": "2026-05-23T19:14:00Z",
+  "updatedAtUtc": "2026-05-30T22:40:56.4459934Z",
   "completedAtUtc": null,
-  "revision": 2,
+  "revision": 3,
   "isArchived": false
 }

@@ -55,12 +55,12 @@ Default semantic model paths:
 
 ```json
 {
-  "ModelPath": "Models/embedding-model.onnx",
+  "ModelPath": "Models/e5-base-v2.onnx",
   "VocabularyPath": "Models/vocab.txt"
 }
 ```
 
-Those resolve to `Data/Models/embedding-model.onnx` and `Data/Models/vocab.txt`. Legacy `../Data/Models/...` values are still interpreted relative to the same data root.
+Those resolve to `Data/Models/e5-base-v2.onnx` and `Data/Models/vocab.txt`. Legacy `../Data/Models/...` values are still interpreted relative to the same data root.
 
 ## Windows Service Notes
 

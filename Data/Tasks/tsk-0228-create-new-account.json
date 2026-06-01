@@ -1,0 +1,38 @@
+﻿{
+  "id": "tsk-0228-create-new-account",
+  "key": "TSK-0228",
+  "title": "Create New Account",
+  "description": "The login page makes it hard to discover how a new account is actually created. Current behavior is split across first-admin setup and external-provider onboarding: `/admin/setup` creates the initial local admin account, and GitHub sign-in can create a user on first successful authentication when that provider is enabled. Expected behavior: the login page should explicitly explain the available account-creation paths, make first-admin setup obvious when no admin exists, and avoid implying that a normal self-serve local signup flow exists when it does not.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [
+    {
+      "id": "c-detail-0228-20260529",
+      "author": "AgentSmith",
+      "body": "Expanded from code review. There is no general self-serve local signup page today: first admin creation happens through `/admin/setup`, and GitHub challenge flow creates a local user record on first successful sign-in when GitHub auth is enabled. The user-facing gap is discoverability on `/login`, not necessarily a missing account system.",
+      "createdAtUtc": "2026-05-29T16:50:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-29T16:24:26.391254Z",
+  "updatedAtUtc": "2026-05-29T16:50:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

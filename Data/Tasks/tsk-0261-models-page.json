@@ -1,0 +1,31 @@
+﻿{
+  "id": "tsk-0261-models-page",
+  "key": "TSK-0261",
+  "title": "Models Page",
+  "description": "Completely move the models out of the admin panel so it\u0027s only in the models page, but keep the improved context window and any other improvements so it\u0027s the best of both. Also needs the vram estimates. And context dropdown should not mention Qwen",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-06-01T02:19:57.911222Z",
+  "updatedAtUtc": "2026-06-01T02:19:57.911222Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

@@ -1,0 +1,45 @@
+{
+  "id": "tsk-0222-add-structured-page-mcp-formats",
+  "key": "TSK-0222",
+  "title": "Add structured page MCP formats",
+  "description": "Problem: `memorysmith_page_search` and `memorysmith_page_get` primarily return markdown-oriented text. That is good for direct prompt context, but external MCP clients also need structured envelopes or JSON payloads for programmatic page workflows, paging, UI rendering, and safer downstream formatting.\n\nDesired outcome: support a `format` argument such as `text`, `json`, or `envelope` for page MCP tools while keeping the current prompt-friendly default behavior.\n\nScope:\n- In scope: add a structured result mode for page search/get tools with stable fields for slug, title, timestamps, snippet/content, and truncation metadata.\n- In scope: preserve default text behavior for current prompt/tool compatibility.\n- In scope: document the format contract and add focused tests for each supported format.\n- Out of scope: changing the underlying page storage format or adding write semantics here.\n\nValidation:\n- Focused tests for `memorysmith_page_search` and `memorysmith_page_get` covering default text and structured formats.
+- Docs/prompts updated to mention the supported `format` values and defaults.
+\nConfidence target: 89%.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": null,
+  "reporter": "AgentSmith",
+  "labels": [
+    "mcp",
+    "pages",
+    "api-contract",
+    "ux"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "requests/mcp-tool-surface-recommendations-20260529"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0222-20260529",
+      "author": "AgentSmith",
+      "body": "Created from MCP surface review because page MCP tools currently optimize for prompt text, but external clients also need structured JSON or envelope-style results.",
+      "createdAtUtc": "2026-05-29T19:25:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-29T19:25:00.0000000Z",
+  "updatedAtUtc": "2026-05-29T19:25:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

@@ -1,0 +1,43 @@
+{
+  "id": "tsk-0204-add-finetuning-eval-gates-and-promotion-rollback-workflow",
+  "key": "TSK-0204",
+  "title": "Add fine-tuning eval gates and promotion rollback workflow",
+  "description": "Implement objective-based automatic evaluation for tool calls, markdown quality, and taxonomy behavior; gate promotion and keep explicit rollback metadata.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "AgentSmith",
+  "labels": [
+    "training",
+    "evaluation",
+    "quality",
+    "release"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "audits/local-finetuning"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0204-20260528",
+      "author": "AgentSmith",
+      "body": "Created to ensure model promotion is evidence-gated and reversible instead of trust-based.",
+      "createdAtUtc": "2026-05-28T21:43:18.8947975Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-28T21:43:18.8947975Z",
+  "updatedAtUtc": "2026-05-28T21:43:18.8947975Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

@@ -1,0 +1,49 @@
+{
+  "id": "tsk-0230-debounce-draft-persistence-and-avoid-full-session-localstorage-writes-on-every-keystroke",
+  "key": "TSK-0230",
+  "title": "Debounce draft persistence and avoid full-session localStorage writes on every keystroke",
+  "description": "Vetted from Audit #7 finding 1.3. OnDraftInput currently persists and saves sessions too frequently, causing avoidable JS interop and localStorage churn. Debounce draft persistence, persist only active session draft where possible, and keep explicit save points for durable actions.",
+  "type": "Task",
+  "status": "Done",
+  "priority": "Critical",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "AgentSmith",
+  "labels": [
+    "chat",
+    "performance",
+    "storage",
+    "sprint-20260530-a"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "audits/chat-training-audit-7-20260530"
+  ],
+  "comments": [
+    {
+      "author": "AgentSmith",
+      "id": "c-create-tsk-0230-20260530",
+      "createdAtUtc": "2026-05-30T22:21:20.9043446Z",
+      "body": "Created from vetted findings in Data/Pages/move-to-audit.md after direct code checks across Chat.razor, ChatServices.cs, ChatToolCatalog.cs, McpController.cs, and training harness files."
+    },
+    {
+      "author": "AgentSmith",
+      "id": "c-0230-2-20260531",
+      "createdAtUtc": "2026-05-31T06:14:14.4445878Z",
+      "body": "Completed active-draft-only debounced persistence path. OnDraftInput no longer drives full session snapshot writes; delayed draft persistence now saves ChatDraftStorageKey (memorysmith.chat.active-draft.v1) with active session draft and pending attachments. Added restore path for active draft snapshot during session load. Regression tests added in MemorySmith.Tests/PagesAndChatTests.cs (ChatRazor_OnDraftInput_DebouncesWithoutImmediateSessionSnapshotSave, ChatRazor_PersistDraftAfterDelay_PersistsActiveDraftSnapshotOnly). Validation: dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj -c Release --filter \"Name~ChatRazor_OnDraftInput_DebouncesWithoutImmediateSessionSnapshotSave|Name~ChatRazor_PersistDraftAfterDelay_PersistsActiveDraftSnapshotOnly\"."
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-30T22:21:20.9043446Z",
+  "updatedAtUtc": "2026-05-31T06:14:14.4445878Z",
+  "completedAtUtc": "2026-05-31T06:14:14.4445878Z",
+  "revision": 3,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

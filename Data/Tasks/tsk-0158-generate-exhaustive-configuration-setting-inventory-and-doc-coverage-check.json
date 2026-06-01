@@ -15,7 +15,8 @@
     "configuration",
     "docs",
     "validation",
-    "agent-support"
+    "agent-support",
+    "chat"
   ],
   "attachments": [],
   "externalLinks": [],
@@ -27,16 +28,16 @@
       "id": "c-create-0158-20260525",
       "author": "AgentSmith",
       "body": "Created during 2026-05-25 deepdive audit. Evidence: descriptor extraction from MemorySmith.App/Services/AdminSettingsService.cs found 161 editable keys; Data/Pages/guides/configuration-reference.md documents the active configuration as grouped operator guidance rather than a complete per-key inventory. The page now states that limitation explicitly.",
-      "createdAtUtc": "2026-05-25T16:15:00.0000000Z"
+      "createdAtUtc": "2026-05-25T16:15:00Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
-  "createdAtUtc": "2026-05-25T16:15:00.0000000Z",
-  "updatedAtUtc": "2026-05-25T16:15:00.0000000Z",
+  "createdAtUtc": "2026-05-25T16:15:00Z",
+  "updatedAtUtc": "2026-05-30T22:40:56.4948101Z",
   "completedAtUtc": null,
-  "revision": 1,
+  "revision": 2,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

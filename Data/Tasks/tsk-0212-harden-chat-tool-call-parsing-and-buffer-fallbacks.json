@@ -1,0 +1,43 @@
+{
+  "id": "tsk-0212-harden-chat-tool-call-parsing-and-buffer-fallbacks",
+  "key": "TSK-0212",
+  "title": "Harden chat tool-call parsing and buffer fallbacks",
+  "description": "Problem: the validated 2026-05-28 review of ChatServices found the JSON-text tool-call fallback path still fails closed in ways that are hard for users and maintainers to diagnose. IsPotentialToolCallPrefix buffers any response starting with {, [, or a backtick; ReadToolCalls swallows parse exceptions and returns an empty list; and StripJsonFence uses a last-backtick trim strategy that is brittle for fenced or partially fenced content. ChatServices also still carries dead helper methods that shadow ChatToolCatalog parsing and formatting helpers, increasing the chance of future divergence.\n\nDesired outcome: chat streaming should preserve current tool-call capability while failing visibly and recoverably when the model emits malformed tool JSON or ordinary prose that only happens to resemble it.\n\nScope:\n- In scope: tighten the tool-call prefix heuristic so normal prose and code examples are less likely to stall in the buffer path.\n- In scope: add explicit logging and traceable fallback behavior when buffered tool-call parsing fails, including flushing buffered content as user-visible prose instead of silently discarding it.\n- In scope: make fenced JSON stripping resilient enough for partial fences and embedded backticks, or switch to parse-first behavior before destructive fence cleanup.\n- In scope: remove or converge dead and duplicated helper code in ChatServices that overlaps the shared ChatToolCatalog helper surface.\n- In scope: focused regression coverage for malformed tool JSON, code-block-like prose, and successful tool-call parsing.\n- Out of scope: switching to provider-native tool APIs or adding a new external streaming HTTP endpoint in the same task.\n\nAcceptance criteria:\n- Buffered responses that are not valid tool JSON degrade into visible assistant output instead of a silent empty tool-call result.\n- Parse failures produce an actionable log or trace signal for operators.\n- Fence handling no longer relies on the current last-backtick truncation behavior alone.\n- Dead or duplicated helper paths in ChatServices are removed or clearly converged with ChatToolCatalog.\n- Focused chat and tool regression tests cover malformed JSON and ordinary prose that begins with JSON-like characters.\n\nValidation:\n- Run focused chat and tool tests covering stream buffering, tool-call parsing, and trace output.\n- Run ./Scripts/Test-TaskRecords.ps1 after task metadata changes.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "AgentSmith",
+  "labels": [
+    "chat",
+    "tools",
+    "streaming",
+    "reliability"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "audits/vector-search-audit-6-validation-20260528"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0212-20260528",
+      "author": "AgentSmith",
+      "body": "Created after validating Audit #6 against the live repo. Evidence: MemorySmith.App/Services/ChatServices.cs still buffers on IsPotentialToolCallPrefix, returns [] on any ReadToolCalls parse error, strips fenced JSON with LastIndexOf(\"```\"), and retains dead helper paths such as FormatRecordAsync and ShouldPreloadContext that are no longer on the active orchestration path.",
+      "createdAtUtc": "2026-05-28T20:47:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-28T20:47:00.0000000Z",
+  "updatedAtUtc": "2026-05-28T20:47:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

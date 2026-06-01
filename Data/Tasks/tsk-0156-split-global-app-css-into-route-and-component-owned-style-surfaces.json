@@ -15,7 +15,8 @@
     "ui",
     "css",
     "maintainability",
-    "repo-hygiene"
+    "repo-hygiene",
+    "chat"
   ],
   "attachments": [],
   "externalLinks": [],
@@ -27,16 +28,16 @@
       "id": "c-create-0156-20260525",
       "author": "AgentSmith",
       "body": "Created during 2026-05-25 deepdive audit. Evidence: clean source-only largest-file scan listed MemorySmith.App/wwwroot/app.css as the largest source file at 3,726 lines; selector-prefix scan found the highest class-prefix counts in chat, wiki, admin, page/pages, proposal/proposals, tasks, maintenance, health, about, profile, and tag surfaces. Existing UI tasks cover specific route UX problems but not stylesheet ownership/architecture.",
-      "createdAtUtc": "2026-05-25T15:58:00.0000000Z"
+      "createdAtUtc": "2026-05-25T15:58:00Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
-  "createdAtUtc": "2026-05-25T15:58:00.0000000Z",
-  "updatedAtUtc": "2026-05-25T15:58:00.0000000Z",
+  "createdAtUtc": "2026-05-25T15:58:00Z",
+  "updatedAtUtc": "2026-05-30T22:40:56.4934383Z",
   "completedAtUtc": null,
-  "revision": 1,
+  "revision": 2,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

@@ -1,0 +1,49 @@
+{
+  "id": "tsk-0245-recover-gracefully-from-malformed-ollama-ndjson-stream-lines",
+  "key": "TSK-0245",
+  "title": "Recover gracefully from malformed Ollama NDJSON stream lines",
+  "description": "Vetted from Audit #7 finding 10.5. Per-line JSON parse failures in streaming should not hard-fail the entire assistant turn. Add resilient parse handling, preserve accumulated content, and emit diagnostics for malformed chunks.",
+  "type": "Task",
+  "status": "Done",
+  "priority": "Critical",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "AgentSmith",
+  "labels": [
+    "chat",
+    "ollama",
+    "reliability",
+    "sprint-20260530-a"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "audits/chat-training-audit-7-20260530"
+  ],
+  "comments": [
+    {
+      "author": "AgentSmith",
+      "id": "c-create-tsk-0245-20260530",
+      "createdAtUtc": "2026-05-30T22:21:20.9043446Z",
+      "body": "Created from vetted findings in Data/Pages/move-to-audit.md after direct code checks across Chat.razor, ChatServices.cs, ChatToolCatalog.cs, McpController.cs, and training harness files."
+    },
+    {
+      "author": "AgentSmith",
+      "id": "c-0245-2-20260531",
+      "createdAtUtc": "2026-05-31T06:10:10.3908463Z",
+      "body": "Completed malformed NDJSON resilience contract for Ollama streaming. Runtime path in `MemorySmith.App/Services/ChatServices.cs` already catches per-line `JsonException`, continues processing, and emits warning diagnostics with malformed-line count. Added focused regression test in `MemorySmith.Tests/PagesAndChatTests.cs`: `OllamaChatProvider_StreamAsync_SkipsMalformedNdjsonLinesAndPreservesOutput` to verify malformed line skipping preserves accumulated chunks/final output and logs warning (`skipped 1 malformed JSON line`). Validation: `dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj -c Release --filter \"Name~OllamaChatProvider_StreamAsync_SkipsMalformedNdjsonLinesAndPreservesOutput|Name~OllamaChatProvider_StreamsLiveChunks|Name~OllamaChatProvider_StreamAsync_ThrowsTimeoutWhenNoChunkArrives\"` (3/3 passed)."
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-30T22:21:20.9043446Z",
+  "updatedAtUtc": "2026-05-31T06:10:10.3908463Z",
+  "completedAtUtc": "2026-05-31T06:10:10.3908463Z",
+  "revision": 3,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

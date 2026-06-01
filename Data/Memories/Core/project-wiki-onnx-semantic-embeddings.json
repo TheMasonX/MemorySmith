@@ -1,7 +1,7 @@
 {
   "Id": "project-wiki-onnx-semantic-embeddings",
   "Title": "ONNX Semantic Embeddings",
-  "Content": "MemorySmith.App has an optional local ONNX embedding path for memory semantic search. SemanticSearchOptions default to Models/embedding-model.onnx and Models/vocab.txt, resolved from the configured data deployment root containing Memories, Events, Graph, Models, and Pages; legacy ../Data/Models values are treated as data-root-relative too. ONNX/model artifacts are ignored by Git. OnnxTextEmbeddingProvider loads the model lazily through Microsoft.ML.OnnxRuntime and now treats tokenizer kind and pooling mode as explicit provider semantics through SemanticSearch.TokenizerKind and SemanticSearch.PoolingMode. The current working profile still uses a local WordPiece vocabulary, E5-style query:/passage: prefixes, and mean pooling by default, but unsupported tokenizer kinds now fail fast with a clear status reason instead of surfacing as vague ONNX initialization problems. SemanticEmbeddingSearchService persists per-record embeddings under Data/Graph/embeddings and invalidates persisted reuse when provider semantics such as pooling or tokenizer kind change. MemoryApplicationService falls back to the existing token/tag/title/reference/alias scorer when embeddings are disabled, missing assets, or model inference fails. Hybrid search continues to fuse Lucene lexical rank with the active semantic rank via RRF.",
+  "Content": "MemorySmith.App has an optional local ONNX embedding path for memory semantic search. SemanticSearchOptions default to Models/e5-base-v2.onnx and Models/vocab.txt, resolved from the configured data deployment root containing Memories, Events, Graph, Models, and Pages; legacy ../Data/Models values are treated as data-root-relative too. ONNX/model artifacts are ignored by Git. OnnxTextEmbeddingProvider loads the model lazily through Microsoft.ML.OnnxRuntime and now treats tokenizer kind and pooling mode as explicit provider semantics through SemanticSearch.TokenizerKind and SemanticSearch.PoolingMode. The current working profile still uses a local WordPiece vocabulary, E5-style query:/passage: prefixes, and mean pooling by default, but unsupported tokenizer kinds now fail fast with a clear status reason instead of surfacing as vague ONNX initialization problems. SemanticEmbeddingSearchService persists per-record embeddings under Data/Graph/embeddings and invalidates persisted reuse when provider semantics such as pooling or tokenizer kind change. MemoryApplicationService falls back to the existing token/tag/title/reference/alias scorer when embeddings are disabled, missing assets, or model inference fails. Hybrid search continues to fuse Lucene lexical rank with the active semantic rank via RRF. Retrieval endpoints now emit X-MemorySmith-Retrieval-* headers so semantic-provider fallback state is visible even when clients consume legacy array response contracts.",
   "Status": 2,
   "Confidence": 0.9,
   "Tags": [
@@ -46,5 +46,5 @@
     }
   ],
   "UsageCount": 0,
-  "LastUpdated": "2026-05-25T22:20:00.0000000Z"
+  "LastUpdated": "2026-05-28T23:05:00.0000000Z"
 }

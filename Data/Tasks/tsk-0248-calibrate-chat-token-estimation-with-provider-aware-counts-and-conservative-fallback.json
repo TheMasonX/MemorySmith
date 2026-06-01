@@ -1,0 +1,43 @@
+{
+  "id": "tsk-0248-calibrate-chat-token-estimation-with-provider-aware-counts-and-conservative-fallback",
+  "key": "TSK-0248",
+  "title": "Calibrate chat token estimation with provider-aware counts and conservative fallback",
+  "description": "Missing task from Audit #7 finding 3.3. Replace global chars/4 estimation with provider-aware token counts when available and conservative fallback heuristics when unavailable. Ensure context usage meter and overflow guardrails use aligned token accounting.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "AgentSmith",
+  "labels": [
+    "chat",
+    "providers",
+    "telemetry",
+    "sprint-20260530-c"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "audits/chat-training-audit-7-20260530"
+  ],
+  "comments": [
+    {
+      "createdAtUtc": "2026-05-30T22:41:43.2891965Z",
+      "author": "AgentSmith",
+      "id": "c-create-tsk-0248-20260530",
+      "body": "Created during follow-up gap review after chat task tagging and sprint planning pass."
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-30T22:41:43.2891965Z",
+  "updatedAtUtc": "2026-05-30T22:41:43.2891965Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

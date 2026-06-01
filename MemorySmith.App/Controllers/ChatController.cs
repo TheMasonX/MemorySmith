@@ -1,4 +1,5 @@
 using MemorySmith.App.Services;
+using MemorySmith.App.Services.Training;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
@@ -15,13 +16,15 @@ public class ChatController : ControllerBase
     private readonly List<IChatProvider> _providers;
     private readonly IOptionsMonitor<MemorySmithOptions> _options;
     private readonly ChatModelProfileService _modelProfiles;
+    private readonly IChatFeedbackStore _feedback;
 
-    public ChatController(IChatAgent chat, IEnumerable<IChatProvider> providers, IOptionsMonitor<MemorySmithOptions> options, ChatModelProfileService modelProfiles)
+    public ChatController(IChatAgent chat, IEnumerable<IChatProvider> providers, IOptionsMonitor<MemorySmithOptions> options, ChatModelProfileService modelProfiles, IChatFeedbackStore feedback)
     {
         _chat = chat;
         _providers = providers.ToList();
         _options = options;
         _modelProfiles = modelProfiles;
+        _feedback = feedback;
     }
 
     [HttpGet("config")]
@@ -70,6 +73,55 @@ public class ChatController : ControllerBase
         }
     }
 
+    [HttpPost("feedback")]
+    public async Task<ActionResult<ChatFeedbackRecord>> UpsertFeedback([FromBody] ChatFeedbackRequest request, CancellationToken cancellationToken)
+    {
+        if (!_options.CurrentValue.Training.FeedbackEnabled)
+        {
+            return BadRequest(new { error = "Chat feedback capture is disabled." });
+        }
+
+        if (string.IsNullOrWhiteSpace(request.TurnId))
+        {
+            return BadRequest(new { error = "TurnId is required." });
+        }
+
+        var principalId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "anonymous";
+        var rating = request.Rating switch
+        {
+            > 0 => FeedbackRating.ThumbsUp,
+            < 0 => FeedbackRating.ThumbsDown,
+            _ => FeedbackRating.Cleared
+        };
+
+        var saved = await _feedback.UpsertAsync(
+            request.TurnId,
+            string.IsNullOrWhiteSpace(request.SessionId) ? "session-unknown" : request.SessionId,
+            principalId,
+            rating,
+            request.Note,
+            cancellationToken);
+        return Ok(saved);
+    }
+
+    [HttpGet("feedback")]
+    public async Task<ActionResult<ChatFeedbackRecord>> GetFeedback([FromQuery] string turnId, CancellationToken cancellationToken)
+    {
+        if (!_options.CurrentValue.Training.FeedbackEnabled)
+        {
+            return BadRequest(new { error = "Chat feedback capture is disabled." });
+        }
+
+        if (string.IsNullOrWhiteSpace(turnId))
+        {
+            return BadRequest(new { error = "turnId is required." });
+        }
+
+        var principalId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "anonymous";
+        var existing = await _feedback.GetForTurnAsync(turnId, principalId, cancellationToken);
+        return existing is null ? NotFound() : Ok(existing);
+    }
+
     private IChatProvider ResolveProvider(string providerName)
     {
         var selected = _providers.FirstOrDefault(candidate =>
@@ -86,3 +138,5 @@ public class ChatController : ControllerBase
 
     private IReadOnlyList<string> CurrentRoles() => HttpContext.User.FindAll(ClaimTypes.Role).Select(claim => claim.Value).ToList();
 }
+
+public sealed record ChatFeedbackRequest(string TurnId, string SessionId, int Rating, string? Note = null);

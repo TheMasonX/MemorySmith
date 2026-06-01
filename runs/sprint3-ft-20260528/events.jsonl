@@ -1,0 +1,7 @@
+{"event": "run.started", "data": {"dryRun": false}, "ts": "2026-05-28T22:51:03.788481+00:00", "runId": "sprint3-ft-20260528"}
+{"event": "data.exported", "data": {"records": 2, "exportPath": "C:\\Users\\norrt\\source\\repos\\MemorySmith\\Data\\Training\\exports\\sprint3-ft-20260528.sft.jsonl"}, "ts": "2026-05-28T22:51:03.795715+00:00", "runId": "sprint3-ft-20260528"}
+{"event": "train.step", "data": {"step": 1, "totalSteps": 10, "loss": 1.7865}, "ts": "2026-05-28T22:51:03.797643+00:00", "runId": "sprint3-ft-20260528"}
+{"event": "train.completed", "data": {"steps": 10, "finalLoss": 1.6747, "mode": "simulated"}, "ts": "2026-05-28T22:51:03.797905+00:00", "runId": "sprint3-ft-20260528"}
+{"event": "eval.completed", "data": {"passed": true, "records": 2}, "ts": "2026-05-28T22:51:03.799505+00:00", "runId": "sprint3-ft-20260528"}
+{"event": "benchmark.written", "data": {"path": "C:\\Users\\norrt\\source\\repos\\MemorySmith\\runs\\sprint3-ft-20260528\\benchmark.json"}, "ts": "2026-05-28T22:51:03.800888+00:00", "runId": "sprint3-ft-20260528"}
+{"event": "run.completed", "data": {"records": 2, "events": 6}, "ts": "2026-05-28T22:51:03.801742+00:00", "runId": "sprint3-ft-20260528"}

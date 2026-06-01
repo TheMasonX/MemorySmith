@@ -30,6 +30,8 @@ param(
     [switch]$EnsurePrivateFirewallRule = $true,
     [int]$ServiceTimeoutSeconds = 60,
     [int]$ReadyTimeoutSeconds = 180,
+    [string]$ApiKey,
+    [string]$ApiKeyHeaderName = 'X-Api-Key',
     [switch]$SkipReadyCheck
 )
 
@@ -275,8 +277,8 @@ function Write-SemanticSettingsOverride {
         [Parameter(Mandatory = $true)]
         [int]$CudaDeviceId,
 
-        [Parameter(Mandatory = $true)]
-        [string]$OpenVinoDeviceId
+        [AllowEmptyString()]
+        [string]$OpenVinoDeviceId = ''
     )
 
     $root = @{}
@@ -318,6 +320,56 @@ function Write-SemanticSettingsOverride {
     Set-Content -Path $Path -Value $json -Encoding UTF8
 }
 
+function Resolve-ReadyCheckApiKey {
+    param(
+        [AllowEmptyString()]
+        [string]$ExplicitApiKey,
+
+        [Parameter(Mandatory = $true)]
+        [string]$SettingsPath
+    )
+
+    if (-not [string]::IsNullOrWhiteSpace($ExplicitApiKey)) {
+        return $ExplicitApiKey.Trim()
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($env:MEMORYSMITH_API_KEY)) {
+        return $env:MEMORYSMITH_API_KEY.Trim()
+    }
+
+    if (-not (Test-Path $SettingsPath)) {
+        return $null
+    }
+
+    try {
+        $raw = Get-Content -Path $SettingsPath -Raw
+        if ([string]::IsNullOrWhiteSpace($raw)) {
+            return $null
+        }
+
+        $parsed = ConvertFrom-Json -InputObject $raw -AsHashtable
+        if ($parsed -isnot [System.Collections.IDictionary]) {
+            return $null
+        }
+
+        if (-not $parsed.ContainsKey('MemorySmith')) {
+            return $null
+        }
+
+        $memorySmith = $parsed['MemorySmith']
+        if ($memorySmith -is [System.Collections.IDictionary] -and $memorySmith.ContainsKey('ApiKey')) {
+            $value = [string]$memorySmith['ApiKey']
+            if (-not [string]::IsNullOrWhiteSpace($value)) {
+                return $value.Trim()
+            }
+        }
+    }
+    catch {
+    }
+
+    return $null
+}
+
 function Wait-ReadyEndpoint {
     param(
         [Parameter(Mandatory = $true)]
@@ -325,6 +377,12 @@ function Wait-ReadyEndpoint {
 
         [Parameter(Mandatory = $true)]
         [int]$TimeoutSeconds,
+
+        [AllowEmptyString()]
+        [string]$ApiKey,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ApiKeyHeaderName,
 
         [switch]$SkipCertificateCheck
     )
@@ -346,6 +404,10 @@ function Wait-ReadyEndpoint {
 
             if ($SkipCertificateCheck) {
                 $requestArguments['SkipCertificateCheck'] = $true
+            }
+
+            if (-not [string]::IsNullOrWhiteSpace($ApiKey)) {
+                $requestArguments['Headers'] = @{ $ApiKeyHeaderName = $ApiKey }
             }
 
             $response = Invoke-WebRequest @requestArguments
@@ -376,6 +438,10 @@ function Wait-ReadyEndpoint {
 
             if ($SkipCertificateCheck) {
                 $liveArguments['SkipCertificateCheck'] = $true
+            }
+
+            if (-not [string]::IsNullOrWhiteSpace($ApiKey)) {
+                $liveArguments['Headers'] = @{ $ApiKeyHeaderName = $ApiKey }
             }
 
             $liveResponse = Invoke-WebRequest @liveArguments
@@ -518,7 +584,15 @@ try {
     Start-ServiceAndWait -Name $ServiceName -TimeoutSeconds $ServiceTimeoutSeconds
 
     if (-not $SkipReadyCheck) {
-        Wait-ReadyEndpoint -Url $readyUrl -TimeoutSeconds $ReadyTimeoutSeconds -SkipCertificateCheck:$readySkipCertificateCheck
+        $resolvedReadyApiKey = Resolve-ReadyCheckApiKey -ExplicitApiKey $ApiKey -SettingsPath $SettingsOverridePath
+        if (-not [string]::IsNullOrWhiteSpace($resolvedReadyApiKey)) {
+            Write-Host "==> Ready check will include API key header '$ApiKeyHeaderName'"
+        }
+        else {
+            Write-Host "==> Ready check API key header not configured; probing without authentication header"
+        }
+
+        Wait-ReadyEndpoint -Url $readyUrl -TimeoutSeconds $ReadyTimeoutSeconds -ApiKey $resolvedReadyApiKey -ApiKeyHeaderName $ApiKeyHeaderName -SkipCertificateCheck:$readySkipCertificateCheck
     }
 
     Write-Host ''

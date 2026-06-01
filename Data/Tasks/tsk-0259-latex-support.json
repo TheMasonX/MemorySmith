@@ -1,0 +1,31 @@
+﻿{
+  "id": "tsk-0259-latex-support",
+  "key": "TSK-0259",
+  "title": "LaTeX Support",
+  "description": "Chat/Pages need to render LaTeX",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-06-01T02:15:02.4549143Z",
+  "updatedAtUtc": "2026-06-01T02:15:02.4549143Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

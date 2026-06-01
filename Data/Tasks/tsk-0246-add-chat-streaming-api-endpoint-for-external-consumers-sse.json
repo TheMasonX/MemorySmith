@@ -1,0 +1,43 @@
+{
+  "id": "tsk-0246-add-chat-streaming-api-endpoint-for-external-consumers-sse",
+  "key": "TSK-0246",
+  "title": "Add chat streaming API endpoint for external consumers (SSE)",
+  "description": "Vetted from Audit #7 finding 3.4 plus review recommendation. Add an authenticated streaming endpoint for external tools/scripts with transport-compatible event framing and cancellation semantics.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "AgentSmith",
+  "labels": [
+    "api",
+    "chat",
+    "streaming",
+    "sprint-20260530-c"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "audits/chat-training-audit-7-20260530"
+  ],
+  "comments": [
+    {
+      "author": "AgentSmith",
+      "id": "c-create-tsk-0246-20260530",
+      "createdAtUtc": "2026-05-30T22:21:20.9043446Z",
+      "body": "Created from vetted findings in Data/Pages/move-to-audit.md after direct code checks across Chat.razor, ChatServices.cs, ChatToolCatalog.cs, McpController.cs, and training harness files."
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-30T22:21:20.9043446Z",
+  "updatedAtUtc": "2026-05-30T22:40:56.5675233Z",
+  "completedAtUtc": null,
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

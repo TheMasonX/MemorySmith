@@ -1,0 +1,543 @@
+@page "/code-search"
+@rendermode InteractiveServer
+@inject CodeSearchService CodeSearchService
+@inject VarResolver VarResolver
+@inject IOptionsMonitor<MemorySmithOptions> Options
+@inject IJSRuntime JS
+@inject ISnackbar Snackbar
+@using System.Globalization
+@using Microsoft.Extensions.Options
+@using MemorySmith.Core.Models
+@implements IDisposable
+
+<PageTitle>Code Search - MemorySmith</PageTitle>
+
+<div class="health-workbench">
+    <div class="health-header">
+        <MudText Typo="Typo.h4">Code Search</MudText>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" OnClick="RefreshStatusAsync" Disabled="@_isBusy">Refresh status</MudButton>
+    </div>
+
+    <MudPaper Class="pa-4" Outlined="true">
+        <div class="admin-filter-bar" aria-label="Code search query controls">
+            <MudTextField T="string" Value="@_query" ValueChanged="@((string value) => _query = value)" Label="Search query" Variant="Variant.Outlined" Margin="Margin.Dense" Class="admin-filter-input" Immediate="true" />
+            <MudNumericField T="int" Value="@_limit" ValueChanged="@((int value) => _limit = Math.Clamp(value, 1, MaxLimit))" Min="1" Max="@MaxLimit" Label="Limit" HelperText="@($"Operator cap: {MaxLimit}")" Variant="Variant.Outlined" Margin="Margin.Dense" Class="admin-filter-select" />
+            <MudSwitch T="bool" Value="@_rebuildIfStale" ValueChanged="@((bool value) => _rebuildIfStale = value)" Label="Rebuild if stale" Color="Color.Primary" />
+            <MudSwitch T="bool" Value="@_forceRebuild" ValueChanged="@((bool value) => _forceRebuild = value)" Label="Force rebuild" Color="Color.Warning" />
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Search" Disabled="@(_isBusy || string.IsNullOrWhiteSpace(_query))" OnClick="SearchAsync">Search</MudButton>
+        </div>
+
+        <MudTextField T="string" Value="@_targetsInput" ValueChanged="@((string value) => _targetsInput = value)" Label="Target directories (one per line)" Variant="Variant.Outlined" Lines="3" Margin="Margin.Dense" HelperText="Leave blank to search configured targets." />
+        <div style="display:flex; gap:8px; margin-top:8px;">
+            <MudButton Variant="Variant.Text" Color="Color.Primary" StartIcon="@Icons.Material.Filled.RestartAlt" OnClick="ResetTargetsToDefaults" Disabled="@_isBusy">Reset targets</MudButton>
+            <MudButton Variant="Variant.Text" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.ClearAll" OnClick="ClearResults" Disabled="@_isBusy">Clear results</MudButton>
+        </div>
+
+        @if (_targetOptions.Count > 0)
+        {
+            <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;">
+                @foreach (var target in _targetOptions)
+                {
+                    <MudChip T="string" Variant="Variant.Outlined" Color="Color.Default">@target</MudChip>
+                }
+            </div>
+        }
+    </MudPaper>
+
+    @if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <MudAlert Severity="Severity.Error" Dense="true" Variant="Variant.Outlined" Class="mt-4">@_error</MudAlert>
+    }
+
+    @if (_status is not null)
+    {
+        <div class="health-stat-row" style="margin-top: 12px;">
+            <div class="health-stat-card">
+                <span class="health-stat-label">Provider</span>
+                <span class="health-stat-value" style="font-size:1rem">@_status.ProviderMode</span>
+            </div>
+            <div class="health-stat-card">
+                <span class="health-stat-label">Indexed Files</span>
+                <span class="health-stat-value">@_status.IndexedFileCount</span>
+            </div>
+            <div class="health-stat-card">
+                <span class="health-stat-label">Indexed Chunks</span>
+                <span class="health-stat-value">@_status.IndexedChunkCount</span>
+            </div>
+            <div class="health-stat-card @(_status.Build.IsRunning ? "is-working" : "is-core")">
+                <span class="health-stat-label">Build</span>
+                <span class="health-stat-value" style="font-size:1rem">@BuildLabel(_status.Build)</span>
+            </div>
+        </div>
+
+        <MudPaper Class="pa-4 mt-3" Outlined="true">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                <MudText Typo="Typo.subtitle2">Index Build Progress</MudText>
+                <MudButton Variant="Variant.Text"
+                           Color="Color.Default"
+                           Size="Size.Small"
+                           StartIcon="@(_isBuildProgressExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                           OnClick="ToggleBuildProgress"
+                           aria-label="Toggle index build progress"
+                           aria-expanded="@_isBuildProgressExpanded"
+                           title="Toggle index build progress">@(_isBuildProgressExpanded ? "Collapse" : "Expand")</MudButton>
+            </div>
+
+            @if (_isBuildProgressExpanded)
+            {
+                <MudProgressLinear Color="Color.Primary" Rounded="true" Value="@_status.Build.ProgressPercentage" BufferValue="100" Class="mt-2" />
+                <div class="health-config-grid" style="margin-top: 10px;">
+                    <span>State</span><strong>@_status.Build.State</strong>
+                    <span>Provider status</span><strong>@_status.ProviderStatus</strong>
+                    <span>Processed</span><strong>@_status.Build.ProcessedFileCount / @_status.Build.TotalFileCount</strong>
+                    <span>Started</span><strong>@FormatTimestamp(_status.Build.StartedAtUtc)</strong>
+                    <span>Last update</span><strong>@FormatTimestamp(_status.Build.UpdatedAtUtc)</strong>
+                    <span>Completed</span><strong>@FormatCompletedOrEta(_status.Build)</strong>
+                    <span>Elapsed</span><strong>@FormatDurationText(_status.Build)</strong>
+                    <span>Conversion speed</span><strong>@FormatConversionSpeed(_status.Build)</strong>
+                    <span>ETA</span><strong>@FormatEta(_status.Build)</strong>
+                    <span>Reused</span><strong>@_status.Build.ReusedFileCount</strong>
+                    <span>Updated</span><strong>@_status.Build.UpdatedFileCount</strong>
+                    <span>Skipped</span><strong>@_status.Build.SkippedFileCount</strong>
+                    <span>Failed</span><strong>@_status.Build.FailedFileCount</strong>
+                    <span>Current document</span><strong>@(_status.Build.CurrentDocumentPath ?? "-")</strong>
+                    <span>Repository root</span><strong>@_status.RepositoryRoot</strong>
+                    <span>Index database</span><strong>@_status.IndexPath</strong>
+                    <span>Last error</span><strong>@(_status.Build.LastError ?? "-")</strong>
+                </div>
+            }
+        </MudPaper>
+    }
+
+    @if (_results.Count == 0)
+    {
+        <MudPaper Class="pa-4 mt-4" Outlined="true">
+            <MudText Typo="Typo.body2">No code search results yet. Run a query to inspect ranked snippets.</MudText>
+        </MudPaper>
+    }
+    else
+    {
+        <div class="health-lower-grid" style="margin-top:12px; grid-template-columns:minmax(300px, 360px) minmax(0, 1fr); align-items:start;">
+            <MudPaper Class="pa-0" Outlined="true">
+                <div class="pa-3" style="border-bottom:1px solid var(--mud-palette-lines-default);">
+                    <MudText Typo="Typo.subtitle2">Results</MudText>
+                    <small>@_results.Count result(s) returned. Requested limit: @_limit. Operator cap: @MaxLimit.</small>
+                </div>
+                <div style="max-height:680px; overflow:auto;">
+                    @foreach (var result in _results)
+                    {
+                        var isSelected = string.Equals(_selectedResultKey, GetResultKey(result), StringComparison.Ordinal);
+                        <button type="button" class="admin-row-actions" style="width:100%; text-align:left; padding:10px; border:none; border-bottom:1px solid var(--mud-palette-lines-default); background:@(isSelected ? "var(--mud-palette-primary-hover)" : "transparent"); cursor:pointer;" @onclick="(() => SelectResult(result))">
+                            <div style="display:flex; flex-direction:column; gap:4px;">
+                                <strong>@result.DocumentPath</strong>
+                                <small>@result.StartLine-@result.EndLine • score @result.Score.ToString("0.000")</small>
+                                <small>@result.MatchReason</small>
+                            </div>
+                        </button>
+                    }
+                </div>
+            </MudPaper>
+
+            <MudPaper Class="pa-4" Outlined="true">
+                @if (!string.IsNullOrWhiteSpace(_resultPanelError))
+                {
+                    <MudAlert Severity="Severity.Warning" Dense="true" Variant="Variant.Outlined" Class="mb-2">@_resultPanelError</MudAlert>
+                }
+
+                @if (SelectedResult is { } selected)
+                {
+                    <MudText Typo="Typo.subtitle1">@selected.DocumentPath</MudText>
+                    <div class="health-config-grid" style="margin-top:8px;">
+                        <span>Target</span><strong>@selected.Target</strong>
+                        <span>Lines</span>
+                        <div style="display:flex; gap:8px; align-items:center;">
+                            <strong>@selected.StartLine-@selected.EndLine</strong>
+                            <MudTooltip Text="Copy file and line range">
+                                <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Size="Size.Small" Color="Color.Secondary" OnClick="@(() => CopyResultLocationAsync(selected))" aria-label="Copy result location" title="Copy result location" />
+                            </MudTooltip>
+                        </div>
+                        <span>Score</span><strong>@selected.Score.ToString("0.000000")</strong>
+                        <span>Indexed</span><strong>@selected.IndexedAtUtc.ToLocalTime().ToString("g")</strong>
+                        <span>Match profile</span><strong>@selected.MatchReason</strong>
+                    </div>
+
+                    <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:10px;">
+                        <MudTooltip Text="Copy file name">
+                            <MudIconButton Icon="@Icons.Material.Filled.Badge" Size="Size.Small" Color="Color.Secondary" OnClick="@(() => CopyFileNameAsync(selected))" aria-label="Copy file name" title="Copy file name" />
+                        </MudTooltip>
+                        <MudTooltip Text="Copy file and line range">
+                            <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Size="Size.Small" Color="Color.Secondary" OnClick="@(() => CopyResultLocationAsync(selected))" aria-label="Copy file and line range" title="Copy file and line range" />
+                        </MudTooltip>
+                        <MudTooltip Text="Copy snippet text">
+                            <MudIconButton Icon="@Icons.Material.Filled.Subject" Size="Size.Small" Color="Color.Info" OnClick="@(() => CopySnippetAsync(selected))" aria-label="Copy snippet" title="Copy snippet" />
+                        </MudTooltip>
+                        <MudTooltip Text="Open file in default app (subject to source-link policy)">
+                            <MudIconButton Icon="@Icons.Material.Filled.OpenInNew" Size="Size.Small" Color="Color.Primary" OnClick="@(() => OpenResultAsync(selected))" aria-label="Open result file" title="Open result file" />
+                        </MudTooltip>
+                        <MudButton Variant="Variant.Outlined" Size="Size.Small" StartIcon="@Icons.Material.Filled.UnfoldMore" Disabled="@_isExpandingSnippet" OnClick="@(() => ToggleExpandedSnippetAsync(selected))">@SnippetToggleLabel(selected)</MudButton>
+                    </div>
+
+                    <MudText Typo="Typo.subtitle2" style="margin-top:12px;">Snippet</MudText>
+                    <pre style="margin:0; white-space:pre-wrap; max-height:420px; overflow:auto; border:1px solid var(--mud-palette-lines-default); padding:10px; border-radius:6px;">@SelectedSnippetText(selected)</pre>
+                }
+            </MudPaper>
+        </div>
+    }
+</div>
+
+@code {
+    private bool _isBusy;
+    private string _query = string.Empty;
+    private string _targetsInput = string.Empty;
+    private int _limit = 10;
+    private bool _rebuildIfStale = true;
+    private bool _forceRebuild;
+    private string? _error;
+    private CodeSearchStatus? _status;
+    private IReadOnlyList<string> _targetOptions = [];
+    private IReadOnlyList<CodeSearchResult> _results = [];
+    private string? _selectedResultKey;
+    private readonly Dictionary<string, string> _expandedSnippetByResult = new(StringComparer.OrdinalIgnoreCase);
+    private bool _isExpandingSnippet;
+    private bool _isBuildProgressExpanded;
+    private string? _resultPanelError;
+    private readonly CancellationTokenSource _statusPollingCts = new();
+    private DateTime _lastStatusRefreshUtc = DateTime.MinValue;
+
+    private int MaxLimit => Math.Clamp(Options.CurrentValue.CodeSearch.MaxResults, 1, 500);
+
+    protected override async Task OnInitializedAsync()
+    {
+        _targetOptions = Options.CurrentValue.CodeSearch.TargetDirectories
+            .Where(target => !string.IsNullOrWhiteSpace(target))
+            .Select(target => target.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        _targetsInput = string.Join(Environment.NewLine, _targetOptions);
+        await RefreshStatusAsync();
+        _ = RunStatusPollingAsync(_statusPollingCts.Token);
+    }
+
+    public void Dispose()
+    {
+        _statusPollingCts.Cancel();
+        _statusPollingCts.Dispose();
+    }
+
+    private async Task SearchAsync()
+    {
+        _isBusy = true;
+        _error = null;
+        try
+        {
+            var query = new CodeSearchQuery(
+                _query,
+                ParseTargets(_targetsInput),
+                Math.Clamp(_limit, 1, MaxLimit),
+                _rebuildIfStale,
+                _forceRebuild);
+
+            _results = await CodeSearchService.SearchAsync(query, CancellationToken.None);
+            _selectedResultKey = _results.Count > 0 ? GetResultKey(_results[0]) : null;
+            _resultPanelError = null;
+            await RefreshStatusAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private async Task RefreshStatusAsync()
+    {
+        _error = null;
+        try
+        {
+            var previousBuild = _status?.Build;
+            var nextStatus = await CodeSearchService.GetStatusAsync(CancellationToken.None);
+            _status = nextStatus;
+
+            if (previousBuild is not null && HasBuildStateTransition(previousBuild, nextStatus.Build))
+            {
+                _isBuildProgressExpanded = true;
+            }
+
+            _lastStatusRefreshUtc = DateTime.UtcNow;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private void ToggleBuildProgress()
+    {
+        _isBuildProgressExpanded = !_isBuildProgressExpanded;
+    }
+
+    private static bool HasBuildStateTransition(CodeSearchBuildProgress previous, CodeSearchBuildProgress current)
+    {
+        return !string.Equals(previous.State, current.State, StringComparison.OrdinalIgnoreCase)
+            || previous.IsRunning != current.IsRunning;
+    }
+
+    private static IReadOnlyList<string> ParseTargets(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return [];
+        }
+
+        return value
+            .Split(new[] { '\r', '\n', ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(target => !string.IsNullOrWhiteSpace(target))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static string BuildLabel(CodeSearchBuildProgress progress)
+    {
+        if (progress.IsRunning)
+        {
+            return $"{progress.ProgressPercentage}%";
+        }
+
+        return progress.State;
+    }
+
+    private async Task RunStatusPollingAsync(CancellationToken cancellationToken)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1.5));
+        while (await timer.WaitForNextTickAsync(cancellationToken))
+        {
+            if (!_isBusy && _status?.Build.IsRunning != true)
+            {
+                continue;
+            }
+
+            if ((DateTime.UtcNow - _lastStatusRefreshUtc) < TimeSpan.FromSeconds(1.25))
+            {
+                continue;
+            }
+
+            await InvokeAsync(async () =>
+            {
+                await RefreshStatusAsync();
+                StateHasChanged();
+            });
+        }
+    }
+
+    private static string FormatTimestamp(DateTime? value) =>
+        value is null ? "-" : new DateTimeOffset(DateTime.SpecifyKind(value.Value, DateTimeKind.Utc)).ToLocalTime().ToString("g");
+
+    private static string FormatCompletedOrEta(CodeSearchBuildProgress progress)
+    {
+        if (!progress.IsRunning)
+        {
+            return FormatTimestamp(progress.CompletedAtUtc);
+        }
+
+        var eta = EstimateEta(progress);
+        return eta is null ? "-" : new DateTimeOffset(DateTime.SpecifyKind(eta.Value, DateTimeKind.Utc)).ToLocalTime().ToString("g");
+    }
+
+    private static string FormatDurationText(CodeSearchBuildProgress progress)
+    {
+        var startedAt = progress.StartedAtUtc;
+        if (startedAt is null)
+        {
+            return "-";
+        }
+
+        var endUtc = progress.IsRunning ? DateTime.UtcNow : progress.CompletedAtUtc ?? DateTime.UtcNow;
+        var elapsed = endUtc - startedAt.Value;
+        return elapsed <= TimeSpan.Zero ? "<1s" : $"{elapsed.TotalSeconds:0.0}s";
+    }
+
+    private static string FormatConversionSpeed(CodeSearchBuildProgress progress)
+    {
+        var startedAt = progress.StartedAtUtc;
+        if (startedAt is null)
+        {
+            return "-";
+        }
+
+        var endUtc = progress.IsRunning ? DateTime.UtcNow : progress.CompletedAtUtc ?? DateTime.UtcNow;
+        var elapsedSeconds = Math.Max(1.0, (endUtc - startedAt.Value).TotalSeconds);
+        var filesPerMinute = (progress.ProcessedFileCount / elapsedSeconds) * 60.0;
+        return $"{filesPerMinute:0.0} files/min";
+    }
+
+    private static string FormatEta(CodeSearchBuildProgress progress)
+    {
+        if (!progress.IsRunning)
+        {
+            return "-";
+        }
+
+        var eta = EstimateEta(progress);
+        if (eta is null)
+        {
+            return "-";
+        }
+
+        var remaining = eta.Value - DateTime.UtcNow;
+        if (remaining <= TimeSpan.Zero)
+        {
+            return "<1s";
+        }
+
+        return $"{remaining.TotalSeconds:0.0}s";
+    }
+
+    private static DateTime? EstimateEta(CodeSearchBuildProgress progress)
+    {
+        if (!progress.IsRunning || progress.StartedAtUtc is null || progress.TotalFileCount <= 0 || progress.ProcessedFileCount <= 0)
+        {
+            return null;
+        }
+
+        var elapsedSeconds = Math.Max(1.0, (DateTime.UtcNow - progress.StartedAtUtc.Value).TotalSeconds);
+        var filesPerSecond = progress.ProcessedFileCount / elapsedSeconds;
+        if (filesPerSecond <= 0)
+        {
+            return null;
+        }
+
+        var remainingFiles = Math.Max(0, progress.TotalFileCount - progress.ProcessedFileCount);
+        var etaSeconds = remainingFiles / filesPerSecond;
+        return DateTime.UtcNow.AddSeconds(etaSeconds);
+    }
+
+    private void ResetTargetsToDefaults()
+    {
+        _targetsInput = string.Join(Environment.NewLine, _targetOptions);
+    }
+
+    private void ClearResults()
+    {
+        _results = [];
+        _selectedResultKey = null;
+        _expandedSnippetByResult.Clear();
+        _resultPanelError = null;
+        _error = null;
+    }
+
+    private CodeSearchResult? SelectedResult => _results.FirstOrDefault(result => string.Equals(GetResultKey(result), _selectedResultKey, StringComparison.Ordinal))
+        ?? _results.FirstOrDefault();
+
+    private static string GetResultKey(CodeSearchResult result) =>
+        $"{result.DocumentPath}:{result.StartLine}:{result.EndLine}";
+
+    private void SelectResult(CodeSearchResult result)
+    {
+        _selectedResultKey = GetResultKey(result);
+        _resultPanelError = null;
+    }
+
+    private static string BuildResultLocation(CodeSearchResult result) =>
+        $"{result.DocumentPath}:{result.StartLine}-{result.EndLine}";
+
+    private async Task CopyFileNameAsync(CodeSearchResult result)
+    {
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", result.DocumentPath);
+        Snackbar.Add("Copied file name.", Severity.Success);
+    }
+
+    private async Task CopyResultLocationAsync(CodeSearchResult result)
+    {
+        var value = BuildResultLocation(result);
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", value);
+        Snackbar.Add("Copied result location.", Severity.Success);
+    }
+
+    private async Task CopySnippetAsync(CodeSearchResult result)
+    {
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", SelectedSnippetText(result));
+        Snackbar.Add("Copied snippet.", Severity.Success);
+    }
+
+    private string SelectedSnippetText(CodeSearchResult result)
+    {
+        var key = GetResultKey(result);
+        return _expandedSnippetByResult.TryGetValue(key, out var expanded)
+            ? expanded
+            : result.Snippet;
+    }
+
+    private string SnippetToggleLabel(CodeSearchResult result) =>
+        _expandedSnippetByResult.ContainsKey(GetResultKey(result)) ? "Collapse" : "Expand";
+
+    private async Task ToggleExpandedSnippetAsync(CodeSearchResult result)
+    {
+        var key = GetResultKey(result);
+        if (_expandedSnippetByResult.ContainsKey(key))
+        {
+            _expandedSnippetByResult.Remove(key);
+            return;
+        }
+
+        _isExpandingSnippet = true;
+        _resultPanelError = null;
+        try
+        {
+            var expanded = await LoadExpandedSnippetAsync(result);
+            _expandedSnippetByResult[key] = expanded;
+        }
+        catch (Exception ex)
+        {
+            _resultPanelError = ex.Message;
+        }
+        finally
+        {
+            _isExpandingSnippet = false;
+        }
+    }
+
+    private static async Task<string> LoadExpandedSnippetAsync(CodeSearchResult result)
+    {
+        if (!File.Exists(result.AbsolutePath))
+        {
+            throw new InvalidOperationException($"Cannot expand snippet because the file no longer exists: {result.AbsolutePath}");
+        }
+
+        const int paddingLines = 20;
+        var allLines = await File.ReadAllLinesAsync(result.AbsolutePath);
+        if (allLines.Length == 0)
+        {
+            return string.Empty;
+        }
+
+        var start = Math.Max(1, result.StartLine - paddingLines);
+        var end = Math.Min(allLines.Length, result.EndLine + paddingLines);
+        var builder = new System.Text.StringBuilder();
+        for (var lineNumber = start; lineNumber <= end; lineNumber++)
+        {
+            builder.Append(lineNumber.ToString("D4", CultureInfo.InvariantCulture));
+            builder.Append(": ");
+            builder.AppendLine(allLines[lineNumber - 1]);
+        }
+
+        return builder.ToString().TrimEnd();
+    }
+
+    private async Task OpenResultAsync(CodeSearchResult result)
+    {
+        var sourceLink = new SourceLink
+        {
+            Label = result.DocumentPath,
+            Uri = result.AbsolutePath,
+            StartLine = result.StartLine,
+            EndLine = result.EndLine
+        };
+
+        var openResult = await VarResolver.OpenWithDefaultAppAsync(sourceLink);
+        Snackbar.Add(openResult.Message, openResult.Opened ? Severity.Success : Severity.Warning);
+    }
+}

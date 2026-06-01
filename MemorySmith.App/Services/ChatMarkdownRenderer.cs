@@ -36,7 +36,8 @@ public static partial class ChatMarkdownRenderer
         }
 
         var html = Markdown.ToHtml(markdown, allowRawHtml ? TrustedPipeline : SafePipeline);
-        return LinkAttributeRegex().Replace(html, SanitizeLinkAttribute);
+        html = LinkAttributeRegex().Replace(html, SanitizeQuotedLinkAttribute);
+        return UnquotedLinkAttributeRegex().Replace(html, SanitizeUnquotedLinkAttribute);
     }
 
     private static MarkdownPipeline BuildPipeline(bool allowRawHtml)
@@ -53,12 +54,59 @@ public static partial class ChatMarkdownRenderer
         return builder.Build();
     }
 
-    private static string SanitizeLinkAttribute(Match match)
+    private static string SanitizeQuotedLinkAttribute(Match match)
+    {
+        var name = match.Groups["name"].Value;
+        var quote = match.Groups["quote"].Value;
+        var value = match.Groups["value"].Value;
+        if (name.Equals("srcset", StringComparison.OrdinalIgnoreCase))
+        {
+            var srcSet = SanitizeSrcSet(value);
+            return string.IsNullOrWhiteSpace(srcSet) ? string.Empty : $"{name}={quote}{srcSet}{quote}";
+        }
+
+        var normalized = NormalizeLinkTarget(name, value);
+        return IsSafeLinkTarget(normalized)
+            ? $"{name}={quote}{normalized}{quote}"
+            : $"{name}={quote}{UnsafeAttributeFallback(name)}{quote}";
+    }
+
+    private static string SanitizeUnquotedLinkAttribute(Match match)
     {
         var name = match.Groups["name"].Value;
         var value = match.Groups["value"].Value;
+        if (name.Equals("srcset", StringComparison.OrdinalIgnoreCase))
+        {
+            var srcSet = SanitizeSrcSet(value);
+            return string.IsNullOrWhiteSpace(srcSet) ? string.Empty : $"{name}=\"{srcSet}\"";
+        }
+
         var normalized = NormalizeLinkTarget(name, value);
-        return IsSafeLinkTarget(normalized) ? $"{name}=\"{normalized}\"" : $"{name}=\"{UnsafeAttributeFallback(name)}\"";
+        var sanitized = IsSafeLinkTarget(normalized) ? normalized : UnsafeAttributeFallback(name);
+        return $"{name}=\"{sanitized}\"";
+    }
+
+    private static string SanitizeSrcSet(string value)
+    {
+        var sanitizedCandidates = new List<string>();
+        foreach (var candidate in value.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+        {
+            var parts = candidate.Split(' ', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length == 0)
+            {
+                continue;
+            }
+
+            var url = parts[0];
+            if (!IsSafeLinkTarget(url))
+            {
+                continue;
+            }
+
+            sanitizedCandidates.Add(parts.Length > 1 ? $"{url} {string.Join(' ', parts.Skip(1))}" : url);
+        }
+
+        return string.Join(", ", sanitizedCandidates);
     }
 
     private static string NormalizeLinkTarget(string attributeName, string value)
@@ -348,8 +396,11 @@ public static partial class ChatMarkdownRenderer
         return !target.Contains(':', StringComparison.Ordinal);
     }
 
-    [GeneratedRegex("\\b(?<name>href|src)=\"(?<value>[^\"]*)\"", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    [GeneratedRegex("\\b(?<name>href|src|srcset)=(?<quote>[\"'])(?<value>[^\"']*)\\k<quote>", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex LinkAttributeRegex();
+
+    [GeneratedRegex("\\b(?<name>href|src|srcset)=(?<value>(?![\"'])[^\\s>]+)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    private static partial Regex UnquotedLinkAttributeRegex();
 
     private static readonly string[] ReferenceLabelDelimiters = [": ", " - "];
     private static readonly Regex PageSlugPattern = new("^[a-z0-9][a-z0-9/_-]*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);

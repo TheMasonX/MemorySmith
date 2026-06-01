@@ -3,7 +3,6 @@
 Source inputs:
 
 - Copilot shared task response: <https://copilot.microsoft.com/shares/tasks/ajvthvsd2irkDvch8TAQV>
-- Raw captured page: [temp-deep-research-response](temp-deep-research-response.md)
 
 Purpose:
 
@@ -78,7 +77,6 @@ Use this packet when running the next council review:
 - [AI Memory Suite Implementation Plan](../plans/ai-memory-suite-implementation-plan.md)
 - [Council Workflow](../council/llm-council.md)
 - [Deep Research Prompt](memory-system-deep-research-prompt.md)
-- [temp-deep-research-response](temp-deep-research-response.md)
 - This intake note
 
 Decision target for the next review:

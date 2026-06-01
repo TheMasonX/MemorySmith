@@ -1,0 +1,49 @@
+{
+  "id": "tsk-0237-add-chat-stream-idle-watchdogs-and-bounded-backpressure-channels",
+  "key": "TSK-0237",
+  "title": "Add chat stream idle watchdogs and bounded backpressure channels",
+  "description": "Vetted from Audit #7 findings 3.1 and 3.2. Add per-chunk idle detection for Ollama streams and bounded channel/backpressure plus idle watchdog for GitHub/Copilot streaming to avoid indefinite hangs and unbounded buffering.",
+  "type": "Task",
+  "status": "Done",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "AgentSmith",
+  "labels": [
+    "chat",
+    "streaming",
+    "reliability",
+    "sprint-20260530-b"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "audits/chat-training-audit-7-20260530"
+  ],
+  "comments": [
+    {
+      "author": "AgentSmith",
+      "id": "c-create-tsk-0237-20260530",
+      "createdAtUtc": "2026-05-30T22:21:20.9043446Z",
+      "body": "Created from vetted findings in Data/Pages/move-to-audit.md after direct code checks across Chat.razor, ChatServices.cs, ChatToolCatalog.cs, McpController.cs, and training harness files."
+    },
+    {
+      "author": "AgentSmith",
+      "id": "c-0237-2-20260531",
+      "createdAtUtc": "2026-05-31T05:54:44.0488225Z",
+      "body": "Implemented stream reliability guardrails in `MemorySmith.App/Services/ChatServices.cs`: Ollama now enforces per-chunk idle watchdog cancellation while waiting on `ReadLineAsync`; GitHub/Copilot streaming now uses a bounded channel (capacity 128) with explicit overflow failure and an idle watchdog that cancels stalled sessions before the global request timeout horizon. Added focused regression coverage in `MemorySmith.Tests/PagesAndChatTests.cs` with `OllamaChatProvider_StreamAsync_ThrowsTimeoutWhenNoChunkArrives`. Validation: `dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj -c Release --filter \"Name~OllamaChatProvider_StreamAsync_ThrowsTimeoutWhenNoChunkArrives\"` (pass) and `dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj -c Release --filter \"Name~ChatProviders_ReportCapabilityMetadata|Name~GitHubCopilotChatProvider_FormatsPromptAsStructuredConversationEnvelope\"` (2/2 passed)."
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-30T22:21:20.9043446Z",
+  "updatedAtUtc": "2026-05-31T05:54:44.0488225Z",
+  "completedAtUtc": "2026-05-31T05:54:44.0488225Z",
+  "revision": 3,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

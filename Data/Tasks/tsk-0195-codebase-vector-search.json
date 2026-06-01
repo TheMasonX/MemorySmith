@@ -31,15 +31,93 @@
       "author": "AgentSmith",
       "body": "Follow-up hardening completed for the code-search embedding/import path. `MemorySmith.App/Services/CodeSearchService.cs` now reports live build progress and last-build summary through `CodeSearchStatus.Build`, batches SQLite document rewrites, isolates per-file indexing failures instead of aborting the whole build, reuses unchanged documents on warm builds via persisted metadata plus hashes, and caches repeated exact queries in-process. Chat/MCP now also expose `memorysmith_code_search_status`, while `memorysmith_code_search` accepts `forceRebuild` for an explicit cold rebuild. Focused validation passed with `dotnet test .\\MemorySmith.Tests\\MemorySmith.Tests.csproj -c Release --filter \"FullyQualifiedName~CodeSearchServiceTests|FullyQualifiedName~ChatToolCatalogAndInterceptTests|Name~McpToolsList_ExposesWikiSearchTools|Name~McpCodeSearchTool_ReturnsIndexedRepoMatches|Name~McpCodeSearchStatusTool_ReturnsBuildSummary\" --logger \"console;verbosity=minimal\"` (29/29), and `Scripts\\Validate-Repo.ps1` finished green with 392/392 tests plus task, memory, and page validators.",
       "createdAtUtc": "2026-05-27T18:55:00.0000000Z"
+    },
+    {
+      "id": "c-0195-3",
+      "author": "AgentSmith",
+      "body": "Delivered first-class Blazor visibility at `/code-search` with ranked result rows (target/path/line span/score/match reason/snippet), query controls, and live index build status/progress cards backed by `CodeSearchService.SearchAsync` and `CodeSearchService.GetStatusAsync`. Navigation now exposes a dedicated `Code Search` entry in `NavMenu.razor`. Focused validation: `dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj --filter \"FullyQualifiedName~TagGovernanceTests|FullyQualifiedName~CodeSearchPageRoute_ReturnsSuccessAndContainsHeading\"` (35/35 passed).",
+      "createdAtUtc": "2026-05-29T00:00:00.0000000Z"
+    },
+    {
+      "id": "c-0195-4",
+      "author": "AgentSmith",
+      "body": "Closed high-ROI UI polish by adding actionable result controls directly in `/code-search`: copy file/line range and open source file through source-link policy checks (`CopyResultLocationAsync`, `OpenResultAsync`). Added regression guard in `TagGovernanceTests.CodeSearchAndTrainingWorkbenchMarkup_ExposeActionableCopyAndOpenControls`. Focused validation: `dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj --filter \"FullyQualifiedName~TagGovernanceTests|FullyQualifiedName~CodeSearchPageRoute_ReturnsSuccessAndContainsHeading|FullyQualifiedName~TrainingWorkbenchPage_WithAnonymousAdminConfig_DoesNotRenderWorkbenchForSignedOutUser|FullyQualifiedName~TrainingWorkbenchPage_AdminSession_ReturnsHeading\"` (38/38 passed).",
+      "createdAtUtc": "2026-05-29T01:00:00.0000000Z"
+    },
+    {
+      "id": "c-0195-5",
+      "author": "AgentSmith",
+      "body": "Improved relevance for low-overlap semantic queries by adding synonym-aware query expansion and hybrid vector/lexical reranking with a no-lexical-evidence penalty in `CodeSearchService`. Added regression `SearchAsync_HybridRerankPromotesToolingResultForScrewdriverQuery` to prove `screwdriver` promotes tooling results instead of unrelated high-cosine chunks. Validation: `dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj --filter \"FullyQualifiedName~CodeSearchServiceTests\"` (21/21 passed) and benchmark smoke `dotnet run --project MemorySmith.Benchmarks -- --smoke` shows `CodeSearch Screwdriver Query` top hit `MemorySmith.App/Services/ToolCatalog.cs`.",
+      "createdAtUtc": "2026-05-29T02:00:00.0000000Z"
+    },
+    {
+      "id": "c-0195-6",
+      "author": "AgentSmith",
+      "body": "Added a second quality hardening pass: per-document result diversity (`MaxResultsPerDocument`, default `2`) to prevent one file from flooding top-k, plus regression `SearchAsync_DiversifiesResultsAcrossDocuments_WhenSingleFileWouldOtherwiseDominate`. Benchmark smoke now prints warm-query averages for code-search probes. Validation: `dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj --filter \"FullyQualifiedName~CodeSearchServiceTests\"` (22/22 passed). Spotcheck/benchmark: `dotnet run --project MemorySmith.Benchmarks -- --smoke` -> screwdriver top hit still `ToolCatalog.cs`; warm averages about `0.56-0.58 ms` over 20 iterations.",
+      "createdAtUtc": "2026-05-29T02:20:00.0000000Z"
+    },
+    {
+      "id": "c-0195-7",
+      "author": "AgentSmith",
+      "body": "Expanded automated relevance guardrails with a multi-query scorecard regression (`SearchAsync_RelevanceScorecard_ReturnsExpectedTopDocument`) covering screwdriver/tool, cli tooling, and proposal-task phrasing. Benchmark smoke now emits a compact code-search scorecard pass rate with expected-vs-actual top hits for fast operator spotchecks. Validation: `dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj --filter \"FullyQualifiedName~CodeSearchServiceTests\"` and `dotnet run --project MemorySmith.Benchmarks -- --smoke`.",
+      "createdAtUtc": "2026-05-29T02:40:00.0000000Z"
+    },
+    {
+      "id": "c-0195-8",
+      "author": "AgentSmith",
+      "body": "Normalized memory/tag quality for the wiki corpus by adding audited tag aliases and `tasks` allowlist support in `Data/Policies/tag-policy.json`, then added `project-wiki-code-search-relevance-suite` so recent code-search ranking and benchmark contracts are captured as durable project memory. Added `CodeSearchBenchmarkTests` to enforce both relevance scorecard rank targets and warm throughput baseline in NUnit benchmark category. Validation: `./Scripts/Test-MemoryRecords.ps1` (2/2 passed), `dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj --filter \"FullyQualifiedName~CodeSearchServiceTests|FullyQualifiedName~CodeSearchBenchmarkTests\"` (27/27 passed), and `dotnet run --project MemorySmith.Benchmarks -- --smoke` (`CodeSearch Relevance Scorecard: 3/3 passed`, warm averages about `0.53-0.54 ms`).",
+      "createdAtUtc": "2026-05-29T03:05:00.0000000Z"
+    },
+    {
+      "id": "c-0195-9",
+      "author": "AgentSmith",
+      "body": "Continued high-ROI search tuning by reducing lexical keyword-stuffing bias in `MemorySmith.App/Services/CodeSearchService.cs` (token-coverage-first lexical scoring with damped frequency bonus), then expanded gates for both quality and performance. Added `SearchAsync_LexicalFallbackDemotesKeywordStuffingAgainstTargetedMatch` in `MemorySmith.Tests/CodeSearchServiceTests.cs`, expanded shared fixture `Data/Benchmarks/code-search-scorecard.json` with `tool utility harness` (5 probes total), and added benchmark-category p95 guard `WarmLatencyDistribution_100QueriesP95Under10Ms` in `MemorySmith.Tests/CodeSearchBenchmarkTests.cs`. Validation: `dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj --filter \"FullyQualifiedName~CodeSearchServiceTests|FullyQualifiedName~CodeSearchBenchmarkTests\"` (31/31 passed) and `dotnet run --project MemorySmith.Benchmarks -- --smoke` (`CodeSearch Relevance Scorecard: 5/5 passed`, warm averages about `0.56-0.58 ms`).",
+      "createdAtUtc": "2026-05-28T23:30:00.0000000Z"
+    },
+    {
+      "id": "c-0195-10",
+      "author": "AgentSmith",
+      "body": "Added token-coverage weighting to hybrid and lexical ranking in `MemorySmith.App/Services/CodeSearchService.cs` so partial token matches are penalized and full-intent matches are boosted, with coverage details surfaced in match reasons. Added regression `SearchAsync_HybridRerankPrefersBroaderTokenCoverageUnderVectorBias` in `MemorySmith.Tests/CodeSearchServiceTests.cs` and tuned coverage weights (`0.65` to `1.15`) after the first conservative range failed this new quality guard. Validation: `dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj --filter \"FullyQualifiedName~CodeSearchServiceTests|FullyQualifiedName~CodeSearchBenchmarkTests\"` (32/32 passed) and `dotnet run --project MemorySmith.Benchmarks -- --smoke` (`CodeSearch Relevance Scorecard: 5/5 passed`, warm averages about `0.54-0.55 ms`).",
+      "createdAtUtc": "2026-05-28T23:50:00.0000000Z"
+    },
+    {
+      "id": "c-0195-11",
+      "author": "AgentSmith",
+      "body": "Implemented full code-search ranking tunability for operator deepdive tuning. Added configurable ranking knobs in `MemorySmith.App/Services/MemorySmithOptions.cs` and defaults in `MemorySmith.App/appsettings.json` (`HybridVectorWeight`, `HybridLexicalWeight`, `ZeroLexicalEvidencePenalty`, `LexicalScoreSaturation`, `LexicalFrequencyBonusScale`, `MaxLexicalFrequencyBonusPerToken`, `MinTokenCoverageWeight`, `MaxTokenCoverageWeight`). `MemorySmith.App/Services/CodeSearchService.cs` now consumes clamped option values instead of hardcoded constants. `MemorySmith.App/Services/AdminSettingsService.cs` now supports decimal setting values and exposes these code-search tuning controls in Admin Search settings. Added regression `SearchAsync_TunableCoverageWeightsCanNeutralizeCoverageBias` in `MemorySmith.Tests/CodeSearchServiceTests.cs` plus governance check `AdminSettings_ExposeCodeSearchRankingTuningKnobs` in `MemorySmith.Tests/TagGovernanceTests.cs`. Validation: `dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj --filter \"FullyQualifiedName~CodeSearchServiceTests|FullyQualifiedName~CodeSearchBenchmarkTests|FullyQualifiedName~TagGovernanceTests.AdminSettings_ExposeCodeSearchRankingTuningKnobs\"` (34/34 passed) and `dotnet run --project MemorySmith.Benchmarks -- --smoke` (`CodeSearch Relevance Scorecard: 5/5 passed`, warm averages about `0.53-0.54 ms`).",
+      "createdAtUtc": "2026-05-28T23:59:00.0000000Z"
+    },
+    {
+      "id": "c-0195-12",
+      "author": "AgentSmith",
+      "body": "Deepdive reliability fix: added cross-setting validation guardrails for tunable code-search ranking settings in `MemorySmith.App/Services/AdminSettingsService.cs`. Admin/API writes now reject invalid combinations where both hybrid weights are zero or where `MinTokenCoverageWeight` exceeds `MaxTokenCoverageWeight`. Validation was updated to evaluate merged pending override JSON state (not stale options snapshots), so sequential admin updates in one session are correctly enforced. Expanded API contract test `AdminSettings_UpdateRequiresAdminAndPersistsAllowedSetting` in `MemorySmith.Tests/AppApiContractTests.cs` to assert rejection/error messaging and non-persistence of invalid combinations. Validation: `dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj --filter \"FullyQualifiedName~AppApiContractTests.AdminSettings_UpdateRequiresAdminAndPersistsAllowedSetting|FullyQualifiedName~CodeSearchServiceTests|FullyQualifiedName~CodeSearchBenchmarkTests|FullyQualifiedName~TagGovernanceTests.AdminSettings_ExposeCodeSearchRankingTuningKnobs\"` (35/35 passed) and `dotnet run --project MemorySmith.Benchmarks -- --smoke` (`CodeSearch Relevance Scorecard: 5/5 passed`, warm averages about `0.53-0.54 ms`).",
+      "createdAtUtc": "2026-05-28T23:59:30.0000000Z"
+    },
+    {
+      "id": "c-0195-13",
+      "author": "AgentSmith",
+      "body": "Deepdive quality/performance fix for sparse lexical prefilter edge cases. Added tunable `VectorPrefilterFullScanFallbackCandidateCount` in `MemorySmith.App/Services/MemorySmithOptions.cs`, defaulted it in `MemorySmith.App/appsettings.json` (`24`), and exposed it in Admin Search settings via `MemorySmith.App/Services/AdminSettingsService.cs`. Updated `MemorySmith.App/Services/CodeSearchService.cs` to run full-index vector fallback when prefilter candidate count is at/below threshold and prefilter results are present (`vector-sparse-fallback` mode), improving semantic recall for sparse lexical queries. Added regressions `SearchAsync_SparsePrefilterFallbackRecoversSemanticTopDocument` and `SearchAsync_SparsePrefilterFallbackCanBeDisabled` in `MemorySmith.Tests/CodeSearchServiceTests.cs`, plus governance coverage update in `MemorySmith.Tests/TagGovernanceTests.cs`. Validation: `dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj --filter \"FullyQualifiedName~CodeSearchServiceTests|FullyQualifiedName~CodeSearchBenchmarkTests|FullyQualifiedName~TagGovernanceTests.AdminSettings_ExposeCodeSearchRankingTuningKnobs|FullyQualifiedName~AppApiContractTests.AdminSettings_UpdateRequiresAdminAndPersistsAllowedSetting\"` (37/37 passed) and `dotnet run --project MemorySmith.Benchmarks -- --smoke` (`CodeSearch Relevance Scorecard: 5/5 passed`, warm averages about `0.53 ms`).",
+      "createdAtUtc": "2026-05-28T23:59:50.0000000Z"
+    },
+    {
+      "id": "c-0195-14",
+      "author": "AgentSmith",
+      "body": "Continued deepdive quality/performance work by adding explicit prefilter-threshold A/B benchmark-category coverage in `MemorySmith.Tests/CodeSearchBenchmarkTests.cs` (`SparsePrefilterThreshold_AB_ImprovesRecallWithBoundedLatencyCost`). The fixture proves threshold impact directly: with fallback disabled, lexical prefilter anchors top hit at `MemorySmith.App/Services/LexicalAnchor.cs`; with fallback enabled, semantic full-scan rescue recovers `MemorySmith.Core/Services/HiddenTrueTop.cs`, while keeping warm latency within a bounded envelope (sample: disabledAvg `0.522 ms`, enabledAvg `0.497 ms`). During validation, a scorecard flake surfaced from process-randomized `string.GetHashCode()` slotting in benchmark test embeddings; fixed by switching `HashEmbeddingProvider` to deterministic FNV-1a token hashing (`ComputeStableHash`) so rank assertions are stable across runs. Validation: `dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj --filter \"FullyQualifiedName~CodeSearchBenchmarkTests|FullyQualifiedName~CodeSearchServiceTests|FullyQualifiedName~AppApiContractTests.AdminSettings_UpdateRequiresAdminAndPersistsAllowedSetting|FullyQualifiedName~TagGovernanceTests.AdminSettings_ExposeCodeSearchRankingTuningKnobs\"` (38/38 passed) and `dotnet run --project MemorySmith.Benchmarks -- --smoke` (`CodeSearch Relevance Scorecard: 5/5 passed`, warm averages about `0.56-0.59 ms`).",
+      "createdAtUtc": "2026-05-29T02:50:30.9727178Z"
+    },
+    {
+      "id": "c-0195-15",
+      "author": "AgentSmith",
+      "body": "Audit #6 validation pass completed against the live repo instead of the report text alone. Confirmed: `CodeSearchService` still has the lexical-tail indentation defect, JSON `EmbeddingJson` persistence, non-pooled SQLite connections without WAL/perf PRAGMAs, scalar `Dot`, no query-result cache TTL, and single-character token dropping. Corrected stale audit claim: hybrid ranking weights are no longer hardcoded-only; they are already configurable through `MemorySmithOptions`, `appsettings.json`, and `AdminSettingsService`, with validation coverage already in place. Follow-up backlog split into validated tasks `TSK-0211` (code-search SQLite/storage hot path hardening) and `TSK-0212` (chat tool-call parse/buffer fallback hardening). Companion notes were added in `Data/Pages/audits/vector-search-audit-6-validation-20260528.md`.",
+      "createdAtUtc": "2026-05-28T20:45:00.0000000Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-27T16:55:53.0214105Z",
-  "updatedAtUtc": "2026-05-27T18:55:00.0000000Z",
+  "updatedAtUtc": "2026-05-28T20:45:00.0000000Z",
   "completedAtUtc": "2026-05-27T18:20:00.0000000Z",
-  "revision": 4,
+  "revision": 12,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

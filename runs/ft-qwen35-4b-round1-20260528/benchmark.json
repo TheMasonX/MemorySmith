@@ -1,0 +1,32 @@
+{
+  "runId": "ft-qwen35-4b-round1-20260528",
+  "records": 28,
+  "estimatedTokens": 1057,
+  "train": {
+    "steps": 112,
+    "finalLoss": 0.8234,
+    "mode": "simulated"
+  },
+  "timingsSeconds": {
+    "export": 0.003,
+    "train": 0.005,
+    "eval": 0.001,
+    "total": 0.019
+  },
+  "throughput": {
+    "recordsPerSecond": 3491.925,
+    "tokensPerSecondEstimate": 131820.166
+  },
+  "environment": {
+    "python": "3.14.3 (tags/v3.14.3:323c59a, Feb  3 2026, 16:04:56) [MSC v.1944 64 bit (AMD64)]",
+    "argv": [
+      "C:\\Users\\norrt\\source\\repos\\MemorySmith\\MemorySmith.Training\\harness.py",
+      "--run-id",
+      "ft-qwen35-4b-round1-20260528",
+      "--request",
+      "C:\\Users\\norrt\\source\\repos\\MemorySmith\\runs\\ft-qwen35-4b-round1-20260528\\request.json",
+      "--workdir",
+      "C:\\Users\\norrt\\source\\repos\\MemorySmith\\runs\\ft-qwen35-4b-round1-20260528"
+    ]
+  }
+}

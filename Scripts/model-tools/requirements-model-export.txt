@@ -1,0 +1,8 @@
+huggingface_hub>=0.30
+hf_xet>=1.5
+transformers>=4.48
+optimum[onnxruntime]>=1.23
+sentence-transformers>=3.2
+onnxruntime>=1.18
+onnx>=1.16
+torch>=2.4

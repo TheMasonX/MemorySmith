@@ -1,0 +1,31 @@
+﻿{
+  "id": "tsk-0262-image-size-alt-text-support",
+  "key": "TSK-0262",
+  "title": "Image Size \u002B Alt Text Support",
+  "description": "Add image scaling and alt-text support to pages",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-06-01T03:13:50.4799316Z",
+  "updatedAtUtc": "2026-06-01T03:13:50.4799316Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

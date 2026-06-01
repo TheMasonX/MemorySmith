@@ -1,11 +1,13 @@
 # Comprehensive Codebase Audit Report - Ultra Cross-Referenced Pass - 2026-05-24
 
 ## Scope
+
 - Included: full repository audit across docs, structured memories, task records, source, tests, CI, e2e, benchmarks, configuration, security/governance, chat/retrieval/MCP, observability, release scripts, and prior Agent Smith trackers.
 - Excluded: full browser execution, live service deployment, external SaaS security testing, and real remote OAuth validation. Those are converted into validation gates and tasks where needed.
 - Timebox: one ultra-high planning pass in discovery mode, with direct local reads plus read-only domain subagent reports.
 
 ## Acceptance Criteria
+
 - Findings are evidence-backed and include severity plus confidence.
 - High-impact decisions include council-style review with dissent.
 - Findings are cross-referenced to existing `/tasks` records before adding new tasks.
@@ -13,7 +15,8 @@
 - Planned validation gates are executable or explicitly deferred.
 
 ## Evidence Reviewed
-- Product/source-of-truth docs: `README.md`, `.github/copilot-instructions.md`, `.github/agents/smith.agent.md`, `.github/skills/codebase-audit-sprint-planner/SKILL.md`, `.github/skills/llm-council-review/SKILL.md`.
+
+- Product/source-of-truth docs: `README.md`, `.github/copilot-instructions.md`, `.github/agents/smith.agent.md`, `.github/skills/codebase-audit-sprint-planner/SKILL.md`, `.github/skills/council/SKILL.md` (slash command: `/council`).
 - Project wiki memories: `Data/Memories/Core/project-wiki-active-architecture.json`, `project-wiki-validation-command.json`, `project-wiki-test-architecture.json`, `project-wiki-chat-agent-provider.json`, `project-wiki-source-link-security-boundaries.json`, `project-wiki-operational-diagnostics-dashboard.json`.
 - Prior trackers/audits: `logs/agent-smith-20260524-codebase-audit-ci-testing.md`, `logs/agent-smith-20260523-codebase-audit-task-vetting.md`, `logs/agent-smith-20260524-source-governance-sprint.md`, `Audit_20260521_191625.md`.
 - Current task tracker at audit time: 111 JSON task records parsed, status distribution `Backlog=95`, `Done=15`, `Archived=1`, and one duplicate key pair for `TSK-0060`. Follow-up on 2026-05-24 resolved this collision by renumbering the screenshot task to `TSK-0117` and adding `Scripts/Test-TaskRecords.ps1`.
@@ -25,8 +28,9 @@
 - Package/advisory evidence: `dotnet test --list-tests` restore/build emitted NU1902 warnings for `OpenTelemetry.Api` and `OpenTelemetry.Exporter.OpenTelemetryProtocol` 1.15.0.
 
 ## Findings
+
 | ID | Domain | Severity | Confidence | Summary | Evidence | Task Mapping |
-|---|---|---:|---:|---|---|---|
+| --- | --- | ---: | ---: | --- | --- | --- |
 | F-001 | Architecture | High | 93% | Chat, maintenance, task, memory, and UI surfaces still have large files that increase review blast radius and regression risk. | Source metrics for `ChatServices.cs`, `MaintenanceAgentServices.cs`, `MemoryApplicationService.cs`, `TaskDomainService.cs`, `Chat.razor`, `PagesAndChatTests.cs`. | Existing: `TSK-0042`, `TSK-0043`, `TSK-0044`, `TSK-0045`, `TSK-0047`, `TSK-0049`, `TSK-0050`. |
 | F-002 | Chat/Agent Governance | High | 92% | Chat Agent writes still lack separate chat write-root options; approval-submitted page changes flow through maintenance write-root validation, so safe page proposals can still be blocked by maintenance constraints. | `ChatOptions` has `AgentWritesEnabled` only; `BuildPageProposalChangeAsync` creates page file changes; `FileMaintenanceProposalStore` validates via `MaintenanceWritePermissionService`; `TSK-0016` audit comments reproduce the failure. | Existing: `TSK-0016`, `TSK-0021`, `TSK-0022`, `TSK-0019`. |
 | F-003 | Task Tracker Integrity | High | 97% | At audit time, the task tracker had duplicate key `TSK-0060`; follow-up resolved the collision and added task-record validation so future duplicates fail local/CI checks. | Task integrity command found duplicate keys for source governance and screenshot capture; `TaskDomainService.FindByIdOrKey` uses `FirstOrDefault` over loaded items. Follow-up validation: `Scripts/Test-TaskRecords.ps1` passed with 114 records and unique ids/keys. | Completed: `TSK-0114`; related: `TSK-0053`, `TSK-0029`. |
@@ -39,8 +43,9 @@
 | F-010 | Historical Docs Noise | Medium | 82% | Older architecture/review docs still contain obsolete TODO/stub/security claims and are large enough to pollute search unless clearly classified. | `MemorySmith.Core/Docs/Reviews/*` and `MemorySmith.Core/Docs/Plans/*` include old claims; README and repo instructions already warn to verify against current code. | Existing: `TSK-0071`, `TSK-0046`; related risk register item R-006. |
 
 ## Existing Backlog Cross-Reference
+
 | Area | Existing task set | Audit action |
-|---|---|---|
+| --- | --- | --- |
 | Chat write governance | `TSK-0016`, `TSK-0017`, `TSK-0018`, `TSK-0019`, `TSK-0021`, `TSK-0022` | Keep active; prioritize `TSK-0016` and `TSK-0022` before feature expansion. |
 | Remote hardening | `TSK-0023`, `TSK-0037`, `TSK-0038`, `TSK-0039`, `TSK-0040`, `TSK-0041` | Keep active; make startup/transport/proxy decisions before remote-use docs are treated as safe. |
 | Architecture decomposition | `TSK-0042` through `TSK-0051` | Keep active; sequence after governance/CI gates to prevent refactor drift. |
@@ -51,6 +56,7 @@
 | Logging/OTel | `TSK-0104` through `TSK-0113` | Retarget stale evidence and add package advisory task `TSK-0116`. |
 
 ## Risk Register
+
 - R-001: Duplicate task keys can make `/tasks/<key>` ambiguous. Impact high, likelihood reduced after `TSK-0114`; mitigation now includes `Scripts/Test-TaskRecords.ps1` in local validation, CI, and the pre-commit hook.
 - R-002: Safe chat page approvals can fail through maintenance write-root coupling. Impact high, likelihood high, mitigation `TSK-0016` plus `TSK-0022`.
 - R-003: Remote deployment can be configured into an unsafe posture through warning-only guardrails. Impact high, likelihood medium, mitigation `TSK-0023`, `TSK-0037`, `TSK-0038`, `TSK-0039`.
@@ -60,6 +66,7 @@
 - R-007: Large service/component files make stabilization harder because behavior, UI, and trust boundaries are reviewed in broad files. Impact medium-high, likelihood current, mitigation `TSK-0042`, `TSK-0043`, `TSK-0044`, `TSK-0047`.
 
 ## Open Questions
+
 - Q-001: Should duplicate task keys be blocked at load time, write time, CI validation time, or all three? Proposed owner: task-domain implementer. Gate: `TSK-0114` design review.
 - Q-002: Should chat write-root separation live under `MemorySmith:Chat` only, or should the proposal workflow accept caller-specific write-policy scopes? Proposed owner: chat/governance implementer. Gate: `TSK-0022` council-lite design note.
 - Q-003: Should `AllowRemoteApi=true` without `ApiKey` become startup-fatal or remain admin-visible warning with blocked API/MCP? Proposed owner: security hardening implementer. Gate: `TSK-0023`.
@@ -68,6 +75,7 @@
 - Q-006: Are current OpenTelemetry advisories exploitable in MemorySmith's local-first default configuration, or should they be accepted temporarily until fixed packages exist? Proposed owner: dependency hygiene implementer. Gate: `TSK-0116`.
 
 ## Confidence
+
 - Audit evidence confidence: 88%.
 - Sprint sequencing confidence: 80%.
 - Residual uncertainty: no live browser run, no full dependency scanner beyond restore/test advisories, and no remote/proxy deployment execution in this pass.

@@ -1,0 +1,52 @@
+{
+  "id": "tsk-0202-send-num-ctx-and-add-context-window-governance-for-ollama-chat",
+  "key": "TSK-0202",
+  "title": "Send num_ctx and add context-window governance for Ollama chat",
+  "description": "Ensure Ollama requests include explicit num_ctx and add guarded context-window controls to prevent accidental VRAM overrun on local GPUs.",
+  "type": "Task",
+  "status": "InProgress",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "AgentSmith",
+  "labels": [
+    "training",
+    "inference",
+    "ollama",
+    "runtime",
+    "ux",
+    "chat"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "audits/local-finetuning",
+    "audits/local-finetuning-ux-notes"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0202-20260528",
+      "author": "AgentSmith",
+      "body": "Created from reviewed finding that configured context values are not fully reflected in request payload behavior; this blocks reliable local deployment tuning.",
+      "createdAtUtc": "2026-05-28T21:43:18.8947975Z"
+    },
+    {
+      "id": "c-0202-2-20260528",
+      "author": "AgentSmith",
+      "body": "Implemented Ollama payload wiring so configured MemorySmith:Chat:OllamaContextWindowTokens emits options.num_ctx for both complete and streaming chat requests. Added provider regression test coverage. Remaining scope: stricter context-window governance UX and limits policy follow-up.",
+      "createdAtUtc": "2026-05-28T23:20:00Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-28T21:43:18.8947975Z",
+  "updatedAtUtc": "2026-05-30T22:40:56.5185821Z",
+  "completedAtUtc": null,
+  "revision": 3,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

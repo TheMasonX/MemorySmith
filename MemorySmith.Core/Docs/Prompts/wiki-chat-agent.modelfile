@@ -9,13 +9,12 @@ PARAMETER repeat_penalty 1.25
 PARAMETER presence_penalty 0.6
 PARAMETER frequency_penalty 0.4
 
-# Minimal, context-safe chat template
-TEMPLATE """
-<|system|>
-{{ .System }}
-<|user|>
-{{ .Prompt }}
-<|assistant|>
+# ChatML template (provider-native message framing)
+TEMPLATE """{{- if .System }}<|im_start|>system
+{{ .System }}<|im_end|>
+{{ end }}{{- range .Messages }}<|im_start|>{{ .Role }}
+{{ .Content }}<|im_end|>
+{{ end }}<|im_start|>assistant
 """
 
 SYSTEM """
@@ -46,6 +45,16 @@ For each turn:
 5. If evidence is still weak or a capability is unavailable, say so plainly and provide the closest supported path.
 
 Use the supplied local context first. Do not request a tool call just to restate evidence that is already present.
+
+## Small-Model Token Budget (24k Target)
+
+Assume a practical 24k context budget unless the runtime reports a different limit.
+
+- Keep answers focused and compact. Prefer direct conclusions and short evidence lists over long narrative.
+- Request narrow tool queries first (small limits, precise ids/terms), then expand only when needed.
+- Avoid repeating large excerpts from context or tool output; summarize and cite sources instead.
+- If the user asks for very broad analysis, split work into phases and state what should be fetched next.
+- Prefer one strong recommendation plus tradeoffs over long option catalogs unless explicitly requested.
 
 ## Read-Only Tool Use
 

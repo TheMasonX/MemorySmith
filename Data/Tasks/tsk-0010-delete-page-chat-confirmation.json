@@ -16,7 +16,8 @@
     "future",
     "ui",
     "safety",
-    "audit-vetted"
+    "audit-vetted",
+    "chat"
   ],
   "Attachments": [],
   "ExternalLinks": [],
@@ -34,7 +35,7 @@
       "Id": "c-audit-modal-flow-0010-20260525",
       "Author": "AgentSmith",
       "Body": "Review update: code inspection found direct persisted deletes/removals in Pages, Memories, Profile sign-in methods, and Admin model profiles, while Chat uses a native confirm. Broadened this task to standardize confirmation/recovery across destructive actions.",
-      "CreatedAtUtc": "2026-05-25T00:00:00.0000000Z"
+      "CreatedAtUtc": "2026-05-25T00:00:00Z"
     },
     {
       "Id": "c-implementation-destructive-confirmation-20260525",
@@ -47,8 +48,8 @@
   "ParentId": null,
   "DueDateUtc": null,
   "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z",
-  "UpdatedAtUtc": "2026-05-25T14:49:07.1062671Z",
+  "UpdatedAtUtc": "2026-05-30T22:40:56.4245991Z",
   "CompletedAtUtc": "2026-05-25T14:49:07.1062671Z",
-  "Revision": 3,
+  "Revision": 4,
   "IsArchived": false
 }

@@ -1,0 +1,31 @@
+﻿{
+  "id": "tsk-0257-flexible-branding",
+  "key": "TSK-0257",
+  "title": "Flexible Branding",
+  "description": "Make hardcoded brand dependencies like MemorySmith be configurable",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-31T19:01:44.1542583Z",
+  "updatedAtUtc": "2026-05-31T19:01:44.1542583Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

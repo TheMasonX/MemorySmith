@@ -1,11 +1,13 @@
 @page "/memories"
 @rendermode InteractiveServer
+@using Microsoft.Extensions.Options
 @inject MemoryApplicationService Memories
 @inject TagGovernanceService TagGovernance
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
 @inject VarResolver VarResolver
 @inject IDialogService Dialogs
+@inject IOptionsMonitor<MemorySmithOptions> Options
 
 <PageTitle>Memories - MemorySmith</PageTitle>
 
@@ -434,7 +436,11 @@
         if (!_isEditing && _selectedRecord is not null && _memoryContentEnhancementsPending)
         {
             _memoryContentEnhancementsPending = false;
-            await SafeJsInterop.TryInvokeVoidAsync(JS, "memorySmith.markdown.renderEnhancements", _memoryContentPane);
+            await SafeJsInterop.TryInvokeVoidAsync(JS, "memorySmith.markdown.renderEnhancements", _memoryContentPane, new
+            {
+                mermaidEnabled = Options.CurrentValue.Markdown.MermaidEnabled,
+                mermaidRestrictionMode = Options.CurrentValue.Markdown.MermaidRestrictionMode
+            });
         }
     }
 

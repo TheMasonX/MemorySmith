@@ -16,7 +16,8 @@
     "testing",
     "smoke",
     "ui",
-    "sprint-20260524"
+    "sprint-20260524",
+    "chat"
   ],
   "attachments": [],
   "externalLinks": [],
@@ -29,7 +30,7 @@
       "id": "c-create-0068-20260524",
       "author": "AgentSmith",
       "body": "Created from audit finding F-003/F-004 and existing backlog signal in TSK-0002.",
-      "createdAtUtc": "2026-05-24T18:21:00.0000000Z"
+      "createdAtUtc": "2026-05-24T18:21:00Z"
     },
     {
       "id": "c-impl-0068-20260525",
@@ -47,10 +48,10 @@
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
-  "createdAtUtc": "2026-05-24T18:21:00.0000000Z",
-  "updatedAtUtc": "2026-05-25T05:25:08.0949583Z",
+  "createdAtUtc": "2026-05-24T18:21:00Z",
+  "updatedAtUtc": "2026-05-30T22:40:56.4563170Z",
   "completedAtUtc": "2026-05-25T05:25:08.0949583Z",
-  "revision": 3,
+  "revision": 4,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

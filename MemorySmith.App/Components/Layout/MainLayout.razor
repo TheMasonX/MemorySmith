@@ -5,31 +5,45 @@
 <MudDialogProvider />
 <MudSnackbarProvider />
 
-<MudLayout>
-    <MudAppBar Elevation="0" Color="Color.Default" Class="app-titlebar">
+<MudLayout Class="@LayoutClass">
+    <MudAppBar Elevation="0" Color="Color.Default" Class="@TitlebarClass">
         <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start"
                        OnClick="@(() => _drawerOpen = !_drawerOpen)"
                        aria-label="Toggle primary navigation"
                        title="Toggle primary navigation" />
-        <MudText Typo="Typo.h6" Class="ml-3">MemorySmith</MudText>
-        <MudSpacer />
-        <AuthorizeView>
-            <Authorized Context="authState">
-                <MudButton Href="/profile" Variant="Variant.Text" Color="Color.Inherit" StartIcon="@Icons.Material.Filled.AccountCircle" Class="mr-2">
-                    @(authState.User.Identity?.Name ?? "Profile")
-                </MudButton>
-            </Authorized>
-            <NotAuthorized>
-                <MudText Typo="Typo.body2" Class="mr-3">Not signed in</MudText>
-            </NotAuthorized>
-        </AuthorizeView>
+
+        @if (_titlebarExpanded)
+        {
+            <MudText Typo="Typo.h6" Class="ml-3">MemorySmith</MudText>
+            <MudSpacer />
+            <AuthorizeView>
+                <Authorized Context="authState">
+                    <MudButton Href="/profile" Variant="Variant.Text" Color="Color.Inherit" StartIcon="@Icons.Material.Filled.AccountCircle" Class="mr-2">
+                        @(authState.User.Identity?.Name ?? "Profile")
+                    </MudButton>
+                </Authorized>
+                <NotAuthorized>
+                    <MudText Typo="Typo.body2" Class="mr-3">Not signed in</MudText>
+                </NotAuthorized>
+            </AuthorizeView>
+        }
+        else
+        {
+            <MudSpacer />
+        }
+
+        <MudIconButton Icon="@(_titlebarExpanded ? Icons.Material.Filled.UnfoldLess : Icons.Material.Filled.UnfoldMore)"
+                       Color="Color.Inherit"
+                       OnClick="ToggleTitlebar"
+                       aria-label="@(_titlebarExpanded ? "Collapse header bar" : "Expand header bar")"
+                       title="@(_titlebarExpanded ? "Collapse header bar" : "Expand header bar")" />
     </MudAppBar>
 
     <MudDrawer @bind-Open="_drawerOpen"
                Elevation="0"
                Variant="DrawerVariant.Responsive"
                Breakpoint="Breakpoint.Md"
-               Width="220px"
+               Width="272px"
                Class="app-drawer">
         <MudDrawerHeader>
             <MudText Typo="Typo.h6">Navigation</MudText>
@@ -47,6 +61,16 @@
 @code {
     private bool _drawerOpen = true;
     private bool _isDarkMode = true;
+    private bool _titlebarExpanded = true;
+
+    private string LayoutClass => _titlebarExpanded ? "app-shell" : "app-shell is-titlebar-collapsed";
+
+    private string TitlebarClass => _titlebarExpanded ? "app-titlebar" : "app-titlebar is-collapsed";
+
+    private void ToggleTitlebar()
+    {
+        _titlebarExpanded = !_titlebarExpanded;
+    }
 
     private readonly MudTheme _theme = new()
     {

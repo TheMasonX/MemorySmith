@@ -35,6 +35,8 @@ bld/
 
 # Secrets file, which may contain sensitive information such as API keys, connection strings, etc.
 [Ss]ecrets.json
+.secrets/
+.secrets/*
 
 # Visual Studio 2015/2017 cache/options directory
 .vs/
@@ -63,13 +65,17 @@ BenchmarkDotNet.Artifacts/
 
 # Local embedding/model artifacts
 Data/Models/
+Data/Graph/code-search/code-search.db
 *.onnx
+.venv*/
 
 # .NET Core
 project.lock.json
 project.fragment.lock.json
 artifacts/
 MemorySmith.App/appsettings.LocalDevelopment.json
+MemorySmith.App/appsettings.LocalOverrides.json
+MemorySmith.App/appsettings.Secrets.json
 
 # ASP.NET Scaffolding
 ScaffoldingReadMe.txt
@@ -221,6 +227,9 @@ csx/
 # Playwright e2e artifacts
 e2e/playwright-report/
 e2e/test-results/
+
+# Local temporary workspace artifacts
+Temp/
 
 # Microsoft Azure Emulator
 ecf/

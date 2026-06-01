@@ -468,12 +468,24 @@
         if (_isEditing && _previewEnhancementsPending)
         {
             _previewEnhancementsPending = false;
-            await TryInvokeVoidAsync("memorySmith.markdown.renderEnhancements", _previewPane, new { enableCollapsibleHeadings = true, collapseStateKey = $"preview:{_editSlug}" });
+            await TryInvokeVoidAsync("memorySmith.markdown.renderEnhancements", _previewPane, new
+            {
+                enableCollapsibleHeadings = true,
+                collapseStateKey = $"preview:{_editSlug}",
+                mermaidEnabled = Options.CurrentValue.Markdown.MermaidEnabled,
+                mermaidRestrictionMode = Options.CurrentValue.Markdown.MermaidRestrictionMode
+            });
         }
         else if (_selectedPage is not null && _renderedPageEnhancementsPending)
         {
             _renderedPageEnhancementsPending = false;
-            await TryInvokeVoidAsync("memorySmith.markdown.renderEnhancements", _renderedPagePane, new { enableCollapsibleHeadings = true, collapseStateKey = $"page:{_selectedPage.Slug}" });
+            await TryInvokeVoidAsync("memorySmith.markdown.renderEnhancements", _renderedPagePane, new
+            {
+                enableCollapsibleHeadings = true,
+                collapseStateKey = $"page:{_selectedPage.Slug}",
+                mermaidEnabled = Options.CurrentValue.Markdown.MermaidEnabled,
+                mermaidRestrictionMode = Options.CurrentValue.Markdown.MermaidRestrictionMode
+            });
             await RefreshTocHeadingsAsync();
         }
     }

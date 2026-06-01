@@ -1,0 +1,49 @@
+{
+  "id": "tsk-0249-instrument-per-tool-invocation-and-latency-telemetry-across-chat-and-mcp",
+  "key": "TSK-0249",
+  "title": "Instrument per-tool invocation and latency telemetry across chat and MCP",
+  "description": "Missing task from Audit #7 finding 6.1. Add per-tool invocation counters, latency histograms, and error tags for both chat and MCP execution paths with low-cardinality dimensions and privacy-safe payload handling.",
+  "type": "Task",
+  "status": "Done",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "AgentSmith",
+  "labels": [
+    "chat",
+    "mcp",
+    "observability",
+    "sprint-20260530-c"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "audits/chat-training-audit-7-20260530"
+  ],
+  "comments": [
+    {
+      "createdAtUtc": "2026-05-30T22:41:43.2891965Z",
+      "author": "AgentSmith",
+      "id": "c-create-tsk-0249-20260530",
+      "body": "Created during follow-up gap review after chat task tagging and sprint planning pass."
+    },
+    {
+      "id": "c-0249-2-20260530",
+      "author": "AgentSmith",
+      "body": "Implemented shared per-tool execution telemetry in `MemorySmith.App/Services/MemorySmithTelemetry.cs` and wired it through both chat tool paths in `MemorySmith.App/Services/ChatServices.cs` (regular model tool calls plus auto-intercepts) and the MCP tool delegate in `MemorySmith.App/Controllers/McpController.cs`. Metrics now emit low-cardinality transport/tool/success-error tags with invocation counters, failure counters, and latency histograms without recording payload content. Added regression coverage in `MemorySmith.Tests/PagesAndChatTests.cs` and `MemorySmith.Tests/McpAndSemanticSearchTests.cs`. Validation: `dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj -c Release --filter \"Name~MemoryChatAgent_EmitsToolExecutionTelemetry_ForSuccessfulAndRejectedChatTools|Name~McpTools_EmitToolExecutionTelemetry|Name~MemoryChatAgent_ExecutesTaskListToolInChatMode|Name~McpContextPackTool_ReturnsHybridResultsWithLinkedContext\"` (4/4 passed).",
+      "createdAtUtc": "2026-05-30T23:35:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-30T22:41:43.2891965Z",
+  "updatedAtUtc": "2026-05-30T23:35:00.0000000Z",
+  "completedAtUtc": "2026-05-30T23:35:00.0000000Z",
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

@@ -66,7 +66,7 @@ To enable ONNX ranking, place a compatible model and WordPiece vocabulary under 
 ```json
 {
   "EmbeddingsEnabled": true,
-  "ModelPath": "Models/embedding-model.onnx",
+  "ModelPath": "Models/e5-base-v2.onnx",
   "VocabularyPath": "Models/vocab.txt"
 }
 ```
@@ -228,3 +228,4 @@ Use council review before changing search ranking, context-pack output shape, pa
 - a skeptical reviewer checking whether the change can bury important records or create hidden migration work.
 
 Record the final decision and dissent in the wiki before implementation.
+

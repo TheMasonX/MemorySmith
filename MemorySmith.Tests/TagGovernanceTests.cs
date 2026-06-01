@@ -239,13 +239,18 @@ public class TagGovernanceTests
         Assert.Multiple(() =>
         {
             Assert.That(markup, Does.Not.Contain("<MudTabPanel Text=\"Tags\""));
+            Assert.That(markup, Does.Not.Contain("<MudTabPanel Text=\"Training\""));
             Assert.That(markup, Does.Contain("<MudTabPanel Text=\"OAuth\""));
             Assert.That(markup, Does.Contain("<MudTabPanel Text=\"Models\""));
             Assert.That(markup, Does.Contain("ChatModelProfileService ModelProfiles"));
             Assert.That(markup, Does.Contain("IEnumerable<IChatProvider> ChatProviders"));
             Assert.That(markup, Does.Contain("OnModelProfileProviderChangedAsync"));
+            Assert.That(markup, Does.Contain("OnContextPresetChangedAsync"));
             Assert.That(markup, Does.Contain("_modelProfileModelOptions"));
             Assert.That(markup, Does.Contain("admin-model-select-field"));
+            Assert.That(markup, Does.Contain("Context presets"));
+            Assert.That(markup, Does.Contain("ModelVramEstimateHint"));
+            Assert.That(markup, Does.Contain("Estimated VRAM envelope"));
             Assert.That(markup, Does.Contain("admin-row-actions"));
             Assert.That(markup, Does.Contain("DuplicateModelProfileAsync"));
             Assert.That(markup, Does.Contain("Icons.Material.Filled.ContentCopy"));
@@ -267,7 +272,7 @@ public class TagGovernanceTests
             Assert.That(markup, Does.Not.Contain("_maintenanceTranscriptSearch"));
             Assert.That(markup, Does.Not.Contain("title=\"@context.Item.HelpText\""));
             Assert.That(markup, Does.Contain("admin-users-table"));
-            Assert.That(CountOccurrences(markup, "AllowReveal=\"false\""), Is.EqualTo(3));
+            Assert.That(CountOccurrences(markup, "AllowReveal=\"false\""), Is.EqualTo(2));
             Assert.That(markup, Does.Contain("DataLabel=\"User\""));
             Assert.That(markup, Does.Contain("DataLabel=\"Last login\""));
             Assert.That(markup, Does.Contain("admin-user-primary"));
@@ -276,13 +281,54 @@ public class TagGovernanceTests
             Assert.That(markup, Does.Contain("admin-settings-nav"));
             Assert.That(markup, Does.Contain("_settingsDirtyOnly"));
             Assert.That(markup, Does.Contain("admin-setting-dirty-indicator"));
+            Assert.That(markup, Does.Contain("SaveVisibleDirtySettingsAsync"));
+            Assert.That(markup, Does.Contain("Save All Changes"));
+            Assert.That(markup, Does.Contain("Config Import/Export"));
+            Assert.That(markup, Does.Contain("ExportVisibleSettingsAsync"));
+            Assert.That(markup, Does.Contain("ApplyImportedSettingsToVisibleAsync"));
             Assert.That(markup, Does.Contain("DataLabel=\"Setting\""));
             Assert.That(markup, Does.Contain("ResetFilteredSettings"));
             Assert.That(navMarkup, Does.Contain("Href=\"/tags\""));
             Assert.That(navMarkup, Does.Contain("Tags"));
+            Assert.That(navMarkup, Does.Contain("Href=\"/code-search\""));
+            Assert.That(navMarkup, Does.Contain("Code Search"));
+            Assert.That(navMarkup, Does.Contain("Href=\"/models\""));
+            Assert.That(navMarkup, Does.Contain("Models"));
+            Assert.That(navMarkup, Does.Contain("Href=\"/training-workbench\""));
+            Assert.That(navMarkup, Does.Contain("Training"));
             Assert.That(navMarkup, Does.Contain("Href=\"/maintenance\""));
             Assert.That(navMarkup, Does.Contain("Maintenance"));
             Assert.That(navMarkup, Does.Not.Contain("Href=\"/variables\""));
+        });
+    }
+
+    [Test]
+    public void CodeSearchAndTrainingWorkbenchMarkup_ExposeActionableCopyAndOpenControls()
+    {
+        var root = FindRepositoryRoot();
+        var codeSearchMarkup = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "Components", "Pages", "CodeSearch.razor"));
+        var trainingMarkup = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "Components", "Pages", "TrainingWorkbench.razor"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(codeSearchMarkup, Does.Contain("Copy file and line range"));
+            Assert.That(codeSearchMarkup, Does.Contain("Copy snippet text"));
+            Assert.That(codeSearchMarkup, Does.Contain("Operator cap"));
+            Assert.That(codeSearchMarkup, Does.Contain("Open file in default app"));
+            Assert.That(codeSearchMarkup, Does.Contain("CopyResultLocationAsync"));
+            Assert.That(codeSearchMarkup, Does.Contain("OpenResultAsync"));
+            Assert.That(codeSearchMarkup, Does.Contain("Icons.Material.Filled.OpenInNew"));
+            Assert.That(trainingMarkup, Does.Contain("Training Settings"));
+            Assert.That(trainingMarkup, Does.Contain("MudAutocomplete T=\"string\""));
+            Assert.That(trainingMarkup, Does.Contain("SaveSelectedTrainingSettingAsync"));
+            Assert.That(trainingMarkup, Does.Contain("ExportTrainingSettingsAsync"));
+            Assert.That(trainingMarkup, Does.Contain("Training Deps"));
+            Assert.That(trainingMarkup, Does.Contain("simulated mode"));
+            Assert.That(trainingMarkup, Does.Contain("Copy status.json path"));
+            Assert.That(trainingMarkup, Does.Contain("Open events.jsonl in default app"));
+            Assert.That(trainingMarkup, Does.Contain("Open benchmark.json in default app"));
+            Assert.That(trainingMarkup, Does.Contain("CopyTextAsync"));
+            Assert.That(trainingMarkup, Does.Contain("OpenArtifactAsync"));
         });
     }
 
@@ -539,7 +585,116 @@ public class TagGovernanceTests
             Assert.That(source, Does.Contain("Security profile"));
             Assert.That(source, Does.Contain("remote-hardened"));
             Assert.That(source, Does.Contain("secure-local for dogfood"));
+            Assert.That(source, Does.Contain("MemorySmith:ContentSecurityPolicyEnabled"));
+            Assert.That(source, Does.Contain("MemorySmith:ContentSecurityPolicy"));
+            Assert.That(source, Does.Contain("MemorySmith:XContentTypeOptionsEnabled"));
+            Assert.That(source, Does.Contain("MemorySmith:XContentTypeOptions"));
+            Assert.That(source, Does.Contain("MemorySmith:ReferrerPolicyEnabled"));
+            Assert.That(source, Does.Contain("MemorySmith:ReferrerPolicy"));
+            Assert.That(source, Does.Contain("MemorySmith:XFrameOptionsEnabled"));
+            Assert.That(source, Does.Contain("MemorySmith:XFrameOptions"));
+            Assert.That(source, Does.Contain("MemorySmith:PermissionsPolicyEnabled"));
+            Assert.That(source, Does.Contain("MemorySmith:PermissionsPolicy"));
             Assert.That(appsettings, Does.Contain("\"SecurityProfile\": null"));
+            Assert.That(appsettings, Does.Contain("\"ContentSecurityPolicyEnabled\": true"));
+            Assert.That(appsettings, Does.Contain("\"XContentTypeOptionsEnabled\": true"));
+            Assert.That(appsettings, Does.Contain("\"XContentTypeOptions\": \"nosniff\""));
+            Assert.That(appsettings, Does.Contain("\"ReferrerPolicyEnabled\": true"));
+            Assert.That(appsettings, Does.Contain("\"ReferrerPolicy\": \"strict-origin-when-cross-origin\""));
+            Assert.That(appsettings, Does.Contain("\"XFrameOptionsEnabled\": true"));
+            Assert.That(appsettings, Does.Contain("\"XFrameOptions\": \"DENY\""));
+            Assert.That(appsettings, Does.Contain("\"PermissionsPolicyEnabled\": true"));
+            Assert.That(appsettings, Does.Contain("\"PermissionsPolicy\":"));
+        });
+    }
+
+    [Test]
+    public void AdminSettings_ExposeMermaidPolicyControls()
+    {
+        var source = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "Services", "AdminSettingsService.cs"));
+        var appsettings = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "appsettings.json"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(source, Does.Contain("MemorySmith:Markdown:MermaidEnabled"));
+            Assert.That(source, Does.Contain("MemorySmith:Markdown:MermaidRestrictionMode"));
+            Assert.That(source, Does.Contain("Mermaid restriction mode"));
+            Assert.That(appsettings, Does.Contain("\"Markdown\""));
+            Assert.That(appsettings, Does.Contain("\"MermaidEnabled\": true"));
+            Assert.That(appsettings, Does.Contain("\"MermaidRestrictionMode\": \"restricted\""));
+        });
+    }
+
+    [Test]
+    public void AdminSettings_ExposeTrainingHarnessControls()
+    {
+        var source = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "Services", "AdminSettingsService.cs"));
+        var appsettings = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "appsettings.json"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(source, Does.Contain("MemorySmith:Training:ChatTranscriptEnabled"));
+            Assert.That(source, Does.Contain("MemorySmith:Training:StoreChatContent"));
+            Assert.That(source, Does.Contain("MemorySmith:Training:TranscriptRetentionDays"));
+            Assert.That(source, Does.Contain("MemorySmith:Training:TranscriptRedactionEnabled"));
+            Assert.That(source, Does.Contain("MemorySmith:Training:FeedbackEnabled"));
+            Assert.That(source, Does.Contain("MemorySmith:Training:PreferenceFormat"));
+            Assert.That(appsettings, Does.Contain("\"Training\""));
+            Assert.That(appsettings, Does.Contain("\"ChatTranscriptEnabled\": false"));
+            Assert.That(appsettings, Does.Contain("\"TranscriptRetentionDays\": 90"));
+            Assert.That(appsettings, Does.Contain("\"TranscriptRedactionEnabled\": true"));
+            Assert.That(appsettings, Does.Contain("\"FeedbackEnabled\": false"));
+        });
+    }
+
+    [Test]
+    public void TrainingBootstrapScripts_AndDocs_ExposeDedicatedScratchWorkflow()
+    {
+        var root = FindRepositoryRoot();
+        var runbook = File.ReadAllText(Path.Combine(root, "Data", "Pages", "guides", "local-finetune-harness-runbook.md"));
+        var configReference = File.ReadAllText(Path.Combine(root, "Data", "Pages", "guides", "configuration-reference.md"));
+        var readme = File.ReadAllText(Path.Combine(root, "README.md"));
+        var setupScript = Path.Combine(root, "Scripts", "Setup-FinetuneTrainingEnv.ps1");
+        var bashScript = Path.Combine(root, "Scripts", "setup-finetune-training-env.sh");
+        var requirements = Path.Combine(root, "Scripts", "training", "requirements-training.txt");
+        var unslothRequirements = Path.Combine(root, "Scripts", "training", "requirements-training-unsloth.txt");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(File.Exists(setupScript), Is.True);
+            Assert.That(File.Exists(bashScript), Is.True);
+            Assert.That(File.Exists(requirements), Is.True);
+            Assert.That(File.Exists(unslothRequirements), Is.True);
+            Assert.That(runbook, Does.Contain("Setup-FinetuneTrainingEnv.ps1"));
+            Assert.That(runbook, Does.Contain("D:\\temp\\memorysmith-training"));
+            Assert.That(runbook, Does.Contain("IncludeUnsloth"));
+            Assert.That(runbook, Does.Contain("TrainMode"));
+            Assert.That(runbook, Does.Contain("RequireTrainingDependencies"));
+            Assert.That(configReference, Does.Contain("Scripts/Setup-FinetuneTrainingEnv.ps1"));
+            Assert.That(configReference, Does.Contain("MemorySmith__SettingsOverridePath"));
+            Assert.That(configReference, Does.Contain("accelerator readiness"));
+            Assert.That(configReference, Does.Contain("-TrainMode auto|simulated|lora"));
+            Assert.That(configReference, Does.Contain("RequireTrainingDependencies"));
+            Assert.That(readme, Does.Contain("Local Fine-Tune Bootstrap"));
+            Assert.That(readme, Does.Contain("core GPU-capable training stack"));
+            Assert.That(readme, Does.Contain("-TrainMode auto|simulated|lora"));
+            Assert.That(readme, Does.Contain("RequireTrainingDependencies"));
+            Assert.That(readme, Does.Contain("Run-FinetuneHarness.ps1 -RunId ft-smoke -TrainMode auto -RequireTrainingDependencies"));
+        });
+    }
+
+    [Test]
+    public void AdminSettings_ExposeClipboardExternalFetchPolicyControl()
+    {
+        var source = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "Services", "AdminSettingsService.cs"));
+        var appsettings = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "appsettings.json"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(source, Does.Contain("MemorySmith:Chat:ClipboardFetchExternalImagesEnabled"));
+            Assert.That(source, Does.Contain("Fetch external clipboard image URLs"));
+            Assert.That(source, Does.Contain("avoid unprompted network fetches during paste"));
+            Assert.That(appsettings, Does.Contain("\"ClipboardFetchExternalImagesEnabled\": false"));
         });
     }
 
@@ -561,6 +716,39 @@ public class TagGovernanceTests
             Assert.That(appsettings, Does.Contain("\"ActionUx\""));
             Assert.That(appsettings, Does.Contain("\"DefaultAction\": \"accept\""));
             Assert.That(appsettings, Does.Contain("\"RevisionRequired\": true"));
+        });
+    }
+
+    [Test]
+    public void AdminSettings_ExposeCodeSearchRankingTuningKnobs()
+    {
+        var source = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "Services", "AdminSettingsService.cs"));
+        var appsettings = File.ReadAllText(Path.Combine(FindRepositoryRoot(), "MemorySmith.App", "appsettings.json"));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(source, Does.Contain("MemorySmith:CodeSearch:HybridVectorWeight"));
+            Assert.That(source, Does.Contain("MemorySmith:CodeSearch:HybridLexicalWeight"));
+            Assert.That(source, Does.Contain("MemorySmith:CodeSearch:ZeroLexicalEvidencePenalty"));
+            Assert.That(source, Does.Contain("MemorySmith:CodeSearch:LexicalScoreSaturation"));
+            Assert.That(source, Does.Contain("MemorySmith:CodeSearch:LexicalFrequencyBonusScale"));
+            Assert.That(source, Does.Contain("MemorySmith:CodeSearch:MaxLexicalFrequencyBonusPerToken"));
+            Assert.That(source, Does.Contain("MemorySmith:CodeSearch:MinTokenCoverageWeight"));
+            Assert.That(source, Does.Contain("MemorySmith:CodeSearch:MaxTokenCoverageWeight"));
+            Assert.That(source, Does.Contain("MemorySmith:CodeSearch:VectorPrefilterFullScanFallbackCandidateCount"));
+            Assert.That(source, Does.Contain("Code-search min token coverage weight"));
+            Assert.That(source, Does.Contain("Code-search max token coverage weight"));
+            Assert.That(source, Does.Contain("Code-search sparse prefilter fallback candidate count"));
+
+            Assert.That(appsettings, Does.Contain("\"HybridVectorWeight\": 0.75"));
+            Assert.That(appsettings, Does.Contain("\"HybridLexicalWeight\": 0.25"));
+            Assert.That(appsettings, Does.Contain("\"ZeroLexicalEvidencePenalty\": 0.72"));
+            Assert.That(appsettings, Does.Contain("\"LexicalScoreSaturation\": 4.0"));
+            Assert.That(appsettings, Does.Contain("\"LexicalFrequencyBonusScale\": 0.1"));
+            Assert.That(appsettings, Does.Contain("\"MaxLexicalFrequencyBonusPerToken\": 0.35"));
+            Assert.That(appsettings, Does.Contain("\"MinTokenCoverageWeight\": 0.65"));
+            Assert.That(appsettings, Does.Contain("\"MaxTokenCoverageWeight\": 1.15"));
+            Assert.That(appsettings, Does.Contain("\"VectorPrefilterFullScanFallbackCandidateCount\": 24"));
         });
     }
 

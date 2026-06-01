@@ -1,0 +1,48 @@
+{
+  "id": "tsk-0216-fix-code-search-limit-and-result-detail-ux",
+  "key": "TSK-0216",
+  "title": "Fix code search limit behavior and result detail UX",
+  "description": "Problem: Code Search accepted higher per-query limits in the UI but the backend still clamped results to `CodeSearch.MaxResults`, which remained 10 by default, making the limit control misleading. The result experience also needed explicit snippet copy, expandable context, and a sidebar/detail-card layout. Desired outcome: make the effective result cap honest and useful, ensure requested limits above 10 can actually return more than 10 when configured, and keep the richer snippet/detail affordances first-class.",
+  "type": "Task",
+  "status": "Done",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "TheMasonX",
+  "labels": [
+    "code-search",
+    "ux",
+    "config"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "audits/vector-search-audit-6"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0216-20260529",
+      "author": "AgentSmith",
+      "body": "Created from repeated operator feedback: status progress was one issue, but the deeper UX gap was that the visible per-query limit did not match the actual backend cap and the results pane needed first-class snippet copy/expand/detail workflows.",
+      "createdAtUtc": "2026-05-29T05:20:00.0000000Z"
+    },
+    {
+      "id": "c-implementation-0216-20260529",
+      "author": "AgentSmith",
+      "body": "Implemented the fix across `CodeSearch.razor`, `MemorySmithOptions.cs`, `appsettings.json`, and `AdminSettingsService.cs`. The operator cap now defaults to 100 and is exposed in admin config (`MemorySmith:CodeSearch:MaxResults`), the page shows the effective cap, and the result UX now includes sidebar selection, snippet copy, file-name copy, file+line copy, and expandable context. Focused regression coverage passed in `TagGovernanceTests` and `AppApiContractTests`.",
+      "createdAtUtc": "2026-05-29T05:35:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-29T05:20:00.0000000Z",
+  "updatedAtUtc": "2026-05-29T05:35:00.0000000Z",
+  "completedAtUtc": "2026-05-29T05:35:00.0000000Z",
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

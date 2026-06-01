@@ -1,0 +1,31 @@
+﻿{
+  "id": "tsk-0255-tokens-per-second",
+  "key": "TSK-0255",
+  "title": "Tokens Per Second",
+  "description": "Add tokens per second as supplemental chat data for local models",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-31T09:33:01.4945919Z",
+  "updatedAtUtc": "2026-05-31T09:33:01.4945919Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

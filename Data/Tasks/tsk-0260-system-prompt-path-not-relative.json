@@ -1,0 +1,31 @@
+﻿{
+  "id": "tsk-0260-system-prompt-path-not-relative",
+  "key": "TSK-0260",
+  "title": "System prompt path in Data",
+  "description": "System prompt path, like all other config paths, needs to be relative to the specific Data\\ deployment, as everything needs to be located under this single deploy folder",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-06-01T02:17:32.4992504Z",
+  "updatedAtUtc": "2026-06-01T02:18:32.6110272Z",
+  "completedAtUtc": null,
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

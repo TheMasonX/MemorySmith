@@ -17,7 +17,8 @@
     "latency",
     "traceability",
     "audit-vetted",
-    "admin-config"
+    "admin-config",
+    "chat"
   ],
   "Attachments": [],
   "ExternalLinks": [],
@@ -29,15 +30,15 @@
       "Id": "c-0108-1",
       "Author": "AgentSmith",
       "Body": "Evidence: current health charts focus on memory activity, and the logging review identified no dedicated benchmark-trace schema or first-class latency/percentile event model for critical operations.",
-      "CreatedAtUtc": "2026-05-25T00:14:00.0000000Z"
+      "CreatedAtUtc": "2026-05-25T00:14:00Z"
     }
   ],
   "EpicId": null,
   "ParentId": null,
   "DueDateUtc": null,
-  "CreatedAtUtc": "2026-05-25T00:14:00.0000000Z",
-  "UpdatedAtUtc": "2026-05-25T00:14:00.0000000Z",
+  "CreatedAtUtc": "2026-05-25T00:14:00Z",
+  "UpdatedAtUtc": "2026-05-30T22:40:56.4699778Z",
   "CompletedAtUtc": null,
-  "Revision": 1,
+  "Revision": 2,
   "IsArchived": false
 }

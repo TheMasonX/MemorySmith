@@ -1,0 +1,45 @@
+{
+  "id": "tsk-0221-add-named-mcp-tool-profiles",
+  "key": "TSK-0221",
+  "title": "Add named MCP tool profiles",
+  "description": "Problem: MCP enablement is currently controlled by raw enabled/disabled tool-name lists. That works for precise overrides, but it does not give operators a first-class way to select intent-based profiles such as read-only, proposal-only, local-admin, or external-safe modes.\n\nDesired outcome: support named MCP tool profiles or modes that map to curated tool sets while preserving existing per-tool override behavior.\n\nScope:\n- In scope: define profile concepts, configuration shape, precedence with existing enabled/disabled lists, and at least one safe default profile.\n- In scope: expose the active profile in diagnostics or documentation so operators can verify runtime posture.\n- In scope: add tests for profile resolution and explicit override behavior.\n- Out of scope: redesigning the entire security-role model.\n\nValidation:\n- Focused configuration tests for profile resolution order and effective tool set.
+- Docs updated with supported profile names, intent, and override rules.
+\nConfidence target: 82%.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": null,
+  "reporter": "AgentSmith",
+  "labels": [
+    "mcp",
+    "configuration",
+    "security",
+    "operator-experience"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "requests/mcp-tool-surface-recommendations-20260529"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0221-20260529",
+      "author": "AgentSmith",
+      "body": "Created from MCP surface review because raw enabled/disabled name lists are workable but lack intent-based profiles such as read-only, proposal-only, or admin-local modes.",
+      "createdAtUtc": "2026-05-29T19:25:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-29T19:25:00.0000000Z",
+  "updatedAtUtc": "2026-05-29T19:25:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

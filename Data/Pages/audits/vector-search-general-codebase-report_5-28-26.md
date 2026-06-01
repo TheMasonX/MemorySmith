@@ -116,3 +116,25 @@ Code search: fixed line windows with overlap (CodeSearchService.cs:633-646, 638)
 Hybrid search merge: RRF implemented (MemoryApplicationService.cs:896-945, 1003-1004), lexical side uses Lucene tokenization (1207-1230), not BM25 index.
 Model loading behavior: lazy initialize (SemanticEmbeddingSearchService.cs:654+) plus startup prewarm host (SemanticEmbeddingPrewarmService.cs:31-84).
 Security positives observed: request guard + source-root enforcement are in place (MemorySmithRequestGuardMiddleware.cs:32-50, 71-74; VarResolver.cs:231-253).
+
+## 2026-05-28 Follow-Up — Model Workflow And Compatibility Research
+
+11) Local model workflow was previously ad hoc (manual pip/download/export)
+Severity: Medium
+Evidence: No single scripted path existed to create an isolated Python environment, install export dependencies, and perform Hugging Face model download/export into `Data/Models`.
+Impact: Reproducibility risk, environment drift, and repeated setup friction when refreshing model artifacts.
+Fix: Added `Scripts/Install-CodeSearchModel.ps1` plus `Scripts/model-tools/export_hf_embedding_model.py` and `Scripts/model-tools/requirements-model-export.txt`.
+
+12) `nomic-embed-code` compatibility risk with current runtime tokenizer path
+Severity: High
+Evidence:
+- Current semantic defaults are WordPiece-oriented (`ModelPath`, `VocabularyPath`, `TokenizerKind=WordPiece`) in `MemorySmithOptions.cs`.
+- Hugging Face `nomic-ai/nomic-embed-code` snapshot does not publish ONNX weights and does not include `vocab.txt`; it ships `tokenizer.json`, `vocab.json`, `merges.txt`, and sharded safetensors.
+Impact: Even with ONNX export, the current runtime path may not load the model without tokenizer/runtime expansion beyond WordPiece.
+Fix: Keep generated model manifest + compatibility note in `Data/Models` and treat `nomic-embed-code` adoption as a runtime compatibility task, not only a conversion task.
+
+13) Python runtime support risk for model export stack
+Severity: Medium
+Evidence: Export dependencies (`torch`/`optimum`) are sensitive to Python minor-version wheel availability.
+Impact: Model export can fail unexpectedly on unsupported Python versions despite a valid script.
+Fix: `Scripts/Install-CodeSearchModel.ps1` prefers `py -3.11` when available and isolates dependencies into a repo `.venv`.

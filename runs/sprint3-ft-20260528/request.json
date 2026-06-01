@@ -1,0 +1,11 @@
+{
+  "runId": "sprint3-ft-20260528",
+  "exportPath": "C:\\Users\\norrt\\source\\repos\\MemorySmith\\Data\\Training\\exports",
+  "transcriptDirectory": "C:\\Users\\norrt\\source\\repos\\MemorySmith\\Data\\Events\\chat-transcripts",
+  "format": "FilteredSft",
+  "hyperparameters": {
+    "epochs": 3,
+    "learningRate": 0.0002,
+    "sequenceLength": 4096
+  }
+}

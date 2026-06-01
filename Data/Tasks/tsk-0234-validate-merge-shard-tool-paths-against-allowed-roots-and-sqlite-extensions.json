@@ -1,0 +1,56 @@
+{
+  "id": "tsk-0234-validate-merge-shard-tool-paths-against-allowed-roots-and-sqlite-extensions",
+  "key": "TSK-0234",
+  "title": "Validate merge-shard tool paths against allowed roots and sqlite extensions",
+  "description": "Vetted from Audit #7 finding 2.4. Default-off gating exists, but shardPath validation remains missing when enabled. Enforce allowed roots, canonicalized path checks, and extension allow-list for merge-shard inputs.",
+  "type": "Task",
+  "status": "Done",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "AgentSmith",
+  "labels": [
+    "mcp",
+    "code-search",
+    "security",
+    "sprint-20260530-c",
+    "chat"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "audits/chat-training-audit-7-20260530"
+  ],
+  "comments": [
+    {
+      "author": "AgentSmith",
+      "id": "c-create-tsk-0234-20260530",
+      "createdAtUtc": "2026-05-30T22:21:20.9043446Z",
+      "body": "Created from vetted findings in Data/Pages/move-to-audit.md after direct code checks across Chat.razor, ChatServices.cs, ChatToolCatalog.cs, McpController.cs, and training harness files."
+    },
+    {
+      "author": "AgentSmith",
+      "id": "c-inprogress-tsk-0234-20260531",
+      "createdAtUtc": "2026-05-31T18:30:00.0000000Z",
+      "body": "Moved to InProgress for implementation pass on merge-shard path validation. MCP status transition attempt returned 401 Missing or invalid X-Api-Key; applied local task-file fallback per sprint-loop guidance."
+    },
+    {
+      "author": "AgentSmith",
+      "id": "c-evidence-tsk-0234-20260531",
+      "createdAtUtc": "2026-05-31T18:45:00.0000000Z",
+      "body": "## Evidence Update\n\n- Summary: Hardened merge-shard tool path validation with canonical root and extension checks.\n- Changed files:\n  - MemorySmith.App/Services/ChatToolCatalog.cs\n  - MemorySmith.Tests/ChatToolCatalogAndInterceptTests.cs\n  - Data/Tasks/tsk-0234-validate-merge-shard-tool-paths-against-allowed-roots-and-sqlite-extensions.json\n- Validation commands:\n  - dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj -c Release --filter Name~CodeSearchMergeShardTool_RejectsShardPathOutsideAllowedRoots|Name~CodeSearchMergeShardTool_RejectsNonSqliteExtensionEvenInsideAllowedRoot|Name~CodeSearchMergeShardTool_AllowsSqliteShardInsideAllowedRoot|Name~ChatToolCatalog_DefaultsSensitiveAndWriteMcpToolsOff\n  - pwsh -NoLogo -NoProfile -File Scripts/Test-TaskRecords.ps1\n- Validation results:\n  - PASS: 4 selected tests passed, 0 failed.\n  - PASS: Checked 251 task record(s); keys and ids are unique.\n- Confidence: 90%\n- Open questions:\n  - MCP task API remains blocked by 401; should the X-Api-Key be rotated for MCP task operations?\n- MCP fallback note:\n  - MCP task comment/status tools returned 401 Missing or invalid X-Api-Key; persisted this evidence and status transition locally in task JSON."
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-30T22:21:20.9043446Z",
+  "updatedAtUtc": "2026-05-31T18:45:00.0000000Z",
+  "completedAtUtc": "2026-05-31T18:45:00.0000000Z",
+  "revision": 4,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

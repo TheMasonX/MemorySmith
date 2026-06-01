@@ -1,0 +1,46 @@
+﻿{
+  "id": "tsk-0227-training-files-outside-authorized-directories",
+  "key": "TSK-0227",
+  "title": "Training Files Outside Authorized Directories",
+  "description": "On the Training Workbench, opening run artifacts from the Artifacts column can fail with the toast `Source link path is outside the configured allowed source roots.` The shared screenshot shows the page using transcript/export/run directories and a harness script outside the repo root, while artifact open still routes through the generic source-link guard that only trusts configured source roots by default. Expected behavior: when local open-with-default-app is enabled, the Training Workbench should allow opening files under its resolved training transcript/export/run/harness directories without requiring operators to weaken the global source-link policy for unrelated paths.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future"
+  ],
+  "attachments": [
+    {
+      "id": "a-697778e7390d45f49cd8c4bd4f393e2f",
+      "name": "Screenshot 2026-05-29 111657.png",
+      "kind": "file",
+      "uri": "/artifacts/task-attachments/tsk-0227-training-files-outside-authorized-directories/screenshot-2026-05-29-111657.png",
+      "addedAtUtc": "2026-05-29T16:17:48.0785197Z"
+    }
+  ],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [
+    {
+      "id": "c-detail-0227-20260529",
+      "author": "AgentSmith",
+      "body": "Expanded from the shared screenshot and local code review. The warning originates from `VarResolver` source-root authorization, but the clicked artifact belongs to the Training Workbench's configured training directories rather than wiki source-link roots. The scoped fix is to authorize artifact open against the page's resolved training directories instead of broadening global source-link access.",
+      "createdAtUtc": "2026-05-29T16:45:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-29T16:17:39.0042793Z",
+  "updatedAtUtc": "2026-05-29T16:45:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 4,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

@@ -1,0 +1,56 @@
+{
+  "id": "tsk-0232-implement-provider-native-tool-calling-for-ollama-and-github-models-with-fallback",
+  "key": "TSK-0232",
+  "title": "Implement provider-native tool calling for Ollama and GitHub Models with fallback",
+  "description": "Vetted from Audit #7 finding 2.2. Current tool invocation relies on text JSON extraction only. Add provider-native structured tool calling for providers that support it, preserve current text parsing as fallback, and include compatibility tests to prevent regression for legacy models.",
+  "type": "Task",
+  "status": "Done",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "AgentSmith",
+  "labels": [
+    "chat",
+    "providers",
+    "tools",
+    "reliability",
+    "sprint-20260530-b"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "audits/chat-training-audit-7-20260530"
+  ],
+  "comments": [
+    {
+      "author": "AgentSmith",
+      "id": "c-create-tsk-0232-20260530",
+      "createdAtUtc": "2026-05-30T22:21:20.9043446Z",
+      "body": "Created from vetted findings in Data/Pages/move-to-audit.md after direct code checks across Chat.razor, ChatServices.cs, ChatToolCatalog.cs, McpController.cs, and training harness files."
+    },
+    {
+      "author": "AgentSmith",
+      "id": "c-0232-2-20260531",
+      "createdAtUtc": "2026-05-31T06:22:55.7386938Z",
+      "body": "## Evidence Update\n\n- Summary: Implemented provider-native tool registration and native tool-call normalization for Ollama with deterministic JSON-text fallback preserved.\n- Changed files:\n  - `MemorySmith.App/Services/ChatServices.cs`\n  - `MemorySmith.Tests/PagesAndChatTests.cs`\n- Validation commands:\n  - `dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj -c Release --filter Name~ChatProviders_ReportCapabilityMetadata|Name~OllamaChatProvider_IncludesNativeToolDefinitionsWhenProvided|Name~OllamaChatProvider_ConvertsNativeToolCallsIntoFallbackEnvelope|Name~OllamaChatProvider_StreamsLiveChunks|Name~MemoryChatAgent_StreamsToolCallStatusWithoutLeakingToolJson`\n- Validation results:\n  - 5 passed, 0 failed\n- Confidence: 88%\n- Open questions:\n  - GitHub SDK path still lacks stable app-supplied native tool registration surface; evaluate reflective/event-based native call extraction versus keeping JSON-text fallback as canonical.\n- Note: MCP task API calls were attempted first per skill contract but are blocked by 401 Missing/invalid X-Api-Key, so this update is recorded via local task JSON fallback."
+    },
+    {
+      "author": "AgentSmith",
+      "id": "c-0232-3-20260531",
+      "createdAtUtc": "2026-05-31T06:25:07.1463050Z",
+      "body": "## Evidence Update\n\n- Summary: Completed provider-native tool-calling slice for Ollama and GitHub with deterministic JSON-text fallback preservation.\n- Changed files:\n  - `MemorySmith.App/Services/ChatServices.cs`\n  - `MemorySmith.Tests/PagesAndChatTests.cs`\n- Validation commands:\n  - `dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj -c Release --filter Name~ChatProviders_ReportCapabilityMetadata|Name~GitHubCopilotChatProvider_NormalizesNativeToolCallEventToFallbackEnvelope|Name~OllamaChatProvider_IncludesNativeToolDefinitionsWhenProvided|Name~OllamaChatProvider_ConvertsNativeToolCallsIntoFallbackEnvelope|Name~MemoryChatAgent_StreamsToolCallStatusWithoutLeakingToolJson`\n- Validation results:\n  - 5 passed, 0 failed\n- Confidence: 86%\n- Open questions:\n  - GitHub SDK native tool registration is reflection-based and best-effort because the SDK surface remains unstable; keep JSON-text fallback as canonical path.\n- Note: Attempted MCP status transition via task_set_status first, but MCP endpoint still returns 401 Missing/invalid X-Api-Key; completion recorded via local task JSON fallback."
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-30T22:21:20.9043446Z",
+  "updatedAtUtc": "2026-05-31T06:25:07.1463050Z",
+  "completedAtUtc": "2026-05-31T06:25:07.1463050Z",
+  "revision": 4,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

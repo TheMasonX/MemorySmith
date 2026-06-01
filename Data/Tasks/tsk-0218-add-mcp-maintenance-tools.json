@@ -1,0 +1,45 @@
+{
+  "id": "tsk-0218-add-mcp-maintenance-tools",
+  "key": "TSK-0218",
+  "title": "Add MCP maintenance tools",
+  "description": "Problem: maintenance operations and topic-map/proposal context are active product surfaces, but MCP lacks run/status/topic-map tools for maintenance workflows. That prevents external clients and structured automations from using the same operational entry points as the app.\n\nDesired outcome: expose bounded MCP maintenance tools for safe operational visibility and controlled run initiation where policy allows.\n\nScope:\n- In scope: evaluate and add MCP tools such as `memorysmith_maintenance_run`, `memorysmith_maintenance_status`, and `memorysmith_topic_map_get` or equivalent naming.\n- In scope: align permissions and result contracts with the current maintenance agent and topic-map services.\n- In scope: document which maintenance actions are read-only versus mutating/admin-only.\n- Out of scope: broad maintenance-agent redesign or changing scheduler semantics.\n\nValidation:\n- Focused tests for maintenance status/topic-map reads and any gated run initiation path.
+- Docs/prompts updated for maintenance MCP usage.
+\nConfidence target: 86%.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": null,
+  "reporter": "AgentSmith",
+  "labels": [
+    "mcp",
+    "maintenance-agent",
+    "topic-map",
+    "ops"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "requests/mcp-tool-surface-recommendations-20260529"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0218-20260529",
+      "author": "AgentSmith",
+      "body": "Created from MCP surface review because maintenance run/status/topic-map capabilities exist in-product but are not represented in the MCP tool contract.",
+      "createdAtUtc": "2026-05-29T19:25:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-29T19:25:00.0000000Z",
+  "updatedAtUtc": "2026-05-29T19:25:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

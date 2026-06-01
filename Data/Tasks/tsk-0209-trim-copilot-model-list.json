@@ -1,0 +1,38 @@
+﻿{
+  "id": "tsk-0209-trim-copilot-model-list",
+  "key": "TSK-0209",
+  "title": "Trim Copilot Model List",
+  "description": "There are too many extra models added to the Github copilot list that don\u0027t work or aren\u0027t desireable.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [
+    {
+      "id": "c-detail-0209-20260529",
+      "author": "AgentSmith",
+      "body": "Code review detail: the extra GitHub Copilot models are not coming only from live provider discovery. MemorySmith also seeds a configured fallback list in `MemorySmithOptions.Chat.GitHubModels` and `appsettings.json`, currently including `gpt-4.1`, `gpt-4.1-mini`, `gpt-4o-mini`, `claude-3.5-haiku`, `gpt-5.1-mini`, `gpt-4o`, `gpt-5`, and `claude-sonnet-4.5`. This task should decide which of those configured fallbacks should remain visible when discovery is empty or incomplete.",
+      "createdAtUtc": "2026-05-29T16:55:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-29T04:07:36.9494636Z",
+  "updatedAtUtc": "2026-05-29T16:55:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

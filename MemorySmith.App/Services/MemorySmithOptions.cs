@@ -14,12 +14,23 @@ public class MemorySmithOptions
     public string? SecurityProfile { get; set; }
     public string? ApiKey { get; set; }
     public bool AllowRemoteApi { get; set; }
+    public bool ContentSecurityPolicyEnabled { get; set; } = true;
+    public string ContentSecurityPolicy { get; set; } = "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; img-src 'self' data: blob:; object-src 'none'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; connect-src 'self'";
+    public bool XContentTypeOptionsEnabled { get; set; } = true;
+    public string XContentTypeOptions { get; set; } = "nosniff";
+    public bool ReferrerPolicyEnabled { get; set; } = true;
+    public string ReferrerPolicy { get; set; } = "strict-origin-when-cross-origin";
+    public bool XFrameOptionsEnabled { get; set; } = true;
+    public string XFrameOptions { get; set; } = "DENY";
+    public bool PermissionsPolicyEnabled { get; set; } = true;
+    public string PermissionsPolicy { get; set; } = "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()";
     public BlazorOptions Blazor { get; set; } = new();
     public DatabaseOptions Database { get; set; } = new();
     public AuthOptions Auth { get; set; } = new();
     public AuditOptions Audit { get; set; } = new();
     public HistoryOptions History { get; set; } = new();
     public PageOptions Pages { get; set; } = new();
+    public MarkdownOptions Markdown { get; set; } = new();
     public SemanticSearchOptions SemanticSearch { get; set; } = new();
     public CodeSearchOptions CodeSearch { get; set; } = new();
     public TaskSearchOptions TaskSearch { get; set; } = new();
@@ -30,6 +41,7 @@ public class MemorySmithOptions
     public SourceLinkOptions SourceLinks { get; set; } = new();
     public McpOptions Mcp { get; set; } = new();
     public ChatOptions Chat { get; set; } = new();
+    public TrainingOptions Training { get; set; } = new();
     public MaintenanceAgentOptions MaintenanceAgent { get; set; } = new();
     public LoggingOptions Logging { get; set; } = new();
     public TelemetryOptions Telemetry { get; set; } = new();
@@ -105,6 +117,7 @@ public class AuthOptions
     public string AuthenticatedDefaultRole { get; set; } = "Viewer";
     public bool AutoEditorForAuthenticatedUsers { get; set; }
     public bool LocalPasswordEnabled { get; set; } = true;
+    public bool AllowAdminCreateLocalUsers { get; set; }
     public bool RequireHttpsForRemoteAuth { get; set; } = true;
     public bool OpenLocalEditorCompatibility { get; set; } = true;
     public AuthSetupOptions Setup { get; set; } = new();
@@ -163,11 +176,29 @@ public class PageOptions
     public bool AllowRawHtml { get; set; }
 }
 
+public class MarkdownOptions
+{
+    public bool MermaidEnabled { get; set; } = true;
+    public string MermaidRestrictionMode { get; set; } = MermaidRestrictionModes.Restricted;
+}
+
+public static class MermaidRestrictionModes
+{
+    public const string Standard = "standard";
+    public const string Restricted = "restricted";
+    public const string Strict = "strict";
+
+    public static readonly IReadOnlyList<string> All = [Standard, Restricted, Strict];
+
+    public static string Normalize(string? mode) =>
+        All.FirstOrDefault(candidate => string.Equals(candidate, mode, StringComparison.OrdinalIgnoreCase)) ?? Restricted;
+}
+
 public class SemanticSearchOptions
 {
     public bool EmbeddingsEnabled { get; set; } = true;
     public bool PrewarmOnStartupEnabled { get; set; } = true;
-    public string ModelPath { get; set; } = Path.Combine("Models", "embedding-model.onnx");
+    public string ModelPath { get; set; } = Path.Combine("Models", "e5-base-v2.onnx");
     public string VocabularyPath { get; set; } = Path.Combine("Models", "vocab.txt");
     public string TokenizerKind { get; set; } = "WordPiece";
     public string PoolingMode { get; set; } = "Mean";
@@ -184,6 +215,11 @@ public class SemanticSearchOptions
 public class CodeSearchOptions
 {
     public bool Enabled { get; set; } = true;
+    public bool ParserPipelineEnabled { get; set; } = true;
+    public List<string> ParserStrategyOrder { get; set; } = ["roslyn", "treesitter", "heuristic", "fixedwindow"];
+    public bool RoslynChunkingEnabled { get; set; } = true;
+    public bool TreeSitterChunkingEnabled { get; set; }
+    public bool HeuristicChunkingEnabled { get; set; } = true;
     public string RepositoryRootPath { get; set; } = "..";
     public bool WarmMetadataReuseEnabled { get; set; } = true;
     public List<string> TargetDirectories { get; set; } =
@@ -210,18 +246,42 @@ public class CodeSearchOptions
         ".yaml"
     ];
     public List<string> IncludePatterns { get; set; } = [];
-    public List<string> ExcludePatterns { get; set; } = [];
+    public List<string> ExcludePatterns { get; set; } =
+    [
+        "**/Docs/**",
+        "**/bin/**",
+        "**/obj/**",
+        "**/TestResults/**",
+        "**/BenchmarkDotNet.Artifacts/**"
+    ];
     public int ChunkLineCount { get; set; } = 40;
     public int ChunkOverlapLineCount { get; set; } = 8;
     public int IndexWriteBatchSize { get; set; } = 25;
-    public int EmbeddingBatchSize { get; set; } = 1;
+    public int EmbeddingBatchSize { get; set; } = 8;
     public int StatusUpdateIntervalDocuments { get; set; } = 25;
+    public int IndexStalenessCheckCooldownSeconds { get; set; } = 5;
+    public bool ResumableBuildsEnabled { get; set; } = true;
+    public int MaxCompletedBuildLogEntries { get; set; } = 10;
+    public bool VectorCandidatePrefilterEnabled { get; set; } = true;
+    public int VectorCandidateMultiplier { get; set; } = 12;
+    public int VectorCandidateMinimum { get; set; } = 100;
+    public int VectorCandidateMaximum { get; set; } = 400;
+    public int VectorPrefilterFullScanFallbackCandidateCount { get; set; } = 24;
     public bool QueryTimingTelemetryEnabled { get; set; }
     public int QueryTimingLogInterval { get; set; } = 100;
     public int QueryTimingSlowThresholdMilliseconds { get; set; } = 500;
     public int MaxFileBytes { get; set; } = 512 * 1024;
     public int MaxChunkCharacters { get; set; } = 4000;
-    public int MaxResults { get; set; } = 10;
+    public int MaxResults { get; set; } = 100;
+    public int MaxResultsPerDocument { get; set; } = 2;
+    public double HybridVectorWeight { get; set; } = 0.75;
+    public double HybridLexicalWeight { get; set; } = 0.25;
+    public double ZeroLexicalEvidencePenalty { get; set; } = 0.72;
+    public double LexicalScoreSaturation { get; set; } = 4.0;
+    public double LexicalFrequencyBonusScale { get; set; } = 0.1;
+    public double MaxLexicalFrequencyBonusPerToken { get; set; } = 0.35;
+    public double MinTokenCoverageWeight { get; set; } = 0.65;
+    public double MaxTokenCoverageWeight { get; set; } = 1.15;
 }
 
 public class GovernanceOptions
@@ -265,6 +325,7 @@ public class McpOptions
 {
     public List<string> EnabledTools { get; set; } = [];
     public List<string> DisabledTools { get; set; } = [];
+    public int MaxToolResponseCharacters { get; set; } = 12000;
 }
 
 public class ChatOptions
@@ -273,7 +334,7 @@ public class ChatOptions
     public string DefaultModelProfileId { get; set; } = string.Empty;
     public List<ChatModelProfileOptions> ModelProfiles { get; set; } = [];
     public string OllamaEndpoint { get; set; } = "http://localhost:11434";
-    public string OllamaModel { get; set; } = "gemma4:e4b";
+    public string OllamaModel { get; set; } = string.Empty;
     public int? OllamaContextWindowTokens { get; set; }
     public string GitHubModel { get; set; } = "gpt-4.1";
     public string? GitHubCliPath { get; set; }
@@ -302,6 +363,7 @@ public class ChatOptions
     public int MaxAttachmentCharacters { get; set; } = 120000;
     public long MaxAttachmentBytes { get; set; } = 8 * 1024 * 1024;
     public int AttachmentTempFileRetentionHours { get; set; } = 24;
+    public bool ClipboardFetchExternalImagesEnabled { get; set; }
     public bool ToolCallsEnabled { get; set; } = true;
     public int MaxToolIterations { get; set; } = 2;
     public int MaxToolCallsPerTurn { get; set; } = 3;
@@ -369,7 +431,7 @@ public class MaintenanceAgentOptions
     public string OllamaEndpoint { get; set; } = "http://localhost:11434";
 
     [JsonPropertyName("model")]
-    public string Model { get; set; } = "gemma4:e4b";
+    public string Model { get; set; } = string.Empty;
 
     public string? ModelProfileId { get; set; }
 

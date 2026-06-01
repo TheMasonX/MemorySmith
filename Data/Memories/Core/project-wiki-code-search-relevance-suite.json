@@ -1,0 +1,34 @@
+{
+  "Id": "project-wiki-code-search-relevance-suite",
+  "Title": "Code Search Relevance And Performance Suite",
+  "Content": "MemorySmith code search now enforces quality and performance guardrails beyond single-query tuning. The ranking path in CodeSearchService uses synonym-aware token expansion, hybrid vector and lexical reranking, and a no-lexical-evidence penalty to reduce false semantic positives. Results are diversified with MaxResultsPerDocument so one file cannot flood top-k. The automated suite now includes focused regressions in CodeSearchServiceTests for screwdriver and multi-query scorecard checks, plus benchmark smoke outputs that report top-hit spotchecks and warm-query latency averages. This provides a stable operator-facing quality contract while preserving sub-millisecond warm-query performance on the benchmark fixture.",
+  "Status": 2,
+  "Confidence": 0.89,
+  "Tags": [
+    "project-wiki",
+    "search",
+    "semantic-search",
+    "hybrid-search",
+    "benchmarks",
+    "tests",
+    "current-state",
+    "kind:fact",
+    "audience:developer",
+    "audience:agent",
+    "scope:code-search"
+  ],
+  "References": [
+    "project-wiki-search-roadmap",
+    "project-wiki-semantic-tool-quality-suite",
+    "project-wiki-onnx-semantic-embeddings",
+    "project-wiki-hybrid-search-rrf"
+  ],
+  "Conflicts": [],
+  "SourceLinks": [
+    { "Label": "CodeSearchService.cs", "Uri": "%MemorySmithRepo%MemorySmith.App/Services/CodeSearchService.cs" },
+    { "Label": "CodeSearchServiceTests.cs", "Uri": "%MemorySmithRepo%MemorySmith.Tests/CodeSearchServiceTests.cs" },
+    { "Label": "CodeSearchBenchmarks.cs", "Uri": "%MemorySmithRepo%MemorySmith.Benchmarks/CodeSearchBenchmarks.cs" }
+  ],
+  "UsageCount": 0,
+  "LastUpdated": "2026-05-29T02:50:00Z"
+}

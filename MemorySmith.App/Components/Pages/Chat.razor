@@ -5,6 +5,7 @@
 @using System.Text.Json
 @using System.Text.Json.Nodes
 @using MemorySmith.Core.Models
+@using MemorySmith.App.Services.Training
 @using Microsoft.Extensions.Options
 @inject IChatAgent ChatAgent
 @inject ChatToolCatalog ToolCatalog
@@ -20,6 +21,7 @@
 @inject IDialogService Dialogs
 @inject ILogger<Chat> Logger
 @inject MaintenanceProposalWorkflow ProposalWorkflow
+@inject IChatFeedbackStore FeedbackStore
 
 <PageTitle>Chat - MemorySmith</PageTitle>
 <NavigationLock ConfirmExternalNavigation="@HasPendingDraft" OnBeforeInternalNavigation="ConfirmInternalNavigation" />
@@ -117,6 +119,29 @@
                                 }
                                 <span>@turn.CreatedUtc.ToLocalTime().ToString("HH:mm")@if (turn.DurationMilliseconds is not null) { <span> · @FormatDuration(TimeSpan.FromMilliseconds(turn.DurationMilliseconds.Value))</span> }</span>
                             </span>
+                            @if (FeedbackEnabled && string.Equals(turn.Role, "assistant", StringComparison.OrdinalIgnoreCase))
+                            {
+                                <span class="chat-message-feedback">
+                                    <MudTooltip Text="Helpful response">
+                                        <MudIconButton Icon="@Icons.Material.Filled.ThumbUp"
+                                                       Size="Size.Small"
+                                                       Color="@FeedbackButtonColor(turn, 1)"
+                                                       Disabled="@_isSending"
+                                                       OnClick="@(() => SetFeedbackAsync(turn, 1))"
+                                                       aria-label="Thumbs up"
+                                                       title="Thumbs up" />
+                                    </MudTooltip>
+                                    <MudTooltip Text="Needs improvement">
+                                        <MudIconButton Icon="@Icons.Material.Filled.ThumbDown"
+                                                       Size="Size.Small"
+                                                       Color="@FeedbackButtonColor(turn, -1)"
+                                                       Disabled="@_isSending"
+                                                       OnClick="@(() => SetFeedbackAsync(turn, -1))"
+                                                       aria-label="Thumbs down"
+                                                       title="Thumbs down" />
+                                    </MudTooltip>
+                                </span>
+                            }
                         </div>
                         @if (!string.IsNullOrWhiteSpace(turn.Thinking))
                         {
@@ -434,6 +459,7 @@
 
 @code {
     private const string ChatStorageKey = "memorysmith.chat.sessions.v1";
+    private const string ChatDraftStorageKey = "memorysmith.chat.active-draft.v1";
     private const string ChatPreferencesStorageKey = "memorysmith.chat.preferences.v1";
     private const string MermaidThemeAuto = "auto";
     private const string MermaidThemeLight = "light";
@@ -449,6 +475,9 @@
     private const int MaxStoredAttachmentTextCharacters = 6000;
     private const int MaxStoredAttachmentImageCharacters = 12000;
     private const int NarrowChatViewportWidth = 640;
+    private const int MaxTurnRenderCacheEntries = 512;
+    private static readonly TimeSpan StreamRenderInterval = TimeSpan.FromMilliseconds(150);
+    private static readonly TimeSpan DraftPersistDebounce = TimeSpan.FromMilliseconds(800);
     private static readonly JsonSerializerOptions StorageJsonOptions = new(JsonSerializerDefaults.Web)
     {
         PropertyNameCaseInsensitive = true
@@ -492,11 +521,13 @@
     private string? _selectedTraceTurnId;
     private CancellationTokenSource? _responseTimerCts;
     private CancellationTokenSource? _sendCts;
+    private CancellationTokenSource? _draftPersistCts;
     private ChatRunControl? _activeRunControl;
     private DateTimeOffset? _responseStartedUtc;
     private TimeSpan _responseElapsed = TimeSpan.Zero;
     private int _streamedCharacters;
     private ChatUsageSummary? _currentUsage;
+    private readonly Dictionary<string, MarkupString> _turnRenderCache = new(StringComparer.Ordinal);
 
     private ChatSessionState ActiveSession =>
         _sessions.FirstOrDefault(session => session.Id == _activeSessionId) ?? _sessions.First();
@@ -510,6 +541,7 @@
     private bool HasDefaultModelProfile => DefaultModelProfile is not null;
     private bool CanSelectModelProfile => HasDefaultModelProfile && _modelProfiles.Count > 0 && !_isSending;
     private bool CanSendChat => !_isSending && HasDefaultModelProfile && SelectedModelProfile is not null && !string.IsNullOrWhiteSpace(_selectedModel);
+    private bool FeedbackEnabled => Options.CurrentValue.Training.FeedbackEnabled;
     private string? ModelSetupMessage => HasDefaultModelProfile ? null : "Chat is disabled until an Admin defines an enabled default model profile.";
     private ChatTurnState? SelectedTraceTurn =>
         ActiveSession.Turns.FirstOrDefault(turn => string.Equals(turn.Id, _selectedTraceTurnId, StringComparison.Ordinal))
@@ -551,7 +583,7 @@
         if (firstRender)
         {
             _dotNetRef = DotNetObjectReference.Create(this);
-            await TryInvokeVoidAsync("memorySmith.chat.registerComposer", _composerInput, _dotNetRef, _sendOnEnter);
+            await TryInvokeVoidAsync("memorySmith.chat.registerComposer", _composerInput, _dotNetRef, _sendOnEnter, Options.CurrentValue.Chat.ClipboardFetchExternalImagesEnabled);
             _composerRegistered = true;
             await LoadPreferencesAsync();
             await CollapseSidebarOnNarrowViewportAsync();
@@ -567,7 +599,12 @@
             await TryInvokeVoidAsync("memorySmith.chat.scrollToBottom", _tracePanelList);
         }
 
-        await TryInvokeVoidAsync("memorySmith.markdown.renderEnhancements", _transcriptPane, new { skipMermaid = _isSending });
+        await TryInvokeVoidAsync("memorySmith.markdown.renderEnhancements", _transcriptPane, new
+        {
+            skipMermaid = _isSending,
+            mermaidEnabled = Options.CurrentValue.Markdown.MermaidEnabled,
+            mermaidRestrictionMode = Options.CurrentValue.Markdown.MermaidRestrictionMode
+        });
     }
 
     private async Task TryInvokeVoidAsync(string identifier, params object?[] args)
@@ -660,6 +697,7 @@
         }
 
         _hasLoadedSessions = true;
+        await RestoreActiveDraftSnapshotAsync();
         await SaveSessionsAsync();
         await SavePreferencesAsync();
     }
@@ -1204,7 +1242,65 @@
     {
         _draft = args.Value?.ToString() ?? string.Empty;
         PersistActiveDraft();
-        await SaveSessionsAsync();
+        QueueDraftPersist();
+    }
+
+    private void QueueDraftPersist()
+    {
+        _draftPersistCts?.Cancel();
+        _draftPersistCts?.Dispose();
+        _draftPersistCts = new CancellationTokenSource();
+        _ = PersistDraftAfterDelayAsync(_draftPersistCts.Token);
+    }
+
+    private async Task PersistDraftAfterDelayAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await Task.Delay(DraftPersistDebounce, cancellationToken);
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+
+            await InvokeAsync(SaveActiveDraftSnapshotAsync);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private async Task SaveActiveDraftSnapshotAsync()
+    {
+        if (!_hasLoadedSessions)
+        {
+            return;
+        }
+
+        PersistActiveDraft();
+        var snapshot = new ChatDraftState
+        {
+            ActiveSessionId = _activeSessionId,
+            Draft = TrimForStorage(_draft, MaxStoredTurnCharacters),
+            PendingAttachments = _attachments.Select(TrimAttachmentForStorage).ToList()
+        };
+
+        await JS.InvokeVoidAsync("memorySmith.storage.setJson", ChatDraftStorageKey, snapshot);
+    }
+
+    private async Task RestoreActiveDraftSnapshotAsync()
+    {
+        var snapshot = await LoadStorageJsonAsync<ChatDraftState>(ChatDraftStorageKey, warnOnFailure: false);
+        if (snapshot is null || string.IsNullOrWhiteSpace(snapshot.ActiveSessionId) ||
+            !string.Equals(snapshot.ActiveSessionId, _activeSessionId, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        _draft = snapshot.Draft ?? string.Empty;
+        _attachments.Clear();
+        _attachments.AddRange(snapshot.PendingAttachments ?? []);
+        PersistActiveDraft();
     }
 
     private async Task OnResponseCommentInput(ChatTurnState turn, ChangeEventArgs args)
@@ -1295,11 +1391,12 @@
         _sendCts = sendCts;
         var runControl = new ChatRunControl();
         _activeRunControl = runControl;
+        var lastRenderUtc = DateTimeOffset.MinValue;
 
         try
         {
             MemoryChatResponse? finalResponse = null;
-            await foreach (var update in ChatAgent.StreamAsync(new MemoryChatRequest(message, _mode, historyForRequest, requestModel, attachments, requestProvider, runControl, RequireAgentWriteApproval: _mode == MemoryChatMode.Agent), sendCts.Token))
+            await foreach (var update in ChatAgent.StreamAsync(new MemoryChatRequest(message, _mode, historyForRequest, requestModel, attachments, requestProvider, runControl, RequireAgentWriteApproval: _mode == MemoryChatMode.Agent, SessionId: session.Id), sendCts.Token))
             {
                 var turnChanged = false;
                 if (!string.IsNullOrEmpty(update.Status))
@@ -1350,8 +1447,14 @@
                     FinalizeActiveTraceEntries(pendingTurn);
                 }
 
-                _scrollPending = true;
-                await InvokeAsync(StateHasChanged);
+                var now = DateTimeOffset.UtcNow;
+                if (now - lastRenderUtc >= StreamRenderInterval || update.Response is not null)
+                {
+                    _scrollPending = true;
+                    await InvokeAsync(StateHasChanged);
+                    lastRenderUtc = now;
+                }
+
                 if (turnChanged && DateTimeOffset.UtcNow - lastStreamPersistUtc >= TimeSpan.FromSeconds(2))
                 {
                     session.UpdatedUtc = DateTimeOffset.UtcNow;
@@ -1362,6 +1465,10 @@
 
             var response = finalResponse ?? throw new InvalidOperationException("The provider stream completed without a final response.");
             pendingTurn.Role = "assistant";
+            if (!string.IsNullOrWhiteSpace(response.TurnId))
+            {
+                pendingTurn.Id = response.TurnId;
+            }
             pendingTurn.Content = response.Reply;
             pendingTurn.Thinking = response.Thinking;
             pendingTurn.ThinkingActive = false;
@@ -1511,6 +1618,41 @@
         }
 
         return InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SetFeedbackAsync(ChatTurnState turn, int rating)
+    {
+        if (!FeedbackEnabled || string.IsNullOrWhiteSpace(turn.Id))
+        {
+            return;
+        }
+
+        var feedbackRating = rating > 0 ? FeedbackRating.ThumbsUp : FeedbackRating.ThumbsDown;
+        var principalId = string.IsNullOrWhiteSpace(CurrentUser.UserId) ? "anonymous" : CurrentUser.UserId!;
+        var sessionId = string.IsNullOrWhiteSpace(ActiveSession.Id) ? "session-unknown" : ActiveSession.Id;
+
+        try
+        {
+            var saved = await FeedbackStore.UpsertAsync(turn.Id, sessionId, principalId, feedbackRating, null, CancellationToken.None);
+            turn.FeedbackRating = (int)saved.Rating;
+            Snackbar.Add(saved.Rating == FeedbackRating.ThumbsUp ? "Marked helpful" : "Marked needs improvement", Severity.Success);
+            await SaveSessionsAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to persist chat feedback for turn {TurnId}", turn.Id);
+            Snackbar.Add("Could not save feedback.", Severity.Warning);
+        }
+    }
+
+    private Color FeedbackButtonColor(ChatTurnState turn, int rating)
+    {
+        if (turn.FeedbackRating == rating)
+        {
+            return rating > 0 ? Color.Success : Color.Error;
+        }
+
+        return Color.Default;
     }
 
     private async Task ApproveAllWritesAsync(string turnId)
@@ -2001,6 +2143,8 @@
 
     private async Task SaveSessionsAsync()
     {
+        _draftPersistCts?.Cancel();
+
         if (!_hasLoadedSessions)
         {
             return;
@@ -2329,7 +2473,31 @@
 
     private static string LineageValue(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value.Trim();
 
-    private static MarkupString RenderTurnContent(ChatTurnState turn)
+    private MarkupString RenderTurnContent(ChatTurnState turn)
+    {
+        var isStreamingTurn = _isSending && ReferenceEquals(turn, ActiveSession.Turns.LastOrDefault());
+        if (!isStreamingTurn)
+        {
+            var cacheKey = $"{turn.Id}\n{turn.Content}";
+            if (_turnRenderCache.TryGetValue(cacheKey, out var cached))
+            {
+                return cached;
+            }
+
+            var rendered = RenderTurnContentCore(turn);
+            if (_turnRenderCache.Count >= MaxTurnRenderCacheEntries)
+            {
+                _turnRenderCache.Clear();
+            }
+
+            _turnRenderCache[cacheKey] = rendered;
+            return rendered;
+        }
+
+        return RenderTurnContentCore(turn);
+    }
+
+    private static MarkupString RenderTurnContentCore(ChatTurnState turn)
     {
         var html = ChatMarkdownRenderer.RenderHtml(turn.Content);
         var allowedPages = BuildPageAliasMap(turn).Values
@@ -2877,6 +3045,9 @@
         _sendCts?.Cancel();
         _sendCts?.Dispose();
         _sendCts = null;
+        _draftPersistCts?.Cancel();
+        _draftPersistCts?.Dispose();
+        _draftPersistCts = null;
         StopResponseTimer();
         if (_composerRegistered)
         {
@@ -2900,6 +3071,13 @@
         public string Mode { get; set; } = string.Empty;
         public string MermaidThemeMode { get; set; } = MermaidThemeAuto;
         public string? ActiveSessionId { get; set; }
+    }
+
+    private sealed class ChatDraftState
+    {
+        public string ActiveSessionId { get; set; } = string.Empty;
+        public string Draft { get; set; } = string.Empty;
+        public List<ChatAttachment> PendingAttachments { get; set; } = [];
     }
 
     private enum ChatSidebarTab
@@ -2967,6 +3145,7 @@
         public ChatUsageSummary? Usage { get; set; }
         public long? DurationMilliseconds { get; set; }
         public bool ThinkingActive { get; set; }
+        public int FeedbackRating { get; set; }
     }
 
     private sealed class ChatTraceEntryState

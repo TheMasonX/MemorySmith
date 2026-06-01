@@ -1,0 +1,31 @@
+﻿{
+  "id": "tsk-0254-collapse-all-page-folders",
+  "key": "TSK-0254",
+  "title": "Collapse All Page Folders",
+  "description": "3-way toggle to set/save the all/some/none folder expansions in the pages screen in tree view as part of the header",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-30T23:50:01.8699051Z",
+  "updatedAtUtc": "2026-05-30T23:50:01.8699051Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

@@ -15,7 +15,8 @@
     "ui",
     "navigation",
     "tooltips",
-    "audit-vetted"
+    "audit-vetted",
+    "chat"
   ],
   "attachments": [],
   "externalLinks": [],
@@ -27,22 +28,22 @@
       "id": "c-0118-1",
       "author": "AgentSmith",
       "body": "Created from 2026-05-25 live browser audit: the app-shell menu MudIconButton was unnamed and had no tooltip on every primary route checked.",
-      "createdAtUtc": "2026-05-25T00:00:00.0000000Z"
+      "createdAtUtc": "2026-05-25T00:00:00Z"
     },
     {
       "id": "c-0118-2",
       "author": "AgentSmith",
       "body": "Implemented by adding a stable `Toggle primary navigation` accessible name and title to the app-shell menu button in `MainLayout.razor`, plus route-smoke coverage that asserts the named button and title on the core smoke routes. Validation: `dotnet build .\\MemorySmith.App\\MemorySmith.App.csproj --nologo` succeeded, and `MEMORYSMITH_BASE_URL=http://127.0.0.1:5099 npm run test:route-smoke` passed 5/5 against a Development local server on 2026-05-25.",
-      "createdAtUtc": "2026-05-25T06:34:00.0000000Z"
+      "createdAtUtc": "2026-05-25T06:34:00Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
-  "createdAtUtc": "2026-05-25T00:00:00.0000000Z",
-  "updatedAtUtc": "2026-05-25T06:34:00.0000000Z",
-  "completedAtUtc": "2026-05-25T06:34:00.0000000Z",
-  "revision": 2,
+  "createdAtUtc": "2026-05-25T00:00:00Z",
+  "updatedAtUtc": "2026-05-30T22:40:56.4756178Z",
+  "completedAtUtc": "2026-05-25T06:34:00Z",
+  "revision": 3,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

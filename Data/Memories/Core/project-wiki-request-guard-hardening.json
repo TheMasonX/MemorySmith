@@ -1,6 +1,6 @@
 {
   "Id": "project-wiki-request-guard-hardening",
-  "Content": "MemorySmith has request guard middleware at startup. When MemorySmith:AllowRemoteApi is false, non-loopback callers are rejected before reaching controllers. When MemorySmith:AllowRemoteApi is true, non-loopback /api and /mcp requests are still blocked until MemorySmith:ApiKey is configured; loopback local development remains frictionless with a null ApiKey. When MemorySmith:ApiKey is configured, /api and /mcp requests must include X-Api-Key with a matching value. The API key compatibility path can satisfy non-admin API/MCP policies, but admin, user-management, settings, audit, diagnostics, and restore policies require a signed-in Admin user. Config-derived anonymous/default roles are clamped below Admin, and OpenLocalEditorCompatibility only grants pre-setup loopback compatibility for non-admin operations. Audit follow-up (2026-05-23): request-guard + profile settings alone were not sufficient to guarantee task-read confidentiality. Phase-1 hardening now enforces explicit CanViewMemorySmith authorization on task read APIs, with contract tests covering anonymous-disabled behavior.",
+  "Content": "MemorySmith has request guard middleware at startup. When MemorySmith:AllowRemoteApi is false, non-loopback callers are rejected before reaching controllers. When MemorySmith:AllowRemoteApi is true, non-loopback /api and /mcp requests are still blocked until MemorySmith:ApiKey is configured; loopback local development remains frictionless with a null ApiKey. When MemorySmith:ApiKey is configured, /api and /mcp requests must include X-Api-Key with a matching value. The API key compatibility path can satisfy non-admin API/MCP policies, but admin, user-management, settings, audit, diagnostics, and restore policies require a signed-in Admin user. Config-derived anonymous/default roles are clamped below Admin, and OpenLocalEditorCompatibility only grants pre-setup loopback compatibility for non-admin operations. Audit follow-up (2026-05-23): request-guard + profile settings alone were not sufficient to guarantee task-read confidentiality. Phase-1 hardening now enforces explicit CanViewMemorySmith authorization on task read APIs, with contract tests covering anonymous-disabled behavior. Validation follow-up (2026-05-29): integration and API contract test hosts must explicitly pin `MemorySmith:ApiKey` to an empty value when they are not intentionally covering shared-key behavior, otherwise machine-local configuration can leak into `WebApplicationFactory` setup and produce false `401 Unauthorized` failures across broad slices such as `AppApiContractTests`.",
   "Title": "Request Guard and Optional API Key Enforcement",
   "Status": 2,
   "Confidence": 0.96,
@@ -34,8 +34,14 @@
       "Uri": "%MemorySmithRepo%MemorySmith.Tests/SecurityAndSourceLinkTests.cs",
       "StartLine": null,
       "EndLine": null
+    },
+    {
+      "Label": "App API contract harness",
+      "Uri": "%MemorySmithRepo%MemorySmith.Tests/AppApiContractTests.cs",
+      "StartLine": null,
+      "EndLine": null
     }
   ],
   "UsageCount": 0,
-  "LastUpdated": "2026-05-26T11:06:44.7844146Z"
+  "LastUpdated": "2026-05-29T12:05:00Z"
 }

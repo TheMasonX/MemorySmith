@@ -1,0 +1,44 @@
+{
+  "id": "tsk-0226-add-mcp-proposal-workflow-tools",
+  "key": "TSK-0226",
+  "title": "Add MCP proposal workflow tools",
+  "description": "Problem: proposals are a first-class MemorySmith surface (`/proposals`, maintenance proposal workflow, chat write proposal routing), but the MCP contract does not expose proposal list/get/approve/reject operations. External MCP clients therefore cannot participate cleanly in the same governance loop and must fall back to handwritten notes or UI-specific steps.\n\nDesired outcome: expose a bounded, policy-aware MCP proposal surface for proposal discovery and human-governed action workflows.\n\nScope:\n- In scope: design and implement MCP tools such as `memorysmith_proposal_list`, `memorysmith_proposal_get`, `memorysmith_proposal_approve`, and `memorysmith_proposal_reject` or equivalent naming.\n- In scope: align tool permissions with existing proposal workflow roles and preserve audit/history behavior.\n- In scope: update docs/prompts/tests for the new proposal tools.\n- Out of scope: redesigning the underlying maintenance proposal schema or approval model beyond MCP exposure needs.\n\nValidation:\n- Focused MCP workflow tests for proposal listing, detail retrieval, and gated actions.\n- Docs/prompts updated to reflect the supported proposal tool surface.\n\nConfidence target: 88%.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": null,
+  "reporter": "AgentSmith",
+  "labels": [
+    "mcp",
+    "proposals",
+    "governance",
+    "workflow",
+    "chat"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "requests/mcp-tool-surface-recommendations-20260529"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0226-20260529",
+      "author": "AgentSmith",
+      "body": "Created from MCP surface review because `/proposals` is a first-class workflow but the external MCP catalog has no proposal list/get/action tools.",
+      "createdAtUtc": "2026-05-29T19:25:00Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-29T19:25:00Z",
+  "updatedAtUtc": "2026-05-30T22:40:56.5290275Z",
+  "completedAtUtc": null,
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

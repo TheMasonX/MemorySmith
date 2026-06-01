@@ -1,0 +1,49 @@
+{
+  "id": "tsk-0229-throttle-chat-streaming-renders-and-cache-markdown-turn-output",
+  "key": "TSK-0229",
+  "title": "Throttle chat streaming renders and cache markdown turn output",
+  "description": "Vetted from Audit #7 findings 1.1 and 1.2. Chat rendering currently calls StateHasChanged per streaming delta and re-renders markdown for all turns each cycle. Implement throttled render ticks (target 4-8Hz), delta buffering, and per-turn rendered markdown caching keyed by stable turn identity/hash. Include regression tests and a measurable render-latency improvement target.",
+  "type": "Task",
+  "status": "Done",
+  "priority": "Critical",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "AgentSmith",
+  "labels": [
+    "chat",
+    "performance",
+    "streaming",
+    "sprint-20260530-a"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "audits/chat-training-audit-7-20260530"
+  ],
+  "comments": [
+    {
+      "author": "AgentSmith",
+      "id": "c-create-tsk-0229-20260530",
+      "createdAtUtc": "2026-05-30T22:21:20.9043446Z",
+      "body": "Created from vetted findings in Data/Pages/move-to-audit.md after direct code checks across Chat.razor, ChatServices.cs, ChatToolCatalog.cs, McpController.cs, and training harness files."
+    },
+    {
+      "author": "AgentSmith",
+      "id": "c-0229-2-20260531",
+      "createdAtUtc": "2026-05-31T06:14:14.4445878Z",
+      "body": "Completed render-throttle and markdown-cache contract with focused regression coverage. Evidence: Chat.razor enforces StreamRenderInterval=150ms and bounded non-streaming turn render cache; tests added in MemorySmith.Tests/PagesAndChatTests.cs (ChatRazor_DefinesStreamingRenderThrottleInterval, ChatRazor_RenderTurnContent_UsesBoundedCacheWithStreamingBypass). Validation: dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj -c Release --filter \"Name~ChatRazor_DefinesStreamingRenderThrottleInterval|Name~ChatRazor_RenderTurnContent_UsesBoundedCacheWithStreamingBypass\"."
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-30T22:21:20.9043446Z",
+  "updatedAtUtc": "2026-05-31T06:14:14.4445878Z",
+  "completedAtUtc": "2026-05-31T06:14:14.4445878Z",
+  "revision": 3,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

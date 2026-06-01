@@ -1,5 +1,6 @@
 @page "/health"
 @rendermode InteractiveServer
+@inject IJSRuntime JS
 @inject MemoryApplicationService Memories
 @inject IMemoryChangePublisher Publisher
 @inject OperationalDiagnosticsService Diagnostics
@@ -268,6 +269,12 @@
         await RefreshAsync();
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Restore the head title after interactive hydration; /health intermittently loses it.
+        await SafeJsInterop.TryInvokeVoidAsync(JS, "memorySmith.setDocumentTitle", "Health - MemorySmith");
+    }
+
     private async Task RefreshAsync()
     {
         try
@@ -324,7 +331,7 @@
     private static string FormatTagPolicyStatus(TagPolicyLoadStatus status) =>
         status.LoadedFromFile ? $"Loaded / {status.Path}" : $"Fallback ({status.Reason}) / {status.Path}";
 
-    private static string FormatChatProvider(ChatOptions chat) =>
+    private static string FormatChatProvider(OperationalDiagnosticsChatConfiguration chat) =>
         $"{chat.Provider} / Ollama:{chat.OllamaModel} / GitHub:{chat.GitHubModel} / {chat.SystemPromptPath}";
 
     private static string FormatSemanticSearch(SemanticSearchOptions semanticSearch, EmbeddingProviderStatus status) =>
@@ -337,7 +344,7 @@
     private static string FormatExecutionProvider(string provider, string? device) =>
         string.IsNullOrWhiteSpace(device) ? provider : $"{provider} ({device})";
 
-    private static string FormatTelemetryExport(TelemetryOptions telemetry)
+    private static string FormatTelemetryExport(OperationalDiagnosticsTelemetryConfiguration telemetry)
     {
         if (!telemetry.ExporterEnabled)
         {

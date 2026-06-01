@@ -30,8 +30,57 @@ public sealed record EffectiveMemorySmithConfiguration(
     LimitOptions Limits,
     SourceLinkOptions SourceLinks,
     SemanticSearchOptions SemanticSearch,
-    ChatOptions Chat,
-    TelemetryOptions Telemetry);
+    OperationalDiagnosticsChatConfiguration Chat,
+    OperationalDiagnosticsTelemetryConfiguration Telemetry);
+
+public sealed record OperationalDiagnosticsChatConfiguration(
+    string Provider,
+    string DefaultModelProfileId,
+    IReadOnlyList<ChatModelProfileOptions> ModelProfiles,
+    string OllamaEndpoint,
+    string OllamaModel,
+    int? OllamaContextWindowTokens,
+    string GitHubModel,
+    string GitHubCliPath,
+    string GitHubCliUrl,
+    string GitHubTokenEnvironmentVariable,
+    IReadOnlyList<ChatModelOption> GitHubModels,
+    string SystemPromptPath,
+    int RequestTimeoutSeconds,
+    int MaxContextRecords,
+    int MaxContextPages,
+    bool PreloadContextEnabled,
+    int MaxPreloadedContextRecords,
+    int MaxPreloadedContextPages,
+    int MaxContextItemCharacters,
+    int MaxHistoryMessages,
+    int MaxAttachmentCharacters,
+    long MaxAttachmentBytes,
+    int AttachmentTempFileRetentionHours,
+    bool ClipboardFetchExternalImagesEnabled,
+    bool ToolCallsEnabled,
+    int MaxToolIterations,
+    int MaxToolCallsPerTurn,
+    int MaxToolResultCharacters,
+    bool AgentWritesEnabled,
+    string AgentWriteApprovalMode,
+    IReadOnlyList<string> AgentWriteRoots);
+
+public sealed record OperationalDiagnosticsTelemetryConfiguration(
+    bool Enabled,
+    string ServiceName,
+    bool TracingEnabled,
+    bool MetricsEnabled,
+    bool InstrumentMemoryOperations,
+    bool AspNetCoreInstrumentationEnabled,
+    bool HttpClientInstrumentationEnabled,
+    bool RuntimeInstrumentationEnabled,
+    bool RecordExceptions,
+    int TraceSamplingPercentage,
+    bool ExporterEnabled,
+    string OtlpEndpoint,
+    string OtlpProtocol,
+    IReadOnlyList<string> ExcludedRequestPathPrefixes);
 
 public sealed record StoragePathStatus(
     string Name,
@@ -49,6 +98,8 @@ public sealed record OperationalWarning(string Code, string Severity, string Mes
 
 public class OperationalDiagnosticsService
 {
+    private const string RedactedConfiguredValue = "[redacted-configured]";
+
     private readonly IOptions<MemorySmithOptions> _options;
     private readonly StorageDiagnostics _storageDiagnostics;
     private readonly ITextEmbeddingProvider _embeddingProvider;
@@ -113,8 +164,8 @@ public class OperationalDiagnosticsService
                 settings.Limits,
                 sourceLinks,
                 settings.SemanticSearch,
-                settings.Chat,
-                settings.Telemetry),
+                RedactChatOptions(settings.Chat),
+                RedactTelemetryOptions(settings.Telemetry)),
             [
                 GetDirectoryStatus("Memory data", dataPath, "*.json"),
                 GetDirectoryStatus("Pages", pagesPath, "*.md"),
@@ -152,9 +203,75 @@ public class OperationalDiagnosticsService
     private string[] GetConfiguredUrls()
     {
         var configured = _configuration["urls"] ?? _configuration["ASPNETCORE_URLS"];
-        return string.IsNullOrWhiteSpace(configured)
+        var urls = string.IsNullOrWhiteSpace(configured)
             ? []
             : configured.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return urls.Select(RedactEndpointLikeValue).ToArray();
+    }
+
+    private static OperationalDiagnosticsChatConfiguration RedactChatOptions(ChatOptions chat)
+    {
+        return new OperationalDiagnosticsChatConfiguration(
+            chat.Provider,
+            chat.DefaultModelProfileId,
+            chat.ModelProfiles.ToList(),
+            RedactEndpointLikeValue(chat.OllamaEndpoint),
+            chat.OllamaModel,
+            chat.OllamaContextWindowTokens,
+            chat.GitHubModel,
+            RedactPathLikeValue(chat.GitHubCliPath),
+            RedactEndpointLikeValue(chat.GitHubCliUrl),
+            chat.GitHubTokenEnvironmentVariable,
+            chat.GitHubModels.ToList(),
+            RedactPathLikeValue(chat.SystemPromptPath),
+            chat.RequestTimeoutSeconds,
+            chat.MaxContextRecords,
+            chat.MaxContextPages,
+            chat.PreloadContextEnabled,
+            chat.MaxPreloadedContextRecords,
+            chat.MaxPreloadedContextPages,
+            chat.MaxContextItemCharacters,
+            chat.MaxHistoryMessages,
+            chat.MaxAttachmentCharacters,
+            chat.MaxAttachmentBytes,
+            chat.AttachmentTempFileRetentionHours,
+            chat.ClipboardFetchExternalImagesEnabled,
+            chat.ToolCallsEnabled,
+            chat.MaxToolIterations,
+            chat.MaxToolCallsPerTurn,
+            chat.MaxToolResultCharacters,
+            chat.AgentWritesEnabled,
+            chat.AgentWriteApprovalMode,
+            chat.AgentWriteRoots.Select(RedactPathLikeValue).ToList());
+    }
+
+    private static OperationalDiagnosticsTelemetryConfiguration RedactTelemetryOptions(TelemetryOptions telemetry)
+    {
+        return new OperationalDiagnosticsTelemetryConfiguration(
+            telemetry.Enabled,
+            telemetry.ServiceName,
+            telemetry.TracingEnabled,
+            telemetry.MetricsEnabled,
+            telemetry.InstrumentMemoryOperations,
+            telemetry.AspNetCoreInstrumentationEnabled,
+            telemetry.HttpClientInstrumentationEnabled,
+            telemetry.RuntimeInstrumentationEnabled,
+            telemetry.RecordExceptions,
+            telemetry.TraceSamplingPercentage,
+            telemetry.ExporterEnabled,
+            RedactEndpointLikeValue(telemetry.OtlpEndpoint),
+            telemetry.OtlpProtocol,
+            telemetry.ExcludedRequestPathPrefixes.ToList());
+    }
+
+    private static string RedactEndpointLikeValue(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? string.Empty : RedactedConfiguredValue;
+    }
+
+    private static string RedactPathLikeValue(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? string.Empty : RedactedConfiguredValue;
     }
 
     private static IReadOnlyList<EndpointInfo> GetEndpoints() =>

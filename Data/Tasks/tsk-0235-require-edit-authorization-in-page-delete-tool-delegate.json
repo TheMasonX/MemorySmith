@@ -1,0 +1,50 @@
+{
+  "id": "tsk-0235-require-edit-authorization-in-page-delete-tool-delegate",
+  "key": "TSK-0235",
+  "title": "Require edit authorization in page delete tool delegate",
+  "description": "Vetted from Audit #7 finding 2.5. memorysmith_page_delete delegate currently checks visibility semantics instead of edit semantics. Align delegate-level authorization with write operation requirements and add focused authorization tests.",
+  "type": "Task",
+  "status": "Done",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "AgentSmith",
+  "labels": [
+    "mcp",
+    "pages",
+    "authz",
+    "sprint-20260530-c",
+    "chat"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "audits/chat-training-audit-7-20260530"
+  ],
+  "comments": [
+    {
+      "author": "AgentSmith",
+      "id": "c-create-tsk-0235-20260530",
+      "createdAtUtc": "2026-05-30T22:21:20.9043446Z",
+      "body": "Created from vetted findings in Data/Pages/move-to-audit.md after direct code checks across Chat.razor, ChatServices.cs, ChatToolCatalog.cs, McpController.cs, and training harness files."
+    },
+    {
+      "author": "AgentSmith",
+      "id": "c-0235-2-20260531",
+      "createdAtUtc": "2026-05-31T00:49:00.0000000Z",
+      "body": "Implemented delegate-level edit authorization for `memorysmith_page_delete` in `MemorySmith.App/Services/ChatToolCatalog.cs`. The delete tool now enforces edit semantics (`CanEditPage` -> `CanSetPageMinimumRole`) instead of visibility semantics (`CanViewPage`) before delete operations. Added focused regression tests in `MemorySmith.Tests/ChatToolCatalogAndInterceptTests.cs`: `PageDeleteTool_RejectsAnonymousCallerEvenForVisiblePage` and `PageDeleteTool_AllowsEditorToDeleteNonAdminPage`. Validation: `dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj -c Release --filter \"Name~PageDeleteTool_RejectsAnonymousCallerEvenForVisiblePage|Name~PageDeleteTool_AllowsEditorToDeleteNonAdminPage|Name~McpSafeDefaults_HideSensitiveAndWriteToolsUntilExplicitlyEnabled|Name~McpToolConfig_HidesAndBlocksDisabledTools\"` (4/4 passed). Live check: `Invoke-WebRequest https://localhost:7090/health -SkipCertificateCheck` returned `200`."
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-30T22:21:20.9043446Z",
+  "updatedAtUtc": "2026-05-31T00:49:00.0000000Z",
+  "completedAtUtc": "2026-05-31T00:49:00.0000000Z",
+  "revision": 3,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

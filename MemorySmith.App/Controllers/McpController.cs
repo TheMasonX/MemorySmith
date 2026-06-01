@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using MemorySmith.App.Services;
@@ -130,29 +131,66 @@ public class McpController : ControllerBase
 
     private async Task<JsonObject> DelegateToCatalogAsync(string toolName, JsonElement argumentsElement, CancellationToken cancellationToken)
     {
+        var started = Stopwatch.GetTimestamp();
         if (!_toolCatalog.TryGet(toolName, out var tool) || !tool.AvailableInMcp)
         {
+            RecordToolExecutionTelemetry(toolName, Stopwatch.GetElapsedTime(started).TotalMilliseconds, success: false);
             return ToolText($"Unknown MemorySmith tool '{toolName}'.", isError: true);
         }
         if (!IsMcpToolEnabled(tool))
         {
+            RecordToolExecutionTelemetry(toolName, Stopwatch.GetElapsedTime(started).TotalMilliseconds, success: false);
             return ToolText($"MemorySmith tool '{toolName}' is disabled by MCP tool configuration.", isError: true);
         }
         if (tool.Risk == ChatToolRisk.SensitiveRead && !await CanReadSourceBundleAsync())
         {
+            RecordToolExecutionTelemetry(toolName, Stopwatch.GetElapsedTime(started).TotalMilliseconds, success: false);
             return ToolText("The caller is not authorized to read source bundles.", isError: true);
         }
         if (tool.Risk == ChatToolRisk.Write && !await CanEditMemorySmithAsync())
         {
+            RecordToolExecutionTelemetry(toolName, Stopwatch.GetElapsedTime(started).TotalMilliseconds, success: false);
             return ToolText("The caller is not authorized to perform write operations.", isError: true);
         }
         var args = argumentsElement.ValueKind == JsonValueKind.Object
             ? JsonNode.Parse(argumentsElement.GetRawText()) as JsonObject ?? new JsonObject()
             : new JsonObject();
         var options = _options.CurrentValue;
-        var ctx = new ChatToolExecutionContext(_memories, _pages, Transport: "mcp", User: User, Auth: options.Auth, DefaultPageMinimumRole: options.Pages.DefaultMinimumRole, Vars: _vars, Tasks: _tasks, CodeSearch: _codeSearch);
+        var ctx = new ChatToolExecutionContext(
+            _memories,
+            _pages,
+            Transport: "mcp",
+            User: User,
+            Auth: options.Auth,
+            DefaultPageMinimumRole: options.Pages.DefaultMinimumRole,
+            Vars: _vars,
+            Tasks: _tasks,
+            CodeSearch: _codeSearch,
+            AgentWritesEnabled: options.Chat.AgentWritesEnabled,
+            AgentWriteAutoAccept: AgentWriteApprovalModes.IsAutoAccept(options.Chat.AgentWriteApprovalMode));
         var result = await tool.Execute(args, ctx, cancellationToken);
-        return ToolText(result.Text, isError: result.IsError);
+        RecordToolExecutionTelemetry(toolName, Stopwatch.GetElapsedTime(started).TotalMilliseconds, !result.IsError);
+
+        var maxToolResponseCharacters = Clamp(options.Mcp.MaxToolResponseCharacters, 256, 200000, 12000);
+        var originalCharacters = result.Text.Length;
+        var truncatedText = Truncate(result.Text, maxToolResponseCharacters);
+
+        return ToolText(
+            truncatedText,
+            isError: result.IsError,
+            originalCharacters: originalCharacters,
+            maxCharacters: maxToolResponseCharacters);
+    }
+
+    private void RecordToolExecutionTelemetry(string toolName, double elapsedMs, bool success)
+    {
+        var telemetry = _options.CurrentValue.Telemetry;
+        if (!telemetry.Enabled || !telemetry.MetricsEnabled || !telemetry.InstrumentMemoryOperations)
+        {
+            return;
+        }
+
+        MemorySmithTelemetry.RecordToolExecution("mcp", toolName, elapsedMs, success);
     }
 
     private bool IsMcpToolEnabled(ChatToolDescriptor tool)
@@ -172,7 +210,9 @@ public class McpController : ControllerBase
     }
 
     private static bool ContainsTool(IEnumerable<string> configuredTools, string toolName) =>
-        configuredTools.Any(configured => string.Equals(configured, toolName, StringComparison.OrdinalIgnoreCase));
+        configuredTools.Any(configured =>
+            string.Equals(configured, "*", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(configured, toolName, StringComparison.OrdinalIgnoreCase));
 
     private async Task<bool> CanReadSourceBundleAsync() =>
         (await _authorization.AuthorizeAsync(User, null, MemorySmithPolicies.CanReadSourceBundle)).Succeeded;
@@ -213,18 +253,37 @@ public class McpController : ControllerBase
         ["inputSchema"] = inputSchema
     };
 
-    private static JsonObject ToolText(string text, bool isError = false) => new()
+    private static JsonObject ToolText(string text, bool isError = false, int? originalCharacters = null, int? maxCharacters = null)
     {
-        ["content"] = new JsonArray
+        var response = new JsonObject
         {
-            new JsonObject
+            ["content"] = new JsonArray
             {
-                ["type"] = "text",
-                ["text"] = text
-            }
-        },
-        ["isError"] = isError
-    };
+                new JsonObject
+                {
+                    ["type"] = "text",
+                    ["text"] = text
+                }
+            },
+            ["isError"] = isError
+        };
+
+        if (originalCharacters.HasValue && maxCharacters.HasValue)
+        {
+            response["meta"] = new JsonObject
+            {
+                ["memorysmith"] = new JsonObject
+                {
+                    ["isTruncated"] = originalCharacters.Value > text.Length,
+                    ["originalCharacters"] = originalCharacters.Value,
+                    ["returnedCharacters"] = text.Length,
+                    ["maxCharacters"] = maxCharacters.Value
+                }
+            };
+        }
+
+        return response;
+    }
 
     private static JsonObject Success(JsonElement idElement, JsonNode? result) => new()
     {
@@ -335,8 +394,20 @@ public class McpController : ControllerBase
         return Enum.TryParse<MemoryStatus>(value, ignoreCase: true, out var status) ? status : null;
     }
 
-    private static string Truncate(string value, int maxLength) =>
-        value.Length <= maxLength ? value : value[..maxLength].TrimEnd() + "...";
+    private static string Truncate(string value, int maxLength)
+    {
+        if (value.Length <= maxLength)
+        {
+            return value;
+        }
+
+        if (maxLength <= 3)
+        {
+            return value[..maxLength];
+        }
+
+        return value[..(maxLength - 3)].TrimEnd() + "...";
+    }
 
     private static string FormatLinks(IReadOnlyList<string> links) =>
         links.Count == 0 ? "none" : string.Join(", ", links);

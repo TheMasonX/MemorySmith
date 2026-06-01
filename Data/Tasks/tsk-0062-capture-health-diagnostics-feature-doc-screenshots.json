@@ -15,7 +15,8 @@
     "screenshots",
     "health",
     "diagnostics",
-    "wiki"
+    "wiki",
+    "chat"
   ],
   "attachments": [],
   "externalLinks": [],
@@ -27,15 +28,15 @@
       "id": "c-create-0062-20260524",
       "author": "AgentSmith",
       "body": "Created to track FEAT-HEALTH screenshot capture and insertion.",
-      "createdAtUtc": "2026-05-24T00:00:00.0000000Z"
+      "createdAtUtc": "2026-05-24T00:00:00Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
-  "createdAtUtc": "2026-05-24T00:00:00.0000000Z",
-  "updatedAtUtc": "2026-05-24T00:00:00.0000000Z",
+  "createdAtUtc": "2026-05-24T00:00:00Z",
+  "updatedAtUtc": "2026-05-30T22:40:56.4534429Z",
   "completedAtUtc": null,
-  "revision": 1,
+  "revision": 2,
   "isArchived": false
 }

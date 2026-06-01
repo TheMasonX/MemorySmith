@@ -1,0 +1,68 @@
+{
+  "id": "tsk-0205-harden-chat-and-markdown-security-toggles-before-training-rollout",
+  "key": "TSK-0205",
+  "title": "Harden chat and markdown security toggles before training rollout",
+  "description": "Address high-risk audit findings by adding configurable controls and defaults for clipboard external fetch behavior, markdown sanitization coverage, mermaid hardening, and CSP baseline.",
+  "type": "Task",
+  "status": "Done",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "AgentSmith",
+  "labels": [
+    "security",
+    "chat",
+    "markdown",
+    "config"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "audits/vector-deepdive-5",
+    "audits/vector-deepdive-5-validation-20260529"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0205-20260528",
+      "author": "AgentSmith",
+      "body": "Created from high-confidence findings in audit #5; intended as precondition hardening before expanded local model training operations.",
+      "createdAtUtc": "2026-05-28T21:43:18.8947975Z"
+    },
+    {
+      "id": "c-0205-2-20260528",
+      "author": "AgentSmith",
+      "body": "Implemented Mermaid hardening controls: default-enabled with configurable disable and restriction modes (standard/restricted/strict), wired through admin settings and markdown render surfaces. Remaining work includes clipboard external-fetch policy and CSP baseline tightening.",
+      "createdAtUtc": "2026-05-28T23:20:00.0000000Z"
+    },
+    {
+      "id": "c-0205-3-20260528",
+      "author": "AgentSmith",
+      "body": "Implemented clipboard external image fetch policy toggle (`MemorySmith:Chat:ClipboardFetchExternalImagesEnabled`) so paste flow no longer fetches HTTP/HTTPS image URLs unless explicitly enabled. Added configurable CSP baseline settings (`MemorySmith:ContentSecurityPolicyEnabled`, `MemorySmith:ContentSecurityPolicy`) and response-header middleware plus API contract test coverage. Remaining scope is markdown sanitization coverage follow-up.",
+      "createdAtUtc": "2026-05-29T00:10:00.0000000Z"
+    },
+    {
+      "id": "c-0205-4-20260529",
+      "author": "AgentSmith",
+      "body": "Completed markdown sanitization coverage and runtime hardening follow-up. Added trusted-mode coverage for single-quoted, unquoted, and `srcset` attribute sanitization paths in `ChatMarkdownRenderer`, including disallowed URI-scheme filtering. Added configurable security headers with defaults and request-pipeline coverage: `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options`, and `Permissions-Policy`, including explicit disabled-path integration tests.",
+      "createdAtUtc": "2026-05-29T00:45:00.0000000Z"
+    },
+    {
+      "id": "c-0205-5-20260529",
+      "author": "AgentSmith",
+      "body": "Audit-family validation note: the original Audit #5 clipboard/CSP/markdown hardening claims are now verified resolved in live code. Evidence checked on 2026-05-29: `ClipboardFetchExternalImagesEnabled` is default-off and admin-exposed, `Program.cs` emits the configured CSP header, and `PagesAndChatTests.cs` covers markdown sanitization for markdown links, single-quoted raw HTML attributes, unquoted trusted-mode attributes, and `srcset`. The surviving follow-up from this audit stream is now diagnostics overexposure, tracked separately in `TSK-0213`.",
+      "createdAtUtc": "2026-05-29T16:05:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-28T21:43:18.8947975Z",
+  "updatedAtUtc": "2026-05-29T16:05:00.0000000Z",
+  "completedAtUtc": "2026-05-29T00:45:00.0000000Z",
+  "revision": 5,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

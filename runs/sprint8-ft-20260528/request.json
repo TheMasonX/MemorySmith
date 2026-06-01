@@ -1,0 +1,23 @@
+{
+  "runId": "sprint8-ft-20260528",
+  "exportPath": "C:\\Users\\norrt\\source\\repos\\MemorySmith\\Data\\Training\\exports",
+  "transcriptDirectory": "C:\\Users\\norrt\\source\\repos\\MemorySmith\\Data\\Events\\chat-transcripts",
+  "format": "FilteredSft",
+  "dependencyProbe": {
+    "python": "3.14.3",
+    "ready": false,
+    "missing": [
+      "torch",
+      "transformers",
+      "datasets",
+      "trl",
+      "peft",
+      "unsloth"
+    ]
+  },
+  "hyperparameters": {
+    "epochs": 3,
+    "learningRate": 0.0002,
+    "sequenceLength": 4096
+  }
+}

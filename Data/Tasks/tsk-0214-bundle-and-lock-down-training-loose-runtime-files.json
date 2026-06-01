@@ -1,0 +1,44 @@
+{
+  "id": "tsk-0214-bundle-and-lock-down-training-loose-runtime-files",
+  "key": "TSK-0214",
+  "title": "Bundle and lock down training loose runtime files",
+  "description": "Problem: the training flow currently depends on loose runtime files (for example `MemorySmith.Training/harness.py`) that are easy to mutate out-of-band and hard to govern across environments. Desired outcome: package training runtime assets into a controlled bundle with integrity checks, explicit allowlisted swap points, and startup/run-time validation so operators can intentionally swap approved bundles without silent drift.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "AgentSmith",
+  "labels": [
+    "training",
+    "security",
+    "packaging",
+    "governance"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "audits/local-finetuning",
+    "guides/local-finetune-harness-runbook"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0214-20260528",
+      "author": "AgentSmith",
+      "body": "Created from operator feedback: keep runtime-swappable behavior, but stop relying on unconstrained loose files for training execution. Track bundling, integrity verification, and explicit swap/governance controls as a dedicated follow-up after current UI and baseline work.",
+      "createdAtUtc": "2026-05-28T23:55:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-28T23:55:00.0000000Z",
+  "updatedAtUtc": "2026-05-28T23:55:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

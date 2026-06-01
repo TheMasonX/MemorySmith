@@ -40,7 +40,8 @@ public class AppApiContractTests
                         ["MemorySmith:Audit:JsonlPath"] = Path.Combine(_tempDir, "Events", "audit-{yyyy}-W{week}.jsonl"),
                         ["MemorySmith:History:RootPath"] = Path.Combine(_tempDir, ".history"),
                         ["MemorySmith:TaskAttachments:StoragePath"] = Path.Combine(_tempDir, "Artifacts", "TaskAttachments"),
-                        ["MemorySmith:Maintenance:Enabled"] = "false"
+                        ["MemorySmith:Maintenance:Enabled"] = "false",
+                        ["MemorySmith:ApiKey"] = string.Empty
                     });
                 });
             });
@@ -74,6 +75,19 @@ public class AppApiContractTests
     }
 
     [Test]
+    public async Task CodeSearchPageRoute_ReturnsSuccessAndContainsHeading()
+    {
+        var response = await _client.GetAsync("/code-search");
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+            Assert.That(body, Does.Contain("Code Search"));
+        });
+    }
+
+    [Test]
     public async Task RequestPipeline_EmitsProblemDetailsTraceIdAndStructuredRequestCorrelation()
     {
         var tempDir = Path.Combine(Path.GetTempPath(), $"memorysmith-request-pipeline-{Guid.NewGuid():N}");
@@ -84,6 +98,16 @@ public class AppApiContractTests
             using var client = factory.CreateClient();
             var normalResponse = await client.GetAsync("/api/health/live");
             normalResponse.EnsureSuccessStatusCode();
+            Assert.That(normalResponse.Headers.TryGetValues("Content-Security-Policy", out var cspHeaders), Is.True);
+            Assert.That(cspHeaders!.Single(), Does.Contain("default-src 'self'"));
+            Assert.That(normalResponse.Headers.TryGetValues("X-Content-Type-Options", out var contentTypeHeaders), Is.True);
+            Assert.That(contentTypeHeaders!.Single(), Is.EqualTo("nosniff"));
+            Assert.That(normalResponse.Headers.TryGetValues("Referrer-Policy", out var referrerHeaders), Is.True);
+            Assert.That(referrerHeaders!.Single(), Is.EqualTo("strict-origin-when-cross-origin"));
+            Assert.That(normalResponse.Headers.TryGetValues("X-Frame-Options", out var frameHeaders), Is.True);
+            Assert.That(frameHeaders!.Single(), Is.EqualTo("DENY"));
+            Assert.That(normalResponse.Headers.TryGetValues("Permissions-Policy", out var permissionsHeaders), Is.True);
+            Assert.That(permissionsHeaders!.Single(), Does.Contain("microphone=()"));
             var normalEntry = await WaitForStructuredLogEntryAsync(tempDir, entry =>
                 GetString(entry, "SourceContext") == "Serilog.AspNetCore.RequestLoggingMiddleware" &&
                 GetString(entry, "RequestPath") == "/api/health/live" &&
@@ -117,6 +141,47 @@ public class AppApiContractTests
                 Assert.That(GetString(requestEntry, "CorrelationId"), Is.Not.Null.And.Not.Empty);
                 Assert.That(GetDouble(requestEntry, "Elapsed"), Is.GreaterThanOrEqualTo(0));
                 Assert.That(GetString(exceptionEntry, "Path"), Is.EqualTo("/api/test-failures/throw"));
+            });
+        }
+        finally
+        {
+            await DisposeFactoryTempDirAsync(factory, tempDir);
+        }
+    }
+
+    [Test]
+    public async Task RequestPipeline_DoesNotEmitOptionalSecurityHeadersWhenDisabled()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"memorysmith-request-pipeline-disabled-{Guid.NewGuid():N}");
+        var factory = CreateRequestPipelineFactory(tempDir).WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureAppConfiguration((_, config) =>
+            {
+                config.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["MemorySmith:ContentSecurityPolicyEnabled"] = "false",
+                    ["MemorySmith:XContentTypeOptionsEnabled"] = "false",
+                    ["MemorySmith:ReferrerPolicyEnabled"] = "false",
+                    ["MemorySmith:XFrameOptionsEnabled"] = "false",
+                    ["MemorySmith:PermissionsPolicyEnabled"] = "false"
+                });
+            });
+        });
+
+        try
+        {
+            using var client = factory.CreateClient();
+            var response = await client.GetAsync("/api/health/live");
+            response.EnsureSuccessStatusCode();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(response.Headers.Contains("Content-Security-Policy"), Is.False);
+                Assert.That(response.Headers.Contains("X-Content-Type-Options"), Is.False);
+                Assert.That(response.Headers.Contains("Referrer-Policy"), Is.False);
+                Assert.That(response.Headers.Contains("X-Frame-Options"), Is.False);
+                Assert.That(response.Headers.Contains("Permissions-Policy"), Is.False);
+                Assert.That(response.Headers.Contains("X-Correlation-Id"), Is.True);
             });
         }
         finally
@@ -807,6 +872,104 @@ Line two",
     }
 
     [Test]
+    public async Task TrainingWorkbenchPage_WithAnonymousAdminConfig_DoesNotRenderWorkbenchForSignedOutUser()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"memorysmith-training-workbench-page-{Guid.NewGuid():N}");
+        var factory = CreateIsolatedFactory(tempDir, new Dictionary<string, string?>
+        {
+            ["MemorySmith:Auth:AnonymousAccess"] = MemorySmithRoles.Admin,
+            ["MemorySmith:Auth:AuthenticatedDefaultRole"] = MemorySmithRoles.Admin,
+            ["MemorySmith:Auth:AutoEditorForAuthenticatedUsers"] = "true"
+        });
+
+        try
+        {
+            using var setupClient = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+            var setupResponse = await setupClient.PostAsJsonAsync("/api/admin/setup", new SetupAdminRequest("Admin User", "admin@example.test", "ThisIsAValidPassword123!"));
+            setupResponse.EnsureSuccessStatusCode();
+
+            using var anonymousClient = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+            var pageResponse = await anonymousClient.GetAsync("/training-workbench");
+            var body = await pageResponse.Content.ReadAsStringAsync();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(pageResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK).Or.EqualTo(HttpStatusCode.Redirect).Or.EqualTo(HttpStatusCode.Unauthorized).Or.EqualTo(HttpStatusCode.Forbidden));
+                Assert.That(body, Does.Not.Contain("Training Workbench"));
+                if (pageResponse.StatusCode == HttpStatusCode.OK)
+                {
+                    Assert.That(body, Does.Contain("Sign In"));
+                }
+            });
+        }
+        finally
+        {
+            await DisposeFactoryTempDirAsync(factory, tempDir);
+        }
+    }
+
+    [Test]
+    public async Task TrainingWorkbenchPage_AdminSession_ReturnsHeading()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"memorysmith-training-workbench-admin-{Guid.NewGuid():N}");
+        var factory = CreateIsolatedFactory(tempDir, null);
+
+        try
+        {
+            using var adminClient = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+            var setupResponse = await adminClient.PostAsJsonAsync("/api/admin/setup", new SetupAdminRequest("Admin User", "admin@example.test", "ThisIsAValidPassword123!"));
+            setupResponse.EnsureSuccessStatusCode();
+
+            var pageResponse = await adminClient.GetAsync("/training-workbench");
+            var body = await pageResponse.Content.ReadAsStringAsync();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(pageResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+                Assert.That(body, Does.Contain("Training Workbench"));
+            });
+        }
+        finally
+        {
+            await DisposeFactoryTempDirAsync(factory, tempDir);
+        }
+    }
+
+    [Test]
+    public async Task LoginPage_WithConfiguredGitHubAndExistingAdmin_ExplainsAccountCreationPaths()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"memorysmith-login-page-{Guid.NewGuid():N}");
+        var factory = CreateIsolatedFactory(tempDir, new Dictionary<string, string?>
+        {
+            ["MemorySmith:Auth:Providers:GitHub:Enabled"] = "true",
+            ["MemorySmith:Auth:Providers:GitHub:ClientId"] = "github-client-id"
+        });
+
+        try
+        {
+            using var adminClient = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+            var setupResponse = await adminClient.PostAsJsonAsync("/api/admin/setup", new SetupAdminRequest("Admin User", "admin@example.test", "ThisIsAValidPassword123!"));
+            setupResponse.EnsureSuccessStatusCode();
+
+            using var anonymousClient = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+            var pageResponse = await anonymousClient.GetAsync("/login");
+            var body = await pageResponse.Content.ReadAsStringAsync();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(pageResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+                Assert.That(body, Does.Contain("Local accounts are not self-serve after initial setup"));
+                Assert.That(body, Does.Contain("first successful GitHub sign-in will create your MemorySmith account automatically"));
+                Assert.That(body, Does.Contain("Sign in or create account with GitHub"));
+            });
+        }
+        finally
+        {
+            await DisposeFactoryTempDirAsync(factory, tempDir);
+        }
+    }
+
+    [Test]
     public async Task AdminRoleApi_WithAnonymousAdminConfig_RejectsSignedOutRoleChanges()
     {
         var tempDir = Path.Combine(Path.GetTempPath(), $"memorysmith-admin-api-{Guid.NewGuid():N}");
@@ -884,7 +1047,15 @@ Line two",
             var defaultVisibilityResponse = await adminClient.PutAsJsonAsync("/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:Pages:DefaultMinimumRole", PageAccessLevels.Authenticated));
             var sourceRootsResponse = await adminClient.PutAsJsonAsync("/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:SourceLinks:AllowedFileRoots", $"{Path.Combine(tempDir, "allowed-one")}\n{Path.Combine(tempDir, "allowed-two")}"));
             var nullableContextResponse = await adminClient.PutAsJsonAsync("/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:Chat:OllamaContextWindowTokens", string.Empty));
+            var enableMcpToolResponse = await adminClient.PutAsJsonAsync("/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:Mcp:EnabledTools", "memorysmith_task_create\nmemorysmith_source_bundle"));
+            var disableMcpToolResponse = await adminClient.PutAsJsonAsync("/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:Mcp:DisabledTools", "memorysmith_context_pack"));
             var configureApiKeyResponse = await adminClient.PutAsJsonAsync("/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:ApiKey", "contract-secret"));
+            var coverageMaxResponse = await adminClient.PutAsJsonAsync("/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:CodeSearch:MaxTokenCoverageWeight", "0.8"));
+            var invalidCoverageMinResponse = await adminClient.PutAsJsonAsync("/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:CodeSearch:MinTokenCoverageWeight", "1.0"));
+            var invalidCoverageMinBody = await invalidCoverageMinResponse.Content.ReadAsStringAsync();
+            var invalidHybridVectorResponse = await adminClient.PutAsJsonAsync("/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:CodeSearch:HybridVectorWeight", "0"));
+            var invalidHybridLexicalResponse = await adminClient.PutAsJsonAsync("/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:CodeSearch:HybridLexicalWeight", "0"));
+            var invalidHybridLexicalBody = await invalidHybridLexicalResponse.Content.ReadAsStringAsync();
             adminClient.DefaultRequestHeaders.Add(MemorySmithRequestGuardMiddleware.ApiKeyHeaderName, "contract-secret");
             var clearApiKeyResponse = await adminClient.PutAsJsonAsync("/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:ApiKey", string.Empty));
             var apiKeyAudit = await adminClient.GetFromJsonAsync<PagedResult<AuditLogEntry>>("/api/admin/audit?action=settings.updated&targetKind=Setting&targetId=MemorySmith%3AApiKey&pageSize=10");
@@ -898,12 +1069,27 @@ Line two",
                 Assert.That(settings.Select(setting => setting.Key), Does.Contain("MemorySmith:Database:UseWal"));
                 Assert.That(settings.Select(setting => setting.Key), Does.Contain("MemorySmith:SourceLinks:AllowedFileRoots"));
                 Assert.That(settings.Select(setting => setting.Key), Does.Contain("MemorySmith:MaintenanceAgent:ResourceProbe:BusyProcessNames"));
+                Assert.That(settings.Select(setting => setting.Key), Does.Contain("MemorySmith:CodeSearch:MaxResults"));
+                Assert.That(settings.Select(setting => setting.Key), Does.Contain("MemorySmith:Training:ActiveModelTag"));
+                Assert.That(settings.Select(setting => setting.Key), Does.Contain("MemorySmith:Training:FallbackModelTag"));
+                Assert.That(settings.Select(setting => setting.Key), Does.Contain("MemorySmith:Mcp:EnabledTools"));
+                Assert.That(settings.Select(setting => setting.Key), Does.Contain("MemorySmith:Mcp:DisabledTools"));
                 Assert.That(settings.Single(setting => setting.Key == "MemorySmith:ApiKey").IsSensitive, Is.True);
+                Assert.That(settings.Single(setting => setting.Key == "MemorySmith:Mcp:EnabledTools").HelpText, Does.Contain("safe read tools stay on by default").IgnoreCase);
+                Assert.That(settings.Single(setting => setting.Key == "MemorySmith:Mcp:DisabledTools").HelpText, Does.Contain("lock down").IgnoreCase);
                 Assert.That(updateResponse.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
                 Assert.That(defaultVisibilityResponse.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
                 Assert.That(sourceRootsResponse.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
                 Assert.That(nullableContextResponse.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
                 Assert.That(configureApiKeyResponse.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
+                Assert.That(enableMcpToolResponse.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
+                Assert.That(disableMcpToolResponse.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
+                Assert.That(coverageMaxResponse.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
+                Assert.That(invalidCoverageMinResponse.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+                Assert.That(invalidCoverageMinBody, Does.Contain("min token coverage weight"));
+                Assert.That(invalidHybridVectorResponse.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
+                Assert.That(invalidHybridLexicalResponse.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+                Assert.That(invalidHybridLexicalBody, Does.Contain("cannot both be zero"));
                 Assert.That(clearApiKeyResponse.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
                 Assert.That(apiKeyAudit?.Data.Select(item => item.DetailsJson), Has.Some.Contains("Configured"));
                 Assert.That(apiKeyAudit?.Data.Select(item => item.DetailsJson), Has.Some.Contains("Cleared"));
@@ -915,8 +1101,17 @@ Line two",
             Assert.That(json, Does.Contain("\"MaxToolIterations\": 3"));
             Assert.That(json, Does.Contain("\"DefaultMinimumRole\": \"Authenticated\""));
             Assert.That(json, Does.Contain("\"AllowedFileRoots\": ["));
+            Assert.That(json, Does.Contain("\"EnabledTools\": ["));
+            Assert.That(json, Does.Contain("\"memorysmith_task_create\""));
+            Assert.That(json, Does.Contain("\"memorysmith_source_bundle\""));
+            Assert.That(json, Does.Contain("\"DisabledTools\": ["));
+            Assert.That(json, Does.Contain("\"memorysmith_context_pack\""));
             Assert.That(json, Does.Contain("\"OllamaContextWindowTokens\": null"));
             Assert.That(json, Does.Contain("\"ApiKey\": \"\""));
+            Assert.That(json, Does.Contain("\"MaxTokenCoverageWeight\": 0.8"));
+            Assert.That(json, Does.Not.Contain("\"MinTokenCoverageWeight\": 1.0"));
+            Assert.That(json, Does.Contain("\"HybridVectorWeight\": 0"));
+            Assert.That(json, Does.Not.Contain("\"HybridLexicalWeight\": 0"));
             Assert.That(json, Does.Not.Contain("contract-secret"));
         }
         finally
@@ -958,6 +1153,10 @@ Line two",
             Assert.That(body, Does.Contain("paths"));
             Assert.That(body, Does.Contain("storageDiagnostics"));
             Assert.That(body, Does.Not.Contain("apiKey\""));
+            Assert.That(body, Does.Not.Contain("http://localhost:11434"));
+            Assert.That(body, Does.Not.Contain("http://localhost:4317"));
+            Assert.That(body, Does.Not.Contain("wiki-chat-agent.md"));
+            Assert.That(body, Does.Contain("[redacted-configured]"));
         });
     }
 
@@ -1189,6 +1388,14 @@ Line two",
         {
             Assert.That(defaultResults!.Single().Id, Is.EqualTo("api-warning-memory"));
             Assert.That(defaultBody, Does.Not.Contain("schemaVersion"));
+            Assert.That(defaultResponse.Headers.TryGetValues("X-MemorySmith-Retrieval-Mode", out var retrievalModes), Is.True);
+            Assert.That(retrievalModes!.Single(), Is.EqualTo("lexical"));
+            Assert.That(defaultResponse.Headers.TryGetValues("X-MemorySmith-Retrieval-Provider-Kind", out var providerKinds), Is.True);
+            Assert.That(providerKinds!.Single(), Is.EqualTo("lexical"));
+            Assert.That(defaultResponse.Headers.TryGetValues("X-MemorySmith-Retrieval-Provider-Name", out var providerNames), Is.True);
+            Assert.That(providerNames!.Single(), Is.EqualTo("lucene-standard-analyzer"));
+            Assert.That(defaultResponse.Headers.TryGetValues("X-MemorySmith-Retrieval-Provider-Primary", out var providerPrimary), Is.True);
+            Assert.That(providerPrimary!.Single(), Is.EqualTo("true"));
             Assert.That(envelope!.SchemaVersion, Is.EqualTo("memorysmith.retrieval-results.v1"));
             Assert.That(envelope.Provider.Kind, Is.EqualTo("lexical"));
             Assert.That(envelope.Results.Single().Diagnostics.Select(diagnostic => diagnostic.Code), Does.Contain("source.missing_variable"));
@@ -1219,7 +1426,8 @@ Line two",
                         ["MemorySmith:Database:ConnectionString"] = $"Data Source={Path.Combine(tempDir, "memorysmith.db")};Pooling=False",
                         ["MemorySmith:Audit:JsonlPath"] = Path.Combine(tempDir, "Events", "audit-{yyyy}-W{week}.jsonl"),
                         ["MemorySmith:History:RootPath"] = Path.Combine(tempDir, ".history"),
-                        ["MemorySmith:Maintenance:Enabled"] = "false"
+                        ["MemorySmith:Maintenance:Enabled"] = "false",
+                        ["MemorySmith:ApiKey"] = string.Empty
                     };
 
                     if (overrides is not null)

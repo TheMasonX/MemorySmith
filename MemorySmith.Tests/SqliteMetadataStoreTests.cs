@@ -302,6 +302,79 @@ public class SqliteMetadataStoreTests
     }
 
     [Test]
+    public async Task CreateLocalUserAsync_CreatesNonAdminLocalUserWhenEnabled()
+    {
+        var options = new MemorySmithOptions
+        {
+            DataProtectionKeysPath = Path.Combine(_tempDir, "Keys"),
+            Audit = new AuditOptions
+            {
+                JsonlEnabled = false
+            },
+            Auth = new AuthOptions
+            {
+                LocalPasswordEnabled = true,
+                AllowAdminCreateLocalUsers = true
+            }
+        };
+        var monitor = new TestOptionsMonitor<MemorySmithOptions>(options);
+        await SeedUserAsync("admin-user", "Admin User", "ADMIN USER");
+        var currentUser = new FakeCurrentUserContext();
+        var httpContextAccessor = new HttpContextAccessor { HttpContext = new DefaultHttpContext() };
+        var audit = new AuditLogService(_database, currentUser, httpContextAccessor, monitor);
+        var auth = new MemorySmithLocalAuthService(_database, httpContextAccessor, audit, monitor, new StaticAuthenticationSchemeProvider([MemorySmithProviders.GitHub]));
+
+        var result = await auth.CreateLocalUserAsync("Agent Smith", "agent-smith@example.test", "ThisIsAValidPassword123!", MemorySmithRoles.Editor, currentUser.UserId, CancellationToken.None);
+        var created = result.User is null ? null : await _database.Users.GetByIdAsync(result.User.UserId, CancellationToken.None);
+        var roles = result.User is null ? [] : await _database.Roles.GetRolesForUserAsync(result.User.UserId, CancellationToken.None);
+        var link = result.User is null ? null : await _database.ProviderLinks.GetByProviderSubjectAsync(MemorySmithProviders.LocalPassword, result.User.UserId, CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Succeeded, Is.True);
+            Assert.That(created, Is.Not.Null);
+            Assert.That(created!.LocalPasswordEnabled, Is.True);
+            Assert.That(created.PasswordHash, Is.Not.Null.And.Not.Empty);
+            Assert.That(roles.Select(role => role.Name), Is.EquivalentTo(new[] { MemorySmithRoles.Editor }));
+            Assert.That(link, Is.Not.Null);
+        });
+    }
+
+    [Test]
+    public async Task CreateLocalUserAsync_FailsWhenAdminCreationDisabled()
+    {
+        var options = new MemorySmithOptions
+        {
+            DataProtectionKeysPath = Path.Combine(_tempDir, "Keys"),
+            Audit = new AuditOptions
+            {
+                JsonlEnabled = false
+            },
+            Auth = new AuthOptions
+            {
+                LocalPasswordEnabled = true,
+                AllowAdminCreateLocalUsers = false
+            }
+        };
+        var monitor = new TestOptionsMonitor<MemorySmithOptions>(options);
+        await SeedUserAsync("admin-user", "Admin User", "ADMIN USER");
+        var currentUser = new FakeCurrentUserContext();
+        var httpContextAccessor = new HttpContextAccessor { HttpContext = new DefaultHttpContext() };
+        var audit = new AuditLogService(_database, currentUser, httpContextAccessor, monitor);
+        var auth = new MemorySmithLocalAuthService(_database, httpContextAccessor, audit, monitor, new StaticAuthenticationSchemeProvider([MemorySmithProviders.GitHub]));
+
+        var result = await auth.CreateLocalUserAsync("Agent Smith", "agent-smith@example.test", "ThisIsAValidPassword123!", MemorySmithRoles.Viewer, currentUser.UserId, CancellationToken.None);
+        var created = await _database.Users.GetByNormalizedDisplayNameAsync("AGENT SMITH", CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Succeeded, Is.False);
+            Assert.That(result.Error, Is.EqualTo("Admin-created local users are disabled."));
+            Assert.That(created, Is.Null);
+        });
+    }
+
+    [Test]
     public async Task ExternalAuthOutcomeRecorder_SuccessRecordsLoginHistoryAndAudit()
     {
         var options = new MemorySmithOptions

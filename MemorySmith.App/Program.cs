@@ -1,5 +1,6 @@
 using MemorySmith.App.Components;
 using MemorySmith.App.Services;
+using MemorySmith.App.Services.Training;
 using MemorySmith.Core.Indexing;
 using MemorySmith.Core.Models;
 using MemorySmith.Storage;
@@ -493,6 +494,9 @@ try
     builder.Services.AddScoped<IChatProvider>(sp => sp.GetRequiredService<GitHubCopilotChatProvider>());
     builder.Services.AddSingleton<ChatToolCatalog>();
     builder.Services.AddSingleton<ChatIntentInterceptor>();
+    builder.Services.AddSingleton<IChatTranscriptWriter, ChatTranscriptWriter>();
+    builder.Services.AddSingleton<IChatFeedbackStore, SqliteChatFeedbackStore>();
+    builder.Services.AddSingleton<TrainingHarnessRunnerService>();
     builder.Services.AddScoped<IChatAgent, MemoryChatAgent>();
 
     var maintenanceEnabled = builder.Configuration.GetValue("MemorySmith:Maintenance:Enabled", true);
@@ -585,6 +589,32 @@ try
 
     app.Use(async (context, next) =>
     {
+        var runtimeSettings = context.RequestServices.GetRequiredService<IOptionsMonitor<MemorySmithOptions>>().CurrentValue;
+        if (runtimeSettings.ContentSecurityPolicyEnabled && !string.IsNullOrWhiteSpace(runtimeSettings.ContentSecurityPolicy))
+        {
+            context.Response.Headers["Content-Security-Policy"] = runtimeSettings.ContentSecurityPolicy;
+        }
+
+        if (runtimeSettings.XContentTypeOptionsEnabled && !string.IsNullOrWhiteSpace(runtimeSettings.XContentTypeOptions))
+        {
+            context.Response.Headers["X-Content-Type-Options"] = runtimeSettings.XContentTypeOptions;
+        }
+
+        if (runtimeSettings.ReferrerPolicyEnabled && !string.IsNullOrWhiteSpace(runtimeSettings.ReferrerPolicy))
+        {
+            context.Response.Headers["Referrer-Policy"] = runtimeSettings.ReferrerPolicy;
+        }
+
+        if (runtimeSettings.XFrameOptionsEnabled && !string.IsNullOrWhiteSpace(runtimeSettings.XFrameOptions))
+        {
+            context.Response.Headers["X-Frame-Options"] = runtimeSettings.XFrameOptions;
+        }
+
+        if (runtimeSettings.PermissionsPolicyEnabled && !string.IsNullOrWhiteSpace(runtimeSettings.PermissionsPolicy))
+        {
+            context.Response.Headers["Permissions-Policy"] = runtimeSettings.PermissionsPolicy;
+        }
+
         context.Response.Headers["X-Correlation-Id"] = RequestMetadata.ResolveCorrelationId(context);
         await next();
     });

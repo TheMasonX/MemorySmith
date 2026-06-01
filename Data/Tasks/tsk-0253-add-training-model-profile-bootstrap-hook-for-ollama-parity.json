@@ -1,0 +1,46 @@
+{
+  "id": "tsk-0253-add-training-model-profile-bootstrap-hook-for-ollama-parity",
+  "key": "TSK-0253",
+  "title": "Add training model profile bootstrap hook for Ollama parity",
+  "description": "Problem: model profile defaults and local Ollama tags drift across local run surfaces, causing repeated manual setup before training A/B comparisons and occasional non-executable defaults.\n\nDesired outcome: provide a scriptable bootstrap path that verifies local Ollama tag availability, creates a stock 24k comparator tag when needed, and writes consistent trained/default + stock comparator model profiles into the resolved settings override file.\n\nScope:\n- In scope: add `Scripts/SkillHooks/Ensure-TrainingModelProfiles.ps1`.\n- In scope: resolve settings override path using existing MemorySmith path rules.\n- In scope: verify required tags and create `qwen3.5:4b-24k-stock` when missing.\n- In scope: write/update profile ids and default safely with warnings when trained tag is unavailable.\n- Out of scope: training run execution or model conversion/merge pipelines.\n\nValidation:\n- Dry run mode reports intended changes and warnings.\n- Real run updates resolved override file with expected profile ids and default id behavior.\n- Script emits JSON summary suitable for tracker/task evidence comments.\n\nConfidence target: 92%.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "AgentSmith",
+  "labels": [
+    "training",
+    "ollama",
+    "model-profiles",
+    "scripts",
+    "now",
+    "confidence-92"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "requests/model-profile-and-ollama-comparator-parity-20260530",
+    "requests/skill-small-improvements-batch-20260529"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0253-20260530",
+      "author": "AgentSmith",
+      "body": "Created from 2026-05-30 self-review follow-up after recurring model-profile and Ollama tag setup drift during training A/B cycles.",
+      "createdAtUtc": "2026-05-30T23:25:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-30T23:25:00.0000000Z",
+  "updatedAtUtc": "2026-05-30T23:25:00.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

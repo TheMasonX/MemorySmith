@@ -1,0 +1,55 @@
+{
+  "id": "tsk-0238-introduce-structured-logging-in-chatservices-with-operator-focused-diagnostics",
+  "key": "TSK-0238",
+  "title": "Introduce structured logging in ChatServices with operator-focused diagnostics",
+  "description": "Vetted from Audit #7 finding 10.1. ChatServices has no ILogger instrumentation. Inject logger(s), emit lifecycle/debug/failure breadcrumbs for provider calls, tool execution, context planning, and fallback paths, and verify logs are actionable without leaking sensitive payloads.",
+  "type": "Task",
+  "status": "Done",
+  "priority": "Critical",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "AgentSmith",
+  "labels": [
+    "chat",
+    "observability",
+    "logging",
+    "sprint-20260530-a"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "audits/chat-training-audit-7-20260530"
+  ],
+  "comments": [
+    {
+      "author": "AgentSmith",
+      "id": "c-create-tsk-0238-20260530",
+      "createdAtUtc": "2026-05-30T22:21:20.9043446Z",
+      "body": "Created from vetted findings in Data/Pages/move-to-audit.md after direct code checks across Chat.razor, ChatServices.cs, ChatToolCatalog.cs, McpController.cs, and training harness files."
+    },
+    {
+      "author": "AgentSmith",
+      "id": "c-0238-2-20260531",
+      "createdAtUtc": "2026-05-31T05:58:14.4688849Z",
+      "body": "Completed structured lifecycle diagnostics in `MemorySmith.App/Services/ChatServices.cs` for operator-focused observability without prompt leakage: added context-plan preload/skip logs, Send/Stream lifecycle summaries, tool-loop iteration/limit/execution telemetry logs, and per-turn tool-limit truncation warnings. Added focused regression coverage in `MemorySmith.Tests/PagesAndChatTests.cs` (`MemoryChatAgent_EmitsLifecycleLogs_WithoutLeakingUserPrompt`) to verify actionable log breadcrumbs are emitted and raw user prompt content is not logged. Validation: `dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj -c Release --filter \"Name~MemoryChatAgent_EmitsLifecycleLogs_WithoutLeakingUserPrompt|Name~MemoryChatAgent_ExecutesInterceptedToolCallsBeforeReturningReply|Name~MemoryChatAgent_StreamTraceShowsContextPlannerSkipReason\"` (3/3 passed)."
+    },
+    {
+      "author": "AgentSmith",
+      "id": "c-0238-3-20260531",
+      "createdAtUtc": "2026-05-31T06:08:10.8286565Z",
+      "body": "Follow-up refinement: assigned stable `EventId` values for context-plan and tool-loop lifecycle diagnostics in `MemorySmith.App/Services/ChatServices.cs` (`42001`-`42012`) to support downstream filtering and alert routing without brittle message parsing. Extended `MemorySmith.Tests/PagesAndChatTests.cs` logging test to assert these IDs (`42001`, `42006`, `42009`) are emitted while prompt content remains redacted from logs. Validation rerun: `dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj -c Release --filter \"Name~MemoryChatAgent_EmitsLifecycleLogs_WithoutLeakingUserPrompt|Name~MemoryChatAgent_ExecutesInterceptedToolCallsBeforeReturningReply|Name~MemoryChatAgent_StreamTraceShowsContextPlannerSkipReason\"` (3/3 passed)."
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-30T22:21:20.9043446Z",
+  "updatedAtUtc": "2026-05-31T06:08:10.8286565Z",
+  "completedAtUtc": "2026-05-31T05:58:14.4688849Z",
+  "revision": 4,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

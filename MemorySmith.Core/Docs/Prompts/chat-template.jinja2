@@ -1,0 +1,17 @@
+{#
+  Canonical MemorySmith chat template (ChatML).
+  Keep this as the single source of truth for SFT tokenizer template parity.
+#}
+{%- set offset = 0 -%}
+{%- if messages and messages[0]['role'] == 'system' -%}
+<|im_start|>system
+{{ messages[0]['content'] }}<|im_end|>
+{%- set offset = 1 -%}
+{%- endif -%}
+{%- for message in messages[offset:] -%}
+<|im_start|>{{ message['role'] }}
+{{ message['content'] }}<|im_end|>
+{%- endfor -%}
+{%- if add_generation_prompt -%}
+<|im_start|>assistant
+{%- endif -%}

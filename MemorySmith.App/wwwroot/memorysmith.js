@@ -4,8 +4,12 @@
     const mermaidThemeStorageKey = "memorysmith.markdown.mermaidTheme.v1";
     const headingCollapseStoragePrefix = "memorysmith.pages.headingCollapse.v1:";
     const mermaidThemeModes = new Set(["auto", "light", "dark"]);
+    const mermaidRestrictionModes = new Set(["standard", "restricted", "strict"]);
     const reconnectRecoveryStorageKey = "memorysmith.reconnect.resumeFailedReloadAt.v1";
     const reconnectRecoveryCooldownMs = 15000;
+    const routeTitleFallbacks = Object.freeze({
+        "/health": "Health - MemorySmith"
+    });
     let mermaidSequence = 0;
     let mermaidTheme = null;
     let mermaidThemeWatcher = null;
@@ -71,6 +75,75 @@
     }
 
     initializeReconnectRecovery();
+
+    window.memorySmith.setDocumentTitle = function (title) {
+        const normalizedTitle = typeof title === "string" ? title.trim() : "";
+        if (!normalizedTitle) {
+            return;
+        }
+
+        let titleElement = document.head ? document.head.querySelector("title") : null;
+        if (!titleElement && document.head) {
+            titleElement = document.createElement("title");
+            document.head.appendChild(titleElement);
+        }
+
+        if (titleElement) {
+            titleElement.textContent = normalizedTitle;
+        }
+
+        document.title = normalizedTitle;
+    };
+
+    function expectedRouteTitle(pathname) {
+        if (!pathname) {
+            return "";
+        }
+
+        return routeTitleFallbacks[pathname] || "";
+    }
+
+    function ensureRouteTitleFallback() {
+        const expectedTitle = expectedRouteTitle(window.location && window.location.pathname);
+        if (!expectedTitle) {
+            return;
+        }
+
+        const titleElement = document.head ? document.head.querySelector("title") : null;
+        const currentTitle = typeof document.title === "string" ? document.title.trim() : "";
+        const currentTagTitle = titleElement && typeof titleElement.textContent === "string"
+            ? titleElement.textContent.trim()
+            : "";
+
+        if (currentTitle === expectedTitle && currentTagTitle === expectedTitle) {
+            return;
+        }
+
+        window.memorySmith.setDocumentTitle(expectedTitle);
+    }
+
+    function initializeRouteTitleFallback() {
+        ensureRouteTitleFallback();
+
+        if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", ensureRouteTitleFallback, { once: true });
+        }
+
+        window.addEventListener("pageshow", ensureRouteTitleFallback);
+        window.addEventListener("popstate", ensureRouteTitleFallback);
+        window.setInterval(ensureRouteTitleFallback, 750);
+
+        if (document.head && typeof MutationObserver === "function") {
+            const observer = new MutationObserver(ensureRouteTitleFallback);
+            observer.observe(document.head, {
+                childList: true,
+                subtree: true,
+                characterData: true
+            });
+        }
+    }
+
+    initializeRouteTitleFallback();
 
     function markdownRoot(root, options) {
         if (root && typeof root.querySelectorAll === "function") {
@@ -287,6 +360,11 @@
         return mermaidThemeModes.has(normalized) ? normalized : "auto";
     }
 
+    function normalizeMermaidRestrictionMode(mode) {
+        const normalized = (mode || "").toString().trim().toLowerCase();
+        return mermaidRestrictionModes.has(normalized) ? normalized : "restricted";
+    }
+
     function storedMermaidThemeMode() {
         try {
             return normalizeMermaidThemeMode(localStorage.getItem(mermaidThemeStorageKey));
@@ -321,6 +399,52 @@
         }
 
         return true;
+    }
+
+    function evaluateMermaidPolicy(code, restrictionMode) {
+        const normalizedMode = normalizeMermaidRestrictionMode(restrictionMode);
+        if (normalizedMode === "standard") {
+            return { allowed: true };
+        }
+
+        const compact = String(code || "").trim();
+        const restrictedMax = 4000;
+        const strictMax = 2000;
+        const maxLength = normalizedMode === "strict" ? strictMax : restrictedMax;
+        if (compact.length > maxLength) {
+            return {
+                allowed: false,
+                reason: `Diagram exceeds ${maxLength} characters for '${normalizedMode}' Mermaid policy.`
+            };
+        }
+
+        const dangerousPattern = /%%\{\s*init|\bclick\b[^\n]*|\bhref\b\s*=|javascript:/i;
+        if (dangerousPattern.test(compact)) {
+            return {
+                allowed: false,
+                reason: "Diagram uses Mermaid directives or link syntax blocked by policy."
+            };
+        }
+
+        if (normalizedMode === "strict") {
+            const allowedFamilyPattern = /^\s*(?:flowchart|graph|sequenceDiagram|classDiagram|stateDiagram(?:-v2)?|erDiagram|journey|gantt|pie|mindmap|timeline|gitGraph|requirementDiagram|quadrantChart|xychart-beta)\b/i;
+            if (!allowedFamilyPattern.test(compact)) {
+                return {
+                    allowed: false,
+                    reason: "Diagram family is not allowed by strict Mermaid policy."
+                };
+            }
+        }
+
+        return { allowed: true };
+    }
+
+    function createMermaidPolicyError(code, reason) {
+        const overlay = document.createElement("pre");
+        overlay.className = "mermaid-error";
+        overlay.dataset.mermaidCode = code;
+        overlay.textContent = `Mermaid rendering disabled by policy:\n${reason}\n\n${code}`;
+        return overlay;
     }
 
     function restoreMermaidSource(root) {
@@ -437,7 +561,12 @@
         }, 1500);
     }
 
-    window.renderMermaid = async function (root) {
+    window.renderMermaid = async function (root, options) {
+        const settings = options || {};
+        if (settings.mermaidEnabled === false) {
+            return;
+        }
+
         if (!configureMermaid()) {
             return;
         }
@@ -445,9 +574,16 @@
         watchMermaidTheme();
         const scope = markdownRoot(root);
         const theme = resolveMermaidTheme();
+        const restrictionMode = normalizeMermaidRestrictionMode(settings.mermaidRestrictionMode);
         const blocks = Array.from(scope.querySelectorAll("pre.mermaid"));
         for (const block of blocks) {
             const code = block.textContent || "";
+            const policy = evaluateMermaidPolicy(code, restrictionMode);
+            if (!policy.allowed) {
+                block.replaceWith(createMermaidPolicyError(code, policy.reason || "Restricted by Mermaid policy."));
+                continue;
+            }
+
             const container = document.createElement("section");
             const id = `mermaid-${++mermaidSequence}`;
             container.id = id;
@@ -560,7 +696,7 @@
             }
 
             if (settings.skipMermaid !== true) {
-                await window.renderMermaid(scope);
+                await window.renderMermaid(scope, settings);
             }
         },
 
@@ -620,7 +756,7 @@
             return window.innerWidth <= width;
         },
 
-        registerComposer: function (textarea, dotNetRef, sendOnEnter) {
+        registerComposer: function (textarea, dotNetRef, sendOnEnter, clipboardFetchExternalImagesEnabled) {
             if (!textarea) {
                 return;
             }
@@ -636,6 +772,7 @@
             }
 
             textarea.dataset.sendOnEnter = sendOnEnter ? "true" : "false";
+            textarea.dataset.clipboardFetchExternalImages = clipboardFetchExternalImagesEnabled ? "true" : "false";
             textarea.memorySmithComposerKeyHandler = function (event) {
                 if (event.key === "Enter" && !event.shiftKey && textarea.dataset.sendOnEnter === "true") {
                     const message = textarea.value;
@@ -646,7 +783,8 @@
                 }
             };
             textarea.memorySmithComposerPasteHandler = function (event) {
-                void window.memorySmith.chat.attachClipboardImage(event, dotNetRef);
+                const allowExternal = textarea.dataset.clipboardFetchExternalImages === "true";
+                void window.memorySmith.chat.attachClipboardImage(event, dotNetRef, allowExternal);
             };
             textarea.memorySmithComposerDocumentPasteHandler = function (event) {
                 const shell = textarea.closest(".chat-shell");
@@ -655,7 +793,8 @@
                     return;
                 }
 
-                void window.memorySmith.chat.attachClipboardImage(event, dotNetRef);
+                const allowExternal = textarea.dataset.clipboardFetchExternalImages === "true";
+                void window.memorySmith.chat.attachClipboardImage(event, dotNetRef, allowExternal);
             };
             textarea.addEventListener("keydown", textarea.memorySmithComposerKeyHandler);
             textarea.addEventListener("paste", textarea.memorySmithComposerPasteHandler, true);
@@ -681,7 +820,7 @@
             }
         },
 
-        attachClipboardImage: async function (event, dotNetRef) {
+        attachClipboardImage: async function (event, dotNetRef, allowExternalClipboardImageFetch) {
             if (!dotNetRef || event.defaultPrevented || event.memorySmithClipboardHandled) {
                 return false;
             }
@@ -689,14 +828,14 @@
             event.memorySmithClipboardHandled = true;
             const clipboardData = event.clipboardData || window.clipboardData;
             let files = window.memorySmith.chat.getClipboardImageFiles(clipboardData);
-            const hasImageHint = files.length > 0 || window.memorySmith.chat.clipboardHasImageReference(clipboardData);
+            const hasImageHint = files.length > 0 || window.memorySmith.chat.clipboardHasImageReference(clipboardData, allowExternalClipboardImageFetch);
             if (hasImageHint) {
                 event.preventDefault();
                 event.stopPropagation();
             }
 
             if (files.length === 0) {
-                files = await window.memorySmith.chat.getClipboardReferencedImages(clipboardData);
+                files = await window.memorySmith.chat.getClipboardReferencedImages(clipboardData, allowExternalClipboardImageFetch);
             }
 
             if (files.length === 0) {
@@ -745,15 +884,20 @@
             return files;
         },
 
-        clipboardHasImageReference: function (clipboardData) {
+        clipboardHasImageReference: function (clipboardData, allowExternalClipboardImageFetch) {
             const text = window.memorySmith.chat.readClipboardText(clipboardData, "text/html") + "\n" + window.memorySmith.chat.readClipboardText(clipboardData, "text/plain");
-            return /<img\b/i.test(text) || /data:image\//i.test(text) || /^https?:\/\/\S+\.(png|jpe?g|gif|webp|bmp|heic|heif)(\?\S*)?$/im.test(text.trim());
+            if (allowExternalClipboardImageFetch) {
+                return /<img\b/i.test(text) || /data:image\//i.test(text) || /^https?:\/\/\S+\.(png|jpe?g|gif|webp|bmp|heic|heif)(\?\S*)?$/im.test(text.trim());
+            }
+
+            return /data:image\//i.test(text);
         },
 
-        getClipboardReferencedImages: async function (clipboardData) {
+        getClipboardReferencedImages: async function (clipboardData, allowExternalClipboardImageFetch) {
             const references = window.memorySmith.chat.extractImageReferences(
                 window.memorySmith.chat.readClipboardText(clipboardData, "text/html"),
-                window.memorySmith.chat.readClipboardText(clipboardData, "text/plain"));
+                window.memorySmith.chat.readClipboardText(clipboardData, "text/plain"),
+                allowExternalClipboardImageFetch);
             const files = [];
             let index = 0;
             for (const reference of references) {
@@ -778,7 +922,7 @@
             }
         },
 
-        extractImageReferences: function (html, plainText) {
+        extractImageReferences: function (html, plainText, allowExternalClipboardImageFetch) {
             const references = [];
             const add = function (value) {
                 const reference = String(value || "").trim();
@@ -786,7 +930,12 @@
                     return;
                 }
 
-                if (/^data:image\//i.test(reference) || /^https?:\/\//i.test(reference) || /^blob:/i.test(reference)) {
+                if (/^data:image\//i.test(reference) || /^blob:/i.test(reference)) {
+                    references.push(reference);
+                    return;
+                }
+
+                if (allowExternalClipboardImageFetch && /^https?:\/\//i.test(reference)) {
                     references.push(reference);
                 }
             };
@@ -803,7 +952,7 @@
             }
 
             const plain = String(plainText || "").trim();
-            if (/^https?:\/\/\S+\.(png|jpe?g|gif|webp|bmp|heic|heif)(\?\S*)?$/i.test(plain)) {
+            if (allowExternalClipboardImageFetch && /^https?:\/\/\S+\.(png|jpe?g|gif|webp|bmp|heic|heif)(\?\S*)?$/i.test(plain)) {
                 add(plain);
             }
 
