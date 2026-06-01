@@ -561,6 +561,46 @@
         }, 1500);
     }
 
+    /**
+     * Sanitizes Mermaid-rendered SVG before assigning to innerHTML.
+     * Strips <script> elements and on* event-handler attributes as a
+     * defence-in-depth layer on top of Mermaid's securityLevel:"strict" setting.
+     * The pre-render evaluateMermaidPolicy() check and Mermaid's own strict mode
+     * already block most dangerous inputs; this is a final belt-and-suspenders pass.
+     * Audit finding: SEC-XSS-01 (Audits #5, #7).
+     */
+    function sanitizeMermaidSvg(svgString) {
+        if (!svgString) {
+            return "";
+        }
+        try {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(svgString, "image/svg+xml");
+            // Remove <script> elements entirely
+            Array.from(doc.querySelectorAll("script")).forEach(function (el) {
+                el.remove();
+            });
+            // Remove event-handler attributes (onclick, onerror, onload, etc.)
+            // and javascript: hrefs from every element
+            Array.from(doc.querySelectorAll("*")).forEach(function (el) {
+                Array.from(el.attributes).forEach(function (attr) {
+                    if (/^on/i.test(attr.name)) {
+                        el.removeAttribute(attr.name);
+                    } else if (
+                        (attr.name === "href" || attr.name === "xlink:href") &&
+                        /^\s*javascript:/i.test(attr.value)
+                    ) {
+                        el.removeAttribute(attr.name);
+                    }
+                });
+            });
+            return new XMLSerializer().serializeToString(doc.documentElement);
+        } catch {
+            // Parsing or serialization failed: fail safe with empty string
+            return "";
+        }
+    }
+
     window.renderMermaid = async function (root, options) {
         const settings = options || {};
         if (settings.mermaidEnabled === false) {
@@ -627,7 +667,8 @@
 
             try {
                 const result = await window.mermaid.render(`${id}-svg`, code);
-                diagram.innerHTML = result.svg || "";
+                // Sanitize SVG output before DOM assignment (defence-in-depth, SEC-XSS-01).
+                diagram.innerHTML = sanitizeMermaidSvg(result.svg);
                 if (typeof result.bindFunctions === "function") {
                     result.bindFunctions(diagram);
                 }
