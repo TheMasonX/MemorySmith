@@ -1511,6 +1511,26 @@ VALUES (
 
     public async Task<CodeSearchShardMergeResult> MergeShardAsync(string shardDatabasePath, bool preferNewer, CancellationToken cancellationToken)
     {
+        // Service-layer path guard: validate before any filesystem I/O.
+        // The tool layer (ChatToolCatalog.MergeShardAllowedExtensions + IsPathWithinAnyRoot)
+        // enforces root-allowlist checks for the MCP/chat code path, but direct callers of
+        // this service method have no such protection. Audit finding: CS-01/CS-02 (Audit #7).
+        if (string.IsNullOrWhiteSpace(shardDatabasePath))
+        {
+            throw new ArgumentException("Shard database path must not be empty.", nameof(shardDatabasePath));
+        }
+
+        var normalizedShardPath = Path.GetFullPath(shardDatabasePath);
+        var shardExtension = Path.GetExtension(normalizedShardPath);
+        if (!string.Equals(shardExtension, ".db", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(shardExtension, ".sqlite", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(shardExtension, ".sqlite3", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException(
+                $"Shard database path must have a .db, .sqlite, or .sqlite3 extension (got '{shardExtension}').",
+                nameof(shardDatabasePath));
+        }
+
         if (!File.Exists(shardDatabasePath))
         {
             throw new FileNotFoundException($"Shard database not found: {shardDatabasePath}", shardDatabasePath);
