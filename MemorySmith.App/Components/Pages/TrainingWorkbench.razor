@@ -9,6 +9,7 @@
 @inject NavigationManager Navigation
 @inject IWebHostEnvironment HostEnvironment
 @inject TrainingHarnessRunnerService TrainingRunner
+@using System.Globalization
 @using System.Text.Json
 @using System.Text.Json.Nodes
 @using Microsoft.Extensions.Options
@@ -44,10 +45,23 @@
     }
 
     <MudPaper Class="pa-4 mt-3" Outlined="true">
-        <MudText Typo="Typo.subtitle2">Training Settings Proxy</MudText>
-        <MudText Typo="Typo.body2" Class="mt-1">These controls edit the same underlying admin configuration values used by the central Admin Configuration surface.</MudText>
+        <div class="training-card-header"
+             role="button"
+             tabindex="0"
+             @onclick="ToggleTrainingSettings"
+             @onkeydown="OnTrainingSettingsHeaderKeyDown"
+             aria-expanded="@_isTrainingSettingsExpanded"
+             title="Toggle training settings">
+            <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+                <MudText Typo="Typo.subtitle2">Training Settings</MudText>
+                <MudChip T="string" Variant="Variant.Outlined" Color="Color.Info" Size="Size.Small" Icon="@Icons.Material.Filled.Info">Admin-backed values</MudChip>
+            </div>
+            <MudIcon Icon="@(_isTrainingSettingsExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)" Size="Size.Small" />
+        </div>
 
-        <div class="admin-filter-bar" aria-label="Training setting proxy controls">
+        @if (_isTrainingSettingsExpanded)
+        {
+        <div class="admin-filter-bar training-settings-proxy-bar mt-2" aria-label="Training setting controls">
             <MudAutocomplete T="string"
                              Value="@_selectedTrainingSettingKey"
                              ValueChanged="OnTrainingSettingSelectedAsync"
@@ -61,15 +75,25 @@
                              ResetValueOnEmptyText="false"
                              CoerceText="true"
                              Class="admin-filter-input" />
-            <MudTooltip Text="Save the currently selected training setting only.">
-                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Save" Disabled="@(_isBusy || SelectedTrainingSetting is null || !SelectedTrainingSetting.IsDirty)" OnClick="SaveSelectedTrainingSettingAsync">Save Selected</MudButton>
-            </MudTooltip>
-            <MudTooltip Text="Reset the currently selected training setting back to its last saved value.">
-                <MudButton Variant="Variant.Text" Color="Color.Secondary" Size="Size.Small" StartIcon="@Icons.Material.Filled.RestartAlt" Disabled="@(_isBusy || SelectedTrainingSetting is null || !SelectedTrainingSetting.IsDirty)" OnClick="ResetSelectedTrainingSetting">Reset Selected</MudButton>
-            </MudTooltip>
-            <MudTooltip Text="Save every pending training-setting change on this page.">
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.DoneAll" Disabled="@(_isBusy || TrainingDirtyCount == 0)" OnClick="SaveAllTrainingSettingsAsync">Save Training Changes (@TrainingDirtyCount)</MudButton>
-            </MudTooltip>
+            <div class="training-settings-proxy-actions">
+                <MudTooltip Text="Save the currently selected training setting only.">
+                    <MudIconButton Icon="@Icons.Material.Filled.Save"
+                                   Color="Color.Primary"
+                                   Disabled="@(_isBusy || SelectedTrainingSetting is null || !SelectedTrainingSetting.IsDirty)"
+                                   OnClick="SaveSelectedTrainingSettingAsync"
+                                   aria-label="Save selected training setting" />
+                </MudTooltip>
+                <MudTooltip Text="Reset the currently selected training setting back to its last saved value.">
+                    <MudIconButton Icon="@Icons.Material.Filled.RestartAlt"
+                                   Color="Color.Secondary"
+                                   Disabled="@(_isBusy || SelectedTrainingSetting is null || !SelectedTrainingSetting.IsDirty)"
+                                   OnClick="ResetSelectedTrainingSetting"
+                                   aria-label="Reset selected training setting" />
+                </MudTooltip>
+                <MudTooltip Text="Save every pending training-setting change on this page.">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.DoneAll" Disabled="@(_isBusy || TrainingDirtyCount == 0)" OnClick="SaveAllTrainingSettingsAsync">Save Changes (@TrainingDirtyCount)</MudButton>
+                </MudTooltip>
+            </div>
         </div>
 
         @if (SelectedTrainingSetting is { } selectedSetting)
@@ -86,16 +110,17 @@
 
         <div class="admin-settings-save-all-row" style="margin-top:8px; justify-content:flex-start;">
             <MudTooltip Text="Export the current training-setting values into the transfer box below.">
-                <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Small" StartIcon="@Icons.Material.Filled.UploadFile" Disabled="@_isBusy" OnClick="ExportTrainingSettingsAsync">Export Training Settings</MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Small" Class="training-transfer-btn" StartIcon="@Icons.Material.Filled.UploadFile" Disabled="@_isBusy" OnClick="ExportTrainingSettingsAsync">Export</MudButton>
             </MudTooltip>
             <MudTooltip Text="Copy the current training-settings JSON to the clipboard.">
-                <MudButton Variant="Variant.Text" Color="Color.Secondary" Size="Size.Small" StartIcon="@Icons.Material.Filled.ContentCopy" Disabled="@(_isBusy || string.IsNullOrWhiteSpace(_trainingSettingsTransferPayload))" OnClick="CopyTrainingSettingsTransferPayloadAsync">Copy JSON</MudButton>
+                <MudButton Variant="Variant.Text" Color="Color.Secondary" Size="Size.Small" Class="training-transfer-btn" StartIcon="@Icons.Material.Filled.ContentCopy" Disabled="@(_isBusy || string.IsNullOrWhiteSpace(_trainingSettingsTransferPayload))" OnClick="CopyTrainingSettingsTransferPayloadAsync">Copy JSON</MudButton>
             </MudTooltip>
             <MudTooltip Text="Apply imported JSON to matching training settings as pending changes without saving yet.">
-                <MudButton Variant="Variant.Outlined" Color="Color.Info" Size="Size.Small" StartIcon="@Icons.Material.Filled.Download" Disabled="@(_isBusy || string.IsNullOrWhiteSpace(_trainingSettingsTransferPayload))" OnClick="ApplyImportedTrainingSettingsAsync">Import Training Settings</MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Info" Size="Size.Small" Class="training-transfer-btn" StartIcon="@Icons.Material.Filled.Download" Disabled="@(_isBusy || string.IsNullOrWhiteSpace(_trainingSettingsTransferPayload))" OnClick="ApplyImportedTrainingSettingsAsync">Import</MudButton>
             </MudTooltip>
         </div>
         <MudTextField T="string" Value="@_trainingSettingsTransferPayload" ValueChanged="@((string value) => _trainingSettingsTransferPayload = value)" Label="Training settings transfer JSON" Variant="Variant.Outlined" Margin="Margin.Dense" Lines="5" HelperText="Export writes JSON here. Paste JSON here to import matching training settings as pending changes, then save the selected setting or all training changes." />
+        }
     </MudPaper>
 
     @if (_snapshot is not null)
@@ -141,34 +166,119 @@
 
         <div class="health-lower-grid" style="margin-top: 12px;">
             <div class="health-lower-card">
-                <div class="health-section-title">Prerequisites</div>
-                <div class="health-config-grid">
-                    <span>Transcript path</span><strong>@_snapshot.TranscriptDirectory</strong>
-                    <span>Transcript files</span><strong>@_snapshot.TranscriptFileCount</strong>
-                    <span>Feedback enabled</span><strong>@BoolLabel(_snapshot.FeedbackEnabled)</strong>
-                    <span>Export path</span><strong>@_snapshot.ExportDirectory</strong>
-                    <span>Export files (.jsonl)</span><strong>@_snapshot.ExportFileCount</strong>
-                    <span>Runs path</span><strong>@_snapshot.RunsDirectory</strong>
-                    <span>Run directories</span><strong>@_snapshot.RunDirectoryCount</strong>
-                    <span>Python executable</span><strong>@_snapshot.PythonExecutablePath</strong>
-                    <span>Python version</span><strong>@_snapshot.DependencyProbePythonVersion</strong>
-                    <span>Training dependencies</span><strong>@_snapshot.DependencyProbeSummary</strong>
-                    <span>Harness script</span><strong>@_snapshot.HarnessScriptPath</strong>
+                <div class="training-card-header"
+                     role="button"
+                     tabindex="0"
+                     @onclick="TogglePrerequisites"
+                     @onkeydown="OnPrerequisitesHeaderKeyDown"
+                     aria-expanded="@_isPrerequisitesExpanded"
+                     title="Toggle prerequisites card">
+                    <div class="health-section-title" style="margin-bottom: 0;">Prerequisites</div>
+                    <MudIcon Icon="@(_isPrerequisitesExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)" Size="Size.Small" />
                 </div>
+                @if (_isPrerequisitesExpanded)
+                {
+                    <div class="health-config-grid mt-2">
+                        <span>Transcript path</span><strong>@_snapshot.TranscriptDirectory</strong>
+                        <span>Transcript files</span><strong>@_snapshot.TranscriptFileCount</strong>
+                        <span>Feedback enabled</span><strong>@BoolLabel(_snapshot.FeedbackEnabled)</strong>
+                        <span>Export path</span><strong>@_snapshot.ExportDirectory</strong>
+                        <span>Export files (.jsonl)</span><strong>@_snapshot.ExportFileCount</strong>
+                        <span>Runs path</span><strong>@_snapshot.RunsDirectory</strong>
+                        <span>Run directories</span><strong>@_snapshot.RunDirectoryCount</strong>
+                        <span>Python executable</span><strong>@_snapshot.PythonExecutablePath</strong>
+                        <span>Python version</span><strong>@_snapshot.DependencyProbePythonVersion</strong>
+                        <span>Training dependencies</span><strong>@_snapshot.DependencyProbeSummary</strong>
+                        <span>Harness script</span><strong>@_snapshot.HarnessScriptPath</strong>
+                    </div>
+                }
             </div>
 
             <div class="health-lower-card">
-                <div class="health-section-title">Current Contract</div>
-                <div class="health-config-grid">
-                    <span>Preference format</span><strong>@_snapshot.PreferenceFormat</strong>
-                    <span>Max run minutes</span><strong>@_snapshot.MaxRunMinutes</strong>
-                    <span>Active model tag</span><strong>@_snapshot.ActiveModelTag</strong>
-                    <span>Fallback model tag</span><strong>@_snapshot.FallbackModelTag</strong>
-                    <span>Store chat content</span><strong>@BoolLabel(_snapshot.StoreChatContent)</strong>
-                    <span>Transcript redaction</span><strong>@BoolLabel(_snapshot.TranscriptRedactionEnabled)</strong>
+                <div class="training-card-header"
+                     role="button"
+                     tabindex="0"
+                     @onclick="ToggleContract"
+                     @onkeydown="OnContractHeaderKeyDown"
+                     aria-expanded="@_isContractExpanded"
+                     title="Toggle current contract card">
+                    <div class="health-section-title" style="margin-bottom: 0;">Current Contract</div>
+                    <MudIcon Icon="@(_isContractExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)" Size="Size.Small" />
                 </div>
+                @if (_isContractExpanded)
+                {
+                    <div class="health-config-grid mt-2">
+                        <span>Preference format</span><strong>@_snapshot.PreferenceFormat</strong>
+                        <span>Max run minutes</span><strong>@_snapshot.MaxRunMinutes</strong>
+                        <span>Active model tag</span><strong>@_snapshot.ActiveModelTag</strong>
+                        <span>Fallback model tag</span><strong>@_snapshot.FallbackModelTag</strong>
+                        <span>Store chat content</span><strong>@BoolLabel(_snapshot.StoreChatContent)</strong>
+                        <span>Transcript redaction</span><strong>@BoolLabel(_snapshot.TranscriptRedactionEnabled)</strong>
+                    </div>
+                }
             </div>
         </div>
+
+        <MudPaper Class="pa-3" Outlined="true">
+            <div class="training-card-header"
+                 role="button"
+                 tabindex="0"
+                 @onclick="ToggleTrainingProgress"
+                 @onkeydown="OnTrainingProgressHeaderKeyDown"
+                 aria-expanded="@_isTrainingProgressExpanded"
+                 title="Toggle training progress card">
+                <MudText Typo="Typo.subtitle2">Training Progress</MudText>
+                <MudIcon Icon="@(_isTrainingProgressExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)" Size="Size.Small" />
+            </div>
+
+            @if (_isTrainingProgressExpanded)
+            {
+                @if (_latestLossPoints.Count == 0)
+                {
+                    <MudText Typo="Typo.body2" Class="mt-2">No step-loss telemetry was found for the latest run yet.</MudText>
+                }
+                else
+                {
+                    <div class="training-loss-chart-shell mt-2" role="img" aria-label="Training loss chart with point-by-point telemetry tooltips">
+                        <svg class="training-loss-chart-line" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                            <polyline points="@BuildLossPolyline(_latestLossPoints)" class="training-loss-polyline" />
+                        </svg>
+                        <div class="training-loss-points" aria-hidden="true">
+                            @for (var pointIndex = 0; pointIndex < _latestLossPoints.Count; pointIndex++)
+                            {
+                                var point = _latestLossPoints[pointIndex];
+                                <MudTooltip Text="@BuildLossPointTooltip(point)">
+                                    <span class="@BuildLossPointClass(_latestLossPoints, pointIndex)" style="@BuildLossPointStyle(_latestLossPoints, pointIndex)"></span>
+                                </MudTooltip>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="training-loss-legend mt-2">
+                        <span class="training-loss-legend-item"><span class="training-loss-legend-dot is-latest"></span>Latest</span>
+                        <span class="training-loss-legend-item"><span class="training-loss-legend-dot is-min"></span>Min</span>
+                        <span class="training-loss-legend-item"><span class="training-loss-legend-dot is-max"></span>Max</span>
+                        <span class="training-loss-legend-item">Avg @AverageLossValueText</span>
+                    </div>
+
+                    @if (LatestRunProgressPercentage is not null)
+                    {
+                        <MudProgressLinear Color="Color.Primary" Rounded="true" Value="@LatestRunProgressPercentage.Value" BufferValue="100" Class="mt-2" />
+                    }
+
+                    <div class="health-config-grid mt-2">
+                        <span>Run</span><strong>@(_runs.Count > 0 ? _runs[0].RunId : "-")</strong>
+                        <span>Samples plotted</span><strong>@_latestLossPoints.Count</strong>
+                        <span>Latest step</span><strong>@LatestLossStepText</strong>
+                        <span>Progress</span><strong>@LatestRunProgressText</strong>
+                        <span>Latest loss</span><strong>@LatestLossValueText</strong>
+                        <span>Lowest loss</span><strong>@MinLossValueText</strong>
+                        <span>Highest loss</span><strong>@MaxLossValueText</strong>
+                        <span>Average loss</span><strong>@AverageLossValueText</strong>
+                    </div>
+                }
+            }
+        </MudPaper>
     }
 
     <MudPaper Class="pa-0 mt-4" Outlined="true">
@@ -254,17 +364,65 @@
     private TrainingReadinessSnapshot? _snapshot;
     private IReadOnlyList<TrainingRunSummary> _runs = [];
     private IReadOnlyList<TrainingRunEvent> _latestRunEvents = [];
+    private IReadOnlyList<TrainingLossPoint> _latestLossPoints = [];
     private TrainingHarnessActiveRun? _activeRun;
     private IReadOnlyList<TrainingSettingRow> _trainingSettings = [];
     private string? _selectedTrainingSettingKey;
     private string _trainingSettingsTransferPayload = string.Empty;
     private bool _hydratedLastTrainingSetting;
+    private bool _isPrerequisitesExpanded = true;
+    private bool _isContractExpanded = true;
+    private bool _isTrainingProgressExpanded = true;
+    private bool _isTrainingSettingsExpanded = true;
+    private int? _latestPlannedStepCount;
     private readonly CancellationTokenSource _pollingCts = new();
 
     private TrainingSettingRow? SelectedTrainingSetting => _trainingSettings.FirstOrDefault(row => string.Equals(row.Item.Key, _selectedTrainingSettingKey, StringComparison.OrdinalIgnoreCase))
         ?? _trainingSettings.FirstOrDefault();
 
     private int TrainingDirtyCount => _trainingSettings.Count(row => row.IsDirty);
+
+    private string LatestLossStepText => _latestLossPoints.Count == 0
+        ? "-"
+        : _latestLossPoints[^1].Step.ToString(CultureInfo.InvariantCulture);
+
+    private string LatestRunProgressText
+    {
+        get
+        {
+            if (_latestLossPoints.Count == 0)
+            {
+                return "-";
+            }
+
+            if (_latestPlannedStepCount is null || _latestPlannedStepCount.Value <= 0)
+            {
+                return $"step {_latestLossPoints[^1].Step}";
+            }
+
+            return $"{LatestRunProgressPercentage:0.#}% ({_latestLossPoints[^1].Step}/{_latestPlannedStepCount.Value})";
+        }
+    }
+
+    private double? LatestRunProgressPercentage => _latestLossPoints.Count == 0 || _latestPlannedStepCount is null || _latestPlannedStepCount.Value <= 0
+        ? null
+        : Math.Clamp((_latestLossPoints[^1].Step / (double)_latestPlannedStepCount.Value) * 100.0, 0.0, 100.0);
+
+    private string LatestLossValueText => _latestLossPoints.Count == 0
+        ? "-"
+        : _latestLossPoints[^1].Loss.ToString("0.####", CultureInfo.InvariantCulture);
+
+    private string MinLossValueText => _latestLossPoints.Count == 0
+        ? "-"
+        : _latestLossPoints.Min(point => point.Loss).ToString("0.####", CultureInfo.InvariantCulture);
+
+    private string MaxLossValueText => _latestLossPoints.Count == 0
+        ? "-"
+        : _latestLossPoints.Max(point => point.Loss).ToString("0.####", CultureInfo.InvariantCulture);
+
+    private string AverageLossValueText => _latestLossPoints.Count == 0
+        ? "-"
+        : _latestLossPoints.Average(point => point.Loss).ToString("0.####", CultureInfo.InvariantCulture);
 
     protected override async Task OnInitializedAsync()
     {
@@ -314,6 +472,11 @@
             _latestRunEvents = _runs.Count > 0
                 ? await LoadRecentEventsAsync(_runs[0].EventsPath)
                 : [];
+            var lossSeries = _runs.Count > 0
+                ? await LoadLossSeriesAsync(_runs[0].EventsPath)
+                : TrainingLossSeries.Empty;
+            _latestLossPoints = lossSeries.Points;
+            _latestPlannedStepCount = lossSeries.PlannedStepCount;
             _activeRun = TrainingRunner.GetActiveRun();
         }
         catch (Exception ex)
@@ -602,6 +765,224 @@
 
         return events;
     }
+
+    private static async Task<TrainingLossSeries> LoadLossSeriesAsync(string eventsPath)
+    {
+        if (!File.Exists(eventsPath))
+        {
+            return TrainingLossSeries.Empty;
+        }
+
+        var points = new List<TrainingLossPoint>();
+        int? plannedStepCount = null;
+
+        foreach (var line in await File.ReadAllLinesAsync(eventsPath))
+        {
+            if (string.IsNullOrWhiteSpace(line))
+            {
+                continue;
+            }
+
+            try
+            {
+                using var document = JsonDocument.Parse(line);
+                var root = document.RootElement;
+                var eventName = GetString(root, "event");
+
+                if (!root.TryGetProperty("data", out var dataElement) || dataElement.ValueKind != JsonValueKind.Object)
+                {
+                    continue;
+                }
+
+                if (string.Equals(eventName, "train.plan", StringComparison.OrdinalIgnoreCase)
+                    && dataElement.TryGetProperty("totalSteps", out var totalSteps)
+                    && totalSteps.ValueKind == JsonValueKind.Number)
+                {
+                    plannedStepCount = totalSteps.GetInt32();
+                    continue;
+                }
+
+                if (!string.Equals(eventName, "train.step", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (!dataElement.TryGetProperty("loss", out var lossElement) || lossElement.ValueKind != JsonValueKind.Number)
+                {
+                    continue;
+                }
+
+                var step = dataElement.TryGetProperty("step", out var stepElement) && stepElement.ValueKind == JsonValueKind.Number
+                    ? stepElement.GetInt32()
+                    : points.Count + 1;
+
+                var optimizerStep = dataElement.TryGetProperty("optimizerStep", out var optimizerStepElement) && optimizerStepElement.ValueKind == JsonValueKind.Number
+                    ? (int?)optimizerStepElement.GetInt32()
+                    : null;
+
+                var tokenCount = dataElement.TryGetProperty("tokenCount", out var tokenCountElement) && tokenCountElement.ValueKind == JsonValueKind.Number
+                    ? (int?)tokenCountElement.GetInt32()
+                    : null;
+
+                var learningRate = dataElement.TryGetProperty("learningRate", out var learningRateElement) && learningRateElement.ValueKind == JsonValueKind.Number
+                    ? (double?)learningRateElement.GetDouble()
+                    : null;
+
+                var ts = GetString(root, "ts") ?? "-";
+                var timestampText = DateTimeOffset.TryParse(ts, out var parsed)
+                    ? parsed.ToLocalTime().ToString("g")
+                    : ts;
+
+                points.Add(new TrainingLossPoint(
+                    step,
+                    optimizerStep,
+                    lossElement.GetDouble(),
+                    tokenCount,
+                    learningRate,
+                    timestampText));
+            }
+            catch
+            {
+                // Ignore malformed lines so one bad event does not break telemetry rendering.
+            }
+        }
+
+        var sampledPoints = points.Count <= 200
+            ? points
+            : points.TakeLast(200).ToList();
+
+        return new TrainingLossSeries(sampledPoints, plannedStepCount);
+    }
+
+    private static string BuildLossPolyline(IReadOnlyList<TrainingLossPoint> points)
+    {
+        if (points.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var minLoss = points.Min(point => point.Loss);
+        var maxLoss = points.Max(point => point.Loss);
+        var lossRange = Math.Max(0.0000001d, maxLoss - minLoss);
+
+        var polylinePoints = new string[points.Count];
+        for (var index = 0; index < points.Count; index++)
+        {
+            var x = points.Count == 1
+                ? 50d
+                : (index / (double)(points.Count - 1)) * 100d;
+            var y = maxLoss.Equals(minLoss)
+                ? 50d
+                : 100d - (((points[index].Loss - minLoss) / lossRange) * 100d);
+            polylinePoints[index] = $"{x.ToString("0.###", CultureInfo.InvariantCulture)},{y.ToString("0.###", CultureInfo.InvariantCulture)}";
+        }
+
+        return string.Join(" ", polylinePoints);
+    }
+
+    private static string BuildLossPointStyle(IReadOnlyList<TrainingLossPoint> points, int index)
+    {
+        if (points.Count == 0)
+        {
+            return "left:0%; top:50%;";
+        }
+
+        var minLoss = points.Min(point => point.Loss);
+        var maxLoss = points.Max(point => point.Loss);
+        var lossRange = Math.Max(0.0000001d, maxLoss - minLoss);
+
+        var x = points.Count == 1
+            ? 50d
+            : (index / (double)(points.Count - 1)) * 100d;
+        var y = maxLoss.Equals(minLoss)
+            ? 50d
+            : 100d - (((points[index].Loss - minLoss) / lossRange) * 100d);
+
+        return $"left:{x.ToString("0.###", CultureInfo.InvariantCulture)}%; top:{y.ToString("0.###", CultureInfo.InvariantCulture)}%;";
+    }
+
+    private static string BuildLossPointClass(IReadOnlyList<TrainingLossPoint> points, int index)
+    {
+        var classes = new List<string> { "training-loss-point" };
+        if (points.Count == 0 || index < 0 || index >= points.Count)
+        {
+            return string.Join(" ", classes);
+        }
+
+        var point = points[index];
+        var minLoss = points.Min(item => item.Loss);
+        var maxLoss = points.Max(item => item.Loss);
+        if (Math.Abs(point.Loss - minLoss) < 0.0000001d)
+        {
+            classes.Add("is-min");
+        }
+
+        if (Math.Abs(point.Loss - maxLoss) < 0.0000001d)
+        {
+            classes.Add("is-max");
+        }
+
+        if (index == points.Count - 1)
+        {
+            classes.Add("is-latest");
+        }
+
+        return string.Join(" ", classes);
+    }
+
+    private static string BuildLossPointTooltip(TrainingLossPoint point)
+    {
+        var optimizerStep = point.OptimizerStep?.ToString(CultureInfo.InvariantCulture) ?? "-";
+        var tokenCount = point.TokenCount?.ToString(CultureInfo.InvariantCulture) ?? "-";
+        var learningRate = point.LearningRate?.ToString("0.########", CultureInfo.InvariantCulture) ?? "-";
+
+        return $"Step {point.Step} | Loss {point.Loss.ToString("0.####", CultureInfo.InvariantCulture)} | Optimizer {optimizerStep} | Tokens {tokenCount} | LR {learningRate} | {point.TimestampText}";
+    }
+
+    private void TogglePrerequisites() => _isPrerequisitesExpanded = !_isPrerequisitesExpanded;
+
+    private void ToggleContract() => _isContractExpanded = !_isContractExpanded;
+
+    private void ToggleTrainingProgress() => _isTrainingProgressExpanded = !_isTrainingProgressExpanded;
+
+    private void ToggleTrainingSettings() => _isTrainingSettingsExpanded = !_isTrainingSettingsExpanded;
+
+    private void OnPrerequisitesHeaderKeyDown(KeyboardEventArgs args)
+    {
+        if (IsActivationKey(args))
+        {
+            TogglePrerequisites();
+        }
+    }
+
+    private void OnContractHeaderKeyDown(KeyboardEventArgs args)
+    {
+        if (IsActivationKey(args))
+        {
+            ToggleContract();
+        }
+    }
+
+    private void OnTrainingProgressHeaderKeyDown(KeyboardEventArgs args)
+    {
+        if (IsActivationKey(args))
+        {
+            ToggleTrainingProgress();
+        }
+    }
+
+    private void OnTrainingSettingsHeaderKeyDown(KeyboardEventArgs args)
+    {
+        if (IsActivationKey(args))
+        {
+            ToggleTrainingSettings();
+        }
+    }
+
+    private static bool IsActivationKey(KeyboardEventArgs args) =>
+        string.Equals(args.Key, "Enter", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(args.Key, " ", StringComparison.Ordinal)
+        || string.Equals(args.Key, "Spacebar", StringComparison.OrdinalIgnoreCase);
 
     private static int SafeCountFiles(string directory, string pattern)
     {
@@ -914,6 +1295,21 @@
         string TimestampText,
         string EventName,
         string DataSummary);
+
+    private sealed record TrainingLossPoint(
+        int Step,
+        int? OptimizerStep,
+        double Loss,
+        int? TokenCount,
+        double? LearningRate,
+        string TimestampText);
+
+    private sealed record TrainingLossSeries(
+        IReadOnlyList<TrainingLossPoint> Points,
+        int? PlannedStepCount)
+    {
+        public static TrainingLossSeries Empty { get; } = new([], null);
+    }
 
     private sealed class TrainingSettingRow
     {

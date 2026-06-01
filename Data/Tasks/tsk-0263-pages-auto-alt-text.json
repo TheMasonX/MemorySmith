@@ -1,0 +1,31 @@
+﻿{
+  "id": "tsk-0263-pages-auto-alt-text",
+  "key": "TSK-0263",
+  "title": "Pages Auto Alt Text",
+  "description": "Add support for AI-generated alt text. It should be a maintenance task",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-06-01T03:14:26.7832394Z",
+  "updatedAtUtc": "2026-06-01T03:14:26.7832394Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}
