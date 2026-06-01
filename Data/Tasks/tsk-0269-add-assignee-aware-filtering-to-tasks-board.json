@@ -1,0 +1,44 @@
+{
+  "id": "tsk-0269-add-assignee-aware-filtering-to-tasks-board",
+  "key": "TSK-0269",
+  "title": "Add Assignee-Aware Filtering to Tasks Board",
+  "description": "The /tasks board supports label filters and status columns but lacks an assignee filter. With 266+ tasks in the backlog, a contributor or agent needs to quickly narrow to 'show only tasks assigned to me' or 'show only Copilot-assigned tasks'. This is the 'Assignee-aware filtering' gap identified in the June 2026 LLMWikiServer parity review.\n\n### Motivation\nThe LLMWikiServer team specifically called this out as a triage efficiency gap when working with MemorySmith's task structure. On boards with hundreds of tasks, unfiltered views have O(n) scan cost.\n\n### Acceptance Criteria\n- An Assignee filter dropdown appears in the /tasks filter bar, alongside the existing label and status filters\n- Filter options include 'Unassigned', 'Me' (requires authenticated user), all Directory mode users, all Custom text values present in the current task set\n- The selected filter is preserved in the URL query string for shareability\n- The filter is combined (AND) with existing label and status filters\n- The filter applies to both the board (kanban) view and the list view\n\n### Extensions to Consider\n- Add assignee as a sortable column in the list view\n- Support multi-select assignee filter ('show tasks assigned to A or B')\n- Add 'Assigned to me' as a quick-access chip in the filter bar\n- Expose via API GET /api/tasks?assignee=... filter parameter\n\n### Implementation Notes\n- Tasks use two assignee modes: AssigneeMode='Directory' (resolves via directory ID) and AssigneeMode='Custom' (free text). The filter needs to handle both display paths.\n- The existing hybrid lexical+semantic search (MemorySmith:TaskSearch:HybridSemanticEnabled) does not natively filter by structured fields; this filter should operate at the service layer before search ranking.\n\n### Source\nOriginated from external parity review (LLMWikiServer, June 2026). Memory: external-parity-observations-20260601.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Low",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "agent-parity-review",
+  "labels": [
+    "tasks",
+    "ux",
+    "filtering",
+    "parity-review",
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "guides/agent-workflow-guide"
+  ],
+  "comments": [
+    {
+      "Id": "c-assignee-filter-source-note",
+      "Author": "agent-parity-review",
+      "Body": "UX gap identified in June 2026 external parity review (LLMWikiServer). Low priority relative to TSK-0267 and TSK-0268 but quick to implement given the existing filter bar infrastructure. With 266+ tasks in the repo and growing, this becomes increasingly painful without it.",
+      "CreatedAtUtc": "2026-06-01T00:00:00Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-06-01T00:00:00Z",
+  "updatedAtUtc": "2026-06-01T00:00:00Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}
