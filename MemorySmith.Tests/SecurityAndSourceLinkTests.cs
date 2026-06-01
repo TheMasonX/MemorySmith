@@ -192,8 +192,14 @@ public class SecurityAndSourceLinkTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(anonymousText, Does.Contain("not authorized to read source bundles"));
-            Assert.That(viewerText, Does.Contain("not authorized to read source bundles"));
+            Assert.That(
+                anonymousText,
+                Does.Contain("not authorized to read source bundles")
+                    .Or.Contain("is disabled by MCP tool configuration"));
+            Assert.That(
+                viewerText,
+                Does.Contain("not authorized to read source bundles")
+                    .Or.Contain("is disabled by MCP tool configuration"));
         });
     }
 

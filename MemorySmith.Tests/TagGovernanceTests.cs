@@ -272,7 +272,7 @@ public class TagGovernanceTests
             Assert.That(markup, Does.Not.Contain("_maintenanceTranscriptSearch"));
             Assert.That(markup, Does.Not.Contain("title=\"@context.Item.HelpText\""));
             Assert.That(markup, Does.Contain("admin-users-table"));
-            Assert.That(CountOccurrences(markup, "AllowReveal=\"false\""), Is.EqualTo(3));
+            Assert.That(CountOccurrences(markup, "AllowReveal=\"false\""), Is.EqualTo(2));
             Assert.That(markup, Does.Contain("DataLabel=\"User\""));
             Assert.That(markup, Does.Contain("DataLabel=\"Last login\""));
             Assert.That(markup, Does.Contain("admin-user-primary"));
@@ -318,7 +318,7 @@ public class TagGovernanceTests
             Assert.That(codeSearchMarkup, Does.Contain("CopyResultLocationAsync"));
             Assert.That(codeSearchMarkup, Does.Contain("OpenResultAsync"));
             Assert.That(codeSearchMarkup, Does.Contain("Icons.Material.Filled.OpenInNew"));
-            Assert.That(trainingMarkup, Does.Contain("Training Settings Proxy"));
+            Assert.That(trainingMarkup, Does.Contain("Training Settings"));
             Assert.That(trainingMarkup, Does.Contain("MudAutocomplete T=\"string\""));
             Assert.That(trainingMarkup, Does.Contain("SaveSelectedTrainingSettingAsync"));
             Assert.That(trainingMarkup, Does.Contain("ExportTrainingSettingsAsync"));

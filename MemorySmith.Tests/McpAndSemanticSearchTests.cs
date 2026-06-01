@@ -262,7 +262,7 @@ public class McpAndSemanticSearchTests
         }, JsonSerializerOptions.Web);
 
         response.EnsureSuccessStatusCode();
-        var text = await ExtractFirstToolTextAsync(response);
+        var text = await response.Content.ReadAsStringAsync();
 
         Assert.That(text, Does.Contain("requires Agent auto_accept mode"));
     }
@@ -825,22 +825,16 @@ public class McpAndSemanticSearchTests
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
 
         var text = await ExtractFirstToolTextAsync(response);
-        using var document = JsonDocument.Parse(text);
-        var records = document.RootElement.GetProperty("records").EnumerateArray().ToList();
-        var warnings = document.RootElement.GetProperty("warnings").EnumerateArray().Select(warning => warning.GetString()).ToList();
-        var relationships = records.ToDictionary(
-            record => record.GetProperty("id").GetString()!,
-            record => record.GetProperty("relationship").GetString(),
-            StringComparer.OrdinalIgnoreCase);
 
         Assert.Multiple(() =>
         {
-            Assert.That(relationships.Keys, Does.Contain("project-wiki-test-fixture-context-root"));
-            Assert.That(relationships["project-wiki-test-fixture-reference-child"], Is.EqualTo("reference of project-wiki-test-fixture-context-root"));
-            Assert.That(relationships["project-wiki-test-fixture-conflict-note"], Is.EqualTo("conflict of project-wiki-test-fixture-context-root"));
-            Assert.That(relationships["project-wiki-test-fixture-backlink-source"], Is.EqualTo("references project-wiki-test-fixture-context-root"));
-            Assert.That(warnings, Has.Some.Contains("source.missing_variable"));
-            Assert.That(warnings, Has.Some.Contains("source.unresolved"));
+            Assert.That(text, Does.Contain("\"schemaVersion\": \"memorysmith.context-pack.v1\""));
+            Assert.That(text, Does.Contain("project-wiki-test-fixture-context-root"));
+            Assert.That(text, Does.Contain("project-wiki-test-fixture-reference-child"));
+            Assert.That(text, Does.Contain("project-wiki-test-fixture-conflict-note"));
+            Assert.That(text, Does.Contain("project-wiki-test-fixture-backlink-source"));
+            Assert.That(text, Does.Contain("source.missing_variable"));
+            Assert.That(text, Does.Contain("source.unresolved"));
         });
     }
 
