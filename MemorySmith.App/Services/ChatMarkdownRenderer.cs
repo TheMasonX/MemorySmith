@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using Markdig;
+using Markdig.Extensions.GenericAttributes;
 
 namespace MemorySmith.App.Services;
 
@@ -44,6 +45,12 @@ public static partial class ChatMarkdownRenderer
     {
         var builder = new MarkdownPipelineBuilder()
             .UseAdvancedExtensions();
+        // Remove GenericAttributes: the extension allows wiki-markdown authors to inject
+        // arbitrary HTML attributes via the {.class #id key="value"} syntax, including
+        // event handlers such as onclick="..." and onerror="...". UseAdvancedExtensions()
+        // registers it unconditionally; we opt out after the fact.
+        // Audit finding: SEC-XSS-01 (Audits #5 and #7).
+        builder.Extensions.RemoveAll<GenericAttributesExtension>();
         builder.Extensions.Add(new MermaidExtension());
 
         if (!allowRawHtml)
