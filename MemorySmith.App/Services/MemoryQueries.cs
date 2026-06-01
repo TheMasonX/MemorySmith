@@ -44,6 +44,14 @@ public sealed record MemoryContextPackRecord(
 	string Content)
 {
     public IReadOnlyList<MemoryDiagnostic> Diagnostics { get; init; } = [];
+
+    /// <summary>
+    /// IDs of records (outside this pack) whose <see cref="References"/> or
+    /// <see cref="Conflicts"/> arrays cite this record. Populated by
+    /// <see cref="MemoryApplicationService.BuildContextPackAsync"/> after the
+    /// pack is assembled. TSK-0268.
+    /// </summary>
+    public IReadOnlyList<string> ReverseReferences { get; init; } = [];
 }
 
 public sealed record MemorySearchResult(

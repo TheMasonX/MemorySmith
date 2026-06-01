@@ -364,6 +364,13 @@
                                 @RenderMemoryLinks(_selectedRecord.Conflicts)
                             </section>
                         }
+                        @if (_incomingReferences.Count > 0)
+                        {
+                            <section class="wiki-incoming-section">
+                                <div class="wiki-section-title">Incoming References</div>
+                                @RenderMemoryLinks(_incomingReferences)
+                            </section>
+                        }
                     </div>
                 </details>
             }
@@ -376,6 +383,7 @@
     private MemoryRecord? _selectedRecord;
     private MemorySearchResult? _selectedSemanticMatch;
     private List<MemoryDiagnostic> _selectedDiagnostics = [];
+    private List<string> _incomingReferences = [];
     private List<MemoryDiagnostic> _editDiagnostics = [];
     private ElementReference _memoryContentPane;
     private MemoryRecord _editRecord = new();
@@ -537,6 +545,7 @@
             _selectedRecord = null;
             _selectedSemanticMatch = null;
             _selectedDiagnostics = [];
+            _incomingReferences = [];
             _memoryContentEnhancementsPending = false;
         }
     }
@@ -553,6 +562,7 @@
         _selectedRecord = record;
         _selectedSemanticMatch = _semanticMatches.TryGetValue(record.Id, out var match) ? match : null;
         _selectedDiagnostics = (await Memories.GetDiagnosticsAsync(record.Id, CancellationToken.None)).ToList();
+        _incomingReferences = (await Memories.GetReverseReferencesAsync(record.Id, CancellationToken.None)).ToList();
         _isEditing = false;
         _memoryContentEnhancementsPending = true;
         PopulateEditor(record, editingExisting: true);
@@ -575,6 +585,7 @@
         _selectedRecord = null;
         _selectedSemanticMatch = null;
         _selectedDiagnostics = [];
+        _incomingReferences = [];
         PopulateEditor(new MemoryRecord(), editingExisting: false);
         _isEditing = true;
         await RefreshDraftDiagnosticsAsync();
@@ -656,6 +667,7 @@
             _selectedRecord = null;
             _selectedSemanticMatch = null;
             _selectedDiagnostics = [];
+            _incomingReferences = [];
         }
 
         await LoadAsync(selectFirst: true);
@@ -881,7 +893,7 @@
             ? "wiki-result-row is-selected"
             : "wiki-result-row";
 
-    private static string RelatedContextSummary(MemoryRecord? record)
+    private string RelatedContextSummary(MemoryRecord? record)
     {
         if (record is null)
         {
@@ -902,6 +914,11 @@
         if (record.Conflicts.Count > 0)
         {
             segments.Add($"{record.Conflicts.Count} conflict{(record.Conflicts.Count == 1 ? string.Empty : "s")}");
+        }
+
+        if (_incomingReferences.Count > 0)
+        {
+            segments.Add($"{_incomingReferences.Count} incoming");
         }
 
         return segments.Count == 0
