@@ -1,9 +1,9 @@
 {
   "Id": "project-wiki-hybrid-search-rrf",
   "Title": "Hybrid Search With RRF",
-  "Content": "MemorySmith.App has a hybrid search path for project-wiki records. The hybrid path uses Lucene.NET StandardAnalyzer tokenization for lexical ranking, takes the active semantic ranker from MemoryApplicationService, and fuses both ranked lists with reciprocal rank fusion. The semantic ranker is optional ONNX embedding cosine search when SemanticSearch model and WordPiece vocabulary assets are available; otherwise MemorySmith reports the local token/tag/title/reference/alias scorer as the active fallback. Hybrid retrieval is exposed through POST /api/memories/search/hybrid, memorysmith_hybrid_search, memorysmith_context_pack root discovery, /api/chat tool interception, and the /memories Hybrid mode. Retrieval diagnostics are additive and do not change the RRF formula. Default REST responses now also emit retrieval metadata headers (X-MemorySmith-Retrieval-Mode plus provider headers), so clients can observe semantic fallback behavior without switching to envelope payload mode.",
+  "Content": "MemorySmith uses two distinct fusion strategies. Memory hybrid search (MemoryApplicationService.RankHybridResults) uses classic Reciprocal Rank Fusion with K=60 and equal weights between lexical and semantic legs. Code search (CodeSearchService.ScoreHybrid) uses a score-based convex combination with configurable HybridVectorWeight (0.75) and HybridLexicalWeight (0.25), saturation normalization on lexical scores, and a ZeroLexicalEvidencePenalty (0.72) for pure-vector results. Both paths are triggered by the /api/memories/search/hybrid endpoint (memory) and memorysmith_code_search tool (code). A planned upgrade path replaces memory RRF with Distribution-Based Score Fusion (DBSF) and adds cross-encoder reranking for code search. See Data/Pages/research/hyperagent-design-rrf-upgrade-fusion.md for the design.",
   "Status": 2,
-  "Confidence": 0.9,
+  "Confidence": 0.88,
   "Tags": [
     "project-wiki",
     "search",
@@ -26,10 +26,19 @@
   ],
   "Conflicts": [],
   "SourceLinks": [
-    { "Label": "MemoryApplicationService.cs", "Uri": "%MemorySmithRepo%MemorySmith.App/Services/MemoryApplicationService.cs" },
-    { "Label": "SemanticEmbeddingSearchService.cs", "Uri": "%MemorySmithRepo%MemorySmith.App/Services/SemanticEmbeddingSearchService.cs" },
-    { "Label": "HybridSearchTests.cs", "Uri": "%MemorySmithRepo%MemorySmith.Tests/McpAndSemanticSearchTests.cs" }
+    {
+      "Label": "MemoryApplicationService.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/MemoryApplicationService.cs"
+    },
+    {
+      "Label": "SemanticEmbeddingSearchService.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/SemanticEmbeddingSearchService.cs"
+    },
+    {
+      "Label": "HybridSearchTests.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.Tests/McpAndSemanticSearchTests.cs"
+    }
   ],
   "UsageCount": 1,
-  "LastUpdated": "2026-05-28T23:05:00Z"
+  "LastUpdated": "2026-06-01T20:25:33Z"
 }

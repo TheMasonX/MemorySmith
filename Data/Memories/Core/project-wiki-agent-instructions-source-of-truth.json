@@ -1,9 +1,9 @@
 {
   "Id": "project-wiki-agent-instructions-source-of-truth",
-  "Content": "Agent-facing repository instructions are now aligned with the active MemorySmith layout. The root .github/copilot-instructions.md and MemorySmith.Core/copilot-instructions.md point to README.md, Data/Memories/Core, Data/Pages, MemorySmith.Core/Docs/Plans/MemorySmith_FinalRefactorDesign_20260507.md, and the focused SemantingSearch.md plan for semantic retrieval work. They explicitly identify MemorySmith.App as the active single-host app, note that Worker/Dashboard were removed after migration, preserve NUnit preference, and remind agents to copy Data/Memories before tests mutate wiki fixtures.",
+  "Content": "Agent-facing repository instructions are organized in a three-tier hierarchy. (1) .github/agents/smith.agent.md is the canonical workflow contract for Agent Smith \u2014 it defines task tracking, evidence standards, skill-first workflow, and dogfooding behavior. (2) .github/copilot-instructions.md provides repository-wide Copilot behavior guidance including project map, execution standards, and NUnit/MVVM conventions. (3) .continue/rules/memory-smith.md mirrors the Smith agent contract for Continue.dev users. The runtime chat prompt is MemorySmith.Core/Docs/Prompts/wiki-chat-agent.md (Athena). Maintenance prompts live in Prompts/maintenance-agent-task.md, maintenance-proposal-generation.md, and maintenance-revision-cycle.md. When updating agent behavior, keep smith.agent.md aligned with copilot-instructions.md and the Continue rules. Treat smith.agent.md as the primary source of truth; backfill others after Smith prompt changes.",
   "Title": "Agent Instructions Source of Truth",
   "Status": 2,
-  "Confidence": 0.95,
+  "Confidence": 0.92,
   "Tags": [
     "project-wiki",
     "agent-instructions",
@@ -11,9 +11,8 @@
     "current-state"
   ],
   "References": [
-    "project-wiki-active-architecture",
-    "project-wiki-data-folder-policy",
-    "project-wiki-validation-command"
+    "project-wiki-chat-agent-provider",
+    "project-wiki-active-architecture"
   ],
   "Conflicts": [],
   "SourceLinks": [
@@ -37,5 +36,5 @@
     }
   ],
   "UsageCount": 0,
-  "LastUpdated": "2026-05-17T18:02:31.0000000Z"
+  "LastUpdated": "2026-06-01T20:25:33Z"
 }

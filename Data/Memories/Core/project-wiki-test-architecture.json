@@ -2,14 +2,14 @@
   "Id": "project-wiki-test-architecture",
   "Title": "Test Architecture and Benchmark Suite",
   "Status": 2,
-  "Confidence": 1.0,
+  "Confidence": 0.9,
   "Tags": [
     "project-wiki",
     "testing",
     "benchmarks",
     "architecture"
   ],
-  "Content": "MemorySmith.Tests uses NUnit 4 with Microsoft.AspNetCore.Mvc.Testing for integration tests. All tests targeting file-backed services use isolated temp directories (Path.GetTempPath() + guid) created in SetUp and deleted in TearDown. ProjectWikiFixture.CopyToTemp copies Data/Memories into a temp location and returns the path; the fixture automatically finds the repo root via .slnx presence. TestServiceFactory.CreateMemoryApplicationService builds a MemoryApplicationService directly with an empty MemoryIndex (no pre-loading needed since SearchAsync uses store.LoadAll and Lucene token scoring in-process). RecordingEventStore and RecordingMemoryChangePublisher are in-memory stubs defined in MemoryApplicationServiceTests.cs. PagesAndChatTests covers page rendering/assets, attachments, provider metadata, usage, full-memory context hydration, and the app-intercepted chat tool loop; MemoryChatAgent_ExecutesInterceptedToolCallsBeforeReturningReply and MemoryChatAgent_StreamsToolCallStatusWithoutLeakingToolJson prove toolCalls JSON and JSON-RPC tools/call payloads run local wiki tools before the final answer without leaking tool JSON. SearchBenchmarkTests (Category=Benchmark) exercises lexical, semantic, and hybrid search modes with SearchProbe records defining query/expected-id/maxMs thresholds. The suite now includes chat/search dogfooding probes for model-used metadata, Stop generation cancellation, compact chat history, context-window usage/rate-limit display, intercepted MCP/wiki tool calls, GitHub model unavailable/auth guidance, Claude Haiku before Sonnet preference terms, and Ctrl+V copied-image paste terms. Lexical probes use MustContainId for ranking flexibility; semantic and hybrid probes can use TopId for ordering assertions. MemoryApplicationServiceTests includes a hyphenated query case proving SearchAsync uses Lucene lexical tokens rather than simple substring Contains. ServiceFactory in SearchBenchmarkTests uses BackgroundServiceTelemetryTracker (concrete class, no interface). The MCP integration tests use WebApplicationFactory<Program> with in-memory config overriding DataPath/EventLogPath/Maintenance:Enabled=false. app.css is maintained in wwwroot/app.css with focused edits to the relevant selectors.",
+  "Content": "MemorySmith.Tests contains approximately 419 NUnit [Test] methods across 36+ test classes. Coverage includes: FileMemoryStore hardening and corrupt-file diagnostics, memory CRUD lifecycle, search benchmarks (lexical/semantic/hybrid with MRR quality probes), MCP tool integration, semantic embedding path resolution and provider fallback, page service and asset authorization, chat agent tool call interception and context planning, task domain service CRUD and attachment validation, tag governance diagnostics and policy enforcement, security and source-link path boundary validation, admin API contract tests (auth/setup/RBAC/settings), code search indexing/reuse/prefilter/relevance scorecards (22 tests), CUDA embedding batch benchmarks, model profile service configuration, chat transcript writer and feedback store, and maintenance agent workflow integration. Tests copy Data/Memories to temp storage; the live wiki is never mutated. A [Category(\"Benchmark\")] suite measures search quality and throughput under NUnit. CI collects Cobertura coverage and publishes HTML reports. Playwright e2e tests cover route-smoke (6 routes) and navigation-freeze (5 scenarios) browser regressions.",
   "References": [
     "project-wiki-validation-command",
     "project-wiki-hybrid-search-rrf",
@@ -17,11 +17,23 @@
   ],
   "Conflicts": [],
   "SourceLinks": [
-    { "Label": "SearchBenchmarkTests.cs", "Uri": "%MemorySmithRepo%MemorySmith.Tests/SearchBenchmarkTests.cs" },
-    { "Label": "McpAndSemanticSearchTests.cs", "Uri": "%MemorySmithRepo%MemorySmith.Tests/McpAndSemanticSearchTests.cs" },
-    { "Label": "ProjectWikiTestbaseTests.cs", "Uri": "%MemorySmithRepo%MemorySmith.Tests/ProjectWikiTestbaseTests.cs" },
-    { "Label": "MemoryApplicationServiceTests.cs", "Uri": "%MemorySmithRepo%MemorySmith.Tests/MemoryApplicationServiceTests.cs" }
+    {
+      "Label": "SearchBenchmarkTests.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.Tests/SearchBenchmarkTests.cs"
+    },
+    {
+      "Label": "McpAndSemanticSearchTests.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.Tests/McpAndSemanticSearchTests.cs"
+    },
+    {
+      "Label": "ProjectWikiTestbaseTests.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.Tests/ProjectWikiTestbaseTests.cs"
+    },
+    {
+      "Label": "MemoryApplicationServiceTests.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.Tests/MemoryApplicationServiceTests.cs"
+    }
   ],
   "UsageCount": 0,
-  "LastUpdated": "2026-05-17T17:00:00Z"
+  "LastUpdated": "2026-06-01T20:25:33Z"
 }
