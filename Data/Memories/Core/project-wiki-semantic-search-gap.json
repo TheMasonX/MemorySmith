@@ -1,9 +1,9 @@
 {
   "Id": "project-wiki-semantic-search-gap",
   "Title": "Semantic Search Gap",
-  "Content": "MemorySmith now has an optional ONNX embedding path for memory semantic search plus persisted per-record document embeddings under Data/Graph/embeddings so recreated services can reuse unchanged vectors across restarts. When SemanticSearch model and WordPiece vocabulary assets are available, SemanticEmbeddingSearchService ranks filtered memories by exact cosine similarity over cached or persisted embeddings; when assets are missing or unusable, MemoryApplicationService falls back to local token, tag, title, reference, and alias scoring. Hybrid search fuses Lucene.NET lexical rank with whichever semantic ranker is active through RRF. Retrieval mode/provider headers are now exposed on default search responses to make fallback states observable without envelope payload migration. The remaining gap is a more general large-KB vector retrieval layer: approximate nearest-neighbor indexing, broader page/document coverage, model asset validation, and a migration path that does not force PostgreSQL before the product needs it.",
+  "Content": "The semantic search path has known gaps. When ONNX embeddings are unavailable (model missing, provider init failure, dimension mismatch), the system falls back silently to token-based scoring with alias expansion \u2014 the legacy JSON response shape does not surface provider metadata, so clients may not realize embeddings didn't run. The alias dictionary (SearchAliases in MemoryApplicationService) is hand-curated against the project wiki, meaning the in-repo MRR test (MRR>=0.55) overfits to the fixture corpus. The WordPiece tokenizer hardcodes lowercasing (wrong for cased models), lacks Unicode NFC normalization, and does not split CJK characters. Code search stores embeddings as JSON TEXT (not BLOB), uses a scalar dot product (no SIMD), and performs brute-force scan unless the SQL prefilter engages. TSK-0199 tracks the ANN migration plan; TSK-0200 tracks provider metadata surfacing.",
   "Status": 2,
-  "Confidence": 0.94,
+  "Confidence": 0.85,
   "Tags": [
     "project-wiki",
     "semantic-search",
@@ -21,7 +21,7 @@
   ],
   "Conflicts": [],
   "UsageCount": 2,
-  "LastUpdated": "2026-05-28T23:05:00Z",
+  "LastUpdated": "2026-06-01T20:25:33Z",
   "SourceLinks": [
     {
       "Label": "MemoryApplicationService.cs (SemanticSearchAsync)",
