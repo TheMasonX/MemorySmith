@@ -2,7 +2,7 @@
   "id": "tsk-0256-chat-ai-rename",
   "key": "TSK-0256",
   "title": "Chat AI Rename",
-  "description": "Chat history should be renamable, with a generated name (optional) created by the chat system (perhaps using the local model). User should be able to rename",
+  "description": "Support editable chat session titles with optional AI-generated suggestions based on early conversation context. Users must be able to rename manually at any time, and generated names should never overwrite explicit user titles.",
   "type": "Task",
   "status": "Backlog",
   "priority": "Medium",

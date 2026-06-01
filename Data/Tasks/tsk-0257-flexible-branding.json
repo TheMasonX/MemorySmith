@@ -2,7 +2,7 @@
   "id": "tsk-0257-flexible-branding",
   "key": "TSK-0257",
   "title": "Flexible Branding",
-  "description": "Make hardcoded brand dependencies like MemorySmith be configurable",
+  "description": "Replace hardcoded product branding strings/assets with configuration-driven branding metadata (name, short label, and optional logo/icon references) so deployments can rebrand without source edits.",
   "type": "Task",
   "status": "Backlog",
   "priority": "Medium",

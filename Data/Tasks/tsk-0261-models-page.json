@@ -2,7 +2,7 @@
   "id": "tsk-0261-models-page",
   "key": "TSK-0261",
   "title": "Models Page",
-  "description": "Completely move the models out of the admin panel so it\u0027s only in the models page, but keep the improved context window and any other improvements so it\u0027s the best of both. Also needs the vram estimates. And context dropdown should not mention Qwen",
+  "description": "Consolidate model management on the dedicated Models page (instead of Admin), preserving recent context-window improvements and adding VRAM estimate visibility. Also remove model-specific wording from generic context controls so UX remains provider/model-neutral.",
   "type": "Task",
   "status": "Backlog",
   "priority": "Medium",

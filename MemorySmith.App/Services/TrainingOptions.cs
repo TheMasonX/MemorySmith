@@ -2,6 +2,9 @@ namespace MemorySmith.App.Services;
 
 public sealed class TrainingOptions
 {
+    public List<string> SyntheticDataPaths { get; set; } = [];
+    public bool IncludeTranscriptExamples { get; set; }
+    public bool IncludeStarterExamples { get; set; }
     public bool ChatTranscriptEnabled { get; set; }
     public bool StoreChatContent { get; set; }
     public string TranscriptDirectory { get; set; } = Path.Combine("..", "Data", "Events", "chat-transcripts");

@@ -276,7 +276,9 @@ public sealed class FileTaskService : ITaskService
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
-        WriteIndented = true
+        WriteIndented = true,
+        AllowTrailingCommas = true,
+        ReadCommentHandling = JsonCommentHandling.Skip
     };
     private static readonly JsonSerializerOptions JsonlOptions = new(JsonSerializerDefaults.Web)
     {
@@ -746,7 +748,7 @@ public sealed class FileTaskService : ITaskService
                 var item = JsonSerializer.Deserialize<TaskItem>(json, JsonOptions);
                 if (item is not null)
                 {
-                    results.Add(item);
+                    results.Add(NormalizeLoadedTask(item, file));
                 }
             }
             catch (Exception ex)
@@ -757,6 +759,40 @@ public sealed class FileTaskService : ITaskService
         }
 
         return results;
+    }
+
+    private static TaskItem NormalizeLoadedTask(TaskItem item, string filePath)
+    {
+        var fileToken = Path.GetFileNameWithoutExtension(filePath);
+        var fileName = Path.GetFileName(filePath);
+        var normalizedAssigneeMode = NormalizeAssigneeMode(item.AssigneeMode);
+        var normalizedAssigneeDirectoryId = normalizedAssigneeMode == TaskAssigneeModes.Directory
+            ? NormalizeNullable(item.AssigneeDirectoryId)
+            : null;
+        var normalizedAssigneeCustomText = normalizedAssigneeMode == TaskAssigneeModes.Custom
+            ? NormalizeNullable(item.AssigneeCustomText)
+            : null;
+
+        return item with
+        {
+            Id = NormalizeNullable(item.Id) ?? fileToken,
+            Key = NormalizeNullable(item.Key) ?? InferKeyFromToken(fileToken),
+            Title = NormalizeNullable(item.Title) ?? "Untitled task",
+            Description = item.Description ?? string.Empty,
+            Type = NormalizeOrDefault(item.Type, "Task"),
+            Status = NormalizeOrDefault(item.Status, TaskStatuses.Backlog),
+            Priority = NormalizeOrDefault(item.Priority, TaskPriorities.Medium),
+            AssigneeMode = normalizedAssigneeMode,
+            AssigneeDirectoryId = normalizedAssigneeDirectoryId,
+            AssigneeCustomText = normalizedAssigneeCustomText,
+            Reporter = NormalizeNullable(item.Reporter),
+            Labels = NormalizeLabels(item.Labels),
+            Attachments = item.Attachments ?? [],
+            ExternalLinks = item.ExternalLinks ?? [],
+            LinkedPages = (item.LinkedPages ?? []).Where(link => !string.IsNullOrWhiteSpace(link)).Select(link => link.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+            Comments = item.Comments ?? [],
+            SourceFilePath = NormalizeNullable(item.SourceFilePath) ?? fileName
+        };
     }
 
     private TaskItem? FindByIdOrKey(string idOrKey, CancellationToken cancellationToken)

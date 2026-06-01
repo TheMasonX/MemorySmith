@@ -2,7 +2,7 @@
   "id": "tsk-0254-collapse-all-page-folders",
   "key": "TSK-0254",
   "title": "Collapse All Page Folders",
-  "description": "3-way toggle to set/save the all/some/none folder expansions in the pages screen in tree view as part of the header",
+  "description": "Add a header-level 3-state control for the Pages tree expansion posture: expand all, collapse all, or keep per-folder custom state. Persist the chosen mode so navigation sessions restore the expected folder visibility behavior.",
   "type": "Task",
   "status": "Backlog",
   "priority": "Medium",

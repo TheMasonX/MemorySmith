@@ -599,6 +599,45 @@ Line two",
                 });
         }
 
+            [Test]
+            public async Task TasksApi_TaskFileWithTrailingCommaAndComment_LoadsWithoutImportError()
+            {
+                var tasksRoot = Path.Combine(_tempDir, "Tasks");
+                Directory.CreateDirectory(tasksRoot);
+                var taskPath = Path.Combine(tasksRoot, "tsk-9998-commented.json");
+                var json = """
+        {
+            // intentionally hand-edited file
+            "id": "tsk-9998-commented",
+            "key": "TSK-9998",
+            "title": "Commented task record",
+            "description": "Manual task import should tolerate comments and trailing commas.",
+            "type": "Task",
+            "status": "Backlog",
+            "priority": "Medium",
+            "assigneeMode": "Custom",
+            "assigneeCustomText": "Copilot",
+        }
+        """;
+                await File.WriteAllTextAsync(taskPath, json);
+
+                var listResponse = await _client.GetAsync("/api/tasks?limit=200");
+                var list = await listResponse.Content.ReadFromJsonAsync<List<TaskSummary>>();
+                var loaded = await _client.GetFromJsonAsync<TaskItem>("/api/tasks/TSK-9998");
+                var summary = list?.FirstOrDefault(item => item.Key == "TSK-9998");
+
+                Assert.Multiple(() =>
+                {
+                    Assert.That(listResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+                    Assert.That(list, Is.Not.Null);
+                    Assert.That(summary, Is.Not.Null);
+                    Assert.That(summary!.HasLoadError, Is.False);
+                    Assert.That(loaded, Is.Not.Null);
+                    Assert.That(loaded!.HasLoadError, Is.False);
+                    Assert.That(loaded.Title, Is.EqualTo("Commented task record"));
+                });
+            }
+
     [Test]
     public async Task TasksApi_MalformedTaskFile_MutationEndpointsReturnBadRequest()
     {

@@ -3519,7 +3519,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
             return null;
         }
 
-        foreach (var candidate in ResolvePromptPathCandidates(path))
+        foreach (var candidate in ResolvePromptPathCandidates(path, _options.Value.DataPath))
         {
             if (File.Exists(candidate))
             {
@@ -3531,7 +3531,7 @@ public sealed partial class MemoryChatAgent : IChatAgent
         return null;
     }
 
-    private static IEnumerable<string> ResolvePromptPathCandidates(string path)
+    private static IEnumerable<string> ResolvePromptPathCandidates(string path, string dataPath)
     {
         if (Path.IsPathRooted(path))
         {
@@ -3539,8 +3539,25 @@ public sealed partial class MemoryChatAgent : IChatAgent
             yield break;
         }
 
+        var dataRoot = ResolveDataRootCandidate(dataPath);
+        if (!string.IsNullOrWhiteSpace(dataRoot))
+        {
+            yield return Path.GetFullPath(Path.Combine(dataRoot, path));
+        }
+
         yield return Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, path));
         yield return Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), path));
+    }
+
+    private static string ResolveDataRootCandidate(string dataPath)
+    {
+        if (string.IsNullOrWhiteSpace(dataPath))
+        {
+            return string.Empty;
+        }
+
+        var fullDataPath = Path.GetFullPath(dataPath);
+        return Directory.GetParent(fullDataPath)?.FullName ?? Path.GetDirectoryName(fullDataPath) ?? string.Empty;
     }
 
     private static string FormatContext(IReadOnlyList<ChatContextItem> context)

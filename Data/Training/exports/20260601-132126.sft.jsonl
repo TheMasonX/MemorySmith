@@ -1,0 +1,1 @@
+{"messages": [{"role": "system", "content": "You are MemorySmith Athena."}, {"role": "user", "content": "Summarize semantic search fallback behavior."}, {"role": "assistant", "content": "If ONNX embeddings are unavailable, semantic/hybrid routes return lexical-backed results with provider metadata explaining fallback reason."}]}

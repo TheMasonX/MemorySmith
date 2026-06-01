@@ -2,7 +2,7 @@
   "id": "tsk-0259-latex-support",
   "key": "TSK-0259",
   "title": "LaTeX Support",
-  "description": "Chat/Pages need to render LaTeX",
+  "description": "Add KaTeX-compatible LaTeX rendering for Chat and Pages markdown, including inline and block math syntax, with safe sanitization defaults and graceful fallback when expressions are invalid.",
   "type": "Task",
   "status": "Backlog",
   "priority": "Medium",

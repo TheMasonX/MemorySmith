@@ -2,7 +2,7 @@
   "id": "tsk-0255-tokens-per-second",
   "key": "TSK-0255",
   "title": "Tokens Per Second",
-  "description": "Add tokens per second as supplemental chat data for local models",
+  "description": "Expose tokens-per-second throughput as supplemental chat telemetry for local model runs, including clear calculation rules (based on streamed output tokens and elapsed generation time) and non-blocking display in the chat UI.",
   "type": "Task",
   "status": "Backlog",
   "priority": "Medium",

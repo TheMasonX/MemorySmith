@@ -2,7 +2,7 @@
   "id": "tsk-0262-image-size-alt-text-support",
   "key": "TSK-0262",
   "title": "Image Size \u002B Alt Text Support",
-  "description": "Add image scaling and alt-text support to pages",
+  "description": "Extend page markdown rendering to support author-controlled image sizing plus explicit alt-text metadata, with predictable HTML output and no regression for existing markdown image syntax.",
   "type": "Task",
   "status": "Backlog",
   "priority": "Medium",

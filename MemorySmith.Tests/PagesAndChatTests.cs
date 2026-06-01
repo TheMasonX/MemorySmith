@@ -1117,6 +1117,39 @@ public class PagesAndChatTests
     }
 
     [Test]
+    public async Task MemoryChatAgent_ResolvesRelativeSystemPromptPathFromDataRoot()
+    {
+        var memoryStore = new InMemoryMemoryStore();
+        var eventStore = new RecordingEventStore();
+        var publisher = new RecordingMemoryChangePublisher();
+        var memories = TestServiceFactory.CreateMemoryApplicationService(memoryStore, eventStore, publisher);
+        var pages = new FilePageService(_tempDir);
+
+        var dataRoot = Path.Combine(_tempDir, "Data");
+        var memoriesPath = Path.Combine(dataRoot, "Memories");
+        Directory.CreateDirectory(memoriesPath);
+        var promptRelativePath = Path.Combine("Prompts", "wiki-chat-agent.md");
+        var promptAbsolutePath = Path.Combine(dataRoot, promptRelativePath);
+        Directory.CreateDirectory(Path.GetDirectoryName(promptAbsolutePath)!);
+        await File.WriteAllTextAsync(promptAbsolutePath, "Use the Data-root relative prompt.");
+
+        var provider = new FakeChatProvider("Done.");
+        var options = Options.Create(new MemorySmithOptions
+        {
+            DataPath = memoriesPath,
+            Chat = new ChatOptions
+            {
+                SystemPromptPath = promptRelativePath
+            }
+        });
+        var agent = new MemoryChatAgent([provider], memories, pages, options);
+
+        await agent.SendAsync(new MemoryChatRequest("Test Data-root prompt resolution", MemoryChatMode.Chat), CancellationToken.None);
+
+        Assert.That(provider.LastRequest!.Messages.Any(message => message.Content.Contains("Use the Data-root relative prompt.", StringComparison.Ordinal)), Is.True);
+    }
+
+    [Test]
     public async Task MemoryChatAgent_SendsContextEnvelopeAsUserDataMessage()
     {
         var memoryStore = new InMemoryMemoryStore();

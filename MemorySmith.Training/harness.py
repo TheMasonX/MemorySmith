@@ -44,6 +44,26 @@ class Harness:
         self.phase_started_at = time.perf_counter()
         self.events_written = 0
 
+    def include_starter_examples(self) -> bool:
+        value = self.request.get("includeStarterExamples")
+        if value is None:
+            return False
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, str):
+            return value.strip().lower() in {"1", "true", "yes", "on"}
+        return bool(value)
+
+    def include_transcript_examples(self) -> bool:
+        value = self.request.get("includeTranscriptExamples")
+        if value is None:
+            return False
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, str):
+            return value.strip().lower() in {"1", "true", "yes", "on"}
+        return bool(value)
+
     # ------------------------------------------------------------------ #
     # Config resolution (unchanged from upstream)
     # ------------------------------------------------------------------ #
@@ -226,48 +246,37 @@ class Harness:
     # ------------------------------------------------------------------ #
 
     def load_chat_examples(self) -> list[dict[str, Any]]:
-        transcript_dir = Path(self.request.get("transcriptDirectory", "../Data/Events/chat-transcripts"))
-        transcript_dir = transcript_dir.resolve()
         examples: list[dict[str, Any]] = []
-        for file in sorted(transcript_dir.glob("*.content.jsonl")):
-            with file.open("r", encoding="utf-8") as handle:
-                for raw in handle:
-                    raw = raw.strip()
-                    if not raw:
-                        continue
-                    try:
-                        row = json.loads(raw)
-                    except json.JSONDecodeError:
-                        continue
-                    user = str(row.get("requestText") or "").strip()
-                    assistant = str(row.get("responseText") or "").strip()
-                    if user and assistant:
-                        examples.append({
-                            "messages": [
-                                {"role": "system", "content": "You are MemorySmith Athena."},
-                                {"role": "user", "content": user},
-                                {"role": "assistant", "content": assistant},
-                            ]
-                        })
+        if self.include_transcript_examples():
+            transcript_directory = self.request.get("transcriptDirectory")
+            if isinstance(transcript_directory, str) and transcript_directory.strip():
+                transcript_dir = Path(transcript_directory.strip()).resolve()
+                for file in sorted(transcript_dir.glob("*.content.jsonl")):
+                    with file.open("r", encoding="utf-8") as handle:
+                        for raw in handle:
+                            raw = raw.strip()
+                            if not raw:
+                                continue
+                            try:
+                                row = json.loads(raw)
+                            except json.JSONDecodeError:
+                                continue
+                            user = str(row.get("requestText") or "").strip()
+                            assistant = str(row.get("responseText") or "").strip()
+                            if user and assistant:
+                                examples.append({
+                                    "messages": [
+                                        {"role": "system", "content": "You are MemorySmith Athena."},
+                                        {"role": "user", "content": user},
+                                        {"role": "assistant", "content": assistant},
+                                    ]
+                                })
         if examples:
             return examples
 
-        starter_examples = self.load_starter_sft_examples()
-        if starter_examples:
-            self.emit_event("data.synthetic_examples_loaded", {"records": len(starter_examples)})
-            return starter_examples
+        return []
 
-        return [
-            {
-                "messages": [
-                    {"role": "system", "content": "You are MemorySmith Athena."},
-                    {"role": "user", "content": "Summarize semantic search fallback behavior."},
-                    {"role": "assistant", "content": "If ONNX embeddings are unavailable, semantic/hybrid routes return lexical-backed results with provider metadata explaining fallback reason."},
-                ]
-            }
-        ]
-
-    def load_starter_sft_examples(self) -> list[dict[str, Any]]:
+    def load_explicit_sft_examples(self) -> list[dict[str, Any]]:
         repo_root = Path(__file__).resolve().parents[1]
         starter_files: list[Path] = []
 
@@ -281,10 +290,11 @@ class Harness:
         if isinstance(synthetic_path, str) and synthetic_path.strip():
             starter_files.append(Path(synthetic_path.strip()).expanduser().resolve())
 
-        starter_files.extend([
-            repo_root / "MemorySmith.Training" / "synthetic" / "starter_sft.jsonl",
-            repo_root / "MemorySmith.Training" / "synthetic" / "starter_sft.expanded.jsonl",
-        ])
+        if self.include_starter_examples():
+            starter_files.extend([
+                repo_root / "MemorySmith.Training" / "synthetic" / "starter_sft.jsonl",
+                repo_root / "MemorySmith.Training" / "synthetic" / "starter_sft.expanded.jsonl",
+            ])
 
         examples: list[dict[str, Any]] = []
         for starter_file in starter_files:
@@ -839,7 +849,13 @@ class Harness:
         self.write_status("data", "run.started")
 
         export_start = time.perf_counter()
-        examples = self.load_chat_examples()
+        examples = self.load_explicit_sft_examples()
+        transcript_examples = self.load_chat_examples()
+        if transcript_examples:
+            self.emit_event("data.chat_examples_loaded", {"records": len(transcript_examples)})
+            examples.extend(transcript_examples)
+        if not examples:
+            raise RuntimeError("No training corpus was specified. Provide syntheticDataPath(s) or enable transcript examples explicitly.")
         self.write_export(examples)
         records, tokens_est = self.validate_export()
         elapsed_export = time.perf_counter() - export_start

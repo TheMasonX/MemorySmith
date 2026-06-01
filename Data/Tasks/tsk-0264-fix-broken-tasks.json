@@ -1,0 +1,44 @@
+﻿{
+  "id": "tsk-0264-fix-broken-tasks",
+  "key": "TSK-0264",
+  "title": "Fix Broken Tasks",
+  "description": "Repair task import reliability for manually edited task JSON files that currently show as load/import errors in the Tasks UI. Prioritize tolerant parsing (without silently corrupting data), clear repair diagnostics, and verification for the reported IDs (TSK-0218/0220/0221/0222/0224/0251/0252).",
+  "type": "Task",
+  "status": "Done",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [
+    {
+      "id": "c-442bf4e4ae7d4e52b25c533335e6bec5",
+      "author": "TheMasonX",
+      "body": "218 251 252 224 222 221 220 are some tasks seen with issues",
+      "createdAtUtc": "2026-06-01T18:49:51.3245416Z"
+    },
+    {
+      "id": "c-agent-smith-20260601-0264",
+      "author": "AgentSmith",
+      "body": "Implemented tolerant task-load parsing for manual edits (JSON comments and trailing commas) and added load-time normalization for missing/null optional collections/fields so task summaries no longer crash with import-like errors. Added regression test TasksApi_TaskFileWithTrailingCommaAndComment_LoadsWithoutImportError; existing malformed JSON fallback tests still pass.",
+      "createdAtUtc": "2026-06-01T19:18:00.0000000Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-06-01T18:45:26.6418098Z",
+  "updatedAtUtc": "2026-06-01T19:18:00.0000000Z",
+  "completedAtUtc": "2026-06-01T19:18:00.0000000Z",
+  "revision": 3,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

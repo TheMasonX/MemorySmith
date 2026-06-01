@@ -3,7 +3,7 @@ param(
     [string]$RunId = (Get-Date -Format "yyyyMMdd-HHmmss"),
     [string]$WorkRoot,
     [string]$ExportPath = "Data/Training/exports",
-    [string]$TranscriptDirectory = "Data/Events/chat-transcripts",
+    [string]$TranscriptDirectory = "",
     [string]$PythonVenvPath,
     [string]$ScratchRoot,
     [ValidateSet("auto", "simulated", "lora", "infer")]
@@ -18,6 +18,7 @@ param(
     [int]$GradientAccumulationSteps = 1,
     [int]$WarmupSteps = 0,
     [bool]$ShuffleEachEpoch = $true,
+    [bool]$IncludeStarterExamples = $false,
     [int]$MaxTrainSteps = 0,
     [switch]$TrustRemoteCode,
     [switch]$RequireTrainingDependencies,
@@ -248,7 +249,7 @@ $request = [ordered]@{
     modelId = $ModelId
     hfAuthConfigured = -not [string]::IsNullOrWhiteSpace($resolvedHfToken)
     exportPath = $resolvedExportPath
-    transcriptDirectory = (Resolve-WorkflowPath $TranscriptDirectory)
+    transcriptDirectory = if ([string]::IsNullOrWhiteSpace($TranscriptDirectory)) { $null } else { (Resolve-WorkflowPath $TranscriptDirectory) }
     format = "FilteredSft"
     dependencyProbe = [ordered]@{
         python = $preflight.python
@@ -267,6 +268,8 @@ $request = [ordered]@{
         warmupSteps = $WarmupSteps
         shuffleEachEpoch = $ShuffleEachEpoch
     }
+    includeTranscriptExamples = -not [string]::IsNullOrWhiteSpace($TranscriptDirectory)
+    includeStarterExamples = $IncludeStarterExamples
     trustRemoteCode = [bool]$TrustRemoteCode
 }
 

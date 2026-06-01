@@ -166,6 +166,16 @@ public sealed class TrainingHarnessRunnerService
         }
 
         var dependencyProbe = await ProbeDependenciesAsync(cancellationToken);
+        var syntheticDataPaths = new List<string>();
+        foreach (var configuredPath in appOptions.Training.SyntheticDataPaths)
+        {
+            if (string.IsNullOrWhiteSpace(configuredPath))
+            {
+                continue;
+            }
+
+            syntheticDataPaths.Add(ResolvePath(configuredPath));
+        }
 
         var requestPath = Path.Combine(workDirectory, "request.json");
         var huggingFaceToken = ResolveEnvironmentSecret(appOptions.Training.HuggingFaceTokenEnvironmentVariable);
@@ -175,7 +185,12 @@ public sealed class TrainingHarnessRunnerService
             trainMode = "auto",
             hfAuthConfigured = !string.IsNullOrWhiteSpace(huggingFaceToken),
             exportPath = exportDirectory,
-            transcriptDirectory = ResolvePath(appOptions.Training.TranscriptDirectory),
+            transcriptDirectory = appOptions.Training.IncludeTranscriptExamples
+                ? ResolvePath(appOptions.Training.TranscriptDirectory)
+                : null,
+            syntheticDataPaths,
+            includeTranscriptExamples = appOptions.Training.IncludeTranscriptExamples,
+            includeStarterExamples = appOptions.Training.IncludeStarterExamples,
             format = appOptions.Training.PreferenceFormat.ToString(),
             activeModelTag = appOptions.Training.ActiveModelTag,
             fallbackModelTag = appOptions.Training.FallbackModelTag,
