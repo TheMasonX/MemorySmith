@@ -1,0 +1,29 @@
+{
+  "Id": "project-wiki-code-search-ui",
+  "Content": "MemorySmith hosts a dedicated code-search workbench at /code-search built with Blazor Server and MudBlazor. The page exposes the full CodeSearchService query surface: free-text query, configurable limit (operator-capped), target directory multiselect, rebuild-if-stale and force-rebuild toggles, and inline status cards showing provider mode, indexed file/chunk counts, and build progress. Results display document path, line range, score, match reason, and a syntax-highlighted snippet. The page communicates directly with the CodeSearchService singleton (not through MCP), so it is available to any authenticated user with View permission without requiring an MCP client. The underlying search uses hybrid vector+lexical scoring with configurable weights, document-balanced result selection (MaxResultsPerDocument=2 default), and an optional SQL prefilter for candidate reduction.",
+  "Title": "Code Search UI (/code-search)",
+  "Status": 2,
+  "Confidence": 0.88,
+  "Tags": [
+    "project-wiki",
+    "code-search",
+    "ui",
+    "current-state",
+    "kind:fact"
+  ],
+  "References": [
+    "project-wiki-code-search-relevance-suite",
+    "project-wiki-onnx-semantic-embeddings"
+  ],
+  "Conflicts": [],
+  "SourceLinks": [
+    {
+      "Label": "CodeSearch.razor",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Components/Pages/CodeSearch.razor",
+      "StartLine": 1,
+      "EndLine": 50
+    }
+  ],
+  "UsageCount": 0,
+  "LastUpdated": "2026-06-01T20:14:21Z"
+}

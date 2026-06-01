@@ -1,0 +1,28 @@
+{
+  "Id": "project-wiki-models-page-current",
+  "Content": "MemorySmith provides a dedicated /models page (Admin-only) for managing chat model profiles. The page lists all configured profiles with provider, model name, context window, role restrictions, and default assignments (chat default, maintenance run, proposal review, admin maintenance chat). Operators can create new profiles, edit existing ones, set per-profile allowed roles, and assign defaults for each use case. The page communicates with ChatModelProfileService which persists profiles to the settings override JSON file via atomic temp+move writes. Provider discovery is live \u2014 for GitHub Copilot, the SDK discovers available models and merges them with configured model options including ChatMultiplier, IsPreferred, and ContextWindowTokens.",
+  "Title": "Models Page (/models)",
+  "Status": 2,
+  "Confidence": 0.85,
+  "Tags": [
+    "project-wiki",
+    "models",
+    "admin",
+    "chat",
+    "configuration",
+    "current-state",
+    "kind:fact"
+  ],
+  "References": [],
+  "Conflicts": [],
+  "SourceLinks": [
+    {
+      "Label": "Models.razor",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Components/Pages/Models.razor",
+      "StartLine": 1,
+      "EndLine": 30
+    }
+  ],
+  "UsageCount": 0,
+  "LastUpdated": "2026-06-01T20:14:21Z"
+}
