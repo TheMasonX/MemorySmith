@@ -10,6 +10,17 @@ public static partial class ChatReferenceLinkPolicy
     private static readonly Regex PageSlugPattern = new("^[a-z0-9][a-z0-9/_-]*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
     private static readonly Regex MemoryIdPattern = new("^[a-z0-9][a-z0-9._/-]*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
+    // Strips event-handler attributes (onclick, onerror, onload, onmouseover, etc.) from
+    // an HTML attribute fragment. Applied to the before/after context groups captured by
+    // AnchorHrefRegex in FilterToAllowedTargets to prevent GenericAttributes-injected
+    // event handlers from surviving the href rewrite. Audit finding: SEC-XSS-01 (Audits #5 and #7).
+    private static readonly Regex EventHandlerAttributeRegex = new(
+        "\\s+on\\w+\\s*=\\s*(?:\"[^\"]*\"|'[^']*'|[^\\s>]*)",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
+
+    private static string StripEventHandlerAttributes(string attrs) =>
+        EventHandlerAttributeRegex.Replace(attrs, string.Empty);
+
     public static string LinkifyInlineCodeReferences(
         string html,
         IEnumerable<string> allowedPageSlugs,
@@ -68,13 +79,15 @@ public static partial class ChatReferenceLinkPolicy
             if (TryGetPageSlug(rawHref, out var slug))
             {
                 var href = pageSet.Contains(slug) ? PageHref(slug) : "#";
-                return $"<a{before}href=\"{href}\"{after}>";
+                // Strip event-handler attributes from before/after to prevent injection
+                // surviving the href rewrite (e.g. onclick= injected via GenericAttributes).
+                return $"<a{StripEventHandlerAttributes(before)}href=\"{href}\"{StripEventHandlerAttributes(after)}>";
             }
 
             if (TryGetMemoryId(rawHref, out var memoryId))
             {
                 var href = memorySet.Contains(memoryId) ? MemoryHref(memoryId) : "#";
-                return $"<a{before}href=\"{href}\"{after}>";
+                return $"<a{StripEventHandlerAttributes(before)}href=\"{href}\"{StripEventHandlerAttributes(after)}>";
             }
 
             return match.Value;
