@@ -109,7 +109,6 @@ public class McpAndSemanticSearchTests
             .ToList();
 
         Assert.That(toolNames, Does.Contain("memorysmith_search"));
-        Assert.That(toolNames, Does.Contain("memorysmith_semantic_search"));
         Assert.That(toolNames, Does.Contain("memorysmith_hybrid_search"));
         Assert.That(toolNames, Does.Contain("memorysmith_context_pack"));
         Assert.That(toolNames, Does.Contain("memorysmith_get"));
@@ -918,37 +917,6 @@ public class McpAndSemanticSearchTests
             Assert.That(results[0].TryGetProperty("diagnostics", out _), Is.True);
             Assert.That(document.RootElement.TryGetProperty("warnings", out _), Is.True);
         });
-    }
-
-    [Test]
-    public async Task McpSemanticSearchTool_ReturnsProjectWikiRecord()
-    {
-        var dataPath = ProjectWikiFixture.CopyToTemp(_tempRoot);
-        await using var factory = CreateFactory(dataPath);
-        using var client = factory.CreateClient();
-
-        var response = await client.PostAsJsonAsync("/mcp", new
-        {
-            JsonRpc = "2.0",
-            Id = "semantic-search",
-            Method = "tools/call",
-            Params = new
-            {
-                Name = "memorysmith_semantic_search",
-                Arguments = new
-                {
-                    Query = "semantic search embeddings",
-                    Tags = "project-wiki",
-                    Limit = 5
-                }
-            }
-        }, JsonSerializerOptions.Web);
-
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
-
-        var text = await ExtractFirstToolTextAsync(response);
-        Assert.That(text, Does.Contain("project-wiki-semantic-search-gap"));
-        Assert.That(text, Does.Contain("Score"));
     }
 
     [Test]

@@ -145,26 +145,6 @@ public sealed class ChatToolCatalog
             });
 
         yield return new ChatToolDescriptor(
-            "memorysmith_semantic_search",
-            "Search MemorySmith wiki records with ONNX embeddings when configured, falling back to local semantic token scoring with match explanations.",
-            BuildSearchSchema(),
-            ChatToolRisk.ReadOnly,
-            AvailableInChat: true,
-            AvailableInMcp: true,
-            Execute: async (args, ctx, ct) =>
-            {
-                var structuredFormat = IsStructuredFormat(ReadString(args, "format"));
-                var results = await ctx.Memories.SemanticSearchAsync(ReadSemanticQuery(args), ct);
-                var envelope = ctx.Memories.BuildRetrievalEnvelope("semantic", ctx.Memories.GetSemanticProviderMetadata(), results);
-                if (structuredFormat)
-                {
-                    return BuildRetrievalToolResult(envelope);
-                }
-
-                return new ChatToolExecutionResult(FormatSemanticResults(results), ContextItems: results.Select(ToMemoryContextItem).ToList());
-            });
-
-        yield return new ChatToolDescriptor(
             "memorysmith_hybrid_search",
             "Search MemorySmith wiki records by fusing Lucene-style lexical rank and the active semantic ranker with reciprocal rank fusion.",
             BuildSearchSchema(),
@@ -596,106 +576,6 @@ public sealed class ChatToolCatalog
                     : string.Empty;
                 var text = $"# {page.Title}{Environment.NewLine}Slug: {page.Slug}{Environment.NewLine}Updated: {page.LastUpdatedUtc:O}{truncatedNote}{Environment.NewLine}{Environment.NewLine}{markdown}";
                 return new ChatToolExecutionResult(text, ContextItems: [ToPageContextItem(page, markdown)]);
-            });
-
-        yield return new ChatToolDescriptor(
-            "memorysmith_unified_search",
-            "Combined search across memories (hybrid) and markdown pages. Recommended for natural-language 'search the wiki' requests.",
-            new JsonObject
-            {
-                ["type"] = "object",
-                ["properties"] = new JsonObject
-                {
-                    ["query"] = new JsonObject { ["type"] = "string", ["description"] = "Search text." },
-                    ["memoryLimit"] = new JsonObject { ["type"] = "integer", ["description"] = "Max memory results. Clamped 0-20, default 5." },
-                    ["pageLimit"] = new JsonObject { ["type"] = "integer", ["description"] = "Max page results. Clamped 0-20, default 5." },
-                    ["tags"] = new JsonObject { ["type"] = "string", ["description"] = "Optional comma-separated tag filter (memories only)." },
-                    ["status"] = new JsonObject { ["type"] = "string", ["description"] = "Optional memory status name." },
-                    ["format"] = new JsonObject
-                    {
-                        ["type"] = "string",
-                        ["description"] = "Output format. Defaults to markdown; use json (or compatibility aliases envelope/json-v2) for structured agent parsing.",
-                        ["enum"] = new JsonArray { "markdown", "json", "envelope", "json-v2" }
-                    }
-                },
-                ["required"] = new JsonArray { "query" }
-            },
-            ChatToolRisk.ReadOnly,
-            AvailableInChat: true,
-            AvailableInMcp: true,
-            Execute: async (args, ctx, ct) =>
-            {
-                var query = ReadString(args, "query");
-                if (string.IsNullOrWhiteSpace(query))
-                {
-                    return new ChatToolExecutionResult("The memorysmith_unified_search tool requires a query argument.", IsError: true);
-                }
-                var memoryLimit = Math.Clamp(ReadInt(args, "memoryLimit", 5), 0, 20);
-                var pageLimit = Math.Clamp(ReadInt(args, "pageLimit", 5), 0, 20);
-                var memoryTask = memoryLimit == 0
-                    ? Task.FromResult<IReadOnlyList<MemorySearchResult>>(Array.Empty<MemorySearchResult>())
-                    : ctx.Memories.HybridSearchAsync(new HybridMemorySearchQuery(query, ReadStatus(args), ReadString(args, "tags"), memoryLimit), ct);
-                var pageTask = pageLimit == 0
-                    ? Task.FromResult<IReadOnlyList<PageSummary>>(Array.Empty<PageSummary>())
-                    : ctx.Pages.SearchVisibleAsync(query, pageLimit, page => ctx.CanViewPage(page.MinimumRole), ct);
-                await Task.WhenAll(memoryTask, pageTask);
-                var memoryResults = await memoryTask;
-                var pageResults = (await pageTask).ToList();
-                var sb = new System.Text.StringBuilder();
-                sb.Append("Unified MemorySmith search results for: ").AppendLine(query);
-                sb.AppendLine();
-                sb.Append("Memories (").Append(memoryResults.Count).AppendLine("):");
-                if (memoryResults.Count == 0)
-                {
-                    sb.AppendLine("- (none)");
-                }
-                else
-                {
-                    foreach (var memory in memoryResults)
-                    {
-                        sb.Append("- ").Append(memory.Id).Append(": ").AppendLine(memory.Title);
-                        sb.Append("  Score: ").Append(memory.Score.ToString("0.######")).Append("  Tags: ").AppendLine(string.Join(", ", memory.Tags));
-                        if (memory.Diagnostics.Count > 0)
-                        {
-                            sb.Append("  Diagnostics: ").AppendLine(string.Join("; ", memory.Diagnostics.Take(3).Select(diagnostic => $"{diagnostic.Code}: {diagnostic.Message}")));
-                        }
-                        sb.Append("  ").AppendLine(memory.Snippet);
-                    }
-                }
-                sb.AppendLine();
-                sb.Append("Pages (").Append(pageResults.Count).AppendLine("):");
-                if (pageResults.Count == 0)
-                {
-                    sb.AppendLine("- (none)");
-                }
-                else
-                {
-                    foreach (var page in pageResults)
-                    {
-                        sb.Append("- ").Append(page.Slug).Append(": ").AppendLine(page.Title);
-                        sb.Append("  Updated: ").AppendLine(page.LastUpdatedUtc.ToString("O"));
-                        sb.Append("  ").AppendLine(page.Snippet);
-                    }
-                }
-                var contextItems = memoryResults.Select(ToMemoryContextItem)
-                    .Concat(pageResults.Select(ToPageContextItem))
-                    .ToList();
-                if (IsStructuredFormat(ReadString(args, "format")))
-                {
-                    var payload = new
-                    {
-                        SchemaVersion = "memorysmith.unified-search.v1",
-                        Query = query,
-                        MemoryProvider = ctx.Memories.GetSemanticProviderMetadata(),
-                        PageProvider = new RetrievalProviderMetadata("page", "markdown-lexical", true, "Markdown page metadata and body search."),
-                        Memories = memoryResults,
-                        Pages = pageResults,
-                        Warnings = MemoryDiagnosticFormatting.ToWarningSummaries(memoryResults)
-                    };
-                    var node = JsonSerializer.SerializeToNode(payload, ToolJsonOptions);
-                    return new ChatToolExecutionResult(node!.ToJsonString(ToolJsonOptions), ContextItems: contextItems, Structured: node);
-                }
-                return new ChatToolExecutionResult(sb.ToString().TrimEnd(), ContextItems: contextItems);
             });
 
         yield return new ChatToolDescriptor(

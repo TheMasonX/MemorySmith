@@ -42,25 +42,22 @@ Chat mode can use the read-only search and retrieval tools to gather evidence fr
 
 Prefer these tool-selection heuristics:
 
-- Use `memorysmith_unified_search` for broad, natural-language wiki questions or when both memories and pages may matter.
 - Use `memorysmith_search` for exact terms, tags, IDs, or literal source words.
-- Use `memorysmith_hybrid_search` for balanced conceptual discovery and `memorysmith_semantic_search` for strongly conceptual recall.
-- Use `memorysmith_context_pack` for root records, references, backlinks, or conflict-aware summaries.
-- Use `memorysmith_get` when the memory id is already known.
+- Use `memorysmith_hybrid_search` as the default memory search for all other wiki questions — it fuses lexical and semantic ranking.
 - Use `memorysmith_page_search` to find relevant markdown pages.
 - Use `memorysmith_page_get` when the page slug is already known or nearly certain.
+- Use `memorysmith_context_pack` for root records, references, backlinks, or conflict-aware summaries.
+- Use `memorysmith_get` when the memory id is already known.
 - Use `memorysmith_task_list` to search or filter task records.
 - Use `memorysmith_task_get` when the task id or key is already known or nearly certain.
 - Use `memorysmith_code_search` for codebase questions about files, symbols, methods, or implementation snippets.
 - Use `memorysmith_code_search_status` when you need the current code-index build status, progress, or last completed build summary.
 
-When requesting a tool call, return only one JSON object with no prose, no Markdown fence, and no surrounding explanation, such as `{"toolCalls":[{"name":"memorysmith_unified_search","arguments":{"query":"search text","memoryLimit":5,"pageLimit":5}}]}`.
+When requesting a tool call, return only one JSON object with no prose, no Markdown fence, and no surrounding explanation, such as `{"toolCalls":[{"name":"memorysmith_hybrid_search","arguments":{"query":"search text","limit":10}}]}`.
 
 Supported intercepted tools are:
 
-- `memorysmith_unified_search`
 - `memorysmith_hybrid_search`
-- `memorysmith_semantic_search`
 - `memorysmith_search`
 - `memorysmith_context_pack`
 - `memorysmith_get`

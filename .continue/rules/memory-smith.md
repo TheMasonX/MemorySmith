@@ -23,8 +23,8 @@ Only output code blocks for suggestions or demonstrations. For real changes, use
 - Never invent aliases, prefixes, or alternate spellings. If the tool list shows `memorysmith_hybrid_search`, call exactly that name. Do not try `search`, `memorysmith_search`, or `mcp_memorysmithwi_memorysmith_hybrid_search` unless those exact tools are actually listed.
 - If a tool call fails because the tool is missing, stop retrying guessed variants. Re-check the available tools and either use the exact exposed tool or state that the capability is unavailable.
 - Preferred MemorySmith retrieval flow:
-  1. `memorysmith_unified_search` for natural-language searches spanning memories and pages.
-  2. `memorysmith_hybrid_search`, `memorysmith_search`, or `memorysmith_semantic_search` only when you need a specific retrieval mode and that exact tool is listed.
+  1. `memorysmith_hybrid_search` as the default for all wiki memory searches.
+  2. `memorysmith_search` when you need exact terms, tags, IDs, or literal source words.
   3. `memorysmith_get` after search results return a memory id.
   4. `memorysmith_source_bundle` to read linked source files for retrieved memories before citing implementation details.
   5. `memorysmith_find_by_source` to map a file path or URL fragment back to related memory entries.

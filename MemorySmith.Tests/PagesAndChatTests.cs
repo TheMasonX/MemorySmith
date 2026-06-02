@@ -1109,7 +1109,7 @@ public class PagesAndChatTests
             Assert.That(response.Usage.InputTokens, Is.GreaterThan(0));
             Assert.That(provider.LastRequest!.Model, Is.EqualTo("custom-model"));
             Assert.That(provider.LastRequest.Messages.Any(message => message.Content.Contains("Use the project wiki prompt.", StringComparison.Ordinal)), Is.True);
-            Assert.That(provider.LastRequest.Messages.Any(message => message.Content.Contains("memorysmith_unified_search", StringComparison.Ordinal)), Is.True);
+            Assert.That(provider.LastRequest.Messages.Any(message => message.Content.Contains("memorysmith_hybrid_search", StringComparison.Ordinal)), Is.True);
             Assert.That(provider.LastRequest.Messages.Any(message => message.Content.Contains("Mermaid diagrams", StringComparison.Ordinal)), Is.True);
             Assert.That(provider.LastRequest.Messages.Any(message => message.Content.Contains("Attached note body", StringComparison.Ordinal)), Is.True);
             Assert.That(provider.LastRequest.Messages.Single(message => message.Content.Contains("Attached note body", StringComparison.Ordinal)).Role, Is.EqualTo("user"));
@@ -1425,7 +1425,7 @@ public class PagesAndChatTests
         Assert.Multiple(() =>
         {
             Assert.That(plannerTrace.Content, Does.Contain("direct/simple reply"));
-            Assert.That(plannerTrace.Content, Does.Contain("Recommended tool: memorysmith_unified_search"));
+            Assert.That(plannerTrace.Content, Does.Contain("Recommended tool: memorysmith_hybrid_search"));
         });
     }
 

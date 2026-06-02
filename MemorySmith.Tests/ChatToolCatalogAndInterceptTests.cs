@@ -38,7 +38,6 @@ public class ChatToolCatalogAndInterceptTests
         var expectedChatTools = new[]
         {
             "memorysmith_search",
-            "memorysmith_semantic_search",
             "memorysmith_hybrid_search",
             "memorysmith_context_pack",
             "memorysmith_get",
@@ -46,7 +45,6 @@ public class ChatToolCatalogAndInterceptTests
             "memorysmith_code_search_status",
             "memorysmith_page_search",
             "memorysmith_page_get",
-            "memorysmith_unified_search",
             "memorysmith_task_list",
             "memorysmith_task_get"
         };
@@ -323,19 +321,16 @@ public class ChatToolCatalogAndInterceptTests
     {
         var catalog = new ChatToolCatalog();
         Assert.That(catalog.TryGet("memorysmith_search", out var searchTool), Is.True);
-        Assert.That(catalog.TryGet("memorysmith_unified_search", out var unifiedSearchTool), Is.True);
 
         static List<string> ReadFormatEnums(ChatToolDescriptor tool) =>
             tool.InputSchema["properties"]?["format"]?["enum"]?.AsArray().Select(node => node?.GetValue<string>() ?? string.Empty).ToList()
             ?? [];
 
         var searchFormats = ReadFormatEnums(searchTool);
-        var unifiedFormats = ReadFormatEnums(unifiedSearchTool);
 
         Assert.Multiple(() =>
         {
             Assert.That(searchFormats, Is.EquivalentTo(new[] { "markdown", "json", "envelope", "json-v2" }));
-            Assert.That(unifiedFormats, Is.EquivalentTo(new[] { "markdown", "json", "envelope", "json-v2" }));
         });
     }
 
@@ -385,7 +380,7 @@ public class ChatToolCatalogAndInterceptTests
     }
 
     [Test]
-    public async Task PageSearchAndUnifiedSearchTools_ReturnVisibleMatchesBeyondFirstTwoHundredHiddenResults()
+    public async Task PageSearchTool_ReturnsVisibleMatchesBeyondFirstTwoHundredHiddenResults()
     {
         var pages = new FilePageService(_tempDir);
         const string query = "crowded tool visibility token";
@@ -393,7 +388,7 @@ public class ChatToolCatalogAndInterceptTests
 
         var catalog = new ChatToolCatalog();
         catalog.TryGet("memorysmith_page_search", out var pageSearchTool);
-        catalog.TryGet("memorysmith_unified_search", out var unifiedSearchTool);
+        
         var ctx = new ChatToolExecutionContext(null!, pages, "test");
 
         var pageSearchResult = await pageSearchTool.Execute(new JsonObject
@@ -401,23 +396,18 @@ public class ChatToolCatalogAndInterceptTests
             ["query"] = query,
             ["limit"] = 2
         }, ctx, CancellationToken.None);
-        var unifiedSearchResult = await unifiedSearchTool.Execute(new JsonObject
-        {
-            ["query"] = query,
-            ["memoryLimit"] = 0,
-            ["pageLimit"] = 2
-        }, ctx, CancellationToken.None);
+
 
         Assert.Multiple(() =>
         {
             foreach (var slug in PageVisibilitySearchFixture.PublicPageSlugs)
             {
                 Assert.That(pageSearchResult.Text, Does.Contain(slug));
-                Assert.That(unifiedSearchResult.Text, Does.Contain(slug));
+                
             }
 
             Assert.That(pageSearchResult.Text, Does.Not.Contain("signed-in-page-001"));
-            Assert.That(unifiedSearchResult.Text, Does.Not.Contain("signed-in-page-001"));
+            
         });
     }
 
@@ -577,10 +567,10 @@ public class ChatToolCatalogAndInterceptTests
         });
     }
 
-    [TestCase("search the wiki for durable evidence", "memorysmith_unified_search")]
+    [TestCase("search the wiki for durable evidence", "memorysmith_hybrid_search")]
     [TestCase("search the codebase for widget parser", "memorysmith_code_search")]
-    [TestCase("find records about caching layer", "memorysmith_unified_search")]
-    [TestCase("semantic search for vector embeddings", "memorysmith_semantic_search")]
+    [TestCase("find records about caching layer", "memorysmith_hybrid_search")]
+    [TestCase("semantic search for vector embeddings", "memorysmith_hybrid_search")]
     [TestCase("hybrid search for chat tools", "memorysmith_hybrid_search")]
     [TestCase("get memory tool-target", "memorysmith_get")]
     [TestCase("open page notes/intro", "memorysmith_page_get")]
@@ -664,3 +654,6 @@ CREATE TABLE IF NOT EXISTS CodeSearchChunks (
         }
     }
 }
+
+
+

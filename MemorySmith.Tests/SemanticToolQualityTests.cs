@@ -182,14 +182,13 @@ public class SemanticToolQualityTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(toolNames, Does.Contain("memorysmith_semantic_search"));
             Assert.That(toolNames, Does.Contain("memorysmith_hybrid_search"));
             Assert.That(toolNames, Does.Contain("memorysmith_context_pack"));
             Assert.That(toolNames, Does.Contain("memorysmith_source_bundle"));
             Assert.That(sourceBundleSchema, Does.Contain("clamped"));
         });
 
-        var semanticText = await CallToolTextAsync(client, "memorysmith_semantic_search", new
+        var hybridText = await CallToolTextAsync(client, "memorysmith_hybrid_search", new
         {
             Query = "model context protocol tool calling",
             Tags = "project-wiki",
@@ -197,9 +196,9 @@ public class SemanticToolQualityTests
         });
         Assert.Multiple(() =>
         {
-            Assert.That(semanticText, Does.Contain("project-wiki-mcp-context-pack"));
-            Assert.That(semanticText, Does.Contain("Score:"));
-            Assert.That(semanticText, Does.Contain("Match:"));
+            Assert.That(hybridText, Does.Contain("project-wiki-mcp-context-pack"));
+            Assert.That(hybridText, Does.Contain("Score:"));
+            Assert.That(hybridText, Does.Contain("Match:"));
         });
 
         var contextPackText = await CallToolTextAsync(client, "memorysmith_context_pack", new

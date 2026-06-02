@@ -60,9 +60,9 @@ public sealed partial class ChatIntentInterceptor
         if (SemanticSearchRegex().Match(message) is { Success: true } sem)
         {
             return new ChatIntentMatch(
-                "memorysmith_semantic_search",
+                "memorysmith_hybrid_search",
                 new JsonObject { ["query"] = sem.Groups["q"].Value.Trim(), ["limit"] = 5 },
-                "Detected explicit 'semantic search' intent.");
+                "Detected explicit 'semantic search' intent — routing to hybrid search.");
         }
 
         if (CodeSearchRegex().Match(message) is { Success: true } code)
@@ -92,8 +92,8 @@ public sealed partial class ChatIntentInterceptor
         if (SearchRegex().Match(message) is { Success: true } search)
         {
             return new ChatIntentMatch(
-                "memorysmith_unified_search",
-                new JsonObject { ["query"] = search.Groups["q"].Value.Trim(), ["memoryLimit"] = 5, ["pageLimit"] = 5 },
+                "memorysmith_hybrid_search",
+                new JsonObject { ["query"] = search.Groups["q"].Value.Trim(), ["limit"] = 5 },
                 "Detected explicit 'search the wiki' intent.");
         }
 
