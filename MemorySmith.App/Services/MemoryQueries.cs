@@ -67,4 +67,12 @@ public sealed record MemorySearchResult(
 	DateTime LastUpdated)
 {
     public IReadOnlyList<MemoryDiagnostic> Diagnostics { get; init; } = [];
+
+    /// <summary>
+    /// UI-only HTML fragment with &lt;mark&gt; tags around lexically-matched terms.
+    /// Populated only for lexical and hybrid search results — null for semantic results.
+    /// All non-UI consumers (MCP tools, API endpoints, chat context packs) should use
+    /// <see cref="Snippet"/> which is always plain text.
+    /// </summary>
+    public string? SnippetHtml { get; init; }
 }

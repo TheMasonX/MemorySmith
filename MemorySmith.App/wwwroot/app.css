@@ -468,6 +468,16 @@ body {
     overflow: hidden;
 }
 
+/* Keyword-in-context highlighting from Lucene.Net.Highlighter (lexical + hybrid modes).
+   rgba opacity ensures visibility on both light and dark themes without forcing a color flip. */
+.wiki-result-snippet mark {
+    background: rgba(255, 213, 0, 0.28);
+    color: inherit;
+    border-radius: 2px;
+    padding: 0 1px;
+    font-style: normal;
+}
+
 .wiki-status,
 .wiki-tag,
 .wiki-tag-muted,

@@ -133,7 +133,16 @@
                                 </div>
                                 @if (semantic is not null)
                                 {
-                                    <div class="wiki-result-snippet">@semantic.Snippet</div>
+                                    <div class="wiki-result-snippet">
+                                        @if (semantic.SnippetHtml is not null)
+                                        {
+                                            @((MarkupString)semantic.SnippetHtml)
+                                        }
+                                        else
+                                        {
+                                            @semantic.Snippet
+                                        }
+                                    </div>
                                 }
                                 <div class="wiki-tag-line">
                                     @foreach (var tag in memory.Tags.Take(5))
