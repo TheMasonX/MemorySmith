@@ -14,6 +14,8 @@ import json
 import math
 import os
 import random
+import numpy as np
+import tempfile
 import sys
 import time
 from dataclasses import dataclass
@@ -170,7 +172,7 @@ class Harness:
         if max_train_steps_raw is not None:
             max_train_steps = max(1, min(int(max_train_steps_raw), 2000))
         else:
-            max_train_steps = 200  # Fixed budget — keeps wall-clock bounded
+            max_train_steps = 75  # Fixed budget — keeps wall-clock bounded (default set to 75)
 
         shuffle_raw = hp.get("shuffleEachEpoch")
         if shuffle_raw is None:
@@ -211,6 +213,7 @@ class Harness:
             "shuffleEachEpoch": shuffle,
             "loadIn4Bit": load_in_4bit,
             "gradientCheckpointing": gradient_checkpointing,
+            "checkpointIntervalSteps": int(hp.get("checkpointIntervalSteps") or 0),
         }
 
     # ------------------------------------------------------------------ #
@@ -537,6 +540,58 @@ class Harness:
 
         optimizer.zero_grad(set_to_none=True)
 
+        # ---- Checkpoint / resume prototype ----
+        checkpoint_interval = int(hp.get("checkpointIntervalSteps") or 0)
+        resume_from_checkpoint = bool(self.request.get("resumeFromCheckpoint") or False)
+        checkpoint_dir = self.paths.workdir / "checkpoints"
+        start_batches = 0
+        if resume_from_checkpoint and checkpoint_dir.exists():
+            try:
+                ckpts = sorted(checkpoint_dir.glob("checkpoint_*.pt"))
+                if ckpts:
+                    latest = ckpts[-1]
+                    self.emit_event("train.checkpoint_load", {"path": str(latest)})
+                    ckpt = torch.load(str(latest), map_location="cpu")
+                    optimizer_step_counter = int(ckpt.get("optimizer_step_counter", 0))
+                    batch_counter = int(ckpt.get("batch_counter", 0))
+                    start_batches = int(ckpt.get("global_batch_index", 0))
+                    saved_indices = ckpt.get("indices")
+                    if isinstance(saved_indices, list) and len(saved_indices) == corpus_size:
+                        indices = saved_indices
+                    try:
+                        if "optimizer_state" in ckpt:
+                            optimizer.load_state_dict(ckpt["optimizer_state"])
+                        if scheduler is not None and "scheduler_state" in ckpt:
+                            scheduler.load_state_dict(ckpt["scheduler_state"])
+                    except Exception:
+                        self.emit_event("train.checkpoint_restore_warning", {"reason": "optimizer/scheduler restore failed"})
+                    try:
+                        if "torch_rng_state" in ckpt:
+                            torch.set_rng_state(ckpt["torch_rng_state"])
+                        # Restore python random and numpy RNG states
+                        if "random_state" in ckpt:
+                            try:
+                                random.setstate(ckpt["random_state"])
+                            except Exception:
+                                pass
+                        if "numpy_rng_state" in ckpt:
+                            try:
+                                np.random.set_state(ckpt["numpy_rng_state"])
+                            except Exception:
+                                pass
+                        # Restore CUDA RNG states if present
+                        if torch.cuda.is_available() and "cuda_rng_states" in ckpt:
+                            try:
+                                torch.cuda.set_rng_state_all(ckpt["cuda_rng_states"])
+                            except Exception:
+                                pass
+                    except Exception:
+                        pass
+                else:
+                    self.emit_event("train.checkpoint_load", {"reason": "no-checkpoints-found"})
+            except Exception as ex:
+                self.emit_event("train.checkpoint_load_error", {"error": str(ex)})
+
         # ---- Training loop — BATCHED ----
         losses: list[float] = []
         loss_per_epoch: list[dict[str, Any]] = []
@@ -546,6 +601,8 @@ class Harness:
         batch_counter = 0
         optimizer_step_counter = 0
         epoch_num = 0
+        # track batches across epochs for resume/skip
+        global_batch_index = start_batches if 'start_batches' in locals() else 0
 
         for epoch_idx in range(epochs):
             epoch_num = epoch_idx + 1
@@ -557,6 +614,11 @@ class Harness:
             for batch_start in range(0, corpus_size, batch_size):
                 if optimizer_step_counter >= actual_optimizer_steps:
                     break
+
+                # Skip already-processed batches when resuming
+                if global_batch_index < (start_batches if 'start_batches' in locals() else 0):
+                    global_batch_index += 1
+                    continue
 
                 batch_indices = indices[batch_start:batch_start + batch_size]
                 if not batch_indices:
@@ -588,6 +650,65 @@ class Harness:
                         scheduler.step()
                     optimizer_step_counter += 1
 
+                    # Save checkpoint after optimizer step if configured and at interval
+                    if checkpoint_interval and checkpoint_interval > 0 and (optimizer_step_counter % checkpoint_interval == 0):
+                        try:
+                            ckpt_dir = checkpoint_dir
+                            ckpt_dir.mkdir(parents=True, exist_ok=True)
+                            ckpt_name = f"checkpoint_{optimizer_step_counter:06d}.pt"
+                            ckpt_path = ckpt_dir / ckpt_name
+                            tmp_path = ckpt_dir / (ckpt_name + ".tmp")
+
+                            save_obj = {
+                                "optimizer_step_counter": optimizer_step_counter,
+                                "batch_counter": batch_counter,
+                                "global_batch_index": global_batch_index,
+                                "indices": indices,
+                                "torch_rng_state": torch.get_rng_state(),
+                                "random_state": random.getstate(),
+                                "numpy_rng_state": np.random.get_state(),
+                            }
+                            try:
+                                if torch.cuda.is_available():
+                                    try:
+                                        save_obj["cuda_rng_states"] = torch.cuda.get_rng_state_all()
+                                    except Exception:
+                                        pass
+                                save_obj["optimizer_state"] = optimizer.state_dict()
+                                if scheduler is not None:
+                                    save_obj["scheduler_state"] = scheduler.state_dict()
+                            except Exception:
+                                pass
+
+                            # Atomic write: save to tmp then replace
+                            try:
+                                torch.save(save_obj, str(tmp_path))
+                                os.replace(tmp_path, ckpt_path)
+                                self.emit_event("train.checkpoint_saved", {"path": str(ckpt_path), "step": optimizer_step_counter})
+                            except Exception as ex:
+                                # cleanup tmp if exists
+                                try:
+                                    if tmp_path.exists():
+                                        tmp_path.unlink()
+                                except Exception:
+                                    pass
+                                self.emit_event("train.checkpoint_error", {"error": str(ex)})
+
+                            # Retention: keep last 5 checkpoints
+                            try:
+                                all_ckpts = sorted(ckpt_dir.glob("checkpoint_*.pt"))
+                                keep = 5
+                                if len(all_ckpts) > keep:
+                                    for old in all_ckpts[:-keep]:
+                                        try:
+                                            old.unlink()
+                                        except Exception:
+                                            pass
+                            except Exception:
+                                pass
+                        except Exception as ex:
+                            self.emit_event("train.checkpoint_error", {"error": str(ex)})
+
                 token_count = int(attention_mask.sum().detach().cpu().item())
                 current_lr = float(optimizer.param_groups[0]["lr"])
 
@@ -602,6 +723,9 @@ class Harness:
                     "optimizerStep": is_optimizer_step,
                     "learningRate": round(current_lr, 8),
                 })
+
+                # mark this batch processed across epochs
+                global_batch_index += 1
 
             if optimizer_step_counter >= actual_optimizer_steps:
                 break

@@ -173,114 +173,57 @@
         <MudTabPanel Text="Models" Icon="@Icons.Material.Filled.Memory">
             <div class="admin-models-layout">
                 <section class="admin-model-list" aria-label="Model profiles">
-                    @if (!_modelProfiles.Any(profile => profile.IsDefault && profile.Enabled))
-                    {
-                        <div class="wiki-empty-state">No enabled default model profile is configured. Chat is disabled until one is selected.</div>
-                    }
-                    <MudTable Items="@_modelProfiles" Dense="true" Class="health-table admin-models-table">
-                        <HeaderContent>
-                            <MudTh>Name</MudTh>
-                            <MudTh>Provider</MudTh>
-                            <MudTh>Model</MudTh>
-                            <MudTh>Context</MudTh>
-                            <MudTh>Roles</MudTh>
-                            <MudTh>Assignments</MudTh>
-                            <MudTh>Status</MudTh>
-                            <MudTh>Action</MudTh>
-                        </HeaderContent>
-                        <RowTemplate>
-                            <MudTd>
-                                <strong>@context.Name</strong>
-                                @if (context.IsDefault)
-                                {
-                                    <span class="wiki-status is-core">Default</span>
-                                }
-                                @if (context.IsImplicit)
-                                {
-                                    <small class="admin-setting-key">Derived from legacy Chat provider/model settings</small>
-                                }
-                                @if (!string.IsNullOrWhiteSpace(context.Description))
-                                {
-                                    <small class="admin-setting-key">@context.Description</small>
-                                }
-                            </MudTd>
-                            <MudTd>@context.Provider</MudTd>
-                            <MudTd>@context.Model</MudTd>
-                            <MudTd>@FormatContextWindow(context.ContextWindowTokens)</MudTd>
-                            <MudTd>@FormatProfileRoles(context)</MudTd>
-                            <MudTd>@FormatProfileAssignments(context)</MudTd>
-                            <MudTd>@(context.Enabled ? "Enabled" : "Disabled")</MudTd>
-                            <MudTd>
-                                <div class="admin-row-actions">
-                                    <MudTooltip Text="@DuplicateModelTooltip(context)">
-                                        <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Color="Color.Primary" Size="Size.Small" Disabled="@_isBusy" OnClick="@(() => DuplicateModelProfileAsync(context))" aria-label="Duplicate model profile" title="Duplicate model profile" />
-                                    </MudTooltip>
-                                    <MudTooltip Text="@EditModelTooltip(context)">
-                                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" Disabled="@_isBusy" OnClick="@(() => EditModelProfile(context))" aria-label="Edit model profile" title="Edit model profile" />
-                                    </MudTooltip>
-                                    <MudTooltip Text="@DeleteModelTooltip(context)">
-                                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" Disabled="@(_isBusy || context.IsImplicit)" OnClick="@(() => DeleteModelProfileAsync(context))" aria-label="Delete model profile" title="Delete model profile" />
-                                    </MudTooltip>
-                                </div>
-                            </MudTd>
-                        </RowTemplate>
-                    </MudTable>
+                    <section class="health-lower-card admin-form-panel" aria-label="Models page migration summary">
+                        <div class="wiki-commandbar profile-sectionbar">
+                            <div class="wiki-title-block">
+                                <MudText Typo="Typo.h6">Models Moved</MudText>
+                                <span class="wiki-count">Dedicated workbench</span>
+                            </div>
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.OpenInNew" Disabled="@_isBusy" OnClick="OpenModelsPage">Open Models page</MudButton>
+                        </div>
+
+                        <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Outlined">
+                            Model profile creation, provider discovery, context sizing, defaults, and VRAM planning now live on the dedicated Models page so Admin no longer duplicates the same editor.
+                        </MudAlert>
+
+                        <div class="admin-table-meta" style="margin-top:8px;">
+                            @_modelProfiles.Count profile(s) configured; @_modelProfiles.Count(profile => profile.Enabled) enabled; @_modelProfiles.Count(profile => profile.IsDefault && profile.Enabled) default chat profile(s).
+                        </div>
+
+                        @if (!_modelProfiles.Any(profile => profile.IsDefault && profile.Enabled))
+                        {
+                            <div class="wiki-empty-state">No enabled default model profile is configured. Chat is disabled until one is selected on the Models page.</div>
+                        }
+
+                        <MudTable Items="@_modelProfiles" Dense="true" Class="health-table admin-models-table" style="margin-top:8px;">
+                            <HeaderContent>
+                                <MudTh>Name</MudTh>
+                                <MudTh>Provider</MudTh>
+                                <MudTh>Model</MudTh>
+                                <MudTh>Status</MudTh>
+                                <MudTh>Assignments</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd>
+                                    <strong>@context.Name</strong>
+                                    @if (context.IsDefault)
+                                    {
+                                        <span class="wiki-status is-core">Default</span>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(context.Description))
+                                    {
+                                        <small class="admin-setting-key">@context.Description</small>
+                                    }
+                                </MudTd>
+                                <MudTd>@context.Provider</MudTd>
+                                <MudTd>@context.Model</MudTd>
+                                <MudTd>@(context.Enabled ? "Enabled" : "Disabled")</MudTd>
+                                <MudTd>@FormatProfileAssignments(context)</MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    </section>
                 </section>
 
-                <section class="admin-model-editor" aria-label="Edit model profile">
-                    <div class="admin-model-editor-header">
-                        <MudText Typo="Typo.subtitle1">@(_modelProfileEditor.IsNew ? "New model profile" : "Edit model profile")</MudText>
-                        <MudButton Size="Size.Small" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Add" Disabled="@_isBusy" OnClick="StartNewModelProfile">New</MudButton>
-                    </div>
-                    <div class="admin-model-editor-grid">
-                        <MudTextField T="string" Value="@_modelProfileEditor.Name" ValueChanged="@((string value) => _modelProfileEditor.Name = value)" Label="Name" Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="@_isBusy" />
-                        <MudSelect T="string" Value="@_modelProfileEditor.Provider" ValueChanged="OnModelProfileProviderChangedAsync" Label="Provider" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Disabled="@(_isBusy || _isLoadingModelOptions)">
-                            @foreach (var provider in ModelProfiles.ProviderOptions)
-                            {
-                                <MudSelectItem T="string" Value="@provider">@provider</MudSelectItem>
-                            }
-                        </MudSelect>
-                        <div class="admin-model-select-field">
-                            <MudSelect T="string" Value="@_modelProfileEditor.Model" ValueChanged="OnModelProfileModelChanged" Label="Model" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Disabled="@(_isBusy || _isLoadingModelOptions || _modelProfileModelOptions.Count == 0)">
-                                @foreach (var model in _modelProfileModelOptions)
-                                {
-                                    <MudSelectItem T="string" Value="@model.Name">@FormatModelOption(model)</MudSelectItem>
-                                }
-                            </MudSelect>
-                            <div class="admin-model-select-meta">
-                                <small>@ModelDiscoveryStatus</small>
-                                <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Small" Color="Color.Primary" Disabled="@(_isBusy || _isLoadingModelOptions)" OnClick="RefreshModelOptionsAsync" aria-label="Refresh provider models" title="Refresh provider models" />
-                            </div>
-                        </div>
-                        <MudNumericField T="int?" Value="@_modelProfileEditor.ContextWindowTokens" ValueChanged="@((int? value) => _modelProfileEditor.ContextWindowTokens = value)" Label="Context tokens" Variant="Variant.Outlined" Margin="Margin.Dense" Min="512" Max="262144" Disabled="@_isBusy" />
-                        <MudSelect T="string" Value="@SelectedContextPresetValue" ValueChanged="OnContextPresetChangedAsync" Label="Context presets" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Disabled="@_isBusy">
-                            @foreach (var preset in ContextWindowPresetOptions)
-                            {
-                                <MudSelectItem T="string" Value="@preset.Key">@preset.Label</MudSelectItem>
-                            }
-                            @if (HasCustomContextWindow)
-                            {
-                                <MudSelectItem T="string" Value="@("custom")">Custom (@_modelProfileEditor.ContextWindowTokens?.ToString("n0") tokens)</MudSelectItem>
-                            }
-                        </MudSelect>
-                        <MudTextField T="string" Value="@_modelProfileEditor.AllowedRolesText" ValueChanged="@((string value) => _modelProfileEditor.AllowedRolesText = value)" Label="Allowed roles" Variant="Variant.Outlined" Margin="Margin.Dense" Placeholder="Viewer, Editor, Admin" Disabled="@_isBusy" />
-                        <MudTextField T="string" Value="@_modelProfileEditor.Description" ValueChanged="@((string value) => _modelProfileEditor.Description = value)" Label="Description" Variant="Variant.Outlined" Margin="Margin.Dense" Lines="2" Disabled="@_isBusy" />
-                    </div>
-                    <div class="admin-model-switches">
-                        <MudSwitch T="bool" Value="@_modelProfileEditor.Enabled" ValueChanged="@((bool value) => _modelProfileEditor.Enabled = value)" Label="Enabled" Disabled="@_isBusy" />
-                        <MudSwitch T="bool" Value="@_modelProfileEditor.IsDefault" ValueChanged="@((bool value) => _modelProfileEditor.IsDefault = value)" Label="Default chat model" Disabled="@_isBusy" />
-                        <MudSwitch T="bool" Value="@_modelProfileEditor.IsMaintenanceRunDefault" ValueChanged="@((bool value) => _modelProfileEditor.IsMaintenanceRunDefault = value)" Label="Maintenance runs" Disabled="@_isBusy" />
-                        <MudSwitch T="bool" Value="@_modelProfileEditor.IsProposalReviewDefault" ValueChanged="@((bool value) => _modelProfileEditor.IsProposalReviewDefault = value)" Label="Proposal reviews" Disabled="@_isBusy" />
-                        <MudSwitch T="bool" Value="@_modelProfileEditor.IsAdminMaintenanceChatDefault" ValueChanged="@((bool value) => _modelProfileEditor.IsAdminMaintenanceChatDefault = value)" Label="Admin maintenance chat" Disabled="@_isBusy" />
-                    </div>
-                    <small class="admin-setting-key">Recommended baseline for qwen3.5:4b is 24,576 context tokens.</small>
-                    <small class="admin-setting-key">@ModelVramEstimateHint</small>
-                    <small class="admin-setting-key">Leave Allowed roles blank to allow any user with chat access. Admins can use every enabled profile.</small>
-                    <div class="admin-model-editor-actions">
-                        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save" Disabled="@_isBusy" OnClick="SaveModelProfileAsync">Save profile</MudButton>
-                        <MudButton Variant="Variant.Outlined" Disabled="@_isBusy" OnClick="StartNewModelProfile">Clear</MudButton>
-                    </div>
-                </section>
             </div>
         </MudTabPanel>
         <MudTabPanel Text="Configuration" Icon="@Icons.Material.Filled.Tune">

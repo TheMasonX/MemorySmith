@@ -1,0 +1,31 @@
+﻿{
+  "id": "tsk-0267-chat-todo-tool",
+  "key": "TSK-0267",
+  "title": "Chat Todo Tool",
+  "description": "Allow the chat agent to create a list of todo tasks to track progress",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-06-02T00:19:57.5337882Z",
+  "updatedAtUtc": "2026-06-02T00:19:57.5337882Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

@@ -35,24 +35,6 @@ Opens on `http://localhost:5089` by default. Pages:
 | `/page-assets/*` | Static files from `Data/Pages/assets` for images, video, and audio embedded in pages |
 | `/mcp` | MCP JSON-RPC endpoint for AI agent tool use |
 
-## Local Fine-Tune Bootstrap
-
-Use the PowerShell bootstrap to provision a dedicated training environment instead of reusing the repo `.venv`:
-
-```powershell
-./Scripts/Setup-FinetuneTrainingEnv.ps1 -InstallPythonIfMissing -PersistUserEnvironment
-./Scripts/Test-FinetuneHarnessPrereqs.ps1
-./Scripts/Run-FinetuneHarness.ps1 -RunId ft-smoke -TrainMode auto -RequireTrainingDependencies
-```
-
-On Windows, the bootstrap prefers `D:\temp\memorysmith-training` for heavyweight scratch state, caches, and run artifacts. The script writes an override file at `artifacts/MemorySmith.App/appsettings.LocalOverrides.json`; with `-PersistUserEnvironment` it also sets `MemorySmith__SettingsOverridePath` so app launches use the dedicated training venv and runs directory automatically.
-
-The default bootstrap now targets the core GPU-capable training stack. Optional `Unsloth` installation is opt-in (`-IncludeUnsloth`) because its current Windows resolver path can move the environment to a CPU-only torch build.
-
-Harness runs support explicit mode intent with `-TrainMode auto|simulated|lora`. The `lora` intent is currently scaffold-only and produces a reasoned simulated fallback while the real trainer path is pending.
-
-`-RequireTrainingDependencies` enforces accelerator-ready preflight for `auto`/`lora` intent. With `-TrainMode simulated`, the runner reports the preflight state but allows execution to continue.
-
 ## The Project Wiki
 
 `Data/Memories/` is the structured live wiki for this project. `Data/Pages/` is the markdown live wiki for longer-form user and agent-authored notes. The app defaults `MemorySmith:DataPath` to `../Data/Memories` and `MemorySmith:PagesPath` to `../Data/Pages`, so local runs read and write those records directly.
@@ -704,6 +686,4 @@ dotnet run -c Release --project MemorySmith.Benchmarks -- --filter *SearchBenchm
 ```
 
 The solution builds `MemorySmith.App` as the single deployable host. `MemorySmith.Tests` contains an actively growing NUnit suite spanning unit tests, integration tests (via `WebApplicationFactory`), SQLite metadata coverage, auth/audit/history coverage, Markdown rendering coverage, task/governance flows, and a `[Category("Benchmark")]` suite of search quality probes with latency thresholds. GitHub Actions collects Cobertura coverage in CI and publishes a Doxygen HTML wiki through the Pages workflow.
-
-
 

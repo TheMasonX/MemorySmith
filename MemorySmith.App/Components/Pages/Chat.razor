@@ -117,7 +117,7 @@
                                 {
                                     <span class="chat-message-model">@FormatTurnModel(turn)</span>
                                 }
-                                <span>@turn.CreatedUtc.ToLocalTime().ToString("HH:mm")@if (turn.DurationMilliseconds is not null) { <span> · @FormatDuration(TimeSpan.FromMilliseconds(turn.DurationMilliseconds.Value))</span> }</span>
+                                <span>@turn.CreatedUtc.ToLocalTime().ToString("HH:mm")@if (turn.DurationMilliseconds is not null) { <span> · @FormatDuration(TimeSpan.FromMilliseconds(turn.DurationMilliseconds.Value))</span> }@if (TryFormatTurnThroughput(turn) is { } throughput) { <span> · @throughput</span> }</span>
                             </span>
                             @if (FeedbackEnabled && string.Equals(turn.Role, "assistant", StringComparison.OrdinalIgnoreCase))
                             {
@@ -287,7 +287,7 @@
                       value="@_draft"
                       @oninput="OnDraftInput"></textarea>
             <div class="chat-composer-side">
-                <div class="chat-usage-meter" title="@FormatUsageTitle(ActiveUsage)" aria-live="polite">@FormatUsageMeter(ActiveUsage)</div>
+                <div class="chat-usage-meter" title="@FormatUsageTitle(ActiveUsage, ActiveUsageDurationMilliseconds, ActiveUsageProviderName)" aria-live="polite">@FormatUsageMeter(ActiveUsage, ActiveUsageDurationMilliseconds, ActiveUsageProviderName)</div>
                 <div class="chat-composer-actions">
                     <MudCheckBox T="bool" Value="_sendOnEnter" ValueChanged="SetSendOnEnterAsync" Label="Send on Enter" Size="Size.Small" />
                     <MudTooltip Text="Finish current step">
@@ -555,6 +555,17 @@
         _currentUsage
         ?? (_sessions.Count == 0 ? null : ActiveSession.Turns.LastOrDefault(turn => turn.Usage is not null)?.Usage)
         ?? SelectedModelUsage();
+    private ChatTurnState? ActiveUsageTurn =>
+        _sessions.Count == 0
+            ? null
+            : ActiveSession.Turns.LastOrDefault(turn => turn.Usage is not null)
+              ?? ActiveSession.Turns.LastOrDefault();
+    private long? ActiveUsageDurationMilliseconds => _isSending
+        ? (long)Math.Max(0, _responseElapsed.TotalMilliseconds)
+        : ActiveUsageTurn?.DurationMilliseconds;
+    private string? ActiveUsageProviderName => _isSending
+        ? SelectedModelProfile?.Provider ?? ActiveUsageTurn?.ProviderName
+        : ActiveUsageTurn?.ProviderName ?? SelectedModelProfile?.Provider;
     private bool CanUseAgentMode =>
         Options.CurrentValue.Chat.AgentWritesEnabled &&
         CurrentUser.IsAuthenticated &&
@@ -2687,7 +2698,7 @@
         return new ChatUsageSummary(0, 0, ContextWindowTokens: model.ContextWindowTokens, RateLimit: model.RateLimit);
     }
 
-    private static string FormatUsageMeter(ChatUsageSummary? usage)
+    private static string FormatUsageMeter(ChatUsageSummary? usage, long? durationMilliseconds = null, string? providerName = null)
     {
         if (usage is null)
         {
@@ -2716,10 +2727,15 @@
             text += $" · {usage.RateLimit}";
         }
 
+        if (TryFormatTokensPerSecond(usage, durationMilliseconds, providerName) is { } throughput)
+        {
+            text += $" · {throughput}";
+        }
+
         return text;
     }
 
-    private static string FormatUsageTitle(ChatUsageSummary? usage)
+    private static string FormatUsageTitle(ChatUsageSummary? usage, long? durationMilliseconds = null, string? providerName = null)
     {
         if (usage is null)
         {
@@ -2739,7 +2755,39 @@
             text += $"; rate/quota: {usage.RateLimit}";
         }
 
+        if (TryFormatTokensPerSecond(usage, durationMilliseconds, providerName) is { } throughput)
+        {
+            text += $"; throughput: {throughput}";
+        }
+
         return text;
+    }
+
+    private static string? TryFormatTurnThroughput(ChatTurnState turn) =>
+        TryFormatTokensPerSecond(turn.Usage, turn.DurationMilliseconds, turn.ProviderName);
+
+    private static string? TryFormatTokensPerSecond(ChatUsageSummary? usage, long? durationMilliseconds, string? providerName)
+    {
+        if (usage is null || usage.OutputTokens <= 0 || durationMilliseconds is null || durationMilliseconds.Value <= 0)
+        {
+            return null;
+        }
+
+        if (!ProviderMatches(providerName ?? string.Empty, "Ollama"))
+        {
+            return null;
+        }
+
+        var seconds = durationMilliseconds.Value / 1000d;
+        if (seconds <= 0.05d)
+        {
+            return null;
+        }
+
+        var tokensPerSecond = usage.OutputTokens / seconds;
+        return double.IsFinite(tokensPerSecond) && tokensPerSecond > 0
+            ? $"{tokensPerSecond:0.0} tok/s"
+            : null;
     }
 
     private static string FormatTokenCount(int value) =>

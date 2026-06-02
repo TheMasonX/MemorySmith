@@ -4,7 +4,7 @@
   "title": "Tokens Per Second",
   "description": "Expose tokens-per-second throughput as supplemental chat telemetry for local model runs, including clear calculation rules (based on streamed output tokens and elapsed generation time) and non-blocking display in the chat UI.",
   "type": "Task",
-  "status": "Backlog",
+  "status": "Done",
   "priority": "Medium",
   "assigneeMode": "Directory",
   "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
@@ -16,14 +16,27 @@
   "attachments": [],
   "externalLinks": [],
   "linkedPages": [],
-  "comments": [],
+  "comments": [
+    {
+      "id": "c-agent-smith-20260601-0255-start",
+      "author": "AgentSmith",
+      "body": "Implementation started. Planned slice: add a provider/local-model-friendly tokens-per-second field to chat usage telemetry, persist it with chat turns, and surface it as supplemental usage data in the chat workbench without blocking streaming.",
+      "createdAtUtc": "2026-06-01T19:25:00.0000000Z"
+    },
+    {
+      "id": "c-agent-smith-20260601-0255-evidence",
+      "author": "AgentSmith",
+      "body": "## Evidence Update\n\n- Summary: Added local-model tokens-per-second telemetry to the chat workbench by deriving throughput from output tokens and assistant response duration for active and stored turns.\n- Changed files:\n  - `Data/Tasks/tsk-0255-tokens-per-second.json`\n  - `MemorySmith.App/Components/Pages/Chat.razor`\n- Validation commands:\n  - `dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj --filter \"Name~MemoryChatAgent_\"`\n- Validation results:\n  - 38 chat-focused tests passed; app and tests compiled successfully.\n- Confidence: 89%",
+      "createdAtUtc": "2026-06-01T19:40:00.0000000Z"
+    }
+  ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-31T09:33:01.4945919Z",
-  "updatedAtUtc": "2026-05-31T09:33:01.4945919Z",
-  "completedAtUtc": null,
-  "revision": 1,
+  "updatedAtUtc": "2026-06-01T19:40:00.0000000Z",
+  "completedAtUtc": "2026-06-01T19:40:00.0000000Z",
+  "revision": 3,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

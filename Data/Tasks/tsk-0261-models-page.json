@@ -4,7 +4,7 @@
   "title": "Models Page",
   "description": "Consolidate model management on the dedicated Models page (instead of Admin), preserving recent context-window improvements and adding VRAM estimate visibility. Also remove model-specific wording from generic context controls so UX remains provider/model-neutral.",
   "type": "Task",
-  "status": "Backlog",
+  "status": "Done",
   "priority": "Medium",
   "assigneeMode": "Directory",
   "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
@@ -16,14 +16,27 @@
   "attachments": [],
   "externalLinks": [],
   "linkedPages": [],
-  "comments": [],
+  "comments": [
+    {
+      "id": "c-agent-smith-20260601-0261-start",
+      "author": "AgentSmith",
+      "body": "Implementation started. Planned bounded slice: make /models the primary model-management editor, reduce Admin to a lighter summary/link-out instead of a duplicate full editor, add VRAM/context guidance on the Models page, and remove Qwen-specific wording from generic context preset labels.",
+      "createdAtUtc": "2026-06-01T19:26:00.0000000Z"
+    },
+    {
+      "id": "c-agent-smith-20260601-0261-evidence",
+      "author": "AgentSmith",
+      "body": "## Evidence Update\n\n- Summary: Moved model management to the dedicated /models workbench, reduced Admin to a summary/link-out, and added provider-neutral context presets plus VRAM guidance on the Models page.\n- Changed files:\n  - `Data/Tasks/tsk-0261-models-page.json`\n  - `MemorySmith.App/Components/Pages/Admin.razor`\n  - `MemorySmith.App/Components/Pages/Models.razor`\n- Validation commands:\n  - `dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj --filter \"Name~MemoryChatAgent_\"`\n- Validation results:\n  - 38 chat-focused tests passed; touched Razor pages compiled successfully as part of the app build.\n- Confidence: 84%",
+      "createdAtUtc": "2026-06-01T19:41:00.0000000Z"
+    }
+  ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-06-01T02:19:57.911222Z",
-  "updatedAtUtc": "2026-06-01T02:19:57.911222Z",
-  "completedAtUtc": null,
-  "revision": 1,
+  "updatedAtUtc": "2026-06-01T19:41:00.0000000Z",
+  "completedAtUtc": "2026-06-01T19:41:00.0000000Z",
+  "revision": 3,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

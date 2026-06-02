@@ -39,7 +39,6 @@ This page is the operator and agent-oriented map of the configuration groups, wh
 | Source links | `SourceLinks:*` | `/variables`, source-link actions, diagnostics | Agents can read too much or too little local source. |
 | MCP tools | `Mcp:*` | `/mcp`, `/admin` Configuration | A deployment exposes an unwanted tool or hides an expected one. |
 | Chat | `Chat:*` | `/chat`, `/api/chat/config` | Wrong provider/model defaults, context bloat, or disabled tool flow. |
-| Training harness | `Training:*` | harness scripts, run artifacts under `runs/<runId>/`, `/admin` Configuration | Fine-tuning data export/run behavior drifts or silently falls back to simulated mode. |
 | Maintenance agent | `MaintenanceAgent:*` | `/maintenance`, `/proposals`, admin maintenance chat | Review paths, write roots, or transcript handling drift. |
 | Logging and telemetry | `Logging:*`, `Telemetry:*` | `/api/diagnostics`, `/api/diagnostics/logs*`, structured logs | Observability is too noisy, too sparse, or exporter behavior surprises operators. |
 
@@ -63,16 +62,6 @@ Agent note: if behavior looks wrong across multiple routes, check the effective 
 | `MemorySmith:SecurityProfile` | Optional preset: `local-dev`, `secure-local`, or `remote-hardened` | Admin Configuration and `/api/diagnostics` |
 | `MemorySmith:AllowRemoteApi` | Allows guarded non-loopback API and MCP traffic after an API key is configured | `/api/diagnostics` warning list |
 | `MemorySmith:ApiKey` | Shared API/MCP key via `X-Api-Key`; required for guarded non-loopback API/MCP when remote API is enabled | configured state in `/admin` (replace or use `Clear secret` to remove), guarded API requests |
-| `MemorySmith:ContentSecurityPolicyEnabled` | Emits the Content-Security-Policy response header when enabled | browser response headers, `/api/health/live` response |
-| `MemorySmith:ContentSecurityPolicy` | Raw Content-Security-Policy directive string applied when CSP is enabled | browser response headers and script/style/connect behavior |
-| `MemorySmith:XContentTypeOptionsEnabled` | Emits `X-Content-Type-Options` when enabled | browser response headers, `/api/health/live` response |
-| `MemorySmith:XContentTypeOptions` | Value used for `X-Content-Type-Options` (default `nosniff`) | browser response headers |
-| `MemorySmith:ReferrerPolicyEnabled` | Emits `Referrer-Policy` when enabled | browser response headers, `/api/health/live` response |
-| `MemorySmith:ReferrerPolicy` | Value used for `Referrer-Policy` | browser response headers and cross-origin referrer behavior |
-| `MemorySmith:XFrameOptionsEnabled` | Emits `X-Frame-Options` when enabled | browser response headers and frame embedding behavior |
-| `MemorySmith:XFrameOptions` | Value used for `X-Frame-Options` (default `DENY`) | browser response headers |
-| `MemorySmith:PermissionsPolicyEnabled` | Emits `Permissions-Policy` when enabled | browser response headers, `/api/health/live` response |
-| `MemorySmith:PermissionsPolicy` | Value used for `Permissions-Policy` | browser response headers and browser capability restrictions |
 
 Recommended dogfood default: leave explicit settings in their secure-local posture, or set `MemorySmith:SecurityProfile=secure-local` when you want the preset recorded in configuration.
 
@@ -118,7 +107,7 @@ Operator check: when environment behavior does not match the intended profile, v
 | `Setup:AllowLoopbackBootstrap` | Allows anonymous first-admin setup from loopback | `/admin/setup` |
 | `Setup:BootstrapTokenHash` | Token-gated setup alternative | write-only secret state |
 | `RateLimits:*` | Local auth throttling and lockout | local login error behavior |
-| `Providers:{GitHub\|Google\|Microsoft}:*` | OAuth provider enablement and credentials | provider rows in `/admin`; only runtime-registered providers are advertised as active sign-in methods |
+| `Providers:{GitHub|Google|Microsoft}:*` | OAuth provider enablement and credentials | provider rows in `/admin`; only runtime-registered providers are advertised as active sign-in methods |
 
 Clamp rule: Admin access is not granted by broad anonymous/default-role settings. Admin routes still require an authenticated Admin claim.
 
@@ -185,40 +174,11 @@ Existing MCP tools default on unless they are listed in `DisabledTools`; `Disabl
 | `RequestTimeoutSeconds` | Provider request timeout | long chat turns |
 | `MaxContextRecords`, `MaxContextPages`, `PreloadContextEnabled`, `MaxPreloadedContextRecords`, `MaxPreloadedContextPages`, `MaxContextItemCharacters`, `MaxHistoryMessages` | Context planner and history budget | `/chat` context behavior |
 | `MaxAttachmentCharacters`, `MaxAttachmentBytes` | Attachment input limits | attachment uploads |
-| `ClipboardFetchExternalImagesEnabled` | Allows clipboard paste flow to fetch HTTP/HTTPS image URLs as attachments | clipboard image paste behavior and network posture |
 | `ToolCallsEnabled`, `MaxToolIterations`, `MaxToolCallsPerTurn`, `MaxToolResultCharacters` | Bounded read-only tool loop | tool traces and retrieval behavior |
 | `AgentWritesEnabled` | Enables approval-gated Agent write proposals | `/chat` Agent mode and `/proposals` |
 | `AgentWriteRoots` | Paths approved chat-agent memory/page proposals may target | `/chat` approvals and `/proposals`; separate from `MaintenanceAgent:Write` |
 
 Important exception: `Chat:ModelProfiles`, `DefaultModelProfileId`, and maintenance-agent model assignment IDs are edited from the Models tab, not the generic settings table.
-
-## Training Harness
-
-| Key | Purpose | Verify |
-| --- | --- | --- |
-| `MemorySmith:Training:ChatTranscriptEnabled` | Enables assistant-turn transcript JSONL capture for training export | transcript files under `Data/Events/chat-transcripts` |
-| `StoreChatContent` | Enables companion content JSONL capture with literal request/response text | `*.content.jsonl` files and privacy posture |
-| `TranscriptRetentionDays` | Deletes stale transcript files older than configured age | transcript directory contents over time |
-| `TranscriptRedactionEnabled` | Redacts common token/secret patterns before content write | sampled transcript content and redaction behavior |
-| `FeedbackEnabled` | Enables thumbs feedback persistence path | `/chat` thumbs controls and feedback store rows |
-| `TrainingDataExportPath` | Target directory for exported SFT/DPO/ORPO JSONL | `Data/Training/exports/*` outputs |
-| `RunsDirectory` | Root directory for per-run contract artifacts | `runs/<runId>/status.json`, `events.jsonl`, `benchmark.json` |
-| `PythonVenvPath` | Python environment path used by harness bridge script | `Scripts/Test-FinetuneHarnessPrereqs.ps1` output |
-| `PythonHarnessScript` | Python harness entrypoint path | `Scripts/Run-FinetuneHarness.ps1` invocation |
-| `PreferenceFormat` | Default export format selection (`FilteredSft`, `Dpo`, `Orpo`) | request payloads and export naming conventions |
-
-Operational scripts:
-
-- `Scripts/Setup-FinetuneTrainingEnv.ps1` provisions a dedicated Python 3.12/3.11 training venv, defaults heavyweight scratch/cache state to `D:\temp\memorysmith-training` on Windows, installs the core GPU-capable training stack, and writes a local override file for `Training:PythonVenvPath` and `Training:RunsDirectory`.
-- `Scripts/setup-finetune-training-env.sh` is the matching bash-oriented bootstrap for Linux/WSL-style environments.
-- `Scripts/Test-FinetuneHarnessPrereqs.ps1` validates both dependency imports and accelerator readiness in the configured venv.
-- `Scripts/Run-FinetuneHarness.ps1` runs the harness bridge, defaults runs and caches to the configured scratch root, writes request/status/events/benchmark artifacts, and accepts `-TrainMode auto|simulated|lora` to declare execution intent.
-
-`Run-FinetuneHarness.ps1 -RequireTrainingDependencies` enforces readiness for `auto` and `lora` intent. With `-TrainMode simulated`, the script logs the preflight state and continues execution for explicit simulation workflows.
-
-Current Windows note: optional `Unsloth` packages are intentionally excluded from the default bootstrap path and can be enabled with `-IncludeUnsloth` when that stack is explicitly being tested.
-
-Operator note: prefer an override file or `MemorySmith__SettingsOverridePath` environment variable for machine-specific training paths. Do not commit local scratch or cache directories into shared repo defaults.
 
 ## Maintenance Agent
 

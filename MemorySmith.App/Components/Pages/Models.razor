@@ -6,6 +6,7 @@
 @inject ISnackbar Snackbar
 @using MemorySmith.Core.Models
 @using System.Globalization
+@using System.Text.RegularExpressions
 
 <PageTitle>Models - MemorySmith</PageTitle>
 
@@ -17,6 +18,10 @@
             <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="StartNewAsync" Disabled="@_isBusy">New model profile</MudButton>
         </div>
     </div>
+
+    <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Outlined" Class="mt-2">
+        Model profiles now live here. Use this page for provider discovery, context sizing, default assignments, and VRAM planning instead of the Admin tab.
+    </MudAlert>
 
     @if (!string.IsNullOrWhiteSpace(_error))
     {
@@ -33,6 +38,7 @@
                         <div style="display:flex; flex-direction:column; gap:2px; width:100%;">
                             <strong>@profile.DisplayName</strong>
                             <small>@profile.Provider / @profile.Model</small>
+                            <small>@FormatProfileMeta(profile)</small>
                         </div>
                     </MudListItem>
                 }
@@ -67,6 +73,18 @@
                 <span>Context tokens</span>
                 <MudNumericField T="int?" Value="@_editor.ContextWindowTokens" ValueChanged="@((int? value) => _editor.ContextWindowTokens = value)" Variant="Variant.Outlined" Margin="Margin.Dense" Min="512" Max="262144" Disabled="@_isBusy" />
 
+                <span>Context preset</span>
+                <MudSelect T="string" Value="@SelectedContextPresetValue" ValueChanged="OnContextPresetChangedAsync" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Disabled="@_isBusy">
+                    @foreach (var preset in ContextWindowPresetOptions)
+                    {
+                        <MudSelectItem T="string" Value="@preset.Key">@preset.Label</MudSelectItem>
+                    }
+                    @if (HasCustomContextWindow)
+                    {
+                        <MudSelectItem T="string" Value="@("custom")">Custom (@_editor.ContextWindowTokens?.ToString("n0") tokens)</MudSelectItem>
+                    }
+                </MudSelect>
+
                 <span>Allowed roles</span>
                 <MudTextField T="string" Value="@_editor.AllowedRolesText" ValueChanged="@((string value) => _editor.AllowedRolesText = value)" Variant="Variant.Outlined" Margin="Margin.Dense" Placeholder="Viewer, Editor, Admin" Disabled="@_isBusy" />
 
@@ -82,18 +100,32 @@
                 <MudSwitch T="bool" Value="@_editor.IsAdminMaintenanceChatDefault" ValueChanged="@((bool value) => _editor.IsAdminMaintenanceChatDefault = value)" Label="Admin maintenance chat" Disabled="@_isBusy" />
             </div>
 
+            <div style="display:flex; flex-direction:column; gap:4px; margin-top:8px;">
+                <small>@ModelDiscoveryStatus</small>
+                <small>@ModelVramEstimateHint</small>
+            </div>
+
             <div style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;">
                 <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save" OnClick="SaveAsync" Disabled="@_isBusy">Save</MudButton>
                 <MudButton Variant="Variant.Outlined" Color="Color.Warning" StartIcon="@Icons.Material.Filled.Delete" OnClick="DeleteAsync" Disabled="@(_isBusy || _editor.IsNew)">Delete</MudButton>
                 <MudButton Variant="Variant.Text" OnClick="StartNewAsync" Disabled="@_isBusy">Clear</MudButton>
             </div>
-
-            <small>@_modelsStatus</small>
         </MudPaper>
     </div>
 </div>
 
 @code {
+    private const int RecommendedMidrangeContextTokens = 24576;
+    private static readonly IReadOnlyList<ContextWindowPreset> ContextWindowPresetOptions =
+    [
+        new("provider-default", "Provider default", null),
+        new("4096", "4,096", 4096),
+        new("8192", "8,192", 8192),
+        new("16384", "16,384", 16384),
+        new("24576", "24,576", RecommendedMidrangeContextTokens),
+        new("32768", "32,768", 32768),
+        new("65536", "65,536", 65536)
+    ];
     private bool _isBusy;
     private bool _isLoadingModels;
     private string? _error;
@@ -101,6 +133,32 @@
     private IReadOnlyList<ChatModelProfileView> _profiles = [];
     private IReadOnlyList<ChatModelSummary> _discoveredModels = [];
     private ModelEditor _editor = ModelEditor.New();
+    private string ModelDiscoveryStatus => _isLoadingModels
+        ? "Loading provider models..."
+        : _discoveredModels.Count == 0
+            ? _modelsStatus
+            : $"{_modelsStatus} Selected model metadata is reused for context and VRAM hints.";
+    private string SelectedContextPresetValue
+    {
+        get
+        {
+            if (_editor.ContextWindowTokens is null)
+            {
+                return "provider-default";
+            }
+
+            var tokenValue = _editor.ContextWindowTokens.Value;
+            return ContextWindowPresetOptions.Any(option => option.Tokens == tokenValue)
+                ? tokenValue.ToString(CultureInfo.InvariantCulture)
+                : "custom";
+        }
+    }
+    private bool HasCustomContextWindow =>
+        _editor.ContextWindowTokens is > 0
+        && ContextWindowPresetOptions.All(option => option.Tokens != _editor.ContextWindowTokens.Value);
+    private ChatModelSummary? SelectedModel =>
+        _discoveredModels.FirstOrDefault(item => string.Equals(item.Name, _editor.Model, StringComparison.OrdinalIgnoreCase));
+    private string ModelVramEstimateHint => BuildModelVramEstimateHint(SelectedModel, _editor.ContextWindowTokens);
 
     protected override async Task OnInitializedAsync()
     {
@@ -149,11 +207,14 @@
     private void OnModelChanged(string model)
     {
         _editor.Model = model;
-        var discovered = _discoveredModels.FirstOrDefault(item => string.Equals(item.Name, model, StringComparison.OrdinalIgnoreCase));
-        if (_editor.ContextWindowTokens is null && discovered?.ContextWindowTokens is > 0)
-        {
-            _editor.ContextWindowTokens = discovered.ContextWindowTokens;
-        }
+        ApplySelectedModelMetadata(model);
+    }
+
+    private Task OnContextPresetChangedAsync(string value)
+    {
+        var preset = ContextWindowPresetOptions.FirstOrDefault(option => string.Equals(option.Key, value, StringComparison.OrdinalIgnoreCase));
+        _editor.ContextWindowTokens = preset?.Tokens;
+        return Task.CompletedTask;
     }
 
     private async Task RefreshModelsAsync()
@@ -176,10 +237,7 @@
             if (string.IsNullOrWhiteSpace(_editor.Model) && _discoveredModels.FirstOrDefault() is { } firstModel)
             {
                 _editor.Model = firstModel.Name;
-                if (_editor.ContextWindowTokens is null && firstModel.ContextWindowTokens is > 0)
-                {
-                    _editor.ContextWindowTokens = firstModel.ContextWindowTokens;
-                }
+                ApplySelectedModelMetadata(firstModel.Name);
             }
         }
         catch (Exception ex)
@@ -281,6 +339,96 @@
         string.Equals(profile.Id, _editor.Id, StringComparison.OrdinalIgnoreCase)
             ? "mud-list-item-clickable mud-selected-item"
             : "mud-list-item-clickable";
+
+    private void ApplySelectedModelMetadata(string? modelName)
+    {
+        if (string.IsNullOrWhiteSpace(modelName))
+        {
+            return;
+        }
+
+        var discovered = _discoveredModels.FirstOrDefault(item => string.Equals(item.Name, modelName, StringComparison.OrdinalIgnoreCase));
+        if (_editor.ContextWindowTokens is null && discovered?.ContextWindowTokens is > 0)
+        {
+            _editor.ContextWindowTokens = discovered.ContextWindowTokens;
+        }
+    }
+
+    private static string FormatProfileMeta(ChatModelProfileView profile)
+    {
+        var details = new List<string>();
+        if (profile.ContextWindowTokens is > 0)
+        {
+            details.Add($"{profile.ContextWindowTokens.Value:n0} context");
+        }
+
+        if (profile.AllowedRoles.Count > 0)
+        {
+            details.Add(string.Join(", ", profile.AllowedRoles));
+        }
+
+        if (profile.IsDefault)
+        {
+            details.Add("Default chat");
+        }
+
+        if (profile.IsMaintenanceRunDefault)
+        {
+            details.Add("Maintenance");
+        }
+
+        if (profile.IsProposalReviewDefault)
+        {
+            details.Add("Proposal review");
+        }
+
+        if (profile.IsAdminMaintenanceChatDefault)
+        {
+            details.Add("Admin chat");
+        }
+
+        return details.Count == 0 ? "No extra metadata" : string.Join(" · ", details);
+    }
+
+    private static string BuildModelVramEstimateHint(ChatModelSummary? model, int? contextWindowTokens)
+    {
+        var contextTokens = contextWindowTokens ?? RecommendedMidrangeContextTokens;
+        if (model is null)
+        {
+            return $"VRAM estimate appears after selecting a discovered model. Start with about {contextTokens:n0} context tokens and verify on-host telemetry.";
+        }
+
+        var baseModelGiB = EstimateModelGiB(model);
+        if (baseModelGiB is null)
+        {
+            return $"VRAM estimate unavailable for '{model.Name}'. Use the selected context size of {contextTokens:n0} tokens and verify directly on the target host.";
+        }
+
+        var contextOverheadGiB = (contextTokens / 1024d) * 0.03d;
+        var workingSetGiB = (baseModelGiB.Value * 1.15d) + contextOverheadGiB;
+        var peakGiB = workingSetGiB * 1.35d;
+        return $"Estimated VRAM envelope for {model.Name} at {contextTokens:n0} tokens: {workingSetGiB:0.0}-{peakGiB:0.0} GiB (approximate, verify on target GPU).";
+    }
+
+    private static double? EstimateModelGiB(ChatModelSummary model)
+    {
+        if (model.Size is > 0)
+        {
+            return model.Size.Value / (1024d * 1024d * 1024d);
+        }
+
+        var match = Regex.Match(model.Name, @"(?<!\d)(\d+(?:\.\d+)?)b(?![a-z])", RegexOptions.IgnoreCase);
+        if (!match.Success)
+        {
+            return null;
+        }
+
+        return double.TryParse(match.Groups[1].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var billions)
+            ? billions * 0.55d
+            : null;
+    }
+
+    private sealed record ContextWindowPreset(string Key, string Label, int? Tokens);
 
     private sealed class ModelEditor
     {

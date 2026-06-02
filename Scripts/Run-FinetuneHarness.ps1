@@ -15,14 +15,14 @@ param(
     [int]$Epochs = 1,
     [double]$LearningRate = 0.0002,
     [int]$SequenceLength = 512,
-    [int]$GradientAccumulationSteps = 1,
-    [int]$WarmupSteps = 0,
+    [int]$GradientAccumulationSteps = 4,
+    [int]$WarmupSteps = 10,
     [bool]$ShuffleEachEpoch = $true,
     [bool]$IncludeStarterExamples = $false,
-    [int]$MaxTrainSteps = 0,
+    [int]$MaxTrainSteps = 75,
     [switch]$TrustRemoteCode,
     [switch]$RequireTrainingDependencies,
-    [switch]$DryRun
+        [switch]$DryRun
 )
 
 $ErrorActionPreference = "Stop"
