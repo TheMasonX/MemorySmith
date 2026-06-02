@@ -334,6 +334,50 @@ public partial class MemoryApplicationService
 
         var diagnosticWarnings = MemoryDiagnosticFormatting.ToWarningSummaries(records);
 
+        // Build reverse-reference map: for each packed record, find store records that
+        // cite it via References or Conflicts but are not themselves in the pack.
+        // O(|store| × avgRefs) — fast for in-memory stores of typical corpus size. TSK-0268.
+        var reverseRefMap = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+        foreach (var pr in records)
+        {
+            reverseRefMap[pr.Id] = [];
+        }
+
+        foreach (var candidate in allRecords)
+        {
+            if (reverseRefMap.ContainsKey(candidate.Id))
+            {
+                continue; // skip pack members — backlinks from them are already expressed as Relationship
+            }
+
+            foreach (var rid in candidate.References)
+            {
+                if (reverseRefMap.TryGetValue(rid, out var rrList))
+                {
+                    rrList.Add(candidate.Id);
+                }
+            }
+
+            foreach (var cid in candidate.Conflicts)
+            {
+                if (reverseRefMap.TryGetValue(cid, out var rcList))
+                {
+                    rcList.Add(candidate.Id);
+                }
+            }
+        }
+
+        for (var i = 0; i < records.Count; i++)
+        {
+            if (reverseRefMap.TryGetValue(records[i].Id, out var reverseRefs) && reverseRefs.Count > 0)
+            {
+                records[i] = records[i] with
+                {
+                    ReverseReferences = reverseRefs.Order(StringComparer.OrdinalIgnoreCase).ToList()
+                };
+            }
+        }
+
         var pack = new MemoryContextPack(
             query.Query,
             DateTime.UtcNow,
@@ -432,6 +476,31 @@ public partial class MemoryApplicationService
 
         var recordsById = MemoryRecordLookup.ToRecordMap(_store.LoadAll());
         return Task.FromResult(GetDiagnostics(record, recordsById));
+    }
+
+    /// <summary>
+    /// Returns the IDs of all memory records whose <see cref="MemoryRecord.References"/> or
+    /// <see cref="MemoryRecord.Conflicts"/> arrays contain <paramref name="id"/>.
+    /// Used to populate the "Incoming References" panel in the workbench detail view
+    /// and the <c>reverseReferences</c> field in context-pack responses (TSK-0268).
+    /// </summary>
+    public Task<IReadOnlyList<string>> GetReverseReferencesAsync(string id, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            return Task.FromResult<IReadOnlyList<string>>([]);
+        }
+
+        var result = _store.LoadAll()
+            .Where(r => !string.Equals(r.Id, id, StringComparison.OrdinalIgnoreCase)
+                     && (r.References.Any(rid => string.Equals(rid, id, StringComparison.OrdinalIgnoreCase))
+                      || r.Conflicts.Any(cid => string.Equals(cid, id, StringComparison.OrdinalIgnoreCase))))
+            .Select(r => r.Id)
+            .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return Task.FromResult<IReadOnlyList<string>>(result);
     }
 
     /// <summary>

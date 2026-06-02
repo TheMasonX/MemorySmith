@@ -39,6 +39,7 @@ internal static class MemoryContextPackFormatter
                     tags = record.Tags,
                     references = record.References,
                     conflicts = record.Conflicts,
+                    reverseReferences = record.ReverseReferences,
                     diagnostics = record.Diagnostics.Select(diagnostic => new
                     {
                         code = diagnostic.Code,
@@ -80,6 +81,9 @@ internal static class MemoryContextPackFormatter
             var sourceLinks = includeSourceLinksInMarkdown && record.SourceLinks.Count > 0
                 ? $"Source Links: {string.Join(", ", record.SourceLinks.Select(sourceLink => FormatSourceLink(sourceLink, resolveUri)))}{Environment.NewLine}"
                 : string.Empty;
+            var incomingRefs = record.ReverseReferences.Count > 0
+                ? $"Incoming References: {FormatLinks(record.ReverseReferences)}{Environment.NewLine}"
+                : string.Empty;
             var diagnostics = MemoryDiagnosticFormatting.FormatMarkdownSection(record.Diagnostics);
 
             return $"## {record.Id}: {record.Title}{Environment.NewLine}" +
@@ -88,6 +92,7 @@ internal static class MemoryContextPackFormatter
                    $"Tags: {string.Join(", ", record.Tags)}{Environment.NewLine}" +
                    $"References: {FormatLinks(record.References)}{Environment.NewLine}" +
                    $"Conflicts: {FormatLinks(record.Conflicts)}{Environment.NewLine}" +
+                   incomingRefs +
                    sourceLinks +
                    $"{scoreLine}{Environment.NewLine}" +
                    matchLine +
