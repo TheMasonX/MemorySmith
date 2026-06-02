@@ -3,6 +3,9 @@ using System.Diagnostics;
 using Lucene.Net.Analysis.Standard;
 using Lucene.Net.Analysis.TokenAttributes;
 using Lucene.Net.Util;
+using Lucene.Net.Highlight;
+using Lucene.Net.Search;
+using System.Net;
 using MemorySmith.Core.Indexing;
 using MemorySmith.Core.Models;
 using MemorySmith.Storage;
@@ -987,6 +990,10 @@ public partial class MemoryApplicationService
                 semanticById.TryGetValue(id, out var semanticResult);
 
                 var score = ReciprocalRankScore(lexicalRank) + ReciprocalRankScore(semanticRank);
+                // Token asymmetry fix: prefer lexical snippet (StandardAnalyzer tokens) over semantic
+                // (suffix-stripped tokens) so the displayed snippet is consistent with lexical scoring.
+                // Fall back to lexicalTokens (not semanticTokens) for BuildSnippet when neither
+                // individual result produced a snippet.
                 return new MemorySearchResult(
                     record.Id,
                     record.Title,
@@ -995,9 +1002,10 @@ public partial class MemoryApplicationService
                     Math.Round(score, 6),
                     record.Tags,
                     record.UsageCount,
-                    semanticResult?.Snippet ?? lexicalResult?.Snippet ?? BuildSnippet(record.Content, semanticTokens),
+                    lexicalResult?.Snippet ?? semanticResult?.Snippet ?? BuildSnippet(record.Content, lexicalTokens),
                     BuildHybridMatchReason(lexicalRank, lexicalResult, semanticRank, semanticResult),
-                    record.LastUpdated);
+                    record.LastUpdated)
+                { SnippetHtml = lexicalResult?.SnippetHtml ?? BuildHighlightedSnippetHtml(record.Content, lexicalTokens) };
             })
             .OrderByDescending(result => result.Score)
             .ThenByDescending(result => result.LastUpdated)
@@ -1208,7 +1216,8 @@ public partial class MemoryApplicationService
             record.UsageCount,
             BuildSnippet(record.Content, queryTokens),
             reasons.Count == 0 ? "No lexical token overlap." : string.Join("; ", reasons),
-            record.LastUpdated);
+            record.LastUpdated)
+        { SnippetHtml = BuildHighlightedSnippetHtml(record.Content, queryTokens) };
 
         void AddScore(IReadOnlyCollection<string> matches, double weight, string source)
         {
@@ -1339,7 +1348,45 @@ public partial class MemoryApplicationService
         return prefix + content.Substring(start, length).Trim() + suffix;
     }
 
-    private static string TruncateContent(string content, int maxLength) =>
+    /// <summary>
+    /// Returns an HTML fragment with &lt;mark&gt; tags around matched terms, suitable for rendering
+    /// in the Blazor UI as a <see cref="Microsoft.AspNetCore.Components.MarkupString"/>.
+    /// Returns <c>null</c> when there are no query tokens or no match is found.
+    /// Content is pre-HTML-encoded before the Lucene Highlighter is applied (XSS-safe).
+    /// Only called for lexical and hybrid results — semantic results get no SnippetHtml.
+    /// </summary>
+    private static string? BuildHighlightedSnippetHtml(string content, IReadOnlyCollection<string> lexicalQueryTokens)
+    {
+        if (lexicalQueryTokens.Count == 0) return null;
+
+        // Guard: prevent DoS from very large memory records
+        var safe = content.Length > 32_000 ? content[..32_000] : content;
+
+        // Pre-encode BEFORE the Lucene Highlighter sees the text.
+        // SimpleHTMLFormatter passes non-matched text verbatim — without encoding,
+        // any HTML in the content would inject into the MarkupString render path.
+        var encoded = WebUtility.HtmlEncode(safe);
+
+        using var analyzer = new StandardAnalyzer(LuceneMatchVersion);
+
+        // BooleanQuery built from StandardAnalyzer-processed tokens — same tokenizer
+        // used for lexical scoring, so highlighted terms align with scored matches.
+        // QueryParser is intentionally not used: tokens are already available.
+        var boolQuery = new BooleanQuery();
+        foreach (var token in lexicalQueryTokens.Take(8))
+            boolQuery.Add(new TermQuery(new Term("f", token)), Occur.SHOULD);
+
+        var scorer = new QueryScorer(boolQuery);
+        var highlighter = new Highlighter(new SimpleHTMLFormatter("<mark>", "</mark>"), scorer)
+        {
+            TextFragmenter = new SimpleSpanFragmenter(scorer, 220)
+        };
+
+        var fragment = highlighter.GetBestFragment(analyzer, "f", encoded);
+        return string.IsNullOrEmpty(fragment) ? null : fragment;
+    }
+
+        private static string TruncateContent(string content, int maxLength) =>
         content.Length <= maxLength ? content : content[..maxLength].TrimEnd() + "...";
 
     private void RecordQueryEvent(string kind, string? text)
