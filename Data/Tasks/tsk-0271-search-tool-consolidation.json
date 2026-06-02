@@ -1,0 +1,134 @@
+{
+  "id": "TSK-0271",
+  "key": "tsk-0271-search-tool-consolidation",
+  "title": "Deprecate and remove memorysmith_semantic_search and memorysmith_unified_search",
+  "description": "Remove two redundant search tools from the chat tool catalog to reduce surface-area confusion in the trained model. semantic_search is always redundant (hybrid_search fuses lexical+semantic). unified_search overlaps with hybrid_search + page_search. Reduce chat tools from 12 to 10, update prompt routing, regenerate training data, retrain LoRA adapter.",
+  "type": "Feature",
+  "status": "Backlog",
+  "priority": "Medium",
+  "labels": ["tooling", "chat", "training", "prompt"],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "agent-smith",
+  "reporter": "agent-smith",
+  "createdAtUtc": "2026-06-02T22:00:00Z",
+  "steps": [
+    {
+      "step": 1,
+      "title": "Update prompt files (wiki-chat-agent.md + .modelfile)",
+      "description": "Remove semantic_search and unified_search from routing heuristics. Add clear rule: 'Use memorysmith_hybrid_search as the default memory search for all wiki questions.' Remove from 'Supported intercepted tools' list. Update modelfile to match.",
+      "files": [
+        "MemorySmith.Core/Docs/Prompts/wiki-chat-agent.md",
+        "MemorySmith.Core/Docs/Prompts/wiki-chat-agent.modelfile"
+      ],
+      "acceptance": "Prompt lists only 10 read-only tools, routing says hybrid is default"
+    },
+    {
+      "step": 2,
+      "title": "Remove tool registrations from ChatToolCatalog.cs",
+      "description": "Delete the yield return blocks for memorysmith_semantic_search (lines ~149-168) and memorysmith_unified_search (lines ~609-711). These are ~100 lines total. No other tool depends on these — each is a standalone yield return.",
+      "files": [
+        "MemorySmith.App/Services/ChatToolCatalog.cs"
+      ],
+      "acceptance": "Build succeeds after removal, no orphaned references"
+    },
+    {
+      "step": 3,
+      "title": "Verify MCP controller delegation",
+      "description": "McpController.cs delegates to the catalog via _toolCatalog.TryGet(). Confirm no direct tool name references for the deprecated tools. If any exist, remove them.",
+      "files": [
+        "MemorySmith.App/Controllers/McpController.cs"
+      ],
+      "acceptance": "MCP controller compiles without references to deprecated tool names"
+    },
+    {
+      "step": 4,
+      "title": "Update README.md",
+      "description": "Remove semantic_search and unified_search from the chat tool allowlist. Update routing documentation if it references these tools.",
+      "files": [
+        "README.md"
+      ],
+      "acceptance": "README lists only 10 read-only tools"
+    },
+    {
+      "step": 5,
+      "title": "Update ChatToolCatalogAndInterceptTests.cs",
+      "description": "Remove test expectations that reference memorysmith_semantic_search and memorysmith_unified_search. Key areas: intent interception test cases (lines ~583-586), tool count assertions, tool name lists.",
+      "files": [
+        "MemorySmith.Tests/ChatToolCatalogAndInterceptTests.cs"
+      ],
+      "acceptance": "All tests pass, no references to deprecated tools"
+    },
+    {
+      "step": 6,
+      "title": "Update McpAndSemanticSearchTests.cs",
+      "description": "Remove test cases that exercise semantic_search and unified_search via MCP. Keep hybrid_search and lexical search tests.",
+      "files": [
+        "MemorySmith.Tests/McpAndSemanticSearchTests.cs"
+      ],
+      "acceptance": "All tests pass"
+    },
+    {
+      "step": 7,
+      "title": "Update .continue/rules/memory-smith.md",
+      "description": "Remove semantic_search and unified_search from the Continue agent tool-usage rules.",
+      "files": [
+        ".continue/rules/memory-smith.md"
+      ],
+      "acceptance": "No references to deprecated tools"
+    },
+    {
+      "step": 8,
+      "title": "Regenerate SFT training corpus",
+      "description": "Create new training data exports that exclude semantic_search and unified_search examples. Add new routing examples that teach hybrid_search as the default for general wiki queries. Target: ~100 records covering all 10 remaining tools with clear routing distinctions.",
+      "files": [
+        "Data/Training/exports/*.sft.jsonl"
+      ],
+      "acceptance": "Corpus contains 0 references to deprecated tools, hybrid_search is the dominant search tool"
+    },
+    {
+      "step": 9,
+      "title": "Update spotcheck eval cases",
+      "description": "Replace the 5 semantic_search and 5 unified_search cases in the spotcheck eval with 5 hybrid_search and 5 search cases. New eval: 5 search, 5 hybrid_search, 5 task_list, 5 page_search, 5 code_search = 25 cases.",
+      "files": [
+        "Data/Pages/research/training/tool-ab-spotcheck-*.data.json"
+      ],
+      "acceptance": "Spotcheck eval covers all remaining tool families"
+    },
+    {
+      "step": 10,
+      "title": "Run full validation",
+      "description": "Scripts/Validate-Repo.ps1 -IncludeDocs: build, all tests, task/memory/page validation. Fix any regressions.",
+      "files": [],
+      "acceptance": "Full validation green"
+    },
+    {
+      "step": 11,
+      "title": "Retrain LoRA adapter",
+      "description": "Train new adapter with the consolidated corpus. Target: 3 epochs, 500 max steps, batch=2, QLoRA. Compare tool-match against spotcheck baseline.",
+      "files": [
+        "Scripts/Run-FinetuneHarness.ps1",
+        "MemorySmith.Training/harness.py"
+      ],
+      "acceptance": "Tool-match on new eval >= 60% (baseline was 50% with 4 tools)"
+    },
+    {
+      "step": 12,
+      "title": "Deploy adapter to Ollama and browser-validate /chat",
+      "description": "Create new memorysmith-athena:latest with updated adapter. Test in browser: prompt 'search the wiki for architecture' → should use hybrid_search, prompt 'find memory with exact tag governance' → should use search.",
+      "files": [
+        "artifacts/athena-modelfile/Modelfile"
+      ],
+      "acceptance": "Chat uses hybrid_search as default, search for exact terms, page_search for pages"
+    }
+  ],
+  "references": [
+    "Data/Memories/Core/tool-catalog-reference.md",
+    "Data/Pages/research/training/tool-ab-spotcheck-20260530-v3.data.json",
+    "logs/tracker.md (Round 42: tool consolidation analysis)",
+    "/memories/repo/memorysmith-search-tool-consolidation-plan-20260602.md"
+  ],
+  "notes": "semantic_search always scores worse than hybrid_search in spotcheck (2/5 vs 0/5). unified_search scores 0/5 because the model treats 'search the wiki' as memorysmith_search. Removing both eliminates the two worst-performing tools and simplifies prompt routing. No renames — keep memorysmith_search and memorysmith_hybrid_search stable for MCP clients."
+}
