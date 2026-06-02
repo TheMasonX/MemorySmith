@@ -1,0 +1,339 @@
+{
+  "generatedAtUtc": "2026-06-02T22:00:00Z",
+  "modelId": "Qwen/Qwen3.5-4B",
+  "adapterPath": null,
+  "caseCount": 22,
+  "perToolCases": {
+    "memorysmith_code_search": 3,
+    "memorysmith_hybrid_search": 8,
+    "memorysmith_page_search": 3,
+    "memorysmith_search": 5,
+    "memorysmith_task_list": 3
+  },
+  "toolsCovered": [
+    "memorysmith_code_search",
+    "memorysmith_hybrid_search",
+    "memorysmith_page_search",
+    "memorysmith_search",
+    "memorysmith_task_list"
+  ],
+  "base": {
+    "caseCount": 22,
+    "rows": [
+      {
+        "caseId": "search-exact-1",
+        "expectedTool": "memorysmith_search",
+        "predictedTool": null,
+        "toolMatch": false,
+        "toolCall": null
+      },
+      {
+        "caseId": "search-exact-2",
+        "expectedTool": "memorysmith_search",
+        "predictedTool": null,
+        "toolMatch": false,
+        "toolCall": null
+      },
+      {
+        "caseId": "search-exact-3",
+        "expectedTool": "memorysmith_search",
+        "predictedTool": null,
+        "toolMatch": false,
+        "toolCall": null
+      },
+      {
+        "caseId": "search-exact-4",
+        "expectedTool": "memorysmith_search",
+        "predictedTool": null,
+        "toolMatch": false,
+        "toolCall": null
+      },
+      {
+        "caseId": "search-exact-5",
+        "expectedTool": "memorysmith_search",
+        "predictedTool": null,
+        "toolMatch": false,
+        "toolCall": null
+      },
+      {
+        "caseId": "hybrid-default-1",
+        "expectedTool": "memorysmith_hybrid_search",
+        "predictedTool": null,
+        "toolMatch": false,
+        "toolCall": null
+      },
+      {
+        "caseId": "hybrid-default-2",
+        "expectedTool": "memorysmith_hybrid_search",
+        "predictedTool": null,
+        "toolMatch": false,
+        "toolCall": null
+      },
+      {
+        "caseId": "hybrid-default-3",
+        "expectedTool": "memorysmith_hybrid_search",
+        "predictedTool": null,
+        "toolMatch": false,
+        "toolCall": null
+      },
+      {
+        "caseId": "hybrid-default-4",
+        "expectedTool": "memorysmith_hybrid_search",
+        "predictedTool": null,
+        "toolMatch": false,
+        "toolCall": null
+      },
+      {
+        "caseId": "hybrid-default-5",
+        "expectedTool": "memorysmith_hybrid_search",
+        "predictedTool": null,
+        "toolMatch": false,
+        "toolCall": null
+      },
+      {
+        "caseId": "hybrid-default-6",
+        "expectedTool": "memorysmith_hybrid_search",
+        "predictedTool": null,
+        "toolMatch": false,
+        "toolCall": null
+      },
+      {
+        "caseId": "hybrid-default-7",
+        "expectedTool": "memorysmith_hybrid_search",
+        "predictedTool": null,
+        "toolMatch": false,
+        "toolCall": null
+      },
+      {
+        "caseId": "hybrid-default-8",
+        "expectedTool": "memorysmith_hybrid_search",
+        "predictedTool": null,
+        "toolMatch": false,
+        "toolCall": null
+      },
+      {
+        "caseId": "page-search-1",
+        "expectedTool": "memorysmith_page_search",
+        "predictedTool": null,
+        "toolMatch": false,
+        "toolCall": null
+      },
+      {
+        "caseId": "page-search-2",
+        "expectedTool": "memorysmith_page_search",
+        "predictedTool": null,
+        "toolMatch": false,
+        "toolCall": null
+      },
+      {
+        "caseId": "page-search-3",
+        "expectedTool": "memorysmith_page_search",
+        "predictedTool": null,
+        "toolMatch": false,
+        "toolCall": null
+      },
+      {
+        "caseId": "task-list-1",
+        "expectedTool": "memorysmith_task_list",
+        "predictedTool": null,
+        "toolMatch": false,
+        "toolCall": null
+      },
+      {
+        "caseId": "task-list-2",
+        "expectedTool": "memorysmith_task_list",
+        "predictedTool": null,
+        "toolMatch": false,
+        "toolCall": null
+      },
+      {
+        "caseId": "task-list-3",
+        "expectedTool": "memorysmith_task_list",
+        "predictedTool": null,
+        "toolMatch": false,
+        "toolCall": null
+      },
+      {
+        "caseId": "code-search-1",
+        "expectedTool": "memorysmith_code_search",
+        "predictedTool": null,
+        "toolMatch": false,
+        "toolCall": null
+      },
+      {
+        "caseId": "code-search-2",
+        "expectedTool": "memorysmith_code_search",
+        "predictedTool": null,
+        "toolMatch": false,
+        "toolCall": null
+      },
+      {
+        "caseId": "code-search-3",
+        "expectedTool": "memorysmith_code_search",
+        "predictedTool": null,
+        "toolMatch": false,
+        "toolCall": null
+      }
+    ]
+  },
+  "tuned": {
+    "caseCount": 22,
+    "rows": [
+      {
+        "caseId": "search-exact-1",
+        "expectedTool": "memorysmith_search",
+        "predictedTool": null,
+        "toolMatch": false,
+        "toolCall": null
+      },
+      {
+        "caseId": "search-exact-2",
+        "expectedTool": "memorysmith_search",
+        "predictedTool": null,
+        "toolMatch": false,
+        "toolCall": null
+      },
+      {
+        "caseId": "search-exact-3",
+        "expectedTool": "memorysmith_search",
+        "predictedTool": null,
+        "toolMatch": false,
+        "toolCall": null
+      },
+      {
+        "caseId": "search-exact-4",
+        "expectedTool": "memorysmith_search",
+        "predictedTool": null,
+        "toolMatch": false,
+        "toolCall": null
+      },
+      {
+        "caseId": "search-exact-5",
+        "expectedTool": "memorysmith_search",
+        "predictedTool": null,
+        "toolMatch": false,
+        "toolCall": null
+      },
+      {
+        "caseId": "hybrid-default-1",
+        "expectedTool": "memorysmith_hybrid_search",
+        "predictedTool": null,
+        "toolMatch": false,
+        "toolCall": null
+      },
+      {
+        "caseId": "hybrid-default-2",
+        "expectedTool": "memorysmith_hybrid_search",
+        "predictedTool": null,
+        "toolMatch": false,
+        "toolCall": null
+      },
+      {
+        "caseId": "hybrid-default-3",
+        "expectedTool": "memorysmith_hybrid_search",
+        "predictedTool": null,
+        "toolMatch": false,
+        "toolCall": null
+      },
+      {
+        "caseId": "hybrid-default-4",
+        "expectedTool": "memorysmith_hybrid_search",
+        "predictedTool": null,
+        "toolMatch": false,
+        "toolCall": null
+      },
+      {
+        "caseId": "hybrid-default-5",
+        "expectedTool": "memorysmith_hybrid_search",
+        "predictedTool": null,
+        "toolMatch": false,
+        "toolCall": null
+      },
+      {
+        "caseId": "hybrid-default-6",
+        "expectedTool": "memorysmith_hybrid_search",
+        "predictedTool": null,
+        "toolMatch": false,
+        "toolCall": null
+      },
+      {
+        "caseId": "hybrid-default-7",
+        "expectedTool": "memorysmith_hybrid_search",
+        "predictedTool": null,
+        "toolMatch": false,
+        "toolCall": null
+      },
+      {
+        "caseId": "hybrid-default-8",
+        "expectedTool": "memorysmith_hybrid_search",
+        "predictedTool": null,
+        "toolMatch": false,
+        "toolCall": null
+      },
+      {
+        "caseId": "page-search-1",
+        "expectedTool": "memorysmith_page_search",
+        "predictedTool": null,
+        "toolMatch": false,
+        "toolCall": null
+      },
+      {
+        "caseId": "page-search-2",
+        "expectedTool": "memorysmith_page_search",
+        "predictedTool": null,
+        "toolMatch": false,
+        "toolCall": null
+      },
+      {
+        "caseId": "page-search-3",
+        "expectedTool": "memorysmith_page_search",
+        "predictedTool": null,
+        "toolMatch": false,
+        "toolCall": null
+      },
+      {
+        "caseId": "task-list-1",
+        "expectedTool": "memorysmith_task_list",
+        "predictedTool": null,
+        "toolMatch": false,
+        "toolCall": null
+      },
+      {
+        "caseId": "task-list-2",
+        "expectedTool": "memorysmith_task_list",
+        "predictedTool": null,
+        "toolMatch": false,
+        "toolCall": null
+      },
+      {
+        "caseId": "task-list-3",
+        "expectedTool": "memorysmith_task_list",
+        "predictedTool": null,
+        "toolMatch": false,
+        "toolCall": null
+      },
+      {
+        "caseId": "code-search-1",
+        "expectedTool": "memorysmith_code_search",
+        "predictedTool": null,
+        "toolMatch": false,
+        "toolCall": null
+      },
+      {
+        "caseId": "code-search-2",
+        "expectedTool": "memorysmith_code_search",
+        "predictedTool": null,
+        "toolMatch": false,
+        "toolCall": null
+      },
+      {
+        "caseId": "code-search-3",
+        "expectedTool": "memorysmith_code_search",
+        "predictedTool": null,
+        "toolMatch": false,
+        "toolCall": null
+      }
+    ]
+  },
+  "evalVersion": "consolidated-v1"
+}
