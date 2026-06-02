@@ -16,6 +16,16 @@ public class AdminController : ControllerBase
     private readonly AuditLogService _audit;
     private readonly AdminSettingsService _settings;
 
+    // Allowlist of roles that can be assigned or removed via the API.
+    // Any roleName not in this set is rejected with 400 to prevent privilege escalation
+    // through arbitrary string injection. Audit finding: SEC-ROLE-01 (Audit #7).
+    private static readonly HashSet<string> ValidRoles = new(StringComparer.OrdinalIgnoreCase)
+    {
+        MemorySmithRoles.Viewer,
+        MemorySmithRoles.Editor,
+        MemorySmithRoles.Admin,
+    };
+
     public AdminController(
         IMemorySmithDatabase database,
         MemorySmithLocalAuthService auth,
@@ -75,6 +85,11 @@ public class AdminController : ControllerBase
     [Authorize(Policy = MemorySmithPolicies.CanManageUsers)]
     public async Task<IActionResult> AssignRole(string userId, string roleName, CancellationToken cancellationToken)
     {
+        if (!ValidRoles.Contains(roleName))
+        {
+            return BadRequest(new { error = $"Role '{roleName}' is not recognised. Valid roles are: {string.Join(", ", ValidRoles.Order())}." });
+        }
+
         await _database.Roles.AssignRoleAsync(userId, roleName, _currentUser.UserId, cancellationToken);
         await _audit.RecordAsync("role.assigned", "User", userId, MemorySmithAuditOutcomes.Success, details: new { roleName }, cancellationToken: cancellationToken);
         return NoContent();
@@ -84,6 +99,11 @@ public class AdminController : ControllerBase
     [Authorize(Policy = MemorySmithPolicies.CanManageUsers)]
     public async Task<IActionResult> RemoveRole(string userId, string roleName, CancellationToken cancellationToken)
     {
+        if (!ValidRoles.Contains(roleName))
+        {
+            return BadRequest(new { error = $"Role '{roleName}' is not recognised. Valid roles are: {string.Join(", ", ValidRoles.Order())}." });
+        }
+
         await _database.Roles.RemoveRoleAsync(userId, roleName, _currentUser.UserId, cancellationToken);
         await _audit.RecordAsync("role.removed", "User", userId, MemorySmithAuditOutcomes.Success, details: new { roleName }, cancellationToken: cancellationToken);
         return NoContent();
