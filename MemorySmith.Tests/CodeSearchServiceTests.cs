@@ -875,7 +875,7 @@ public class CodeSearchServiceTests
         };
         // Adjust RepositoryRootPath to point to shardRepoRoot
         shardOptions.CodeSearch.RepositoryRootPath = shardRepoRoot;
-        var shardService = new CodeSearchService(new HashEmbeddingProvider(), Options.Create(shardOptions), NullLogger<CodeSearchService>.Instance);
+        var shardService = new CodeSearchService(new HashEmbeddingProvider(), null!, Options.Create(shardOptions), NullLogger<CodeSearchService>.Instance);
         await shardService.SearchAsync(new CodeSearchQuery("ShardMethod shard file", Limit: 5), CancellationToken.None);
 
         var shardDbPath = Path.Combine(Path.GetDirectoryName(shardDataPath)!.Replace("Memories", string.Empty).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar), "Graph", "code-search", "code-search.db");
@@ -929,7 +929,7 @@ public class CodeSearchServiceTests
                 MaxResults = 10
             }
         };
-        var shardService = new CodeSearchService(new HashEmbeddingProvider(), Options.Create(shardOptions), NullLogger<CodeSearchService>.Instance);
+        var shardService = new CodeSearchService(new HashEmbeddingProvider(), null!, Options.Create(shardOptions), NullLogger<CodeSearchService>.Instance);
         await shardService.SearchAsync(new CodeSearchQuery("SharedMethod shared", Limit: 5), CancellationToken.None);
 
         var shardDataRoot = Directory.GetParent(shardDataPath)!.FullName;
@@ -964,7 +964,7 @@ public class CodeSearchServiceTests
             }
         };
         configure?.Invoke(options);
-        return new CodeSearchService(provider, Options.Create(options), NullLogger<CodeSearchService>.Instance);
+        return new CodeSearchService(provider, null!, Options.Create(options), NullLogger<CodeSearchService>.Instance);
     }
 
     private static string BuildLargeCodeFile(string className, int methodCount)

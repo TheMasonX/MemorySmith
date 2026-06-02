@@ -619,7 +619,7 @@ public class ChatToolCatalogAndInterceptTests
             }
         };
 
-        return new CodeSearchService(new TestEmbeddingProvider(), Options.Create(options), NullLogger<CodeSearchService>.Instance);
+        return new CodeSearchService(new TestEmbeddingProvider(), null!, Options.Create(options), NullLogger<CodeSearchService>.Instance);
     }
 
     private static void CreateEmptyShardDatabase(string databasePath)

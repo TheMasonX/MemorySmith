@@ -3,6 +3,9 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Markdig;
+using Markdig.Syntax;
+using Markdig.Syntax.Inlines;
 using Microsoft.Data.Sqlite;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -144,6 +147,7 @@ public sealed class CodeSearchService : IDisposable
     };
 
     private readonly ITextEmbeddingProvider _embeddingProvider;
+    private readonly TreeSitterChunkingService _treeSitterChunker;
     private readonly MemorySmithOptions _settings;
     private readonly CodeSearchOptions _options;
     private readonly SemanticSearchOptions _semanticOptions;
@@ -220,10 +224,7 @@ public sealed class CodeSearchService : IDisposable
         int EmbeddingCallCount,
         int EmbeddedChunkCount);
 
-    private sealed record ParsedChunk(
-        int StartLine,
-        int EndLine,
-        string ChunkText);
+    // ParsedChunk is defined in MemorySmith.App/Services/ParsedChunk.cs
 
     private sealed record VectorCandidateLoadResult(
         List<IndexedChunk> Chunks,
@@ -231,10 +232,12 @@ public sealed class CodeSearchService : IDisposable
 
     public CodeSearchService(
         ITextEmbeddingProvider embeddingProvider,
+        TreeSitterChunkingService treeSitterChunker,
         IOptions<MemorySmithOptions> options,
         ILogger<CodeSearchService>? logger = null)
     {
         _embeddingProvider = embeddingProvider;
+        _treeSitterChunker = treeSitterChunker;
         _settings = options.Value;
         _options = _settings.CodeSearch;
         _semanticOptions = _settings.SemanticSearch;
@@ -1062,10 +1065,196 @@ public sealed class CodeSearchService : IDisposable
             return false;
         }
 
-        _logger.LogDebug(
-            "Tree-sitter chunking is configured in parser order for {DocumentPath}, but implementation is not available yet. Falling back to next parser strategy.",
-            documentPath);
-        return false;
+        // .md files use Markdig heading-based chunking instead of tree-sitter
+        if (documentPath.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
+        {
+            return TryBuildMarkdownHeadingChunks(documentPath, sourceText, lines, out chunks);
+        }
+
+        // .cs files are already handled by Roslyn; skip tree-sitter for them
+        if (documentPath.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        // Use tree-sitter native bindings for all other supported file types
+        var extension = Path.GetExtension(documentPath);
+        if (!_treeSitterChunker.CanHandle(extension))
+        {
+            _logger.LogDebug(
+                "Tree-sitter has no grammar for {Extension} ({DocumentPath}); falling through.",
+                extension, documentPath);
+            return false;
+        }
+
+        return _treeSitterChunker.TryChunk(documentPath, sourceText, _options.MaxChunkCharacters, out chunks);
+    }
+
+    /// <summary>
+    /// Uses Markdig to parse markdown into an AST, then creates chunks at heading boundaries.
+    /// Each heading section (heading + content until the next heading of any level) becomes
+    /// one chunk, plus a preamble chunk for content before the first heading.
+    /// Files with no headings fall through to the next parser strategy.
+    /// </summary>
+    private bool TryBuildMarkdownHeadingChunks(string documentPath, string sourceText, string[] lines, out List<ParsedChunk> chunks)
+    {
+        chunks = [];
+
+        try
+        {
+            var document = Markdown.Parse(sourceText);
+
+            // Walk the AST to collect all heading blocks with their 0-based line positions
+            var headings = new List<(int Level, int Line)>();
+            CollectHeadings(document, headings);
+
+            if (headings.Count == 0)
+            {
+                _logger.LogDebug(
+                    "No headings found in {DocumentPath}; markdown AST chunking yields no sections. " +
+                    "Falling through to next parser strategy.", documentPath);
+                return false;
+            }
+
+            // Build chunks: one per heading section, plus a preamble if content precedes the first heading
+            var firstHeadingLine = headings[0].Line;
+            var maxChunkLines = Math.Max(6, _options.ChunkLineCount * 2);
+
+            // Preamble: content before the first heading
+            if (firstHeadingLine > 0)
+            {
+                TryAddHeadingChunk(lines, 0, firstHeadingLine - 1, null, maxChunkLines, chunks);
+            }
+
+            // Heading sections
+            for (var i = 0; i < headings.Count; i++)
+            {
+                var startLine = headings[i].Line;
+                var endLine = i + 1 < headings.Count
+                    ? headings[i + 1].Line - 1
+                    : lines.Length - 1;
+
+                if (endLine < startLine)
+                {
+                    continue;
+                }
+
+                TryAddHeadingChunk(lines, startLine, endLine, headings[i].Level, maxChunkLines, chunks);
+            }
+
+            return chunks.Count > 0;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex,
+                "Markdig AST markdown chunking failed for {DocumentPath}; parser pipeline will continue.",
+                documentPath);
+            chunks = [];
+            return false;
+        }
+    }
+
+    private static void CollectHeadings(ContainerBlock container, List<(int Level, int Line)> headings)
+    {
+        foreach (var block in container)
+        {
+            if (block is HeadingBlock heading)
+            {
+                headings.Add((heading.Level, heading.Line));
+            }
+
+            if (block is ContainerBlock childContainer)
+            {
+                CollectHeadings(childContainer, headings);
+            }
+        }
+    }
+
+    private static void TryAddHeadingChunk(
+        string[] lines,
+        int startLineZeroBased,
+        int endLineZeroBased,
+        int? headingLevel,
+        int maxChunkLines,
+        List<ParsedChunk> chunks)
+    {
+        var lineCount = endLineZeroBased - startLineZeroBased + 1;
+        if (lineCount > maxChunkLines)
+        {
+            // Sub-chunk oversized sections using line-window partitioning
+            // so no single embedding exceeds the heuristic limit.
+            var subChunkLineCount = Math.Max(5, maxChunkLines);
+            var overlapLineCount = Math.Clamp(subChunkLineCount / 4, 0, Math.Max(0, subChunkLineCount - 1));
+            var step = Math.Max(1, subChunkLineCount - overlapLineCount);
+
+            for (var offset = 0; offset < lineCount; offset += step)
+            {
+                var subStart = startLineZeroBased + offset;
+                var subEnd = Math.Min(startLineZeroBased + lineCount - 1, subStart + subChunkLineCount - 1);
+                if (subStart > subEnd)
+                {
+                    break;
+                }
+
+                TryAddChunkFromLineRange(lines, subStart + 1, subEnd + 1, chunks);
+            }
+            return;
+        }
+
+        TryAddChunkFromLineRange(lines, startLineZeroBased + 1, endLineZeroBased + 1, chunks);
+    }
+
+    private static void TryAddChunkFromLineRange(string[] lines, int startLine, int endLine, List<ParsedChunk> chunks)
+    {
+        if (startLine < 1 || endLine < startLine || startLine > lines.Length)
+        {
+            return;
+        }
+
+        var clampedStart = Math.Min(lines.Length, Math.Max(1, startLine));
+        var clampedEnd = Math.Min(lines.Length, Math.Max(clampedStart, endLine));
+
+        // Trim leading blank lines
+        var actualStart = clampedStart;
+        while (actualStart <= clampedEnd && string.IsNullOrWhiteSpace(lines[actualStart - 1]))
+        {
+            actualStart++;
+        }
+
+        if (actualStart > clampedEnd)
+        {
+            return;
+        }
+
+        // Trim trailing blank lines
+        var actualEnd = clampedEnd;
+        while (actualEnd >= actualStart && string.IsNullOrWhiteSpace(lines[actualEnd - 1]))
+        {
+            actualEnd--;
+        }
+
+        var chunkLines = lines
+            .Skip(actualStart - 1)
+            .Take(actualEnd - actualStart + 1)
+            .ToArray();
+
+        var text = string.Join('\n', chunkLines).Trim();
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return;
+        }
+
+        if (text.Length > 4000)
+        {
+            text = text[..Math.Max(1, 4000)].TrimEnd();
+        }
+
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return;
+        }
+
+        chunks.Add(new ParsedChunk(actualStart, actualEnd, text));
     }
 
     private bool TryBuildHeuristicChunks(string[] lines, out List<ParsedChunk> chunks)

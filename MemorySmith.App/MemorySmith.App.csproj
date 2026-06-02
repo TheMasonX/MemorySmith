@@ -39,6 +39,7 @@
     <PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.7" />
     <PackageReference Include="StreamJsonRpc" Version="2.24.92" />
     <PackageReference Include="System.Numerics.Tensors" Version="10.0.8" />
+    <PackageReference Include="TreeSitter.DotNet" Version="1.3.0" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(MemorySmithOnnxRuntimeFlavor)' == 'Cpu'">
@@ -54,8 +55,7 @@
   </ItemGroup>
 
   <Target Name="ValidateMemorySmithOnnxRuntimeFlavor" BeforeTargets="CollectPackageReferences">
-    <Error Condition="'$(MemorySmithOnnxRuntimeFlavor)' != 'Cpu' and '$(MemorySmithOnnxRuntimeFlavor)' != 'Cuda' and '$(MemorySmithOnnxRuntimeFlavor)' != 'OpenVino'"
-           Text="MemorySmithOnnxRuntimeFlavor must be one of: Cpu, Cuda, OpenVino." />
+    <Error Condition="'$(MemorySmithOnnxRuntimeFlavor)' != 'Cpu' and '$(MemorySmithOnnxRuntimeFlavor)' != 'Cuda' and '$(MemorySmithOnnxRuntimeFlavor)' != 'OpenVino'" Text="MemorySmithOnnxRuntimeFlavor must be one of: Cpu, Cuda, OpenVino." />
   </Target>
 
   <ItemGroup>

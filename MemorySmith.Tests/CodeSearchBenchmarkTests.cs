@@ -55,7 +55,7 @@ public sealed class CodeSearchBenchmarkTests
             }
         };
 
-        _service = new CodeSearchService(new HashEmbeddingProvider(), Options.Create(options), NullLogger<CodeSearchService>.Instance);
+        _service = new CodeSearchService(new HashEmbeddingProvider(), null!, Options.Create(options), NullLogger<CodeSearchService>.Instance);
 
         _ = await _service.SearchAsync(new CodeSearchQuery("warmup", Limit: 3), CancellationToken.None);
     }
@@ -224,7 +224,7 @@ public sealed class CodeSearchBenchmarkTests
             }
         };
 
-        return new CodeSearchService(new SparsePrefilterSemanticProvider(), Options.Create(options), NullLogger<CodeSearchService>.Instance);
+        return new CodeSearchService(new SparsePrefilterSemanticProvider(), null!, Options.Create(options), NullLogger<CodeSearchService>.Instance);
     }
 
     private static async Task<double> MeasureWarmLatencyAsync(CodeSearchService service, CodeSearchQuery query, int iterations)

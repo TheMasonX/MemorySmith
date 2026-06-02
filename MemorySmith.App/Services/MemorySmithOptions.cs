@@ -218,7 +218,7 @@ public class CodeSearchOptions
     public bool ParserPipelineEnabled { get; set; } = true;
     public List<string> ParserStrategyOrder { get; set; } = ["roslyn", "treesitter", "heuristic", "fixedwindow"];
     public bool RoslynChunkingEnabled { get; set; } = true;
-    public bool TreeSitterChunkingEnabled { get; set; }
+    public bool TreeSitterChunkingEnabled { get; set; } = true;
     public bool HeuristicChunkingEnabled { get; set; } = true;
     public string RepositoryRootPath { get; set; } = "..";
     public bool WarmMetadataReuseEnabled { get; set; } = true;

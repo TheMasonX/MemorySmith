@@ -17,6 +17,9 @@ param(
     [int]$SequenceLength = 512,
     [int]$GradientAccumulationSteps = 4,
     [int]$WarmupSteps = 10,
+    [int]$BatchSize = 4,
+    [bool]$LoadIn4Bit = $true,
+    [bool]$GradientCheckpointing = $true,
     [bool]$ShuffleEachEpoch = $true,
     [bool]$IncludeStarterExamples = $false,
     [int]$MaxTrainSteps = 75,
@@ -267,6 +270,9 @@ $request = [ordered]@{
         gradientAccumulationSteps = $GradientAccumulationSteps
         warmupSteps = $WarmupSteps
         shuffleEachEpoch = $ShuffleEachEpoch
+        batchSize = $BatchSize
+        loadIn4Bit = $LoadIn4Bit
+        gradientCheckpointing = $GradientCheckpointing
     }
     includeTranscriptExamples = -not [string]::IsNullOrWhiteSpace($TranscriptDirectory)
     includeStarterExamples = $IncludeStarterExamples

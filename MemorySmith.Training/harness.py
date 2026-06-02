@@ -14,8 +14,6 @@ import json
 import math
 import os
 import random
-import numpy as np
-import tempfile
 import sys
 import time
 from dataclasses import dataclass
@@ -163,7 +161,7 @@ class Harness:
         sequence_length = max(128, min(int(hp.get("sequenceLength") or 512), 1024))
         learning_rate = max(1e-6, min(float(hp.get("learningRate") or 1e-4), 5e-3))
         gradient_accumulation_steps = max(1, min(int(hp.get("gradientAccumulationSteps") or 4), 64))
-        warmup_steps = max(0, min(int(hp.get("warmupSteps") or 10), 100000))
+        warmup_steps = max(0, min(int(hp.get("warmupSteps") or 0), 100000))
         batch_size = max(1, min(int(hp.get("batchSize") or 4), 16))
         lora_rank = max(4, min(int(hp.get("loraRank") or 8), 64))
         lora_alpha = max(1, min(int(hp.get("loraAlpha") or 16), 128))
@@ -565,28 +563,8 @@ class Harness:
                             scheduler.load_state_dict(ckpt["scheduler_state"])
                     except Exception:
                         self.emit_event("train.checkpoint_restore_warning", {"reason": "optimizer/scheduler restore failed"})
-                    try:
-                        if "torch_rng_state" in ckpt:
-                            torch.set_rng_state(ckpt["torch_rng_state"])
-                        # Restore python random and numpy RNG states
-                        if "random_state" in ckpt:
-                            try:
-                                random.setstate(ckpt["random_state"])
-                            except Exception:
-                                pass
-                        if "numpy_rng_state" in ckpt:
-                            try:
-                                np.random.set_state(ckpt["numpy_rng_state"])
-                            except Exception:
-                                pass
-                        # Restore CUDA RNG states if present
-                        if torch.cuda.is_available() and "cuda_rng_states" in ckpt:
-                            try:
-                                torch.cuda.set_rng_state_all(ckpt["cuda_rng_states"])
-                            except Exception:
-                                pass
-                    except Exception:
-                        pass
+                    # No RNG state restore — fresh random numbers after resume is fine.
+                    # Saving/restoring indices is sufficient for deterministic data ordering.
                 else:
                     self.emit_event("train.checkpoint_load", {"reason": "no-checkpoints-found"})
             except Exception as ex:
@@ -664,16 +642,8 @@ class Harness:
                                 "batch_counter": batch_counter,
                                 "global_batch_index": global_batch_index,
                                 "indices": indices,
-                                "torch_rng_state": torch.get_rng_state(),
-                                "random_state": random.getstate(),
-                                "numpy_rng_state": np.random.get_state(),
                             }
                             try:
-                                if torch.cuda.is_available():
-                                    try:
-                                        save_obj["cuda_rng_states"] = torch.cuda.get_rng_state_all()
-                                    except Exception:
-                                        pass
                                 save_obj["optimizer_state"] = optimizer.state_dict()
                                 if scheduler is not None:
                                     save_obj["scheduler_state"] = scheduler.state_dict()
