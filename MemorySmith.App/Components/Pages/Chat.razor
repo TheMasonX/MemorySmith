@@ -1453,7 +1453,7 @@
         try
         {
             _agentStatus = $"Running {entry.ToolName}";
-            var result = await tool.Execute(arguments, new ChatToolExecutionContext(Memories, Pages, "chat-ui-retry"), CancellationToken.None);
+            var result = await tool.Execute(arguments, new ChatToolExecutionContext(Memories, Pages, "chat-ui-retry", CurrentUser: CurrentUser, Auth: Options.CurrentValue.Auth, DefaultPageMinimumRole: Options.CurrentValue.Pages.DefaultMinimumRole), CancellationToken.None);
             var duration = (long)Math.Max(0, (DateTimeOffset.UtcNow - started).TotalMilliseconds);
             AddTraceEntry(turn, ChatTraceKinds.ToolResult, $"Retry result: {entry.ToolName}", result.Text, result.IsError, entry.ToolName, duration);
             if (result.ContextItems is { Count: > 0 })

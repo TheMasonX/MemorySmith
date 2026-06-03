@@ -126,7 +126,7 @@ Local file source-link chips copy the resolved path on click. Ctrl+Click opens t
 
 ## Markdown Pages
 
-`Data/Pages/` stores user and agent-editable markdown files. The `/pages` UI and `/api/pages` API keep page search and page navigation separate from structured memory search. `/api/search` returns a combined memory/page result set when broader discovery is useful. Page assets live under `Data/Pages/assets` and are served at `/page-assets`; markdown links such as `![diagram](assets/diagram.png)` are rewritten to that static route when rendered.
+`Data/Pages/` stores user and agent-editable markdown files. The `/pages` UI and `/api/pages` API keep page search and page navigation separate from structured memory search. `/api/search` returns a combined memory/page result set when broader discovery is useful. Page assets live under `Data/Pages/assets` and are served at `/page-assets`; markdown links such as `![diagram](assets/diagram.png)` are rewritten to that route when rendered. Assets referenced only by locked pages follow the same visibility gate. Pages can be locked to a minimum visibility level: `Anonymous`, `Authenticated` (shown as Signed in), or `Admin`. Editors can choose Anonymous or Signed in; only Admin users can set Admin-only pages.
 
 The page editor has a markdown toolbar for common inserts, an image upload/embed tool that writes to `Data/Pages/assets`, a toggleable live preview, a manual preview refresh button, and an unsaved-change prompt for internal and external navigation. Pages are rendered with the shared Markdig pipeline, including Mermaid fenced blocks (` ```mermaid `) and Prism-compatible fenced code classes such as `language-csharp` or `language-json`. Raw HTML is disabled by default for rendered pages; trusted local deployments can enable `MemorySmith:Pages:AllowRawHtml` when raw HTML media tags are intentionally needed. The static docs-site generator also sanitizes rendered page HTML and emits a restrictive Content Security Policy before publishing wiki pages.
 
@@ -222,6 +222,7 @@ All settings live under `MemorySmith` in `appsettings.json`:
       "MemoryMode": "JsonPatchWithCheckpoints"
     },
     "Pages": {
+      "DefaultMinimumRole": "Anonymous",
       "AllowRawHtml": false
     },
     "SemanticSearch": {
@@ -291,10 +292,11 @@ Override via `appsettings.Development.json` or environment variables (`MemorySmi
 - **`Auth:*`** — controls cookie/RBAC behavior. `AnonymousAccess=Viewer` keeps local browsing open by default; config-derived anonymous/default roles are clamped below Admin, and `OpenLocalEditorCompatibility=true` preserves pre-setup loopback write compatibility only for non-admin operations.
 - **`Audit:*`** — controls the weekly JSONL audit mirror. SQLite remains the queryable metadata store.
 - **`History:*`** — controls version-history artifact storage for memory and page mutations.
+- **`Pages:DefaultMinimumRole`** — default minimum visibility for newly saved pages. Use `Anonymous`, `Authenticated`, or `Admin`; the admin settings UI exposes this as default page visibility.
 - **`Pages:AllowRawHtml`** — enables trusted raw HTML rendering in markdown pages. Off by default; leave disabled for agent-written or unreviewed pages.
 - **`SemanticSearch:*`** — controls optional ONNX embedding ranking. Relative model and vocabulary paths resolve from the configured data deployment root: the folder that contains `Memories`, `Events`, `Graph`, `Models`, and `Pages`. The default model path is `Models/embedding-model.onnx`; ONNX/model artifacts are ignored by Git, and a matching WordPiece `vocab.txt` is required before embeddings activate. Legacy `../Data/Models/...` values are also interpreted relative to that data root.
 - **`DataPath`** — root of the memory store. Subdirectories (`Unconsolidated/`, `Working/`, `Core/`, `Deprecated/`) are created automatically.
-- **`PagesPath`** — root of the markdown page store. `assets/` under this directory is served at `/page-assets`.
+- **`PagesPath`** — root of the markdown page store. `assets/` under this directory is served at `/page-assets` with page visibility checks for referenced assets.
 - **`VarsPath`** — path to the flat JSON dict used for `%VarName%` source link expansion.
 - **`SourceLinks:MaxReadBytes`** — maximum local file content returned per source-link entry by MCP source bundle reads.
 - **`SourceLinks:AllowOpenWithDefaultApp`** — allows Ctrl+Click source-link opening after variable resolution and allowed-root checks.

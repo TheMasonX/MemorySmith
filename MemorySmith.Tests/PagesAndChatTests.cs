@@ -1,7 +1,11 @@
 using MemorySmith.App.Services;
+using MemorySmith.App.Controllers;
 using MemorySmith.Core.Models;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using System.Net;
+using System.Security.Claims;
 
 namespace MemorySmith.Tests;
 
@@ -37,10 +41,237 @@ public class PagesAndChatTests
         Assert.Multiple(() =>
         {
             Assert.That(saved.Slug, Is.EqualTo("design-notes"));
+            Assert.That(saved.MinimumRole, Is.EqualTo(PageAccessLevels.Anonymous));
             Assert.That(loaded, Is.Not.Null);
             Assert.That(loaded!.Html, Does.Contain(">Design Notes</h1>"));
             Assert.That(loaded.Html, Does.Contain("/page-assets/diagram.png"));
             Assert.That(search.Select(page => page.Slug), Does.Contain("design-notes"));
+        });
+    }
+
+    [Test]
+    public async Task FilePageService_PersistsPageMinimumRoleMetadata()
+    {
+        var pages = new FilePageService(_tempDir, new PageOptions { DefaultMinimumRole = PageAccessLevels.Authenticated });
+
+        var saved = await pages.SaveAsync(new PageSaveRequest("secure-page", "Secure Page", "Private by default"), CancellationToken.None);
+        var updated = await pages.SaveAsync(new PageSaveRequest("secure-page", "Secure Page", "Still private"), CancellationToken.None);
+        var publicPage = await pages.SaveAsync(new PageSaveRequest("secure-page", "Secure Page", "Now public", PageAccessLevels.Anonymous), CancellationToken.None);
+        var listed = await pages.ListAsync(CancellationToken.None);
+        var metadataPath = Path.Combine(_tempDir, "secure-page.page.json");
+        var metadata = await File.ReadAllTextAsync(metadataPath);
+        var deleted = await pages.DeleteAsync("secure-page", CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(saved.MinimumRole, Is.EqualTo(PageAccessLevels.Authenticated));
+            Assert.That(updated.MinimumRole, Is.EqualTo(PageAccessLevels.Authenticated));
+            Assert.That(publicPage.MinimumRole, Is.EqualTo(PageAccessLevels.Anonymous));
+            Assert.That(listed.Single().MinimumRole, Is.EqualTo(PageAccessLevels.Anonymous));
+            Assert.That(metadata, Does.Contain("Anonymous"));
+            Assert.That(deleted, Is.True);
+            Assert.That(File.Exists(metadataPath), Is.False);
+        });
+    }
+
+    [Test]
+    public async Task PageSearchVisibleAsync_FindsVisibleMatchesBeyondFirstTwoHundredHiddenResults()
+    {
+        var pages = new FilePageService(_tempDir);
+        const string query = "crowded visibility search token";
+        var anonymous = new ClaimsPrincipal(new ClaimsIdentity());
+        await PageVisibilitySearchFixture.SeedAsync(pages, query, CancellationToken.None);
+
+        var visiblePages = await pages.SearchVisibleAsync(
+            query,
+            page => PageAccessLevels.CanView(page.MinimumRole, anonymous, new AuthOptions()),
+            CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(visiblePages, Has.Count.EqualTo(PageVisibilitySearchFixture.PublicPageSlugs.Length));
+            Assert.That(visiblePages.Select(page => page.Slug), Is.EquivalentTo(PageVisibilitySearchFixture.PublicPageSlugs));
+        });
+    }
+
+    [Test]
+    public void PageAccessLevels_EditorsCannotSetAdminMinimumRole()
+    {
+        var editor = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Role, MemorySmithRoles.Editor)], "Test"));
+        var admin = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Role, MemorySmithRoles.Admin)], "Test"));
+        var anonymous = new ClaimsPrincipal(new ClaimsIdentity());
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(PageAccessLevels.CanSetMinimumRole(PageAccessLevels.Anonymous, editor, new AuthOptions()), Is.True);
+            Assert.That(PageAccessLevels.CanSetMinimumRole(PageAccessLevels.Authenticated, editor, new AuthOptions()), Is.True);
+            Assert.That(PageAccessLevels.CanSetMinimumRole(PageAccessLevels.Admin, editor, new AuthOptions()), Is.False);
+            Assert.That(PageAccessLevels.CanSetMinimumRole(PageAccessLevels.Admin, admin, new AuthOptions()), Is.True);
+            Assert.That(PageAccessLevels.CanSetMinimumRole(PageAccessLevels.Anonymous, anonymous, new AuthOptions()), Is.False);
+        });
+    }
+
+    [Test]
+    public void PageAccessLevels_AuthDisabledAllowsViewingAndEditingAllMinimumRoles()
+    {
+        var anonymous = new ClaimsPrincipal(new ClaimsIdentity());
+        var authDisabled = new AuthOptions { Enabled = false };
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(PageAccessLevels.CanView(PageAccessLevels.Admin, anonymous, authDisabled), Is.True);
+            Assert.That(PageAccessLevels.CanSetMinimumRole(PageAccessLevels.Admin, anonymous, authDisabled), Is.True);
+        });
+    }
+
+    [Test]
+    public void PageAccessLevels_AutoEditorTreatsAuthenticatedUsersAsEditorsEvenWithViewerRole()
+    {
+        var viewer = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Role, MemorySmithRoles.Viewer)], "Test"));
+        var auth = new AuthOptions { AutoEditorForAuthenticatedUsers = true };
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(PageAccessLevels.CanSetMinimumRole(PageAccessLevels.Anonymous, viewer, auth), Is.True);
+            Assert.That(PageAccessLevels.CanSetMinimumRole(PageAccessLevels.Authenticated, viewer, auth), Is.True);
+            Assert.That(PageAccessLevels.CanSetMinimumRole(PageAccessLevels.Admin, viewer, auth), Is.False);
+        });
+    }
+
+    [Test]
+    public async Task PagesController_Save_RejectsResolvedAdminDefaultForNonAdminEditor()
+    {
+        var pages = new FilePageService(_tempDir, new PageOptions { DefaultMinimumRole = PageAccessLevels.Admin });
+        var options = new StaticOptionsMonitor<MemorySmithOptions>(new MemorySmithOptions
+        {
+            Pages = new PageOptions { DefaultMinimumRole = PageAccessLevels.Admin },
+            Auth = new AuthOptions()
+        });
+        var controller = new PagesController(pages, options)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Role, MemorySmithRoles.Editor)], "Test"))
+                }
+            }
+        };
+
+        var response = await controller.Save(new PageSaveRequest("editor-page", "Editor Page", "Body"), CancellationToken.None);
+
+        Assert.That(response.Result, Is.InstanceOf<ForbidResult>());
+    }
+
+    [Test]
+    public async Task PagesController_Save_PersistsResolvedConfiguredDefaultMinimumRole()
+    {
+        var pages = new FilePageService(_tempDir, new PageOptions { DefaultMinimumRole = PageAccessLevels.Anonymous });
+        var options = new StaticOptionsMonitor<MemorySmithOptions>(new MemorySmithOptions
+        {
+            Pages = new PageOptions { DefaultMinimumRole = PageAccessLevels.Authenticated },
+            Auth = new AuthOptions()
+        });
+        var controller = new PagesController(pages, options)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Role, MemorySmithRoles.Editor)], "Test"))
+                }
+            }
+        };
+
+        var response = await controller.Save(new PageSaveRequest("editor-page", "Editor Page", "Body"), CancellationToken.None);
+        var created = response.Result as CreatedAtActionResult;
+        var saved = created?.Value as PageDocument;
+        var loaded = await pages.GetAsync("editor-page", CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(created, Is.Not.Null);
+            Assert.That(saved, Is.Not.Null);
+            Assert.That(saved!.MinimumRole, Is.EqualTo(PageAccessLevels.Authenticated));
+            Assert.That(loaded, Is.Not.Null);
+            Assert.That(loaded!.MinimumRole, Is.EqualTo(PageAccessLevels.Authenticated));
+        });
+    }
+
+    [Test]
+    public async Task PagesController_Update_CreatesMissingPageWithResolvedConfiguredDefaultMinimumRole()
+    {
+        var pages = new FilePageService(_tempDir, new PageOptions { DefaultMinimumRole = PageAccessLevels.Anonymous });
+        var options = new StaticOptionsMonitor<MemorySmithOptions>(new MemorySmithOptions
+        {
+            Pages = new PageOptions { DefaultMinimumRole = PageAccessLevels.Authenticated },
+            Auth = new AuthOptions()
+        });
+        var controller = new PagesController(pages, options)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Role, MemorySmithRoles.Editor)], "Test"))
+                }
+            }
+        };
+
+        var response = await controller.Update("editor-page", new PageSaveRequest(null, "Editor Page", "Body"), CancellationToken.None);
+        var updated = response.Result as OkObjectResult;
+        var saved = updated?.Value as PageDocument;
+        var loaded = await pages.GetAsync("editor-page", CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(updated, Is.Not.Null);
+            Assert.That(saved, Is.Not.Null);
+            Assert.That(saved!.MinimumRole, Is.EqualTo(PageAccessLevels.Authenticated));
+            Assert.That(loaded, Is.Not.Null);
+            Assert.That(loaded!.MinimumRole, Is.EqualTo(PageAccessLevels.Authenticated));
+        });
+    }
+
+    [Test]
+    public async Task FilePageService_UsesMostRestrictiveReferencedPageRoleForAssetAccess()
+    {
+        var pages = new FilePageService(_tempDir);
+
+        await pages.SaveAsync(new PageSaveRequest("admin-page", "Admin Page", "![asset](assets/shared.png)", PageAccessLevels.Admin), CancellationToken.None);
+        await pages.SaveAsync(new PageSaveRequest("public-page", "Public Page", "![asset](/page-assets/shared.png)", PageAccessLevels.Anonymous), CancellationToken.None);
+
+        var accessInfo = await pages.GetAssetAccessInfoAsync("shared.png", CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(accessInfo.IsReferenced, Is.True);
+            Assert.That(accessInfo.MinimumRole, Is.EqualTo(PageAccessLevels.Admin));
+        });
+    }
+
+    [Test]
+    public async Task FilePageService_IgnoresPlainTextAndCodeBlockAssetMentionsWhenBuildingAssetAccessIndex()
+    {
+        var pages = new FilePageService(_tempDir);
+
+        await pages.SaveAsync(new PageSaveRequest("notes", "Notes", """
+        Plain text mention: assets/ghost.png
+
+        `assets/ghost.png`
+
+        ```md
+        ![ghost](assets/ghost.png)
+        <img src="assets/ghost.png" />
+        ```
+        """), CancellationToken.None);
+
+        var accessInfo = await pages.GetAssetAccessInfoAsync("ghost.png", CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(accessInfo.IsReferenced, Is.False);
+            Assert.That(accessInfo.MinimumRole, Is.EqualTo(PageAccessLevels.Anonymous));
         });
     }
 
@@ -546,6 +777,39 @@ public class PagesAndChatTests
         {
             Assert.That(response.Context, Has.Count.EqualTo(1));
             Assert.That(response.Context.Single().Origin, Is.EqualTo(ChatContextOrigins.Preloaded));
+        });
+    }
+
+    [Test]
+    public async Task MemoryChatAgent_PreloadsVisiblePagesBeyondFirstTwoHundredHiddenResults()
+    {
+        var memoryStore = new InMemoryMemoryStore();
+        var eventStore = new RecordingEventStore();
+        var publisher = new RecordingMemoryChangePublisher();
+        var memories = TestServiceFactory.CreateMemoryApplicationService(memoryStore, eventStore, publisher);
+        var pages = new FilePageService(_tempDir);
+        const string query = "crowded preload visibility token";
+        await PageVisibilitySearchFixture.SeedAsync(pages, query, CancellationToken.None);
+
+        var provider = new FakeChatProvider("Done.");
+        var agent = new MemoryChatAgent([provider], memories, pages, Options.Create(new MemorySmithOptions
+        {
+            Chat = new ChatOptions
+            {
+                MaxContextRecords = 0,
+                MaxPreloadedContextRecords = 0,
+                MaxContextPages = 2,
+                MaxPreloadedContextPages = 2
+            }
+        }));
+
+        var response = await agent.SendAsync(new MemoryChatRequest($"What does the MemorySmith wiki say about {query}?", MemoryChatMode.Chat), CancellationToken.None);
+        var pageContextIds = response.Context.Where(item => item.Kind == "page").Select(item => item.Id).ToArray();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(pageContextIds, Has.Length.EqualTo(PageVisibilitySearchFixture.PublicPageSlugs.Length));
+            Assert.That(pageContextIds, Is.EquivalentTo(PageVisibilitySearchFixture.PublicPageSlugs));
         });
     }
 
