@@ -177,6 +177,13 @@ public sealed class AgentSessionService
         var effectiveToolNames = await ComputeEffectiveScopeAsync(
             requestedScope, customTools, caller, profile, opts, ct);
 
+        // Guard: empty effective tool set is almost always a misconfiguration.
+        if (effectiveToolNames.Count == 0)
+            return CreateSessionResult.Fail(
+                "No tools are available for the requested scope, security profile, and caller permissions. " +
+                "All candidates were excluded by the server's tool configuration or the caller's role. " +
+                "Try scope='read_only' or verify that tools are enabled in MemorySmith:Mcp:EnabledTools.");
+
         // system_prompt_addendum gate:
         // - Requires CanEditMemorySmith
         // - Disabled in RemoteHardened mode (no-op regardless of permission)
@@ -345,8 +352,12 @@ public sealed class AgentSessionService
         var maxHistoryTurns = opts.AgentSession.MaxHistoryTurns;
 
         // Build a filtered catalog containing only the session's allowed tools.
+        // AvailableInChat is used (not AvailableInMcp) because MemoryChatAgent runs in Chat mode
+        // and only executes tools from its ChatTools collection. MCP-only tools (page_save,
+        // page_delete) are correctly excluded — they would never be invoked by the sub-agent
+        // even if the scope computation granted them.
         var filteredTools = _toolCatalog.All
-            .Where(t => t.AvailableInMcp && session.EffectiveToolNames.Contains(t.Name))
+            .Where(t => t.AvailableInChat && session.EffectiveToolNames.Contains(t.Name))
             .ToList();
         var filteredCatalog = new ChatToolCatalog(filteredTools);
 
@@ -448,7 +459,9 @@ public sealed class AgentSessionService
                 Model = new TurnModel(response.Model, response.ProviderName),
                 TemplateVersion = "sub-agent-v1",
                 ModeIntent = "sub_agent",      // ← key: identifies sub-agent turns in transcript
-                SystemPromptHash = ChatTranscriptWriter.Sha256Hex(session.SessionId),
+                // Hash a stable template identifier, not the session ID (which is a random GUID
+                // and would prevent correlating transcripts by prompt template across sessions).
+                SystemPromptHash = ChatTranscriptWriter.Sha256Hex("sub-agent-chat-v1"),
                 ParentSessionId = session.ParentSessionId,
                 Request = new TurnRequest
                 {
@@ -458,9 +471,11 @@ public sealed class AgentSessionService
                 Execution = new TurnExecution
                 {
                     IterationsUsed = 1,
-                    // ChatUsageSummary uses InputTokens/OutputTokens; ContextTokens is the running
-                    // context-window size (not total tokens used this turn).
-                    // TurnExecution.TotalTokens = prompt + completion tokens for this turn.
+                    // ChatUsageSummary fields:
+                    //   InputTokens  = prompt/context tokens consumed this turn
+                    //   OutputTokens = completion tokens generated this turn
+                    //   ContextTokens = running context-window utilization (not per-turn total)
+                    // TurnExecution.TotalTokens = InputTokens + OutputTokens for this turn.
                     PromptTokens = response.Usage?.InputTokens,
                     CompletionTokens = response.Usage?.OutputTokens,
                     TotalTokens = response.Usage is null

@@ -1,0 +1,36 @@
+{
+  "id": "tsk-0276-phase-3-internal-agent-delegation",
+  "key": "TSK-0276",
+  "title": "Phase 3: Internal Agent Delegation (yield-before-delegate)",
+  "description": "Complete Phase 3 of the memorysmith_agent_invoke feature (PR #53). Phase 3 enables Athena to call memorysmith_agent_invoke from its own tool loop, delegating sub-tasks to a scoped sub-agent. See docs/PHASE3.md for full acceptance criteria and TODO entry points.\n\n### Key work items\n1. Populate ChatToolExecutionContext.InheritedGpuSlot in MemoryChatAgent agent-mode tool loop\n2. Implement yield-before-delegate in AgentInvokeTool.Execute: dispose InheritedGpuSlot before sub-agent acquires its own GPU slot (deadlock prevention)\n3. Set AvailableInAgent=true for memorysmith_agent_invoke ChatToolDescriptor\n4. Enforce MaxNestingDepth ceiling in AgentSessionService.CreateSessionAsync (TODO comment is in place)\n5. Extend /admin/sessions UI with interactive parent-child session chain display\n6. Add model_profile_id AllowedRoles enforcement (F13 from council review \u2014 raw model/provider strings bypass AllowedRoles)\n\n### Acceptance criteria\n- Athena can call memorysmith_agent_invoke from agent mode without GPU deadlock\n- Nesting depth > MaxNestingDepth returns a clear error\n- Council review passes with special focus on deadlock-freedom under concurrent tool-loop scenarios\n\n### Deferred from\nPR #53 Phase 1+2. See docs/PHASE3.md and Design_AgentAsMCPTool.md (docs/).",
+  "type": "Feature",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "council-review",
+  "labels": [
+    "agent-sessions",
+    "phase-3",
+    "deferred",
+    "pr-53-followup"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "docs/PHASE3"
+  ],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-06-03T20:00:00Z",
+  "updatedAtUtc": "2026-06-03T20:00:00Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

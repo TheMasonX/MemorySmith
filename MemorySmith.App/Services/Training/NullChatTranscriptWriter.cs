@@ -1,10 +1,13 @@
 namespace MemorySmith.App.Services.Training;
 
 /// <summary>
-/// No-op transcript writer used when training is not configured.
-/// Registered as the default <see cref="IChatTranscriptWriter"/> implementation in Program.cs.
-/// The real <see cref="ChatTranscriptWriter"/> is registered instead when
-/// <c>Training:ChatTranscriptEnabled=true</c> is configured in appsettings.
+/// No-op transcript writer for use in tests or when transcript writing must be
+/// explicitly suppressed. In normal operation, <see cref="ChatTranscriptWriter"/>
+/// is registered as the default <see cref="IChatTranscriptWriter"/> implementation
+/// (it already no-ops internally when <c>Training:ChatTranscriptEnabled=false</c>).
+/// Override this registration in tests via
+/// <c>services.AddSingleton&lt;IChatTranscriptWriter, NullChatTranscriptWriter&gt;()</c>
+/// after the app's own registration to suppress transcript output.
 /// </summary>
 public sealed class NullChatTranscriptWriter : IChatTranscriptWriter
 {

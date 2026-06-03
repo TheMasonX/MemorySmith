@@ -3,6 +3,7 @@ using MemorySmith.App.Services;
 using MemorySmith.App.Services.AgentSessions;
 using MemorySmith.App.Services.Training;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using MemorySmith.Core.Indexing;
 using MemorySmith.Core.Models;
 using MemorySmith.Storage;
@@ -315,11 +316,11 @@ try
     // ── Agent session services (memorysmith_agent_invoke) ─────────────────────
     builder.Services.AddSingleton<IGpuSlotScheduler, OllamaGpuSlotScheduler>();
     builder.Services.AddSingleton<IAgentSessionStore, InMemoryAgentSessionStore>();
-    // IChatTranscriptWriter: register NullChatTranscriptWriter as default (no-op when training
-    // is disabled). Replace with ChatTranscriptWriter when Training:ChatTranscriptEnabled=true.
-    // NullChatTranscriptWriter is registered via TryAddSingleton so an existing registration
-    // (e.g. from the training harness wiring) takes precedence.
-    builder.Services.TryAddSingleton<IChatTranscriptWriter, NullChatTranscriptWriter>();
+    // IChatTranscriptWriter: register ChatTranscriptWriter as the default implementation.
+    // ChatTranscriptWriter.WriteAsync already no-ops when Training:ChatTranscriptEnabled=false,
+    // so this is safe to register unconditionally. TryAddSingleton allows tests to override
+    // with NullChatTranscriptWriter (or any other implementation) by registering before this.
+    builder.Services.TryAddSingleton<IChatTranscriptWriter, ChatTranscriptWriter>();
     builder.Services.AddSingleton<AgentSessionService>();
     builder.Services.AddHostedService<AgentSessionCleanupService>();
     // ─────────────────────────────────────────────────────────────────────────

@@ -245,9 +245,13 @@ public class McpController : ControllerBase
             return ToolText("The memorysmith_agent_session_end tool requires a 'session_id' argument.", isError: true);
 
         var ended = await _agentSessionService.EndSessionAsync(sessionId, User, cancellationToken);
-        return ToolText(ended
-            ? $"{{\"closed\":true,\"session_id\":\"{sessionId}\"}}"
-            : "{\"finish_reason\":\"session_expired\",\"message\":\"Session not found or already closed.\"}");
+        // Return isError: true on not-found/already-closed so MCP callers can distinguish
+        // success from failure programmatically (same error-signal convention as HandleAgentInvokeAsync).
+        return ToolText(
+            ended
+                ? $"{{\"closed\":true,\"session_id\":\"{sessionId}\"}}"
+                : "{\"finish_reason\":\"session_expired\",\"message\":\"Session not found or already closed.\"}",
+            isError: !ended);
     }
 
     // ── Authorization helpers ─────────────────────────────────────────────────
@@ -675,7 +679,7 @@ public class McpController : ControllerBase
                 ["type"] = "string",
                 ["enum"] = new JsonArray { "read_only", "standard", "full", "custom" },
                 ["default"] = "standard",
-                ["description"] = "Tool access scope. read_only/standard: search and fetch only. full: all tools the caller has permission to use. custom: specify allowed_tools."
+                ["description"] = "Tool access scope. read_only/standard: search and fetch tools only (read-only). full: all agent-chat-mode tools the caller has permission to use (note: MCP-only write tools such as page_save are not included, as the sub-agent runs in chat mode). custom: specify exact tool names via allowed_tools."
             },
             ["allowed_tools"] = new JsonObject
             {
@@ -686,7 +690,7 @@ public class McpController : ControllerBase
             ["max_turns"] = new JsonObject { ["type"] = "integer", ["minimum"] = 1, ["maximum"] = 50, ["default"] = 10 },
             ["timeout_seconds"] = new JsonObject { ["type"] = "integer", ["minimum"] = 10, ["maximum"] = 600, ["default"] = 120 },
             ["model"] = new JsonObject { ["type"] = "string", ["description"] = "Optional Ollama model tag override (e.g. 'qwen3.5:4b')." },
-            ["provider"] = new JsonObject { ["type"] = "string", ["description"] = "Optional provider override. Currently only 'Ollama' is supported; other values will be rejected. Additional providers can be enabled by registering them as IChatProvider in the app's DI container." },
+            ["provider"] = new JsonObject { ["type"] = "string", ["description"] = "Optional provider override. Currently only 'Ollama' is supported. Other values are rejected at session creation time — enabling additional providers requires both registering them as IChatProvider in DI and adding them to the server-side provider allowlist (AgentSessionService.KnownProviders)." },
             ["system_prompt_addendum"] = new JsonObject
             {
                 ["type"] = "string",

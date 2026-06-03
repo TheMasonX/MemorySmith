@@ -19,7 +19,9 @@ public interface IAgentSessionStore
 
     /// <summary>
     /// Returns the count of Active or Idle sessions for a principal.
-    /// Used to enforce <c>AgentSession:MaxConcurrentSessionsPerUser</c>.
+    /// Used to enforce the concurrent session cap, which is configured via
+    /// <c>MemorySmith:Mcp:MaxConcurrentSessionsPerUser</c> (nullable; defaults to profile-based
+    /// values: LocalDev=10, SecureLocal=3, RemoteHardened=1).
     /// </summary>
     Task<int> GetActiveCountForPrincipalAsync(string principalId, CancellationToken ct);
 }
