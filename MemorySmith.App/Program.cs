@@ -3,6 +3,7 @@ using MemorySmith.App.Services;
 using MemorySmith.App.Services.AgentSessions;
 using MemorySmith.App.Services.Training;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using MemorySmith.Core.Indexing;
 using MemorySmith.Core.Models;
 using MemorySmith.Storage;

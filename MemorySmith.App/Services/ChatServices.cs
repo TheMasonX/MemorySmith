@@ -113,7 +113,8 @@ public sealed record MemoryChatRequest(
     IReadOnlyList<ChatAttachment>? Attachments = null,
     string? Provider = null,
     ChatRunControl? RunControl = null,
-    bool RequireAgentWriteApproval = false);
+    bool RequireAgentWriteApproval = false,
+    string? SessionId = null);
 
 public sealed class ChatRunControl
 {

@@ -25,7 +25,8 @@ public sealed record ChatToolDescriptor(
     ChatToolRisk Risk,
     bool AvailableInChat,
     bool AvailableInMcp,
-    Func<JsonObject, ChatToolExecutionContext, CancellationToken, Task<ChatToolExecutionResult>> Execute);
+    Func<JsonObject, ChatToolExecutionContext, CancellationToken, Task<ChatToolExecutionResult>> Execute,
+    bool EnabledByDefaultInMcp = true);
 
 public sealed record ChatToolExecutionContext(
     MemoryApplicationService Memories,
@@ -35,6 +36,10 @@ public sealed record ChatToolExecutionContext(
     ICurrentUserContext? CurrentUser = null,
     AuthOptions? Auth = null,
     string? DefaultPageMinimumRole = null,
+    /// <summary>
+    bool AgentWritesEnabled = false,
+    bool AgentWriteAutoAccept = false,
+    CodeSearchService? CodeSearch = null,
     /// <summary>
     /// Nesting depth in the agent delegation chain.
     /// 0 for all direct MCP callers. 1+ for internal sub-agent delegation (Phase 3).
@@ -106,6 +111,9 @@ public sealed class ChatToolCatalog
         _tools.Values.Where(tool => tool.AvailableInChat).ToList();
 
     public IReadOnlyList<ChatToolDescriptor> McpTools =>
+        _tools.Values.Where(tool => tool.AvailableInMcp).ToList();
+
+    public IReadOnlyList<ChatToolDescriptor> AgentTools =>
         _tools.Values.Where(tool => tool.AvailableInMcp).ToList();
 
     public bool TryGet(string name, out ChatToolDescriptor tool)
