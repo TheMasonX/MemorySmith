@@ -86,7 +86,7 @@ public sealed class AgentSessionService
     private readonly IPageService _pages;
     private readonly ChatIntentInterceptor _intentInterceptor;
     private readonly ILogger<AgentSessionService> _logger;
-    private readonly Training.IChatTranscriptWriter? _transcriptWriter; // optional, may not be registered
+    private readonly Training.IChatTranscriptWriter _transcriptWriter; // registered via Program.cs; NullChatTranscriptWriter is the default
 
     public AgentSessionService(
         IAgentSessionStore store,
@@ -99,7 +99,7 @@ public sealed class AgentSessionService
         IPageService pages,
         ChatIntentInterceptor intentInterceptor,
         ILogger<AgentSessionService> logger,
-        Training.IChatTranscriptWriter? transcriptWriter = null)
+        Training.IChatTranscriptWriter transcriptWriter)
     {
         _store = store;
         _gpuSlots = gpuSlots;
@@ -403,11 +403,10 @@ public sealed class AgentSessionService
             await _store.SaveAsync(session, ct);
         }
 
-        // Write transcript entry with ModeIntent=sub_agent if transcript writer is registered.
-        if (_transcriptWriter is not null)
-        {
-            _ = WriteTranscriptAsync(session, message, response, finishReason, ct);
-        }
+        // Write transcript entry with ModeIntent=sub_agent.
+        // Use CancellationToken.None — transcript writing is an audit artifact that must not
+        // be cancelled when the HTTP request ends (ct would be cancelled at request completion).
+        _ = WriteTranscriptAsync(session, message, response, finishReason, CancellationToken.None);
 
         var contextIds = response.Context
             .Select(c => $"{c.Kind}:{c.Id}")
@@ -454,9 +453,11 @@ public sealed class AgentSessionService
                 Execution = new TurnExecution
                 {
                     IterationsUsed = 1,
-                    PromptTokens = response.Usage?.PromptTokens,
-                    CompletionTokens = response.Usage?.CompletionTokens,
-                    TotalTokens = response.Usage?.TotalTokens,
+                    // ChatUsageSummary uses InputTokens/OutputTokens/ContextTokens
+                    // TurnExecution stores them as PromptTokens/CompletionTokens/TotalTokens
+                    PromptTokens = response.Usage?.InputTokens,
+                    CompletionTokens = response.Usage?.OutputTokens,
+                    TotalTokens = response.Usage?.ContextTokens,
                 },
                 Response = new TurnResponse
                 {

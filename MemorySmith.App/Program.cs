@@ -1,6 +1,8 @@
 using MemorySmith.App.Components;
 using MemorySmith.App.Services;
 using MemorySmith.App.Services.AgentSessions;
+using MemorySmith.App.Services.Training;
+using Microsoft.Extensions.DependencyInjection;
 using MemorySmith.Core.Indexing;
 using MemorySmith.Core.Models;
 using MemorySmith.Storage;
@@ -313,6 +315,11 @@ try
     // ── Agent session services (memorysmith_agent_invoke) ─────────────────────
     builder.Services.AddSingleton<IGpuSlotScheduler, OllamaGpuSlotScheduler>();
     builder.Services.AddSingleton<IAgentSessionStore, InMemoryAgentSessionStore>();
+    // IChatTranscriptWriter: register NullChatTranscriptWriter as default (no-op when training
+    // is disabled). Replace with ChatTranscriptWriter when Training:ChatTranscriptEnabled=true.
+    // NullChatTranscriptWriter is registered via TryAddSingleton so an existing registration
+    // (e.g. from the training harness wiring) takes precedence.
+    builder.Services.TryAddSingleton<IChatTranscriptWriter, NullChatTranscriptWriter>();
     builder.Services.AddSingleton<AgentSessionService>();
     builder.Services.AddHostedService<AgentSessionCleanupService>();
     // ─────────────────────────────────────────────────────────────────────────
