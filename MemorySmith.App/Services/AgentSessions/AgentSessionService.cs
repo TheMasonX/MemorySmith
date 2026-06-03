@@ -140,6 +140,13 @@ public sealed class AgentSessionService
             return CreateSessionResult.Fail(
                 $"Unknown provider '{providerOverride}'. Valid values: {string.Join(", ", KnownProviders)}.");
 
+        // NOTE (Phase 2 — F13): model/provider strings bypass the ChatModelProfileService
+        // AllowedRoles check. The design doc specifies that only model_profile_id (with
+        // AllowedRoles enforcement) should be accepted. This is a known spec deviation
+        // deferred to Phase 2, when ChatModelProfileService integration is added.
+        // When resolved: replace modelOverride/providerOverride with a profile ID lookup
+        // via ChatModelProfileService.GetByIdAsync(modelOverride, ct) and enforce AllowedRoles.
+
         // Validate scope=custom requires a non-empty allowed_tools list.
         if (string.Equals(requestedScope, "custom", StringComparison.OrdinalIgnoreCase) &&
             (customTools is null || customTools.Count == 0))
@@ -246,6 +253,11 @@ public sealed class AgentSessionService
         await session.AcquireAsync(ct);
         try
         {
+            // Double-check after acquiring the lock: if cleanup expired the session between
+            // the GetAsync check above and lock acquisition, treat it as already gone.
+            if (session.Status is AgentSessionStatus.Expired or AgentSessionStatus.Closed)
+                return false;
+
             session.SetStatus(AgentSessionStatus.Closed);
             await _store.SaveAsync(session, ct);
             await _store.DeleteAsync(sessionId, ct);

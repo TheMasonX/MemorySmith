@@ -94,7 +94,9 @@ public sealed class AgentSession
     /// </summary>
     internal void TrimHistoryToMaxTurns(int maxTurns)
     {
-        var maxMessages = maxTurns * 2; // one user + one assistant message per turn
+        // Clamp to [1, 10000] to guard against misconfigured 0 or extreme values.
+        var safeTurns = Math.Max(1, Math.Min(maxTurns, 10_000));
+        var maxMessages = safeTurns * 2; // one user + one assistant message per turn
         if (_history.Count > maxMessages)
             _history.RemoveRange(0, _history.Count - maxMessages);
     }
