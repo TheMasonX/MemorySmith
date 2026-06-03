@@ -1,5 +1,6 @@
 using MemorySmith.App.Components;
 using MemorySmith.App.Services;
+using MemorySmith.App.Services.AgentSessions;
 using MemorySmith.Core.Indexing;
 using MemorySmith.Core.Models;
 using MemorySmith.Storage;
@@ -308,6 +309,13 @@ try
     builder.Services.AddSingleton<ChatToolCatalog>();
     builder.Services.AddSingleton<ChatIntentInterceptor>();
     builder.Services.AddScoped<IChatAgent, MemoryChatAgent>();
+
+    // ── Agent session services (memorysmith_agent_invoke) ─────────────────────
+    builder.Services.AddSingleton<IGpuSlotScheduler, OllamaGpuSlotScheduler>();
+    builder.Services.AddSingleton<IAgentSessionStore, InMemoryAgentSessionStore>();
+    builder.Services.AddSingleton<AgentSessionService>();
+    builder.Services.AddHostedService<AgentSessionCleanupService>();
+    // ─────────────────────────────────────────────────────────────────────────
 
     var maintenanceEnabled = builder.Configuration.GetValue("MemorySmith:Maintenance:Enabled", true);
     if (maintenanceEnabled)

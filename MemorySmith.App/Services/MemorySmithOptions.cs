@@ -42,6 +42,8 @@ public class MemorySmithOptions
     public McpOptions Mcp { get; set; } = new();
     public ChatOptions Chat { get; set; } = new();
     public TrainingOptions Training { get; set; } = new();
+    /// <summary>Configuration for the memorysmith_agent_invoke multi-turn sub-agent session feature.</summary>
+    public AgentSessionOptions AgentSession { get; set; } = new();
     public MaintenanceAgentOptions MaintenanceAgent { get; set; } = new();
     public LoggingOptions Logging { get; set; } = new();
     public TelemetryOptions Telemetry { get; set; } = new();
@@ -326,6 +328,13 @@ public class McpOptions
     public List<string> EnabledTools { get; set; } = [];
     public List<string> DisabledTools { get; set; } = [];
     public int MaxToolResponseCharacters { get; set; } = 12000;
+
+    /// <summary>
+    /// Maximum number of concurrent agent sessions per user principal.
+    /// Defaults vary by SecurityProfile: LocalDev=10, SecureLocal=3, RemoteHardened=1.
+    /// This value overrides the profile default when set explicitly.
+    /// </summary>
+    public int? MaxConcurrentSessionsPerUser { get; set; }
 }
 
 public class ChatOptions
@@ -371,6 +380,13 @@ public class ChatOptions
     public bool AgentWritesEnabled { get; set; }
     public string AgentWriteApprovalMode { get; set; } = AgentWriteApprovalModes.Manual;
     public List<string> AgentWriteRoots { get; set; } = [];
+
+    /// <summary>
+    /// Maximum number of parallel Ollama inference requests.
+    /// Default is 1 (serial) to prevent VRAM exhaustion on single-GPU hosts (e.g. RTX 5060 8 GB).
+    /// Increase to 2 only for multi-GPU setups or when using cloud providers.
+    /// </summary>
+    public int MaxParallelOllamaRequests { get; set; } = 1;
 }
 
 public static class AgentWriteApprovalModes
@@ -408,6 +424,32 @@ public class ChatModelProfileOptions
     public bool Enabled { get; set; } = true;
     public List<string> AllowedRoles { get; set; } = [];
     public string? Description { get; set; }
+}
+
+/// <summary>
+/// Configuration for the memorysmith_agent_invoke multi-turn sub-agent session feature.
+/// Governs session lifecycle, persistence, and security-profile-driven defaults.
+/// </summary>
+public class AgentSessionOptions
+{
+    /// <summary>
+    /// When true, sessions are persisted to SQLite and survive server restarts.
+    /// Default false (in-memory, ephemeral). Phase 2 feature.
+    /// </summary>
+    public bool PersistSessions { get; set; }
+
+    /// <summary>
+    /// Default idle timeout in minutes before a session is marked Expired.
+    /// SecurityProfile defaults: LocalDev=30, SecureLocal=10, RemoteHardened=5.
+    /// This value overrides the profile default when set explicitly.
+    /// </summary>
+    public int? IdleTimeoutMinutes { get; set; }
+
+    /// <summary>
+    /// Maximum nesting depth for internal agent delegation (Phase 3).
+    /// Always 0 in Phase 1-2 since AvailableInAgent is false.
+    /// </summary>
+    public int MaxNestingDepth { get; set; } = 1;
 }
 
 public class MaintenanceAgentOptions

@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using MemorySmith.App.Services;
+using MemorySmith.App.Services.AgentSessions;
 using MemorySmith.Core.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -32,7 +33,9 @@ public class McpController : ControllerBase
         "memorysmith_page_save",
         "memorysmith_page_delete",
         "memorysmith_source_bundle",
-        "memorysmith_find_by_source"
+        "memorysmith_find_by_source",
+        "memorysmith_agent_invoke",
+        "memorysmith_agent_session_end"
     };
 
     private readonly MemoryApplicationService _memories;
@@ -41,6 +44,7 @@ public class McpController : ControllerBase
     private readonly IAuthorizationService _authorization;
     private readonly ChatToolCatalog _toolCatalog;
     private readonly IPageService _pages;
+    private readonly AgentSessionService _agentSessionService;
 
     public McpController(
         MemoryApplicationService memories,
@@ -48,7 +52,8 @@ public class McpController : ControllerBase
         IOptions<MemorySmithOptions> options,
         IAuthorizationService authorization,
         ChatToolCatalog toolCatalog,
-        IPageService pages)
+        IPageService pages,
+        AgentSessionService agentSessionService)
     {
         _memories = memories;
         _vars = vars;
@@ -56,6 +61,7 @@ public class McpController : ControllerBase
         _authorization = authorization;
         _toolCatalog = toolCatalog;
         _pages = pages;
+        _agentSessionService = agentSessionService;
     }
 
     [HttpGet]
@@ -144,6 +150,8 @@ public class McpController : ControllerBase
             "memorysmith_page_search" or "memorysmith_page_get" or "memorysmith_unified_search"
             or "memorysmith_page_save" or "memorysmith_page_delete"
                 => await DelegateToCatalogAsync(toolName, argumentsElement, cancellationToken),
+            "memorysmith_agent_invoke" => await HandleAgentInvokeAsync(argumentsElement, cancellationToken),
+            "memorysmith_agent_session_end" => await HandleAgentSessionEndAsync(argumentsElement, cancellationToken),
             _ => ToolText($"Unknown MemorySmith tool '{toolName}'.", isError: true)
         };
     }
@@ -161,16 +169,94 @@ public class McpController : ControllerBase
         var args = argumentsElement.ValueKind == JsonValueKind.Object
             ? JsonNode.Parse(argumentsElement.GetRawText()) as JsonObject ?? new JsonObject()
             : new JsonObject();
-        var ctx = new ChatToolExecutionContext(_memories, _pages, Transport: "mcp", User: User, Auth: _options.Auth, DefaultPageMinimumRole: _options.Pages.DefaultMinimumRole);
+        var ctx = new ChatToolExecutionContext(
+            _memories,
+            _pages,
+            Transport: "mcp",
+            User: User,
+            Auth: _options.Auth,
+            DefaultPageMinimumRole: _options.Pages.DefaultMinimumRole,
+            NestingDepth: 0);
         var result = await tool.Execute(args, ctx, cancellationToken);
         return ToolText(result.Text, isError: result.IsError);
     }
+
+    // ── Agent session tool handlers ───────────────────────────────────────────
+
+    private async Task<JsonObject> HandleAgentInvokeAsync(JsonElement argumentsElement, CancellationToken cancellationToken)
+    {
+        // Require CanEditMemorySmith — agent sessions have Write-tier side effects.
+        if (!await CanEditMemorySmithAsync())
+            return ToolText("The caller is not authorized to invoke the agent (requires edit permission).", isError: true);
+
+        var message = GetString(argumentsElement, "message");
+        if (string.IsNullOrWhiteSpace(message))
+            return ToolText("The memorysmith_agent_invoke tool requires a 'message' argument.", isError: true);
+
+        var sessionId = GetString(argumentsElement, "session_id");
+        var requestedScope = GetString(argumentsElement, "scope") ?? "standard";
+        var maxTurns = GetInt(argumentsElement, "max_turns", 10);
+        var timeoutSeconds = GetInt(argumentsElement, "timeout_seconds", 120);
+        var modelOverride = GetString(argumentsElement, "model");
+        var providerOverride = GetString(argumentsElement, "provider");
+
+        List<string>? customTools = null;
+        if (TryGetProperty(argumentsElement, "allowed_tools", out var toolsElement) &&
+            toolsElement.ValueKind == JsonValueKind.Array)
+        {
+            customTools = toolsElement.EnumerateArray()
+                .Where(e => e.ValueKind == JsonValueKind.String)
+                .Select(e => e.GetString()!)
+                .ToList();
+        }
+
+        AgentSession session;
+        if (string.IsNullOrWhiteSpace(sessionId))
+        {
+            var createResult = await _agentSessionService.CreateSessionAsync(
+                requestedScope, customTools, modelOverride, providerOverride,
+                maxTurns, timeoutSeconds, User, cancellationToken);
+            if (!createResult.Succeeded)
+                return ToolText(createResult.Error!, isError: true);
+            session = createResult.Session!;
+        }
+        else
+        {
+            var resumeResult = await _agentSessionService.ResumeSessionAsync(
+                sessionId, User, cancellationToken);
+            if (!resumeResult.Succeeded)
+                return ToolText(resumeResult.Error!, isError: true);
+            session = resumeResult.Session!;
+        }
+
+        var invokeResult = await _agentSessionService.InvokeAsync(session, message, cancellationToken);
+        return ToolText(AgentSessionService.SerializeResult(invokeResult));
+    }
+
+    private async Task<JsonObject> HandleAgentSessionEndAsync(JsonElement argumentsElement, CancellationToken cancellationToken)
+    {
+        if (!await CanEditMemorySmithAsync())
+            return ToolText("The caller is not authorized to end agent sessions.", isError: true);
+
+        var sessionId = GetString(argumentsElement, "session_id");
+        if (string.IsNullOrWhiteSpace(sessionId))
+            return ToolText("The memorysmith_agent_session_end tool requires a 'session_id' argument.", isError: true);
+
+        var ended = await _agentSessionService.EndSessionAsync(sessionId, User, cancellationToken);
+        return ToolText(ended
+            ? $"{{\"closed\":true,\"session_id\":\"{sessionId}\"}}"
+            : "{\"finish_reason\":\"session_expired\",\"message\":\"Session not found or already closed.\"}");
+    }
+
+    // ── Authorization helpers ─────────────────────────────────────────────────
 
     private async Task<bool> CanReadSourceBundleAsync() =>
         (await _authorization.AuthorizeAsync(User, null, MemorySmithPolicies.CanReadSourceBundle)).Succeeded;
 
     private async Task<bool> CanEditMemorySmithAsync() =>
         (await _authorization.AuthorizeAsync(User, null, MemorySmithPolicies.CanEditMemorySmith)).Succeeded;
+
+    // ── Existing helpers (source bundle, find by source, format record) ───────
 
     private async Task<string> FormatSourceBundleAsync(JsonElement args, CancellationToken ct)
     {
@@ -292,6 +378,8 @@ public class McpController : ControllerBase
             : JsonSerializer.Serialize(record, ToolJsonOptions);
     }
 
+    // ── Query builders ────────────────────────────────────────────────────────
+
     private static MemorySearchQuery ReadLexicalQuery(JsonElement argumentsElement) => new(
         Query: GetString(argumentsElement, "query"),
         Status: GetStatus(argumentsElement),
@@ -321,35 +409,25 @@ public class McpController : ControllerBase
         Ids: GetString(argumentsElement, "ids"),
         IncludeBacklinks: GetBool(argumentsElement, "includeBacklinks", false));
 
+    // ── Result formatters ─────────────────────────────────────────────────────
+
     private static string FormatLexicalResults(IReadOnlyList<MemoryRecord> records)
     {
-        if (records.Count == 0)
-        {
-            return "No lexical search results.";
-        }
-
+        if (records.Count == 0) return "No lexical search results.";
         return string.Join(Environment.NewLine + Environment.NewLine, records.Select(record =>
             $"- {record.Id}: {record.Title}{Environment.NewLine}  Tags: {string.Join(", ", record.Tags)}{Environment.NewLine}  {Truncate(record.Content, 260)}"));
     }
 
     private static string FormatSemanticResults(IReadOnlyList<MemorySearchResult> results)
     {
-        if (results.Count == 0)
-        {
-            return "No semantic search results.";
-        }
-
+        if (results.Count == 0) return "No semantic search results.";
         return string.Join(Environment.NewLine + Environment.NewLine, results.Select(result =>
             $"- {result.Id}: {result.Title}{Environment.NewLine}  Score: {result.Score:0.###}{Environment.NewLine}  Match: {result.MatchReason}{Environment.NewLine}  Tags: {string.Join(", ", result.Tags)}{Environment.NewLine}  {result.Snippet}"));
     }
 
     private static string FormatHybridResults(IReadOnlyList<MemorySearchResult> results)
     {
-        if (results.Count == 0)
-        {
-            return "No hybrid search results.";
-        }
-
+        if (results.Count == 0) return "No hybrid search results.";
         return string.Join(Environment.NewLine + Environment.NewLine, results.Select(result =>
             $"- {result.Id}: {result.Title}{Environment.NewLine}  RRF Score: {result.Score:0.######}{Environment.NewLine}  Match: {result.MatchReason}{Environment.NewLine}  Tags: {string.Join(", ", result.Tags)}{Environment.NewLine}  {result.Snippet}"));
     }
@@ -358,7 +436,6 @@ public class McpController : ControllerBase
     {
         if (string.Equals(format, "json", StringComparison.OrdinalIgnoreCase))
         {
-            // Serialize with resolved source link URIs so agents get actionable paths.
             var projected = new
             {
                 pack.Query,
@@ -424,7 +501,9 @@ public class McpController : ControllerBase
         return display;
     }
 
-    private static JsonObject BuildInitializeResult() => new()
+    // ── tools/list result ─────────────────────────────────────────────────────
+
+    private JsonObject BuildInitializeResult() => new()
     {
         ["protocolVersion"] = "2025-06-18",
         ["capabilities"] = new JsonObject
@@ -490,13 +569,25 @@ public class McpController : ControllerBase
         {
             if (_toolCatalog.TryGet(name, out var tool))
             {
-                // Clone the schema; JsonNodes cannot have two parents and BuildToolsListResult may run repeatedly.
                 var clonedSchema = JsonNode.Parse(tool.InputSchema.ToJsonString()) as JsonObject ?? new JsonObject();
                 array.Add(BuildTool(tool.Name, tool.Description, clonedSchema));
             }
         }
+
+        // Agent session tools (handled directly by McpController, not in ChatToolCatalog).
+        array.Add(BuildTool(
+            "memorysmith_agent_invoke",
+            "Invoke the MemorySmith chat agent as a scoped sub-agent with its own managed context window. On the first call (no session_id), a new multi-turn session is created and the session_id is returned. Include that session_id in subsequent calls to continue the conversation.",
+            BuildAgentInvokeSchema()));
+        array.Add(BuildTool(
+            "memorysmith_agent_session_end",
+            "Explicitly close an agent session created by memorysmith_agent_invoke. Frees resources immediately rather than waiting for idle timeout.",
+            BuildAgentSessionEndSchema()));
+
         return new JsonObject { ["tools"] = array };
     }
+
+    // ── Schema builders ───────────────────────────────────────────────────────
 
     private static JsonObject BuildTool(string name, string description, JsonObject inputSchema) => new()
     {
@@ -510,26 +601,10 @@ public class McpController : ControllerBase
         ["type"] = "object",
         ["properties"] = new JsonObject
         {
-            ["query"] = new JsonObject
-            {
-                ["type"] = "string",
-                ["description"] = "Search text."
-            },
-            ["tags"] = new JsonObject
-            {
-                ["type"] = "string",
-                ["description"] = "Optional comma-separated tag filter."
-            },
-            ["status"] = new JsonObject
-            {
-                ["type"] = "string",
-                ["description"] = "Optional memory status name."
-            },
-            ["limit"] = new JsonObject
-            {
-                ["type"] = "integer",
-                ["description"] = "Maximum number of results."
-            }
+            ["query"] = new JsonObject { ["type"] = "string", ["description"] = "Search text." },
+            ["tags"] = new JsonObject { ["type"] = "string", ["description"] = "Optional comma-separated tag filter." },
+            ["status"] = new JsonObject { ["type"] = "string", ["description"] = "Optional memory status name." },
+            ["limit"] = new JsonObject { ["type"] = "integer", ["description"] = "Maximum number of results." }
         }
     };
 
@@ -567,51 +642,15 @@ public class McpController : ControllerBase
         ["type"] = "object",
         ["properties"] = new JsonObject
         {
-            ["query"] = new JsonObject
-            {
-                ["type"] = "string",
-                ["description"] = "Search text used to seed the context pack with hybrid search."
-            },
-            ["ids"] = new JsonObject
-            {
-                ["type"] = "string",
-                ["description"] = "Optional comma-separated root memory ids to include before search results."
-            },
-            ["tags"] = new JsonObject
-            {
-                ["type"] = "string",
-                ["description"] = "Optional comma-separated tag filter."
-            },
-            ["status"] = new JsonObject
-            {
-                ["type"] = "string",
-                ["description"] = "Optional memory status name."
-            },
-            ["limit"] = new JsonObject
-            {
-                ["type"] = "integer",
-                ["description"] = "Maximum number of hybrid root results."
-            },
-            ["referenceDepth"] = new JsonObject
-            {
-                ["type"] = "integer",
-                ["description"] = "How many levels of references/conflicts to include. Clamped to 0-2."
-            },
-            ["maxContentChars"] = new JsonObject
-            {
-                ["type"] = "integer",
-                ["description"] = "Maximum content characters per record. Clamped to 200-6000."
-            },
-            ["maxRecords"] = new JsonObject
-            {
-                ["type"] = "integer",
-                ["description"] = "Maximum total records in the context pack. Clamped to 1-100."
-            },
-            ["includeBacklinks"] = new JsonObject
-            {
-                ["type"] = "boolean",
-                ["description"] = "Include records that reference or conflict with packed records."
-            },
+            ["query"] = new JsonObject { ["type"] = "string", ["description"] = "Search text used to seed the context pack with hybrid search." },
+            ["ids"] = new JsonObject { ["type"] = "string", ["description"] = "Optional comma-separated root memory ids to include before search results." },
+            ["tags"] = new JsonObject { ["type"] = "string", ["description"] = "Optional comma-separated tag filter." },
+            ["status"] = new JsonObject { ["type"] = "string", ["description"] = "Optional memory status name." },
+            ["limit"] = new JsonObject { ["type"] = "integer", ["description"] = "Maximum number of hybrid root results." },
+            ["referenceDepth"] = new JsonObject { ["type"] = "integer", ["description"] = "How many levels of references/conflicts to include. Clamped to 0-2." },
+            ["maxContentChars"] = new JsonObject { ["type"] = "integer", ["description"] = "Maximum content characters per record. Clamped to 200-6000." },
+            ["maxRecords"] = new JsonObject { ["type"] = "integer", ["description"] = "Maximum total records in the context pack. Clamped to 1-100." },
+            ["includeBacklinks"] = new JsonObject { ["type"] = "boolean", ["description"] = "Include records that reference or conflict with packed records." },
             ["format"] = new JsonObject
             {
                 ["type"] = "string",
@@ -620,6 +659,46 @@ public class McpController : ControllerBase
             }
         }
     };
+
+    private static JsonObject BuildAgentInvokeSchema() => new()
+    {
+        ["type"] = "object",
+        ["required"] = new JsonArray { "message" },
+        ["properties"] = new JsonObject
+        {
+            ["message"] = new JsonObject { ["type"] = "string", ["description"] = "The task or question for the sub-agent. Be specific — the sub-agent will run tool calls to answer it." },
+            ["session_id"] = new JsonObject { ["type"] = "string", ["description"] = "Session ID returned from a prior call. Omit to start a new session." },
+            ["scope"] = new JsonObject
+            {
+                ["type"] = "string",
+                ["enum"] = new JsonArray { "read_only", "standard", "full", "custom" },
+                ["default"] = "standard",
+                ["description"] = "Tool access scope. read_only/standard: search and fetch only. full: all tools the caller has permission to use. custom: specify allowed_tools."
+            },
+            ["allowed_tools"] = new JsonObject
+            {
+                ["type"] = "array",
+                ["items"] = new JsonObject { ["type"] = "string" },
+                ["description"] = "Required when scope=custom. List of memorysmith_* tool names to enable."
+            },
+            ["max_turns"] = new JsonObject { ["type"] = "integer", ["minimum"] = 1, ["maximum"] = 50, ["default"] = 10 },
+            ["timeout_seconds"] = new JsonObject { ["type"] = "integer", ["minimum"] = 10, ["maximum"] = 600, ["default"] = 120 },
+            ["model"] = new JsonObject { ["type"] = "string", ["description"] = "Optional Ollama model tag override (e.g. 'qwen3.5:4b')." },
+            ["provider"] = new JsonObject { ["type"] = "string", ["description"] = "Optional provider override (e.g. 'Ollama', 'GitHubCopilot')." }
+        }
+    };
+
+    private static JsonObject BuildAgentSessionEndSchema() => new()
+    {
+        ["type"] = "object",
+        ["required"] = new JsonArray { "session_id" },
+        ["properties"] = new JsonObject
+        {
+            ["session_id"] = new JsonObject { ["type"] = "string", ["description"] = "Session ID to close." }
+        }
+    };
+
+    // ── JSON helpers ──────────────────────────────────────────────────────────
 
     private static JsonObject ToolText(string text, bool isError = false) => new()
     {
@@ -679,11 +758,7 @@ public class McpController : ControllerBase
 
     private static string? GetString(JsonElement element, string name)
     {
-        if (!TryGetProperty(element, name, out var value))
-        {
-            return null;
-        }
-
+        if (!TryGetProperty(element, name, out var value)) return null;
         return value.ValueKind switch
         {
             JsonValueKind.String => value.GetString(),
@@ -696,38 +771,21 @@ public class McpController : ControllerBase
 
     private static int GetInt(JsonElement element, string name, int defaultValue)
     {
-        if (!TryGetProperty(element, name, out var value))
-        {
-            return defaultValue;
-        }
-
-        if (value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var number))
-        {
-            return number;
-        }
-
+        if (!TryGetProperty(element, name, out var value)) return defaultValue;
+        if (value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var number)) return number;
         return value.ValueKind == JsonValueKind.String && int.TryParse(value.GetString(), out var parsed)
-            ? parsed
-            : defaultValue;
+            ? parsed : defaultValue;
     }
 
     private static int Clamp(int value, int min, int max, int defaultValue)
     {
-        if (value < min)
-        {
-            return Math.Min(defaultValue, max);
-        }
-
+        if (value < min) return Math.Min(defaultValue, max);
         return Math.Min(value, max);
     }
 
     private static bool GetBool(JsonElement element, string name, bool defaultValue)
     {
-        if (!TryGetProperty(element, name, out var value))
-        {
-            return defaultValue;
-        }
-
+        if (!TryGetProperty(element, name, out var value)) return defaultValue;
         return value.ValueKind switch
         {
             JsonValueKind.True => true,

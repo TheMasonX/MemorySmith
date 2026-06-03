@@ -34,7 +34,25 @@ public sealed record ChatToolExecutionContext(
     ClaimsPrincipal? User = null,
     ICurrentUserContext? CurrentUser = null,
     AuthOptions? Auth = null,
-    string? DefaultPageMinimumRole = null)
+    string? DefaultPageMinimumRole = null,
+    /// <summary>
+    /// Nesting depth in the agent delegation chain.
+    /// 0 for all direct MCP callers. 1+ for internal sub-agent delegation (Phase 3).
+    /// Used to enforce MaxNestingDepth and to exclude memorysmith_agent_invoke from sub-agent catalogs.
+    /// </summary>
+    int NestingDepth = 0,
+    /// <summary>
+    /// Session ID of the parent agent session that spawned this sub-agent call (Phase 3).
+    /// Null for all external MCP callers in Phase 1-2.
+    /// </summary>
+    string? ParentSessionId = null,
+    /// <summary>
+    /// GPU slot handle held by the calling Athena session (Phase 3 only).
+    /// AgentInvokeTool.Execute disposes this before acquiring the sub-agent slot to prevent deadlock.
+    /// Always null in Phase 1-2 since AvailableInAgent is false.
+    /// TODO (Phase 3): Populate this in MemoryChatAgent's agent-mode tool loop before calling Execute.
+    /// </summary>
+    IAsyncDisposable? InheritedGpuSlot = null)
 {
     public bool CanViewPage(string minimumRole) =>
         CurrentUser is not null
@@ -66,9 +84,20 @@ public sealed class ChatToolCatalog
 
     private readonly Dictionary<string, ChatToolDescriptor> _tools;
 
+    /// <summary>Default constructor — builds the full tool catalog from BuildTools().</summary>
     public ChatToolCatalog()
     {
         _tools = BuildTools().ToDictionary(tool => tool.Name, StringComparer.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Filtered constructor — builds a catalog from a pre-filtered set of descriptors.
+    /// Used by <c>AgentSessionService</c> to create scoped sub-agent catalogs that only
+    /// expose tools within a session's computed effective scope.
+    /// </summary>
+    public ChatToolCatalog(IEnumerable<ChatToolDescriptor> allowedTools)
+    {
+        _tools = allowedTools.ToDictionary(tool => tool.Name, StringComparer.OrdinalIgnoreCase);
     }
 
     public IReadOnlyList<ChatToolDescriptor> All => _tools.Values.ToList();
