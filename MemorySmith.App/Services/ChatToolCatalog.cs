@@ -36,7 +36,6 @@ public sealed record ChatToolExecutionContext(
     ICurrentUserContext? CurrentUser = null,
     AuthOptions? Auth = null,
     string? DefaultPageMinimumRole = null,
-    /// <summary>
     bool AgentWritesEnabled = false,
     bool AgentWriteAutoAccept = false,
     CodeSearchService? CodeSearch = null,
@@ -107,13 +106,14 @@ public sealed class ChatToolCatalog
 
     public IReadOnlyList<ChatToolDescriptor> All => _tools.Values.ToList();
 
+    /// <summary>Tools available for agent-mode tool loops (AvailableInMcp = true).</summary>
+    public IReadOnlyList<ChatToolDescriptor> AgentTools =>
+        _tools.Values.Where(tool => tool.AvailableInMcp).ToList();
+
     public IReadOnlyList<ChatToolDescriptor> ChatTools =>
         _tools.Values.Where(tool => tool.AvailableInChat).ToList();
 
     public IReadOnlyList<ChatToolDescriptor> McpTools =>
-        _tools.Values.Where(tool => tool.AvailableInMcp).ToList();
-
-    public IReadOnlyList<ChatToolDescriptor> AgentTools =>
         _tools.Values.Where(tool => tool.AvailableInMcp).ToList();
 
     public bool TryGet(string name, out ChatToolDescriptor tool)
