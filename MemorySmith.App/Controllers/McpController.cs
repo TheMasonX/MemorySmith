@@ -150,8 +150,17 @@ public class McpController : ControllerBase
             "memorysmith_page_search" or "memorysmith_page_get" or "memorysmith_unified_search"
             or "memorysmith_page_save" or "memorysmith_page_delete"
                 => await DelegateToCatalogAsync(toolName, argumentsElement, cancellationToken),
-            "memorysmith_agent_invoke" => await HandleAgentInvokeAsync(argumentsElement, cancellationToken),
-            "memorysmith_agent_session_end" => await HandleAgentSessionEndAsync(argumentsElement, cancellationToken),
+            // Agent session tools are governed by the same EnabledTools/DisabledTools rules as
+            // other MCP tools. They have Risk=Write so EnabledByDefaultInMcp=false — they must be
+            // explicitly opted in via MemorySmith:Mcp:EnabledTools: ["memorysmith_agent_invoke"].
+            "memorysmith_agent_invoke" when IsAgentToolEnabled("memorysmith_agent_invoke")
+                => await HandleAgentInvokeAsync(argumentsElement, cancellationToken),
+            "memorysmith_agent_invoke"
+                => ToolText("The memorysmith_agent_invoke tool is disabled. Enable it via MemorySmith:Mcp:EnabledTools.", isError: true),
+            "memorysmith_agent_session_end" when IsAgentToolEnabled("memorysmith_agent_session_end")
+                => await HandleAgentSessionEndAsync(argumentsElement, cancellationToken),
+            "memorysmith_agent_session_end"
+                => ToolText("The memorysmith_agent_session_end tool is disabled. Enable it via MemorySmith:Mcp:EnabledTools.", isError: true),
             _ => ToolText($"Unknown MemorySmith tool '{toolName}'.", isError: true)
         };
     }
@@ -252,6 +261,29 @@ public class McpController : ControllerBase
                 ? $"{{\"closed\":true,\"session_id\":\"{sessionId}\"}}"
                 : "{\"finish_reason\":\"session_expired\",\"message\":\"Session not found or already closed.\"}",
             isError: !ended);
+    }
+
+    // ── Agent tool governance ─────────────────────────────────────────────────
+
+    /// <summary>
+    /// Checks whether an agent session tool (memorysmith_agent_invoke / memorysmith_agent_session_end)
+    /// is enabled by the server's MCP governance configuration. These tools have Risk=Write and are
+    /// disabled by default; they must be explicitly opted in via MemorySmith:Mcp:EnabledTools.
+    ///
+    /// Semantics (identical to IsMcpToolEnabled in AgentSessionService):
+    /// - DisabledTools always wins.
+    /// - EnabledTools is additive opt-in.
+    /// - Default: disabled (because agent tools are Write-tier).
+    /// </summary>
+    private bool IsAgentToolEnabled(string toolName)
+    {
+        var mcp = _options.Mcp;
+        if (mcp.DisabledTools.Contains(toolName, StringComparer.OrdinalIgnoreCase))
+            return false;
+        if (mcp.EnabledTools.Contains(toolName, StringComparer.OrdinalIgnoreCase))
+            return true;
+        // Agent tools are Write-tier and default-off (EnabledByDefaultInMcp=false)
+        return false;
     }
 
     // ── Authorization helpers ─────────────────────────────────────────────────
@@ -580,15 +612,22 @@ public class McpController : ControllerBase
             }
         }
 
-        // Agent session tools (handled directly by McpController, not in ChatToolCatalog).
-        array.Add(BuildTool(
-            "memorysmith_agent_invoke",
-            "Invoke the MemorySmith chat agent as a scoped sub-agent with its own managed context window. On the first call (no session_id), a new multi-turn session is created and the session_id is returned. Include that session_id in subsequent calls to continue the conversation.",
-            BuildAgentInvokeSchema()));
-        array.Add(BuildTool(
-            "memorysmith_agent_session_end",
-            "Explicitly close an agent session created by memorysmith_agent_invoke. Frees resources immediately rather than waiting for idle timeout.",
-            BuildAgentSessionEndSchema()));
+        // Agent session tools: only listed when enabled via MemorySmith:Mcp:EnabledTools.
+        // These are Write-tier and default-off (EnabledByDefaultInMcp=false).
+        if (IsAgentToolEnabled("memorysmith_agent_invoke"))
+        {
+            array.Add(BuildTool(
+                "memorysmith_agent_invoke",
+                "Invoke the MemorySmith chat agent as a scoped sub-agent with its own managed context window. On the first call (no session_id), a new multi-turn session is created and the session_id is returned. Include that session_id in subsequent calls to continue the conversation.",
+                BuildAgentInvokeSchema()));
+        }
+        if (IsAgentToolEnabled("memorysmith_agent_session_end"))
+        {
+            array.Add(BuildTool(
+                "memorysmith_agent_session_end",
+                "Explicitly close an agent session created by memorysmith_agent_invoke. Frees resources immediately rather than waiting for idle timeout.",
+                BuildAgentSessionEndSchema()));
+        }
 
         return new JsonObject { ["tools"] = array };
     }

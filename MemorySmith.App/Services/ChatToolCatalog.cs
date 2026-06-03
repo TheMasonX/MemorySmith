@@ -26,6 +26,12 @@ public sealed record ChatToolDescriptor(
     bool AvailableInChat,
     bool AvailableInMcp,
     Func<JsonObject, ChatToolExecutionContext, CancellationToken, Task<ChatToolExecutionResult>> Execute,
+    /// <summary>
+    /// Whether this tool is enabled in the MCP endpoint by default.
+    /// ReadOnly tools default to <c>true</c>; SensitiveRead and Write tools default to <c>false</c>
+    /// so they must be explicitly opted in via <c>MemorySmith:Mcp:EnabledTools</c>.
+    /// <c>MemorySmith:Mcp:DisabledTools</c> always overrides this default.
+    /// </summary>
     bool EnabledByDefaultInMcp = true);
 
 /// <param name="Memories">Memory application service.</param>
@@ -41,16 +47,12 @@ public sealed record ChatToolDescriptor(
 /// <param name="NestingDepth">
 /// Nesting depth in the agent delegation chain.
 /// 0 for all direct MCP callers; 1+ for internal sub-agent delegation (Phase 3).
-/// Used to enforce MaxNestingDepth and to exclude memorysmith_agent_invoke from sub-agent catalogs.
 /// </param>
 /// <param name="ParentSessionId">
-/// Session ID of the parent agent session that spawned this sub-agent call (Phase 3).
-/// Null for all external MCP callers in Phase 1-2.
+/// Session ID of the parent agent session (Phase 3). Null for external MCP callers.
 /// </param>
 /// <param name="InheritedGpuSlot">
 /// GPU slot handle held by the calling Athena session (Phase 3 only).
-/// AgentInvokeTool.Execute disposes this before acquiring the sub-agent slot to prevent deadlock.
-/// Always null in Phase 1-2 since AvailableInAgent is false.
 /// TODO (Phase 3): Populate this in MemoryChatAgent's agent-mode tool loop before calling Execute.
 /// </param>
 public sealed record ChatToolExecutionContext(
@@ -117,18 +119,26 @@ public sealed class ChatToolCatalog
     public IReadOnlyList<ChatToolDescriptor> All => _tools.Values.ToList();
 
     /// <summary>
+    /// Tools available for in-app chat UI (<c>AvailableInChat = true</c>).
+    /// These are the read-only search and retrieval tools.
+    /// </summary>
+    public IReadOnlyList<ChatToolDescriptor> ChatTools =>
+        _tools.Values.Where(tool => tool.AvailableInChat).ToList();
+
+    /// <summary>
     /// Tools available for agent-mode tool loops. Uses <c>AvailableInChat = true</c> as the filter,
-    /// which corresponds to read-only retrieval tools and excludes MCP-only page mutation tools
-    /// such as <c>memorysmith_page_save</c> and <c>memorysmith_page_delete</c>.
-    /// Phase 3 will introduce an explicit <c>AvailableInAgent</c> flag on <see cref="ChatToolDescriptor"/>
-    /// to allow finer-grained control.
+    /// which corresponds to read-only retrieval tools and excludes MCP-only mutation tools such as
+    /// <c>memorysmith_page_save</c> and <c>memorysmith_page_delete</c>. Sub-agents run in
+    /// MemoryChatMode.Chat and can only execute ChatTools regardless of scope.
+    /// Phase 3 will introduce a dedicated <c>AvailableInAgent</c> flag for finer control.
     /// </summary>
     public IReadOnlyList<ChatToolDescriptor> AgentTools =>
         _tools.Values.Where(tool => tool.AvailableInChat).ToList();
 
-    public IReadOnlyList<ChatToolDescriptor> ChatTools =>
-        _tools.Values.Where(tool => tool.AvailableInChat).ToList();
-
+    /// <summary>
+    /// Tools exposed via the MCP JSON-RPC endpoint (<c>AvailableInMcp = true</c>).
+    /// Includes all chat tools plus additional MCP-only tools (source bundle, write operations).
+    /// </summary>
     public IReadOnlyList<ChatToolDescriptor> McpTools =>
         _tools.Values.Where(tool => tool.AvailableInMcp).ToList();
 
@@ -392,6 +402,7 @@ public sealed class ChatToolCatalog
                 return new ChatToolExecutionResult(sb.ToString().TrimEnd(), ContextItems: contextItems);
             });
 
+        // Write tools: EnabledByDefaultInMcp = false (require explicit opt-in via Mcp:EnabledTools)
         yield return new ChatToolDescriptor(
             "memorysmith_page_save",
             "Create or update a wiki page. Slug is derived from the title if omitted. Requires edit permission.",
@@ -453,7 +464,8 @@ public sealed class ChatToolCatalog
 
                 var saved = await ctx.Pages.SaveAsync(new PageSaveRequest(slug, title, markdown, resolvedMinimumRole), ct);
                 return new ChatToolExecutionResult($"Page saved. Slug: {saved.Slug}  Title: {saved.Title}  Updated: {saved.LastUpdatedUtc:O}");
-            });
+            },
+            EnabledByDefaultInMcp: false);
 
         yield return new ChatToolDescriptor(
             "memorysmith_page_delete",
@@ -487,7 +499,8 @@ public sealed class ChatToolCatalog
                 return new ChatToolExecutionResult(deleted
                     ? $"Page '{slug}' deleted."
                     : $"No page found with slug '{slug}'.");
-            });
+            },
+            EnabledByDefaultInMcp: false);
     }
 
     // ---------- Schema builders ----------

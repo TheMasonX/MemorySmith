@@ -590,14 +590,27 @@ public sealed class AgentSessionService
             .ToList();
     }
 
+    /// <summary>
+    /// Determines whether a tool is enabled for use in MCP-based contexts, using the correct
+    /// additive semantics: DisabledTools always wins, EnabledTools opts in default-off tools,
+    /// and EnabledByDefaultInMcp provides the baseline on/off state.
+    ///
+    /// Semantics (matching McpController.IsMcpToolEnabled):
+    /// 1. DisabledTools overrides everything — if the tool is explicitly disabled, it's off.
+    /// 2. EnabledTools is an additive opt-in — if the tool is in this list, it's on regardless
+    ///    of EnabledByDefaultInMcp (allows enabling default-off sensitive/write tools).
+    /// 3. Otherwise, fall back to the tool's EnabledByDefaultInMcp flag.
+    /// </summary>
     private static bool IsMcpToolEnabled(ChatToolDescriptor tool, McpOptions options)
     {
+        // DisabledTools always wins
         if (options.DisabledTools.Contains(tool.Name, StringComparer.OrdinalIgnoreCase))
             return false;
-        if (options.EnabledTools.Count > 0 &&
-            !options.EnabledTools.Contains(tool.Name, StringComparer.OrdinalIgnoreCase))
-            return false;
-        return true;
+        // EnabledTools is additive opt-in (allows enabling default-off tools explicitly)
+        if (options.EnabledTools.Contains(tool.Name, StringComparer.OrdinalIgnoreCase))
+            return true;
+        // Fall back to the tool's own default
+        return tool.EnabledByDefaultInMcp;
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

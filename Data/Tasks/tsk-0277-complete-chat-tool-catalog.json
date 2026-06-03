@@ -1,0 +1,41 @@
+{
+  "id": "tsk-0277-complete-chat-tool-catalog",
+  "key": "TSK-0277",
+  "title": "Implement full ChatToolCatalog: source_bundle, task/memory write tools, code search tools",
+  "description": "The current ChatToolCatalog only has 10 tools. The existing test suite (ChatToolCatalogAndInterceptTests.cs) expects 20+ tools including source_bundle, find_by_source, task_create/update/set_status/add_comment/add_attachment, memory_create/update, code_search, code_search_status, code_search_merge_shard, task_list, task_get. These tests were written ahead of the catalog implementation and are currently failing.\n\n### Tools to add\n\n**SensitiveRead (EnabledByDefaultInMcp=false):**\n- memorysmith_source_bundle \u2014 read source file content for source-linked memories\n- memorysmith_find_by_source \u2014 back-map a source path to KB entries that reference it\n\n**ReadOnly (EnabledByDefaultInMcp=true):**\n- memorysmith_code_search \u2014 search indexed codebase chunks\n- memorysmith_code_search_status \u2014 get current code index build status\n- memorysmith_task_list \u2014 list/filter task records\n- memorysmith_task_get \u2014 fetch a specific task by ID\n\n**Write (EnabledByDefaultInMcp=false, AvailableInAgent=true \u2014 for future AgentTools):**\n- memorysmith_task_create \u2014 create a new task\n- memorysmith_task_update \u2014 update task fields\n- memorysmith_task_set_status \u2014 change task status\n- memorysmith_task_add_comment \u2014 add a comment to a task\n- memorysmith_task_add_attachment \u2014 add an attachment to a task\n- memorysmith_memory_create \u2014 create a new memory record\n- memorysmith_memory_update \u2014 update an existing memory record\n\n**Write (EnabledByDefaultInMcp=false, AvailableInAgent=false):**\n- memorysmith_code_search_merge_shard \u2014 merge a code search shard into the main index\n\n### Acceptance criteria\n- All tests in ChatToolCatalogAndInterceptTests.cs pass\n- ChatToolCatalog_DefaultsSensitiveAndWriteMcpToolsOff passes\n- ChatToolCatalog_ExposesWriteToolsOnlyToAgentMode passes (AgentTools includes task/memory write tools)\n- McpController tool list and governance match the expanded catalog\n- PR #53's AgentSessionService.AgentTools filter (AvailableInChat) still excludes write tools correctly",
+  "type": "Feature",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "council-review",
+  "labels": [
+    "tool-catalog",
+    "testing",
+    "quality",
+    "pre-existing-failure"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [
+    {
+      "id": "c-tsk277-001",
+      "author": "council-review",
+      "body": "Pre-existing test failures: ChatToolCatalogAndInterceptTests.ChatToolCatalog_ExposesAllExpectedChatTools, ChatToolCatalog_ExposesWriteToolsOnlyToAgentMode, ChatToolCatalog_DefaultsSensitiveAndWriteMcpToolsOff all fail on master because the catalog only has 10 tools. These failures predate PR #53.",
+      "createdAtUtc": "2026-06-03T22:00:00Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-06-03T22:00:00Z",
+  "updatedAtUtc": "2026-06-03T22:00:00Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}
