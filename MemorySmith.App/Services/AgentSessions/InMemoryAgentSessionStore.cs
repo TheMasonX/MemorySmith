@@ -29,11 +29,10 @@ public sealed class InMemoryAgentSessionStore : IAgentSessionStore
         return Task.CompletedTask;
     }
 
-    public Task<IReadOnlyList<AgentSession>> GetIdleOrExpiredAsync(DateTimeOffset expiryBefore, CancellationToken ct)
+    public Task<IReadOnlyList<AgentSession>> GetActiveAndIdleAsync(CancellationToken ct)
     {
         var result = _sessions.Values
-            .Where(s => s.Status is AgentSessionStatus.Idle or AgentSessionStatus.Active
-                && s.LastAccessedAt < expiryBefore)
+            .Where(s => s.Status is AgentSessionStatus.Active or AgentSessionStatus.Idle)
             .ToList();
         return Task.FromResult<IReadOnlyList<AgentSession>>(result);
     }

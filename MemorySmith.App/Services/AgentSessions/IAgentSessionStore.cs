@@ -11,10 +11,11 @@ public interface IAgentSessionStore
     Task DeleteAsync(string sessionId, CancellationToken ct);
 
     /// <summary>
-    /// Returns sessions whose <see cref="AgentSession.LastAccessedAt"/> is before
-    /// <paramref name="expiryBefore"/>. Used by the cleanup service.
+    /// Returns all Active or Idle sessions for evaluation by the cleanup service.
+    /// The cleanup service applies per-session idle timeout checks rather than a global cutoff,
+    /// because individual sessions may have different <see cref="AgentSession.IdleTimeoutMinutes"/> values.
     /// </summary>
-    Task<IReadOnlyList<AgentSession>> GetIdleOrExpiredAsync(DateTimeOffset expiryBefore, CancellationToken ct);
+    Task<IReadOnlyList<AgentSession>> GetActiveAndIdleAsync(CancellationToken ct);
 
     /// <summary>
     /// Returns the count of Active or Idle sessions for a principal.

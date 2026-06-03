@@ -1,9 +1,9 @@
 namespace MemorySmith.App.Services.AgentSessions;
 
-using System.Collections.Concurrent;
 using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using MemorySmith.Core.Models;
 
@@ -20,7 +20,7 @@ public sealed record AgentInvokeResult(
 {
     public static AgentInvokeResult Timeout(string sessionId, int turn) => new(
         sessionId, turn,
-        "The sub-agent inference timed out on this turn. Retry the same message to continue.",
+        "The sub-agent inference timed out on this turn. Retry the same message to continue; no state was changed.",
         [], 0, "timeout", null);
 }
 
@@ -47,7 +47,7 @@ public sealed class ResumeSessionResult
     public static ResumeSessionResult Ok(AgentSession session) =>
         new() { Succeeded = true, Session = session };
 
-    // Both "not found" and "wrong principal" return the same message to avoid enumeration.
+    // Both "not found" and "wrong principal" return the same message to avoid session enumeration.
     public static ResumeSessionResult NotFound() => new()
     {
         Succeeded = false,
@@ -60,6 +60,10 @@ public sealed class ResumeSessionResult
 /// <summary>
 /// Orchestrates multi-turn sub-agent sessions created via <c>memorysmith_agent_invoke</c>.
 /// Handles session lifecycle, scope intersection, GPU slot scheduling, and agent invocation.
+///
+/// Registered as <b>singleton</b>. Uses <see cref="IServiceScopeFactory"/> to resolve
+/// scoped services (principally <see cref="IChatProvider"/>) per-invocation, avoiding
+/// the captive-dependency antipattern.
 /// </summary>
 public sealed class AgentSessionService
 {
@@ -68,20 +72,19 @@ public sealed class AgentSessionService
         WriteIndented = false
     };
 
+    private static readonly HashSet<string> KnownProviders =
+        new(StringComparer.OrdinalIgnoreCase) { "Ollama", "GitHubCopilot" };
+
     private readonly IAgentSessionStore _store;
     private readonly IGpuSlotScheduler _gpuSlots;
     private readonly ChatToolCatalog _toolCatalog;
     private readonly IOptions<MemorySmithOptions> _options;
     private readonly IAuthorizationService _authService;
-    private readonly IEnumerable<IChatProvider> _chatProviders;
+    private readonly IServiceScopeFactory _scopeFactory;   // resolves IChatProvider per-invocation
     private readonly MemoryApplicationService _memories;
     private readonly IPageService _pages;
     private readonly ChatIntentInterceptor _intentInterceptor;
     private readonly ILogger<AgentSessionService> _logger;
-
-    // Per-session semaphores prevent concurrent invocations on the same session.
-    private readonly ConcurrentDictionary<string, SemaphoreSlim> _sessionLocks =
-        new(StringComparer.Ordinal);
 
     public AgentSessionService(
         IAgentSessionStore store,
@@ -89,7 +92,7 @@ public sealed class AgentSessionService
         ChatToolCatalog toolCatalog,
         IOptions<MemorySmithOptions> options,
         IAuthorizationService authService,
-        IEnumerable<IChatProvider> chatProviders,
+        IServiceScopeFactory scopeFactory,
         MemoryApplicationService memories,
         IPageService pages,
         ChatIntentInterceptor intentInterceptor,
@@ -100,11 +103,19 @@ public sealed class AgentSessionService
         _toolCatalog = toolCatalog;
         _options = options;
         _authService = authService;
-        _chatProviders = chatProviders;
+        _scopeFactory = scopeFactory;
         _memories = memories;
         _pages = pages;
         _intentInterceptor = intentInterceptor;
         _logger = logger;
+
+        // Startup guard: PersistSessions=true has no store implementation yet (Phase 2).
+        if (_options.Value.AgentSession.PersistSessions)
+        {
+            throw new InvalidOperationException(
+                "AgentSession:PersistSessions=true requires a SqliteAgentSessionStore which is not yet " +
+                "implemented (Phase 2). Set AgentSession:PersistSessions=false or implement Phase 2 persistence.");
+        }
     }
 
     // ── Public API ────────────────────────────────────────────────────────────
@@ -119,17 +130,35 @@ public sealed class AgentSessionService
         ClaimsPrincipal caller,
         CancellationToken ct)
     {
-        var profile = MemorySmithSecurityProfiles.Normalize(_options.Value.SecurityProfile);
-        var principalId = GetPrincipalId(caller);
+        var principalId = RequirePrincipalId(caller);
+        if (principalId is null)
+            return CreateSessionResult.Fail(
+                "Agent sessions require an authenticated caller with a NameIdentifier claim.");
 
-        var cap = GetMaxConcurrentSessions(profile);
+        // Validate provider override against known registered providers.
+        if (!string.IsNullOrEmpty(providerOverride) && !KnownProviders.Contains(providerOverride))
+            return CreateSessionResult.Fail(
+                $"Unknown provider '{providerOverride}'. Valid values: {string.Join(", ", KnownProviders)}.");
+
+        // Validate scope=custom requires a non-empty allowed_tools list.
+        if (string.Equals(requestedScope, "custom", StringComparison.OrdinalIgnoreCase) &&
+            (customTools is null || customTools.Count == 0))
+            return CreateSessionResult.Fail(
+                "scope=custom requires a non-empty allowed_tools list. " +
+                "Specify at least one tool name, or use a standard scope (read_only, standard, full).");
+
+        var opts = _options.Value;
+        var profile = MemorySmithSecurityProfiles.Normalize(opts.SecurityProfile);
+
+        var cap = GetMaxConcurrentSessions(profile, opts);
         var activeCount = await _store.GetActiveCountForPrincipalAsync(principalId, ct);
         if (activeCount >= cap)
             return CreateSessionResult.TooManyRequests(
-                $"Concurrent session limit ({cap}) reached for security profile '{profile}'. Close existing sessions to continue.");
+                $"Concurrent session limit ({cap}) reached for security profile '{profile}'. " +
+                "Close existing sessions via memorysmith_agent_session_end to continue.");
 
         var effectiveToolNames = await ComputeEffectiveScopeAsync(
-            requestedScope, customTools, caller, profile, ct);
+            requestedScope, customTools, caller, profile, opts, ct);
 
         var session = new AgentSession
         {
@@ -142,13 +171,14 @@ public sealed class AgentSessionService
             CreatedAt = DateTimeOffset.UtcNow,
             MaxTurns = Math.Clamp(maxTurns, 1, 50),
             TimeoutSeconds = Math.Clamp(timeoutSeconds, 10, 600),
-            IdleTimeoutMinutes = GetIdleTimeoutMinutes(profile),
+            IdleTimeoutMinutes = GetIdleTimeoutMinutes(profile, opts),
             NestingDepth = 0,
+            // TODO (Phase 3): enforce MaxNestingDepth ceiling here when internal delegation is enabled.
         };
 
         await _store.SaveAsync(session, ct);
         _logger.LogDebug(
-            "Created agent session {SessionId} for principal {PrincipalId} with scope {Scope} ({ToolCount} tools)",
+            "Created agent session {SessionId} for principal {PrincipalId} scope={Scope} tools={ToolCount}",
             session.SessionId[..8], principalId[..Math.Min(8, principalId.Length)],
             requestedScope, effectiveToolNames.Count);
 
@@ -163,16 +193,14 @@ public sealed class AgentSessionService
         var session = await _store.GetAsync(sessionId, ct);
         if (session is null) return ResumeSessionResult.NotFound();
 
-        var principalId = GetPrincipalId(caller);
-        // Same error for wrong principal as not-found to prevent enumeration.
-        if (!string.Equals(session.PrincipalId, principalId, StringComparison.Ordinal))
+        var principalId = RequirePrincipalId(caller);
+        // Same error for wrong principal as not-found to prevent session enumeration.
+        if (principalId is null ||
+            !string.Equals(session.PrincipalId, principalId, StringComparison.Ordinal))
             return ResumeSessionResult.NotFound();
 
         if (session.Status is AgentSessionStatus.Expired or AgentSessionStatus.Closed)
             return ResumeSessionResult.NotFound();
-
-        if (session.Status == AgentSessionStatus.Idle)
-            session.SetStatus(AgentSessionStatus.Active);
 
         return ResumeSessionResult.Ok(session);
     }
@@ -182,17 +210,26 @@ public sealed class AgentSessionService
         string message,
         CancellationToken ct)
     {
-        var sessionLock = _sessionLocks.GetOrAdd(session.SessionId, _ => new SemaphoreSlim(1, 1));
-        await sessionLock.WaitAsync(ct);
+        // Acquire the per-session lock embedded in AgentSession.
+        // This prevents concurrent invocations on the same session AND prevents
+        // AgentSessionCleanupService from racing on status/history writes.
+        await session.AcquireAsync(ct);
         try
         {
+            // If the session was expired by the cleanup service between the caller's
+            // ResumeSessionAsync check and this lock acquisition, return a clean error.
+            if (session.Status is AgentSessionStatus.Expired or AgentSessionStatus.Closed)
+            {
+                return new AgentInvokeResult(
+                    session.SessionId, session.TurnCount, string.Empty, [],
+                    0, "session_expired", null);
+            }
+
             return await InvokeCoreAsync(session, message, ct);
         }
         finally
         {
-            sessionLock.Release();
-            if (session.Status is AgentSessionStatus.Closed or AgentSessionStatus.Expired)
-                _sessionLocks.TryRemove(session.SessionId, out _);
+            session.Release();
         }
     }
 
@@ -201,13 +238,23 @@ public sealed class AgentSessionService
         var session = await _store.GetAsync(sessionId, ct);
         if (session is null) return false;
 
-        var principalId = GetPrincipalId(caller);
-        if (!string.Equals(session.PrincipalId, principalId, StringComparison.Ordinal))
+        var principalId = RequirePrincipalId(caller);
+        if (principalId is null ||
+            !string.Equals(session.PrincipalId, principalId, StringComparison.Ordinal))
             return false;
 
-        session.SetStatus(AgentSessionStatus.Closed);
-        await _store.SaveAsync(session, ct);
-        _sessionLocks.TryRemove(sessionId, out _);
+        await session.AcquireAsync(ct);
+        try
+        {
+            session.SetStatus(AgentSessionStatus.Closed);
+            await _store.SaveAsync(session, ct);
+            await _store.DeleteAsync(sessionId, ct);
+        }
+        finally
+        {
+            session.Release();
+        }
+
         _logger.LogDebug("Agent session {SessionId} closed explicitly.", sessionId[..8]);
         return true;
     }
@@ -223,14 +270,21 @@ public sealed class AgentSessionService
     private async Task<AgentInvokeResult> InvokeCoreAsync(
         AgentSession session, string message, CancellationToken ct)
     {
+        var opts = _options.Value;
+        var maxHistoryTurns = opts.AgentSession.MaxHistoryTurns;
+
         // Build a filtered catalog containing only the session's allowed tools.
         var filteredTools = _toolCatalog.All
             .Where(t => t.AvailableInMcp && session.EffectiveToolNames.Contains(t.Name))
             .ToList();
         var filteredCatalog = new ChatToolCatalog(filteredTools);
 
+        // Create a DI scope so we resolve IChatProvider correctly (scoped lifetime).
+        using var scope = _scopeFactory.CreateScope();
+        var providers = scope.ServiceProvider.GetServices<IChatProvider>().ToList();
+
         var agent = new MemoryChatAgent(
-            _chatProviders,
+            providers,
             _memories,
             _pages,
             _options,
@@ -238,10 +292,13 @@ public sealed class AgentSessionService
             toolCatalog: filteredCatalog,
             intentInterceptor: _intentInterceptor);
 
+        // Snapshot history under the lock (we already hold it).
+        var historyCopy = session.History.Count > 0 ? [.. session.History] : (IReadOnlyList<ChatMessage>?)null;
+
         var chatRequest = new MemoryChatRequest(
             Message: message,
-            Mode: MemoryChatMode.Chat,  // sub-agents use Chat mode (no write proposals)
-            History: session.History.Count > 0 ? [.. session.History] : null,
+            Mode: MemoryChatMode.Chat,
+            History: historyCopy,
             Model: session.ModelOverride,
             Provider: session.ProviderOverride,
             SessionId: session.SessionId);
@@ -258,13 +315,14 @@ public sealed class AgentSessionService
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {
-            // Per-turn timeout, not caller cancellation — session stays alive.
+            // Per-turn timeout — session stays alive, no state changed, caller may retry.
             await _store.SaveAsync(session, ct);
             return AgentInvokeResult.Timeout(session.SessionId, session.TurnCount);
         }
 
-        // Update history and turn count.
+        // Update history and turn count (still under the session lock).
         session.AppendMessages(message, response.Reply);
+        session.TrimHistoryToMaxTurns(maxHistoryTurns);
         session.IncrementTurn();
 
         var finishReason = "stop";
@@ -272,14 +330,16 @@ public sealed class AgentSessionService
         {
             session.SetStatus(AgentSessionStatus.Closed);
             finishReason = "max_turns";
+            await _store.DeleteAsync(session.SessionId, ct);
         }
-
-        await _store.SaveAsync(session, ct);
+        else
+        {
+            await _store.SaveAsync(session, ct);
+        }
 
         var contextIds = response.Context
             .Select(c => $"{c.Kind}:{c.Id}")
             .ToList();
-
         var toolCallsMade = response.Context
             .Count(c => string.Equals(c.Origin, ChatContextOrigins.Tool, StringComparison.Ordinal));
 
@@ -300,29 +360,51 @@ public sealed class AgentSessionService
         IReadOnlyList<string>? customTools,
         ClaimsPrincipal caller,
         string securityProfile,
+        MemorySmithOptions opts,
         CancellationToken ct)
     {
-        var mcpOptions = _options.Value.Mcp;
+        var mcpOptions = opts.Mcp;
+        var sessionOptions = opts.AgentSession;
 
-        // 1. All MCP-available tools filtered by server enable/disable config.
+        // Step 1+2: All MCP-available tools filtered by server enable/disable config.
         var enabledSet = _toolCatalog.McpTools
             .Where(t => IsMcpToolEnabled(t, mcpOptions))
             .ToList();
 
-        // 2. Determine caller permissions.
+        // Step 3: Determine caller permissions.
         var canWrite = (await _authService.AuthorizeAsync(
             caller, null, MemorySmithPolicies.CanEditMemorySmith)).Succeeded;
 
-        // 3. Filter by caller's risk-tier permissions.
+        // SensitiveRead tools are currently absent from the master catalog.
+        // AllowSensitiveRead=true will enable them for sub-agents if/when they are added.
+        // A warning is logged when any SensitiveRead tool is excluded so developers know
+        // the behavior without having to read this comment.
+        var canReadSensitive = sessionOptions.AllowSensitiveRead &&
+            (await _authService.AuthorizeAsync(
+                caller, null, MemorySmithPolicies.CanReadSourceBundle)).Succeeded;
+
+        var sensitiveReadExcluded = enabledSet
+            .Where(t => t.Risk == ChatToolRisk.SensitiveRead && !canReadSensitive)
+            .Select(t => t.Name)
+            .ToList();
+        if (sensitiveReadExcluded.Count > 0)
+        {
+            _logger.LogWarning(
+                "SensitiveRead tools {ToolNames} excluded from sub-agent scope because " +
+                "AgentSession:AllowSensitiveRead is false or caller lacks CanReadSourceBundle.",
+                string.Join(", ", sensitiveReadExcluded));
+        }
+
+        // Filter by risk tier vs. caller's permissions.
         var callerSet = enabledSet.Where(t => t.Risk switch
         {
             ChatToolRisk.ReadOnly => true,
-            ChatToolRisk.SensitiveRead => false, // not in current master catalog
+            ChatToolRisk.SensitiveRead => canReadSensitive,
             ChatToolRisk.Write => canWrite,
             _ => false
         }).ToList();
 
-        // 4. Apply requested scope.
+        // Step 4: Apply requested scope.
         IEnumerable<ChatToolDescriptor> scopedSet = requestedScope switch
         {
             "read_only" or "standard" => callerSet.Where(t => t.Risk == ChatToolRisk.ReadOnly),
@@ -332,7 +414,7 @@ public sealed class AgentSessionService
             _ => callerSet.Where(t => t.Risk == ChatToolRisk.ReadOnly)
         };
 
-        // 5. Apply SecurityProfile ceiling.
+        // Step 5: Apply SecurityProfile ceiling.
         scopedSet = securityProfile switch
         {
             MemorySmithSecurityProfiles.RemoteHardened =>
@@ -342,7 +424,9 @@ public sealed class AgentSessionService
             _ => scopedSet // LocalDev: no ceiling
         };
 
-        // 6. Self-exclusion — sub-agents can never spawn or manage sessions.
+        // Step 6: Self-exclusion — sub-agents can never spawn or manage sessions.
+        // TODO (Phase 3): When AvailableInAgent=true is enabled, this unconditional exclusion
+        // is the primary anti-recursion guard alongside NestingDepth enforcement.
         var selfExcluded = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             "memorysmith_agent_invoke",
@@ -367,22 +451,40 @@ public sealed class AgentSessionService
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private static string GetPrincipalId(ClaimsPrincipal caller) =>
+    /// <summary>
+    /// Returns the caller's principal identifier, or null if the caller is unauthenticated
+    /// or has no NameIdentifier claim. A null return causes session creation to be rejected —
+    /// anonymous callers cannot create sessions to prevent namespace collision.
+    /// </summary>
+    private static string? RequirePrincipalId(ClaimsPrincipal caller) =>
         caller.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier)
-        ?? caller.Identity?.Name
-        ?? "anonymous";
+        ?? caller.Identity?.Name;
 
-    private static int GetMaxConcurrentSessions(string profile) => profile switch
+    private static int GetMaxConcurrentSessions(string profile, MemorySmithOptions opts)
     {
-        MemorySmithSecurityProfiles.RemoteHardened => 1,
-        MemorySmithSecurityProfiles.SecureLocal => 3,
-        _ => 10 // LocalDev
-    };
+        // Operator config override takes precedence over profile defaults.
+        if (opts.Mcp.MaxConcurrentSessionsPerUser is { } configured)
+            return Math.Max(1, configured);
 
-    private static int GetIdleTimeoutMinutes(string profile) => profile switch
+        return profile switch
+        {
+            MemorySmithSecurityProfiles.RemoteHardened => 1,
+            MemorySmithSecurityProfiles.SecureLocal => 3,
+            _ => 10 // LocalDev
+        };
+    }
+
+    private static int GetIdleTimeoutMinutes(string profile, MemorySmithOptions opts)
     {
-        MemorySmithSecurityProfiles.RemoteHardened => 5,
-        MemorySmithSecurityProfiles.SecureLocal => 10,
-        _ => 30 // LocalDev
-    };
+        // Operator config override takes precedence over profile defaults.
+        if (opts.AgentSession.IdleTimeoutMinutes is { } configured)
+            return Math.Max(1, configured);
+
+        return profile switch
+        {
+            MemorySmithSecurityProfiles.RemoteHardened => 5,
+            MemorySmithSecurityProfiles.SecureLocal => 10,
+            _ => 30 // LocalDev
+        };
+    }
 }

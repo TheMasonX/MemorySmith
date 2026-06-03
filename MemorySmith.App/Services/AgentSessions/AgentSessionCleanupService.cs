@@ -1,28 +1,25 @@
 namespace MemorySmith.App.Services.AgentSessions;
 
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Options;
 
 /// <summary>
-/// Background service that periodically expires idle agent sessions and tombstones them.
-/// Runs every 5 minutes. Sessions that have been idle longer than their configured
-/// <see cref="AgentSession.IdleTimeoutMinutes"/> are marked <see cref="AgentSessionStatus.Expired"/>.
+/// Background service that periodically expires idle agent sessions.
+/// Runs every 5 minutes. Sessions whose idle time exceeds their configured
+/// <see cref="AgentSession.IdleTimeoutMinutes"/> are marked <see cref="AgentSessionStatus.Expired"/>
+/// under the session lock to prevent data races with <see cref="AgentSessionService"/>.
 /// </summary>
 public sealed class AgentSessionCleanupService : BackgroundService
 {
     private static readonly TimeSpan CheckInterval = TimeSpan.FromMinutes(5);
 
     private readonly IAgentSessionStore _store;
-    private readonly IOptionsMonitor<MemorySmithOptions> _options;
     private readonly ILogger<AgentSessionCleanupService> _logger;
 
     public AgentSessionCleanupService(
         IAgentSessionStore store,
-        IOptionsMonitor<MemorySmithOptions> options,
         ILogger<AgentSessionCleanupService> logger)
     {
         _store = store;
-        _options = options;
         _logger = logger;
     }
 
@@ -48,24 +45,47 @@ public sealed class AgentSessionCleanupService : BackgroundService
 
     private async Task RunCleanupAsync(CancellationToken ct)
     {
-        // Use a fixed idle timeout derived from the most permissive profile
-        // (LocalDev = 30 min). Sessions store their own IdleTimeoutMinutes.
-        var globalExpiryBefore = DateTimeOffset.UtcNow.AddMinutes(-30);
-        var expired = await _store.GetIdleOrExpiredAsync(globalExpiryBefore, ct);
+        var candidates = await _store.GetActiveAndIdleAsync(ct);
+        var expired = 0;
 
-        var count = 0;
-        foreach (var session in expired)
+        foreach (var session in candidates)
         {
-            var idleTimeout = DateTimeOffset.UtcNow.AddMinutes(-session.IdleTimeoutMinutes);
-            if (session.LastAccessedAt >= idleTimeout)
+            // Evaluate per-session idle timeout rather than a single global cutoff.
+            var idleDeadline = DateTimeOffset.UtcNow.AddMinutes(-session.IdleTimeoutMinutes);
+
+            // Quick check without lock — if clearly not expired, skip immediately.
+            if (session.LastAccessedAt >= idleDeadline)
                 continue;
 
-            session.SetStatus(AgentSessionStatus.Expired);
-            await _store.SaveAsync(session, ct);
-            count++;
+            // Acquire session lock before mutating. This prevents races with
+            // AgentSessionService.InvokeAsync which also holds this lock while updating
+            // LastAccessedAt, TurnCount, and Status.
+            await session.AcquireAsync(ct);
+            try
+            {
+                // Re-check after acquiring the lock in case a concurrent InvokeAsync
+                // updated LastAccessedAt between the optimistic check above and lock acquisition.
+                if (session.LastAccessedAt >= idleDeadline)
+                    continue;
+
+                if (session.Status is AgentSessionStatus.Active or AgentSessionStatus.Idle)
+                {
+                    session.SetStatus(AgentSessionStatus.Expired);
+                    await _store.SaveAsync(session, ct);
+                    // Hard-delete after setting Expired so the store does not grow unboundedly.
+                    // A caller who holds a stale session_id will receive "session_expired" from
+                    // AgentSessionService.ResumeSessionAsync (GetAsync returns null → NotFound).
+                    await _store.DeleteAsync(session.SessionId, ct);
+                    expired++;
+                }
+            }
+            finally
+            {
+                session.Release();
+            }
         }
 
-        if (count > 0)
-            _logger.LogDebug("Expired {Count} idle agent session(s).", count);
+        if (expired > 0)
+            _logger.LogDebug("Expired and deleted {Count} idle agent session(s).", expired);
     }
 }

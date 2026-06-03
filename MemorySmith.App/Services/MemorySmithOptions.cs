@@ -435,6 +435,8 @@ public class AgentSessionOptions
     /// <summary>
     /// When true, sessions are persisted to SQLite and survive server restarts.
     /// Default false (in-memory, ephemeral). Phase 2 feature.
+    /// AgentSessionService throws InvalidOperationException at startup if this is true
+    /// and no SqliteAgentSessionStore is registered.
     /// </summary>
     public bool PersistSessions { get; set; }
 
@@ -448,8 +450,25 @@ public class AgentSessionOptions
     /// <summary>
     /// Maximum nesting depth for internal agent delegation (Phase 3).
     /// Always 0 in Phase 1-2 since AvailableInAgent is false.
+    /// TODO (Phase 3): AgentSessionService.CreateSessionAsync enforces this ceiling.
     /// </summary>
     public int MaxNestingDepth { get; set; } = 1;
+
+    /// <summary>
+    /// When true, sub-agent sessions may include SensitiveRead tools (e.g. memorysmith_source_bundle)
+    /// in their effective scope if the caller also has CanReadSourceBundle permission.
+    /// Default false — SensitiveRead tools are excluded from all sub-agent scopes regardless of
+    /// caller permission unless this flag is explicitly set. A Warning is logged when tools are
+    /// excluded due to this setting so the behavior is visible in logs.
+    /// </summary>
+    public bool AllowSensitiveRead { get; set; }
+
+    /// <summary>
+    /// Maximum number of conversation turns retained in AgentSession.History.
+    /// Older turns are pruned when the limit is exceeded to prevent unbounded memory growth.
+    /// Default 200 (400 ChatMessage objects). Reduce for memory-constrained deployments.
+    /// </summary>
+    public int MaxHistoryTurns { get; set; } = 200;
 }
 
 public class MaintenanceAgentOptions
