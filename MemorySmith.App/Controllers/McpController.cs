@@ -686,7 +686,7 @@ public class McpController : ControllerBase
             ["max_turns"] = new JsonObject { ["type"] = "integer", ["minimum"] = 1, ["maximum"] = 50, ["default"] = 10 },
             ["timeout_seconds"] = new JsonObject { ["type"] = "integer", ["minimum"] = 10, ["maximum"] = 600, ["default"] = 120 },
             ["model"] = new JsonObject { ["type"] = "string", ["description"] = "Optional Ollama model tag override (e.g. 'qwen3.5:4b')." },
-            ["provider"] = new JsonObject { ["type"] = "string", ["description"] = "Optional provider override (e.g. 'Ollama', 'GitHubCopilot')." },
+            ["provider"] = new JsonObject { ["type"] = "string", ["description"] = "Optional provider override. Currently only 'Ollama' is supported; other values will be rejected. Additional providers can be enabled by registering them as IChatProvider in the app's DI container." },
             ["system_prompt_addendum"] = new JsonObject
             {
                 ["type"] = "string",

@@ -1,7 +1,7 @@
 # Phase 3 — Internal Delegation (Deferred)
 
 **Status:** NOT IMPLEMENTED in this PR. Phase 3 is explicitly deferred to a separate PR
-aligned with the Sub-Agent Architecture design work (Design doc: `[[FILE_4fnzo8t5]]`, 2026-05-31).
+aligned with the Sub-Agent Architecture design work (see [`docs/Design_AgentAsMCPTool.md`](Design_AgentAsMCPTool.md), 2026-05-31).
 
 ## Why Deferred
 

@@ -28,6 +28,31 @@ public sealed record ChatToolDescriptor(
     Func<JsonObject, ChatToolExecutionContext, CancellationToken, Task<ChatToolExecutionResult>> Execute,
     bool EnabledByDefaultInMcp = true);
 
+/// <param name="Memories">Memory application service.</param>
+/// <param name="Pages">Page service.</param>
+/// <param name="Transport">Transport identifier ("mcp", "chat", etc.).</param>
+/// <param name="User">HTTP caller principal (MCP path).</param>
+/// <param name="CurrentUser">DI current-user context (chat path).</param>
+/// <param name="Auth">Auth options for role/access checks.</param>
+/// <param name="DefaultPageMinimumRole">Default page visibility when none is set.</param>
+/// <param name="AgentWritesEnabled">Whether agent write tools are enabled for this context.</param>
+/// <param name="AgentWriteAutoAccept">Whether agent writes are auto-accepted without user approval.</param>
+/// <param name="CodeSearch">Optional code search service (null if code search is not configured).</param>
+/// <param name="NestingDepth">
+/// Nesting depth in the agent delegation chain.
+/// 0 for all direct MCP callers; 1+ for internal sub-agent delegation (Phase 3).
+/// Used to enforce MaxNestingDepth and to exclude memorysmith_agent_invoke from sub-agent catalogs.
+/// </param>
+/// <param name="ParentSessionId">
+/// Session ID of the parent agent session that spawned this sub-agent call (Phase 3).
+/// Null for all external MCP callers in Phase 1-2.
+/// </param>
+/// <param name="InheritedGpuSlot">
+/// GPU slot handle held by the calling Athena session (Phase 3 only).
+/// AgentInvokeTool.Execute disposes this before acquiring the sub-agent slot to prevent deadlock.
+/// Always null in Phase 1-2 since AvailableInAgent is false.
+/// TODO (Phase 3): Populate this in MemoryChatAgent's agent-mode tool loop before calling Execute.
+/// </param>
 public sealed record ChatToolExecutionContext(
     MemoryApplicationService Memories,
     IPageService Pages,
@@ -39,23 +64,8 @@ public sealed record ChatToolExecutionContext(
     bool AgentWritesEnabled = false,
     bool AgentWriteAutoAccept = false,
     CodeSearchService? CodeSearch = null,
-    /// <summary>
-    /// Nesting depth in the agent delegation chain.
-    /// 0 for all direct MCP callers. 1+ for internal sub-agent delegation (Phase 3).
-    /// Used to enforce MaxNestingDepth and to exclude memorysmith_agent_invoke from sub-agent catalogs.
-    /// </summary>
     int NestingDepth = 0,
-    /// <summary>
-    /// Session ID of the parent agent session that spawned this sub-agent call (Phase 3).
-    /// Null for all external MCP callers in Phase 1-2.
-    /// </summary>
     string? ParentSessionId = null,
-    /// <summary>
-    /// GPU slot handle held by the calling Athena session (Phase 3 only).
-    /// AgentInvokeTool.Execute disposes this before acquiring the sub-agent slot to prevent deadlock.
-    /// Always null in Phase 1-2 since AvailableInAgent is false.
-    /// TODO (Phase 3): Populate this in MemoryChatAgent's agent-mode tool loop before calling Execute.
-    /// </summary>
     IAsyncDisposable? InheritedGpuSlot = null)
 {
     public bool CanViewPage(string minimumRole) =>
@@ -106,9 +116,15 @@ public sealed class ChatToolCatalog
 
     public IReadOnlyList<ChatToolDescriptor> All => _tools.Values.ToList();
 
-    /// <summary>Tools available for agent-mode tool loops (AvailableInMcp = true).</summary>
+    /// <summary>
+    /// Tools available for agent-mode tool loops. Uses <c>AvailableInChat = true</c> as the filter,
+    /// which corresponds to read-only retrieval tools and excludes MCP-only page mutation tools
+    /// such as <c>memorysmith_page_save</c> and <c>memorysmith_page_delete</c>.
+    /// Phase 3 will introduce an explicit <c>AvailableInAgent</c> flag on <see cref="ChatToolDescriptor"/>
+    /// to allow finer-grained control.
+    /// </summary>
     public IReadOnlyList<ChatToolDescriptor> AgentTools =>
-        _tools.Values.Where(tool => tool.AvailableInMcp).ToList();
+        _tools.Values.Where(tool => tool.AvailableInChat).ToList();
 
     public IReadOnlyList<ChatToolDescriptor> ChatTools =>
         _tools.Values.Where(tool => tool.AvailableInChat).ToList();

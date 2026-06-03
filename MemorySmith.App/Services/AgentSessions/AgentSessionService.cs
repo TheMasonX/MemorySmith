@@ -73,8 +73,13 @@ public sealed class AgentSessionService
         WriteIndented = false
     };
 
+    // Only include providers that are actually registered as IChatProvider in Program.cs.
+    // GitHubCopilotChatProvider is defined in the codebase but is not registered by default;
+    // adding it here would allow the validation to pass but cause a runtime throw when
+    // MemoryChatAgent calls ResolveProvider("GitHubCopilot") and finds no matching registration.
+    // Add "GitHubCopilot" back once its DI registration is confirmed in Program.cs.
     private static readonly HashSet<string> KnownProviders =
-        new(StringComparer.OrdinalIgnoreCase) { "Ollama", "GitHubCopilot" };
+        new(StringComparer.OrdinalIgnoreCase) { "Ollama" };
 
     private readonly IAgentSessionStore _store;
     private readonly IGpuSlotScheduler _gpuSlots;
@@ -453,11 +458,14 @@ public sealed class AgentSessionService
                 Execution = new TurnExecution
                 {
                     IterationsUsed = 1,
-                    // ChatUsageSummary uses InputTokens/OutputTokens/ContextTokens
-                    // TurnExecution stores them as PromptTokens/CompletionTokens/TotalTokens
+                    // ChatUsageSummary uses InputTokens/OutputTokens; ContextTokens is the running
+                    // context-window size (not total tokens used this turn).
+                    // TurnExecution.TotalTokens = prompt + completion tokens for this turn.
                     PromptTokens = response.Usage?.InputTokens,
                     CompletionTokens = response.Usage?.OutputTokens,
-                    TotalTokens = response.Usage?.ContextTokens,
+                    TotalTokens = response.Usage is null
+                        ? (int?)null
+                        : response.Usage.InputTokens + response.Usage.OutputTokens,
                 },
                 Response = new TurnResponse
                 {
