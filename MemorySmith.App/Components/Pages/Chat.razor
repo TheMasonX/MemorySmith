@@ -1,29 +1,21 @@
 @page "/chat"
 @rendermode InteractiveServer
 @implements IAsyncDisposable
-@using System.Text.RegularExpressions
 @using System.Text.Json
 @using System.Text.Json.Nodes
 @using MemorySmith.Core.Models
-@using MemorySmith.App.Services.Training
 @using Microsoft.Extensions.Options
 @inject IChatAgent ChatAgent
 @inject ChatToolCatalog ToolCatalog
-@inject ChatModelProfileService ModelProfiles
 @inject MemoryApplicationService Memories
 @inject IPageService Pages
-@inject ITaskService Tasks
 @inject IEnumerable<IChatProvider> ChatProviders
 @inject IOptionsMonitor<MemorySmithOptions> Options
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
 @inject ICurrentUserContext CurrentUser
-@inject IDialogService Dialogs
-@inject ILogger<Chat> Logger
-@inject MaintenanceProposalWorkflow ProposalWorkflow
-@inject IChatFeedbackStore FeedbackStore
 
-<PageTitle>Chat - MemorySmith</PageTitle>
+<PageTitle>Chat</PageTitle>
 <NavigationLock ConfirmExternalNavigation="@HasPendingDraft" OnBeforeInternalNavigation="ConfirmInternalNavigation" />
 
 <div class="@ChatWorkbenchClass">
@@ -35,44 +27,31 @@
             </MudButtonGroup>
 
             <div class="chat-model-controls">
-                <div class="chat-model-profile-with-info">
-                    <MudSelect T="string" Value="_selectedModelProfileId" ValueChanged="OnModelProfileChanged" Label="Model Profile" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="chat-model-profile-select" Disabled="@(!CanSelectModelProfile)">
-                        @foreach (var profile in _modelProfiles)
-                        {
-                            <MudSelectItem T="string" Value="@profile.Id">
-                                <span class="chat-model-profile-option">
-                                    <span class="chat-model-profile-option-label">@profile.Name</span>
-                                    <span class="chat-model-profile-option-info-wrap" tabindex="0" aria-label="Details for @profile.Name">
-                                        <span class="admin-help-icon chat-model-profile-option-info">
-                                            <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" />
-                                        </span>
-                                        <span class="chat-model-profile-tooltip-panel" role="tooltip">
-                                            <strong>@profile.Name</strong>
-                                            <span><strong>Provider:</strong> @profile.Provider</span>
-                                            <span><strong>Model:</strong> @profile.Model</span>
-                                            <span><strong>Context Window:</strong> @FormatProfileContextWindow(profile)</span>
-                                            <span><strong>Allowed Roles:</strong> @FormatProfileRoles(profile)</span>
-                                            <span><strong>Default Assignments:</strong> @FormatProfileDefaults(profile)</span>
-                                            @if (!string.IsNullOrWhiteSpace(profile.Description))
-                                            {
-                                                <span><strong>Description:</strong> @profile.Description</span>
-                                            }
-                                        </span>
-                                    </span>
-                                </span>
-                            </MudSelectItem>
-                        }
-                    </MudSelect>
-                </div>
+                <MudSelect T="string" Value="_selectedProvider" ValueChanged="OnProviderChanged" Label="Provider" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="chat-provider-select">
+                    @foreach (var provider in _availableProviders)
+                    {
+                        <MudSelectItem T="string" Value="@provider">@provider</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudSelect T="string" Value="_selectedModel" ValueChanged="OnModelChanged" Label="Model" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="chat-model-select">
+                    @if (_models.Count == 0 && !string.IsNullOrWhiteSpace(_selectedModel))
+                    {
+                        <MudSelectItem T="string" Value="@_selectedModel">@_selectedModel</MudSelectItem>
+                    }
+                    @foreach (var model in _models)
+                    {
+                        <MudSelectItem T="string" Value="@model.Name">@FormatModelLabel(model)</MudSelectItem>
+                    }
+                </MudSelect>
                 <MudSelect T="string" Value="_mermaidThemeMode" ValueChanged="SetMermaidThemeModeAsync" Label="Diagram" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="chat-mermaid-theme-select">
                     <MudSelectItem T="string" Value="@MermaidThemeAuto">Auto</MudSelectItem>
                     <MudSelectItem T="string" Value="@MermaidThemeLight">Light</MudSelectItem>
                     <MudSelectItem T="string" Value="@MermaidThemeDark">Dark</MudSelectItem>
                 </MudSelect>
-                <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Small" Color="Color.Primary" Disabled="@_isLoadingModels" OnClick="RefreshModelsAsync" aria-label="Refresh models" title="Refresh models" />
+                <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Small" Color="Color.Primary" Disabled="@_isLoadingModels" OnClick="RefreshModelsAsync" aria-label="Refresh models" />
             </div>
 
-            <MudIconButton Icon="@(_sidebarOpen ? Icons.Material.Filled.ChevronRight : Icons.Material.Filled.Menu)" Size="Size.Small" OnClick="ToggleSidebar" aria-label="Toggle sidebar" title="Toggle sidebar" />
+            <MudIconButton Icon="@(_sidebarOpen ? Icons.Material.Filled.ChevronRight : Icons.Material.Filled.Menu)" Size="Size.Small" OnClick="ToggleSidebar" aria-label="Toggle sidebar" />
         </div>
 
         <div class="chat-status-strip">
@@ -80,10 +59,6 @@
             @if (!string.IsNullOrWhiteSpace(_modelError))
             {
                 <span class="chat-status-error">@_modelError</span>
-            }
-            @if (!string.IsNullOrWhiteSpace(ModelSetupMessage))
-            {
-                <span class="chat-status-error">@ModelSetupMessage</span>
             }
             @if (_attachments.Count > 0)
             {
@@ -117,31 +92,8 @@
                                 {
                                     <span class="chat-message-model">@FormatTurnModel(turn)</span>
                                 }
-                                <span>@turn.CreatedUtc.ToLocalTime().ToString("HH:mm")@if (turn.DurationMilliseconds is not null) { <span> · @FormatDuration(TimeSpan.FromMilliseconds(turn.DurationMilliseconds.Value))</span> }@if (TryFormatTurnThroughput(turn) is { } throughput) { <span> · @throughput</span> }</span>
+                                <span>@turn.CreatedUtc.ToLocalTime().ToString("HH:mm")@if (turn.DurationMilliseconds is not null) { <span> · @FormatDuration(TimeSpan.FromMilliseconds(turn.DurationMilliseconds.Value))</span> }</span>
                             </span>
-                            @if (FeedbackEnabled && string.Equals(turn.Role, "assistant", StringComparison.OrdinalIgnoreCase))
-                            {
-                                <span class="chat-message-feedback">
-                                    <MudTooltip Text="Helpful response">
-                                        <MudIconButton Icon="@Icons.Material.Filled.ThumbUp"
-                                                       Size="Size.Small"
-                                                       Color="@FeedbackButtonColor(turn, 1)"
-                                                       Disabled="@_isSending"
-                                                       OnClick="@(() => SetFeedbackAsync(turn, 1))"
-                                                       aria-label="Thumbs up"
-                                                       title="Thumbs up" />
-                                    </MudTooltip>
-                                    <MudTooltip Text="Needs improvement">
-                                        <MudIconButton Icon="@Icons.Material.Filled.ThumbDown"
-                                                       Size="Size.Small"
-                                                       Color="@FeedbackButtonColor(turn, -1)"
-                                                       Disabled="@_isSending"
-                                                       OnClick="@(() => SetFeedbackAsync(turn, -1))"
-                                                       aria-label="Thumbs down"
-                                                       title="Thumbs down" />
-                                    </MudTooltip>
-                                </span>
-                            }
                         </div>
                         @if (!string.IsNullOrWhiteSpace(turn.Thinking))
                         {
@@ -168,50 +120,7 @@
                                 </div>
                             </details>
                         }
-                        <div class="chat-message-body chat-message-markdown">
-                            @if (TryParseQuestionCard(turn.Content) is { } questionCard)
-                            {
-                                <div class="chat-question-card">
-                                    <div class="chat-question-card-title">@questionCard.Question</div>
-                                    @if (!string.IsNullOrWhiteSpace(questionCard.DetailsMarkdown))
-                                    {
-                                        <div class="chat-question-card-details chat-message-markdown">@RenderQuestionCardDetails(questionCard)</div>
-                                    }
-                                    <div class="chat-question-card-options">
-                                        @foreach (var option in questionCard.Options)
-                                        {
-                                            <MudButton Variant="Variant.Outlined"
-                                                       Color="Color.Primary"
-                                                       Size="Size.Small"
-                                                       Disabled="@_isSending"
-                                                       OnClick="@(() => SendQuestionOptionAsync(turn, questionCard, option))">@option</MudButton>
-                                        }
-                                    </div>
-                                    @if (questionCard.AllowOther)
-                                    {
-                                        <div class="chat-question-card-other">
-                                            <MudTextField T="string"
-                                                          Value="@turn.QuestionOtherDraft"
-                                                          ValueChanged="@((string value) => OnQuestionOtherDraftChanged(turn, value))"
-                                                          Label="@questionCard.OtherLabel"
-                                                          Placeholder="@questionCard.OtherPlaceholder"
-                                                          Variant="Variant.Outlined"
-                                                          Margin="Margin.Dense"
-                                                          Disabled="@_isSending" />
-                                            <MudButton Variant="Variant.Filled"
-                                                       Color="Color.Primary"
-                                                       Size="Size.Small"
-                                                       Disabled="@(_isSending || string.IsNullOrWhiteSpace(turn.QuestionOtherDraft))"
-                                                       OnClick="@(() => SendQuestionOtherAsync(turn, questionCard))">Send other</MudButton>
-                                        </div>
-                                    }
-                                </div>
-                            }
-                            else
-                            {
-                                @RenderTurnContent(turn)
-                            }
-                        </div>
+                        <div class="chat-message-body chat-message-markdown">@((MarkupString)ChatMarkdownRenderer.RenderHtml(turn.Content))</div>
 
                         @if (turn.Attachments.Count > 0)
                         {
@@ -223,20 +132,14 @@
                             </div>
                         }
 
-                        @if (turn.Context.Count > 0 || turn.WrittenMemories.Count > 0 || turn.WrittenPages.Count > 0 || turn.SubmittedProposalIds.Count > 0)
+                        @if (turn.Context.Count > 0 || turn.WrittenMemories.Count > 0 || turn.WrittenPages.Count > 0)
                         {
                             <details class="chat-context-drawer">
                                 <summary>References (@TurnReferenceCount(turn))</summary>
                                 <div class="chat-context-list">
                                     @foreach (var item in turn.Context)
                                     {
-                                        <span class="chat-context-reference">
-                                            <a class="@ContextResourceClass(item)" href="@ContextHref(item)" target="_blank" rel="noopener noreferrer" title="@item.Snippet">@item.Kind:@item.Title</a>
-                                            @foreach (var diagnostic in WarningDiagnostics(item).Take(2))
-                                            {
-                                                <span class="wiki-diagnostic-chip @DiagnosticClass(diagnostic)" title="@diagnostic.Message">@diagnostic.Code</span>
-                                            }
-                                        </span>
+                                        <a class="@ContextResourceClass(item)" href="@ContextHref(item)" target="_blank" rel="noopener noreferrer" title="@item.Snippet">@item.Kind:@item.Title</a>
                                     }
                                     @foreach (var id in turn.WrittenMemories)
                                     {
@@ -245,10 +148,6 @@
                                     @foreach (var slug in turn.WrittenPages)
                                     {
                                         <a class="wiki-status is-core chat-resource" href="@PageHref(slug)" target="_blank" rel="noopener noreferrer">page:@slug</a>
-                                    }
-                                    @foreach (var proposalId in turn.SubmittedProposalIds)
-                                    {
-                                        <a class="wiki-status is-working chat-resource" href="/proposals" target="_blank" rel="noopener noreferrer">proposal:@proposalId</a>
                                     }
                                 </div>
                             </details>
@@ -259,13 +158,7 @@
         </div>
 
         <div class="chat-attachment-row">
-            <MudTooltip Text="Attach files">
-                <label class="chat-attachment-button" for="chat-file-input" title="Attach files">
-                    <MudIcon Icon="@Icons.Material.Filled.AttachFile" Size="Size.Small" />
-                    <span>Attach</span>
-                    <InputFile id="chat-file-input" OnChange="OnFilesSelectedAsync" multiple class="chat-file-input" aria-label="Attach files" />
-                </label>
-            </MudTooltip>
+            <InputFile id="chat-file-input" OnChange="OnFilesSelectedAsync" multiple class="chat-file-input" />
             @foreach (var attachment in _attachments)
             {
                 <span class="wiki-tag chat-attachment-chip" title="@AttachmentTitle(attachment)">
@@ -287,16 +180,16 @@
                       value="@_draft"
                       @oninput="OnDraftInput"></textarea>
             <div class="chat-composer-side">
-                <div class="chat-usage-meter" title="@FormatUsageTitle(ActiveUsage, ActiveUsageDurationMilliseconds, ActiveUsageProviderName)" aria-live="polite">@FormatUsageMeter(ActiveUsage, ActiveUsageDurationMilliseconds, ActiveUsageProviderName)</div>
+                <div class="chat-usage-meter" title="@FormatUsageTitle(ActiveUsage)" aria-live="polite">@FormatUsageMeter(ActiveUsage)</div>
                 <div class="chat-composer-actions">
                     <MudCheckBox T="bool" Value="_sendOnEnter" ValueChanged="SetSendOnEnterAsync" Label="Send on Enter" Size="Size.Small" />
                     <MudTooltip Text="Finish current step">
-                        <MudIconButton Icon="@Icons.Material.Filled.Pause" Size="Size.Small" Color="Color.Warning" Class="chat-composer-icon" Disabled="@(!_isSending || _activeRunControl?.StopAfterCurrentStepRequested == true)" OnClick="StopAfterCurrentStepAsync" aria-label="Finish current step" title="Finish current step" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Pause" Size="Size.Small" Color="Color.Warning" Class="chat-composer-icon" Disabled="@(!_isSending || _activeRunControl?.StopAfterCurrentStepRequested == true)" OnClick="StopAfterCurrentStepAsync" aria-label="Finish current step" />
                     </MudTooltip>
                     <MudTooltip Text="Stop generation">
-                        <MudIconButton Icon="@Icons.Material.Filled.Stop" Size="Size.Small" Color="Color.Error" Class="chat-composer-icon" Disabled="@(!_isSending)" OnClick="StopGeneratingAsync" aria-label="Stop generation" title="Stop generation" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Stop" Size="Size.Small" Color="Color.Error" Class="chat-composer-icon" Disabled="@(!_isSending)" OnClick="StopGeneratingAsync" aria-label="Stop generation" />
                     </MudTooltip>
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Send" Disabled="@(!CanSendChat)" OnClick="SendAsync">Send</MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Send" Disabled="@_isSending" OnClick="SendAsync">Send</MudButton>
                 </div>
             </div>
         </div>
@@ -310,7 +203,7 @@
                     <MudButton Variant="@SidebarTabVariant(ChatSidebarTab.History)" Color="@SidebarTabColor(ChatSidebarTab.History)" Class="@SidebarTabClass(ChatSidebarTab.History)" OnClick="@(() => ShowSidebarTab(ChatSidebarTab.History))">History</MudButton>
                     <MudButton Variant="@SidebarTabVariant(ChatSidebarTab.Trace)" Color="@SidebarTabColor(ChatSidebarTab.Trace)" Class="@SidebarTabClass(ChatSidebarTab.Trace)" OnClick="@(() => ShowSidebarTab(ChatSidebarTab.Trace))">Trace</MudButton>
                 </MudButtonGroup>
-                <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" Color="Color.Default" OnClick="ToggleSidebar" aria-label="Close sidebar" title="Close sidebar" />
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" Color="Color.Default" OnClick="ToggleSidebar" aria-label="Close sidebar" />
             </div>
 
             @if (_sidebarTab == ChatSidebarTab.History)
@@ -318,7 +211,7 @@
                 <section class="chat-history-panel" aria-label="Chat history">
                     <div class="chat-history-header">
                         <MudText Typo="Typo.subtitle2">History</MudText>
-                        <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" Color="Color.Success" OnClick="StartNewChatAsync" aria-label="New chat" title="New chat" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" Color="Color.Success" OnClick="StartNewChatAsync" aria-label="New chat" />
                     </div>
 
                     <div class="chat-history-list">
@@ -329,7 +222,7 @@
                                     <span>@session.Title</span>
                                     <small>@session.UpdatedUtc.ToLocalTime().ToString("M/d HH:mm")</small>
                                 </button>
-                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" Disabled="@_isSending" OnClick="@(() => DeleteSessionAsync(session.Id))" aria-label="Delete chat" title="Delete chat" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" Disabled="@_isSending" OnClick="@(() => DeleteSessionAsync(session.Id))" aria-label="Delete chat" />
                             </div>
                         }
                     </div>
@@ -361,22 +254,12 @@
                             </MudSelect>
                         </div>
 
-                        <div class="chat-trace-filters" aria-label="Trace filters">
-                            <MudTooltip Text="@TraceFilterTooltipText("Reasoning", _traceShowReasoning)">
-                                <MudIconButton Icon="@Icons.Material.Filled.Psychology" Size="Size.Small" Variant="Variant.Outlined" Color="@TraceFilterColor(_traceShowReasoning)" Class="chat-trace-filter-button" OnClick="ToggleTraceReasoning" aria-label="Toggle reasoning filter" title='@TraceFilterTooltipText("Reasoning", _traceShowReasoning)' />
-                            </MudTooltip>
-                            <MudTooltip Text="@TraceFilterTooltipText("Tools", _traceShowTools)">
-                                <MudIconButton Icon="@Icons.Material.Filled.Build" Size="Size.Small" Variant="Variant.Outlined" Color="@TraceFilterColor(_traceShowTools)" Class="chat-trace-filter-button" OnClick="ToggleTraceTools" aria-label="Toggle tools filter" title='@TraceFilterTooltipText("Tools", _traceShowTools)' />
-                            </MudTooltip>
-                            <MudTooltip Text="@TraceFilterTooltipText("Answer", _traceShowAssistant)">
-                                <MudIconButton Icon="@Icons.Material.Filled.QuestionAnswer" Size="Size.Small" Variant="Variant.Outlined" Color="@TraceFilterColor(_traceShowAssistant)" Class="chat-trace-filter-button" OnClick="ToggleTraceAssistant" aria-label="Toggle answer filter" title='@TraceFilterTooltipText("Answer", _traceShowAssistant)' />
-                            </MudTooltip>
-                            <MudTooltip Text="@TraceFilterTooltipText("System", _traceShowSystem)">
-                                <MudIconButton Icon="@Icons.Material.Filled.Settings" Size="Size.Small" Variant="Variant.Outlined" Color="@TraceFilterColor(_traceShowSystem)" Class="chat-trace-filter-button" OnClick="ToggleTraceSystem" aria-label="Toggle system filter" title='@TraceFilterTooltipText("System", _traceShowSystem)' />
-                            </MudTooltip>
-                            <MudTooltip Text="@TraceFilterTooltipText("Errors", _traceErrorsOnly)">
-                                <MudIconButton Icon="@Icons.Material.Filled.Error" Size="Size.Small" Variant="Variant.Outlined" Color="@TraceFilterColor(_traceErrorsOnly, Color.Error)" Class="chat-trace-filter-button" OnClick="ToggleTraceErrors" aria-label="Toggle errors-only filter" title='@TraceFilterTooltipText("Errors", _traceErrorsOnly)' />
-                            </MudTooltip>
+                        <div class="chat-trace-filters">
+                            <MudCheckBox T="bool" Value="_traceShowReasoning" ValueChanged="@(value => _traceShowReasoning = value)" Label="Reasoning" Size="Size.Small" />
+                            <MudCheckBox T="bool" Value="_traceShowTools" ValueChanged="@(value => _traceShowTools = value)" Label="Tools" Size="Size.Small" />
+                            <MudCheckBox T="bool" Value="_traceShowAssistant" ValueChanged="@(value => _traceShowAssistant = value)" Label="Answer" Size="Size.Small" />
+                            <MudCheckBox T="bool" Value="_traceShowSystem" ValueChanged="@(value => _traceShowSystem = value)" Label="System" Size="Size.Small" />
+                            <MudCheckBox T="bool" Value="_traceErrorsOnly" ValueChanged="@(value => _traceErrorsOnly = value)" Label="Errors" Size="Size.Small" />
                         </div>
 
                         <div class="chat-trace-graph" aria-label="Turn graph">
@@ -391,28 +274,16 @@
                             <section class="chat-approval-panel">
                                 <header>
                                     <span>Pending writes</span>
-                                    <button type="button" title="Accept all pending writes in this turn" disabled="@_isApprovingWrites" @onclick="@(() => ApproveAllWritesAsync(selectedTurn.Id))">Accept all</button>
+                                    <button type="button" @onclick="@(() => ApproveAllWritesAsync(selectedTurn.Id))">Approve all</button>
                                 </header>
-                                <div class="chat-approval-comment-row">
-                                    <label for="@($"chat-response-note-{selectedTurn.Id}")">Revision note</label>
-                                    <textarea id="@($"chat-response-note-{selectedTurn.Id}")"
-                                              class="chat-approval-comment-input"
-                                              rows="2"
-                                              placeholder="Required for Respond. Example: keep the change, but add the source page."
-                                              aria-label="Revision note for respond actions"
-                                              value="@selectedTurn.ResponseCommentDraft"
-                                              @oninput="@(args => OnResponseCommentInput(selectedTurn, args))"></textarea>
-                                    <small>Respond keeps the proposal diff and records this note in proposal history. Accept and Reject do not use it.</small>
-                                </div>
                                 @foreach (var proposal in selectedTurn.ProposedMemoryWrites)
                                 {
                                     <div class="chat-approval-item">
                                         <strong>memory:@proposal.Id</strong>
                                         <span>@proposal.Title</span>
                                         <div>
-                                            <button type="button" title="Accept memory write proposal" @onclick="@(() => ApproveMemoryWriteAsync(selectedTurn.Id, proposal.Id))">Accept</button>
-                                            <button type="button" title="Request a revision for this memory write proposal" @onclick="@(() => RespondMemoryWriteAsync(selectedTurn.Id, proposal.Id))">Respond</button>
-                                            <button type="button" title="Reject memory write proposal" @onclick="@(() => RejectMemoryWriteAsync(selectedTurn.Id, proposal.Id))">Reject</button>
+                                            <button type="button" @onclick="@(() => ApproveMemoryWriteAsync(selectedTurn.Id, proposal.Id))">Approve</button>
+                                            <button type="button" @onclick="@(() => RejectMemoryWriteAsync(selectedTurn.Id, proposal.Id))">Reject</button>
                                         </div>
                                     </div>
                                 }
@@ -422,9 +293,8 @@
                                         <strong>page:@proposal.Slug</strong>
                                         <span>@proposal.Title</span>
                                         <div>
-                                            <button type="button" title="Accept page write proposal" @onclick="@(() => ApprovePageWriteAsync(selectedTurn.Id, proposal.Slug))">Accept</button>
-                                            <button type="button" title="Request a revision for this page write proposal" @onclick="@(() => RespondPageWriteAsync(selectedTurn.Id, proposal.Slug))">Respond</button>
-                                            <button type="button" title="Reject page write proposal" @onclick="@(() => RejectPageWriteAsync(selectedTurn.Id, proposal.Slug))">Reject</button>
+                                            <button type="button" @onclick="@(() => ApprovePageWriteAsync(selectedTurn.Id, proposal.Slug))">Approve</button>
+                                            <button type="button" @onclick="@(() => RejectPageWriteAsync(selectedTurn.Id, proposal.Slug))">Reject</button>
                                         </div>
                                     </div>
                                 }
@@ -459,7 +329,6 @@
 
 @code {
     private const string ChatStorageKey = "memorysmith.chat.sessions.v1";
-    private const string ChatDraftStorageKey = "memorysmith.chat.active-draft.v1";
     private const string ChatPreferencesStorageKey = "memorysmith.chat.preferences.v1";
     private const string MermaidThemeAuto = "auto";
     private const string MermaidThemeLight = "light";
@@ -475,16 +344,12 @@
     private const int MaxStoredAttachmentTextCharacters = 6000;
     private const int MaxStoredAttachmentImageCharacters = 12000;
     private const int NarrowChatViewportWidth = 640;
-    private const int MaxTurnRenderCacheEntries = 512;
-    private static readonly TimeSpan StreamRenderInterval = TimeSpan.FromMilliseconds(150);
-    private static readonly TimeSpan DraftPersistDebounce = TimeSpan.FromMilliseconds(800);
     private static readonly JsonSerializerOptions StorageJsonOptions = new(JsonSerializerDefaults.Web)
     {
         PropertyNameCaseInsensitive = true
     };
     private readonly List<ChatSessionState> _sessions = [];
     private readonly List<ChatModelSummary> _models = [];
-    private readonly List<ChatModelProfileView> _modelProfiles = [];
     private readonly List<string> _availableProviders = [];
     private readonly List<ChatAttachment> _attachments = [];
     private DotNetObjectReference<Chat>? _dotNetRef;
@@ -494,14 +359,13 @@
     private MemoryChatMode _mode = MemoryChatMode.Chat;
     private string _activeSessionId = string.Empty;
     private string _draft = string.Empty;
-    private string _selectedModelProfileId = string.Empty;
     private string _selectedProvider = "Ollama";
     private string _selectedModel = string.Empty;
     private string _mermaidThemeMode = MermaidThemeAuto;
     private string _agentStatus = "Ready";
     private string? _preferredActiveSessionId;
     private string? _modelError;
-    private bool _sidebarOpen;
+    private bool _sidebarOpen = true;
     private ChatSidebarTab _sidebarTab = ChatSidebarTab.History;
     private bool _sendOnEnter = true;
     private bool _isSending;
@@ -516,18 +380,15 @@
     private bool _traceShowAssistant = true;
     private bool _traceShowSystem = true;
     private bool _traceErrorsOnly;
-    private bool _isApprovingWrites;
     private bool _isRerunningTool;
     private string? _selectedTraceTurnId;
     private CancellationTokenSource? _responseTimerCts;
     private CancellationTokenSource? _sendCts;
-    private CancellationTokenSource? _draftPersistCts;
     private ChatRunControl? _activeRunControl;
     private DateTimeOffset? _responseStartedUtc;
     private TimeSpan _responseElapsed = TimeSpan.Zero;
     private int _streamedCharacters;
     private ChatUsageSummary? _currentUsage;
-    private readonly Dictionary<string, MarkupString> _turnRenderCache = new(StringComparer.Ordinal);
 
     private ChatSessionState ActiveSession =>
         _sessions.FirstOrDefault(session => session.Id == _activeSessionId) ?? _sessions.First();
@@ -536,13 +397,6 @@
         ? $"chat-workbench is-sidebar-open {(_sidebarTab == ChatSidebarTab.Trace ? "is-trace-open" : "is-history-open")}"
         : "chat-workbench";
     private bool HasPendingDraft => !string.IsNullOrWhiteSpace(_draft) || _attachments.Count > 0;
-    private ChatModelProfileView? SelectedModelProfile => _modelProfiles.FirstOrDefault(profile => string.Equals(profile.Id, _selectedModelProfileId, StringComparison.OrdinalIgnoreCase));
-    private ChatModelProfileView? DefaultModelProfile => ModelProfiles.GetDefaultProfileForRoles(CurrentUser.Roles);
-    private bool HasDefaultModelProfile => DefaultModelProfile is not null;
-    private bool CanSelectModelProfile => HasDefaultModelProfile && _modelProfiles.Count > 0 && !_isSending;
-    private bool CanSendChat => !_isSending && HasDefaultModelProfile && SelectedModelProfile is not null && !string.IsNullOrWhiteSpace(_selectedModel);
-    private bool FeedbackEnabled => Options.CurrentValue.Training.FeedbackEnabled;
-    private string? ModelSetupMessage => HasDefaultModelProfile ? null : "Chat is disabled until an Admin defines an enabled default model profile.";
     private ChatTurnState? SelectedTraceTurn =>
         ActiveSession.Turns.FirstOrDefault(turn => string.Equals(turn.Id, _selectedTraceTurnId, StringComparison.Ordinal))
         ?? ActiveSession.Turns.LastOrDefault(TurnHasInspectableState);
@@ -555,17 +409,6 @@
         _currentUsage
         ?? (_sessions.Count == 0 ? null : ActiveSession.Turns.LastOrDefault(turn => turn.Usage is not null)?.Usage)
         ?? SelectedModelUsage();
-    private ChatTurnState? ActiveUsageTurn =>
-        _sessions.Count == 0
-            ? null
-            : ActiveSession.Turns.LastOrDefault(turn => turn.Usage is not null)
-              ?? ActiveSession.Turns.LastOrDefault();
-    private long? ActiveUsageDurationMilliseconds => _isSending
-        ? (long)Math.Max(0, _responseElapsed.TotalMilliseconds)
-        : ActiveUsageTurn?.DurationMilliseconds;
-    private string? ActiveUsageProviderName => _isSending
-        ? SelectedModelProfile?.Provider ?? ActiveUsageTurn?.ProviderName
-        : ActiveUsageTurn?.ProviderName ?? SelectedModelProfile?.Provider;
     private bool CanUseAgentMode =>
         Options.CurrentValue.Chat.AgentWritesEnabled &&
         CurrentUser.IsAuthenticated &&
@@ -576,8 +419,6 @@
     protected override void OnInitialized()
     {
         var chatOptions = Options.CurrentValue.Chat;
-        CleanupStaleAttachmentTempFiles(chatOptions);
-        LoadModelProfiles();
         _availableProviders.Clear();
         _availableProviders.AddRange(ChatProviders.Select(provider => provider.Name).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(provider => provider));
         if (_availableProviders.Count == 0)
@@ -585,7 +426,8 @@
             _availableProviders.Add(chatOptions.Provider);
         }
 
-        ApplySelectedModelProfile(DefaultModelProfile ?? _modelProfiles.FirstOrDefault(), persistStatus: false);
+        _selectedProvider = _availableProviders.FirstOrDefault(provider => ProviderMatches(provider, chatOptions.Provider)) ?? _availableProviders[0];
+        _selectedModel = DefaultModelForProvider(_selectedProvider);
         StartNewChat();
     }
 
@@ -594,7 +436,7 @@
         if (firstRender)
         {
             _dotNetRef = DotNetObjectReference.Create(this);
-            await TryInvokeVoidAsync("memorySmith.chat.registerComposer", _composerInput, _dotNetRef, _sendOnEnter, Options.CurrentValue.Chat.ClipboardFetchExternalImagesEnabled);
+            await JS.InvokeVoidAsync("memorySmith.chat.registerComposer", _composerInput, _dotNetRef, _sendOnEnter);
             _composerRegistered = true;
             await LoadPreferencesAsync();
             await CollapseSidebarOnNarrowViewportAsync();
@@ -606,21 +448,11 @@
         if (_scrollPending)
         {
             _scrollPending = false;
-            await TryInvokeVoidAsync("memorySmith.chat.scrollToBottom", _transcriptPane);
-            await TryInvokeVoidAsync("memorySmith.chat.scrollToBottom", _tracePanelList);
+            await JS.InvokeVoidAsync("memorySmith.chat.scrollToBottom", _transcriptPane);
+            await JS.InvokeVoidAsync("memorySmith.chat.scrollToBottom", _tracePanelList);
         }
 
-        await TryInvokeVoidAsync("memorySmith.markdown.renderEnhancements", _transcriptPane, new
-        {
-            skipMermaid = _isSending,
-            mermaidEnabled = Options.CurrentValue.Markdown.MermaidEnabled,
-            mermaidRestrictionMode = Options.CurrentValue.Markdown.MermaidRestrictionMode
-        });
-    }
-
-    private async Task TryInvokeVoidAsync(string identifier, params object?[] args)
-    {
-        await SafeJsInterop.TryInvokeVoidAsync(JS, identifier, args);
+        await JS.InvokeVoidAsync("memorySmith.markdown.renderEnhancements", _transcriptPane, new { skipMermaid = _isSending });
     }
 
     private async Task LoadPreferencesAsync()
@@ -633,13 +465,14 @@
             return;
         }
 
-        if (!string.IsNullOrWhiteSpace(preferences.ModelProfileId) && _modelProfiles.FirstOrDefault(profile => string.Equals(profile.Id, preferences.ModelProfileId, StringComparison.OrdinalIgnoreCase)) is { } preferredProfile && HasDefaultModelProfile)
+        if (!string.IsNullOrWhiteSpace(preferences.Provider) && _availableProviders.Any(provider => ProviderMatches(provider, preferences.Provider)))
         {
-            ApplySelectedModelProfile(preferredProfile, persistStatus: false);
+            _selectedProvider = _availableProviders.First(provider => ProviderMatches(provider, preferences.Provider));
         }
-        else if (!string.IsNullOrWhiteSpace(preferences.Provider) && !string.IsNullOrWhiteSpace(preferences.Model) && _modelProfiles.FirstOrDefault(profile => ProviderMatches(profile.Provider, preferences.Provider) && string.Equals(profile.Model, preferences.Model, StringComparison.OrdinalIgnoreCase)) is { } legacyPreferredProfile && HasDefaultModelProfile)
+
+        if (!string.IsNullOrWhiteSpace(preferences.Model))
         {
-            ApplySelectedModelProfile(legacyPreferredProfile, persistStatus: false);
+            _selectedModel = preferences.Model;
         }
 
         if (!string.IsNullOrWhiteSpace(preferences.Mode) && Enum.TryParse<MemoryChatMode>(preferences.Mode, ignoreCase: true, out var mode))
@@ -703,12 +536,11 @@
             RestoreSessionDraft(active);
             SelectDefaultTraceTurn(active);
             _currentUsage = null;
-            UpdatePendingWriteStatus(active, "Ready");
+            _agentStatus = "Ready";
             _scrollPending = true;
         }
 
         _hasLoadedSessions = true;
-        await RestoreActiveDraftSnapshotAsync();
         await SaveSessionsAsync();
         await SavePreferencesAsync();
     }
@@ -813,11 +645,8 @@
             Context = ReadJsonObjects(item, "context").Select(ParseStoredContextItem).ToList(),
             ProposedMemoryWrites = ReadJsonObjects(item, "proposedMemoryWrites").Select(ParseStoredMemoryWriteProposal).Where(proposal => proposal is not null).Select(proposal => proposal!).ToList(),
             ProposedPageWrites = ReadJsonObjects(item, "proposedPageWrites").Select(ParseStoredPageWriteProposal).Where(proposal => proposal is not null).Select(proposal => proposal!).ToList(),
-            ResponseCommentDraft = ReadJsonString(item, "responseCommentDraft") ?? string.Empty,
-            QuestionOtherDraft = ReadJsonString(item, "questionOtherDraft") ?? string.Empty,
             WrittenMemories = ReadJsonStrings(item, "writtenMemories"),
             WrittenPages = ReadJsonStrings(item, "writtenPages"),
-            SubmittedProposalIds = ReadJsonStrings(item, "submittedProposalIds"),
             Attachments = ReadJsonObjects(item, "attachments").Select(ParseStoredAttachment).Where(attachment => attachment is not null).Select(attachment => attachment!).ToList(),
             ProviderName = ReadJsonString(item, "providerName"),
             Model = ReadJsonString(item, "model"),
@@ -1017,7 +846,6 @@
         turn.ProposedPageWrites.Count > 0 ||
         turn.WrittenMemories.Count > 0 ||
         turn.WrittenPages.Count > 0 ||
-        turn.SubmittedProposalIds.Count > 0 ||
         turn.Usage is not null;
 
     private IEnumerable<ChatTraceEntryState> FilteredTraceEntries(ChatTurnState turn) =>
@@ -1102,7 +930,6 @@
             RestoreSessionDraft(session);
             SelectDefaultTraceTurn(session);
             _currentUsage = null;
-            UpdatePendingWriteStatus(session, _mode == MemoryChatMode.Agent ? "Agent ready" : "Chat ready");
             _scrollPending = true;
             await SaveSessionsAsync();
             await SavePreferencesAsync();
@@ -1117,16 +944,12 @@
         }
 
         var title = string.IsNullOrWhiteSpace(session.Title) ? "this chat" : session.Title;
-        if (!await Dialogs.ConfirmDestructiveActionAsync(
-            "Delete chat?",
-            $"Delete chat \"{title}\". This removes the saved chat session from this browser profile and cannot be undone.",
-            "Delete chat"))
+        if (!await JS.InvokeAsync<bool>("confirm", $"Delete chat '{title}'? This cannot be undone."))
         {
             return;
         }
 
         var wasActive = string.Equals(_activeSessionId, id, StringComparison.Ordinal);
-        var pendingAttachments = session.PendingAttachments.ToList();
         _sessions.Remove(session);
         if (_sessions.Count == 0)
         {
@@ -1141,9 +964,7 @@
             _currentUsage = null;
         }
 
-        LogAttachmentCleanupResult("session-delete", ChatAttachmentFiles.DeleteTempFiles(pendingAttachments, RetainedPendingAttachments()));
-        UpdatePendingWriteStatus(ActiveSession, "Chat deleted");
-        Snackbar.Add("Chat deleted.", Severity.Success);
+        _agentStatus = "Chat deleted";
         await SaveSessionsAsync();
         await SavePreferencesAsync();
     }
@@ -1166,47 +987,22 @@
         _selectedTraceTurnId = session.Turns.LastOrDefault(TurnHasInspectableState)?.Id;
     }
 
-    private void LoadModelProfiles()
+    private async Task OnProviderChanged(string provider)
     {
-        _modelProfiles.Clear();
-        _modelProfiles.AddRange(ModelProfiles.ListEnabledProfilesForRoles(CurrentUser.Roles));
-    }
-
-    private async Task OnModelProfileChanged(string profileId)
-    {
-        if (_modelProfiles.FirstOrDefault(profile => string.Equals(profile.Id, profileId, StringComparison.OrdinalIgnoreCase)) is not { } profile)
-        {
-            return;
-        }
-
-        ApplySelectedModelProfile(profile, persistStatus: true);
+        _selectedProvider = provider;
+        _selectedModel = DefaultModelForProvider(provider);
         _currentUsage = null;
+        _agentStatus = $"Using {_selectedProvider} / {_selectedModel}";
         await SavePreferencesAsync();
         await RefreshModelsAsync(silent: true);
     }
 
-    private void ApplySelectedModelProfile(ChatModelProfileView? profile, bool persistStatus)
+    private async Task OnModelChanged(string model)
     {
-        if (profile is null)
-        {
-            _selectedModelProfileId = string.Empty;
-            _selectedProvider = string.Empty;
-            _selectedModel = string.Empty;
-            if (persistStatus)
-            {
-                _agentStatus = "No default model profile configured";
-            }
-
-            return;
-        }
-
-        _selectedModelProfileId = profile.Id;
-        _selectedProvider = profile.Provider;
-        _selectedModel = profile.Model;
-        if (persistStatus)
-        {
-            _agentStatus = $"Using {profile.DisplayName}";
-        }
+        _selectedModel = model;
+        _currentUsage = null;
+        _agentStatus = $"Using {_selectedProvider} / {_selectedModel}";
+        await SavePreferencesAsync();
     }
 
     private async Task SetMermaidThemeModeAsync(string mode)
@@ -1232,6 +1028,14 @@
             var models = await provider.ListModelsAsync(CancellationToken.None);
             _models.Clear();
             _models.AddRange(models);
+            if (_models.Count > 0 && !_models.Any(model => string.Equals(model.Name, _selectedModel, StringComparison.OrdinalIgnoreCase)))
+            {
+                var defaultModel = DefaultModelForProvider(_selectedProvider);
+                _selectedModel = _models.FirstOrDefault(model => string.Equals(model.Name, defaultModel, StringComparison.OrdinalIgnoreCase))?.Name
+                    ?? _models.FirstOrDefault(model => model.IsPreferred)?.Name
+                    ?? _models[0].Name;
+            }
+
             _agentStatus = $"{_models.Count} model(s) available";
             await SavePreferencesAsync();
         }
@@ -1253,71 +1057,6 @@
     {
         _draft = args.Value?.ToString() ?? string.Empty;
         PersistActiveDraft();
-        QueueDraftPersist();
-    }
-
-    private void QueueDraftPersist()
-    {
-        _draftPersistCts?.Cancel();
-        _draftPersistCts?.Dispose();
-        _draftPersistCts = new CancellationTokenSource();
-        _ = PersistDraftAfterDelayAsync(_draftPersistCts.Token);
-    }
-
-    private async Task PersistDraftAfterDelayAsync(CancellationToken cancellationToken)
-    {
-        try
-        {
-            await Task.Delay(DraftPersistDebounce, cancellationToken);
-            if (cancellationToken.IsCancellationRequested)
-            {
-                return;
-            }
-
-            await InvokeAsync(SaveActiveDraftSnapshotAsync);
-        }
-        catch (OperationCanceledException)
-        {
-        }
-    }
-
-    private async Task SaveActiveDraftSnapshotAsync()
-    {
-        if (!_hasLoadedSessions)
-        {
-            return;
-        }
-
-        PersistActiveDraft();
-        var snapshot = new ChatDraftState
-        {
-            ActiveSessionId = _activeSessionId,
-            Draft = TrimForStorage(_draft, MaxStoredTurnCharacters),
-            PendingAttachments = _attachments.Select(TrimAttachmentForStorage).ToList()
-        };
-
-        await JS.InvokeVoidAsync("memorySmith.storage.setJson", ChatDraftStorageKey, snapshot);
-    }
-
-    private async Task RestoreActiveDraftSnapshotAsync()
-    {
-        var snapshot = await LoadStorageJsonAsync<ChatDraftState>(ChatDraftStorageKey, warnOnFailure: false);
-        if (snapshot is null || string.IsNullOrWhiteSpace(snapshot.ActiveSessionId) ||
-            !string.Equals(snapshot.ActiveSessionId, _activeSessionId, StringComparison.Ordinal))
-        {
-            return;
-        }
-
-        _draft = snapshot.Draft ?? string.Empty;
-        _attachments.Clear();
-        _attachments.AddRange(snapshot.PendingAttachments ?? []);
-        PersistActiveDraft();
-    }
-
-    private async Task OnResponseCommentInput(ChatTurnState turn, ChangeEventArgs args)
-    {
-        turn.ResponseCommentDraft = args.Value?.ToString() ?? string.Empty;
-        ActiveSession.UpdatedUtc = DateTimeOffset.UtcNow;
         await SaveSessionsAsync();
     }
 
@@ -1343,25 +1082,8 @@
 
     private async Task SendAsync(string? explicitMessage)
     {
-        if (_mode == MemoryChatMode.Agent && !CanUseAgentMode)
-        {
-            _mode = MemoryChatMode.Chat;
-        }
-
         var message = (explicitMessage ?? _draft).Trim();
         if (string.IsNullOrWhiteSpace(message) || _isSending)
-        {
-            return;
-        }
-
-        if (!CanSendChat)
-        {
-            Snackbar.Add(ModelSetupMessage ?? "Choose an enabled model profile before sending.", Severity.Warning);
-            return;
-        }
-
-        var selectedProfile = SelectedModelProfile;
-        if (selectedProfile is null)
         {
             return;
         }
@@ -1384,8 +1106,8 @@
         _streamedCharacters = 0;
         _agentStatus = _mode == MemoryChatMode.Agent ? "Agent thinking" : "Waiting for first token";
         _currentUsage = null;
-        var requestProvider = selectedProfile.Provider;
-        var requestModel = selectedProfile.Model;
+        var requestProvider = _selectedProvider;
+        var requestModel = _selectedModel;
         var pendingTurn = new ChatTurnState("assistant pending", "Waiting for first token...", DateTimeOffset.UtcNow, null, [], [], [], [])
         {
             ProviderName = requestProvider,
@@ -1402,12 +1124,11 @@
         _sendCts = sendCts;
         var runControl = new ChatRunControl();
         _activeRunControl = runControl;
-        var lastRenderUtc = DateTimeOffset.MinValue;
 
         try
         {
             MemoryChatResponse? finalResponse = null;
-            await foreach (var update in ChatAgent.StreamAsync(new MemoryChatRequest(message, _mode, historyForRequest, requestModel, attachments, requestProvider, runControl, RequireAgentWriteApproval: _mode == MemoryChatMode.Agent, SessionId: session.Id), sendCts.Token))
+            await foreach (var update in ChatAgent.StreamAsync(new MemoryChatRequest(message, _mode, historyForRequest, requestModel, attachments, requestProvider, runControl, RequireAgentWriteApproval: _mode == MemoryChatMode.Agent), sendCts.Token))
             {
                 var turnChanged = false;
                 if (!string.IsNullOrEmpty(update.Status))
@@ -1458,14 +1179,8 @@
                     FinalizeActiveTraceEntries(pendingTurn);
                 }
 
-                var now = DateTimeOffset.UtcNow;
-                if (now - lastRenderUtc >= StreamRenderInterval || update.Response is not null)
-                {
-                    _scrollPending = true;
-                    await InvokeAsync(StateHasChanged);
-                    lastRenderUtc = now;
-                }
-
+                _scrollPending = true;
+                await InvokeAsync(StateHasChanged);
                 if (turnChanged && DateTimeOffset.UtcNow - lastStreamPersistUtc >= TimeSpan.FromSeconds(2))
                 {
                     session.UpdatedUtc = DateTimeOffset.UtcNow;
@@ -1476,10 +1191,6 @@
 
             var response = finalResponse ?? throw new InvalidOperationException("The provider stream completed without a final response.");
             pendingTurn.Role = "assistant";
-            if (!string.IsNullOrWhiteSpace(response.TurnId))
-            {
-                pendingTurn.Id = response.TurnId;
-            }
             pendingTurn.Content = response.Reply;
             pendingTurn.Thinking = response.Thinking;
             pendingTurn.ThinkingActive = false;
@@ -1502,7 +1213,7 @@
                     EstimatedTokens = EstimateTraceTokens(FormatPendingWriteSummary(pendingTurn))
                 });
                 ShowSidebarTab(ChatSidebarTab.Trace);
-                _agentStatus = $"{PendingWriteCount(pendingTurn)} write approval(s) pending";
+                _agentStatus = $"{pendingTurn.ProposedMemoryWrites.Count + pendingTurn.ProposedPageWrites.Count} write approval(s) pending";
             }
             if (!string.IsNullOrWhiteSpace(response.Thinking) && !pendingTurn.TraceEntries.Any(entry => string.Equals(entry.Kind, ChatTraceKinds.Reasoning, StringComparison.OrdinalIgnoreCase)))
             {
@@ -1528,9 +1239,9 @@
 
             FinalizeActiveTraceEntries(pendingTurn);
             pendingTurn.DurationMilliseconds = (long)Math.Max(0, (DateTimeOffset.UtcNow - (_responseStartedUtc ?? DateTimeOffset.UtcNow)).TotalMilliseconds);
-            session.History.Add(new ChatMessage("assistant", BuildAssistantHistoryContent(response.Reply)));
+            session.History.Add(new ChatMessage("assistant", response.Reply));
             session.UpdatedUtc = DateTimeOffset.UtcNow;
-            var pendingWriteCount = PendingWriteCount(ActiveSession);
+            var pendingWriteCount = pendingTurn.ProposedMemoryWrites.Count + pendingTurn.ProposedPageWrites.Count;
             _agentStatus = pendingWriteCount > 0
                 ? $"{response.ProviderName} / {response.Model}: {response.Context.Count} resource(s), {pendingWriteCount} approval(s) pending"
                 : $"{response.ProviderName} / {response.Model}: {response.Context.Count} resource(s), {response.WrittenMemories.Count + response.WrittenPages.Count} write(s)";
@@ -1588,7 +1299,6 @@
             StopResponseTimer();
             _isSending = false;
             _scrollPending = true;
-            LogAttachmentCleanupResult("send-complete", ChatAttachmentFiles.DeleteTempFiles(attachments, RetainedPendingAttachments()));
             await InvokeAsync(StateHasChanged);
             await SaveSessionsAsync();
             await SavePreferencesAsync();
@@ -1631,80 +1341,14 @@
         return InvokeAsync(StateHasChanged);
     }
 
-    private async Task SetFeedbackAsync(ChatTurnState turn, int rating)
-    {
-        if (!FeedbackEnabled || string.IsNullOrWhiteSpace(turn.Id))
-        {
-            return;
-        }
-
-        var feedbackRating = rating > 0 ? FeedbackRating.ThumbsUp : FeedbackRating.ThumbsDown;
-        var principalId = string.IsNullOrWhiteSpace(CurrentUser.UserId) ? "anonymous" : CurrentUser.UserId!;
-        var sessionId = string.IsNullOrWhiteSpace(ActiveSession.Id) ? "session-unknown" : ActiveSession.Id;
-
-        try
-        {
-            var saved = await FeedbackStore.UpsertAsync(turn.Id, sessionId, principalId, feedbackRating, null, CancellationToken.None);
-            turn.FeedbackRating = (int)saved.Rating;
-            Snackbar.Add(saved.Rating == FeedbackRating.ThumbsUp ? "Marked helpful" : "Marked needs improvement", Severity.Success);
-            await SaveSessionsAsync();
-        }
-        catch (Exception ex)
-        {
-            Logger.LogWarning(ex, "Failed to persist chat feedback for turn {TurnId}", turn.Id);
-            Snackbar.Add("Could not save feedback.", Severity.Warning);
-        }
-    }
-
-    private Color FeedbackButtonColor(ChatTurnState turn, int rating)
-    {
-        if (turn.FeedbackRating == rating)
-        {
-            return rating > 0 ? Color.Success : Color.Error;
-        }
-
-        return Color.Default;
-    }
-
     private async Task ApproveAllWritesAsync(string turnId)
     {
-        if (_isApprovingWrites || FindTurn(turnId) is not { } turn)
+        if (FindTurn(turnId) is not { } turn)
         {
             return;
         }
 
-        _isApprovingWrites = true;
-        try
-        {
-            var results = new List<string>();
-            foreach (var proposal in turn.ProposedMemoryWrites.ToList())
-            {
-                results.Add(await ApproveProposalWithOutcomeAsync(turn, [proposal], [], $"memory:{proposal.Id}"));
-            }
-
-            foreach (var proposal in turn.ProposedPageWrites.ToList())
-            {
-                results.Add(await ApproveProposalWithOutcomeAsync(turn, [], [proposal], $"page:{proposal.Slug}"));
-            }
-
-            UpdatePendingWriteStatus();
-            if (results.Count > 0)
-            {
-                AddTraceEntry(
-                    turn,
-                    ChatTraceKinds.Write,
-                    "Accept all results",
-                    string.Join(Environment.NewLine, results.Select(result => $"- {result}")),
-                    IsError: results.Any(result => result.Contains("blocked", StringComparison.OrdinalIgnoreCase) || result.Contains("failed", StringComparison.OrdinalIgnoreCase)));
-            }
-
-            ActiveSession.UpdatedUtc = DateTimeOffset.UtcNow;
-            await SaveSessionsAsync();
-        }
-        finally
-        {
-            _isApprovingWrites = false;
-        }
+        await ApplyApprovedWritesAsync(turn, turn.ProposedMemoryWrites.ToList(), turn.ProposedPageWrites.ToList());
     }
 
     private async Task ApproveMemoryWriteAsync(string turnId, string memoryId)
@@ -1717,32 +1361,7 @@
         var proposal = turn.ProposedMemoryWrites.FirstOrDefault(item => string.Equals(item.Id, memoryId, StringComparison.OrdinalIgnoreCase));
         if (proposal is not null)
         {
-            _ = await ApproveProposalWithOutcomeAsync(turn, [proposal], [], $"memory:{proposal.Id}");
-            UpdatePendingWriteStatus();
-            ActiveSession.UpdatedUtc = DateTimeOffset.UtcNow;
-            await SaveSessionsAsync();
-        }
-    }
-
-    private async Task RespondMemoryWriteAsync(string turnId, string memoryId)
-    {
-        if (FindTurn(turnId) is not { } turn)
-        {
-            return;
-        }
-
-        var proposal = turn.ProposedMemoryWrites.FirstOrDefault(item => string.Equals(item.Id, memoryId, StringComparison.OrdinalIgnoreCase));
-        if (proposal is not null)
-        {
-            var outcome = await RespondProposalWithOutcomeAsync(turn, [proposal], [], $"memory:{proposal.Id}");
-            if (outcome is null)
-            {
-                return;
-            }
-
-            UpdatePendingWriteStatus();
-            ActiveSession.UpdatedUtc = DateTimeOffset.UtcNow;
-            await SaveSessionsAsync();
+            await ApplyApprovedWritesAsync(turn, [proposal], []);
         }
     }
 
@@ -1756,183 +1375,30 @@
         var proposal = turn.ProposedPageWrites.FirstOrDefault(item => string.Equals(item.Slug, slug, StringComparison.OrdinalIgnoreCase));
         if (proposal is not null)
         {
-            _ = await ApproveProposalWithOutcomeAsync(turn, [], [proposal], $"page:{proposal.Slug}");
-            UpdatePendingWriteStatus();
-            ActiveSession.UpdatedUtc = DateTimeOffset.UtcNow;
-            await SaveSessionsAsync();
+            await ApplyApprovedWritesAsync(turn, [], [proposal]);
         }
     }
 
-    private async Task RespondPageWriteAsync(string turnId, string slug)
-    {
-        if (FindTurn(turnId) is not { } turn)
-        {
-            return;
-        }
-
-        var proposal = turn.ProposedPageWrites.FirstOrDefault(item => string.Equals(item.Slug, slug, StringComparison.OrdinalIgnoreCase));
-        if (proposal is not null)
-        {
-            var outcome = await RespondProposalWithOutcomeAsync(turn, [], [proposal], $"page:{proposal.Slug}");
-            if (outcome is null)
-            {
-                return;
-            }
-
-            UpdatePendingWriteStatus();
-            ActiveSession.UpdatedUtc = DateTimeOffset.UtcNow;
-            await SaveSessionsAsync();
-        }
-    }
-
-    private async Task<string> ApproveProposalWithOutcomeAsync(ChatTurnState turn, IReadOnlyList<AgentMemoryWriteProposal> memories, IReadOnlyList<AgentPageWriteProposal> pages, string proposalKey)
+    private async Task ApplyApprovedWritesAsync(ChatTurnState turn, IReadOnlyList<AgentMemoryWriteProposal> memories, IReadOnlyList<AgentPageWriteProposal> pages)
     {
         try
         {
             var result = await ChatAgent.ApplyAgentWritesAsync(memories, pages, CancellationToken.None);
-            if (result.SubmittedProposalIds?.Count > 0)
-            {
-                turn.SubmittedProposalIds.AddRange(result.SubmittedProposalIds.Where(id => !turn.SubmittedProposalIds.Contains(id, StringComparer.OrdinalIgnoreCase)));
-                RemoveAttemptedProposals(turn, memories, pages);
-                AddTraceEntry(turn, ChatTraceKinds.Write, "Agent writes submitted for proposal review", FormatSubmittedProposalSummary(result), IsError: false);
-                _agentStatus = $"Submitted {result.SubmittedProposalIds.Count} proposal(s) for review";
-                return $"{proposalKey} -> accepted (submitted {string.Join(", ", result.SubmittedProposalIds)})";
-            }
-
             turn.WrittenMemories.AddRange(result.WrittenMemories.Where(id => !turn.WrittenMemories.Contains(id, StringComparer.OrdinalIgnoreCase)));
             turn.WrittenPages.AddRange(result.WrittenPages.Where(slug => !turn.WrittenPages.Contains(slug, StringComparer.OrdinalIgnoreCase)));
             turn.ProposedMemoryWrites.RemoveAll(proposal => result.WrittenMemories.Contains(proposal.Id, StringComparer.OrdinalIgnoreCase));
             turn.ProposedPageWrites.RemoveAll(proposal => result.WrittenPages.Contains(proposal.Slug, StringComparer.OrdinalIgnoreCase));
-            if (result.WrittenMemories.Count == 0 && result.WrittenPages.Count == 0)
-            {
-                RemoveAttemptedProposals(turn, memories, pages);
-                AddTraceEntry(turn, ChatTraceKinds.Write, "Agent write rejected", $"{proposalKey} rejected: no file changes were needed.", IsError: false);
-                _agentStatus = "No file changes were needed";
-                return $"{proposalKey} -> rejected (no changes needed)";
-            }
-
-            AddTraceEntry(turn, ChatTraceKinds.Write, "Agent writes accepted", FormatAppliedWriteSummary(result), IsError: false);
-            _agentStatus = $"Applied {result.WrittenMemories.Count + result.WrittenPages.Count} accepted write(s)";
-            return $"{proposalKey} -> accepted";
+            AddTraceEntry(turn, ChatTraceKinds.Write, "Agent writes approved", FormatAppliedWriteSummary(result), IsError: false);
+            _agentStatus = $"Applied {result.WrittenMemories.Count + result.WrittenPages.Count} approved write(s)";
+            ActiveSession.UpdatedUtc = DateTimeOffset.UtcNow;
+            await SaveSessionsAsync();
         }
         catch (Exception ex)
         {
-            // Blocked/failed approvals are terminal for this attempt; remove pending item and retain auditable trace.
-            RemoveAttemptedProposals(turn, memories, pages);
-            var outcome = IsBlockedApprovalException(ex) ? "blocked" : "failed";
-            AddTraceEntry(turn, ChatTraceKinds.Write, $"Agent write {outcome}", $"{proposalKey} {outcome}: {ex.Message}", IsError: true);
+            AddTraceEntry(turn, ChatTraceKinds.Write, "Agent write approval failed", ex.Message, IsError: true);
             Snackbar.Add(ex.Message, Severity.Error);
-            return $"{proposalKey} -> {outcome} ({ex.Message})";
         }
     }
-
-    private async Task<string?> RespondProposalWithOutcomeAsync(ChatTurnState turn, IReadOnlyList<AgentMemoryWriteProposal> memories, IReadOnlyList<AgentPageWriteProposal> pages, string proposalKey)
-    {
-        if (!TryGetResponseComment(turn, out var comment))
-        {
-            return null;
-        }
-
-        try
-        {
-            var result = await ChatAgent.ApplyAgentWritesAsync(memories, pages, CancellationToken.None);
-            if (result.SubmittedProposalIds?.Count > 0)
-            {
-                foreach (var proposalId in result.SubmittedProposalIds)
-                {
-                    var responded = await ProposalWorkflow.RespondAsync(proposalId, comment, CancellationToken.None);
-                    if (!turn.SubmittedProposalIds.Contains(responded.ProposalId, StringComparer.OrdinalIgnoreCase))
-                    {
-                        turn.SubmittedProposalIds.Add(responded.ProposalId);
-                    }
-                }
-
-                RemoveAttemptedProposals(turn, memories, pages);
-                AddTraceEntry(turn, ChatTraceKinds.Write, "Agent writes sent back for revision", FormatRespondedProposalSummary(result.SubmittedProposalIds, comment), IsError: false);
-                _agentStatus = $"Requested revisions for {result.SubmittedProposalIds.Count} proposal(s)";
-                return $"{proposalKey} -> responded ({string.Join(", ", result.SubmittedProposalIds)})";
-            }
-
-            RemoveAttemptedProposals(turn, memories, pages);
-            AddTraceEntry(turn, ChatTraceKinds.Write, "Agent write response skipped", $"{proposalKey} response skipped: no file changes were needed.", IsError: false);
-            _agentStatus = "No file changes were needed";
-            return $"{proposalKey} -> response skipped (no changes needed)";
-        }
-        catch (Exception ex)
-        {
-            RemoveAttemptedProposals(turn, memories, pages);
-            var outcome = IsBlockedApprovalException(ex) ? "blocked" : "failed";
-            AddTraceEntry(turn, ChatTraceKinds.Write, $"Agent write response {outcome}", $"{proposalKey} response {outcome}: {ex.Message}", IsError: true);
-            Snackbar.Add(ex.Message, Severity.Error);
-            return $"{proposalKey} -> response {outcome} ({ex.Message})";
-        }
-    }
-
-    private bool TryGetResponseComment(ChatTurnState turn, out string comment)
-    {
-        comment = turn.ResponseCommentDraft.Trim();
-        if (!string.IsNullOrWhiteSpace(comment))
-        {
-            return true;
-        }
-
-        Snackbar.Add("Respond requires a revision note.", Severity.Warning);
-        return false;
-    }
-
-    private static string FormatRespondedProposalSummary(IReadOnlyList<string> proposalIds, string comment)
-    {
-        var lines = new List<string>
-        {
-            $"Revision note: {comment}"
-        };
-
-        lines.AddRange(proposalIds.Select(id => $"- proposal:{id} -> needs_revision"));
-        return string.Join(Environment.NewLine, lines);
-    }
-
-    private static void RemoveAttemptedProposals(ChatTurnState turn, IReadOnlyList<AgentMemoryWriteProposal> memories, IReadOnlyList<AgentPageWriteProposal> pages)
-    {
-        turn.ProposedMemoryWrites.RemoveAll(proposal => memories.Any(memory => string.Equals(memory.Id, proposal.Id, StringComparison.OrdinalIgnoreCase)));
-        turn.ProposedPageWrites.RemoveAll(proposal => pages.Any(page => string.Equals(page.Slug, proposal.Slug, StringComparison.OrdinalIgnoreCase)));
-    }
-
-    private static bool IsBlockedApprovalException(Exception ex) =>
-        ex is InvalidOperationException or UnauthorizedAccessException or ArgumentException;
-
-    private static int PendingWriteCount(ChatTurnState turn) =>
-        turn.ProposedMemoryWrites.Count + turn.ProposedPageWrites.Count;
-
-    private static int PendingWriteCount(ChatSessionState session) =>
-        session.Turns.Sum(PendingWriteCount);
-
-    private void UpdatePendingWriteStatus(string emptyStatus = "No pending write approvals") =>
-        UpdatePendingWriteStatus(ActiveSession, emptyStatus);
-
-    private void UpdatePendingWriteStatus(ChatSessionState session, string emptyStatus = "No pending write approvals")
-    {
-        var pendingCount = PendingWriteCount(session);
-        _agentStatus = pendingCount > 0
-            ? $"{pendingCount} write approval(s) pending"
-            : emptyStatus;
-    }
-
-    private static Color TraceFilterColor(bool enabled, Color accent = Color.Primary) => enabled ? accent : Color.Default;
-
-    private static string TraceFilterTooltipText(string label, bool enabled) =>
-        enabled
-            ? $"{label} filter is on. Click to hide {label.ToLowerInvariant()} events."
-            : $"{label} filter is off. Click to show {label.ToLowerInvariant()} events.";
-
-    private void ToggleTraceReasoning() => _traceShowReasoning = !_traceShowReasoning;
-
-    private void ToggleTraceTools() => _traceShowTools = !_traceShowTools;
-
-    private void ToggleTraceAssistant() => _traceShowAssistant = !_traceShowAssistant;
-
-    private void ToggleTraceSystem() => _traceShowSystem = !_traceShowSystem;
-
-    private void ToggleTraceErrors() => _traceErrorsOnly = !_traceErrorsOnly;
 
     private async Task RejectMemoryWriteAsync(string turnId, string memoryId)
     {
@@ -1943,7 +1409,6 @@
 
         turn.ProposedMemoryWrites.RemoveAll(item => string.Equals(item.Id, memoryId, StringComparison.OrdinalIgnoreCase));
         AddTraceEntry(turn, ChatTraceKinds.Write, "Agent memory write rejected", $"Rejected memory:{memoryId}.");
-        UpdatePendingWriteStatus();
         await SaveSessionsAsync();
     }
 
@@ -1956,7 +1421,6 @@
 
         turn.ProposedPageWrites.RemoveAll(item => string.Equals(item.Slug, slug, StringComparison.OrdinalIgnoreCase));
         AddTraceEntry(turn, ChatTraceKinds.Write, "Agent page write rejected", $"Rejected page:{slug}.");
-        UpdatePendingWriteStatus();
         await SaveSessionsAsync();
     }
 
@@ -1978,7 +1442,7 @@
             return;
         }
 
-        if (!ToolCatalog.TryGet(entry.ToolName, out var tool) || !ChatToolCatalog.IsAvailableInMode(tool, _mode))
+        if (!ToolCatalog.TryGet(entry.ToolName, out var tool) || !tool.AvailableInChat)
         {
             AddTraceEntry(turn, ChatTraceKinds.ToolResult, $"Retry failed: {entry.ToolName}", $"Tool '{entry.ToolName}' is not available in chat.", IsError: true, toolName: entry.ToolName);
             return;
@@ -1989,7 +1453,7 @@
         try
         {
             _agentStatus = $"Running {entry.ToolName}";
-            var result = await tool.Execute(arguments, new ChatToolExecutionContext(Memories, Pages, "chat-ui-retry", CurrentUser: CurrentUser, Auth: Options.CurrentValue.Auth, DefaultPageMinimumRole: Options.CurrentValue.Pages.DefaultMinimumRole, Tasks: Tasks), CancellationToken.None);
+            var result = await tool.Execute(arguments, new ChatToolExecutionContext(Memories, Pages, "chat-ui-retry"), CancellationToken.None);
             var duration = (long)Math.Max(0, (DateTimeOffset.UtcNow - started).TotalMilliseconds);
             AddTraceEntry(turn, ChatTraceKinds.ToolResult, $"Retry result: {entry.ToolName}", result.Text, result.IsError, entry.ToolName, duration);
             if (result.ContextItems is { Count: > 0 })
@@ -2116,46 +1580,15 @@
 
     private async Task RemoveAttachment(string name)
     {
-        var removed = _attachments.Where(attachment => string.Equals(attachment.Name, name, StringComparison.OrdinalIgnoreCase)).ToList();
         _attachments.RemoveAll(attachment => string.Equals(attachment.Name, name, StringComparison.OrdinalIgnoreCase));
         PersistActiveDraft();
-        LogAttachmentCleanupResult("remove", ChatAttachmentFiles.DeleteTempFiles(removed, RetainedPendingAttachments()));
         await SaveSessionsAsync();
         await SavePreferencesAsync();
         _agentStatus = "Ready";
     }
 
-    private void CleanupStaleAttachmentTempFiles(ChatOptions chatOptions)
-    {
-        var retentionHours = Math.Clamp(chatOptions.AttachmentTempFileRetentionHours, 1, 720);
-        var result = ChatAttachmentFiles.DeleteStaleTempFiles(TimeSpan.FromHours(retentionHours));
-        LogAttachmentCleanupResult("stale", result);
-    }
-
-    private IReadOnlyList<ChatAttachment> RetainedPendingAttachments() =>
-        _sessions.SelectMany(session => session.PendingAttachments).ToList();
-
-    private void LogAttachmentCleanupResult(string reason, ChatAttachmentCleanupResult result)
-    {
-        if (result.DeletedCount + result.RetainedCount + result.MissingCount + result.RefusedCount + result.FailedCount == 0)
-        {
-            return;
-        }
-
-        Logger.LogInformation(
-            "Chat attachment temp cleanup {Reason}: deleted {DeletedCount}, retained {RetainedCount}, missing {MissingCount}, refused {RefusedCount}, failed {FailedCount}.",
-            reason,
-            result.DeletedCount,
-            result.RetainedCount,
-            result.MissingCount,
-            result.RefusedCount,
-            result.FailedCount);
-    }
-
     private async Task SaveSessionsAsync()
     {
-        _draftPersistCts?.Cancel();
-
         if (!_hasLoadedSessions)
         {
             return;
@@ -2243,8 +1676,6 @@
             ProposedPageWrites = turn.ProposedPageWrites
                 .Select(proposal => proposal with { Markdown = TrimForStorage(proposal.Markdown, MaxStoredTurnCharacters) })
                 .ToList(),
-            ResponseCommentDraft = TrimForStorage(turn.ResponseCommentDraft, MaxStoredTurnCharacters),
-            QuestionOtherDraft = TrimForStorage(turn.QuestionOtherDraft, MaxStoredTurnCharacters),
             TraceEntries = turn.TraceEntries
                 .TakeLast(MaxStoredTraceEntries)
                 .Select(entry => new ChatTraceEntryState
@@ -2265,7 +1696,6 @@
             TraceDrawerOpen = false,
             WrittenMemories = turn.WrittenMemories.ToList(),
             WrittenPages = turn.WrittenPages.ToList(),
-            SubmittedProposalIds = turn.SubmittedProposalIds.ToList(),
             Attachments = includeAttachments ? turn.Attachments.Select(TrimAttachmentForStorage).ToList() : [],
             ProviderName = turn.ProviderName,
             Model = turn.Model,
@@ -2305,7 +1735,6 @@
         {
             Provider = _selectedProvider,
             Model = _selectedModel,
-            ModelProfileId = _selectedModelProfileId,
             Mode = _mode.ToString(),
             MermaidThemeMode = _mermaidThemeMode,
             ActiveSessionId = _activeSessionId
@@ -2471,147 +1900,6 @@
         return lines.Count == 0 ? "No writes were applied." : string.Join(Environment.NewLine, lines);
     }
 
-    private static string FormatSubmittedProposalSummary(AgentWriteApplyResult result)
-    {
-        var lines = result.SubmittedProposalIds?.Select(id => $"- proposal:{id}").ToList() ?? [];
-        if (!string.IsNullOrWhiteSpace(result.BatchId) || !string.IsNullOrWhiteSpace(result.ParentProposalId) || result.Attempt > 1)
-        {
-            lines.Add($"- lineage: batchId={LineageValue(result.BatchId)}; parentProposalId={LineageValue(result.ParentProposalId)}; attempt={Math.Max(result.Attempt, 1)}");
-        }
-
-        return lines.Count == 0 ? "No proposals were submitted." : string.Join(Environment.NewLine, lines);
-    }
-
-    private static string LineageValue(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value.Trim();
-
-    private MarkupString RenderTurnContent(ChatTurnState turn)
-    {
-        var isStreamingTurn = _isSending && ReferenceEquals(turn, ActiveSession.Turns.LastOrDefault());
-        if (!isStreamingTurn)
-        {
-            var cacheKey = $"{turn.Id}\n{turn.Content}";
-            if (_turnRenderCache.TryGetValue(cacheKey, out var cached))
-            {
-                return cached;
-            }
-
-            var rendered = RenderTurnContentCore(turn);
-            if (_turnRenderCache.Count >= MaxTurnRenderCacheEntries)
-            {
-                _turnRenderCache.Clear();
-            }
-
-            _turnRenderCache[cacheKey] = rendered;
-            return rendered;
-        }
-
-        return RenderTurnContentCore(turn);
-    }
-
-    private static MarkupString RenderTurnContentCore(ChatTurnState turn)
-    {
-        var html = ChatMarkdownRenderer.RenderHtml(turn.Content);
-        var allowedPages = BuildPageAliasMap(turn).Values
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-        var allowedMemories = BuildAllowedMemoryIds(turn);
-
-        html = ChatReferenceLinkPolicy.LinkifyInlineCodeReferences(html, allowedPages, allowedMemories);
-        html = ChatReferenceLinkPolicy.FilterToAllowedTargets(html, allowedPages, allowedMemories);
-
-        return new MarkupString(html);
-    }
-
-    private static Dictionary<string, string> BuildPageAliasMap(ChatTurnState turn)
-    {
-        var aliases = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var item in turn.Context.Where(item => string.Equals(item.Kind, "page", StringComparison.OrdinalIgnoreCase)))
-        {
-            AddPageAliases(item.Id, aliases);
-        }
-
-        foreach (var slug in turn.WrittenPages)
-        {
-            AddPageAliases(slug, aliases);
-        }
-
-        return aliases;
-    }
-
-    private static IReadOnlyCollection<string> BuildAllowedMemoryIds(ChatTurnState turn)
-    {
-        var ids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var item in turn.Context.Where(item => string.Equals(item.Kind, "memory", StringComparison.OrdinalIgnoreCase)))
-        {
-            var id = item.Id?.Trim();
-            if (!string.IsNullOrWhiteSpace(id))
-            {
-                ids.Add(id);
-            }
-        }
-
-        foreach (var id in turn.WrittenMemories)
-        {
-            if (!string.IsNullOrWhiteSpace(id))
-            {
-                ids.Add(id.Trim());
-            }
-        }
-
-        return ids;
-    }
-
-    private static void AddPageAliases(string value, IDictionary<string, string> aliases)
-    {
-        if (!TryNormalizePageSlug(value, out var slug))
-        {
-            return;
-        }
-
-        aliases[slug] = slug;
-        aliases[$"{slug}.md"] = slug;
-        aliases[$"page:{slug}"] = slug;
-        aliases[$"page:{slug}.md"] = slug;
-    }
-
-    private static bool TryNormalizePageSlug(string value, out string slug)
-    {
-        slug = string.Empty;
-        var candidate = value.Trim();
-        if (string.IsNullOrWhiteSpace(candidate))
-        {
-            return false;
-        }
-
-        if (candidate.StartsWith("page:", StringComparison.OrdinalIgnoreCase))
-        {
-            candidate = candidate[5..];
-        }
-
-        candidate = candidate.TrimStart('/');
-        if (candidate.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
-        {
-            candidate = candidate[..^3];
-        }
-
-        if (string.IsNullOrWhiteSpace(candidate) || candidate.Contains('\\') || candidate.Contains(':'))
-        {
-            return false;
-        }
-
-        if (!PageSlugPattern.IsMatch(candidate))
-        {
-            return false;
-        }
-
-        slug = candidate.ToLowerInvariant();
-        return true;
-    }
-
-    private static readonly Regex PageSlugPattern = new("^[a-z0-9][a-z0-9/_-]*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
-
     private static int EstimateTraceTokens(string? value) =>
         string.IsNullOrWhiteSpace(value) ? 0 : Math.Max(1, (int)Math.Ceiling(value.Length / 4.0));
 
@@ -2684,11 +1972,6 @@
 
     private ChatUsageSummary? SelectedModelUsage()
     {
-        if (SelectedModelProfile?.ContextWindowTokens is > 0)
-        {
-            return new ChatUsageSummary(0, 0, ContextWindowTokens: SelectedModelProfile.ContextWindowTokens);
-        }
-
         var model = _models.FirstOrDefault(item => string.Equals(item.Name, _selectedModel, StringComparison.OrdinalIgnoreCase));
         if (model is null || (model.ContextWindowTokens is null && string.IsNullOrWhiteSpace(model.RateLimit)))
         {
@@ -2698,7 +1981,7 @@
         return new ChatUsageSummary(0, 0, ContextWindowTokens: model.ContextWindowTokens, RateLimit: model.RateLimit);
     }
 
-    private static string FormatUsageMeter(ChatUsageSummary? usage, long? durationMilliseconds = null, string? providerName = null)
+    private static string FormatUsageMeter(ChatUsageSummary? usage)
     {
         if (usage is null)
         {
@@ -2727,15 +2010,10 @@
             text += $" · {usage.RateLimit}";
         }
 
-        if (TryFormatTokensPerSecond(usage, durationMilliseconds, providerName) is { } throughput)
-        {
-            text += $" · {throughput}";
-        }
-
         return text;
     }
 
-    private static string FormatUsageTitle(ChatUsageSummary? usage, long? durationMilliseconds = null, string? providerName = null)
+    private static string FormatUsageTitle(ChatUsageSummary? usage)
     {
         if (usage is null)
         {
@@ -2755,39 +2033,7 @@
             text += $"; rate/quota: {usage.RateLimit}";
         }
 
-        if (TryFormatTokensPerSecond(usage, durationMilliseconds, providerName) is { } throughput)
-        {
-            text += $"; throughput: {throughput}";
-        }
-
         return text;
-    }
-
-    private static string? TryFormatTurnThroughput(ChatTurnState turn) =>
-        TryFormatTokensPerSecond(turn.Usage, turn.DurationMilliseconds, turn.ProviderName);
-
-    private static string? TryFormatTokensPerSecond(ChatUsageSummary? usage, long? durationMilliseconds, string? providerName)
-    {
-        if (usage is null || usage.OutputTokens <= 0 || durationMilliseconds is null || durationMilliseconds.Value <= 0)
-        {
-            return null;
-        }
-
-        if (!ProviderMatches(providerName ?? string.Empty, "Ollama"))
-        {
-            return null;
-        }
-
-        var seconds = durationMilliseconds.Value / 1000d;
-        if (seconds <= 0.05d)
-        {
-            return null;
-        }
-
-        var tokensPerSecond = usage.OutputTokens / seconds;
-        return double.IsFinite(tokensPerSecond) && tokensPerSecond > 0
-            ? $"{tokensPerSecond:0.0} tok/s"
-            : null;
     }
 
     private static string FormatTokenCount(int value) =>
@@ -2815,139 +2061,8 @@
             ? "wiki-tag chat-resource chat-resource-tool"
             : "wiki-tag chat-resource";
 
-    private static IEnumerable<MemoryDiagnostic> WarningDiagnostics(ChatContextItem item) =>
-        item.Diagnostics?.Where(diagnostic => diagnostic.Severity is "Warning" or "Error") ?? [];
-
-    private static string DiagnosticClass(MemoryDiagnostic diagnostic) => diagnostic.Severity switch
-    {
-        "Warning" => "is-warning",
-        "Error" => "is-error",
-        _ => "is-info"
-    };
-
     private static int TurnReferenceCount(ChatTurnState turn) =>
-        turn.Context.Count + turn.WrittenMemories.Count + turn.WrittenPages.Count + turn.SubmittedProposalIds.Count;
-
-    private static string BuildAssistantHistoryContent(string content)
-    {
-        if (TryParseQuestionCard(content) is not { } questionCard)
-        {
-            return content;
-        }
-
-        var lines = new List<string>
-        {
-            questionCard.Question,
-            $"Options: {string.Join("; ", questionCard.Options)}{(questionCard.AllowOther ? "; Other: freeform" : string.Empty)}"
-        };
-
-        if (!string.IsNullOrWhiteSpace(questionCard.DetailsMarkdown))
-        {
-            lines.Add(questionCard.DetailsMarkdown);
-        }
-
-        return string.Join(Environment.NewLine, lines);
-    }
-
-    private static ChatQuestionCard? TryParseQuestionCard(string? content)
-    {
-        var candidate = content?.Trim();
-        if (string.IsNullOrWhiteSpace(candidate) || candidate[0] != '{' || !candidate.Contains("\"questionCard\"", StringComparison.Ordinal))
-        {
-            return null;
-        }
-
-        JsonObject? root;
-        try
-        {
-            root = JsonNode.Parse(candidate) as JsonObject;
-        }
-        catch
-        {
-            return null;
-        }
-
-        if (root?["questionCard"] is not JsonObject questionCard)
-        {
-            return null;
-        }
-
-        var question = ReadJsonString(questionCard, "question");
-        var options = ReadQuestionCardOptions(questionCard);
-        if (string.IsNullOrWhiteSpace(question) || options.Count == 0)
-        {
-            return null;
-        }
-
-        var other = questionCard["other"] as JsonObject;
-        return new ChatQuestionCard(
-            question.Trim(),
-            ReadJsonString(questionCard, "detailsMarkdown") ?? ReadJsonString(questionCard, "details"),
-            options,
-            ReadJsonString(questionCard, "responsePrefix") ?? "Answer to follow-up question",
-            other is not null,
-            ReadJsonString(other ?? new JsonObject(), "label") ?? "Other",
-            ReadJsonString(other ?? new JsonObject(), "placeholder") ?? "Type your answer");
-    }
-
-    private static IReadOnlyList<string> ReadQuestionCardOptions(JsonObject questionCard)
-    {
-        if (GetJsonArray(questionCard, "options") is not { } options)
-        {
-            return [];
-        }
-
-        var labels = new List<string>();
-        foreach (var option in options)
-        {
-            switch (option)
-            {
-                case JsonValue value when value.TryGetValue<string>(out var text) && !string.IsNullOrWhiteSpace(text):
-                    labels.Add(text.Trim());
-                    break;
-                case JsonObject optionObject:
-                    var label = ReadJsonString(optionObject, "label") ?? ReadJsonString(optionObject, "value");
-                    if (!string.IsNullOrWhiteSpace(label))
-                    {
-                        labels.Add(label.Trim());
-                    }
-                    break;
-            }
-        }
-
-        return labels;
-    }
-
-    private static MarkupString RenderQuestionCardDetails(ChatQuestionCard questionCard) =>
-        new(ChatMarkdownRenderer.RenderHtml(questionCard.DetailsMarkdown ?? string.Empty));
-
-    private Task OnQuestionOtherDraftChanged(ChatTurnState turn, string value)
-    {
-        turn.QuestionOtherDraft = value;
-        return Task.CompletedTask;
-    }
-
-    private async Task SendQuestionOptionAsync(ChatTurnState turn, ChatQuestionCard questionCard, string option)
-    {
-        turn.QuestionOtherDraft = string.Empty;
-        await SendAsync(BuildQuestionCardResponse(questionCard, option));
-    }
-
-    private async Task SendQuestionOtherAsync(ChatTurnState turn, ChatQuestionCard questionCard)
-    {
-        var answer = turn.QuestionOtherDraft.Trim();
-        if (string.IsNullOrWhiteSpace(answer))
-        {
-            Snackbar.Add("Enter an answer first.", Severity.Warning);
-            return;
-        }
-
-        turn.QuestionOtherDraft = string.Empty;
-        await SendAsync(BuildQuestionCardResponse(questionCard, answer));
-    }
-
-    private static string BuildQuestionCardResponse(ChatQuestionCard questionCard, string answer) =>
-        $"{questionCard.ResponsePrefix}\nQuestion: {questionCard.Question}\nAnswer: {answer}";
+        turn.Context.Count + turn.WrittenMemories.Count + turn.WrittenPages.Count;
 
     private static string PageHref(string slug) =>
         "/pages/" + string.Join('/', slug.Split('/', StringSplitOptions.RemoveEmptyEntries).Select(Uri.EscapeDataString));
@@ -2961,44 +2076,22 @@
         return provider ?? ChatProviders.First();
     }
 
+    private string DefaultModelForProvider(string providerName)
+    {
+        var chatOptions = Options.CurrentValue.Chat;
+        return ProviderMatches(providerName, "GitHub") ? chatOptions.GitHubModel : chatOptions.OllamaModel;
+    }
+
     private static bool ProviderMatches(string left, string right) =>
         string.Equals(left, right, StringComparison.OrdinalIgnoreCase) ||
-        (string.Equals(left, "GitHub", StringComparison.OrdinalIgnoreCase) && string.Equals(right, "Copilot", StringComparison.OrdinalIgnoreCase)) ||
-        (string.Equals(left, "GitHubCopilot", StringComparison.OrdinalIgnoreCase) && string.Equals(right, "GitHub", StringComparison.OrdinalIgnoreCase));
+        (string.Equals(left, "GitHub", StringComparison.OrdinalIgnoreCase) && string.Equals(right, "Copilot", StringComparison.OrdinalIgnoreCase));
 
-    private static string FormatProfileRoles(ChatModelProfileView profile)
+    private static string FormatModelLabel(ChatModelSummary model)
     {
-        return profile.AllowedRoles.Count == 0 ? "All Roles" : string.Join(", ", profile.AllowedRoles);
+        var preferred = model.IsPreferred ? " *" : string.Empty;
+        var multiplier = model.ChatMultiplier is null ? string.Empty : model.ChatMultiplier <= 0 ? " free" : $" x{model.ChatMultiplier:0.##}";
+        return $"{model.Name}{preferred}{multiplier}";
     }
-
-    private static string FormatProfileDefaults(ChatModelProfileView profile)
-    {
-        var defaults = new List<string>();
-        if (profile.IsDefault)
-        {
-            defaults.Add("Chat");
-        }
-
-        if (profile.IsMaintenanceRunDefault)
-        {
-            defaults.Add("Maintenance");
-        }
-
-        if (profile.IsProposalReviewDefault)
-        {
-            defaults.Add("Proposal Review");
-        }
-
-        if (profile.IsAdminMaintenanceChatDefault)
-        {
-            defaults.Add("Admin Chat");
-        }
-
-        return defaults.Count == 0 ? "None" : string.Join(", ", defaults);
-    }
-
-    private static string FormatProfileContextWindow(ChatModelProfileView profile) =>
-        profile.ContextWindowTokens is > 0 ? profile.ContextWindowTokens.Value.ToString("N0") : "Auto";
 
     private static string NormalizeMermaidThemeMode(string? mode) =>
         string.Equals(mode, MermaidThemeDark, StringComparison.OrdinalIgnoreCase) ? MermaidThemeDark :
@@ -3093,9 +2186,6 @@
         _sendCts?.Cancel();
         _sendCts?.Dispose();
         _sendCts = null;
-        _draftPersistCts?.Cancel();
-        _draftPersistCts?.Dispose();
-        _draftPersistCts = null;
         StopResponseTimer();
         if (_composerRegistered)
         {
@@ -3113,19 +2203,11 @@
 
     private sealed class ChatPreferencesState
     {
-        public string ModelProfileId { get; set; } = string.Empty;
         public string Provider { get; set; } = string.Empty;
         public string Model { get; set; } = string.Empty;
         public string Mode { get; set; } = string.Empty;
         public string MermaidThemeMode { get; set; } = MermaidThemeAuto;
         public string? ActiveSessionId { get; set; }
-    }
-
-    private sealed class ChatDraftState
-    {
-        public string ActiveSessionId { get; set; } = string.Empty;
-        public string Draft { get; set; } = string.Empty;
-        public List<ChatAttachment> PendingAttachments { get; set; } = [];
     }
 
     private enum ChatSidebarTab
@@ -3180,20 +2262,16 @@
         public List<ChatContextItem> Context { get; set; } = [];
         public List<AgentMemoryWriteProposal> ProposedMemoryWrites { get; set; } = [];
         public List<AgentPageWriteProposal> ProposedPageWrites { get; set; } = [];
-        public string ResponseCommentDraft { get; set; } = string.Empty;
-        public string QuestionOtherDraft { get; set; } = string.Empty;
         public List<ChatTraceEntryState> TraceEntries { get; set; } = [];
         public bool TraceDrawerOpen { get; set; }
         public List<string> WrittenMemories { get; set; } = [];
         public List<string> WrittenPages { get; set; } = [];
-        public List<string> SubmittedProposalIds { get; set; } = [];
         public List<ChatAttachment> Attachments { get; set; } = [];
         public string? ProviderName { get; set; }
         public string? Model { get; set; }
         public ChatUsageSummary? Usage { get; set; }
         public long? DurationMilliseconds { get; set; }
         public bool ThinkingActive { get; set; }
-        public int FeedbackRating { get; set; }
     }
 
     private sealed class ChatTraceEntryState
@@ -3213,12 +2291,4 @@
     }
 
     private sealed record TraceGraphNode(string Label, string ClassName);
-    private sealed record ChatQuestionCard(
-        string Question,
-        string? DetailsMarkdown,
-        IReadOnlyList<string> Options,
-        string ResponsePrefix,
-        bool AllowOther,
-        string OtherLabel,
-        string OtherPlaceholder);
 }

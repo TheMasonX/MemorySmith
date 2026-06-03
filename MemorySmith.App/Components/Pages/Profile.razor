@@ -2,17 +2,14 @@
 @rendermode InteractiveServer
 @attribute [Authorize]
 @inject AuthenticationStateProvider AuthenticationStateProvider
-@inject IAuthenticationSchemeProvider SchemeProvider
 @inject IMemorySmithDatabase Database
 @inject MemorySmithLocalAuthService Auth
 @inject IOptionsMonitor<MemorySmithOptions> Options
 @inject ISnackbar Snackbar
-@inject IDialogService Dialogs
-@using Microsoft.AspNetCore.Authentication
 @using Microsoft.Extensions.Options
 @using System.Security.Claims
 
-<PageTitle>Profile - MemorySmith</PageTitle>
+<PageTitle>Profile</PageTitle>
 
 <div class="wiki-workbench admin-workbench profile-workbench">
     <section class="wiki-commandbar profile-commandbar" aria-label="Profile">
@@ -38,78 +35,7 @@
     }
     else
     {
-        <section class="profile-primary-grid" aria-label="Profile overview">
-            <div class="health-lower-card profile-summary-card">
-                <MudText Typo="Typo.h6">Account Status</MudText>
-                <dl class="profile-summary-list">
-                    <div>
-                        <dt>Display name</dt>
-                        <dd>@AccountDisplayName</dd>
-                    </div>
-                    <div>
-                        <dt>Email</dt>
-                        <dd><SensitiveValue Value="@_email" Summary="@MaskedEmailLabel" Label="profile email" Class="profile-sensitive-summary" /></dd>
-                    </div>
-                    <div>
-                        <dt>Roles</dt>
-                        <dd>
-                            <span class="chat-context-list profile-role-list">
-                                @if (_roles.Count == 0)
-                                {
-                                    <span class="wiki-status">No roles</span>
-                                }
-                                else
-                                {
-                                    @foreach (var role in _roles)
-                                    {
-                                        <span class="wiki-status is-core">@role.Name</span>
-                                    }
-                                }
-                            </span>
-                        </dd>
-                    </div>
-                    <div>
-                        <dt>Local password</dt>
-                        <dd>@LocalPasswordStatus</dd>
-                    </div>
-                    <div>
-                        <dt>Usable sign-in methods</dt>
-                        <dd>@UsableSignInMethodCount()</dd>
-                    </div>
-                </dl>
-            </div>
-
-            <section class="health-lower-card profile-signin-card" aria-label="Sign-in methods">
-                <div class="wiki-commandbar profile-sectionbar">
-                    <div class="wiki-title-block">
-                        <MudText Typo="Typo.h6">Sign-In Methods</MudText>
-                        <span class="wiki-count">@_links.Count linked</span>
-                    </div>
-                    <MudButton Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Link" Disabled="@(!_canLinkGitHub)" Href="@GitHubLinkHref">Link GitHub</MudButton>
-                </div>
-
-                <MudTable Items="@_links" Dense="true" Class="health-table profile-signin-table">
-                    <HeaderContent>
-                        <MudTh>Provider</MudTh>
-                        <MudTh>Account</MudTh>
-                        <MudTh>Linked</MudTh>
-                        <MudTh>Action</MudTh>
-                    </HeaderContent>
-                    <RowTemplate>
-                        <MudTd>@ProviderDisplay(context.ProviderName)</MudTd>
-                        <MudTd>
-                            <SensitiveValue Value="@ProviderAccountLabel(context)" Summary="@ProviderAccountSummary(context)" Label="@($"{ProviderDisplay(context.ProviderName)} account identifier")" Class="profile-sensitive-value" />
-                        </MudTd>
-                        <MudTd>@context.LinkedAtUtc.ToLocalTime().ToString("g")</MudTd>
-                        <MudTd>
-                            <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error" Disabled="@(_isBusy || !CanRemoveLink(context))" OnClick="@(() => RemoveLinkAsync(context))">Remove</MudButton>
-                        </MudTd>
-                    </RowTemplate>
-                </MudTable>
-            </section>
-        </section>
-
-        <section class="admin-panel-grid profile-panel-grid profile-edit-grid" aria-label="Profile settings">
+        <section class="admin-panel-grid profile-panel-grid">
             <div class="health-lower-card admin-form-panel">
                 <MudText Typo="Typo.h6">Account</MudText>
                 <div class="admin-form-stack">
@@ -138,6 +64,33 @@
                 </div>
             </div>
         </section>
+
+        <section class="health-lower-card profile-signin-card">
+            <div class="wiki-commandbar profile-sectionbar" aria-label="Sign-in methods">
+                <div class="wiki-title-block">
+                    <MudText Typo="Typo.h6">Sign-In Methods</MudText>
+                    <span class="wiki-count">@_links.Count linked</span>
+                </div>
+                <MudButton Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Link" Disabled="@(!_canLinkGitHub)" Href="@GitHubLinkHref">Link GitHub</MudButton>
+            </div>
+
+            <MudTable Items="@_links" Dense="true" Class="health-table">
+                <HeaderContent>
+                    <MudTh>Provider</MudTh>
+                    <MudTh>Account</MudTh>
+                    <MudTh>Linked</MudTh>
+                    <MudTh>Action</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>@ProviderDisplay(context.ProviderName)</MudTd>
+                    <MudTd>@ProviderAccountLabel(context)</MudTd>
+                    <MudTd>@context.LinkedAtUtc.ToLocalTime().ToString("g")</MudTd>
+                    <MudTd>
+                        <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error" Disabled="@(_isBusy || !CanRemoveLink(context))" OnClick="@(() => RemoveLinkAsync(context))">Remove</MudButton>
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        </section>
     }
 </div>
 
@@ -148,7 +101,6 @@
     private IReadOnlyList<ProviderLink> _links = [];
     private IReadOnlyList<RoleRecord> _roles = [];
     private IReadOnlyList<AuthProviderRecord> _providers = [];
-    private HashSet<string> _supportedExternalProviders = new(StringComparer.OrdinalIgnoreCase);
     private string? _userId;
     private string _displayName = string.Empty;
     private string _email = string.Empty;
@@ -162,9 +114,6 @@
 
     private string SignedInLabel => _user is null ? "Signed in" : $"Signed in as {_user.DisplayName}";
     private string GitHubLinkHref => $"/api/auth/challenge?scheme=GitHub&returnUrl={Uri.EscapeDataString("/profile")}";
-    private string AccountDisplayName => string.IsNullOrWhiteSpace(_user?.DisplayName) ? "Account" : _user.DisplayName;
-    private string MaskedEmailLabel => MaskEmail(_email);
-    private string LocalPasswordStatus => _user?.LocalPasswordEnabled == true ? "Enabled" : "Not configured";
 
     protected override async Task OnInitializedAsync()
     {
@@ -175,7 +124,6 @@
     private async Task LoadAsync()
     {
         _isLoading = true;
-        _supportedExternalProviders = await MemorySmithExternalAuthSupport.GetSupportedExternalProvidersAsync(SchemeProvider, Options.CurrentValue.Auth, CancellationToken.None);
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         _userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (!string.IsNullOrWhiteSpace(_userId))
@@ -220,16 +168,6 @@
     private async Task RemoveLinkAsync(ProviderLink link)
     {
         if (_userId is null) return;
-        var provider = ProviderDisplay(link.ProviderName);
-        var account = ProviderAccountLabel(link);
-        if (!await Dialogs.ConfirmDestructiveActionAsync(
-            "Remove sign-in method?",
-            $"Remove {provider} sign-in method \"{account}\". You will need another available sign-in method to access this account afterward.",
-            "Remove sign-in method"))
-        {
-            return;
-        }
-
         _isBusy = true;
         var result = string.Equals(link.ProviderName, MemorySmithProviders.LocalPassword, StringComparison.OrdinalIgnoreCase)
             ? await Auth.RemoveLocalPasswordAsync(_userId, CancellationToken.None)
@@ -258,7 +196,8 @@
         }
 
         var provider = _providers.FirstOrDefault(provider => string.Equals(provider.ProviderName, MemorySmithProviders.GitHub, StringComparison.OrdinalIgnoreCase));
-        return provider?.IsEnabled == true && IsConfiguredRuntimeExternalProvider(MemorySmithProviders.GitHub);
+        var options = Options.CurrentValue.Auth.Providers.GitHub;
+        return provider?.IsEnabled == true && options.Enabled && !string.IsNullOrWhiteSpace(options.ClientId);
     }
 
     private bool CanRemoveLink(ProviderLink link) => UsableSignInMethodCount(excludingLinkId: link.LinkId) > 0;
@@ -279,32 +218,14 @@
         return link.ProviderName switch
         {
             MemorySmithProviders.LocalPassword => auth.LocalPasswordEnabled && _user.LocalPasswordEnabled,
-            MemorySmithProviders.GitHub or MemorySmithProviders.Google or MemorySmithProviders.Microsoft => IsConfiguredRuntimeExternalProvider(link.ProviderName),
+            MemorySmithProviders.GitHub => auth.Providers.GitHub.Enabled && !string.IsNullOrWhiteSpace(auth.Providers.GitHub.ClientId),
+            MemorySmithProviders.Google => auth.Providers.Google.Enabled && !string.IsNullOrWhiteSpace(auth.Providers.Google.ClientId),
+            MemorySmithProviders.Microsoft => auth.Providers.Microsoft.Enabled && !string.IsNullOrWhiteSpace(auth.Providers.Microsoft.ClientId),
             _ => false
         };
     }
 
-    private bool IsConfiguredRuntimeExternalProvider(string providerName) =>
-        MemorySmithExternalAuthSupport.IsConfiguredExternalProvider(providerName, Options.CurrentValue.Auth)
-        && MemorySmithExternalAuthSupport.IsRuntimeSupportedExternalProvider(providerName, _supportedExternalProviders);
-
     private string ProviderDisplay(string providerName) => _providers.FirstOrDefault(provider => string.Equals(provider.ProviderName, providerName, StringComparison.OrdinalIgnoreCase))?.DisplayName ?? providerName;
-
-    private static string ProviderAccountSummary(ProviderLink link)
-    {
-        if (!string.IsNullOrWhiteSpace(link.ProviderEmail))
-        {
-            var email = MaskEmail(link.ProviderEmail);
-            return string.IsNullOrWhiteSpace(link.ProviderDisplayName) ? email : $"{link.ProviderDisplayName} ({email})";
-        }
-
-        if (!string.IsNullOrWhiteSpace(link.ProviderDisplayName))
-        {
-            return link.ProviderDisplayName;
-        }
-
-        return SummarizeIdentifier(link.ProviderSubject);
-    }
 
     private static string ProviderAccountLabel(ProviderLink link)
     {
@@ -314,34 +235,5 @@
         }
 
         return link.ProviderDisplayName ?? link.ProviderEmail ?? link.ProviderSubject;
-    }
-
-    private static string MaskEmail(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return "Not set";
-        }
-
-        var atIndex = value.IndexOf('@');
-        if (atIndex <= 0 || atIndex == value.Length - 1)
-        {
-            return SummarizeIdentifier(value);
-        }
-
-        var local = value[..atIndex];
-        var domain = value[(atIndex + 1)..];
-        var visibleLocal = local.Length <= 2 ? local[..1] : local[..Math.Min(2, local.Length)];
-        return $"{visibleLocal}...@{domain}";
-    }
-
-    private static string SummarizeIdentifier(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return "Not set";
-        }
-
-        return value.Length <= 10 ? value : $"{value[..4]}...{value[^4..]}";
     }
 }

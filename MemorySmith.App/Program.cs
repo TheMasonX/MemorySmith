@@ -490,9 +490,7 @@ try
         var timeoutSeconds = Math.Clamp(options.Chat.RequestTimeoutSeconds, 10, 3600);
         client.Timeout = TimeSpan.FromSeconds(timeoutSeconds);
     });
-    builder.Services.AddScoped<GitHubCopilotChatProvider>();
     builder.Services.AddScoped<IChatProvider>(sp => sp.GetRequiredService<OllamaChatProvider>());
-    builder.Services.AddScoped<IChatProvider>(sp => sp.GetRequiredService<GitHubCopilotChatProvider>());
     builder.Services.AddSingleton<ChatToolCatalog>();
     builder.Services.AddSingleton<ChatIntentInterceptor>();
     builder.Services.AddSingleton<IChatTranscriptWriter, ChatTranscriptWriter>();
