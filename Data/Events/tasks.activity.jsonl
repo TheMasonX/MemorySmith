@@ -146,3 +146,7 @@
 {"taskId":"tsk-0264-fix-broken-tasks","action":"comment_added","actor":"TheMasonX","note":"218 251 252 224 222 221 220 are some tasks seen with issues","occurredAtUtc":"2026-06-01T18:49:51.3245416Z"}
 {"taskId":"tsk-0267-chat-todo-tool","action":"created","actor":"TheMasonX","note":null,"occurredAtUtc":"2026-06-02T00:19:57.5337882Z"}
 {"taskId":"tsk-0270-remove-symbol-in-config-changed-count","action":"created","actor":"TheMasonX","note":null,"occurredAtUtc":"2026-06-02T05:27:29.2813047Z"}
+{"taskId":"tsk-0271-model-context-dropdown-unusable","action":"created","actor":"TheMasonX","note":null,"occurredAtUtc":"2026-06-03T02:17:31.8645705Z"}
+{"taskId":"tsk-0272-start-ollama-if-not-running","action":"created","actor":"TheMasonX","note":null,"occurredAtUtc":"2026-06-03T02:21:05.3100295Z"}
+{"taskId":"tsk-0271-model-context-dropdown-unusable","action":"comment_added","actor":"TheMasonX","note":"Nevermind, now it\u0027s working. it might have been while ollama was down (see TSK-0272)","occurredAtUtc":"2026-06-03T02:22:37.3559451Z"}
+{"taskId":"tsk-0271-model-context-dropdown-unusable","action":"attachment_added","actor":"TheMasonX","note":"TSK-0272 - Start Ollama If Not Running","occurredAtUtc":"2026-06-03T02:22:51.6328442Z"}

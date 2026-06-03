@@ -76,9 +76,14 @@ print(f"Modelfile written to {modelfile_path}")
 print(f"FROM {OUTPUT_PATH}")
 print(f"Total lines: {len(merged_modelfile.splitlines())}")
 
-# Create Ollama model with --experimental flag (in older Ollama versions)
+# Quantization level: q4_K_M (good quality, ~4.8 GB for 4B model)
+# Alternatives: q5_K_M (~5.5 GB, higher quality), q8_0 (~8 GB, near lossless)
+QUANTIZE_LEVEL = os.environ.get("OLLAMA_QUANTIZE", "q4_K_M")
+
+# Create Ollama model with quantization
+# Without -q, the model stays in FP16/BF16 (~8.4 GB for 4B) which may not fit in VRAM
 result = subprocess.run(
-    ["ollama", "create", OLLAMA_MODEL, "-f", modelfile_path, "--experimental"],
+    ["ollama", "create", OLLAMA_MODEL, "-f", modelfile_path, "--experimental", "-q", QUANTIZE_LEVEL],
     capture_output=True, text=True, cwd=OUTPUT_PATH
 )
 print(f"Ollama create stdout: {result.stdout}")
@@ -91,7 +96,57 @@ if result.returncode == 0:
         ["ollama", "cp", OLLAMA_MODEL, OLLAMA_TAG],
         capture_output=True
     )
-    print(f"Created {OLLAMA_MODEL} and tagged as {OLLAMA_TAG}")
+    print(f"Created {OLLAMA_MODEL} (quantized {QUANTIZE_LEVEL}) and tagged as {OLLAMA_TAG}")
+
+    # Also tag with quantization level for clarity
+    quant_tag = f"{OLLAMA_TAG}-{QUANTIZE_LEVEL}"
+    subprocess.run(
+        ["ollama", "cp", OLLAMA_MODEL, quant_tag],
+        capture_output=True
+    )
+    print(f"Also tagged as {quant_tag}")
+
+    # Patch config blob to add renderer/parser for tool support
+    # (Ollama create from local GGUF doesn't auto-detect these)
+    import hashlib, json
+    manifest_path = os.path.expanduser(
+        f"~/.ollama/models/manifests/registry.ollama.ai/library/{OLLAMA_MODEL.replace(':', '/').replace('@', '/')}"
+    )
+    # Try alternate path format
+    alt_manifest_path = manifest_path.replace("registry.ollama.ai", "registry.ollama.ai/library")
+    if os.path.exists(manifest_path):
+        mp = manifest_path
+    elif os.path.exists(alt_manifest_path):
+        mp = alt_manifest_path
+    else:
+        mp = None
+        print("Warning: could not find manifest to patch tool support")
+
+    if mp:
+        with open(mp) as f:
+            manifest = json.load(f)
+        config_digest = manifest["config"]["digest"].replace("sha256:", "")
+        blob_dir = os.path.expanduser("~/.ollama/models/blobs")
+        config_path = os.path.join(blob_dir, f"sha256-{config_digest}")
+
+        with open(config_path) as f:
+            config = json.load(f)
+
+        config["renderer"] = "qwen3.5"
+        config["parser"] = "qwen3.5"
+
+        new_content = json.dumps(config, separators=(",", ":"))
+        new_digest = hashlib.sha256(new_content.encode()).hexdigest()
+        new_blob_path = os.path.join(blob_dir, f"sha256-{new_digest}")
+
+        with open(new_blob_path, "w") as f:
+            f.write(new_content)
+
+        manifest["config"]["digest"] = f"sha256:{new_digest}"
+        with open(mp, "w") as f:
+            json.dump(manifest, f, indent=2)
+
+        print(f"Patched config blob {config_digest[:12]} -> {new_digest[:12]} (added renderer/parser)")
 
     # Verify
     result = subprocess.run(

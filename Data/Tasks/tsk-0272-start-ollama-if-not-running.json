@@ -1,0 +1,31 @@
+﻿{
+  "id": "tsk-0272-start-ollama-if-not-running",
+  "key": "TSK-0272",
+  "title": "Start Ollama If Not Running",
+  "description": "I had the chat get stuck waiting to start because ollama wasn\u0027t running",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-06-03T02:21:05.3100295Z",
+  "updatedAtUtc": "2026-06-03T02:21:05.3100295Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}
