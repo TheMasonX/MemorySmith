@@ -1,0 +1,135 @@
+@page "/admin/sessions"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = MemorySmithPolicies.CanAdminMemorySmith)]
+@inject AgentSessionService SessionService
+@inject IAgentSessionStore SessionStore
+@inject ISnackbar Snackbar
+@using MemorySmith.App.Services.AgentSessions
+
+<PageTitle>Agent Sessions</PageTitle>
+
+<div class="wiki-workbench admin-workbench">
+    <section class="wiki-commandbar" aria-label="Agent Sessions">
+        <div class="wiki-title-block">
+            <MudText Typo="Typo.h5">Agent Sessions</MudText>
+            <span class="wiki-count">Active sub-agent sessions created via memorysmith_agent_invoke</span>
+        </div>
+        <MudButton Variant="Variant.Outlined"
+                   StartIcon="@Icons.Material.Filled.Refresh"
+                   OnClick="LoadAsync">Refresh</MudButton>
+    </section>
+
+    @if (_sessions.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info" Class="my-4">
+            No active agent sessions. Sessions appear here when a caller invokes
+            <code>memorysmith_agent_invoke</code> via the MCP endpoint.
+        </MudAlert>
+    }
+    else
+    {
+        <MudTable Items="@_sessions" Dense="true" Class="health-table">
+            <HeaderContent>
+                <MudTh>Session ID</MudTh>
+                <MudTh>Principal</MudTh>
+                <MudTh>Scope</MudTh>
+                <MudTh>Turns</MudTh>
+                <MudTh>Status</MudTh>
+                <MudTh>Last accessed</MudTh>
+                <MudTh>Created</MudTh>
+                <MudTh>Action</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>
+                    <code title="@context.SessionId">@context.SessionId[..8]…</code>
+                    @if (context.ParentSessionId is not null)
+                    {
+                        <br /><small title="Parent: @context.ParentSessionId">sub-agent (depth @context.NestingDepth)</small>
+                    }
+                </MudTd>
+                <MudTd>
+                    <small title="@context.PrincipalId">@TruncatePrincipal(context.PrincipalId)</small>
+                </MudTd>
+                <MudTd>
+                    <span class="@ScopeClass(context.RequestedScope)">@context.RequestedScope</span>
+                    <br /><small>@context.EffectiveToolNames.Count tools</small>
+                </MudTd>
+                <MudTd>@context.TurnCount / @context.MaxTurns</MudTd>
+                <MudTd>
+                    <span class="@StatusClass(context.Status)">@context.Status</span>
+                </MudTd>
+                <MudTd>@FormatTime(context.LastAccessedAt)</MudTd>
+                <MudTd>@FormatTime(context.CreatedAt)</MudTd>
+                <MudTd>
+                    <MudButton Size="Size.Small"
+                               Variant="Variant.Outlined"
+                               Color="Color.Error"
+                               Disabled="@(_isBusy || context.Status is AgentSessionStatus.Closed or AgentSessionStatus.Expired)"
+                               OnClick="@(() => AdminCloseAsync(context.SessionId))">
+                        Close
+                    </MudButton>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+
+    <MudText Typo="Typo.caption" Class="mt-4" Color="Color.Secondary">
+        Sessions are stored in-memory (ephemeral) by default. They expire automatically after
+        their configured idle timeout. Use the Close button to force-expire a session immediately.
+        Phase 3 will add parent-child session chain visualization.
+    </MudText>
+</div>
+
+@code {
+    private IReadOnlyList<AgentSession> _sessions = [];
+    private bool _isBusy;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _sessions = await SessionStore.GetActiveAndIdleAsync(CancellationToken.None);
+        StateHasChanged();
+    }
+
+    private async Task AdminCloseAsync(string sessionId)
+    {
+        _isBusy = true;
+        try
+        {
+            await SessionService.AdminCloseSessionAsync(sessionId, CancellationToken.None);
+            Snackbar.Add($"Session {sessionId[..8]}… closed.", Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to close session: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private static string TruncatePrincipal(string principalId) =>
+        principalId.Length > 16 ? principalId[..16] + "…" : principalId;
+
+    private static string FormatTime(DateTimeOffset time) =>
+        time.ToLocalTime().ToString("g");
+
+    private static string ScopeClass(string scope) => scope switch
+    {
+        "read_only" or "standard" => "wiki-status is-unconsolidated",
+        "full" => "wiki-status is-working",
+        "custom" => "wiki-status is-core",
+        _ => "wiki-status"
+    };
+
+    private static string StatusClass(AgentSessionStatus status) => status switch
+    {
+        AgentSessionStatus.Active => "wiki-status is-core",
+        AgentSessionStatus.Idle => "wiki-status is-working",
+        AgentSessionStatus.Expired or AgentSessionStatus.Closed => "wiki-status is-deprecated",
+        _ => "wiki-status"
+    };
+}

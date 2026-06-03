@@ -41,6 +41,17 @@ public sealed class AgentSession
     public required int TimeoutSeconds { get; init; }
     public required int IdleTimeoutMinutes { get; init; }
 
+    // ── Optional system prompt addendum (Phase 2) ────────────────────────────
+    /// <summary>
+    /// Optional additional instructions appended to the sub-agent's system context.
+    /// Set at session creation; requires CanEditMemorySmith + AllowSensitiveRead is not required.
+    /// Disabled in RemoteHardened security profile regardless of permission.
+    ///
+    /// TODO (Phase 3): wire into MemoryChatRequest.SystemPromptAddendum once that field is added
+    /// to ChatServices.cs. Currently stored but not injected into the model prompt.
+    /// </summary>
+    public string? SystemPromptAddendum { get; init; }
+
     // ── Delegation chain — reserved for Phase 3 internal delegation ───────────
     /// <summary>
     /// Session ID of the Athena session that spawned this sub-agent session (Phase 3 only).

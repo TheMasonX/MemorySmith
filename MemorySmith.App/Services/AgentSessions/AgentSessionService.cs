@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using MemorySmith.Core.Models;
+using MemorySmith.App.Services.Training;
 
 // ── Result types ─────────────────────────────────────────────────────────────
 
@@ -85,6 +86,7 @@ public sealed class AgentSessionService
     private readonly IPageService _pages;
     private readonly ChatIntentInterceptor _intentInterceptor;
     private readonly ILogger<AgentSessionService> _logger;
+    private readonly Training.IChatTranscriptWriter? _transcriptWriter; // optional, may not be registered
 
     public AgentSessionService(
         IAgentSessionStore store,
@@ -96,7 +98,8 @@ public sealed class AgentSessionService
         MemoryApplicationService memories,
         IPageService pages,
         ChatIntentInterceptor intentInterceptor,
-        ILogger<AgentSessionService> logger)
+        ILogger<AgentSessionService> logger,
+        Training.IChatTranscriptWriter? transcriptWriter = null)
     {
         _store = store;
         _gpuSlots = gpuSlots;
@@ -108,6 +111,7 @@ public sealed class AgentSessionService
         _pages = pages;
         _intentInterceptor = intentInterceptor;
         _logger = logger;
+        _transcriptWriter = transcriptWriter;
 
         // Startup guard: PersistSessions=true has no store implementation yet (Phase 2).
         if (_options.Value.AgentSession.PersistSessions)
@@ -128,7 +132,8 @@ public sealed class AgentSessionService
         int maxTurns,
         int timeoutSeconds,
         ClaimsPrincipal caller,
-        CancellationToken ct)
+        CancellationToken ct,
+        string? systemPromptAddendum = null)
     {
         var principalId = RequirePrincipalId(caller);
         if (principalId is null)
@@ -167,6 +172,28 @@ public sealed class AgentSessionService
         var effectiveToolNames = await ComputeEffectiveScopeAsync(
             requestedScope, customTools, caller, profile, opts, ct);
 
+        // system_prompt_addendum gate:
+        // - Requires CanEditMemorySmith
+        // - Disabled in RemoteHardened mode (no-op regardless of permission)
+        // - Stored on session; actual injection into model prompt deferred to Phase 3
+        //   (requires MemoryChatRequest.SystemPromptAddendum addition to ChatServices.cs)
+        string? effectiveAddendum = null;
+        if (!string.IsNullOrWhiteSpace(systemPromptAddendum))
+        {
+            var canEdit = (await _authService.AuthorizeAsync(
+                caller, null, MemorySmithPolicies.CanEditMemorySmith)).Succeeded;
+            var isRemoteHardened = string.Equals(
+                profile, MemorySmithSecurityProfiles.RemoteHardened, StringComparison.OrdinalIgnoreCase);
+
+            if (canEdit && !isRemoteHardened)
+            {
+                effectiveAddendum = systemPromptAddendum.Length > 2000
+                    ? systemPromptAddendum[..2000]
+                    : systemPromptAddendum;
+            }
+            // else: silently ignored — no error to avoid leaking permission info
+        }
+
         var session = new AgentSession
         {
             SessionId = Guid.NewGuid().ToString("N"),
@@ -175,6 +202,7 @@ public sealed class AgentSessionService
             EffectiveToolNames = effectiveToolNames,
             ModelOverride = modelOverride,
             ProviderOverride = providerOverride,
+            SystemPromptAddendum = effectiveAddendum,
             CreatedAt = DateTimeOffset.UtcNow,
             MaxTurns = Math.Clamp(maxTurns, 1, 50),
             TimeoutSeconds = Math.Clamp(timeoutSeconds, 10, 600),
@@ -238,6 +266,32 @@ public sealed class AgentSessionService
         {
             session.Release();
         }
+    }
+
+    /// <summary>
+    /// Force-closes a session on behalf of an admin caller, bypassing the principal check.
+    /// Called from the /admin/sessions Blazor page. Auth is enforced at the page layer via
+    /// <c>CanAdminMemorySmith</c> policy.
+    /// </summary>
+    public async Task AdminCloseSessionAsync(string sessionId, CancellationToken ct)
+    {
+        var session = await _store.GetAsync(sessionId, ct);
+        if (session is null) return;
+
+        await session.AcquireAsync(ct);
+        try
+        {
+            if (session.Status is AgentSessionStatus.Closed or AgentSessionStatus.Expired)
+                return;
+            session.SetStatus(AgentSessionStatus.Closed);
+            await _store.SaveAsync(session, ct);
+            await _store.DeleteAsync(sessionId, ct);
+        }
+        finally
+        {
+            session.Release();
+        }
+        _logger.LogInformation("Agent session {SessionId} force-closed by admin.", sessionId[..8]);
     }
 
     public async Task<bool> EndSessionAsync(string sessionId, ClaimsPrincipal caller, CancellationToken ct)
@@ -349,6 +403,12 @@ public sealed class AgentSessionService
             await _store.SaveAsync(session, ct);
         }
 
+        // Write transcript entry with ModeIntent=sub_agent if transcript writer is registered.
+        if (_transcriptWriter is not null)
+        {
+            _ = WriteTranscriptAsync(session, message, response, finishReason, ct);
+        }
+
         var contextIds = response.Context
             .Select(c => $"{c.Kind}:{c.Id}")
             .ToList();
@@ -363,6 +423,61 @@ public sealed class AgentSessionService
             ToolCallsMade: toolCallsMade,
             FinishReason: finishReason,
             Usage: response.Usage);
+    }
+
+    // ── Transcript logging ────────────────────────────────────────────────────
+
+    private async Task WriteTranscriptAsync(
+        AgentSession session, string userMessage, MemoryChatResponse response,
+        string finishReason, CancellationToken ct)
+    {
+        if (_transcriptWriter is null) return;
+        try
+        {
+            var turnId = Guid.NewGuid().ToString("N");
+            var record = new ChatTurnRecord
+            {
+                Id = turnId,
+                Timestamp = DateTimeOffset.UtcNow,
+                SessionId = session.SessionId,
+                User = new TurnUser(session.PrincipalId, "sub-agent-caller"),
+                Model = new TurnModel(response.Model, response.ProviderName),
+                TemplateVersion = "sub-agent-v1",
+                ModeIntent = "sub_agent",      // ← key: identifies sub-agent turns in transcript
+                SystemPromptHash = ChatTranscriptWriter.Sha256Hex(session.SessionId),
+                ParentSessionId = session.ParentSessionId,
+                Request = new TurnRequest
+                {
+                    MessageHash = ChatTranscriptWriter.Sha256Hex(userMessage),
+                    HistoryTurnCount = session.TurnCount - 1,
+                },
+                Execution = new TurnExecution
+                {
+                    IterationsUsed = 1,
+                    PromptTokens = response.Usage?.PromptTokens,
+                    CompletionTokens = response.Usage?.CompletionTokens,
+                    TotalTokens = response.Usage?.TotalTokens,
+                },
+                Response = new TurnResponse
+                {
+                    FinishReason = finishReason,
+                    ContentSha256 = ChatTranscriptWriter.Sha256Hex(response.Reply),
+                    ContentBytes = System.Text.Encoding.UTF8.GetByteCount(response.Reply)
+                }
+            };
+            var content = new ChatTurnContent
+            {
+                Id = turnId,
+                UserMessage = userMessage,
+                AssistantMessage = response.Reply
+            };
+            await _transcriptWriter.WriteAsync(record, content, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to write sub-agent transcript entry for session {SessionId}.",
+                session.SessionId[..8]);
+        }
     }
 
     // ── Scope computation ─────────────────────────────────────────────────────

@@ -199,6 +199,7 @@ public class McpController : ControllerBase
         var timeoutSeconds = GetInt(argumentsElement, "timeout_seconds", 120);
         var modelOverride = GetString(argumentsElement, "model");
         var providerOverride = GetString(argumentsElement, "provider");
+        var systemPromptAddendum = GetString(argumentsElement, "system_prompt_addendum");
 
         List<string>? customTools = null;
         if (TryGetProperty(argumentsElement, "allowed_tools", out var toolsElement) &&
@@ -215,7 +216,8 @@ public class McpController : ControllerBase
         {
             var createResult = await _agentSessionService.CreateSessionAsync(
                 requestedScope, customTools, modelOverride, providerOverride,
-                maxTurns, timeoutSeconds, User, cancellationToken);
+                maxTurns, timeoutSeconds, User, cancellationToken,
+                systemPromptAddendum: systemPromptAddendum);
             if (!createResult.Succeeded)
                 return ToolText(createResult.Error!, isError: true);
             session = createResult.Session!;
@@ -684,7 +686,13 @@ public class McpController : ControllerBase
             ["max_turns"] = new JsonObject { ["type"] = "integer", ["minimum"] = 1, ["maximum"] = 50, ["default"] = 10 },
             ["timeout_seconds"] = new JsonObject { ["type"] = "integer", ["minimum"] = 10, ["maximum"] = 600, ["default"] = 120 },
             ["model"] = new JsonObject { ["type"] = "string", ["description"] = "Optional Ollama model tag override (e.g. 'qwen3.5:4b')." },
-            ["provider"] = new JsonObject { ["type"] = "string", ["description"] = "Optional provider override (e.g. 'Ollama', 'GitHubCopilot')." }
+            ["provider"] = new JsonObject { ["type"] = "string", ["description"] = "Optional provider override (e.g. 'Ollama', 'GitHubCopilot')." },
+            ["system_prompt_addendum"] = new JsonObject
+            {
+                ["type"] = "string",
+                ["maxLength"] = 2000,
+                ["description"] = "Optional extra instructions appended to the sub-agent's system context. Requires CanEditMemorySmith role. No-op in remote-hardened mode. Note: stored on session; injection into model prompt is a Phase 3 feature."
+            }
         }
     };
 
