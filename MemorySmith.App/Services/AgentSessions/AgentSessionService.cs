@@ -517,9 +517,13 @@ public sealed class AgentSessionService
         var mcpOptions = opts.Mcp;
         var sessionOptions = opts.AgentSession;
 
-        // Step 1+2: All MCP-available tools filtered by server enable/disable config.
+        // Step 1+2: Tools available for sub-agent execution, filtered by server governance config.
+        // Use McpTools filtered to AvailableInChat=true (sub-agents run in MemoryChatMode.Chat
+        // and can only execute ChatTools). Using McpTools alone would allow MCP-only write tools
+        // like page_save/page_delete to appear in EffectiveToolNames even though they can never
+        // execute — making audit logs misleading. Phase 3 can revisit if Agent mode is enabled.
         var enabledSet = _toolCatalog.McpTools
-            .Where(t => IsMcpToolEnabled(t, mcpOptions))
+            .Where(t => t.AvailableInChat && IsMcpToolEnabled(t, mcpOptions))
             .ToList();
 
         // Step 3: Determine caller permissions.
