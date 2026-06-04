@@ -19,17 +19,28 @@
     </div>
 
     <MudPaper Class="pa-4" Outlined="true">
-        <div class="admin-filter-bar" aria-label="Code search query controls">
-            <MudTextField T="string" Value="@_query" ValueChanged="@((string value) => _query = value)" Placeholder="Search query" Variant="Variant.Outlined" Margin="Margin.Dense" Class="admin-filter-input" Immediate="true" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
-            <MudTooltip Text="@($"Operator cap: {MaxLimit}")">
-                <MudNumericField T="int" Value="@_limit" ValueChanged="@((int value) => _limit = Math.Clamp(value, 1, MaxLimit))" Min="1" Max="@MaxLimit" Label="Limit" Variant="Variant.Outlined" Margin="Margin.Dense" Class="admin-filter-select" />
-            </MudTooltip>
-            <MudSwitch T="bool" Value="@_rebuildIfStale" ValueChanged="@((bool value) => _rebuildIfStale = value)" Label="Rebuild if stale" Color="Color.Primary" />
-            <MudSwitch T="bool" Value="@_forceRebuild" ValueChanged="@((bool value) => _forceRebuild = value)" Label="Force rebuild" Color="Color.Warning" />
-            <MudTooltip Text="Search">
-                <MudIconButton Icon="@Icons.Material.Filled.Search" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" Disabled="@(_isBusy || string.IsNullOrWhiteSpace(_query))" OnClick="SearchAsync" aria-label="Search" title="Search" />
-            </MudTooltip>
+        <div class="wiki-search-strip">
+            <div class="wiki-search-main" style="flex:1 1 auto;">
+                <MudTextField T="string" Value="@_query" ValueChanged="@((string value) => _query = value)" Placeholder="Search query" Variant="Variant.Outlined" Margin="Margin.Dense" Class="wiki-search-box" Immediate="true" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
+                <MudTooltip Text="Search">
+                    <MudIconButton Icon="@Icons.Material.Filled.Search" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" Disabled="@(_isBusy || string.IsNullOrWhiteSpace(_query))" OnClick="SearchAsync" aria-label="Search" title="Search" />
+                </MudTooltip>
+            </div>
         </div>
+
+        <details class="wiki-secondary-filters">
+            <summary>
+                <span>Search options</span>
+                <span class="wiki-secondary-filters-summary-text">Limit: @_limit | @(_rebuildIfStale ? "Rebuild on" : "Rebuild off")</span>
+            </summary>
+            <div class="wiki-secondary-filters-body">
+                <MudTooltip Text="@($"Operator cap: {MaxLimit}")">
+                    <MudNumericField T="int" Value="@_limit" ValueChanged="@((int value) => _limit = Math.Clamp(value, 1, MaxLimit))" Min="1" Max="@MaxLimit" Label="Limit" Variant="Variant.Outlined" Margin="Margin.Dense" Class="wiki-filter" />
+                </MudTooltip>
+                <MudSwitch T="bool" Value="@_rebuildIfStale" ValueChanged="@((bool value) => _rebuildIfStale = value)" Label="Rebuild if stale" Color="Color.Primary" />
+                <MudSwitch T="bool" Value="@_forceRebuild" ValueChanged="@((bool value) => _forceRebuild = value)" Label="Force rebuild" Color="Color.Warning" />
+            </div>
+        </details>
 
         <MudTextField T="string" Value="@_targetsInput" ValueChanged="@((string value) => _targetsInput = value)" Label="Target directories (one per line)" Variant="Variant.Outlined" Lines="3" Margin="Margin.Dense" HelperText="Leave blank to search configured targets." />
         <div style="display:flex; gap:8px; margin-top:8px;">
