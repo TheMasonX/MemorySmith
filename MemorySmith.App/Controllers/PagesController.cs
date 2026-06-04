@@ -19,11 +19,14 @@ public class PagesController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<PageSummary>>> GetAll([FromQuery] string? query, [FromQuery] int limit = 50, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> GetAll([FromQuery] string? query, [FromQuery] int limit = 50, [FromQuery] string? format = null, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(query))
         {
-            return Ok(FilterVisible(await _pages.ListAsync(cancellationToken)));
+            var pages = FilterVisible(await _pages.ListAsync(cancellationToken));
+            return IsEnvelopeFormat(format)
+                ? Ok(BuildPageEnvelope("list", pages))
+                : Ok(pages);
         }
 
         var visiblePages = await _pages.SearchVisibleAsync(
@@ -32,7 +35,9 @@ public class PagesController : ControllerBase
             page => PageAccessLevels.CanView(page.MinimumRole, User, _options.CurrentValue.Auth),
             cancellationToken);
 
-        return Ok(visiblePages);
+        return IsEnvelopeFormat(format)
+            ? Ok(BuildPageEnvelope("search", visiblePages))
+            : Ok(visiblePages);
     }
 
     [HttpGet("{**slug}")]
@@ -113,6 +118,19 @@ public class PagesController : ControllerBase
 
     private bool CanView(PageDocument page) =>
         PageAccessLevels.CanView(page.MinimumRole, User, _options.CurrentValue.Auth);
+
+    private static RetrievalResultEnvelope<PageSummary> BuildPageEnvelope(string mode, IReadOnlyList<PageSummary> pages) =>
+        new(
+            "memorysmith.page-results.v1",
+            mode,
+            new RetrievalProviderMetadata("page", "markdown-lexical", true, "Markdown page metadata and body search."),
+            pages,
+            []);
+
+    private static bool IsEnvelopeFormat(string? format) =>
+        string.Equals(format, "envelope", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(format, "json", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(format, "json-v2", StringComparison.OrdinalIgnoreCase);
 
     private bool TryResolveMinimumRole(PageSaveRequest request, PageDocument? existing, out string resolvedMinimumRole, out ActionResult<PageDocument>? result)
     {

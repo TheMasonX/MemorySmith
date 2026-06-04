@@ -381,7 +381,6 @@ public class ChatToolCatalogAndInterceptTests
 
     [Test]
     public async Task PageSearchTool_ReturnsVisibleMatchesBeyondFirstTwoHundredHiddenResults()
-
     {
         var pages = new FilePageService(_tempDir);
         const string query = "crowded tool visibility token";
@@ -390,7 +389,6 @@ public class ChatToolCatalogAndInterceptTests
         var catalog = new ChatToolCatalog();
         catalog.TryGet("memorysmith_page_search", out var pageSearchTool);
         
-
         var ctx = new ChatToolExecutionContext(null!, pages, "test");
 
         var pageSearchResult = await pageSearchTool.Execute(new JsonObject
@@ -398,7 +396,6 @@ public class ChatToolCatalogAndInterceptTests
             ["query"] = query,
             ["limit"] = 2
         }, ctx, CancellationToken.None);
-
 
 
         Assert.Multiple(() =>
@@ -411,7 +408,6 @@ public class ChatToolCatalogAndInterceptTests
 
             Assert.That(pageSearchResult.Text, Does.Not.Contain("signed-in-page-001"));
             
-
         });
     }
 
@@ -575,7 +571,6 @@ public class ChatToolCatalogAndInterceptTests
     [TestCase("search the codebase for widget parser", "memorysmith_code_search")]
     [TestCase("find records about caching layer", "memorysmith_hybrid_search")]
     [TestCase("semantic search for vector embeddings", "memorysmith_hybrid_search")]
-
     [TestCase("hybrid search for chat tools", "memorysmith_hybrid_search")]
     [TestCase("get memory tool-target", "memorysmith_get")]
     [TestCase("open page notes/intro", "memorysmith_page_get")]

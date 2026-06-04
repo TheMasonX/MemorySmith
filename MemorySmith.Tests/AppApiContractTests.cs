@@ -1099,7 +1099,6 @@ Line two",
             var clearApiKeyResponse = await adminClient.PutAsJsonAsync("/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:ApiKey", string.Empty));
             var apiKeyAudit = await adminClient.GetFromJsonAsync<PagedResult<AuditLogEntry>>("/api/admin/audit?action=settings.updated&targetKind=Setting&targetId=MemorySmith%3AApiKey&pageSize=10");
 
-
             Assert.Multiple(() =>
             {
                 Assert.That(IsAuthChallenge(anonymousResponse.StatusCode), Is.True);
@@ -1134,7 +1133,6 @@ Line two",
                 Assert.That(apiKeyAudit?.Data.Select(item => item.DetailsJson), Has.Some.Contains("Configured"));
                 Assert.That(apiKeyAudit?.Data.Select(item => item.DetailsJson), Has.Some.Contains("Cleared"));
                 Assert.That(apiKeyAudit?.Data.Select(item => item.DetailsJson), Has.None.Contains("contract-secret"));
-
                 Assert.That(File.Exists(settingsPath), Is.True);
             });
 
@@ -1154,7 +1152,6 @@ Line two",
             Assert.That(json, Does.Contain("\"HybridVectorWeight\": 0"));
             Assert.That(json, Does.Not.Contain("\"HybridLexicalWeight\": 0"));
             Assert.That(json, Does.Not.Contain("contract-secret"));
-
         }
         finally
         {
@@ -1353,7 +1350,6 @@ Line two",
                 Assert.That(pageResults, Is.Not.Null);
                 Assert.That(pageResults!, Has.Length.EqualTo(PageVisibilitySearchFixture.PublicPageSlugs.Length));
                 Assert.That(pageResults!.Select(page => page.Slug), Is.EquivalentTo(PageVisibilitySearchFixture.PublicPageSlugs));
-
                 Assert.That(unifiedResults, Is.Not.Null);
                 Assert.That(unifiedPageIds, Has.Length.EqualTo(PageVisibilitySearchFixture.PublicPageSlugs.Length));
                 Assert.That(unifiedPageIds, Is.EquivalentTo(PageVisibilitySearchFixture.PublicPageSlugs));
