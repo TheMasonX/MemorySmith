@@ -1,5 +1,6 @@
 using MemorySmith.App.Components;
 using MemorySmith.App.Services;
+using MemorySmith.App.Services.Training;
 using MemorySmith.Core.Indexing;
 using MemorySmith.Core.Models;
 using MemorySmith.Storage;
@@ -33,6 +34,10 @@ Log.Logger = new LoggerConfiguration()
 try
 {
     var builder = WebApplication.CreateBuilder(args);
+    if (string.Equals(builder.Environment.EnvironmentName, "LocalDevelopment", StringComparison.OrdinalIgnoreCase))
+    {
+        builder.WebHost.UseStaticWebAssets();
+    }
     // Load optional local secrets file from the service working directory (survives publishes, gitignored in artifacts/)
     var secretsFile = Path.Combine(AppContext.BaseDirectory, "appsettings.Secrets.json");
     if (File.Exists(secretsFile))
@@ -288,11 +293,17 @@ try
         return new FileEventStore(eventLogPath);
     });
     builder.Services.AddSingleton<MemoryIndex>();
+    builder.Services.AddSingleton<TagPolicyService>();
+    builder.Services.AddSingleton<MemoryDiagnosticsService>();
+    builder.Services.AddSingleton<TagGovernanceService>();
     builder.Services.AddSingleton<ITextEmbeddingProvider, OnnxTextEmbeddingProvider>();
     builder.Services.AddSingleton<SemanticEmbeddingSearchService>();
     builder.Services.AddSingleton<BackgroundServiceTelemetryTracker>();
     builder.Services.AddSingleton<IMemoryChangePublisher, MemoryChangePublisher>();
     builder.Services.AddSingleton<MemoryApplicationService>();
+    builder.Services.AddSingleton<ITaskService, FileTaskService>();
+    builder.Services.AddSingleton<LoggingObservabilityService>();
+    builder.Services.AddSingleton<TrainingHarnessRunnerService>();
     builder.Services.AddSingleton<MemoryMaintenanceTasks>();
     builder.Services.AddSingleton<MaintenanceAgentConfigService>();
     builder.Services.AddSingleton<MaintenanceResourceProbe>();
