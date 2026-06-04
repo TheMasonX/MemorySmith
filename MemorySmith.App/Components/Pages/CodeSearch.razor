@@ -28,6 +28,11 @@
             </div>
         </div>
 
+        <div style="display:flex; gap:8px; margin-top:8px;">
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Build" Disabled="@(_isBusy || _status?.Build.IsRunning == true)" OnClick="RebuildIndexAsync">Rebuild index</MudButton>
+            <MudButton Variant="Variant.Text" Color="Color.Secondary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Refresh" Disabled="@_isBusy" OnClick="RefreshStatusAsync">Refresh status</MudButton>
+        </div>
+
         <details class="wiki-secondary-filters">
             <summary>
                 <span>Search options</span>
@@ -231,6 +236,13 @@
 
         _targetsInput = string.Join(Environment.NewLine, _targetOptions);
         await RefreshStatusAsync();
+
+        // Trigger background indexing if index is empty
+        if (_status?.IndexedFileCount == 0)
+        {
+            _ = BackgroundIndexAsync();
+        }
+
         _ = RunStatusPollingAsync(_statusPollingCts.Token);
     }
 
@@ -265,6 +277,43 @@
         finally
         {
             _isBusy = false;
+        }
+    }
+
+    private async Task RebuildIndexAsync()
+    {
+        _isBusy = true;
+        _error = null;
+        try
+        {
+            await CodeSearchService.EnsureIndexedAsync(rebuildIfStale: true, forceRebuild: true, CancellationToken.None);
+            await RefreshStatusAsync();
+            Snackbar.Add("Index rebuild started.", Severity.Info);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private async Task BackgroundIndexAsync()
+    {
+        try
+        {
+            await CodeSearchService.EnsureIndexedAsync(rebuildIfStale: true, forceRebuild: false, CancellationToken.None);
+            await InvokeAsync(async () =>
+            {
+                await RefreshStatusAsync();
+                StateHasChanged();
+            });
+        }
+        catch
+        {
+            // Background indexing failure is non-critical; status will show error on refresh.
         }
     }
 

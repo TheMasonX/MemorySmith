@@ -50,37 +50,40 @@
                     <div class="wiki-commandbar profile-sectionbar">
                         <div class="wiki-title-block">
                             <MudText Typo="Typo.h6">Create Local User</MudText>
-                            <span class="wiki-count">Default off</span>
                         </div>
+                        <MudButton Variant="@(_showCreateUserForm ? Variant.Filled : Variant.Outlined)" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PersonAdd" OnClick="ToggleCreateUserForm">@(_showCreateUserForm ? "Cancel" : "Add local user")</MudButton>
                     </div>
 
-                    @if (!Options.CurrentValue.Auth.LocalPasswordEnabled)
+                    @if (_showCreateUserForm)
                     {
-                        <MudAlert Severity="Severity.Warning" Dense="true">Local password sign-in is disabled globally. Enable it before creating local-only test accounts.</MudAlert>
-                    }
-                    else if (!Options.CurrentValue.Auth.AllowAdminCreateLocalUsers)
-                    {
-                        <MudAlert Severity="Severity.Info" Dense="true">Admin-created local users are disabled. Turn on <strong>Allow admin-created local users</strong> in Admin Configuration to create local-only test accounts from this page.</MudAlert>
-                    }
-                    else
-                    {
-                        <div class="admin-form-stack">
-                            <MudTextField T="string" Value="@_newLocalUserDisplayName" ValueChanged="@((string value) => _newLocalUserDisplayName = value)" Label="Display name" Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="@_isBusy" />
-                            <MudTextField T="string" Value="@_newLocalUserEmail" ValueChanged="@((string value) => _newLocalUserEmail = value)" Label="Email" Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="@_isBusy" />
-                            <MudSelect T="string" Value="@_newLocalUserRole" ValueChanged="@((string value) => _newLocalUserRole = value)" Label="Role" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Disabled="@_isBusy">
-                                @foreach (var role in _assignableRoles)
-                                {
-                                    <MudSelectItem T="string" Value="@role.Name">@role.Name</MudSelectItem>
-                                }
-                            </MudSelect>
-                            <MudTextField T="string" Value="@_newLocalUserPassword" ValueChanged="@((string value) => _newLocalUserPassword = value)" Label="Password" InputType="InputType.Password" Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="@_isBusy" />
-                            <MudTextField T="string" Value="@_newLocalUserConfirmPassword" ValueChanged="@((string value) => _newLocalUserConfirmPassword = value)" Label="Confirm password" InputType="InputType.Password" Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="@_isBusy" />
-                            <small class="admin-setting-key">Creates a non-admin local password account. Use this for test accounts or controlled local-only users. Passwords must be at least 15 characters.</small>
-                            <div class="admin-model-editor-actions">
-                                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PersonAdd" Disabled="@_isBusy" OnClick="CreateLocalUserAsync">Create local user</MudButton>
-                                <MudButton Variant="Variant.Outlined" Disabled="@_isBusy" OnClick="ResetNewLocalUserForm">Clear</MudButton>
+                        if (!Options.CurrentValue.Auth.LocalPasswordEnabled)
+                        {
+                            <MudAlert Severity="Severity.Warning" Dense="true">Local password sign-in is disabled globally. Enable it before creating local-only test accounts.</MudAlert>
+                        }
+                        else if (!Options.CurrentValue.Auth.AllowAdminCreateLocalUsers)
+                        {
+                            <MudAlert Severity="Severity.Info" Dense="true">Admin-created local users are disabled. Turn on <strong>Allow admin-created local users</strong> in Admin Configuration to create local-only test accounts from this page.</MudAlert>
+                        }
+                        else
+                        {
+                            <div class="admin-form-stack">
+                                <MudTextField T="string" Value="@_newLocalUserDisplayName" ValueChanged="@((string value) => _newLocalUserDisplayName = value)" Label="Display name" Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="@_isBusy" />
+                                <MudTextField T="string" Value="@_newLocalUserEmail" ValueChanged="@((string value) => _newLocalUserEmail = value)" Label="Email" Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="@_isBusy" />
+                                <MudSelect T="string" Value="@_newLocalUserRole" ValueChanged="@((string value) => _newLocalUserRole = value)" Label="Role" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Disabled="@_isBusy">
+                                    @foreach (var role in _assignableRoles)
+                                    {
+                                        <MudSelectItem T="string" Value="@role.Name">@role.Name</MudSelectItem>
+                                    }
+                                </MudSelect>
+                                <MudTextField T="string" Value="@_newLocalUserPassword" ValueChanged="@((string value) => _newLocalUserPassword = value)" Label="Password" InputType="InputType.Password" Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="@_isBusy" />
+                                <MudTextField T="string" Value="@_newLocalUserConfirmPassword" ValueChanged="@((string value) => _newLocalUserConfirmPassword = value)" Label="Confirm password" InputType="InputType.Password" Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="@_isBusy" />
+                                <small class="admin-setting-key">Passwords must be at least 15 characters. Admin role requires AllowAdminCreateLocalUsers + AllowAdminAssignment.</small>
+                                <div class="admin-model-editor-actions">
+                                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PersonAdd" Disabled="@_isBusy" OnClick="CreateLocalUserAsync">Create local user</MudButton>
+                                    <MudButton Variant="Variant.Outlined" Disabled="@_isBusy" OnClick="ResetNewLocalUserForm">Clear</MudButton>
+                                </div>
                             </div>
-                        </div>
+                        }
                     }
                 </section>
             </div>
@@ -656,6 +659,7 @@
     private List<VarRow> _variableRows = [];
     private int _activeAdminTabIndex;
     private bool _isBusy;
+    private bool _showCreateUserForm;
     private bool _isLoadingModelOptions;
 
     private IReadOnlyList<string> SettingCategories => _editableSettings
@@ -791,7 +795,10 @@
         _supportedExternalProviders = await MemorySmithExternalAuthSupport.GetSupportedExternalProvidersAsync(SchemeProvider, Options.CurrentValue.Auth, CancellationToken.None);
         var users = (await Database.Users.ListAsync(new UserQuery(PageSize: 100), CancellationToken.None)).Data;
         _roles = await Database.Roles.ListRolesAsync(CancellationToken.None);
-        _assignableRoles = _roles.Where(role => !string.Equals(role.Name, MemorySmithRoles.Admin, StringComparison.OrdinalIgnoreCase)).ToList();
+        _assignableRoles = _roles
+            .Where(role => !string.Equals(role.Name, MemorySmithRoles.Admin, StringComparison.OrdinalIgnoreCase)
+                || Options.CurrentValue.Auth.AllowAdminCreateLocalUsers)
+            .ToList();
         var rows = new List<UserAdminRow>();
         _providerLinkCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
@@ -829,6 +836,15 @@
         _configurationItems = BuildConfigurationItems();
         LoadVariables();
         await LoadModelOptionsAsync(_modelProfileEditor.Provider, _modelProfileEditor.Model, silent: true);
+    }
+
+    private void ToggleCreateUserForm()
+    {
+        _showCreateUserForm = !_showCreateUserForm;
+        if (!_showCreateUserForm)
+        {
+            ResetNewLocalUserForm();
+        }
     }
 
     private void ResetNewLocalUserForm()
