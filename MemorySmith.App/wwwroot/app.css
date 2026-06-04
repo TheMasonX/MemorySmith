@@ -134,6 +134,34 @@ body {
     min-width: 0;
 }
 
+.wiki-search-main {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.wiki-search-main .wiki-search-box {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+.wiki-navigation-controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: auto;
+    flex: 0 0 auto;
+}
+
+.wiki-commandbar-main {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
 .wiki-search-box {
     flex: 1 1 300px;
     min-width: 220px;
@@ -159,6 +187,14 @@ body {
     gap: 8px;
     min-height: 0;
     flex: 1;
+}
+
+.memory-body.is-nav-collapsed {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.memory-body.is-nav-collapsed .wiki-results-pane {
+    display: none;
 }
 
 .wiki-results-pane,
@@ -211,6 +247,143 @@ body {
     min-height: 0;
 }
 
+.wiki-search-clear {
+    flex: 0 0 auto;
+}
+
+.wiki-search-submit {
+    flex: 0 0 auto;
+}
+
+.wiki-secondary-filters {
+    border-top: 1px solid var(--vscode-border);
+    padding-top: 6px;
+    margin-top: 2px;
+}
+
+.wiki-secondary-filters > summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 0.78rem;
+    color: var(--vscode-text-muted);
+    padding: 2px 0;
+    list-style-position: inside;
+}
+
+.wiki-secondary-filters-summary-text {
+    color: var(--vscode-text-muted);
+    font-size: 0.72rem;
+}
+
+.wiki-secondary-filters-body {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding-top: 6px;
+}
+
+.wiki-secondary-filters-body .wiki-filter {
+    flex: 1 1 140px;
+    max-width: 200px;
+    min-width: 100px;
+}
+
+.wiki-secondary-filters-body .wiki-mode-toggle {
+    flex: 0 0 auto;
+}
+
+.wiki-diagnostics-panel {
+    border-top: 1px solid var(--vscode-border);
+    padding: 6px 12px;
+    font-size: 0.78rem;
+}
+
+.wiki-diagnostics-summary {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    color: var(--vscode-text-muted);
+    list-style-position: inside;
+}
+
+.wiki-diagnostics-count {
+    font-size: 0.72rem;
+    color: var(--vscode-text-muted);
+}
+
+.wiki-diagnostics-list {
+    padding-top: 4px;
+}
+
+.wiki-diagnostic-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 2px 0;
+    font-size: 0.76rem;
+}
+
+.wiki-diagnostic-row.is-info {
+    color: #9cdcfe;
+}
+
+.wiki-diagnostic-chip {
+    display: inline-flex;
+    align-items: center;
+    min-height: 20px;
+    border-radius: 3px;
+    border: 1px solid var(--vscode-border);
+    padding: 1px 6px;
+    font-size: 0.72rem;
+    line-height: 1;
+}
+
+.wiki-diagnostic-chip.is-info {
+    background: rgba(0, 122, 204, 0.18);
+    border-color: rgba(0, 122, 204, 0.5);
+    color: #9cdcfe;
+}
+
+.wiki-diagnostic-chip.is-muted {
+    background: var(--vscode-panel-soft);
+    color: var(--vscode-text-muted);
+}
+
+.wiki-diagnostic-line {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 4px;
+}
+
+.wiki-related-panel {
+    border-top: 1px solid var(--vscode-border);
+    padding: 6px 12px;
+}
+
+.wiki-related-summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 0.78rem;
+    color: var(--vscode-text-muted);
+    list-style-position: inside;
+}
+
+.wiki-related-summary-text {
+    color: var(--vscode-text-muted);
+    font-size: 0.72rem;
+}
+
+.wiki-related-body {
+    padding-top: 6px;
+}
+
 .wiki-result-row {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(96px, 24%);
@@ -226,6 +399,29 @@ body {
 }
 
 .wiki-result-row.is-selected {
+    box-shadow: inset 3px 0 0 var(--vscode-accent);
+}
+
+.proposal-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+    width: 100%;
+    padding: 10px 12px;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--vscode-border-soft);
+    color: var(--vscode-text);
+    text-align: left;
+    cursor: pointer;
+}
+
+.proposal-row:hover,
+.proposal-row.is-selected {
+    background: var(--vscode-accent-hover);
+}
+
+.proposal-row.is-selected {
     box-shadow: inset 3px 0 0 var(--vscode-accent);
 }
 

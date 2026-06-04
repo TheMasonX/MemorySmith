@@ -20,11 +20,15 @@
 
     <MudPaper Class="pa-4" Outlined="true">
         <div class="admin-filter-bar" aria-label="Code search query controls">
-            <MudTextField T="string" Value="@_query" ValueChanged="@((string value) => _query = value)" Label="Search query" Variant="Variant.Outlined" Margin="Margin.Dense" Class="admin-filter-input" Immediate="true" />
-            <MudNumericField T="int" Value="@_limit" ValueChanged="@((int value) => _limit = Math.Clamp(value, 1, MaxLimit))" Min="1" Max="@MaxLimit" Label="Limit" HelperText="@($"Operator cap: {MaxLimit}")" Variant="Variant.Outlined" Margin="Margin.Dense" Class="admin-filter-select" />
+            <MudTextField T="string" Value="@_query" ValueChanged="@((string value) => _query = value)" Placeholder="Search query" Variant="Variant.Outlined" Margin="Margin.Dense" Class="admin-filter-input" Immediate="true" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" />
+            <MudTooltip Text="@($"Operator cap: {MaxLimit}")">
+                <MudNumericField T="int" Value="@_limit" ValueChanged="@((int value) => _limit = Math.Clamp(value, 1, MaxLimit))" Min="1" Max="@MaxLimit" Label="Limit" Variant="Variant.Outlined" Margin="Margin.Dense" Class="admin-filter-select" />
+            </MudTooltip>
             <MudSwitch T="bool" Value="@_rebuildIfStale" ValueChanged="@((bool value) => _rebuildIfStale = value)" Label="Rebuild if stale" Color="Color.Primary" />
             <MudSwitch T="bool" Value="@_forceRebuild" ValueChanged="@((bool value) => _forceRebuild = value)" Label="Force rebuild" Color="Color.Warning" />
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Search" Disabled="@(_isBusy || string.IsNullOrWhiteSpace(_query))" OnClick="SearchAsync">Search</MudButton>
+            <MudTooltip Text="Search">
+                <MudIconButton Icon="@Icons.Material.Filled.Search" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" Disabled="@(_isBusy || string.IsNullOrWhiteSpace(_query))" OnClick="SearchAsync" aria-label="Search" title="Search" />
+            </MudTooltip>
         </div>
 
         <MudTextField T="string" Value="@_targetsInput" ValueChanged="@((string value) => _targetsInput = value)" Label="Target directories (one per line)" Variant="Variant.Outlined" Lines="3" Margin="Margin.Dense" HelperText="Leave blank to search configured targets." />
