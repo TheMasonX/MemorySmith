@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Claims;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -25,7 +26,9 @@ public sealed record ChatToolDescriptor(
     ChatToolRisk Risk,
     bool AvailableInChat,
     bool AvailableInMcp,
-    Func<JsonObject, ChatToolExecutionContext, CancellationToken, Task<ChatToolExecutionResult>> Execute);
+    Func<JsonObject, ChatToolExecutionContext, CancellationToken, Task<ChatToolExecutionResult>> Execute,
+    bool EnabledByDefaultInMcp = true,
+    bool AvailableInAgent = false);
 
 public sealed record ChatToolExecutionContext(
     MemoryApplicationService Memories,
@@ -34,7 +37,12 @@ public sealed record ChatToolExecutionContext(
     ClaimsPrincipal? User = null,
     ICurrentUserContext? CurrentUser = null,
     AuthOptions? Auth = null,
-    string? DefaultPageMinimumRole = null)
+    string? DefaultPageMinimumRole = null,
+    VarResolver? Vars = null,
+    ITaskService? Tasks = null,
+    CodeSearchService? CodeSearch = null,
+    bool AgentWritesEnabled = false,
+    bool AgentWriteAutoAccept = false)
 {
     public bool CanViewPage(string minimumRole) =>
         CurrentUser is not null
@@ -45,6 +53,9 @@ public sealed record ChatToolExecutionContext(
         CurrentUser is not null
             ? PageAccessLevels.CanSetMinimumRole(minimumRole, CurrentUser, Auth)
             : PageAccessLevels.CanSetMinimumRole(minimumRole, User, Auth);
+
+    public bool CanEditPage(string minimumRole) =>
+        CanSetPageMinimumRole(minimumRole);
 }
 
 public sealed record ChatToolExecutionResult(
@@ -54,11 +65,13 @@ public sealed record ChatToolExecutionResult(
     JsonNode? Structured = null);
 
 /// <summary>
-/// Single source of truth for the read-only tool surface used by both the JSON-RPC /mcp endpoint
+/// Single source of truth for the tool surface used by both the JSON-RPC /mcp endpoint
 /// and the in-chat application-intercepted tool protocol.
 /// </summary>
 public sealed class ChatToolCatalog
 {
+    private static readonly string[] MergeShardAllowedExtensions = [".db", ".sqlite", ".sqlite3"];
+
     public static readonly JsonSerializerOptions ToolJsonOptions = new(JsonSerializerDefaults.Web)
     {
         WriteIndented = true
@@ -74,10 +87,16 @@ public sealed class ChatToolCatalog
     public IReadOnlyList<ChatToolDescriptor> All => _tools.Values.ToList();
 
     public IReadOnlyList<ChatToolDescriptor> ChatTools =>
-        _tools.Values.Where(tool => tool.AvailableInChat).ToList();
+        ToolsForMode(MemoryChatMode.Chat);
+
+    public IReadOnlyList<ChatToolDescriptor> AgentTools =>
+        ToolsForMode(MemoryChatMode.Agent);
 
     public IReadOnlyList<ChatToolDescriptor> McpTools =>
         _tools.Values.Where(tool => tool.AvailableInMcp).ToList();
+
+    public IReadOnlyList<ChatToolDescriptor> ToolsForMode(MemoryChatMode mode) =>
+        _tools.Values.Where(tool => IsAvailableInMode(tool, mode)).ToList();
 
     public bool TryGet(string name, out ChatToolDescriptor tool)
     {
@@ -90,7 +109,15 @@ public sealed class ChatToolCatalog
     }
 
     public bool IsChatEnabled(string name) =>
-        TryGet(name, out var tool) && tool.AvailableInChat;
+        IsAvailableInMode(name, MemoryChatMode.Chat);
+
+    public bool IsAvailableInMode(string name, MemoryChatMode mode) =>
+        TryGet(name, out var tool) && IsAvailableInMode(tool, mode);
+
+    public static bool IsAvailableInMode(ChatToolDescriptor tool, MemoryChatMode mode) =>
+        mode == MemoryChatMode.Agent
+            ? tool.AvailableInChat || tool.AvailableInAgent
+            : tool.AvailableInChat;
 
     public bool IsMcpEnabled(string name) =>
         TryGet(name, out var tool) && tool.AvailableInMcp;
@@ -106,21 +133,15 @@ public sealed class ChatToolCatalog
             AvailableInMcp: true,
             Execute: async (args, ctx, ct) =>
             {
-                var results = await ctx.Memories.SearchAsync(ReadLexicalQuery(args), ct);
-                return new ChatToolExecutionResult(FormatLexicalResults(results), ContextItems: results.Select(ToMemoryContextItem).ToList());
-            });
+                var structuredFormat = IsStructuredFormat(ReadString(args, "format"));
+                var results = await ctx.Memories.LexicalSearchAsync(ReadLexicalQuery(args), ct);
+                var envelope = ctx.Memories.BuildRetrievalEnvelope("lexical", MemoryApplicationService.GetLexicalProviderMetadata(), results);
+                if (structuredFormat)
+                {
+                    return BuildRetrievalToolResult(envelope);
+                }
 
-        yield return new ChatToolDescriptor(
-            "memorysmith_semantic_search",
-            "Search MemorySmith wiki records with ONNX embeddings when configured, falling back to local semantic token scoring with match explanations.",
-            BuildSearchSchema(),
-            ChatToolRisk.ReadOnly,
-            AvailableInChat: true,
-            AvailableInMcp: true,
-            Execute: async (args, ctx, ct) =>
-            {
-                var results = await ctx.Memories.SemanticSearchAsync(ReadSemanticQuery(args), ct);
-                return new ChatToolExecutionResult(FormatSemanticResults(results), ContextItems: results.Select(ToMemoryContextItem).ToList());
+                return new ChatToolExecutionResult(FormatLexicalResults(results), ContextItems: results.Select(ToMemoryContextItem).ToList());
             });
 
         yield return new ChatToolDescriptor(
@@ -132,7 +153,14 @@ public sealed class ChatToolCatalog
             AvailableInMcp: true,
             Execute: async (args, ctx, ct) =>
             {
+                var structuredFormat = IsStructuredFormat(ReadString(args, "format"));
                 var results = await ctx.Memories.HybridSearchAsync(ReadHybridQuery(args), ct);
+                var envelope = ctx.Memories.BuildRetrievalEnvelope("hybrid", ctx.Memories.GetSemanticProviderMetadata(), results);
+                if (structuredFormat)
+                {
+                    return BuildRetrievalToolResult(envelope);
+                }
+
                 return new ChatToolExecutionResult(FormatHybridResults(results), ContextItems: results.Select(ToMemoryContextItem).ToList());
             });
 
@@ -176,6 +204,292 @@ public sealed class ChatToolCatalog
                     ? new ChatToolExecutionResult($"No memory record found for id '{id}'.")
                     : new ChatToolExecutionResult(JsonSerializer.Serialize(record, ToolJsonOptions), ContextItems: [ToMemoryContextItem(record)]);
             });
+
+        yield return new ChatToolDescriptor(
+            "memorysmith_source_bundle",
+            "Read the source file content for all source links attached to the specified memory records. Useful for fetching the exact code or document sections that KB entries reference. Returns URL references as-is (unfetchable server-side). Use format=jsonl for streaming-friendly large bundles.",
+            BuildSourceBundleSchema(),
+            ChatToolRisk.SensitiveRead,
+            AvailableInChat: false,
+            AvailableInMcp: true,
+            Execute: async (args, ctx, ct) =>
+            {
+                if (ctx.Vars is null)
+                {
+                    return new ChatToolExecutionResult("The memorysmith_source_bundle tool requires a source resolver.", IsError: true);
+                }
+
+                var maxFileBytes = Math.Clamp(ReadInt(args, "maxFileBytes", 16384), 1, 1048576);
+                var format = ReadString(args, "format") ?? "json";
+                var records = new List<MemoryRecord>();
+                var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                var ids = ReadString(args, "ids");
+                if (!string.IsNullOrWhiteSpace(ids))
+                {
+                    foreach (var id in ids.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+                    {
+                        if (!seen.Add(id))
+                        {
+                            continue;
+                        }
+
+                        var record = await ctx.Memories.GetAsync(id, ct);
+                        if (record is not null)
+                        {
+                            records.Add(record);
+                        }
+                    }
+                }
+
+                var query = ReadString(args, "query");
+                if (!string.IsNullOrWhiteSpace(query))
+                {
+                    var limit = ReadInt(args, "limit", 10);
+                    var searchResults = await ctx.Memories.HybridSearchAsync(
+                        new HybridMemorySearchQuery(query, ReadStatus(args), ReadString(args, "tags"), limit), ct);
+
+                    foreach (var result in searchResults)
+                    {
+                        if (!seen.Add(result.Id))
+                        {
+                            continue;
+                        }
+
+                        var record = await ctx.Memories.GetAsync(result.Id, ct);
+                        if (record is not null)
+                        {
+                            records.Add(record);
+                        }
+                    }
+                }
+
+                if (records.Count == 0)
+                {
+                    return new ChatToolExecutionResult("No records found. Provide ids or a query.");
+                }
+
+                var entries = new List<object>();
+                foreach (var record in records)
+                {
+                    foreach (var sl in record.SourceLinks)
+                    {
+                        var content = await ctx.Vars.ReadSourceAsync(sl, maxFileBytes);
+                        entries.Add(new
+                        {
+                            MemoryId = record.Id,
+                            MemoryTitle = record.Title,
+                            Label = string.IsNullOrWhiteSpace(sl.Label) ? content.ResolvedUri : sl.Label,
+                            RawUri = sl.Uri,
+                            ResolvedUri = content.ResolvedUri,
+                            ContentType = content.ContentType,
+                            StartLine = content.StartLine,
+                            EndLine = content.EndLine,
+                            Exists = content.Exists,
+                            Content = content.Content
+                        });
+                    }
+                }
+
+                if (entries.Count == 0)
+                {
+                    return new ChatToolExecutionResult($"Found {records.Count} record(s) but none have source links.", ContextItems: records.Select(ToMemoryContextItem).ToList());
+                }
+
+                if (string.Equals(format, "jsonl", StringComparison.OrdinalIgnoreCase))
+                {
+                    return new ChatToolExecutionResult(string.Join('\n', entries.Select(e => JsonSerializer.Serialize(e, ToolJsonOptions))), ContextItems: records.Select(ToMemoryContextItem).ToList());
+                }
+
+                return new ChatToolExecutionResult(JsonSerializer.Serialize(new
+                {
+                    MemoryCount = records.Count,
+                    SourceCount = entries.Count,
+                    Entries = entries
+                }, ToolJsonOptions), ContextItems: records.Select(ToMemoryContextItem).ToList());
+            },
+            EnabledByDefaultInMcp: false);
+
+        yield return new ChatToolDescriptor(
+            "memorysmith_find_by_source",
+            "Back-map a source path or URL fragment to every KB entry that references it. Matches against both raw and resolved (variable-expanded) URIs.",
+            BuildFindBySourceSchema(),
+            ChatToolRisk.SensitiveRead,
+            AvailableInChat: false,
+            AvailableInMcp: true,
+            Execute: async (args, ctx, ct) =>
+            {
+                if (ctx.Vars is null)
+                {
+                    return new ChatToolExecutionResult("The memorysmith_find_by_source tool requires a source resolver.", IsError: true);
+                }
+
+                var pattern = ReadString(args, "pattern");
+                if (string.IsNullOrWhiteSpace(pattern))
+                {
+                    return new ChatToolExecutionResult("The memorysmith_find_by_source tool requires a pattern argument.", IsError: true);
+                }
+
+                var matches = await ctx.Memories.FindBySourceAsync(pattern, ctx.Vars.Resolve, ct);
+                if (matches.Count == 0)
+                {
+                    return new ChatToolExecutionResult($"No memory records found with source links matching '{pattern}'.");
+                }
+
+                var result = matches.Select(r => new
+                {
+                    r.Id,
+                    r.Title,
+                    r.Status,
+                    MatchingLinks = r.SourceLinks
+                        .Where(sl =>
+                            sl.Uri.Contains(pattern, StringComparison.OrdinalIgnoreCase) ||
+                            ctx.Vars.Resolve(sl.Uri).Contains(pattern, StringComparison.OrdinalIgnoreCase))
+                        .Select(sl => new
+                        {
+                            sl.Label,
+                            sl.Uri,
+                            ResolvedUri = ctx.Vars.Resolve(sl.Uri),
+                            sl.StartLine,
+                            sl.EndLine
+                        })
+                        .ToList()
+                }).ToList();
+
+                return new ChatToolExecutionResult(JsonSerializer.Serialize(result, ToolJsonOptions), ContextItems: matches.Select(ToMemoryContextItem).ToList());
+            },
+            EnabledByDefaultInMcp: false);
+
+        yield return new ChatToolDescriptor(
+            "memorysmith_code_search",
+            "Search the indexed MemorySmith codebase for files, symbols, and implementation snippets using vector similarity with lexical fallback.",
+            BuildCodeSearchSchema(),
+            ChatToolRisk.ReadOnly,
+            AvailableInChat: true,
+            AvailableInMcp: true,
+            Execute: async (args, ctx, ct) =>
+            {
+                if (ctx.CodeSearch is null)
+                {
+                    return MissingCodeSearchServiceResult("memorysmith_code_search");
+                }
+
+                var query = ReadString(args, "query");
+                if (string.IsNullOrWhiteSpace(query))
+                {
+                    return new ChatToolExecutionResult("The memorysmith_code_search tool requires a query argument.", IsError: true);
+                }
+
+                var limit = Math.Clamp(ReadInt(args, "limit", 10), 1, 50);
+                var targets = ReadStringList(args, "targets");
+                var rebuildIfStale = ReadBool(args, "rebuildIfStale", true);
+                var forceRebuild = ReadBool(args, "forceRebuild", false);
+                var results = await ctx.CodeSearch.SearchAsync(new CodeSearchQuery(query, targets, limit, rebuildIfStale, forceRebuild), ct);
+                var status = await ctx.CodeSearch.GetStatusAsync(ct);
+                var payload = new
+                {
+                    Query = query,
+                    ResultCount = results.Count,
+                    Status = status,
+                    Results = results.Select(result => new
+                    {
+                        result.Target,
+                        result.DocumentPath,
+                        result.AbsolutePath,
+                        result.StartLine,
+                        result.EndLine,
+                        result.Score,
+                        result.Snippet,
+                        result.MatchReason,
+                        result.IndexedAtUtc
+                    }).ToList()
+                };
+                var structured = JsonSerializer.SerializeToNode(payload, ToolJsonOptions);
+                return new ChatToolExecutionResult(
+                    structured!.ToJsonString(ToolJsonOptions),
+                    ContextItems: results.Select(ToCodeContextItem).ToList(),
+                    Structured: structured);
+            });
+
+        yield return new ChatToolDescriptor(
+            "memorysmith_code_search_status",
+            "Get the current MemorySmith code-search index status, including live build progress and the last completed build summary.",
+            BuildCodeSearchStatusSchema(),
+            ChatToolRisk.ReadOnly,
+            AvailableInChat: true,
+            AvailableInMcp: true,
+            Execute: async (args, ctx, ct) =>
+            {
+                if (ctx.CodeSearch is null)
+                {
+                    return MissingCodeSearchServiceResult("memorysmith_code_search_status");
+                }
+
+                return JsonToolResult(await ctx.CodeSearch.GetStatusAsync(ct));
+            });
+
+        yield return new ChatToolDescriptor(
+            "memorysmith_code_search_merge_shard",
+            "Merge chunks from an external code-search index shard database file into the main index. Useful for combining partial indexes built separately (e.g., on CI or for different target directories).",
+            new JsonObject
+            {
+                ["type"] = "object",
+                ["properties"] = new JsonObject
+                {
+                    ["shardPath"] = new JsonObject { ["type"] = "string", ["description"] = "Absolute path to the shard SQLite database file to merge into the main code-search index." },
+                    ["preferNewer"] = new JsonObject { ["type"] = "boolean", ["description"] = "When true (default), overwrite existing chunks if the shard has a newer IndexedAtUtc timestamp. When false, only insert new chunks; never update existing ones." }
+                },
+                ["required"] = new JsonArray { "shardPath" }
+            },
+            ChatToolRisk.Write,
+            AvailableInChat: false,
+            AvailableInMcp: true,
+            Execute: async (args, ctx, ct) =>
+            {
+                if (ctx.CodeSearch is null)
+                {
+                    return MissingCodeSearchServiceResult("memorysmith_code_search_merge_shard");
+                }
+
+                var shardPath = ReadString(args, "shardPath");
+                if (string.IsNullOrWhiteSpace(shardPath))
+                {
+                    return new ChatToolExecutionResult("The memorysmith_code_search_merge_shard tool requires a non-empty shardPath argument.", IsError: true);
+                }
+
+                if (!Path.IsPathFullyQualified(shardPath))
+                {
+                    return new ChatToolExecutionResult("The memorysmith_code_search_merge_shard tool requires an absolute shardPath.", IsError: true);
+                }
+
+                string canonicalShardPath;
+                try
+                {
+                    canonicalShardPath = Path.GetFullPath(shardPath);
+                }
+                catch (Exception)
+                {
+                    return new ChatToolExecutionResult("The memorysmith_code_search_merge_shard tool received an invalid shardPath.", IsError: true);
+                }
+
+                var extension = Path.GetExtension(canonicalShardPath);
+                if (!MergeShardAllowedExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase))
+                {
+                    return new ChatToolExecutionResult("The memorysmith_code_search_merge_shard tool requires a SQLite shard file extension (.db, .sqlite, .sqlite3).", IsError: true);
+                }
+
+                var status = await ctx.CodeSearch.GetStatusAsync(ct);
+                var allowedRoots = ResolveMergeShardAllowedRoots(status);
+                if (!IsPathWithinAnyRoot(canonicalShardPath, allowedRoots))
+                {
+                    return new ChatToolExecutionResult("The memorysmith_code_search_merge_shard tool only allows shardPath values under configured code-search roots.", IsError: true);
+                }
+
+                var preferNewer = ReadBool(args, "preferNewer", true);
+                var result = await ctx.CodeSearch.MergeShardAsync(canonicalShardPath, preferNewer, ct);
+                return JsonToolResult(result);
+            },
+            EnabledByDefaultInMcp: false);
 
         // ---------- New tools (Phase 2 of ChatCapabilityImprovements plan) ----------
 
@@ -265,79 +579,365 @@ public sealed class ChatToolCatalog
             });
 
         yield return new ChatToolDescriptor(
-            "memorysmith_unified_search",
-            "Combined search across memories (hybrid) and markdown pages. Recommended for natural-language 'search the wiki' requests.",
-            new JsonObject
-            {
-                ["type"] = "object",
-                ["properties"] = new JsonObject
-                {
-                    ["query"] = new JsonObject { ["type"] = "string", ["description"] = "Search text." },
-                    ["memoryLimit"] = new JsonObject { ["type"] = "integer", ["description"] = "Max memory results. Clamped 0-20, default 5." },
-                    ["pageLimit"] = new JsonObject { ["type"] = "integer", ["description"] = "Max page results. Clamped 0-20, default 5." },
-                    ["tags"] = new JsonObject { ["type"] = "string", ["description"] = "Optional comma-separated tag filter (memories only)." },
-                    ["status"] = new JsonObject { ["type"] = "string", ["description"] = "Optional memory status name." }
-                },
-                ["required"] = new JsonArray { "query" }
-            },
+            "memorysmith_task_list",
+            "List MemorySmith tasks by query, status, assignee, and limit.",
+            BuildTaskListSchema(),
             ChatToolRisk.ReadOnly,
             AvailableInChat: true,
             AvailableInMcp: true,
             Execute: async (args, ctx, ct) =>
             {
-                var query = ReadString(args, "query");
-                if (string.IsNullOrWhiteSpace(query))
+                if (ctx.Tasks is null)
                 {
-                    return new ChatToolExecutionResult("The memorysmith_unified_search tool requires a query argument.", IsError: true);
+                    return MissingTaskServiceResult("memorysmith_task_list");
                 }
-                var memoryLimit = Math.Clamp(ReadInt(args, "memoryLimit", 5), 0, 20);
-                var pageLimit = Math.Clamp(ReadInt(args, "pageLimit", 5), 0, 20);
-                var memoryTask = memoryLimit == 0
-                    ? Task.FromResult<IReadOnlyList<MemorySearchResult>>(Array.Empty<MemorySearchResult>())
-                    : ctx.Memories.HybridSearchAsync(new HybridMemorySearchQuery(query, ReadStatus(args), ReadString(args, "tags"), memoryLimit), ct);
-                var pageTask = pageLimit == 0
-                    ? Task.FromResult<IReadOnlyList<PageSummary>>(Array.Empty<PageSummary>())
-                    : ctx.Pages.SearchVisibleAsync(query, pageLimit, page => ctx.CanViewPage(page.MinimumRole), ct);
-                await Task.WhenAll(memoryTask, pageTask);
-                var memoryResults = await memoryTask;
-                var pageResults = (await pageTask).ToList();
-                var sb = new System.Text.StringBuilder();
-                sb.Append("Unified MemorySmith search results for: ").AppendLine(query);
-                sb.AppendLine();
-                sb.Append("Memories (").Append(memoryResults.Count).AppendLine("):");
-                if (memoryResults.Count == 0)
-                {
-                    sb.AppendLine("- (none)");
-                }
-                else
-                {
-                    foreach (var memory in memoryResults)
-                    {
-                        sb.Append("- ").Append(memory.Id).Append(": ").AppendLine(memory.Title);
-                        sb.Append("  Score: ").Append(memory.Score.ToString("0.######")).Append("  Tags: ").AppendLine(string.Join(", ", memory.Tags));
-                        sb.Append("  ").AppendLine(memory.Snippet);
-                    }
-                }
-                sb.AppendLine();
-                sb.Append("Pages (").Append(pageResults.Count).AppendLine("):");
-                if (pageResults.Count == 0)
-                {
-                    sb.AppendLine("- (none)");
-                }
-                else
-                {
-                    foreach (var page in pageResults)
-                    {
-                        sb.Append("- ").Append(page.Slug).Append(": ").AppendLine(page.Title);
-                        sb.Append("  Updated: ").AppendLine(page.LastUpdatedUtc.ToString("O"));
-                        sb.Append("  ").AppendLine(page.Snippet);
-                    }
-                }
-                var contextItems = memoryResults.Select(ToMemoryContextItem)
-                    .Concat(pageResults.Select(ToPageContextItem))
-                    .ToList();
-                return new ChatToolExecutionResult(sb.ToString().TrimEnd(), ContextItems: contextItems);
+
+                var limit = Math.Clamp(ReadInt(args, "limit", 25), 1, 100);
+                var tasks = await ctx.Tasks.ListAsync(ReadString(args, "query"), ReadString(args, "status"), ReadString(args, "assignee"), limit, ct);
+                return JsonToolResult(new { Tasks = tasks });
             });
+
+        yield return new ChatToolDescriptor(
+            "memorysmith_task_get",
+            "Fetch one MemorySmith task by id or key.",
+            BuildTaskIdSchema(),
+            ChatToolRisk.ReadOnly,
+            AvailableInChat: true,
+            AvailableInMcp: true,
+            Execute: async (args, ctx, ct) =>
+            {
+                if (ctx.Tasks is null)
+                {
+                    return MissingTaskServiceResult("memorysmith_task_get");
+                }
+
+                var idOrKey = ReadString(args, "idOrKey");
+                if (string.IsNullOrWhiteSpace(idOrKey))
+                {
+                    return new ChatToolExecutionResult("The memorysmith_task_get tool requires an idOrKey argument.", IsError: true);
+                }
+
+                var task = await ctx.Tasks.GetAsync(idOrKey, ct);
+                return task is null
+                    ? new ChatToolExecutionResult($"No task found for id or key '{idOrKey}'.")
+                    : JsonToolResult(new { Task = task });
+            });
+
+        yield return new ChatToolDescriptor(
+            "memorysmith_memory_create",
+            "Create a MemorySmith memory record. Requires Agent writes enabled and auto_accept approval mode.",
+            BuildMemoryCreateSchema(),
+            ChatToolRisk.Write,
+            AvailableInChat: false,
+            AvailableInMcp: true,
+            Execute: async (args, ctx, ct) =>
+            {
+                var governanceError = ValidateAgentWriteGovernance(ctx, "memorysmith_memory_create");
+                if (governanceError is not null)
+                {
+                    return governanceError;
+                }
+
+                var title = ReadString(args, "title");
+                var content = ReadString(args, "content");
+                if (string.IsNullOrWhiteSpace(title) || string.IsNullOrWhiteSpace(content))
+                {
+                    return new ChatToolExecutionResult("The memorysmith_memory_create tool requires non-empty title and content arguments.", IsError: true);
+                }
+
+                try
+                {
+                    var status = ReadMemoryStatus(args, "status", MemoryStatus.Working);
+                    var confidence = ReadDouble(args, "confidence", 0.5);
+                    var created = await ctx.Memories.CreateAsync(new MemoryRecord
+                    {
+                        Id = ReadString(args, "id") ?? string.Empty,
+                        Title = title,
+                        Content = content,
+                        Status = status,
+                        Confidence = confidence,
+                        Tags = ReadStringList(args, "tags")?.ToList() ?? [],
+                        References = ReadStringList(args, "references")?.ToList() ?? [],
+                        Conflicts = ReadStringList(args, "conflicts")?.ToList() ?? []
+                    }, ct);
+
+                    return JsonToolResult(new
+                    {
+                        Message = "Memory created.",
+                        Memory = created
+                    });
+                }
+                catch (ArgumentException ex)
+                {
+                    return new ChatToolExecutionResult(ex.Message, IsError: true);
+                }
+            },
+            EnabledByDefaultInMcp: false,
+            AvailableInAgent: true);
+
+        yield return new ChatToolDescriptor(
+            "memorysmith_memory_update",
+            "Update a MemorySmith memory record by id. Requires Agent writes enabled and auto_accept approval mode.",
+            BuildMemoryUpdateSchema(),
+            ChatToolRisk.Write,
+            AvailableInChat: false,
+            AvailableInMcp: true,
+            Execute: async (args, ctx, ct) =>
+            {
+                var governanceError = ValidateAgentWriteGovernance(ctx, "memorysmith_memory_update");
+                if (governanceError is not null)
+                {
+                    return governanceError;
+                }
+
+                var id = ReadString(args, "id");
+                if (string.IsNullOrWhiteSpace(id))
+                {
+                    return new ChatToolExecutionResult("The memorysmith_memory_update tool requires an id argument.", IsError: true);
+                }
+
+                try
+                {
+                    var existing = await ctx.Memories.GetAsync(id, ct);
+                    if (existing is null)
+                    {
+                        return new ChatToolExecutionResult($"No memory found for id '{id}'.");
+                    }
+
+                    var updated = new MemoryRecord
+                    {
+                        Id = existing.Id,
+                        Title = ReadString(args, "title") ?? existing.Title,
+                        Content = ReadString(args, "content") ?? existing.Content,
+                        Status = ReadMemoryStatus(args, "status", existing.Status),
+                        Confidence = ReadDouble(args, "confidence", existing.Confidence),
+                        Tags = ReadStringList(args, "tags")?.ToList() ?? existing.Tags.ToList(),
+                        References = ReadStringList(args, "references")?.ToList() ?? existing.References.ToList(),
+                        Conflicts = ReadStringList(args, "conflicts")?.ToList() ?? existing.Conflicts.ToList(),
+                        SourceLinks = existing.SourceLinks.ToList(),
+                        UsageCount = existing.UsageCount,
+                        LastUpdated = existing.LastUpdated
+                    };
+
+                    var saved = await ctx.Memories.UpdateAsync(id, updated, ct);
+                    return saved is null
+                        ? new ChatToolExecutionResult($"No memory found for id '{id}'.")
+                        : JsonToolResult(new
+                        {
+                            Message = "Memory updated.",
+                            Memory = saved
+                        });
+                }
+                catch (ArgumentException ex)
+                {
+                    return new ChatToolExecutionResult(ex.Message, IsError: true);
+                }
+            },
+            EnabledByDefaultInMcp: false,
+            AvailableInAgent: true);
+
+        yield return new ChatToolDescriptor(
+            "memorysmith_task_create",
+            "Create a MemorySmith task. Requires edit permission.",
+            BuildTaskCreateSchema(),
+            ChatToolRisk.Write,
+            AvailableInChat: false,
+            AvailableInMcp: true,
+            Execute: async (args, ctx, ct) =>
+            {
+                if (ctx.Tasks is null)
+                {
+                    return MissingTaskServiceResult("memorysmith_task_create");
+                }
+
+                try
+                {
+                    var actor = Actor(ctx);
+                    var task = await ctx.Tasks.CreateAsync(new TaskCreateRequest(
+                        Title: ReadString(args, "title") ?? string.Empty,
+                        Description: ReadString(args, "description") ?? string.Empty,
+                        Type: ReadString(args, "type") ?? "Task",
+                        Status: ReadString(args, "status") ?? TaskStatuses.Backlog,
+                        Priority: ReadString(args, "priority") ?? TaskPriorities.Medium,
+                        AssigneeMode: ReadString(args, "assigneeMode") ?? TaskAssigneeModes.Custom,
+                        AssigneeDirectoryId: ReadString(args, "assigneeDirectoryId"),
+                        AssigneeCustomText: ReadString(args, "assigneeCustomText") ?? "Agent",
+                        Reporter: ReadString(args, "reporter") ?? actor,
+                        Labels: ReadStringList(args, "labels"),
+                        DueDateUtc: ReadNullableDateTime(args, "dueDateUtc", null),
+                        EpicId: ReadString(args, "epicId"),
+                        ParentId: ReadString(args, "parentId"),
+                        Slug: ReadString(args, "slug")), actor, ct);
+                    return JsonToolResult(new { Message = "Task created.", Task = task });
+                }
+                catch (ArgumentException ex)
+                {
+                    return new ChatToolExecutionResult(ex.Message, IsError: true);
+                }
+            },
+            EnabledByDefaultInMcp: false,
+            AvailableInAgent: true);
+
+        yield return new ChatToolDescriptor(
+            "memorysmith_task_update",
+            "Update editable MemorySmith task fields, including priority and assignment. Requires edit permission.",
+            BuildTaskUpdateSchema(),
+            ChatToolRisk.Write,
+            AvailableInChat: false,
+            AvailableInMcp: true,
+            Execute: async (args, ctx, ct) =>
+            {
+                if (ctx.Tasks is null)
+                {
+                    return MissingTaskServiceResult("memorysmith_task_update");
+                }
+
+                var idOrKey = ReadString(args, "idOrKey");
+                if (string.IsNullOrWhiteSpace(idOrKey))
+                {
+                    return new ChatToolExecutionResult("The memorysmith_task_update tool requires an idOrKey argument.", IsError: true);
+                }
+
+                try
+                {
+                    var existing = await ctx.Tasks.GetAsync(idOrKey, ct);
+                    if (existing is null)
+                    {
+                        return new ChatToolExecutionResult($"No task found for id or key '{idOrKey}'.");
+                    }
+
+                    var updated = await ctx.Tasks.UpdateAsync(idOrKey, new TaskUpdateRequest(
+                        Title: ReadString(args, "title"),
+                        Description: ReadString(args, "description"),
+                        Type: ReadString(args, "type"),
+                        Priority: ReadString(args, "priority"),
+                        AssigneeMode: ReadString(args, "assigneeMode"),
+                        AssigneeDirectoryId: ReadString(args, "assigneeDirectoryId"),
+                        AssigneeCustomText: ReadString(args, "assigneeCustomText"),
+                        Reporter: ReadString(args, "reporter"),
+                        Labels: ReadStringList(args, "labels"),
+                        DueDateUtc: ReadNullableDateTime(args, "dueDateUtc", existing.DueDateUtc),
+                        EpicId: ReadString(args, "epicId"),
+                        ParentId: ReadString(args, "parentId")), Actor(ctx), ct);
+                    return updated is null
+                        ? new ChatToolExecutionResult($"No task found for id or key '{idOrKey}'.")
+                        : JsonToolResult(new { Message = "Task updated.", Task = updated });
+                }
+                catch (ArgumentException ex)
+                {
+                    return new ChatToolExecutionResult(ex.Message, IsError: true);
+                }
+            },
+            EnabledByDefaultInMcp: false,
+            AvailableInAgent: true);
+
+        yield return new ChatToolDescriptor(
+            "memorysmith_task_set_status",
+            "Change a MemorySmith task status and optionally record a note. Requires edit permission.",
+            BuildTaskSetStatusSchema(),
+            ChatToolRisk.Write,
+            AvailableInChat: false,
+            AvailableInMcp: true,
+            Execute: async (args, ctx, ct) =>
+            {
+                if (ctx.Tasks is null)
+                {
+                    return MissingTaskServiceResult("memorysmith_task_set_status");
+                }
+
+                var idOrKey = ReadString(args, "idOrKey");
+                if (string.IsNullOrWhiteSpace(idOrKey))
+                {
+                    return new ChatToolExecutionResult("The memorysmith_task_set_status tool requires an idOrKey argument.", IsError: true);
+                }
+
+                try
+                {
+                    var updated = await ctx.Tasks.SetStatusAsync(idOrKey, new TaskStatusUpdateRequest(ReadString(args, "status") ?? string.Empty, ReadString(args, "note")), Actor(ctx), ct);
+                    return updated is null
+                        ? new ChatToolExecutionResult($"No task found for id or key '{idOrKey}'.")
+                        : JsonToolResult(new { Message = "Task status updated.", Task = updated });
+                }
+                catch (ArgumentException ex)
+                {
+                    return new ChatToolExecutionResult(ex.Message, IsError: true);
+                }
+            },
+            EnabledByDefaultInMcp: false,
+            AvailableInAgent: true);
+
+        yield return new ChatToolDescriptor(
+            "memorysmith_task_add_comment",
+            "Add a comment to a MemorySmith task. Requires edit permission.",
+            BuildTaskCommentSchema(),
+            ChatToolRisk.Write,
+            AvailableInChat: false,
+            AvailableInMcp: true,
+            Execute: async (args, ctx, ct) =>
+            {
+                if (ctx.Tasks is null)
+                {
+                    return MissingTaskServiceResult("memorysmith_task_add_comment");
+                }
+
+                var idOrKey = ReadString(args, "idOrKey");
+                if (string.IsNullOrWhiteSpace(idOrKey))
+                {
+                    return new ChatToolExecutionResult("The memorysmith_task_add_comment tool requires an idOrKey argument.", IsError: true);
+                }
+
+                try
+                {
+                    var updated = await ctx.Tasks.AddCommentAsync(idOrKey, new TaskCommentRequest(ReadString(args, "body") ?? string.Empty), Actor(ctx), ct);
+                    return updated is null
+                        ? new ChatToolExecutionResult($"No task found for id or key '{idOrKey}'.")
+                        : JsonToolResult(new { Message = "Task comment added.", Task = updated });
+                }
+                catch (ArgumentException ex)
+                {
+                    return new ChatToolExecutionResult(ex.Message, IsError: true);
+                }
+            },
+            EnabledByDefaultInMcp: false,
+            AvailableInAgent: true);
+
+        yield return new ChatToolDescriptor(
+            "memorysmith_task_add_attachment",
+            "Attach an absolute http/https artifact URI to a MemorySmith task. Requires edit permission.",
+            BuildTaskAttachmentSchema(),
+            ChatToolRisk.Write,
+            AvailableInChat: false,
+            AvailableInMcp: true,
+            Execute: async (args, ctx, ct) =>
+            {
+                if (ctx.Tasks is null)
+                {
+                    return MissingTaskServiceResult("memorysmith_task_add_attachment");
+                }
+
+                var idOrKey = ReadString(args, "idOrKey");
+                if (string.IsNullOrWhiteSpace(idOrKey))
+                {
+                    return new ChatToolExecutionResult("The memorysmith_task_add_attachment tool requires an idOrKey argument.", IsError: true);
+                }
+
+                try
+                {
+                    var updated = await ctx.Tasks.AddAttachmentAsync(idOrKey, new TaskAttachmentRequest(
+                        ReadString(args, "name") ?? string.Empty,
+                        ReadString(args, "kind") ?? "file",
+                        ReadString(args, "uri") ?? string.Empty), Actor(ctx), ct);
+                    return updated is null
+                        ? new ChatToolExecutionResult($"No task found for id or key '{idOrKey}'.")
+                        : JsonToolResult(new { Message = "Task attachment added.", Task = updated });
+                }
+                catch (ArgumentException ex)
+                {
+                    return new ChatToolExecutionResult(ex.Message, IsError: true);
+                }
+            },
+            EnabledByDefaultInMcp: false,
+            AvailableInAgent: true);
 
         yield return new ChatToolDescriptor(
             "memorysmith_page_save",
@@ -400,7 +1000,8 @@ public sealed class ChatToolCatalog
 
                 var saved = await ctx.Pages.SaveAsync(new PageSaveRequest(slug, title, markdown, resolvedMinimumRole), ct);
                 return new ChatToolExecutionResult($"Page saved. Slug: {saved.Slug}  Title: {saved.Title}  Updated: {saved.LastUpdatedUtc:O}");
-            });
+            },
+            EnabledByDefaultInMcp: false);
 
         yield return new ChatToolDescriptor(
             "memorysmith_page_delete",
@@ -425,16 +1026,17 @@ public sealed class ChatToolCatalog
                     return new ChatToolExecutionResult("The memorysmith_page_delete tool requires a slug argument.", IsError: true);
                 }
                 var existing = await ctx.Pages.GetAsync(slug, ct);
-                if (existing is not null && !ctx.CanViewPage(existing.MinimumRole))
+                if (existing is not null && !ctx.CanEditPage(existing.MinimumRole))
                 {
-                    return new ChatToolExecutionResult($"No page found with slug '{slug}'.", IsError: true);
+                    return new ChatToolExecutionResult("The caller is not authorized to delete that page.", IsError: true);
                 }
 
                 var deleted = await ctx.Pages.DeleteAsync(slug, ct);
                 return new ChatToolExecutionResult(deleted
                     ? $"Page '{slug}' deleted."
                     : $"No page found with slug '{slug}'.");
-            });
+            },
+            EnabledByDefaultInMcp: false);
     }
 
     // ---------- Schema builders ----------
@@ -447,7 +1049,13 @@ public sealed class ChatToolCatalog
             ["query"] = new JsonObject { ["type"] = "string", ["description"] = "Search text." },
             ["tags"] = new JsonObject { ["type"] = "string", ["description"] = "Optional comma-separated tag filter." },
             ["status"] = new JsonObject { ["type"] = "string", ["description"] = "Optional memory status name." },
-            ["limit"] = new JsonObject { ["type"] = "integer", ["description"] = "Maximum number of results." }
+            ["limit"] = new JsonObject { ["type"] = "integer", ["description"] = "Maximum number of results." },
+            ["format"] = new JsonObject
+            {
+                ["type"] = "string",
+                ["description"] = "Output format. Defaults to markdown; use json (or compatibility aliases envelope/json-v2) for structured agent parsing.",
+                ["enum"] = new JsonArray { "markdown", "json", "envelope", "json-v2" }
+            }
         }
     };
 
@@ -472,6 +1080,197 @@ public sealed class ChatToolCatalog
                 ["enum"] = new JsonArray { "markdown", "json" }
             }
         }
+    };
+
+    private static JsonObject BuildSourceBundleSchema() => new()
+    {
+        ["type"] = "object",
+        ["properties"] = new JsonObject
+        {
+            ["ids"] = new JsonObject { ["type"] = "string", ["description"] = "Comma-separated memory record ids to fetch sources for." },
+            ["query"] = new JsonObject { ["type"] = "string", ["description"] = "Optional search query; matching records' sources are included." },
+            ["tags"] = new JsonObject { ["type"] = "string", ["description"] = "Optional comma-separated tag filter for the query." },
+            ["limit"] = new JsonObject { ["type"] = "integer", ["description"] = "Max hybrid-search results when query is provided. Default 10." },
+            ["maxFileBytes"] = new JsonObject { ["type"] = "integer", ["description"] = "Max bytes per file content entry. Default 16384; clamped by source-link policy." },
+            ["format"] = new JsonObject
+            {
+                ["type"] = "string",
+                ["description"] = "Output format. json (default) or jsonl for one JSON object per line.",
+                ["enum"] = new JsonArray { "json", "jsonl" }
+            }
+        }
+    };
+
+    private static JsonObject BuildFindBySourceSchema() => new()
+    {
+        ["type"] = "object",
+        ["properties"] = new JsonObject
+        {
+            ["pattern"] = new JsonObject { ["type"] = "string", ["description"] = "Substring to match against source link URIs (raw and variable-expanded). Case-insensitive." }
+        },
+        ["required"] = new JsonArray { "pattern" }
+    };
+
+    private static JsonObject BuildCodeSearchSchema() => new()
+    {
+        ["type"] = "object",
+        ["properties"] = new JsonObject
+        {
+            ["query"] = new JsonObject { ["type"] = "string", ["description"] = "Search text for code symbols, files, or implementation details." },
+            ["targets"] = new JsonObject
+            {
+                ["type"] = "array",
+                ["description"] = "Optional target directories to limit the search, such as MemorySmith.App or MemorySmith.Core.",
+                ["items"] = new JsonObject { ["type"] = "string" }
+            },
+            ["limit"] = new JsonObject { ["type"] = "integer", ["description"] = "Maximum number of results to return. Clamped 1-50, default 10." },
+            ["rebuildIfStale"] = new JsonObject { ["type"] = "boolean", ["description"] = "Re-scan the configured repo targets and refresh changed code chunks before searching. Defaults to true." },
+            ["forceRebuild"] = new JsonObject { ["type"] = "boolean", ["description"] = "Ignore warm incremental reuse and rebuild all configured code-search documents from source before searching. Defaults to false." }
+        },
+        ["required"] = new JsonArray { "query" }
+    };
+
+    private static JsonObject BuildCodeSearchStatusSchema() => new()
+    {
+        ["type"] = "object",
+        ["properties"] = new JsonObject()
+    };
+
+    private static JsonObject BuildTaskListSchema() => new()
+    {
+        ["type"] = "object",
+        ["properties"] = new JsonObject
+        {
+            ["query"] = new JsonObject { ["type"] = "string", ["description"] = "Optional text matched against task title, description, key, labels, and assignee." },
+            ["status"] = new JsonObject { ["type"] = "string", ["description"] = "Optional task status filter." },
+            ["assignee"] = new JsonObject { ["type"] = "string", ["description"] = "Optional assignee text or directory id filter." },
+            ["limit"] = new JsonObject { ["type"] = "integer", ["description"] = "Maximum tasks to return. Clamped 1-100, default 25." }
+        }
+    };
+
+    private static JsonObject BuildMemoryCreateSchema() => new()
+    {
+        ["type"] = "object",
+        ["properties"] = new JsonObject
+        {
+            ["id"] = new JsonObject { ["type"] = "string", ["description"] = "Optional memory id. Omit to auto-generate." },
+            ["title"] = new JsonObject { ["type"] = "string", ["description"] = "Memory title." },
+            ["content"] = new JsonObject { ["type"] = "string", ["description"] = "Memory content." },
+            ["status"] = new JsonObject { ["type"] = "string", ["description"] = "Memory status. Defaults to Working." },
+            ["confidence"] = new JsonObject { ["type"] = "number", ["description"] = "Memory confidence score." },
+            ["tags"] = new JsonObject { ["description"] = "Tags as an array, comma-separated string, or newline-separated string." },
+            ["references"] = new JsonObject { ["description"] = "References as an array, comma-separated string, or newline-separated string." },
+            ["conflicts"] = new JsonObject { ["description"] = "Conflicts as an array, comma-separated string, or newline-separated string." }
+        },
+        ["required"] = new JsonArray { "title", "content" }
+    };
+
+    private static JsonObject BuildMemoryUpdateSchema() => new()
+    {
+        ["type"] = "object",
+        ["properties"] = new JsonObject
+        {
+            ["id"] = new JsonObject { ["type"] = "string", ["description"] = "Memory id to update." },
+            ["title"] = new JsonObject { ["type"] = "string", ["description"] = "Replacement memory title." },
+            ["content"] = new JsonObject { ["type"] = "string", ["description"] = "Replacement memory content." },
+            ["status"] = new JsonObject { ["type"] = "string", ["description"] = "Replacement memory status." },
+            ["confidence"] = new JsonObject { ["type"] = "number", ["description"] = "Replacement confidence score." },
+            ["tags"] = new JsonObject { ["description"] = "Replacement tags as an array, comma-separated string, or newline-separated string." },
+            ["references"] = new JsonObject { ["description"] = "Replacement references as an array, comma-separated string, or newline-separated string." },
+            ["conflicts"] = new JsonObject { ["description"] = "Replacement conflicts as an array, comma-separated string, or newline-separated string." }
+        },
+        ["required"] = new JsonArray { "id" }
+    };
+
+    private static JsonObject BuildTaskIdSchema() => new()
+    {
+        ["type"] = "object",
+        ["properties"] = new JsonObject
+        {
+            ["idOrKey"] = new JsonObject { ["type"] = "string", ["description"] = "Task id or key, such as tsk-0171-agent-task-tools or TSK-0171." }
+        },
+        ["required"] = new JsonArray { "idOrKey" }
+    };
+
+    private static JsonObject BuildTaskCreateSchema() => new()
+    {
+        ["type"] = "object",
+        ["properties"] = new JsonObject
+        {
+            ["title"] = new JsonObject { ["type"] = "string", ["description"] = "Task title." },
+            ["description"] = new JsonObject { ["type"] = "string", ["description"] = "Task description." },
+            ["type"] = new JsonObject { ["type"] = "string", ["description"] = "Task type. Defaults to Task." },
+            ["status"] = new JsonObject { ["type"] = "string", ["description"] = "Initial status. Defaults to Backlog." },
+            ["priority"] = new JsonObject { ["type"] = "string", ["description"] = "Priority: Critical, High, Medium, or Low. Defaults to Medium." },
+            ["assigneeMode"] = new JsonObject { ["type"] = "string", ["description"] = "Assignee mode: Directory or Custom. Defaults to Custom." },
+            ["assigneeDirectoryId"] = new JsonObject { ["type"] = "string", ["description"] = "Directory user id when assigneeMode is Directory." },
+            ["assigneeCustomText"] = new JsonObject { ["type"] = "string", ["description"] = "Custom assignee label. Defaults to Agent." },
+            ["reporter"] = new JsonObject { ["type"] = "string", ["description"] = "Reporter label. Defaults to the caller." },
+            ["labels"] = new JsonObject { ["description"] = "Labels as an array, comma-separated string, or newline-separated string." },
+            ["dueDateUtc"] = new JsonObject { ["type"] = "string", ["description"] = "Optional ISO-8601 UTC due date." },
+            ["epicId"] = new JsonObject { ["type"] = "string", ["description"] = "Optional epic task id." },
+            ["parentId"] = new JsonObject { ["type"] = "string", ["description"] = "Optional parent task id." },
+            ["slug"] = new JsonObject { ["type"] = "string", ["description"] = "Optional id slug suffix." }
+        },
+        ["required"] = new JsonArray { "title" }
+    };
+
+    private static JsonObject BuildTaskUpdateSchema() => new()
+    {
+        ["type"] = "object",
+        ["properties"] = new JsonObject
+        {
+            ["idOrKey"] = new JsonObject { ["type"] = "string", ["description"] = "Task id or key." },
+            ["title"] = new JsonObject { ["type"] = "string", ["description"] = "Replacement title." },
+            ["description"] = new JsonObject { ["type"] = "string", ["description"] = "Replacement description." },
+            ["type"] = new JsonObject { ["type"] = "string", ["description"] = "Replacement type." },
+            ["priority"] = new JsonObject { ["type"] = "string", ["description"] = "Replacement priority: Critical, High, Medium, or Low." },
+            ["assigneeMode"] = new JsonObject { ["type"] = "string", ["description"] = "Replacement assignee mode: Directory or Custom." },
+            ["assigneeDirectoryId"] = new JsonObject { ["type"] = "string", ["description"] = "Replacement directory assignee id." },
+            ["assigneeCustomText"] = new JsonObject { ["type"] = "string", ["description"] = "Replacement custom assignee text." },
+            ["reporter"] = new JsonObject { ["type"] = "string", ["description"] = "Replacement reporter." },
+            ["labels"] = new JsonObject { ["description"] = "Replacement labels as an array, comma-separated string, or newline-separated string." },
+            ["dueDateUtc"] = new JsonObject { ["type"] = "string", ["description"] = "Replacement ISO-8601 UTC due date. Omit to preserve the existing due date." },
+            ["epicId"] = new JsonObject { ["type"] = "string", ["description"] = "Replacement epic task id." },
+            ["parentId"] = new JsonObject { ["type"] = "string", ["description"] = "Replacement parent task id." }
+        },
+        ["required"] = new JsonArray { "idOrKey" }
+    };
+
+    private static JsonObject BuildTaskSetStatusSchema() => new()
+    {
+        ["type"] = "object",
+        ["properties"] = new JsonObject
+        {
+            ["idOrKey"] = new JsonObject { ["type"] = "string", ["description"] = "Task id or key." },
+            ["status"] = new JsonObject { ["type"] = "string", ["description"] = "New status: Backlog, Ready, InProgress, Blocked, Rejected, Done, or Archived." },
+            ["note"] = new JsonObject { ["type"] = "string", ["description"] = "Optional history note." }
+        },
+        ["required"] = new JsonArray { "idOrKey", "status" }
+    };
+
+    private static JsonObject BuildTaskCommentSchema() => new()
+    {
+        ["type"] = "object",
+        ["properties"] = new JsonObject
+        {
+            ["idOrKey"] = new JsonObject { ["type"] = "string", ["description"] = "Task id or key." },
+            ["body"] = new JsonObject { ["type"] = "string", ["description"] = "Comment body." }
+        },
+        ["required"] = new JsonArray { "idOrKey", "body" }
+    };
+
+    private static JsonObject BuildTaskAttachmentSchema() => new()
+    {
+        ["type"] = "object",
+        ["properties"] = new JsonObject
+        {
+            ["idOrKey"] = new JsonObject { ["type"] = "string", ["description"] = "Task id or key." },
+            ["name"] = new JsonObject { ["type"] = "string", ["description"] = "Attachment display name." },
+            ["kind"] = new JsonObject { ["type"] = "string", ["description"] = "Attachment kind, such as file, image, report, or trace. Defaults to file." },
+            ["uri"] = new JsonObject { ["type"] = "string", ["description"] = "Absolute http/https attachment URI." }
+        },
+        ["required"] = new JsonArray { "idOrKey", "name", "uri" }
     };
 
     // ---------- Argument readers ----------
@@ -505,8 +1304,65 @@ public sealed class ChatToolCatalog
         Ids: ReadString(arguments, "ids"),
         IncludeBacklinks: ReadBool(arguments, "includeBacklinks", false));
 
-    public static string? ReadString(JsonObject item, string name) =>
-        GetProperty(item, name) is JsonValue value && value.TryGetValue<string>(out var text) ? text : null;
+    public static string? ReadString(JsonObject item, string name)
+    {
+        var node = GetProperty(item, name);
+        if (node is JsonValue value && value.TryGetValue<string>(out var text))
+        {
+            return text;
+        }
+
+        return node?.ToString();
+    }
+
+    public static IReadOnlyList<string>? ReadStringList(JsonObject item, string name)
+    {
+        var node = GetProperty(item, name);
+        if (node is null)
+        {
+            return null;
+        }
+
+        if (node is JsonArray array)
+        {
+            return array
+                .Select(value => value is JsonValue jsonValue && jsonValue.TryGetValue<string>(out var text) ? text : value?.ToString())
+                .Where(value => !string.IsNullOrWhiteSpace(value))
+                .Select(value => value!.Trim())
+                .ToList();
+        }
+
+        var raw = ReadString(item, name);
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return [];
+        }
+
+        return raw.Split([',', '\r', '\n'], StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+            .ToList();
+    }
+
+    public static DateTime? ReadNullableDateTime(JsonObject item, string name, DateTime? fallback)
+    {
+        var node = GetProperty(item, name);
+        if (node is null)
+        {
+            return fallback;
+        }
+
+        var text = ReadString(item, name);
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return fallback;
+        }
+
+        if (DateTime.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var value))
+        {
+            return value;
+        }
+
+        throw new ArgumentException($"{name} must be an ISO-8601 date/time value.");
+    }
 
     public static int ReadInt(JsonObject item, string name, int fallback)
     {
@@ -520,6 +1376,26 @@ public sealed class ChatToolCatalog
         if (GetProperty(item, name) is not JsonValue value) return fallback;
         if (value.TryGetValue<bool>(out var boolean)) return boolean;
         return value.TryGetValue<string>(out var text) && bool.TryParse(text, out boolean) ? boolean : fallback;
+    }
+
+    public static double ReadDouble(JsonObject item, string name, double fallback)
+    {
+        if (GetProperty(item, name) is not JsonValue value)
+        {
+            return fallback;
+        }
+
+        if (value.TryGetValue<double>(out var number))
+        {
+            return number;
+        }
+
+        if (value.TryGetValue<string>(out var text) && double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out number))
+        {
+            return number;
+        }
+
+        throw new ArgumentException($"{name} must be a number.");
     }
 
     public static MemoryStatus? ReadStatus(JsonObject item) =>
@@ -543,10 +1419,10 @@ public sealed class ChatToolCatalog
         new("memory", record.Id, record.Title, Truncate(record.Content, 320), ChatContextOrigins.Tool);
 
     private static ChatContextItem ToMemoryContextItem(MemorySearchResult result) =>
-        new("memory", result.Id, result.Title, Truncate(result.Snippet, 320), ChatContextOrigins.Tool);
+        new("memory", result.Id, result.Title, Truncate(result.Snippet, 320), ChatContextOrigins.Tool, result.Diagnostics);
 
     private static ChatContextItem ToMemoryContextItem(MemoryContextPackRecord record) =>
-        new("memory", record.Id, record.Title, Truncate(record.Content, 320), ChatContextOrigins.Tool);
+        new("memory", record.Id, record.Title, Truncate(record.Content, 320), ChatContextOrigins.Tool, record.Diagnostics);
 
     private static ChatContextItem ToPageContextItem(PageSummary page) =>
         new("page", page.Slug, page.Title, Truncate(page.Snippet, 320), ChatContextOrigins.Tool);
@@ -554,60 +1430,156 @@ public sealed class ChatToolCatalog
     private static ChatContextItem ToPageContextItem(PageDocument page, string markdown) =>
         new("page", page.Slug, page.Title, Truncate(markdown, 320), ChatContextOrigins.Tool);
 
-    public static string FormatLexicalResults(IReadOnlyList<MemoryRecord> records)
+    private static ChatContextItem ToCodeContextItem(CodeSearchResult result) =>
+        new("code", $"{result.DocumentPath}:{result.StartLine}-{result.EndLine}", result.DocumentPath, Truncate(result.Snippet, 320), ChatContextOrigins.Tool);
+
+    private static ChatToolExecutionResult BuildRetrievalToolResult(RetrievalResultEnvelope<MemorySearchResult> envelope)
     {
-        if (records.Count == 0) return "No lexical search results.";
-        return string.Join(Environment.NewLine + Environment.NewLine, records.Select(record =>
-            $"- {record.Id}: {record.Title}{Environment.NewLine}  Tags: {string.Join(", ", record.Tags)}{Environment.NewLine}  {Truncate(record.Content, 320)}"));
+        var contextItems = envelope.Results.Select(ToMemoryContextItem).ToList();
+        var structured = JsonSerializer.SerializeToNode(envelope, ToolJsonOptions);
+        return new ChatToolExecutionResult(structured!.ToJsonString(ToolJsonOptions), ContextItems: contextItems, Structured: structured);
+    }
+
+    private static ChatToolExecutionResult JsonToolResult(object payload)
+    {
+        var structured = JsonSerializer.SerializeToNode(payload, ToolJsonOptions);
+        return new ChatToolExecutionResult(structured!.ToJsonString(ToolJsonOptions), Structured: structured);
+    }
+
+    private static ChatToolExecutionResult MissingTaskServiceResult(string toolName) =>
+        new($"The {toolName} tool requires the task service.", IsError: true);
+
+    private static ChatToolExecutionResult MissingCodeSearchServiceResult(string toolName) =>
+        new($"The {toolName} tool requires the code search service.", IsError: true);
+
+    private static ChatToolExecutionResult? ValidateAgentWriteGovernance(ChatToolExecutionContext ctx, string toolName)
+    {
+        if (!ctx.AgentWritesEnabled)
+        {
+            return new ChatToolExecutionResult("Agent write tools are disabled by configuration.", IsError: true);
+        }
+
+        if (!ctx.AgentWriteAutoAccept)
+        {
+            return new ChatToolExecutionResult($"MemorySmith tool '{toolName}' requires Agent auto_accept mode; direct mutation tool calls are disabled while Agent write approval is manual.", IsError: true);
+        }
+
+        return null;
+    }
+
+    private static MemoryStatus ReadMemoryStatus(JsonObject item, string name, MemoryStatus fallback)
+    {
+        var raw = ReadString(item, name);
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return fallback;
+        }
+
+        if (Enum.TryParse<MemoryStatus>(raw, ignoreCase: true, out var status))
+        {
+            return status;
+        }
+
+        throw new ArgumentException($"{name} must be one of: {string.Join(", ", Enum.GetNames<MemoryStatus>())}.");
+    }
+
+    private static string Actor(ChatToolExecutionContext ctx)
+    {
+        if (ctx.CurrentUser is { IsAuthenticated: true } && !string.IsNullOrWhiteSpace(ctx.CurrentUser.DisplayName))
+        {
+            return ctx.CurrentUser.DisplayName;
+        }
+
+        if (ctx.User?.Identity?.IsAuthenticated != true)
+        {
+            return "anonymous";
+        }
+
+        return ctx.User.Identity?.Name
+            ?? ctx.User.FindFirst("name")?.Value
+            ?? ctx.User.FindFirst("sub")?.Value
+            ?? "authenticated-user";
+    }
+
+    public static string FormatLexicalResults(IReadOnlyList<MemorySearchResult> results)
+    {
+        if (results.Count == 0) return "No lexical search results.";
+        return string.Join(Environment.NewLine + Environment.NewLine, results.Select(result =>
+            $"- {result.Id}: {result.Title}{Environment.NewLine}  Score: {result.Score:0.###}{Environment.NewLine}  Match: {result.MatchReason}{Environment.NewLine}  Tags: {string.Join(", ", result.Tags)}{Environment.NewLine}{FormatInlineDiagnostics(result.Diagnostics)}  {result.Snippet}"));
     }
 
     public static string FormatSemanticResults(IReadOnlyList<MemorySearchResult> results)
     {
         if (results.Count == 0) return "No semantic search results.";
         return string.Join(Environment.NewLine + Environment.NewLine, results.Select(result =>
-            $"- {result.Id}: {result.Title}{Environment.NewLine}  Score: {result.Score:0.###}{Environment.NewLine}  Match: {result.MatchReason}{Environment.NewLine}  Tags: {string.Join(", ", result.Tags)}{Environment.NewLine}  {result.Snippet}"));
+            $"- {result.Id}: {result.Title}{Environment.NewLine}  Score: {result.Score:0.###}{Environment.NewLine}  Match: {result.MatchReason}{Environment.NewLine}  Tags: {string.Join(", ", result.Tags)}{Environment.NewLine}{FormatInlineDiagnostics(result.Diagnostics)}  {result.Snippet}"));
     }
 
     public static string FormatHybridResults(IReadOnlyList<MemorySearchResult> results)
     {
         if (results.Count == 0) return "No hybrid search results.";
         return string.Join(Environment.NewLine + Environment.NewLine, results.Select(result =>
-            $"- {result.Id}: {result.Title}{Environment.NewLine}  RRF Score: {result.Score:0.######}{Environment.NewLine}  Match: {result.MatchReason}{Environment.NewLine}  Tags: {string.Join(", ", result.Tags)}{Environment.NewLine}  {result.Snippet}"));
+            $"- {result.Id}: {result.Title}{Environment.NewLine}  RRF Score: {result.Score:0.######}{Environment.NewLine}  Match: {result.MatchReason}{Environment.NewLine}  Tags: {string.Join(", ", result.Tags)}{Environment.NewLine}{FormatInlineDiagnostics(result.Diagnostics)}  {result.Snippet}"));
     }
 
-    public static string FormatContextPack(MemoryContextPack pack, string? format)
-    {
-        if (string.Equals(format, "json", StringComparison.OrdinalIgnoreCase))
-        {
-            return JsonSerializer.Serialize(pack, ToolJsonOptions);
-        }
-        var warnings = pack.Warnings.Count == 0
+    public static string FormatContextPack(MemoryContextPack pack, string? format) =>
+        MemoryContextPackFormatter.Format(pack, format);
+
+    private static string FormatInlineDiagnostics(IReadOnlyList<MemoryDiagnostic> diagnostics) =>
+        diagnostics.Count == 0
             ? string.Empty
-            : $"{Environment.NewLine}Warnings:{Environment.NewLine}" + string.Join(Environment.NewLine, pack.Warnings.Select(warning => $"- {warning}")) + Environment.NewLine;
-        if (pack.Records.Count == 0)
+            : $"  Diagnostics: {string.Join("; ", diagnostics.Take(3).Select(diagnostic => $"{diagnostic.Code}: {diagnostic.Message}"))}{Environment.NewLine}";
+
+    private static bool IsStructuredFormat(string? format) =>
+        string.Equals(format, "json", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(format, "envelope", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(format, "json-v2", StringComparison.OrdinalIgnoreCase);
+
+    private static IReadOnlyList<string> ResolveMergeShardAllowedRoots(CodeSearchStatus status)
+    {
+        var roots = new List<string>();
+        if (!string.IsNullOrWhiteSpace(status.RepositoryRoot))
         {
-            return $"# Context Pack{Environment.NewLine}Query: {pack.Query ?? string.Empty}{Environment.NewLine}Generated: {pack.GeneratedAt:O}{warnings}{Environment.NewLine}No context pack records.";
+            roots.Add(Path.GetFullPath(status.RepositoryRoot));
         }
-        var sections = pack.Records.Select(record =>
+
+        var indexDirectory = Path.GetDirectoryName(status.IndexPath);
+        if (!string.IsNullOrWhiteSpace(indexDirectory))
         {
-            var scoreLine = record.Score.HasValue ? $"Score: {record.Score:0.######}" : "Score: linked context";
-            var matchLine = string.IsNullOrWhiteSpace(record.MatchReason) ? string.Empty : $"Match: {record.MatchReason}{Environment.NewLine}";
-            return $"## {record.Id}: {record.Title}{Environment.NewLine}" +
-                   $"Relationship: {record.Relationship}{Environment.NewLine}" +
-                   $"Status: {record.Status}; Confidence: {record.Confidence:P0}; Uses: {record.UsageCount}{Environment.NewLine}" +
-                   $"Tags: {string.Join(", ", record.Tags)}{Environment.NewLine}" +
-                   $"References: {FormatLinks(record.References)}{Environment.NewLine}" +
-                   $"Conflicts: {FormatLinks(record.Conflicts)}{Environment.NewLine}" +
-                   $"{scoreLine}{Environment.NewLine}" +
-                   matchLine +
-                   record.Content;
-        });
-        return $"# Context Pack{Environment.NewLine}Query: {pack.Query ?? string.Empty}{Environment.NewLine}Generated: {pack.GeneratedAt:O}{warnings}{Environment.NewLine}" +
-            string.Join(Environment.NewLine + Environment.NewLine, sections);
+            roots.Add(Path.GetFullPath(indexDirectory));
+        }
+
+        return roots.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
     }
 
-    private static string FormatLinks(IReadOnlyList<string> values) =>
-        values.Count == 0 ? "none" : string.Join(", ", values);
+    private static bool IsPathWithinAnyRoot(string candidatePath, IReadOnlyList<string> roots)
+    {
+        var normalizedCandidate = Path.GetFullPath(candidatePath)
+            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+        foreach (var root in roots)
+        {
+            if (string.IsNullOrWhiteSpace(root))
+            {
+                continue;
+            }
+
+            var normalizedRoot = Path.GetFullPath(root)
+                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            if (string.Equals(normalizedCandidate, normalizedRoot, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            var rootWithSeparator = normalizedRoot + Path.DirectorySeparatorChar;
+            if (normalizedCandidate.StartsWith(rootWithSeparator, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     public static string Truncate(string? value, int maxCharacters)
     {

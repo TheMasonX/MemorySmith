@@ -1,31 +1,91 @@
 @page "/admin"
 @rendermode InteractiveServer
 @attribute [Authorize(Policy = MemorySmithPolicies.CanAdminMemorySmith)]
+@using Microsoft.AspNetCore.Authentication
 @inject IMemorySmithDatabase Database
+@inject IAuthenticationSchemeProvider SchemeProvider
 @inject IOptionsMonitor<MemorySmithOptions> Options
 @inject ICurrentUserContext CurrentUser
 @inject AuditLogService Audit
 @inject AdminSettingsService Settings
-@inject IVarStore VarStore
+@inject ChatModelProfileService ModelProfiles
+@inject IEnumerable<IChatProvider> ChatProviders
+@inject MemorySmithLocalAuthService Auth
+@inject VarResolver VarResolver
 @inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+@inject IDialogService Dialogs
+@inject IJSRuntime JS
 @using Microsoft.Extensions.Options
+@using System.Globalization
+@using Microsoft.AspNetCore.WebUtilities
 @using System.Text.Json
 @using System.Text.Json.Nodes
 
-<PageTitle>Admin</PageTitle>
+<PageTitle>Admin - MemorySmith</PageTitle>
 
 <div class="wiki-workbench admin-workbench">
     <section class="wiki-commandbar" aria-label="Admin">
         <div class="wiki-title-block">
             <MudText Typo="Typo.h5">Admin</MudText>
-            <span class="wiki-count">Users, providers, settings, audit, history</span>
+            <span class="wiki-count">Users, OAuth, models, settings, audit, history</span>
         </div>
-        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync">Refresh</MudButton>
+        <MudTooltip Text="Refresh admin data">
+            <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync" aria-label="Refresh" />
+        </MudTooltip>
     </section>
 
-    <MudTabs Rounded="false" Elevation="0" Class="admin-tabs">
+    <section class="admin-section-summary" aria-label="Active admin section" aria-live="polite">
+        <div class="admin-section-summary-copy">
+            <span class="admin-table-meta">Active section</span>
+            <MudText Typo="Typo.subtitle2">@ActiveAdminSectionTitle</MudText>
+            <span class="admin-section-summary-text">@ActiveAdminSectionDescription</span>
+        </div>
+    </section>
+
+    <MudTabs Rounded="false" Elevation="0" Class="admin-tabs" ActivePanelIndex="@_activeAdminTabIndex" ActivePanelIndexChanged="OnAdminTabChanged">
         <MudTabPanel Text="Users" Icon="@Icons.Material.Filled.People">
-            <MudTable Items="@_userRows" Dense="true" Class="health-table">
+            <div class="admin-panel-grid">
+                <section class="health-lower-card admin-form-panel" aria-label="Create local user account">
+                    <div class="wiki-commandbar profile-sectionbar">
+                        <div class="wiki-title-block">
+                            <MudText Typo="Typo.h6">Create Local User</MudText>
+                            <span class="wiki-count">Default off</span>
+                        </div>
+                    </div>
+
+                    @if (!Options.CurrentValue.Auth.LocalPasswordEnabled)
+                    {
+                        <MudAlert Severity="Severity.Warning" Dense="true">Local password sign-in is disabled globally. Enable it before creating local-only test accounts.</MudAlert>
+                    }
+                    else if (!Options.CurrentValue.Auth.AllowAdminCreateLocalUsers)
+                    {
+                        <MudAlert Severity="Severity.Info" Dense="true">Admin-created local users are disabled. Turn on <strong>Allow admin-created local users</strong> in Admin Configuration to create local-only test accounts from this page.</MudAlert>
+                    }
+                    else
+                    {
+                        <div class="admin-form-stack">
+                            <MudTextField T="string" Value="@_newLocalUserDisplayName" ValueChanged="@((string value) => _newLocalUserDisplayName = value)" Label="Display name" Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="@_isBusy" />
+                            <MudTextField T="string" Value="@_newLocalUserEmail" ValueChanged="@((string value) => _newLocalUserEmail = value)" Label="Email" Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="@_isBusy" />
+                            <MudSelect T="string" Value="@_newLocalUserRole" ValueChanged="@((string value) => _newLocalUserRole = value)" Label="Role" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Disabled="@_isBusy">
+                                @foreach (var role in _assignableRoles)
+                                {
+                                    <MudSelectItem T="string" Value="@role.Name">@role.Name</MudSelectItem>
+                                }
+                            </MudSelect>
+                            <MudTextField T="string" Value="@_newLocalUserPassword" ValueChanged="@((string value) => _newLocalUserPassword = value)" Label="Password" InputType="InputType.Password" Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="@_isBusy" />
+                            <MudTextField T="string" Value="@_newLocalUserConfirmPassword" ValueChanged="@((string value) => _newLocalUserConfirmPassword = value)" Label="Confirm password" InputType="InputType.Password" Variant="Variant.Outlined" Margin="Margin.Dense" Disabled="@_isBusy" />
+                            <small class="admin-setting-key">Creates a non-admin local password account. Use this for test accounts or controlled local-only users. Passwords must be at least 15 characters.</small>
+                            <div class="admin-model-editor-actions">
+                                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PersonAdd" Disabled="@_isBusy" OnClick="CreateLocalUserAsync">Create local user</MudButton>
+                                <MudButton Variant="Variant.Outlined" Disabled="@_isBusy" OnClick="ResetNewLocalUserForm">Clear</MudButton>
+                            </div>
+                        </div>
+                    }
+                </section>
+            </div>
+
+            <MudTable Items="@_userRows" Dense="true" Breakpoint="Breakpoint.Sm" Class="health-table admin-grid-table admin-users-table">
                 <HeaderContent>
                     <MudTh>User</MudTh>
                     <MudTh>Email</MudTh>
@@ -35,13 +95,19 @@
                     <MudTh>Action</MudTh>
                 </HeaderContent>
                 <RowTemplate>
-                    <MudTd>
-                        <strong>@context.User.DisplayName</strong><br />
-                        <small>@context.User.UserId</small>
+                    <MudTd DataLabel="User">
+                        <div class="admin-user-primary">
+                            <strong>@context.User.DisplayName</strong>
+                            <SensitiveValue Value="@context.User.UserId" Summary="@SummarizeIdentifier(context.User.UserId)" Label="@($"{context.User.DisplayName} user ID")" Class="admin-sensitive-value admin-sensitive-compact" AllowReveal="false" />
+                        </div>
                     </MudTd>
-                    <MudTd>@(context.User.Email ?? "-")</MudTd>
-                    <MudTd>@(context.User.IsDisabled ? "Disabled" : "Active")</MudTd>
-                    <MudTd>
+                    <MudTd DataLabel="Email">
+                        <div class="admin-user-secondary">
+                            <SensitiveValue Value="@context.User.Email" Summary="@MaskEmail(context.User.Email)" Label="@($"{context.User.DisplayName} email")" Class="admin-sensitive-value" EmptyText="-" AllowReveal="true" />
+                        </div>
+                    </MudTd>
+                    <MudTd DataLabel="Status">@(context.User.IsDisabled ? "Disabled" : "Active")</MudTd>
+                    <MudTd DataLabel="Role">
                         @if (context.IsAdmin)
                         {
                             <span class="wiki-status is-core">Admin</span>
@@ -56,90 +122,68 @@
                             </MudSelect>
                         }
                     </MudTd>
-                    <MudTd>@(context.User.LastLoginAtUtc?.ToLocalTime().ToString("g") ?? "-")</MudTd>
-                    <MudTd>
-                        <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error" Disabled="@(_isBusy || context.IsAdmin || context.User.IsDisabled)" OnClick="@(() => DisableUserAsync(context))">Disable</MudButton>
-                    </MudTd>
-                </RowTemplate>
-            </MudTable>
-        </MudTabPanel>
-        <MudTabPanel Text="Providers" Icon="@Icons.Material.Filled.Link">
-            <MudTable Items="@_providers" Dense="true" Class="health-table">
-                <HeaderContent>
-                    <MudTh>Provider</MudTh>
-                    <MudTh>Status</MudTh>
-                    <MudTh>Configured</MudTh>
-                    <MudTh>Links</MudTh>
-                    <MudTh>Updated</MudTh>
-                    <MudTh>Action</MudTh>
-                </HeaderContent>
-                <RowTemplate>
-                    <MudTd>
-                        <div class="admin-provider-cell">
-                            <span>@context.DisplayName</span>
-                            @if (ProviderOAuthSetupUrl(context.ProviderName) is { } setupUrl)
-                            {
-                                <a class="admin-provider-setup-link" href="@setupUrl" target="_blank" rel="noopener noreferrer" title="Open @context.DisplayName OAuth setup" aria-label="Open @context.DisplayName OAuth setup">
-                                    <MudIcon Icon="@Icons.Material.Filled.OpenInNew" Size="Size.Small" />
-                                </a>
-                            }
+                    <MudTd DataLabel="Last login">@(context.User.LastLoginAtUtc?.ToLocalTime().ToString("g") ?? "-")</MudTd>
+                    <MudTd DataLabel="Action">
+                        <div class="admin-user-action-cell">
+                            <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error" Disabled="@(_isBusy || context.IsAdmin || context.User.IsDisabled)" OnClick="@(() => DisableUserAsync(context))">Disable</MudButton>
                         </div>
                     </MudTd>
-                    <MudTd>@(context.IsEnabled ? "Enabled" : "Disabled")</MudTd>
-                    <MudTd>@ProviderConfigurationLabel(context.ProviderName)</MudTd>
-                    <MudTd>@ProviderLinkCount(context.ProviderName)</MudTd>
-                    <MudTd>@context.UpdatedAtUtc.ToLocalTime().ToString("g")</MudTd>
-                    <MudTd>
-                        <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="@(context.IsEnabled ? Color.Warning : Color.Success)" Disabled="@_isBusy" OnClick="@(() => ToggleProviderAsync(context))">@(context.IsEnabled ? "Disable" : "Enable")</MudButton>
-                    </MudTd>
                 </RowTemplate>
             </MudTable>
         </MudTabPanel>
-        <MudTabPanel Text="Models" Icon="@Icons.Material.Filled.Memory">
-            <section class="health-lower-card admin-form-panel" aria-label="Models page summary">
-                <div class="wiki-commandbar profile-sectionbar">
-                    <div class="wiki-title-block">
-                        <MudText Typo="Typo.h6">Models</MudText>
-                        <span class="wiki-count">Dedicated workbench</span>
-                    </div>
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.OpenInNew" Href="/models">Open Models page</MudButton>
-                </div>
-                <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Outlined">
-                    Model profile creation, provider discovery, context sizing, defaults, and VRAM planning now live on the dedicated Models page.
-                </MudAlert>
-            </section>
-        </MudTabPanel>
-        <MudTabPanel Text="Variables" Icon="@Icons.Material.Filled.DataObject">
-            <div class="admin-filter-bar" aria-label="Path variable tools">
-                <MudText Typo="Typo.body2" Style="color:var(--vscode-text-muted);flex:1;">
-                    Define Source Link path variables using <strong>%VariableName%</strong> tokens, for example <code>%MemorySmithRepo%MemorySmith.App/Program.cs</code>.
-                </MudText>
-                <MudTooltip Text="Add a new path variable row.">
-                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Add" Disabled="@_isBusy" OnClick="AddVariableRow">Add Variable</MudButton>
-                </MudTooltip>
-                <MudTooltip Text="Save all variable changes to the configured vars file.">
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Save" Disabled="@_isBusy" OnClick="SaveVariablesAsync">Save Variables</MudButton>
-                </MudTooltip>
+        <MudTabPanel Text="OAuth" Icon="@Icons.Material.Filled.Link">
+            <div class="admin-provider-grid" aria-label="Identity providers">
+                @foreach (var provider in _providers)
+                {
+                    <article class="health-lower-card admin-provider-card">
+                        <div class="admin-provider-card-header">
+                            <div class="admin-provider-title">
+                                <strong>@provider.DisplayName</strong>
+                                @if (ProviderOAuthSetupUrl(provider.ProviderName) is { } setupUrl)
+                                {
+                                    <a class="admin-provider-setup-link" href="@setupUrl" target="_blank" rel="noopener noreferrer" title="Open @provider.DisplayName OAuth setup" aria-label="Open @provider.DisplayName OAuth setup">
+                                        <MudIcon Icon="@Icons.Material.Filled.OpenInNew" Size="Size.Small" />
+                                    </a>
+                                }
+                            </div>
+                            <span class="@ProviderStatusClass(provider)">@ProviderStatusText(provider)</span>
+                        </div>
+                        <dl class="admin-provider-meta">
+                            <div>
+                                <dt>Configured</dt>
+                                <dd>@ProviderConfigurationLabel(provider.ProviderName)</dd>
+                            </div>
+                            <div>
+                                <dt>Links</dt>
+                                <dd>@ProviderLinkCount(provider.ProviderName)</dd>
+                            </div>
+                            <div>
+                                <dt>Updated</dt>
+                                <dd>@provider.UpdatedAtUtc.ToLocalTime().ToString("g")</dd>
+                            </div>
+                        </dl>
+                        <p class="admin-provider-impact">@ProviderActionImpact(provider)</p>
+                        <div class="admin-provider-card-actions">
+                            <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="@ProviderToggleColor(provider)" Disabled="@(_isBusy || !CanToggleProvider(provider))" OnClick="@(() => ToggleProviderAsync(provider))" aria-label="@ProviderToggleLabel(provider)" title="@ProviderToggleTooltip(provider)">@ProviderToggleText(provider)</MudButton>
+                        </div>
+                    </article>
+                }
             </div>
-            @if (_variableRows.Count == 0)
-            {
-                <div class="wiki-empty-state">No variables defined. Click Add Variable to create one.</div>
-            }
-            else
-            {
-                <div class="vars-table" style="margin-top:8px;">
-                    @foreach (var (row, index) in _variableRows.Select((row, i) => (row, i)))
-                    {
-                        <div class="vars-row" @key="index">
-                            <MudTextField @bind-Value="row.Name" Label="Variable Name" Placeholder="MemorySmithRepo" Variant="Variant.Outlined" Margin="Margin.Dense" Class="vars-name-field" Disabled="@_isBusy" />
-                            <MudTextField @bind-Value="row.Value" Label="Value" Placeholder="C:\path\to\folder\" Variant="Variant.Outlined" Margin="Margin.Dense" Class="vars-value-field" Disabled="@_isBusy" />
-                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" Disabled="@_isBusy" OnClick="@(() => RemoveVariableRow(index))" aria-label="Remove variable" title="Remove variable" />
-                        </div>
-                    }
-                </div>
-            }
         </MudTabPanel>
         <MudTabPanel Text="Configuration" Icon="@Icons.Material.Filled.Tune">
+            <section class="admin-config-summary" aria-label="Configuration workbench status">
+                <div class="admin-config-summary-copy">
+                    <span class="admin-config-summary-kicker">SETTINGS WORKBENCH</span>
+                    <strong>@ConfigurationWorkbenchHeadline</strong>
+                    <span>@ConfigurationWorkbenchDescription</span>
+                </div>
+                <div class="admin-config-summary-actions">
+                    <MudTooltip Text="Reset pending changes in the current filtered settings view.">
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.RestartAlt" Disabled="@(_isBusy || FilteredDirtySettingCount == 0)" OnClick="ResetFilteredSettings">Reset visible</MudButton>
+                    </MudTooltip>
+                </div>
+            </section>
+
             <div class="admin-settings-nav" aria-label="Setting categories">
                 <MudButton Variant="@(IsAllFilter(_settingsCategory) ? Variant.Filled : Variant.Outlined)" Color="Color.Primary" Size="Size.Small" Class="admin-settings-nav-button" OnClick="@(() => SelectSettingsCategory(AllFilterValue))">All categories</MudButton>
                 @foreach (var category in SettingCategories)
@@ -154,6 +198,7 @@
                     </MudButton>
                 }
             </div>
+
             <div class="admin-filter-bar" aria-label="Editable settings filters">
                 <MudTextField T="string" Value="@_settingsSearch" ValueChanged="@((string value) => _settingsSearch = value)" Immediate="true" Label="Search settings" Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Class="admin-filter-input" />
                 <MudSelect T="string" Value="@_settingsCategory" ValueChanged="@((string value) => _settingsCategory = value)" Label="Category" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="admin-filter-select">
@@ -166,34 +211,125 @@
                 <MudSwitch T="bool" Value="@_settingsDirtyOnly" ValueChanged="@((bool value) => _settingsDirtyOnly = value)" Label="Changed only" Color="Color.Primary" Class="admin-settings-dirty-toggle" />
             </div>
 
-            <div class="admin-settings-groups">
-                @foreach (var group in FilteredEditableSettingGroups)
-                {
-                    <details class="admin-settings-expander" open="@IsSettingGroupExpanded(group.Category)">
-                        <summary @onclick="@(() => ToggleSettingGroupExpanded(group.Category))" @onclick:preventDefault>
-                            <span>@group.Category</span>
-                            <small>@group.Items.Count setting(s)</small>
-                        </summary>
-                        <MudTable Items="@group.Items" Dense="true" Class="health-table admin-settings-table" RowsPerPage="25">
-                            <HeaderContent>
-                                <MudTh>Setting</MudTh>
-                                <MudTh>Value</MudTh>
-                                <MudTh>Action</MudTh>
-                            </HeaderContent>
-                            <RowTemplate>
-                                <MudTd>
-                                    <strong>@context.Item.Label</strong><br />
-                                    <small>@context.Item.Key</small>
-                                </MudTd>
-                                <MudTd>@SettingEditor(context)</MudTd>
-                                <MudTd>
-                                    <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" Disabled="@(_isBusy || !context.IsDirty)" OnClick="@(() => SaveSettingAsync(context))">Save</MudButton>
-                                </MudTd>
-                            </RowTemplate>
-                        </MudTable>
-                    </details>
-                }
+            @if (IsTrainingSettingsView)
+            {
+                <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Outlined" Class="mb-2">
+                    Training runtime toggles are editable here. Model profiles are managed on the dedicated Models page.
+                    <MudButton Variant="Variant.Text" Size="Size.Small" StartIcon="@Icons.Material.Filled.SmartToy" OnClick="OpenModelsPage">Open Models</MudButton>
+                </MudAlert>
+            }
+
+            <div class="admin-settings-save-all-row">
+                <MudTooltip Text="Save only the pending changes that match the current filters.">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.FilterAlt" Disabled="@(_isBusy || FilteredDirtySettingCount == 0)" OnClick="SaveVisibleDirtySettingsAsync">Save Visible (@FilteredDirtySettingCount)</MudButton>
+                </MudTooltip>
+                <MudTooltip Text="Save every pending config change, including rows outside the current filters.">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save" Disabled="@(_isBusy || DirtySettingCount == 0)" OnClick="SaveAllDirtySettingsAsync">Save All Changes (@DirtySettingCount)</MudButton>
+                </MudTooltip>
             </div>
+
+            <MudPaper Class="pa-4 mb-3" Outlined="true">
+                <MudText Typo="Typo.subtitle2">Config Import/Export</MudText>
+                <div class="admin-settings-save-all-row" style="margin-top:8px; justify-content:flex-start;">
+                    <MudTooltip Text="Export the settings that match the current filters into the transfer box below.">
+                        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Small" StartIcon="@Icons.Material.Filled.UploadFile" Disabled="@_isBusy" OnClick="ExportVisibleSettingsAsync">Export Visible</MudButton>
+                    </MudTooltip>
+                    <MudTooltip Text="Export every editable admin setting into the transfer box below.">
+                        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Inventory2" Disabled="@_isBusy" OnClick="ExportAllSettingsAsync">Export All</MudButton>
+                    </MudTooltip>
+                    <MudTooltip Text="Copy the current transfer JSON to the clipboard.">
+                        <MudButton Variant="Variant.Text" Color="Color.Secondary" Size="Size.Small" StartIcon="@Icons.Material.Filled.ContentCopy" Disabled="@(_isBusy || string.IsNullOrWhiteSpace(_settingsTransferPayload))" OnClick="CopySettingsTransferPayloadAsync">Copy JSON</MudButton>
+                    </MudTooltip>
+                    <MudTooltip Text="Apply imported JSON to matching settings in the current filtered view without saving yet.">
+                        <MudButton Variant="Variant.Outlined" Color="Color.Info" Size="Size.Small" StartIcon="@Icons.Material.Filled.Download" Disabled="@(_isBusy || string.IsNullOrWhiteSpace(_settingsTransferPayload))" OnClick="ApplyImportedSettingsToVisibleAsync">Import To Visible</MudButton>
+                    </MudTooltip>
+                    <MudTooltip Text="Apply imported JSON to every matching editable setting without saving yet.">
+                        <MudButton Variant="Variant.Outlined" Color="Color.Info" Size="Size.Small" StartIcon="@Icons.Material.Filled.DownloadDone" Disabled="@(_isBusy || string.IsNullOrWhiteSpace(_settingsTransferPayload))" OnClick="ApplyImportedSettingsToAllAsync">Import To All</MudButton>
+                    </MudTooltip>
+                </div>
+                <MudTextField T="string" Value="@_settingsTransferPayload" ValueChanged="@((string value) => _settingsTransferPayload = value)" Label="Settings transfer JSON" Variant="Variant.Outlined" Margin="Margin.Dense" Lines="6" HelperText="Export writes JSON here. Paste JSON here to import matching editable settings as pending changes, then Save Visible or Save All." />
+            </MudPaper>
+
+            @if (FilteredEditableSettingGroups.Count == 0)
+            {
+                <div class="wiki-empty-state">No editable settings match the current filters.</div>
+            }
+            else
+            {
+                <div class="admin-settings-groups">
+                    @foreach (var group in FilteredEditableSettingGroups)
+                    {
+                        var dirtyCount = group.Items.Count(item => item.IsDirty);
+                        <details class="admin-settings-expander" open="@IsSettingGroupExpanded(group.Category)">
+                            <summary @onclick="@(() => ToggleSettingGroupExpanded(group.Category))" @onclick:preventDefault>
+                                <span>@group.Category</span>
+                                <small>@group.Items.Count setting(s)</small>
+                            </summary>
+                            <div class="admin-settings-group-toolbar">
+                                <span class="admin-settings-group-caption">@group.Items.Count setting(s) in this category.</span>
+                                @if (dirtyCount > 0)
+                                {
+                                    <span class="admin-settings-group-pill">@dirtyCount changed</span>
+                                }
+                                <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small" Disabled="@(_isBusy || dirtyCount == 0)" OnClick="@(() => ResetGroupSettings(group))">Reset group</MudButton>
+                            </div>
+                            <MudTable Items="@group.Items" Dense="true" Breakpoint="Breakpoint.Sm" Class="health-table admin-grid-table admin-settings-table" RowsPerPage="25">
+                                <HeaderContent>
+                                    <MudTh>Setting</MudTh>
+                                    <MudTh>Value</MudTh>
+                                    <MudTh>Action</MudTh>
+                                </HeaderContent>
+                                <RowTemplate>
+                                    <MudTd DataLabel="Setting">
+                                        <div class="admin-setting-heading">
+                                            <div class="admin-setting-heading-text">
+                                                <strong>@context.Item.Label</strong>
+                                                @if (context.IsDirty)
+                                                {
+                                                    <span class="admin-setting-dirty-indicator">Changed</span>
+                                                }
+                                            </div>
+                                            <MudTooltip Text="@context.Item.HelpText" Placement="Placement.Right">
+                                                <span class="admin-help-icon" aria-label="Help for @context.Item.Label" tabindex="0">
+                                                    <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" />
+                                                </span>
+                                            </MudTooltip>
+                                        </div>
+                                        <small class="admin-setting-key">@context.Item.Key</small>
+                                        @if (context.Item.IsSensitive)
+                                        {
+                                            <small class="admin-sensitive-hint">@context.Item.DisplayValue; enter a replacement value to configure or rotate it, or clear the saved value explicitly.</small>
+                                        }
+                                    </MudTd>
+                                    <MudTd DataLabel="Value">@SettingEditor(context)</MudTd>
+                                    <MudTd DataLabel="Action">
+                                        <div class="admin-setting-actions">
+                                            @if (context.IsDirty)
+                                            {
+                                                <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" Disabled="@_isBusy" OnClick="@(() => SaveSettingAsync(context))">Save setting</MudButton>
+                                                <MudButton Size="Size.Small" Variant="Variant.Text" Disabled="@_isBusy" OnClick="@(() => ResetSetting(context))">Reset</MudButton>
+                                            }
+                                            @if (context.CanClearSensitiveSetting)
+                                            {
+                                                <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error" Disabled="@_isBusy" OnClick="@(() => ClearSensitiveSettingAsync(context))">Clear secret</MudButton>
+                                            }
+                                        </div>
+                                    </MudTd>
+                                </RowTemplate>
+                            </MudTable>
+                        </details>
+                    }
+                </div>
+
+                <div class="admin-settings-save-all-row">
+                    <MudTooltip Text="Save only the pending changes that match the current filters.">
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.FilterAlt" Disabled="@(_isBusy || FilteredDirtySettingCount == 0)" OnClick="SaveVisibleDirtySettingsAsync">Save Visible (@FilteredDirtySettingCount)</MudButton>
+                    </MudTooltip>
+                    <MudTooltip Text="Save every pending config change, including rows outside the current filters.">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save" Disabled="@(_isBusy || DirtySettingCount == 0)" OnClick="SaveAllDirtySettingsAsync">Save All Changes (@DirtySettingCount)</MudButton>
+                    </MudTooltip>
+                </div>
+            }
 
             <div class="admin-filter-bar" aria-label="Effective configuration filters">
                 <MudTextField T="string" Value="@_configurationSearch" ValueChanged="@((string value) => _configurationSearch = value)" Immediate="true" Label="Search effective configuration" Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Class="admin-filter-input" />
@@ -206,9 +342,89 @@
                 </HeaderContent>
                 <RowTemplate>
                     <MudTd>@context.Key</MudTd>
-                    <MudTd>@context.DisplayValue</MudTd>
+                    <MudTd>
+                        @if (context.ExactValue is null)
+                        {
+                            @context.DisplayValue
+                        }
+                        else
+                        {
+                            <SensitiveValue Value="@context.ExactValue" Summary="@context.DisplayValue" Label="@($"{context.Key} value")" Class="admin-sensitive-value" AllowReveal="false" />
+                        }
+                    </MudTd>
                 </RowTemplate>
             </MudTable>
+        </MudTabPanel>
+        <MudTabPanel Text="Variables" Icon="@Icons.Material.Filled.DataObject">
+            <div class="admin-filter-bar" aria-label="Path variable tools">
+                <MudText Typo="Typo.body2" Style="color: var(--vscode-text-muted); flex: 1;">
+                    Define Source Link path variables using <strong>%VariableName%</strong> tokens,
+                    for example <code>%MemorySmithRepo%MemorySmith.App/Program.cs</code>.
+                </MudText>
+                <MudTooltip Text="Add a new path variable row.">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                               StartIcon="@Icons.Material.Filled.Add" Disabled="@_isBusy" OnClick="AddVariableRow">Add Variable</MudButton>
+                </MudTooltip>
+                <MudTooltip Text="Save all variable changes to the configured vars file.">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                               StartIcon="@Icons.Material.Filled.Save" Disabled="@_isBusy" OnClick="SaveVariablesAsync">Save Variables</MudButton>
+                </MudTooltip>
+            </div>
+
+            @if (_variableRows.Count == 0)
+            {
+                <div class="wiki-empty-state">No variables defined. Click Add Variable to create one.</div>
+            }
+            else
+            {
+                <div class="vars-table" style="margin-top: 8px;">
+                    @foreach (var (row, index) in _variableRows.Select((row, i) => (row, i)))
+                    {
+                        <div class="vars-row" @key="index">
+                            <MudTextField @bind-Value="row.Name"
+                                          Label="Variable Name"
+                                          Placeholder="MemorySmithRepo"
+                                          Variant="Variant.Outlined"
+                                          Margin="Margin.Dense"
+                                          Class="vars-name-field"
+                                          Disabled="@_isBusy" />
+                            <MudTextField @bind-Value="row.Value"
+                                          Label="Value"
+                                          Placeholder="C:\path\to\folder\"
+                                          Variant="Variant.Outlined"
+                                          Margin="Margin.Dense"
+                                          Class="vars-value-field"
+                                          InputType="@VariableValueInputType(row)"
+                                          Disabled="@_isBusy" />
+                            <div class="vars-value-actions">
+                                <MudIconButton Icon="@VariableRevealIcon(row)"
+                                               Color="Color.Secondary"
+                                               Size="Size.Small"
+                                               Disabled="@_isBusy"
+                                               OnClick="@(() => ToggleVariableValueReveal(row))"
+                                               aria-label="@VariableRevealLabel(row)"
+                                               title="@VariableRevealLabel(row)" />
+                                <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
+                                               Color="Color.Secondary"
+                                               Size="Size.Small"
+                                               Disabled="@(_isBusy || string.IsNullOrWhiteSpace(row.Value))"
+                                               OnClick="@(() => CopyVariableValueAsync(row))"
+                                               aria-label="@VariableCopyLabel(row)"
+                                               title="@VariableCopyLabel(row)" />
+                            </div>
+                            <MudTooltip Text="Remove this variable row.">
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                               Color="Color.Error"
+                                               Size="Size.Small"
+                                               Disabled="@_isBusy"
+                                               OnClick="@(() => RemoveVariableRow(index))"
+                                               aria-label="Remove variable"
+                                               title="Remove variable" />
+                            </MudTooltip>
+                        </div>
+                    }
+                </div>
+            }
         </MudTabPanel>
         <MudTabPanel Text="Audit" Icon="@Icons.Material.Filled.FactCheck">
             <div class="admin-filter-bar" aria-label="Audit filters">
@@ -227,22 +443,55 @@
                         <MudSelectItem T="string" Value="@targetKind">@targetKind</MudSelectItem>
                     }
                 </MudSelect>
+                <MudSelect T="string" Value="@_auditSort" ValueChanged="@((string value) => _auditSort = value)" Label="Sort audit by" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="admin-filter-select">
+                    @foreach (var option in AuditSortOptions)
+                    {
+                        <MudSelectItem T="string" Value="@option">@AuditSortLabel(option)</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudSelect T="string" Value="@_auditSortDirection" ValueChanged="@((string value) => _auditSortDirection = value)" Label="Direction" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="admin-filter-select">
+                    @foreach (var option in SortDirectionOptions)
+                    {
+                        <MudSelectItem T="string" Value="@option">@option</MudSelectItem>
+                    }
+                </MudSelect>
             </div>
-            <MudTable Items="@FilteredAudit" Dense="true" Class="health-table">
+            <MudTable Items="@FilteredAudit" Dense="true" Hover="true" Breakpoint="Breakpoint.Sm" RowsPerPage="25" Class="health-table admin-grid-table">
                 <HeaderContent>
                     <MudTh>Time</MudTh>
+                    <MudTh>Seq</MudTh>
                     <MudTh>Actor</MudTh>
                     <MudTh>Action</MudTh>
                     <MudTh>Target</MudTh>
                     <MudTh>Outcome</MudTh>
                 </HeaderContent>
                 <RowTemplate>
-                    <MudTd>@context.OccurredAtUtc.ToLocalTime().ToString("g")</MudTd>
-                    <MudTd>@context.ActorDisplay</MudTd>
-                    <MudTd>@context.Action</MudTd>
-                    <MudTd>@context.TargetKind:@context.TargetId</MudTd>
-                    <MudTd>@context.Outcome</MudTd>
+                    <MudTd DataLabel="Time">@context.OccurredAtUtc.ToLocalTime().ToString("g")</MudTd>
+                    <MudTd DataLabel="Seq">@context.Sequence</MudTd>
+                    <MudTd DataLabel="Actor">@AuditActorDisplay(context)</MudTd>
+                    <MudTd DataLabel="Action">@context.Action</MudTd>
+                    <MudTd DataLabel="Target">
+                        <div class="admin-table-stack">
+                            <span class="admin-table-meta">@context.TargetKind</span>
+                            <div class="admin-copy-cell">
+                                <span class="admin-copy-text" title="@AuditTargetDisplay(context)">@AuditTargetDisplay(context)</span>
+                                <MudTooltip Text="Copy target ID.">
+                                    <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
+                                                   Size="Size.Small"
+                                                   Color="Color.Secondary"
+                                                   Disabled="@string.IsNullOrWhiteSpace(context.TargetId)"
+                                                   OnClick="@(() => CopyAdminValueAsync(context.TargetId, $"{context.TargetKind} target ID"))"
+                                                   aria-label="Copy target ID"
+                                                   title="Copy target ID" />
+                                </MudTooltip>
+                            </div>
+                        </div>
+                    </MudTd>
+                    <MudTd DataLabel="Outcome">@context.Outcome</MudTd>
                 </RowTemplate>
+                <PagerContent>
+                    <MudTablePager />
+                </PagerContent>
             </MudTable>
         </MudTabPanel>
         <MudTabPanel Text="History" Icon="@Icons.Material.Filled.History">
@@ -262,22 +511,68 @@
                         <MudSelectItem T="string" Value="@format">@format</MudSelectItem>
                     }
                 </MudSelect>
+                <MudSelect T="string" Value="@_historySort" ValueChanged="@((string value) => _historySort = value)" Label="Sort history by" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="admin-filter-select">
+                    @foreach (var option in HistorySortOptions)
+                    {
+                        <MudSelectItem T="string" Value="@option">@HistorySortLabel(option)</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudSelect T="string" Value="@_historySortDirection" ValueChanged="@((string value) => _historySortDirection = value)" Label="Direction" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="admin-filter-select">
+                    @foreach (var option in SortDirectionOptions)
+                    {
+                        <MudSelectItem T="string" Value="@option">@option</MudSelectItem>
+                    }
+                </MudSelect>
             </div>
-            <MudTable Items="@FilteredHistory" Dense="true" Class="health-table">
+            <MudTable Items="@FilteredHistory" Dense="true" Hover="true" Breakpoint="Breakpoint.Sm" RowsPerPage="25" Class="health-table admin-grid-table">
                 <HeaderContent>
                     <MudTh>Target</MudTh>
                     <MudTh>Version</MudTh>
                     <MudTh>Created</MudTh>
                     <MudTh>Format</MudTh>
+                    <MudTh>Size</MudTh>
                     <MudTh>Artifact</MudTh>
                 </HeaderContent>
                 <RowTemplate>
-                    <MudTd>@context.TargetKind:@context.TargetId</MudTd>
-                    <MudTd>@context.VersionNumber</MudTd>
-                    <MudTd>@context.CreatedAtUtc.ToLocalTime().ToString("g")</MudTd>
-                    <MudTd>@context.Format</MudTd>
-                    <MudTd>@context.HistoryPath</MudTd>
+                    <MudTd DataLabel="Target">
+                        <div class="admin-table-stack">
+                            <span class="admin-table-meta">@context.TargetKind</span>
+                            <div class="admin-copy-cell">
+                                <span class="admin-copy-text" title="@HistoryTargetDisplay(context)">@HistoryTargetDisplay(context)</span>
+                                <MudTooltip Text="Copy target ID.">
+                                    <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
+                                                   Size="Size.Small"
+                                                   Color="Color.Secondary"
+                                                   Disabled="@string.IsNullOrWhiteSpace(context.TargetId)"
+                                                   OnClick="@(() => CopyAdminValueAsync(context.TargetId, $"{context.TargetKind} target ID"))"
+                                                   aria-label="Copy target ID"
+                                                   title="Copy target ID" />
+                                </MudTooltip>
+                            </div>
+                        </div>
+                    </MudTd>
+                    <MudTd DataLabel="Version">@context.VersionNumber</MudTd>
+                    <MudTd DataLabel="Created">@context.CreatedAtUtc.ToLocalTime().ToString("g")</MudTd>
+                    <MudTd DataLabel="Format">@context.Format</MudTd>
+                    <MudTd DataLabel="Size">@FormatByteSize(context.ByteSize)</MudTd>
+                    <MudTd DataLabel="Artifact">
+                        <div class="admin-copy-cell">
+                            <span class="admin-copy-text" title="@HistoryArtifactDisplay(context)">@HistoryArtifactDisplay(context)</span>
+                            <MudTooltip Text="Copy artifact path.">
+                                <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
+                                               Size="Size.Small"
+                                               Color="Color.Secondary"
+                                               Disabled="@string.IsNullOrWhiteSpace(context.HistoryPath)"
+                                               OnClick="@(() => CopyAdminValueAsync(context.HistoryPath, "version history artifact path"))"
+                                               aria-label="Copy artifact path"
+                                               title="Copy artifact path" />
+                            </MudTooltip>
+                        </div>
+                    </MudTd>
                 </RowTemplate>
+                <PagerContent>
+                    <MudTablePager />
+                </PagerContent>
             </MudTable>
         </MudTabPanel>
     </MudTabs>
@@ -285,46 +580,83 @@
 
 @code {
     private const string AllFilterValue = "__all__";
+    private const string AscendingSortDirection = "Ascending";
+    private const string DescendingSortDirection = "Descending";
+    private const string AuditSortTimeValue = "time";
+    private const string AuditSortSequenceValue = "sequence";
+    private const string AuditSortActorValue = "actor";
+    private const string AuditSortActionValue = "action";
+    private const string AuditSortTargetValue = "target";
+    private const string AuditSortOutcomeValue = "outcome";
+    private const string HistorySortCreatedValue = "created";
+    private const string HistorySortTargetValue = "target";
+    private const string HistorySortVersionValue = "version";
+    private const string HistorySortFormatValue = "format";
+    private const string HistorySortSizeValue = "size";
+    private const string HistorySortArtifactValue = "artifact";
+    private const int UsersTabIndex = 0;
+    private const int OAuthTabIndex = 1;
+    private const int ModelsTabIndex = 2;
+    private const int ConfigurationTabIndex = 3;
+    private const string VariablesTabName = "variables";
+    private const int VariablesTabIndex = 4;
+    private const int AuditTabIndex = 5;
+    private const int HistoryTabIndex = 6;
+    private const int RecommendedQwen35ContextTokens = 24576;
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly IReadOnlyList<string> SortDirectionOptions = [DescendingSortDirection, AscendingSortDirection];
+    private static readonly IReadOnlyList<string> AuditSortOptions = [AuditSortTimeValue, AuditSortSequenceValue, AuditSortActorValue, AuditSortActionValue, AuditSortTargetValue, AuditSortOutcomeValue];
+    private static readonly IReadOnlyList<string> HistorySortOptions = [HistorySortCreatedValue, HistorySortTargetValue, HistorySortVersionValue, HistorySortFormatValue, HistorySortSizeValue, HistorySortArtifactValue];
+    private static readonly IReadOnlyList<ContextWindowPreset> ContextWindowPresetOptions =
+    [
+        new("provider-default", "Provider default", null),
+        new("4096", "4,096", 4096),
+        new("8192", "8,192", 8192),
+        new("16384", "16,384", 16384),
+        new("24576", "24,576 (Qwen3.5 4B)", RecommendedQwen35ContextTokens),
+        new("32768", "32,768", 32768),
+        new("65536", "65,536", 65536)
+    ];
     private IReadOnlyList<UserAdminRow> _userRows = [];
     private IReadOnlyList<RoleRecord> _roles = [];
     private IReadOnlyList<RoleRecord> _assignableRoles = [];
     private IReadOnlyList<AuthProviderRecord> _providers = [];
+    private HashSet<string> _supportedExternalProviders = new(StringComparer.OrdinalIgnoreCase);
+    private IReadOnlyList<ChatModelProfileView> _modelProfiles = [];
     private IReadOnlyList<AuditLogEntry> _audit = [];
     private IReadOnlyList<VersionHistoryEntry> _recentVersions = [];
     private IReadOnlyList<EditableConfigurationRow> _editableSettings = [];
     private IReadOnlyList<ConfigurationItem> _configurationItems = [];
+    private IReadOnlyList<ChatModelSummary> _modelProfileModelOptions = [];
     private Dictionary<string, int> _providerLinkCounts = new(StringComparer.OrdinalIgnoreCase);
     private string _settingsSearch = string.Empty;
+    private string _newLocalUserDisplayName = string.Empty;
+    private string _newLocalUserEmail = string.Empty;
+    private string _newLocalUserRole = MemorySmithRoles.Viewer;
+    private string _newLocalUserPassword = string.Empty;
+    private string _newLocalUserConfirmPassword = string.Empty;
     private string _settingsCategory = AllFilterValue;
+    private bool _settingsDirtyOnly;
+    private string _settingsTransferPayload = string.Empty;
     private HashSet<string> _expandedSettingGroups = new(StringComparer.OrdinalIgnoreCase);
     private HashSet<string> _knownSettingCategories = new(StringComparer.OrdinalIgnoreCase);
     private string _configurationSearch = string.Empty;
     private string _auditSearch = string.Empty;
     private string _auditOutcomeFilter = AllFilterValue;
     private string _auditTargetKindFilter = AllFilterValue;
+    private string _auditSort = AuditSortTimeValue;
+    private string _auditSortDirection = DescendingSortDirection;
     private string _historySearch = string.Empty;
     private string _historyTargetKindFilter = AllFilterValue;
     private string _historyFormatFilter = AllFilterValue;
+    private string _historySort = HistorySortCreatedValue;
+    private string _historySortDirection = DescendingSortDirection;
+    private string? _modelProfileModelError;
+    private ModelProfileEditor _modelProfileEditor = ModelProfileEditor.New();
+    private List<VarRow> _variableRows = [];
+    private int _activeAdminTabIndex;
     private bool _isBusy;
-    private bool _settingsDirtyOnly;
-    private List<VariableRow> _variableRows = [];
-
-    private sealed class VariableRow
-    {
-        public string Name { get; set; } = string.Empty;
-        public string Value { get; set; } = string.Empty;
-    }
-
-    private int FilteredDirtySettingCount => _editableSettings.Count(row => row.IsDirty && MatchesSettingFilter(row));
-
-    private int GetDirtySettingCount(string category) => _editableSettings.Count(row => row.IsDirty && string.Equals(row.Item.Category, category, StringComparison.OrdinalIgnoreCase));
-
-    private void SelectSettingsCategory(string category)
-    {
-        _settingsCategory = category;
-        _settingsDirtyOnly = false;
-    }
+    private bool _isLoadingModelOptions;
 
     private IReadOnlyList<string> SettingCategories => _editableSettings
         .Select(row => row.Item.Category)
@@ -340,8 +672,24 @@
         .Select(group => new SettingCategoryGroup(group.Key, group.OrderBy(row => row.Item.Label, StringComparer.OrdinalIgnoreCase).ToList()))
         .ToList();
 
+    private IReadOnlyList<EditableConfigurationRow> FilteredEditableSettings => FilteredEditableSettingGroups
+        .SelectMany(group => group.Items)
+        .ToList();
+
+    private int DirtySettingCount => _editableSettings.Count(row => row.IsDirty);
+
+    private int FilteredDirtySettingCount => FilteredEditableSettings.Count(row => row.IsDirty);
+
+    private string ConfigurationWorkbenchHeadline => FilteredEditableSettingGroups.Count == 0
+        ? "No editable settings match the current filters."
+        : $"{FilteredEditableSettingGroups.Count} visible categor{(FilteredEditableSettingGroups.Count == 1 ? "y" : "ies")}; {FilteredDirtySettingCount} changed setting{(FilteredDirtySettingCount == 1 ? string.Empty : "s")} in view.";
+
+    private string ConfigurationWorkbenchDescription => _settingsDirtyOnly
+        ? "Changed-only filtering is active; reset visible values or save individual rows from the narrowed view."
+        : $"Use category shortcuts and search to narrow {FilteredEditableSettings.Count} visible setting{(FilteredEditableSettings.Count == 1 ? string.Empty : "s")} without scanning the full catalog.";
+
     private IReadOnlyList<ConfigurationItem> FilteredConfigurationItems => _configurationItems
-        .Where(item => IsSearchMatch(_configurationSearch, item.Key, item.DisplayValue))
+        .Where(item => IsSearchMatch(_configurationSearch, item.Key, item.DisplayValue, item.ExactValue))
         .ToList();
 
     private IReadOnlyList<string> AuditOutcomeOptions => DistinctSorted(_audit.Select(entry => entry.Outcome));
@@ -349,18 +697,98 @@
     private IReadOnlyList<string> HistoryTargetKindOptions => DistinctSorted(_recentVersions.Select(entry => entry.TargetKind));
     private IReadOnlyList<string> HistoryFormatOptions => DistinctSorted(_recentVersions.Select(entry => entry.Format));
 
-    private IReadOnlyList<AuditLogEntry> FilteredAudit => _audit
-        .Where(MatchesAuditFilter)
-        .ToList();
+    private string ModelDiscoveryStatus => _isLoadingModelOptions
+        ? "Loading provider models..."
+        : !string.IsNullOrWhiteSpace(_modelProfileModelError)
+            ? $"Model discovery failed: {_modelProfileModelError}"
+            : _modelProfileModelOptions.Count == 0
+                ? "No models were returned by this provider."
+                : $"{_modelProfileModelOptions.Count} provider model(s) available.";
 
-    private IReadOnlyList<VersionHistoryEntry> FilteredHistory => _recentVersions
-        .Where(MatchesHistoryFilter)
-        .ToList();
+    private string SelectedContextPresetValue
+    {
+        get
+        {
+            if (_modelProfileEditor.ContextWindowTokens is null)
+            {
+                return "provider-default";
+            }
 
-    protected override async Task OnInitializedAsync() => await LoadAsync();
+            var tokenValue = _modelProfileEditor.ContextWindowTokens.Value;
+            return ContextWindowPresetOptions.Any(option => option.Tokens == tokenValue)
+                ? tokenValue.ToString(CultureInfo.InvariantCulture)
+                : "custom";
+        }
+    }
+
+    private bool HasCustomContextWindow =>
+        _modelProfileEditor.ContextWindowTokens is > 0
+        && ContextWindowPresetOptions.All(option => option.Tokens != _modelProfileEditor.ContextWindowTokens.Value);
+
+    private string ModelVramEstimateHint => BuildModelVramEstimateHint(SelectedModelForEditor, _modelProfileEditor.ContextWindowTokens);
+
+    private ChatModelSummary? SelectedModelForEditor =>
+        _modelProfileModelOptions.FirstOrDefault(option => string.Equals(option.Name, _modelProfileEditor.Model, StringComparison.OrdinalIgnoreCase));
+
+    private string ActiveAdminSectionTitle => _activeAdminTabIndex switch
+    {
+        UsersTabIndex => "Users",
+        OAuthTabIndex => "OAuth",
+        ModelsTabIndex => "Models",
+        ConfigurationTabIndex => "Configuration",
+        VariablesTabIndex => "Variables",
+        AuditTabIndex => "Audit",
+        HistoryTabIndex => "History",
+        _ => "Admin"
+    };
+
+    private string ActiveAdminSectionDescription => _activeAdminTabIndex switch
+    {
+        UsersTabIndex => "Manage accounts, roles, and last-login state without exposing raw identifiers by default.",
+        OAuthTabIndex => "Review configured providers, runtime support, and provider-link usage at a glance.",
+        ModelsTabIndex => "Manage named chat model profiles, provider metadata, and defaults.",
+        ConfigurationTabIndex => "Review or edit allowlisted operational settings and grouped configuration values.",
+        VariablesTabIndex => "Manage variable keys and values used across prompts and workflows.",
+        AuditTabIndex => "Filter recent audit events by actor, outcome, and target without relying on the scrolled tab strip.",
+        HistoryTabIndex => "Scan recent version artifacts, formats, and targets with compact labeled rows on small screens.",
+        _ => "Review admin-only operational data and controls."
+    };
+
+    private IReadOnlyList<AuditLogEntry> FilteredAudit => ApplyAuditSort(_audit.Where(MatchesAuditFilter)).ToList();
+
+    private IReadOnlyList<VersionHistoryEntry> FilteredHistory => ApplyHistorySort(_recentVersions.Where(MatchesHistoryFilter)).ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        ApplyAdminTabFromUri();
+        await LoadAsync();
+    }
+
+    private void ApplyAdminTabFromUri()
+    {
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        var query = QueryHelpers.ParseQuery(uri.Query);
+        if (query.TryGetValue("tab", out var tab) && string.Equals(tab.ToString(), VariablesTabName, StringComparison.OrdinalIgnoreCase))
+        {
+            _activeAdminTabIndex = VariablesTabIndex;
+        }
+    }
+
+    private void OnAdminTabChanged(int index)
+    {
+        _activeAdminTabIndex = index;
+        var current = Navigation.ToAbsoluteUri(Navigation.Uri);
+        var path = current.GetLeftPart(UriPartial.Path);
+        var target = index == VariablesTabIndex ? $"{path}?tab={VariablesTabName}" : path;
+        if (!string.Equals(current.ToString(), target, StringComparison.OrdinalIgnoreCase))
+        {
+            Navigation.NavigateTo(target, replace: true);
+        }
+    }
 
     private async Task LoadAsync()
     {
+        _supportedExternalProviders = await MemorySmithExternalAuthSupport.GetSupportedExternalProvidersAsync(SchemeProvider, Options.CurrentValue.Auth, CancellationToken.None);
         var users = (await Database.Users.ListAsync(new UserQuery(PageSize: 100), CancellationToken.None)).Data;
         _roles = await Database.Roles.ListRolesAsync(CancellationToken.None);
         _assignableRoles = _roles.Where(role => !string.Equals(role.Name, MemorySmithRoles.Admin, StringComparison.OrdinalIgnoreCase)).ToList();
@@ -380,7 +808,14 @@
         }
 
         _userRows = rows;
+        if (_assignableRoles.Any(role => string.Equals(role.Name, _newLocalUserRole, StringComparison.OrdinalIgnoreCase)) == false)
+        {
+            _newLocalUserRole = _assignableRoles.FirstOrDefault(role => string.Equals(role.Name, MemorySmithRoles.Viewer, StringComparison.OrdinalIgnoreCase))?.Name
+                ?? _assignableRoles.FirstOrDefault()?.Name
+                ?? MemorySmithRoles.Viewer;
+        }
         _providers = await Database.ProviderLinks.ListProvidersAsync(CancellationToken.None);
+        _modelProfiles = ModelProfiles.ListProfiles();
         _audit = (await Database.AuditLogs.QueryAsync(new AuditLogQuery(PageSize: 100), CancellationToken.None)).Data;
         _recentVersions = await LoadRecentVersionsAsync();
         _editableSettings = Settings.ListEditableSettings().Select(item => new EditableConfigurationRow(item)).ToList();
@@ -393,6 +828,59 @@
         }
         _configurationItems = BuildConfigurationItems();
         LoadVariables();
+        await LoadModelOptionsAsync(_modelProfileEditor.Provider, _modelProfileEditor.Model, silent: true);
+    }
+
+    private void ResetNewLocalUserForm()
+    {
+        _newLocalUserDisplayName = string.Empty;
+        _newLocalUserEmail = string.Empty;
+        _newLocalUserPassword = string.Empty;
+        _newLocalUserConfirmPassword = string.Empty;
+        _newLocalUserRole = _assignableRoles.FirstOrDefault(role => string.Equals(role.Name, MemorySmithRoles.Viewer, StringComparison.OrdinalIgnoreCase))?.Name
+            ?? _assignableRoles.FirstOrDefault()?.Name
+            ?? MemorySmithRoles.Viewer;
+    }
+
+    private async Task CreateLocalUserAsync()
+    {
+        if (!Options.CurrentValue.Auth.LocalPasswordEnabled)
+        {
+            Snackbar.Add("Local password sign-in is disabled.", Severity.Warning);
+            return;
+        }
+
+        if (!Options.CurrentValue.Auth.AllowAdminCreateLocalUsers)
+        {
+            Snackbar.Add("Admin-created local users are disabled.", Severity.Warning);
+            return;
+        }
+
+        if (!string.Equals(_newLocalUserPassword, _newLocalUserConfirmPassword, StringComparison.Ordinal))
+        {
+            Snackbar.Add("Passwords do not match.", Severity.Error);
+            return;
+        }
+
+        _isBusy = true;
+        var result = await Auth.CreateLocalUserAsync(
+            _newLocalUserDisplayName,
+            _newLocalUserEmail,
+            _newLocalUserPassword,
+            _newLocalUserRole,
+            CurrentUser.UserId,
+            CancellationToken.None);
+        _isBusy = false;
+
+        if (!result.Succeeded)
+        {
+            Snackbar.Add(result.Error ?? "Local user creation failed.", Severity.Error);
+            return;
+        }
+
+        Snackbar.Add($"Created local user {result.User?.DisplayName ?? _newLocalUserDisplayName}.", Severity.Success);
+        ResetNewLocalUserForm();
+        await LoadAsync();
     }
 
     private async Task ChangeUserRoleAsync(UserAdminRow row, string roleName)
@@ -442,13 +930,184 @@
 
     private async Task ToggleProviderAsync(AuthProviderRecord provider)
     {
-        _isBusy = true;
+        if (!CanToggleProvider(provider))
+        {
+            Snackbar.Add(ProviderToggleTooltip(provider), Severity.Warning);
+            return;
+        }
+
         var enabled = !provider.IsEnabled;
+        if (!await Dialogs.ConfirmDestructiveActionAsync(
+            $"{ProviderToggleText(provider)} provider?",
+            ProviderToggleConfirmation(provider, enabled),
+            $"{ProviderToggleText(provider)} provider"))
+        {
+            return;
+        }
+
+        _isBusy = true;
         await Database.ProviderLinks.SetProviderEnabledAsync(provider.ProviderName, enabled, CurrentUser.UserId, CancellationToken.None);
         await Audit.RecordAsync("provider.enabled.changed", "Provider", provider.ProviderName, MemorySmithAuditOutcomes.Success, details: new { enabled }, cancellationToken: CancellationToken.None);
         Snackbar.Add($"{provider.DisplayName} {(enabled ? "enabled" : "disabled")}.", Severity.Success);
         _isBusy = false;
         await LoadAsync();
+    }
+
+    private async Task EditModelProfile(ChatModelProfileView profile)
+    {
+        _modelProfileEditor = ModelProfileEditor.From(profile);
+        await LoadModelOptionsAsync(_modelProfileEditor.Provider, _modelProfileEditor.Model, silent: true);
+    }
+
+    private async Task DuplicateModelProfileAsync(ChatModelProfileView profile)
+    {
+        _modelProfileEditor = ModelProfileEditor.From(profile);
+        _modelProfileEditor.Id = null;
+        _modelProfileEditor.Name = string.IsNullOrWhiteSpace(profile.Name) ? "New profile" : $"{profile.Name} Copy";
+        await LoadModelOptionsAsync(_modelProfileEditor.Provider, _modelProfileEditor.Model, silent: true);
+        Snackbar.Add("Profile duplicated into the editor. Save to create a new profile.", Severity.Info);
+    }
+
+    private async Task StartNewModelProfile()
+    {
+        _modelProfileEditor = ModelProfileEditor.New();
+        await LoadModelOptionsAsync(_modelProfileEditor.Provider, _modelProfileEditor.Model, silent: true);
+    }
+
+    private async Task OnModelProfileProviderChangedAsync(string provider)
+    {
+        _modelProfileEditor.Provider = provider;
+        _modelProfileEditor.Model = string.Empty;
+        _modelProfileEditor.ContextWindowTokens = null;
+        await LoadModelOptionsAsync(provider, null, silent: false);
+    }
+
+    private void OnModelProfileModelChanged(string model)
+    {
+        _modelProfileEditor.Model = model;
+        ApplySelectedModelMetadata(model);
+    }
+
+    private Task OnContextPresetChangedAsync(string value)
+    {
+        if (string.Equals(value, "provider-default", StringComparison.OrdinalIgnoreCase))
+        {
+            _modelProfileEditor.ContextWindowTokens = null;
+        }
+        else if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var tokens))
+        {
+            _modelProfileEditor.ContextWindowTokens = tokens;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Task RefreshModelOptionsAsync() =>
+        LoadModelOptionsAsync(_modelProfileEditor.Provider, _modelProfileEditor.Model, silent: false);
+
+    private async Task LoadModelOptionsAsync(string providerName, string? currentModel, bool silent)
+    {
+        _isLoadingModelOptions = true;
+        _modelProfileModelError = null;
+        try
+        {
+            var provider = ResolveChatProvider(providerName);
+            if (provider is null)
+            {
+                throw new InvalidOperationException($"Provider '{providerName}' is not registered.");
+            }
+
+            var discovered = await provider.ListModelsAsync(CancellationToken.None);
+            _modelProfileModelOptions = MergeCurrentModel(discovered, currentModel, providerName);
+            if (string.IsNullOrWhiteSpace(_modelProfileEditor.Model) && _modelProfileModelOptions.FirstOrDefault() is { } firstModel)
+            {
+                _modelProfileEditor.Model = firstModel.Name;
+                ApplySelectedModelMetadata(firstModel.Name);
+            }
+            else
+            {
+                ApplySelectedModelMetadata(_modelProfileEditor.Model);
+            }
+        }
+        catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or TaskCanceledException or JsonException)
+        {
+            _modelProfileModelError = ex.Message;
+            _modelProfileModelOptions = string.IsNullOrWhiteSpace(currentModel)
+                ? []
+                : [new ChatModelSummary(currentModel.Trim(), Provider: providerName, Description: "Currently configured; provider discovery did not return this model.")];
+            if (!silent)
+            {
+                Snackbar.Add(ex.Message, Severity.Warning);
+            }
+        }
+        finally
+        {
+            _isLoadingModelOptions = false;
+        }
+    }
+
+    private async Task SaveModelProfileAsync()
+    {
+        _isBusy = true;
+        try
+        {
+            var result = await ModelProfiles.UpsertAsync(new ChatModelProfileUpsertRequest(
+                _modelProfileEditor.Id,
+                _modelProfileEditor.Name,
+                _modelProfileEditor.Provider,
+                _modelProfileEditor.Model,
+                _modelProfileEditor.ContextWindowTokens,
+                _modelProfileEditor.Enabled,
+                _modelProfileEditor.IsDefault,
+                _modelProfileEditor.IsMaintenanceRunDefault,
+                _modelProfileEditor.IsProposalReviewDefault,
+                _modelProfileEditor.IsAdminMaintenanceChatDefault,
+                ParseRoleText(_modelProfileEditor.AllowedRolesText),
+                _modelProfileEditor.Description), CancellationToken.None);
+            if (!result.Succeeded)
+            {
+                Snackbar.Add(result.Error ?? "Model profile could not be saved.", Severity.Error);
+                return;
+            }
+
+            Snackbar.Add("Model profile saved.", Severity.Success);
+            _modelProfileEditor = result.Profile is null ? ModelProfileEditor.New() : ModelProfileEditor.From(result.Profile);
+            await LoadAsync();
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private async Task DeleteModelProfileAsync(ChatModelProfileView profile)
+    {
+        if (!await Dialogs.ConfirmDestructiveActionAsync(
+            "Delete model profile?",
+            $"Delete model profile \"{profile.DisplayName}\". This removes the saved profile configuration; recreate it from Admin Models if needed.",
+            "Delete model profile"))
+        {
+            return;
+        }
+
+        _isBusy = true;
+        var result = await ModelProfiles.DeleteAsync(profile.Id, CancellationToken.None);
+        if (result.Succeeded)
+        {
+            Snackbar.Add("Model profile deleted.", Severity.Success);
+            await StartNewModelProfile();
+            await LoadAsync();
+        }
+        else
+        {
+            Snackbar.Add(result.Error ?? "Model profile could not be deleted.", Severity.Error);
+        }
+
+        _isBusy = false;
     }
 
     private RenderFragment SettingEditor(EditableConfigurationRow row) => builder =>
@@ -483,14 +1142,26 @@
                 }));
                 builder.CloseComponent();
                 break;
-            default:
+            case nameof(AdminSettingValueKind.StringList):
                 builder.OpenComponent<MudTextField<string>>(20);
                 builder.AddAttribute(21, "Value", row.PendingValue);
                 builder.AddAttribute(22, "ValueChanged", EventCallback.Factory.Create<string>(this, value => SetPendingValue(row, value)));
                 builder.AddAttribute(23, "Dense", true);
                 builder.AddAttribute(24, "Variant", Variant.Outlined);
                 builder.AddAttribute(25, "Margin", Margin.Dense);
-                builder.AddAttribute(26, "Disabled", _isBusy);
+                builder.AddAttribute(26, "Lines", 3);
+                builder.AddAttribute(27, "Disabled", _isBusy);
+                builder.CloseComponent();
+                break;
+            default:
+                builder.OpenComponent<MudTextField<string>>(30);
+                builder.AddAttribute(31, "Value", row.PendingValue);
+                builder.AddAttribute(32, "ValueChanged", EventCallback.Factory.Create<string>(this, value => SetPendingValue(row, value)));
+                builder.AddAttribute(33, "Dense", true);
+                builder.AddAttribute(34, "Variant", Variant.Outlined);
+                builder.AddAttribute(35, "Margin", Margin.Dense);
+                builder.AddAttribute(36, "Disabled", _isBusy);
+                builder.AddAttribute(37, "InputType", row.Item.IsSensitive ? InputType.Password : InputType.Text);
                 builder.CloseComponent();
                 break;
         }
@@ -501,8 +1172,47 @@
         row.PendingValue = value ?? string.Empty;
     }
 
+    private static void ResetSetting(EditableConfigurationRow row)
+    {
+        row.Reset();
+    }
+
+    private void ResetFilteredSettings()
+    {
+        foreach (var row in FilteredEditableSettings.Where(item => item.IsDirty))
+        {
+            row.Reset();
+        }
+
+        Snackbar.Add("Visible pending setting changes reset.", Severity.Info);
+    }
+
+    private void ResetGroupSettings(SettingCategoryGroup group)
+    {
+        foreach (var row in group.Items.Where(item => item.IsDirty))
+        {
+            row.Reset();
+        }
+
+        Snackbar.Add($"{group.Category} pending changes reset.", Severity.Info);
+    }
+
+    private void SelectSettingsCategory(string category)
+    {
+        _settingsCategory = category;
+    }
+
+    private int GetDirtySettingCount(string category) => _editableSettings.Count(row => row.IsDirty && string.Equals(row.Item.Category, category, StringComparison.OrdinalIgnoreCase));
+
+    private bool IsTrainingSettingsView =>
+        string.Equals(_settingsCategory, "Training", StringComparison.OrdinalIgnoreCase)
+        || (IsAllFilter(_settingsCategory) && FilteredEditableSettingGroups.Any(group => string.Equals(group.Category, "Training", StringComparison.OrdinalIgnoreCase)));
+
+    private void OpenModelsPage() => Navigation.NavigateTo("/models");
+
     private async Task SaveSettingAsync(EditableConfigurationRow row)
     {
+        var pendingChanges = CaptureDirtySettingValues(excludeKey: row.Item.Key);
         _isBusy = true;
         var result = await Settings.UpdateAsync(new AdminSettingUpdateRequest(row.Item.Key, row.PendingValue), CancellationToken.None);
         if (result.Succeeded)
@@ -510,6 +1220,7 @@
             Snackbar.Add($"{row.Item.Label} saved.", Severity.Success);
             _isBusy = false;
             await LoadAsync();
+            RestoreDirtySettingValues(pendingChanges);
             return;
         }
 
@@ -517,7 +1228,529 @@
         _isBusy = false;
     }
 
+    private async Task ClearSensitiveSettingAsync(EditableConfigurationRow row)
+    {
+        if (!row.CanClearSensitiveSetting)
+        {
+            return;
+        }
+
+        if (!await Dialogs.ConfirmDestructiveActionAsync(
+            $"Clear {row.Item.Label}?",
+            $"This removes the configured value for {row.Item.Key}. Paste a replacement later if this setting is still required.",
+            "Clear secret"))
+        {
+            return;
+        }
+
+        var pendingChanges = CaptureDirtySettingValues(excludeKey: row.Item.Key);
+        _isBusy = true;
+        var result = await Settings.UpdateAsync(new AdminSettingUpdateRequest(row.Item.Key, string.Empty), CancellationToken.None);
+        if (result.Succeeded)
+        {
+            Snackbar.Add($"{row.Item.Label} cleared.", Severity.Success);
+            _isBusy = false;
+            await LoadAsync();
+            RestoreDirtySettingValues(pendingChanges);
+            return;
+        }
+
+        Snackbar.Add(result.Error ?? "Setting could not be cleared.", Severity.Error);
+        _isBusy = false;
+    }
+
+    private async Task SaveVisibleDirtySettingsAsync() =>
+        await SaveDirtySettingsAsync(FilteredEditableSettings.Where(row => row.IsDirty).ToList(), "visible setting");
+
+    private async Task SaveAllDirtySettingsAsync() =>
+        await SaveDirtySettingsAsync(_editableSettings.Where(row => row.IsDirty).ToList(), "setting");
+
+    private async Task SaveDirtySettingsAsync(IReadOnlyList<EditableConfigurationRow> rowsToSave, string noun)
+    {
+        if (rowsToSave.Count == 0)
+        {
+            Snackbar.Add($"No pending {noun} changes to save.", Severity.Info);
+            return;
+        }
+
+        var attemptedKeys = rowsToSave.Select(row => row.Item.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var pendingToPreserve = CaptureDirtySettingValues(excludeKeys: attemptedKeys);
+        _isBusy = true;
+        var failureMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var errors = new List<string>();
+        var successCount = 0;
+
+        foreach (var row in rowsToSave)
+        {
+            var result = await Settings.UpdateAsync(new AdminSettingUpdateRequest(row.Item.Key, row.PendingValue), CancellationToken.None);
+            if (result.Succeeded)
+            {
+                successCount++;
+                continue;
+            }
+
+            failureMap[row.Item.Key] = row.PendingValue;
+            errors.Add($"{row.Item.Label}: {result.Error ?? "save failed"}");
+        }
+
+        _isBusy = false;
+        await LoadAsync();
+        RestoreDirtySettingValues(MergePendingSettings(pendingToPreserve, failureMap));
+
+        if (successCount > 0)
+        {
+            Snackbar.Add($"Saved {successCount} {noun}{(successCount == 1 ? string.Empty : "s")}.", Severity.Success);
+        }
+
+        if (errors.Count > 0)
+        {
+            Snackbar.Add($"{errors.Count} {noun} save error{(errors.Count == 1 ? string.Empty : "s")}.", Severity.Warning);
+        }
+    }
+
+    private Dictionary<string, string> CaptureDirtySettingValues(string? excludeKey = null) =>
+        CaptureDirtySettingValues(string.IsNullOrWhiteSpace(excludeKey)
+            ? null
+            : new HashSet<string>([excludeKey], StringComparer.OrdinalIgnoreCase));
+
+    private Dictionary<string, string> CaptureDirtySettingValues(ISet<string>? excludeKeys)
+    {
+        var pending = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var row in _editableSettings.Where(item => item.IsDirty))
+        {
+            if (excludeKeys is not null && excludeKeys.Contains(row.Item.Key))
+            {
+                continue;
+            }
+
+            pending[row.Item.Key] = row.PendingValue;
+        }
+
+        return pending;
+    }
+
+    private void RestoreDirtySettingValues(IReadOnlyDictionary<string, string> pendingByKey)
+    {
+        if (pendingByKey.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var row in _editableSettings)
+        {
+            if (pendingByKey.TryGetValue(row.Item.Key, out var pendingValue))
+            {
+                row.PendingValue = pendingValue;
+            }
+        }
+    }
+
+    private static Dictionary<string, string> MergePendingSettings(IReadOnlyDictionary<string, string> left, IReadOnlyDictionary<string, string> right)
+    {
+        var merged = new Dictionary<string, string>(left, StringComparer.OrdinalIgnoreCase);
+        foreach (var (key, value) in right)
+        {
+            merged[key] = value;
+        }
+
+        return merged;
+    }
+
+    private Task ExportVisibleSettingsAsync()
+    {
+        _settingsTransferPayload = SerializeSettingValues(FilteredEditableSettings);
+        Snackbar.Add("Visible settings exported to the transfer box.", Severity.Success);
+        return Task.CompletedTask;
+    }
+
+    private Task ExportAllSettingsAsync()
+    {
+        _settingsTransferPayload = SerializeSettingValues(_editableSettings);
+        Snackbar.Add("All editable settings exported to the transfer box.", Severity.Success);
+        return Task.CompletedTask;
+    }
+
+    private async Task CopySettingsTransferPayloadAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_settingsTransferPayload))
+        {
+            return;
+        }
+
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", _settingsTransferPayload);
+        Snackbar.Add("Settings JSON copied.", Severity.Success);
+    }
+
+    private Task ApplyImportedSettingsToVisibleAsync() =>
+        ApplyImportedSettingsAsync(FilteredEditableSettings, "visible");
+
+    private Task ApplyImportedSettingsToAllAsync() =>
+        ApplyImportedSettingsAsync(_editableSettings, "all matching");
+
+    private Task ApplyImportedSettingsAsync(IReadOnlyList<EditableConfigurationRow> rows, string scopeLabel)
+    {
+        if (!TryParseImportedSettingValues(_settingsTransferPayload, out var values, out var error))
+        {
+            Snackbar.Add(error ?? "Settings JSON could not be parsed.", Severity.Error);
+            return Task.CompletedTask;
+        }
+
+        var applied = 0;
+        foreach (var row in rows)
+        {
+            if (values.TryGetValue(row.Item.Key, out var importedValue))
+            {
+                row.PendingValue = importedValue;
+                applied++;
+            }
+        }
+
+        Snackbar.Add(applied == 0
+            ? $"No imported settings matched the {scopeLabel} scope."
+            : $"Applied {applied} imported setting value{(applied == 1 ? string.Empty : "s")} to the {scopeLabel} scope as pending changes.", applied == 0 ? Severity.Info : Severity.Success);
+        return Task.CompletedTask;
+    }
+
+    private static string SerializeSettingValues(IEnumerable<EditableConfigurationRow> rows)
+    {
+        var payload = new JsonObject();
+        foreach (var row in rows.OrderBy(item => item.Item.Key, StringComparer.OrdinalIgnoreCase))
+        {
+            payload[row.Item.Key] = row.PendingValue;
+        }
+
+        return payload.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
+    }
+
+    private static bool TryParseImportedSettingValues(string payload, out Dictionary<string, string> values, out string? error)
+    {
+        values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        error = null;
+        if (string.IsNullOrWhiteSpace(payload))
+        {
+            error = "Paste exported settings JSON into the transfer box first.";
+            return false;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(payload);
+            if (document.RootElement.ValueKind != JsonValueKind.Object)
+            {
+                error = "Settings import JSON must be an object keyed by config setting name.";
+                return false;
+            }
+
+            foreach (var property in document.RootElement.EnumerateObject())
+            {
+                values[property.Name] = property.Value.ValueKind switch
+                {
+                    JsonValueKind.String => property.Value.GetString() ?? string.Empty,
+                    JsonValueKind.True => "true",
+                    JsonValueKind.False => "false",
+                    JsonValueKind.Null => string.Empty,
+                    JsonValueKind.Array => string.Join(Environment.NewLine, property.Value.EnumerateArray().Select(element => element.ToString())),
+                    _ => property.Value.ToString()
+                };
+            }
+
+            return true;
+        }
+        catch (JsonException ex)
+        {
+            error = ex.Message;
+            return false;
+        }
+    }
+
     private int ProviderLinkCount(string providerName) => _providerLinkCounts.TryGetValue(providerName, out var count) ? count : 0;
+
+    private string ProviderStatusClass(AuthProviderRecord provider) =>
+        provider.IsEnabled && !IsUnavailableExternalProvider(provider.ProviderName) ? "wiki-status is-core" : "wiki-status";
+
+    private string ProviderStatusText(AuthProviderRecord provider)
+    {
+        if (IsUnavailableExternalProvider(provider.ProviderName))
+        {
+            return "Unsupported";
+        }
+
+        return provider.IsEnabled ? "Enabled" : "Disabled";
+    }
+
+    private static string ProviderToggleText(AuthProviderRecord provider) => provider.IsEnabled ? "Disable" : "Enable";
+
+    private static Color ProviderToggleColor(AuthProviderRecord provider) => provider.IsEnabled ? Color.Warning : Color.Success;
+
+    private string ProviderToggleLabel(AuthProviderRecord provider) => $"{ProviderToggleText(provider)} {provider.DisplayName} sign-in provider";
+
+    private string ProviderToggleTooltip(AuthProviderRecord provider)
+    {
+        if (IsSystemProvider(provider))
+        {
+            return "Built-in system providers are managed by the app and cannot be toggled here.";
+        }
+
+        if (IsUnavailableExternalProvider(provider.ProviderName))
+        {
+            return provider.IsEnabled
+                ? $"Disable {provider.DisplayName}; the app is not registering a runtime auth handler for this provider."
+                : $"{provider.DisplayName} is configured in settings, but no runtime auth handler is registered in this build.";
+        }
+
+        if (!provider.IsEnabled && !IsProviderConfiguredForUse(provider.ProviderName))
+        {
+            return $"Configure {provider.DisplayName} before enabling this sign-in provider.";
+        }
+
+        return provider.IsEnabled
+            ? $"Disable {provider.DisplayName} sign-in after confirmation."
+            : $"Enable {provider.DisplayName} sign-in after confirmation.";
+    }
+
+    private string ProviderActionImpact(AuthProviderRecord provider)
+    {
+        if (IsSystemProvider(provider))
+        {
+            return "Built-in provider; no manual action is available.";
+        }
+
+        if (IsUnavailableExternalProvider(provider.ProviderName))
+        {
+            return "Configured in settings, but no runtime auth handler is registered, so users cannot sign in with this provider.";
+        }
+
+        if (!provider.IsEnabled && !IsProviderConfiguredForUse(provider.ProviderName))
+        {
+            return "Configuration is incomplete, so enabling is blocked until prerequisites are set.";
+        }
+
+        var links = ProviderLinkCount(provider.ProviderName);
+        return provider.IsEnabled
+            ? $"Disabling pauses this sign-in path for {links:N0} linked account(s) until it is re-enabled."
+            : "Enabling makes this configured sign-in path available to users.";
+    }
+
+    private string ProviderToggleConfirmation(AuthProviderRecord provider, bool enabled)
+    {
+        var links = ProviderLinkCount(provider.ProviderName);
+        if (!enabled && IsUnavailableExternalProvider(provider.ProviderName))
+        {
+            return $"Disable {provider.DisplayName} sign-in. This provider is already unavailable because no runtime auth handler is registered.";
+        }
+
+        return enabled
+            ? $"Enable {provider.DisplayName} sign-in. This makes the configured provider available to users."
+            : $"Disable {provider.DisplayName} sign-in. {links:N0} linked account(s) will be unable to use this provider until it is re-enabled.";
+    }
+
+    private bool CanToggleProvider(AuthProviderRecord provider) => !IsSystemProvider(provider) && (provider.IsEnabled || IsProviderConfiguredForUse(provider.ProviderName));
+
+    private static bool IsSystemProvider(AuthProviderRecord provider) => string.Equals(provider.ProviderName, MemorySmithProviders.System, StringComparison.OrdinalIgnoreCase);
+
+    private bool IsProviderConfiguredForUse(string providerName)
+    {
+        var auth = Options.CurrentValue.Auth;
+        return providerName switch
+        {
+            MemorySmithProviders.LocalPassword => auth.LocalPasswordEnabled,
+            MemorySmithProviders.ApiToken => !string.IsNullOrWhiteSpace(Options.CurrentValue.ApiKey),
+            MemorySmithProviders.System => true,
+            MemorySmithProviders.GitHub or MemorySmithProviders.Google or MemorySmithProviders.Microsoft =>
+                MemorySmithExternalAuthSupport.IsConfiguredExternalProvider(providerName, auth)
+                && MemorySmithExternalAuthSupport.IsRuntimeSupportedExternalProvider(providerName, _supportedExternalProviders),
+            _ => false
+        };
+    }
+
+    private static string FormatContextWindow(int? tokens) => tokens is null ? "Provider default" : $"{tokens.Value:n0}";
+
+    private static string FormatModelOption(ChatModelSummary model)
+    {
+        var details = new List<string>();
+        if (model.ContextWindowTokens is > 0) details.Add($"{model.ContextWindowTokens.Value:n0} context");
+        if (!string.IsNullOrWhiteSpace(model.Description)) details.Add(model.Description);
+        return details.Count == 0 ? model.Name : $"{model.Name} ({string.Join(" - ", details)})";
+    }
+
+    private void ApplySelectedModelMetadata(string? modelName)
+    {
+        if (string.IsNullOrWhiteSpace(modelName))
+        {
+            return;
+        }
+
+        var model = _modelProfileModelOptions.FirstOrDefault(item => string.Equals(item.Name, modelName, StringComparison.OrdinalIgnoreCase));
+        if (_modelProfileEditor.ContextWindowTokens is null && model?.ContextWindowTokens is > 0)
+        {
+            _modelProfileEditor.ContextWindowTokens = model.ContextWindowTokens;
+            return;
+        }
+
+        if (_modelProfileEditor.ContextWindowTokens is null && IsQwen35FourBModel(modelName))
+        {
+            _modelProfileEditor.ContextWindowTokens = RecommendedQwen35ContextTokens;
+        }
+    }
+
+    private static bool IsQwen35FourBModel(string modelName) =>
+        modelName.Contains("qwen3.5", StringComparison.OrdinalIgnoreCase)
+        && modelName.Contains(":4b", StringComparison.OrdinalIgnoreCase);
+
+    private static string BuildModelVramEstimateHint(ChatModelSummary? model, int? contextWindowTokens)
+    {
+        var contextTokens = contextWindowTokens ?? RecommendedQwen35ContextTokens;
+        if (model is null)
+        {
+            return $"VRAM estimate appears after selecting a discovered model. For qwen3.5:4b, start at {RecommendedQwen35ContextTokens:n0} tokens.";
+        }
+
+        var baseModelGiB = EstimateModelGiB(model);
+        if (baseModelGiB is null)
+        {
+            return $"VRAM estimate unavailable for '{model.Name}'. Use {RecommendedQwen35ContextTokens:n0} tokens as the qwen3.5:4b baseline and verify on-host telemetry.";
+        }
+
+        var contextOverheadGiB = (contextTokens / 1024d) * 0.03d;
+        var workingSetGiB = (baseModelGiB.Value * 1.15d) + contextOverheadGiB;
+        var peakGiB = workingSetGiB * 1.35d;
+        return $"Estimated VRAM envelope for {model.Name} at {contextTokens:n0} tokens: {workingSetGiB:0.0}-{peakGiB:0.0} GiB (approximate, verify on target GPU).";
+    }
+
+    private static double? EstimateModelGiB(ChatModelSummary model)
+    {
+        if (model.Size is > 0)
+        {
+            return model.Size.Value / (1024d * 1024d * 1024d);
+        }
+
+        var match = System.Text.RegularExpressions.Regex.Match(model.Name, @"(?<!\d)(\d+(?:\.\d+)?)b(?![a-z])", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        if (!match.Success)
+        {
+            return null;
+        }
+
+        return double.TryParse(match.Groups[1].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var billions)
+            ? billions * 0.9d
+            : null;
+    }
+
+    private IChatProvider? ResolveChatProvider(string providerName) =>
+        ChatProviders.FirstOrDefault(candidate => ProviderMatches(candidate.Name, providerName));
+
+    private static IReadOnlyList<ChatModelSummary> MergeCurrentModel(IReadOnlyList<ChatModelSummary> discovered, string? currentModel, string providerName)
+    {
+        var models = discovered
+            .Where(model => !string.IsNullOrWhiteSpace(model.Name))
+            .OrderByDescending(model => model.IsPreferred)
+            .ThenBy(model => model.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (!string.IsNullOrWhiteSpace(currentModel) && models.All(model => !string.Equals(model.Name, currentModel.Trim(), StringComparison.OrdinalIgnoreCase)))
+        {
+            models.Insert(0, new ChatModelSummary(currentModel.Trim(), Provider: providerName, Description: "Currently configured; not returned by provider discovery."));
+        }
+
+        return models;
+    }
+
+    private static bool ProviderMatches(string left, string right) =>
+        string.Equals(left, right, StringComparison.OrdinalIgnoreCase) ||
+        (string.Equals(left, "GitHub", StringComparison.OrdinalIgnoreCase) && string.Equals(right, "Copilot", StringComparison.OrdinalIgnoreCase)) ||
+        (string.Equals(left, "GitHubCopilot", StringComparison.OrdinalIgnoreCase) && string.Equals(right, "GitHub", StringComparison.OrdinalIgnoreCase));
+
+    private static string FormatProfileRoles(ChatModelProfileView profile) => profile.AllowedRoles.Count == 0 ? "All chat users" : string.Join(", ", profile.AllowedRoles);
+
+    private static string FormatProfileAssignments(ChatModelProfileView profile)
+    {
+        var assignments = new List<string>();
+        if (profile.IsMaintenanceRunDefault) assignments.Add("Maintenance runs");
+        if (profile.IsProposalReviewDefault) assignments.Add("Proposal reviews");
+        if (profile.IsAdminMaintenanceChatDefault) assignments.Add("Admin maintenance chat");
+        return assignments.Count == 0 ? "None" : string.Join(", ", assignments);
+    }
+
+    private static string DuplicateModelTooltip(ChatModelProfileView profile) =>
+        profile.IsImplicit
+            ? "Duplicate this derived profile into a new explicit profile draft."
+            : "Duplicate this profile into a new draft.";
+
+    private static string EditModelTooltip(ChatModelProfileView profile) =>
+        profile.IsImplicit
+            ? "Make this derived profile explicit so you can customize it."
+            : "Edit this model profile.";
+
+    private static string DeleteModelTooltip(ChatModelProfileView profile) =>
+        profile.IsImplicit
+            ? "Derived profiles cannot be deleted; update settings or create explicit profiles instead."
+            : "Delete this explicit model profile.";
+
+    private void LoadVariables()
+    {
+        _variableRows = VarResolver.GetVars()
+            .OrderBy(kvp => kvp.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(kvp => new VarRow { Name = kvp.Key, Value = kvp.Value })
+            .ToList();
+    }
+
+    private void AddVariableRow() => _variableRows.Add(new VarRow());
+
+    private static InputType VariableValueInputType(VarRow row) => row.IsValueRevealed ? InputType.Text : InputType.Password;
+
+    private static string VariableRevealIcon(VarRow row) => row.IsValueRevealed ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility;
+
+    private static string VariableRevealLabel(VarRow row) => row.IsValueRevealed ? $"Hide {VariableNameLabel(row)} value" : $"Reveal {VariableNameLabel(row)} value";
+
+    private static string VariableCopyLabel(VarRow row) => $"Copy {VariableNameLabel(row)} value";
+
+    private static string VariableNameLabel(VarRow row) => string.IsNullOrWhiteSpace(row.Name) ? "variable" : row.Name.Trim();
+
+    private static void ToggleVariableValueReveal(VarRow row)
+    {
+        row.IsValueRevealed = !row.IsValueRevealed;
+    }
+
+    private async Task CopyVariableValueAsync(VarRow row)
+    {
+        if (string.IsNullOrWhiteSpace(row.Value))
+        {
+            Snackbar.Add($"No {VariableNameLabel(row)} value to copy.", Severity.Info);
+            return;
+        }
+
+        var copied = await SafeJsInterop.TryInvokeVoidAsync(JS, "navigator.clipboard.writeText", row.Value);
+        Snackbar.Add(copied ? $"{VariableNameLabel(row)} value copied." : "Clipboard unavailable. Reveal the value and copy it manually.", copied ? Severity.Success : Severity.Warning);
+    }
+
+    private void RemoveVariableRow(int index)
+    {
+        if (index < 0 || index >= _variableRows.Count)
+        {
+            return;
+        }
+
+        _variableRows.RemoveAt(index);
+    }
+
+    private Task SaveVariablesAsync()
+    {
+        var vars = _variableRows
+            .Where(row => !string.IsNullOrWhiteSpace(row.Name))
+            .ToDictionary(
+                row => row.Name.Trim(),
+                row => row.Value.Trim(),
+                StringComparer.OrdinalIgnoreCase);
+
+        VarResolver.SaveVars(vars);
+        Snackbar.Add("Variables saved.", Severity.Success);
+        LoadVariables();
+        return Task.CompletedTask;
+    }
+
+    private static IReadOnlyList<string> ParseRoleText(string value) => value
+        .Replace("\r", string.Empty)
+        .Split([',', ';', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .Where(role => !string.IsNullOrWhiteSpace(role))
+        .ToList();
 
     private static string? ProviderOAuthSetupUrl(string providerName) => providerName switch
     {
@@ -535,12 +1768,19 @@
             MemorySmithProviders.LocalPassword => auth.LocalPasswordEnabled ? "Configured" : "Not configured",
             MemorySmithProviders.ApiToken => string.IsNullOrWhiteSpace(Options.CurrentValue.ApiKey) ? "No shared key" : "Shared key configured",
             MemorySmithProviders.System => "Built-in",
-            MemorySmithProviders.GitHub => auth.Providers.GitHub.Enabled && !string.IsNullOrWhiteSpace(auth.Providers.GitHub.ClientId) ? "Configured" : "Not configured",
-            MemorySmithProviders.Google => auth.Providers.Google.Enabled && !string.IsNullOrWhiteSpace(auth.Providers.Google.ClientId) ? "Configured" : "Not configured",
-            MemorySmithProviders.Microsoft => auth.Providers.Microsoft.Enabled && !string.IsNullOrWhiteSpace(auth.Providers.Microsoft.ClientId) ? "Configured" : "Not configured",
+            MemorySmithProviders.GitHub or MemorySmithProviders.Google or MemorySmithProviders.Microsoft =>
+                MemorySmithExternalAuthSupport.IsConfiguredExternalProvider(providerName, auth)
+                    ? MemorySmithExternalAuthSupport.IsRuntimeSupportedExternalProvider(providerName, _supportedExternalProviders)
+                        ? "Configured"
+                        : "Configured in settings, but no runtime auth handler is registered"
+                    : "Not configured",
             _ => "Unknown"
         };
     }
+
+    private bool IsUnavailableExternalProvider(string providerName) =>
+        MemorySmithExternalAuthSupport.IsConfiguredExternalProvider(providerName, Options.CurrentValue.Auth)
+        && !MemorySmithExternalAuthSupport.IsRuntimeSupportedExternalProvider(providerName, _supportedExternalProviders);
 
     private bool IsSettingGroupExpanded(string category) => _expandedSettingGroups.Contains(category);
 
@@ -554,17 +1794,17 @@
 
     private bool MatchesSettingFilter(EditableConfigurationRow row)
     {
-        if (_settingsDirtyOnly && !row.IsDirty)
-        {
-            return false;
-        }
-
         if (!IsAllFilter(_settingsCategory) && !string.Equals(row.Item.Category, _settingsCategory, StringComparison.OrdinalIgnoreCase))
         {
             return false;
         }
 
-        return IsSearchMatch(_settingsSearch, row.Item.Category, row.Item.Label, row.Item.Key, row.Item.ValueKind, row.PendingValue);
+        if (_settingsDirtyOnly && !row.IsDirty)
+        {
+            return false;
+        }
+
+        return IsSearchMatch(_settingsSearch, row.Item.Category, row.Item.Label, row.Item.Key, row.Item.ValueKind, row.Item.HelpText, row.PendingValue);
     }
 
     private bool MatchesAuditFilter(AuditLogEntry entry)
@@ -597,7 +1837,69 @@
         return IsSearchMatch(_historySearch, entry.TargetKind, entry.TargetId, entry.VersionId, entry.ParentVersionId, entry.Format, entry.HistoryPath, entry.CreatedByUserId, entry.AuditId);
     }
 
+    private IEnumerable<AuditLogEntry> ApplyAuditSort(IEnumerable<AuditLogEntry> entries)
+    {
+        var descending = IsDescendingSort(_auditSortDirection);
+        return (_auditSort, descending) switch
+        {
+            (AuditSortSequenceValue, true) => entries.OrderByDescending(entry => entry.Sequence),
+            (AuditSortSequenceValue, false) => entries.OrderBy(entry => entry.Sequence),
+            (AuditSortActorValue, true) => entries.OrderByDescending(entry => AuditActorDisplay(entry), StringComparer.OrdinalIgnoreCase),
+            (AuditSortActorValue, false) => entries.OrderBy(entry => AuditActorDisplay(entry), StringComparer.OrdinalIgnoreCase),
+            (AuditSortActionValue, true) => entries.OrderByDescending(entry => entry.Action, StringComparer.OrdinalIgnoreCase),
+            (AuditSortActionValue, false) => entries.OrderBy(entry => entry.Action, StringComparer.OrdinalIgnoreCase),
+            (AuditSortTargetValue, true) => entries.OrderByDescending(entry => AuditTargetSortKey(entry), StringComparer.OrdinalIgnoreCase),
+            (AuditSortTargetValue, false) => entries.OrderBy(entry => AuditTargetSortKey(entry), StringComparer.OrdinalIgnoreCase),
+            (AuditSortOutcomeValue, true) => entries.OrderByDescending(entry => entry.Outcome, StringComparer.OrdinalIgnoreCase),
+            (AuditSortOutcomeValue, false) => entries.OrderBy(entry => entry.Outcome, StringComparer.OrdinalIgnoreCase),
+            (_, true) => entries.OrderByDescending(entry => entry.OccurredAtUtc),
+            _ => entries.OrderBy(entry => entry.OccurredAtUtc)
+        };
+    }
+
+    private IEnumerable<VersionHistoryEntry> ApplyHistorySort(IEnumerable<VersionHistoryEntry> entries)
+    {
+        var descending = IsDescendingSort(_historySortDirection);
+        return (_historySort, descending) switch
+        {
+            (HistorySortTargetValue, true) => entries.OrderByDescending(entry => HistoryTargetSortKey(entry), StringComparer.OrdinalIgnoreCase),
+            (HistorySortTargetValue, false) => entries.OrderBy(entry => HistoryTargetSortKey(entry), StringComparer.OrdinalIgnoreCase),
+            (HistorySortVersionValue, true) => entries.OrderByDescending(entry => entry.VersionNumber),
+            (HistorySortVersionValue, false) => entries.OrderBy(entry => entry.VersionNumber),
+            (HistorySortFormatValue, true) => entries.OrderByDescending(entry => entry.Format, StringComparer.OrdinalIgnoreCase),
+            (HistorySortFormatValue, false) => entries.OrderBy(entry => entry.Format, StringComparer.OrdinalIgnoreCase),
+            (HistorySortSizeValue, true) => entries.OrderByDescending(entry => entry.ByteSize),
+            (HistorySortSizeValue, false) => entries.OrderBy(entry => entry.ByteSize),
+            (HistorySortArtifactValue, true) => entries.OrderByDescending(entry => entry.HistoryPath, StringComparer.OrdinalIgnoreCase),
+            (HistorySortArtifactValue, false) => entries.OrderBy(entry => entry.HistoryPath, StringComparer.OrdinalIgnoreCase),
+            (_, true) => entries.OrderByDescending(entry => entry.CreatedAtUtc),
+            _ => entries.OrderBy(entry => entry.CreatedAtUtc)
+        };
+    }
+
     private static bool IsAllFilter(string value) => string.IsNullOrWhiteSpace(value) || string.Equals(value, AllFilterValue, StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsDescendingSort(string direction) => string.Equals(direction, DescendingSortDirection, StringComparison.OrdinalIgnoreCase);
+
+    private static string AuditSortLabel(string value) => value switch
+    {
+        AuditSortSequenceValue => "Sequence",
+        AuditSortActorValue => "Actor",
+        AuditSortActionValue => "Action",
+        AuditSortTargetValue => "Target",
+        AuditSortOutcomeValue => "Outcome",
+        _ => "Time"
+    };
+
+    private static string HistorySortLabel(string value) => value switch
+    {
+        HistorySortTargetValue => "Target",
+        HistorySortVersionValue => "Version",
+        HistorySortFormatValue => "Format",
+        HistorySortSizeValue => "Size",
+        HistorySortArtifactValue => "Artifact",
+        _ => "Created"
+    };
 
     private static bool IsSearchMatch(string search, params string?[] values)
     {
@@ -642,9 +1944,18 @@
                 }
                 break;
             default:
-                items.Add(new ConfigurationItem(key, FormatConfigValue(node, IsSensitiveKey(key))));
+                items.Add(CreateConfigurationItem(key, node));
                 break;
         }
+    }
+
+    private static ConfigurationItem CreateConfigurationItem(string key, JsonNode? node)
+    {
+        var sensitive = IsSensitiveKey(key);
+        var value = FormatConfigValue(node, sensitive);
+        return !sensitive && ShouldMaskOperationalValue(value)
+            ? new ConfigurationItem(key, MaskOperationalValue(value), value)
+            : new ConfigurationItem(key, value, null);
     }
 
     private static bool IsSensitiveKey(string key)
@@ -684,6 +1995,139 @@
         return node.ToJsonString(JsonOptions);
     }
 
+    private static bool ShouldMaskOperationalValue(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value) || value is "(empty)" or "(null)" or "true" or "false")
+        {
+            return false;
+        }
+
+        return LooksLikeEmail(value) || LooksLikeLocalPath(value);
+    }
+
+    private static string MaskOperationalValue(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "Not set";
+        }
+
+        if (LooksLikeEmail(value))
+        {
+            return MaskEmail(value);
+        }
+
+        if (LooksLikeLocalPath(value))
+        {
+            return MaskPath(value);
+        }
+
+        return SummarizeIdentifier(value);
+    }
+
+    private static bool LooksLikeEmail(string value)
+    {
+        var atIndex = value.IndexOf('@');
+        return atIndex > 0 && atIndex < value.Length - 1 && value[(atIndex + 1)..].Contains('.');
+    }
+
+    private static bool LooksLikeLocalPath(string value) => value.Contains(@":\", StringComparison.Ordinal) || value.StartsWith(@"\\", StringComparison.Ordinal) || value.StartsWith("/", StringComparison.Ordinal);
+
+    private static string MaskEmail(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "Not set";
+        }
+
+        var atIndex = value.IndexOf('@');
+        if (atIndex <= 0 || atIndex == value.Length - 1)
+        {
+            return SummarizeIdentifier(value);
+        }
+
+        var local = value[..atIndex];
+        var domain = value[(atIndex + 1)..];
+        var visibleLocal = local.Length <= 2 ? local[..1] : local[..Math.Min(2, local.Length)];
+        return $"{visibleLocal}...@{domain}";
+    }
+
+    private static string MaskPath(string value)
+    {
+        var trimmed = value.Trim();
+        var separator = trimmed.Contains('\\') ? '\\' : '/';
+        var parts = trimmed.Split(separator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var leaf = parts.LastOrDefault() ?? "path";
+
+        if (trimmed.Length >= 2 && trimmed[1] == ':')
+        {
+            return $"{trimmed[..2]}{separator}...{separator}{leaf}";
+        }
+
+        return trimmed.StartsWith(@"\\", StringComparison.Ordinal)
+            ? $@"\\...\{leaf}"
+            : $"...{separator}{leaf}";
+    }
+
+    private static string SummarizeIdentifier(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "Not set";
+        }
+
+        return value.Length <= 10 ? value : $"{value[..4]}...{value[^4..]}";
+    }
+
+    private static string AuditActorDisplay(AuditLogEntry entry) => FirstMeaningful(entry.ActorDisplay, entry.ActorUserId, entry.ActorKind);
+
+    private static string AuditTargetDisplay(AuditLogEntry entry) => DisplayTableValue(entry.TargetId);
+
+    private static string AuditTargetSortKey(AuditLogEntry entry) => $"{entry.TargetKind}:{entry.TargetId}";
+
+    private static string HistoryTargetDisplay(VersionHistoryEntry entry) => DisplayTableValue(entry.TargetId);
+
+    private static string HistoryTargetSortKey(VersionHistoryEntry entry) => $"{entry.TargetKind}:{entry.TargetId}";
+
+    private static string HistoryArtifactDisplay(VersionHistoryEntry entry) => DisplayTableValue(entry.HistoryPath);
+
+    private static string DisplayTableValue(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value.Trim();
+
+    private static string FirstMeaningful(params string?[] values) => values.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value))?.Trim() ?? "-";
+
+    private static string FormatByteSize(long value)
+    {
+        if (value < 1024)
+        {
+            return $"{value} B";
+        }
+
+        var units = new[] { "KB", "MB", "GB", "TB" };
+        double size = value;
+        var unitIndex = -1;
+        while (size >= 1024 && unitIndex < units.Length - 1)
+        {
+            size /= 1024;
+            unitIndex++;
+        }
+
+        return unitIndex < 0 ? $"{value} B" : $"{size:0.#} {units[unitIndex]}";
+    }
+
+    private async Task CopyAdminValueAsync(string? value, string label)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            Snackbar.Add($"No {label} to copy.", Severity.Info);
+            return;
+        }
+
+        var copied = await SafeJsInterop.TryInvokeVoidAsync(JS, "navigator.clipboard.writeText", value);
+        Snackbar.Add(copied ? $"{CapitalizeLabel(label)} copied." : "Clipboard unavailable. Copy it manually from the table.", copied ? Severity.Success : Severity.Warning);
+    }
+
+    private static string CapitalizeLabel(string value) => string.IsNullOrWhiteSpace(value) ? "Value" : char.ToUpperInvariant(value[0]) + value[1..];
+
     private async Task<IReadOnlyList<VersionHistoryEntry>> LoadRecentVersionsAsync()
     {
         var audits = await Database.AuditLogs.QueryAsync(new AuditLogQuery(PageSize: 50), CancellationToken.None);
@@ -699,54 +2143,6 @@
             .OrderByDescending(version => version.CreatedAtUtc)
             .Take(50)
             .ToList();
-    }
-
-    private void AddVariableRow() => _variableRows.Add(new VariableRow());
-
-    private void RemoveVariableRow(int index)
-    {
-        if (index >= 0 && index < _variableRows.Count)
-        {
-            _variableRows.RemoveAt(index);
-        }
-    }
-
-    private async Task SaveVariablesAsync()
-    {
-        _isBusy = true;
-        try
-        {
-            var vars = _variableRows
-                .Where(row => !string.IsNullOrWhiteSpace(row.Name))
-                .ToDictionary(row => row.Name.Trim(), row => row.Value, StringComparer.OrdinalIgnoreCase);
-            VarStore.Save(vars);
-            Snackbar.Add("Variables saved.", Severity.Success);
-            await LoadAsync();
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"Failed to save variables: {ex.Message}", Severity.Error);
-        }
-        finally
-        {
-            _isBusy = false;
-        }
-    }
-
-    private void LoadVariables()
-    {
-        try
-        {
-            var vars = VarStore.Load();
-            _variableRows = vars
-                .Select(kvp => new VariableRow { Name = kvp.Key, Value = kvp.Value })
-                .OrderBy(row => row.Name, StringComparer.OrdinalIgnoreCase)
-                .ToList();
-        }
-        catch
-        {
-            _variableRows = [];
-        }
     }
 
     private sealed record UserAdminRow(UserAccount User, IReadOnlyList<RoleRecord> Roles)
@@ -769,9 +2165,59 @@
         public AdminSettingItem Item { get; }
         public string PendingValue { get; set; }
         public bool IsDirty => !string.Equals(PendingValue, Item.Value, StringComparison.Ordinal);
+        public bool CanClearSensitiveSetting => Item.IsSensitive && string.Equals(Item.DisplayValue, "Configured", StringComparison.OrdinalIgnoreCase);
+
+        public void Reset()
+        {
+            PendingValue = Item.Value;
+        }
     }
 
     private sealed record SettingCategoryGroup(string Category, IReadOnlyList<EditableConfigurationRow> Items);
 
-    private sealed record ConfigurationItem(string Key, string DisplayValue);
+    private sealed record ConfigurationItem(string Key, string DisplayValue, string? ExactValue);
+
+    private sealed class ModelProfileEditor
+    {
+        public string? Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Provider { get; set; } = "Ollama";
+        public string Model { get; set; } = string.Empty;
+        public int? ContextWindowTokens { get; set; }
+        public bool Enabled { get; set; } = true;
+        public bool IsDefault { get; set; } = true;
+        public bool IsMaintenanceRunDefault { get; set; }
+        public bool IsProposalReviewDefault { get; set; }
+        public bool IsAdminMaintenanceChatDefault { get; set; }
+        public string AllowedRolesText { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public bool IsNew => string.IsNullOrWhiteSpace(Id);
+
+        public static ModelProfileEditor New() => new();
+
+        public static ModelProfileEditor From(ChatModelProfileView profile) => new()
+        {
+            Id = profile.IsImplicit ? null : profile.Id,
+            Name = profile.Name,
+            Provider = profile.Provider,
+            Model = profile.Model,
+            ContextWindowTokens = profile.ContextWindowTokens,
+            Enabled = profile.Enabled,
+            IsDefault = profile.IsDefault,
+            IsMaintenanceRunDefault = profile.IsMaintenanceRunDefault,
+            IsProposalReviewDefault = profile.IsProposalReviewDefault,
+            IsAdminMaintenanceChatDefault = profile.IsAdminMaintenanceChatDefault,
+            AllowedRolesText = string.Join(", ", profile.AllowedRoles),
+            Description = profile.Description
+        };
+    }
+
+    private sealed record ContextWindowPreset(string Key, string Label, int? Tokens);
+
+    private sealed class VarRow
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Value { get; set; } = string.Empty;
+        public bool IsValueRevealed { get; set; }
+    }
 }
