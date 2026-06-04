@@ -236,7 +236,9 @@
                         <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Small" Color="Color.Primary" OnClick="RefreshPreview" aria-label="Refresh preview" title="Refresh preview" />
                         <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
                             <Authorized>
-                                <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Save" OnClick="SaveAsync">Save</MudButton>
+                                <MudTooltip Text="Save page">
+                <MudIconButton Icon="@Icons.Material.Filled.Save" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="SaveAsync" aria-label="Save" />
+            </MudTooltip>
                             </Authorized>
                         </AuthorizeView>
                         <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="CancelEditAsync">Cancel</MudButton>

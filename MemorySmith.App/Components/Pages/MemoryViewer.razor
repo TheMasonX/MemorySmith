@@ -89,9 +89,15 @@
                     <MudTextField @bind-Value="_tagsFilter" Label="Tags" Placeholder="project-wiki, search" Variant="Variant.Outlined" Margin="Margin.Dense" Class="wiki-filter" />
 
                     <MudButtonGroup Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" Class="wiki-mode-toggle">
-                        <MudButton Variant="@(_searchMode == SearchMode.Lexical ? Variant.Filled : Variant.Outlined)" OnClick="@(() => SetSearchMode(SearchMode.Lexical))">Lexical</MudButton>
-                        <MudButton Variant="@(_searchMode == SearchMode.Semantic ? Variant.Filled : Variant.Outlined)" OnClick="@(() => SetSearchMode(SearchMode.Semantic))">Semantic</MudButton>
-                        <MudButton Variant="@(_searchMode == SearchMode.Hybrid ? Variant.Filled : Variant.Outlined)" OnClick="@(() => SetSearchMode(SearchMode.Hybrid))">Hybrid</MudButton>
+                        <MudTooltip Text="Lexical search (Lucene)">
+                        <MudButton Variant="@(_searchMode == SearchMode.Lexical ? Variant.Filled : Variant.Outlined)" Size="Size.Small" OnClick="@(() => SetSearchMode(SearchMode.Lexical))">Lexical</MudButton>
+                    </MudTooltip>
+                        <MudTooltip Text="Semantic vector search">
+                        <MudButton Variant="@(_searchMode == SearchMode.Semantic ? Variant.Filled : Variant.Outlined)" Size="Size.Small" OnClick="@(() => SetSearchMode(SearchMode.Semantic))">Semantic</MudButton>
+                    </MudTooltip>
+                        <MudTooltip Text="Hybrid search (lexical+semantic)">
+                        <MudButton Variant="@(_searchMode == SearchMode.Hybrid ? Variant.Filled : Variant.Outlined)" Size="Size.Small" OnClick="@(() => SetSearchMode(SearchMode.Hybrid))">Hybrid</MudButton>
+                    </MudTooltip>
                     </MudButtonGroup>
                 </div>
             </details>

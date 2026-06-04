@@ -30,8 +30,12 @@
     <section class="chat-shell" aria-label="MemorySmith chat">
         <div class="chat-toolbar">
             <MudButtonGroup Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" Class="chat-mode-toggle">
-                <MudButton Variant="@ModeButtonVariant(MemoryChatMode.Chat)" Color="@ModeButtonColor(MemoryChatMode.Chat)" Class="@ModeButtonClass(MemoryChatMode.Chat)" OnClick="@(() => SetModeAsync(MemoryChatMode.Chat))">Chat</MudButton>
-                <MudButton Variant="@ModeButtonVariant(MemoryChatMode.Agent)" Color="@ModeButtonColor(MemoryChatMode.Agent)" Class="@ModeButtonClass(MemoryChatMode.Agent)" Disabled="@(!CanUseAgentMode)" OnClick="@(() => SetModeAsync(MemoryChatMode.Agent))">Agent</MudButton>
+                <MudTooltip Text="Chat mode">
+                    <MudButton Variant="@ModeButtonVariant(MemoryChatMode.Chat)" Color="@ModeButtonColor(MemoryChatMode.Chat)" Size="Size.Small" Class="@ModeButtonClass(MemoryChatMode.Chat)" OnClick="@(() => SetModeAsync(MemoryChatMode.Chat))">Chat</MudButton>
+                </MudTooltip>
+                <MudTooltip Text="Agent mode (tool-calling)">
+                    <MudButton Variant="@ModeButtonVariant(MemoryChatMode.Agent)" Color="@ModeButtonColor(MemoryChatMode.Agent)" Size="Size.Small" Class="@ModeButtonClass(MemoryChatMode.Agent)" Disabled="@(!CanUseAgentMode)" OnClick="@(() => SetModeAsync(MemoryChatMode.Agent))">Agent</MudButton>
+                </MudTooltip>
             </MudButtonGroup>
 
             <div class="chat-model-controls">
@@ -296,7 +300,9 @@
                     <MudTooltip Text="Stop generation">
                         <MudIconButton Icon="@Icons.Material.Filled.Stop" Size="Size.Small" Color="Color.Error" Class="chat-composer-icon" Disabled="@(!_isSending)" OnClick="StopGeneratingAsync" aria-label="Stop generation" title="Stop generation" />
                     </MudTooltip>
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Send" Disabled="@(!CanSendChat)" OnClick="SendAsync">Send</MudButton>
+                    <MudTooltip Text="Send message">
+                        <MudIconButton Icon="@Icons.Material.Filled.Send" Variant="Variant.Filled" Color="Color.Primary" Disabled="@(!CanSendChat)" OnClick="SendAsync" aria-label="Send" />
+                    </MudTooltip>
                 </div>
             </div>
         </div>
