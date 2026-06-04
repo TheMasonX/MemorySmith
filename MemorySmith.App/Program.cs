@@ -300,6 +300,9 @@ try
     builder.Services.AddSingleton<SemanticEmbeddingSearchService>();
     builder.Services.AddSingleton<CodeSearchService>();
     builder.Services.AddSingleton<TreeSitterChunkingService>();
+    builder.Services.AddSingleton<ChatModelProfileService>();
+    builder.Services.AddSingleton<IChatFeedbackStore, SqliteChatFeedbackStore>();
+    builder.Services.AddScoped<IChatAgent, MemoryChatAgent>();
     builder.Services.AddSingleton<BackgroundServiceTelemetryTracker>();
     builder.Services.AddSingleton<IMemoryChangePublisher, MemoryChangePublisher>();
     builder.Services.AddSingleton<MemoryApplicationService>();
