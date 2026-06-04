@@ -1995,6 +1995,50 @@ body {
     border-top: 1px solid var(--vscode-border);
 }
 
+.admin-settings-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.admin-settings-nav-button {
+    flex: 0 0 auto;
+}
+
+.admin-settings-nav-count-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 18px;
+    margin-left: 4px;
+    padding: 0 5px;
+    border-radius: 9px;
+    background: var(--vscode-accent);
+    color: #ffffff;
+    font-size: 0.68rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.admin-settings-dirty-toggle {
+    flex: 0 0 auto;
+}
+
+.vars-table {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.vars-row {
+    display: grid;
+    grid-template-columns: minmax(140px, 1fr) minmax(200px, 2fr) auto;
+    gap: 8px;
+    align-items: center;
+}
+
 .admin-provider-cell {
     display: inline-flex;
     align-items: center;

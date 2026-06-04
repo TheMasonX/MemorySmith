@@ -6,6 +6,7 @@
 @inject ICurrentUserContext CurrentUser
 @inject AuditLogService Audit
 @inject AdminSettingsService Settings
+@inject IVarStore VarStore
 @inject ISnackbar Snackbar
 @using Microsoft.Extensions.Options
 @using System.Text.Json
@@ -94,7 +95,65 @@
                 </RowTemplate>
             </MudTable>
         </MudTabPanel>
+        <MudTabPanel Text="Models" Icon="@Icons.Material.Filled.Memory">
+            <section class="health-lower-card admin-form-panel" aria-label="Models page summary">
+                <div class="wiki-commandbar profile-sectionbar">
+                    <div class="wiki-title-block">
+                        <MudText Typo="Typo.h6">Models</MudText>
+                        <span class="wiki-count">Dedicated workbench</span>
+                    </div>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.OpenInNew" Href="/models">Open Models page</MudButton>
+                </div>
+                <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Outlined">
+                    Model profile creation, provider discovery, context sizing, defaults, and VRAM planning now live on the dedicated Models page.
+                </MudAlert>
+            </section>
+        </MudTabPanel>
+        <MudTabPanel Text="Variables" Icon="@Icons.Material.Filled.DataObject">
+            <div class="admin-filter-bar" aria-label="Path variable tools">
+                <MudText Typo="Typo.body2" Style="color:var(--vscode-text-muted);flex:1;">
+                    Define Source Link path variables using <strong>%VariableName%</strong> tokens, for example <code>%MemorySmithRepo%MemorySmith.App/Program.cs</code>.
+                </MudText>
+                <MudTooltip Text="Add a new path variable row.">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Add" Disabled="@_isBusy" OnClick="AddVariableRow">Add Variable</MudButton>
+                </MudTooltip>
+                <MudTooltip Text="Save all variable changes to the configured vars file.">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Save" Disabled="@_isBusy" OnClick="SaveVariablesAsync">Save Variables</MudButton>
+                </MudTooltip>
+            </div>
+            @if (_variableRows.Count == 0)
+            {
+                <div class="wiki-empty-state">No variables defined. Click Add Variable to create one.</div>
+            }
+            else
+            {
+                <div class="vars-table" style="margin-top:8px;">
+                    @foreach (var (row, index) in _variableRows.Select((row, i) => (row, i)))
+                    {
+                        <div class="vars-row" @key="index">
+                            <MudTextField @bind-Value="row.Name" Label="Variable Name" Placeholder="MemorySmithRepo" Variant="Variant.Outlined" Margin="Margin.Dense" Class="vars-name-field" Disabled="@_isBusy" />
+                            <MudTextField @bind-Value="row.Value" Label="Value" Placeholder="C:\path\to\folder\" Variant="Variant.Outlined" Margin="Margin.Dense" Class="vars-value-field" Disabled="@_isBusy" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" Disabled="@_isBusy" OnClick="@(() => RemoveVariableRow(index))" aria-label="Remove variable" title="Remove variable" />
+                        </div>
+                    }
+                </div>
+            }
+        </MudTabPanel>
         <MudTabPanel Text="Configuration" Icon="@Icons.Material.Filled.Tune">
+            <div class="admin-settings-nav" aria-label="Setting categories">
+                <MudButton Variant="@(IsAllFilter(_settingsCategory) ? Variant.Filled : Variant.Outlined)" Color="Color.Primary" Size="Size.Small" Class="admin-settings-nav-button" OnClick="@(() => SelectSettingsCategory(AllFilterValue))">All categories</MudButton>
+                @foreach (var category in SettingCategories)
+                {
+                    var dirtyCount = GetDirtySettingCount(category);
+                    <MudButton Variant="@(string.Equals(_settingsCategory, category, StringComparison.OrdinalIgnoreCase) ? Variant.Filled : Variant.Outlined)" Color="Color.Primary" Size="Size.Small" Class="admin-settings-nav-button" OnClick="@(() => SelectSettingsCategory(category))">
+                        <span>@category</span>
+                        @if (dirtyCount > 0)
+                        {
+                            <span class="admin-settings-nav-count-chip" aria-label="@($"{dirtyCount} changed setting{(dirtyCount == 1 ? string.Empty : "s")}")">#@dirtyCount</span>
+                        }
+                    </MudButton>
+                }
+            </div>
             <div class="admin-filter-bar" aria-label="Editable settings filters">
                 <MudTextField T="string" Value="@_settingsSearch" ValueChanged="@((string value) => _settingsSearch = value)" Immediate="true" Label="Search settings" Variant="Variant.Outlined" Margin="Margin.Dense" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Class="admin-filter-input" />
                 <MudSelect T="string" Value="@_settingsCategory" ValueChanged="@((string value) => _settingsCategory = value)" Label="Category" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="admin-filter-select">
@@ -104,6 +163,7 @@
                         <MudSelectItem T="string" Value="@category">@category</MudSelectItem>
                     }
                 </MudSelect>
+                <MudSwitch T="bool" Value="@_settingsDirtyOnly" ValueChanged="@((bool value) => _settingsDirtyOnly = value)" Label="Changed only" Color="Color.Primary" Class="admin-settings-dirty-toggle" />
             </div>
 
             <div class="admin-settings-groups">
@@ -247,6 +307,24 @@
     private string _historyTargetKindFilter = AllFilterValue;
     private string _historyFormatFilter = AllFilterValue;
     private bool _isBusy;
+    private bool _settingsDirtyOnly;
+    private List<VariableRow> _variableRows = [];
+
+    private sealed class VariableRow
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Value { get; set; } = string.Empty;
+    }
+
+    private int FilteredDirtySettingCount => _editableSettings.Count(row => row.IsDirty && MatchesSettingFilter(row));
+
+    private int GetDirtySettingCount(string category) => _editableSettings.Count(row => row.IsDirty && string.Equals(row.Item.Category, category, StringComparison.OrdinalIgnoreCase));
+
+    private void SelectSettingsCategory(string category)
+    {
+        _settingsCategory = category;
+        _settingsDirtyOnly = false;
+    }
 
     private IReadOnlyList<string> SettingCategories => _editableSettings
         .Select(row => row.Item.Category)
@@ -314,6 +392,7 @@
             }
         }
         _configurationItems = BuildConfigurationItems();
+        LoadVariables();
     }
 
     private async Task ChangeUserRoleAsync(UserAdminRow row, string roleName)
@@ -475,6 +554,11 @@
 
     private bool MatchesSettingFilter(EditableConfigurationRow row)
     {
+        if (_settingsDirtyOnly && !row.IsDirty)
+        {
+            return false;
+        }
+
         if (!IsAllFilter(_settingsCategory) && !string.Equals(row.Item.Category, _settingsCategory, StringComparison.OrdinalIgnoreCase))
         {
             return false;
@@ -615,6 +699,54 @@
             .OrderByDescending(version => version.CreatedAtUtc)
             .Take(50)
             .ToList();
+    }
+
+    private void AddVariableRow() => _variableRows.Add(new VariableRow());
+
+    private void RemoveVariableRow(int index)
+    {
+        if (index >= 0 && index < _variableRows.Count)
+        {
+            _variableRows.RemoveAt(index);
+        }
+    }
+
+    private async Task SaveVariablesAsync()
+    {
+        _isBusy = true;
+        try
+        {
+            var vars = _variableRows
+                .Where(row => !string.IsNullOrWhiteSpace(row.Name))
+                .ToDictionary(row => row.Name.Trim(), row => row.Value, StringComparer.OrdinalIgnoreCase);
+            VarStore.Save(vars);
+            Snackbar.Add("Variables saved.", Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to save variables: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private void LoadVariables()
+    {
+        try
+        {
+            var vars = VarStore.Load();
+            _variableRows = vars
+                .Select(kvp => new VariableRow { Name = kvp.Key, Value = kvp.Value })
+                .OrderBy(row => row.Name, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+        catch
+        {
+            _variableRows = [];
+        }
     }
 
     private sealed record UserAdminRow(UserAccount User, IReadOnlyList<RoleRecord> Roles)
