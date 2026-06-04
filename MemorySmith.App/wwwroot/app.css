@@ -67,8 +67,6 @@ body {
     background: var(--vscode-panel) !important;
     border-right: 1px solid var(--vscode-border);
     color: var(--vscode-text);
-    width: 164px !important;
-    min-width: 164px !important;
 }
 
 .app-drawer .mud-drawer-header {
@@ -2261,4 +2259,1190 @@ body {
         flex: 1 1 0;
         min-width: 0;
     }
+}.tasks-body {
+    grid-template-columns: minmax(280px, 34%) minmax(0, 1fr);
 }
+
+.tasks-body.is-detail-empty {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+}
+
+.tasks-body.is-list-collapsed {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+}
+
+.tasks-list-pane,
+.tasks-detail-pane {
+    min-width: 0;
+}
+
+.tasks-list-pane {
+    overflow: hidden;
+}
+
+.tasks-body.is-detail-empty .tasks-list-pane {
+    max-height: none;
+}
+
+.tasks-detail-pane {
+    overflow: auto;
+}
+
+.tasks-detail-summary,
+.tasks-edit-section,
+.tasks-read-shell,
+.tasks-artifact-section {
+    display: grid;
+    gap: 10px;
+    margin-top: 8px;
+    padding: 10px 12px;
+    border: 1px solid var(--vscode-border-soft);
+    border-radius: 10px;
+    background: var(--vscode-panel-soft);
+}
+
+.tasks-detail-status-panel {
+    display: grid;
+    gap: 6px;
+}
+
+.tasks-detail-summary-toolbar {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.tasks-artifacts-grid {
+    grid-template-columns: minmax(220px, 320px) auto;
+    align-items: start;
+}
+
+.tasks-artifact-list {
+    display: grid;
+    gap: 8px;
+}
+
+.tasks-detail-section-label,
+.tasks-detail-overview-label {
+    color: var(--vscode-text-muted);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.tasks-detail-overview {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 8px;
+}
+
+.tasks-detail-overview-item {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+    padding: 8px 10px;
+    border: 1px solid var(--vscode-border-soft);
+    border-radius: 8px;
+    background: var(--vscode-panel);
+}
+
+.tasks-detail-overview-item strong {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.tasks-detail-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.tasks-focus-button {
+    white-space: nowrap;
+}
+
+.tasks-sidebar-toggle {
+    display: flex;
+    margin-left: auto;
+}
+
+.tasks-quick-create-pane {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: minmax(240px, 280px) minmax(0, 1fr);
+    grid-template-areas:
+        "title description"
+        "slug description"
+        ". actions";
+    gap: 10px;
+    align-items: start;
+    width: 100%;
+    margin-top: 8px;
+    padding: 10px;
+    border: 1px solid var(--vscode-border-soft);
+    border-radius: 10px;
+    background: var(--vscode-panel-soft);
+}
+
+.tasks-quick-create-title,
+.tasks-quick-create-slug,
+.tasks-quick-create-description {
+    min-width: 0;
+}
+
+.tasks-quick-create-title {
+    grid-area: title;
+}
+
+.tasks-quick-create-slug {
+    grid-area: slug;
+}
+
+.tasks-quick-create-description {
+    grid-area: description;
+}
+
+.tasks-quick-create-actions {
+    grid-area: actions;
+    justify-self: end;
+    align-self: end;
+}
+
+.tasks-quick-create-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    min-height: 0;
+}
+
+.tasks-detail-header {
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    overflow: visible;
+}
+
+.tasks-detail-header-main {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.tasks-detail-actions {
+    position: static;
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    justify-content: flex-end;
+    margin-left: auto;
+    flex: 0 0 auto;
+}
+
+.tasks-header-icon-action {
+    border: 1px solid var(--vscode-border-soft);
+    border-radius: 4px;
+    background: var(--vscode-panel-soft);
+}
+
+.tasks-detail-title-text {
+    color: var(--vscode-text);
+    font-size: 1.2rem;
+    font-weight: 700;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tasks-detail-meta {
+    margin-top: 0;
+    gap: 6px;
+    line-height: 1.2;
+}
+
+.tasks-detail-status-line {
+    align-items: center;
+}
+
+.tasks-status-combobox {
+    min-width: 160px;
+}
+
+.tasks-editor-grid {
+    align-items: start;
+    margin-top: 6px;
+}
+
+.tasks-edit-shell {
+    display: grid;
+    gap: 12px;
+}
+
+.tasks-edit-grid-primary {
+    grid-template-columns: minmax(0, 1fr) minmax(160px, 220px);
+}
+
+.tasks-edit-grid-secondary {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.tasks-description-field {
+    grid-column: 1 / -1;
+}
+
+.tasks-detail-description {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    line-height: 1.55;
+}
+
+.tasks-workbench .proposal-tabs,
+.tasks-workbench .mud-tabs,
+.tasks-workbench .mud-tabs-panels,
+.tasks-workbench .mud-tab-panel {
+    min-height: 0;
+}
+
+.tasks-workbench .mud-tabs-panels {
+    overflow: auto;
+}
+
+.tasks-workbench .wiki-result-title {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tasks-result-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.tasks-load-error-icon {
+    flex: 0 0 auto;
+}
+
+.tasks-load-error-alert {
+    margin-top: 6px;
+}
+
+@media (max-width: 1400px) {
+    .chat-workbench.is-sidebar-open {
+        grid-template-columns: minmax(0, 1fr) clamp(300px, 33vw, 420px);
+    }
+}
+
+@media (max-width: 1100px) {
+    .wiki-commandbar {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+    }
+
+    .wiki-title-block {
+        flex-direction: row;
+        align-items: baseline;
+        justify-content: space-between;
+    }
+
+    .wiki-body {
+        grid-template-columns: minmax(250px, 38%) minmax(0, 1fr);
+    }
+
+    .memory-body.is-nav-collapsed {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .pages-body {
+        grid-template-columns: minmax(260px, 32%) minmax(0, 1fr);
+    }
+
+    .wiki-result-row {
+        grid-template-columns: 1fr;
+    }
+
+    .wiki-score-box {
+        border-top: 1px solid var(--vscode-border);
+        padding-top: 5px;
+    }
+
+    .wiki-filter,
+    .wiki-search-box {
+        flex: 1 1 auto;
+    }
+
+    .page-editor-panels {
+        grid-template-columns: 1fr;
+        grid-template-rows: minmax(0, 1fr) minmax(0, 0.78fr);
+    }
+
+    .chat-workbench.is-sidebar-open {
+        grid-template-columns: minmax(0, 1fr) clamp(260px, 35vw, 340px);
+    }
+
+    .chat-toolbar {
+        grid-template-columns: auto minmax(0, 1fr) auto;
+    }
+
+    .health-charts-row,
+    .health-lower-grid,
+    .health-operations-grid,
+    .chat-composer {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-panel-grid:not(.profile-panel-grid) {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-models-layout,
+    .admin-maintenance-layout,
+    .maintenance-body,
+    .admin-model-editor-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .profile-commandbar {
+        grid-template-columns: minmax(180px, max-content) minmax(180px, 1fr);
+        align-items: center;
+    }
+
+    .profile-sectionbar {
+        grid-template-columns: minmax(190px, max-content) minmax(180px, 1fr);
+        align-items: center;
+    }
+
+    .profile-primary-grid {
+        grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+    }
+
+    .chat-composer {
+        grid-template-columns: 1fr;
+    }
+
+    .chat-composer-side {
+        max-width: none;
+        width: 100%;
+    }
+
+    .tasks-body {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: minmax(136px, 28vh) minmax(0, 1fr);
+    }
+
+    .tasks-body.is-list-collapsed {
+        grid-template-rows: minmax(0, 1fr);
+    }
+
+    .tasks-list-pane {
+        max-height: 30vh;
+    }
+
+    .tasks-detail-header {
+        gap: 10px;
+    }
+
+    .tasks-detail-title-text {
+        font-size: 1.05rem;
+    }
+
+    .tasks-status-combobox {
+        min-width: 128px;
+        max-width: 180px;
+    }
+
+    .tag-manager-body {
+        grid-template-columns: minmax(260px, 44%) minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 780px) {
+    .chat-workbench.is-sidebar-open {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: minmax(0, 1fr) minmax(200px, 38vh);
+    }
+
+    .tasks-quick-create-pane {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-areas:
+            "title"
+            "slug"
+            "description"
+            "actions";
+    }
+
+    .tasks-detail-overview,
+    .tasks-edit-grid-primary,
+    .tasks-edit-grid-secondary {
+        grid-template-columns: 1fr;
+    }
+
+    .tasks-quick-create-actions {
+        justify-self: start;
+    }
+}
+
+@media (max-width: 700px) {
+    .proposal-context-header {
+        align-items: flex-start;
+    }
+
+    .proposal-context-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+
+    .proposal-context-actions > .mud-button-root,
+    .proposal-context-toggle {
+        width: 100%;
+    }
+
+    .proposals-body {
+        grid-template-columns: 1fr;
+        grid-template-rows: minmax(190px, 34vh) minmax(0, 1fr);
+    }
+
+    .proposals-body.is-list-collapsed {
+        grid-template-columns: 1fr;
+        grid-template-rows: minmax(0, 1fr);
+    }
+
+    .proposals-list-pane {
+        max-height: 34vh;
+    }
+
+    .proposal-action-row {
+        justify-content: stretch;
+    }
+
+    .proposal-review-state-header,
+    .proposal-review-state-badges {
+        align-items: flex-start;
+    }
+
+    .proposal-action-button-shell {
+        flex: 1 1 160px;
+    }
+
+    .proposal-action-button-shell > .mud-button-root {
+        width: 100%;
+    }
+
+    .tag-manager-body {
+        grid-template-columns: 1fr;
+        grid-template-rows: minmax(200px, 42%) minmax(0, 1fr);
+    }
+
+    .tag-policy-pane {
+        max-height: 42vh;
+    }
+
+    .tag-namespace-row {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 640px) {
+    .app-content {
+        padding: 8px;
+    }
+
+    .wiki-title-block {
+        display: none;
+    }
+
+    .profile-workbench .wiki-title-block {
+        display: flex;
+    }
+
+    .profile-commandbar,
+    .profile-sectionbar,
+    .admin-filter-bar,
+    .profile-primary-grid,
+    .profile-panel-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-section-summary {
+        padding: 9px 10px;
+    }
+
+    .admin-config-summary {
+        padding: 10px;
+    }
+
+    .admin-config-summary,
+    .admin-settings-group-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .admin-config-summary-actions,
+    .admin-settings-nav {
+        width: 100%;
+    }
+
+    .admin-settings-dirty-toggle {
+        margin-inline-start: 0;
+    }
+
+    .admin-grid-table .mud-table-cell {
+        padding-inline: 10px;
+    }
+
+    .admin-grid-table .mud-table-cell::before {
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        color: var(--vscode-text-muted);
+    }
+
+    .admin-grid-table .mud-table-cell:last-child {
+        padding-bottom: 12px;
+    }
+
+    .admin-users-table .mud-table-cell:last-child {
+        min-width: 0;
+    }
+
+    .admin-users-table .mud-table-cell {
+        gap: 4px;
+    }
+
+    .admin-settings-nav-button {
+        justify-content: space-between;
+        width: 100%;
+    }
+
+    .admin-settings-nav-count {
+        margin-inline-start: auto;
+    }
+
+    .admin-settings-group-caption {
+        width: 100%;
+    }
+
+    .maintenance-panel-scroll-trace,
+    .maintenance-panel-scroll-actions,
+    .maintenance-panel-scroll-transcripts {
+        min-height: 220px;
+        max-height: 40vh;
+    }
+
+    .maintenance-action-row header,
+    .admin-maintenance-transcript header,
+    .admin-maintenance-actions {
+        grid-template-columns: 1fr;
+        align-items: flex-start;
+    }
+
+    .maintenance-activity-proposals {
+        flex-direction: column;
+    }
+
+    .admin-user-primary strong {
+        font-size: 0.92rem;
+    }
+
+    .admin-copy-cell {
+        align-items: center;
+    }
+
+    .admin-copy-cell .mud-button-root {
+        align-self: flex-start;
+    }
+
+    .profile-commandbar,
+    .profile-sectionbar {
+        align-items: stretch;
+    }
+
+    .about-commandbar,
+    .about-filter-row {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+    }
+
+    .about-license-modal-backdrop {
+        padding: 10px;
+    }
+
+    .about-license-modal {
+        max-height: calc(100vh - 20px);
+    }
+
+    .about-license-modal-header {
+        padding: 12px;
+    }
+
+    .profile-summary-list div {
+        grid-template-columns: 1fr;
+        gap: 2px;
+    }
+
+    .wiki-body {
+        display: grid;
+        grid-template-columns: 1fr;
+        grid-template-rows: minmax(90px, 30%) minmax(0, 1fr);
+    }
+
+    .pages-body,
+    .pages-body.is-nav-hidden {
+        grid-template-columns: 1fr;
+        grid-template-rows: minmax(72px, 22%) minmax(0, 1fr);
+    }
+
+    .pages-body.is-nav-hidden {
+        grid-template-rows: minmax(0, 1fr);
+    }
+
+    .pages-navigation-pane .wiki-pane-header {
+        min-height: 42px;
+        padding: 8px 10px;
+    }
+
+    .pages-tree-list,
+    .pages-toc-list {
+        padding: 4px;
+    }
+
+    .pages-body.is-nav-hidden .page-detail-pane {
+        grid-row: 1;
+    }
+
+    .page-rendered {
+        margin: 8px 10px 10px;
+        padding: 16px;
+    }
+
+    .page-rendered pre {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+
+    .pages-workbench.is-editing .pages-body {
+        grid-template-rows: minmax(0, 1fr) minmax(72px, 18%);
+    }
+
+    .pages-workbench.is-editing .page-detail-pane {
+        grid-row: 1;
+    }
+
+    .pages-workbench.is-editing .pages-navigation-pane {
+        grid-row: 2;
+        min-height: 72px;
+    }
+
+    .pages-workbench.is-editing .page-editor-toolbar {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        padding-bottom: 6px;
+    }
+
+    .pages-workbench.is-editing .page-editor-panels {
+        grid-template-rows: minmax(320px, 1.15fr) minmax(220px, 0.85fr);
+    }
+
+    .wiki-search-box {
+        flex: 1 0 100%;
+        max-width: none;
+        min-width: 0;
+    }
+
+    .pages-search-strip {
+        flex-wrap: wrap;
+    }
+
+    .pages-search-main,
+    .wiki-search-main {
+        flex: 1 1 220px;
+        min-width: 220px;
+    }
+
+    .pages-search-main .wiki-search-box,
+    .wiki-search-main .wiki-search-box {
+        flex: 1 1 0;
+        min-width: 0;
+    }
+
+    .pages-navigation-controls,
+    .wiki-navigation-controls {
+        flex: 0 0 auto;
+        margin-left: auto;
+    }
+
+    .memory-body.is-nav-collapsed {
+        grid-template-rows: minmax(0, 1fr);
+    }
+
+    .memory-body.is-nav-collapsed .wiki-detail-pane {
+        grid-row: 1;
+    }
+
+    .memory-workbench.is-editing .memory-body {
+        grid-template-rows: minmax(0, 1fr) minmax(72px, 18%);
+    }
+
+    .memory-workbench.is-editing .wiki-detail-pane {
+        grid-row: 1;
+    }
+
+    .memory-workbench.is-editing .wiki-results-pane {
+        grid-row: 2;
+        min-height: 72px;
+    }
+
+    .memory-workbench.is-editing .wiki-detail-pane > .wiki-pane-header {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: var(--vscode-panel);
+        border-bottom: 1px solid var(--vscode-border-soft);
+    }
+
+    .memory-workbench.is-editing .wiki-editor-textarea textarea {
+        max-height: none;
+        min-height: 320px;
+    }
+
+    .wiki-filter {
+        flex: 1 1 calc(50% - 6px);
+        max-width: none;
+        min-width: 120px;
+    }
+
+    .wiki-secondary-filters-body .wiki-filter,
+    .wiki-secondary-filters-body .wiki-mode-toggle {
+        flex: 1 1 100%;
+        max-width: none;
+    }
+
+    .wiki-secondary-filters-summary-text,
+    .wiki-related-summary-text {
+        text-align: left;
+        white-space: normal;
+    }
+
+    .wiki-mode-toggle {
+        flex: 1 1 150px;
+    }
+
+    .wiki-search-strip > .mud-button-root:not(.mud-icon-button) {
+        flex: 1 1 112px;
+    }
+
+    .pages-search-strip > .mud-button-root:not(.mud-icon-button) {
+        flex: 0 0 auto;
+    }
+
+    .wiki-results-pane,
+    .wiki-detail-pane {
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    .wiki-detail-pane {
+        overflow: auto;
+    }
+
+    .wiki-result-row,
+    .wiki-editor-grid,
+    .wiki-link-grid,
+    .vars-row,
+    .admin-provider-meta,
+    .health-config-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .wiki-content-scroll {
+        min-height: 120px;
+        max-height: none;
+        overflow: auto;
+    }
+
+    .tasks-body,
+    .tasks-body.is-list-collapsed {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .tasks-body {
+        grid-template-rows: minmax(112px, 24vh) minmax(0, 1fr);
+    }
+
+    .tasks-body.is-list-collapsed {
+        grid-template-rows: minmax(0, 1fr);
+    }
+
+    .tasks-list-pane,
+    .tasks-detail-pane {
+        min-width: 0;
+    }
+
+    .tasks-list-pane {
+        max-height: 26vh;
+        overflow: hidden;
+    }
+
+    .tasks-detail-pane {
+        overflow: auto;
+    }
+
+    .tasks-sidebar-toggle {
+        margin-left: auto;
+    }
+
+    .tasks-detail-header {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        align-items: stretch;
+        gap: 10px;
+        overflow: visible;
+    }
+
+    .tasks-detail-header-main {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .tasks-detail-title-text {
+        color: var(--vscode-text);
+        font-size: 1.08rem;
+        font-weight: 700;
+        line-height: 1.25;
+        white-space: normal;
+        overflow: visible;
+        text-overflow: clip;
+    }
+
+    .tasks-detail-meta {
+        margin-top: 0;
+        gap: 6px;
+        line-height: 1.2;
+    }
+
+    .tasks-detail-actions {
+        position: static;
+        width: 100%;
+        margin-left: 0;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+    }
+
+    .tasks-status-combobox {
+        min-width: 0;
+        max-width: none;
+        width: 100%;
+    }
+
+    .tasks-detail-summary-toolbar {
+        justify-content: stretch;
+    }
+
+    .tasks-focus-button {
+        flex: 1 1 160px;
+        justify-content: center;
+    }
+
+    .tasks-editor-grid {
+        align-items: start;
+    }
+
+    .tasks-detail-summary,
+    .tasks-edit-section,
+    .tasks-read-shell,
+    .tasks-artifact-section {
+        padding: 10px;
+    }
+
+    .tasks-artifacts-grid,
+    .chat-question-card-other {
+        grid-template-columns: 1fr;
+    }
+
+    .tasks-workbench .proposal-tabs,
+    .tasks-workbench .mud-tabs,
+    .tasks-workbench .mud-tabs-panels,
+    .tasks-workbench .mud-tab-panel {
+        min-height: 0;
+    }
+
+    .tasks-workbench .mud-tabs,
+    .tasks-workbench .mud-tabs-panels,
+    .tasks-workbench .mud-tab-panel {
+        height: auto;
+    }
+
+    .tasks-workbench .mud-tabs {
+        display: block;
+        flex: 0 0 auto;
+    }
+
+    .tasks-workbench .mud-tabs-tabbar {
+        position: relative;
+        z-index: 1;
+    }
+
+    .tasks-workbench .mud-tabs-panels {
+        flex: 0 0 auto;
+        min-height: 150px;
+        position: relative;
+        z-index: 0;
+    }
+
+    .tasks-workbench .mud-tabs-panels {
+        overflow: auto;
+    }
+
+    .tasks-workbench .wiki-result-title {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .wiki-detail-header,
+    .page-editor-header,
+    .chat-toolbar,
+    .chat-composer,
+    .chat-composer-side,
+    .chat-composer-actions,
+    .chat-model-controls {
+        align-items: stretch;
+    }
+
+    .page-editor-header {
+        align-items: flex-start;
+    }
+
+    .page-editor-header-actions {
+        justify-content: flex-end;
+    }
+
+    .page-editor-fields {
+        grid-template-columns: minmax(0, 1fr) minmax(160px, 220px);
+    }
+
+    .chat-toolbar,
+    .chat-model-controls {
+        grid-template-columns: 1fr;
+    }
+
+    .chat-toolbar {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        height: 236px !important;
+        min-height: 236px !important;
+        flex: 0 0 236px !important;
+        overflow: visible;
+    }
+
+    .chat-model-controls {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        height: 164px !important;
+        min-height: 164px !important;
+        flex: 0 0 164px !important;
+    }
+
+    .chat-model-controls > .mud-icon-button {
+        align-self: flex-end;
+    }
+
+    .chat-toolbar > .mud-icon-button {
+        align-self: flex-end;
+    }
+
+    .chat-mode-toggle,
+    .chat-model-controls,
+    .chat-model-profile-with-info,
+    .chat-model-profile-select,
+    .chat-mermaid-theme-select {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+    }
+
+    .chat-mode-toggle .mud-button-root {
+        flex: 1 1 0;
+        min-width: 0;
+    }
+
+    .chat-model-controls .mud-input-control {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .app-titlebar .mud-typography-body2,
+    .app-titlebar .mr-3,
+    .app-titlebar .mud-button-root:not(.mud-icon-button) {
+        display: none !important;
+    }
+
+    .chat-mode-toggle {
+        width: 100%;
+    }
+
+    .page-editor-panels,
+    .chat-workbench {
+        grid-template-columns: 1fr;
+    }
+
+    .chat-workbench.is-sidebar-open {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: minmax(0, 1fr) minmax(220px, 42vh);
+    }
+
+    .chat-workbench,
+    .chat-workbench.is-sidebar-open {
+        height: auto;
+        min-height: 0;
+        overflow: visible;
+        grid-template-rows: minmax(0, 1fr);
+    }
+
+    .chat-shell {
+        height: auto;
+    }
+
+    .chat-transcript {
+        flex: 0 1 auto;
+        min-height: 90px;
+        max-height: 32vh;
+    }
+
+    .chat-side-panel {
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    .chat-side-tabs {
+        flex-wrap: wrap;
+    }
+
+    .chat-attachment-row {
+        align-items: flex-start;
+        overflow-x: hidden;
+    }
+
+    .chat-file-input {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .chat-composer,
+    .chat-composer-input,
+    .chat-composer-side,
+    .chat-composer-actions {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+    }
+
+    .chat-composer-side {
+        align-items: stretch;
+    }
+
+    .chat-composer-actions {
+        justify-content: stretch;
+    }
+
+    .chat-usage-meter {
+        text-align: left;
+        white-space: normal;
+    }
+
+    .chat-composer-actions > .mud-button-root:not(.mud-icon-button) {
+        flex: 1 1 100%;
+    }
+
+    .chat-composer-actions .mud-checkbox {
+        flex: 1 1 100%;
+    }
+}
+
+@media (max-width: 420px) {
+    .page-editor-header-actions {
+        width: 100%;
+        margin-left: 0;
+        justify-content: flex-start;
+    }
+
+    .page-editor-fields {
+        grid-template-columns: 1fr;
+    }
+
+    .app-content {
+        padding: 6px;
+    }
+
+    .app-titlebar .mud-typography-body2,
+    .app-titlebar .mr-3,
+    .app-titlebar .mud-button-root:not(.mud-icon-button) {
+        display: none !important;
+    }
+
+    .chat-toolbar {
+        height: 252px !important;
+        min-height: 252px !important;
+        flex-basis: 252px !important;
+    }
+
+    .chat-model-controls {
+        height: 176px !important;
+        min-height: 176px !important;
+        flex-basis: 176px !important;
+    }
+
+    .chat-toolbar,
+    .chat-status-strip,
+    .chat-composer,
+    .chat-attachment-row {
+        padding-left: 6px;
+        padding-right: 6px;
+    }
+
+    .chat-transcript,
+    .chat-trace-panel-list {
+        padding: 8px;
+    }
+
+    .chat-message {
+        padding: 8px;
+    }
+
+    .chat-side-panel {
+        height: min(320px, 36vh);
+        min-height: 180px;
+    }
+
+    .chat-composer-input {
+        min-height: 58px;
+        max-height: 18vh;
+    }
+
+    .chat-message-model {
+        max-width: 100%;
+    }
+
+    .chat-side-tab {
+        flex: 1 1 0;
+        min-width: 0;
+    }
+}
+
