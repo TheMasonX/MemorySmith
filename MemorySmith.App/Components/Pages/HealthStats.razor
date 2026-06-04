@@ -12,7 +12,9 @@
 <div class="health-workbench">
 <div class="health-header">
     <MudText Typo="Typo.h4">Health &amp; Activity</MudText>
-    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" OnClick="RefreshAsync">Refresh</MudButton>
+    <MudTooltip Text="Refresh health data">
+        <MudIconButton Icon="@Icons.Material.Filled.Refresh" Variant="Variant.Outlined" Size="Size.Small" OnClick="RefreshAsync" aria-label="Refresh" />
+    </MudTooltip>
 </div>
 
 @if (_stats is not null)

@@ -207,15 +207,17 @@ body {
 
 .wiki-secondary-filters > summary::before,
 .wiki-related-panel > summary::before {
-    content: "Γû╕";
+    content: "\25B6";
     color: var(--vscode-accent);
     font-size: 0.72rem;
-    margin-right: 2px;
+    margin-right: 4px;
+    order: -1;
+    flex-shrink: 0;
 }
 
 .wiki-secondary-filters[open] > summary::before,
 .wiki-related-panel[open] > summary::before {
-    content: "Γû╛";
+    content: "\25BC";
 }
 
 .wiki-secondary-filters-summary-text,

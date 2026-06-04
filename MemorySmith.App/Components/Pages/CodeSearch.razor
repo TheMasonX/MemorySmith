@@ -15,7 +15,9 @@
 <div class="health-workbench">
     <div class="health-header">
         <MudText Typo="Typo.h4">Code Search</MudText>
-        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" OnClick="RefreshStatusAsync" Disabled="@_isBusy">Refresh status</MudButton>
+        <MudTooltip Text="Refresh search status">
+            <MudIconButton Icon="@Icons.Material.Filled.Refresh" Variant="Variant.Outlined" Size="Size.Small" Disabled="@_isBusy" OnClick="RefreshStatusAsync" aria-label="Refresh status" />
+        </MudTooltip>
     </div>
 
     <MudPaper Class="pa-4" Outlined="true">
@@ -29,8 +31,12 @@
         </div>
 
         <div style="display:flex; gap:8px; margin-top:8px;">
-            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Build" Disabled="@(_isBusy || _status?.Build.IsRunning == true)" OnClick="RebuildIndexAsync">Rebuild index</MudButton>
-            <MudButton Variant="Variant.Text" Color="Color.Secondary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Refresh" Disabled="@_isBusy" OnClick="RefreshStatusAsync">Refresh status</MudButton>
+            <MudTooltip Text="Rebuild search index">
+                <MudIconButton Icon="@Icons.Material.Filled.Build" Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" Disabled="@(_isBusy || _status?.Build.IsRunning == true)" OnClick="RebuildIndexAsync" aria-label="Rebuild index" />
+            </MudTooltip>
+            <MudTooltip Text="Refresh status">
+                <MudIconButton Icon="@Icons.Material.Filled.Refresh" Variant="Variant.Text" Size="Size.Small" Disabled="@_isBusy" OnClick="RefreshStatusAsync" aria-label="Refresh status" />
+            </MudTooltip>
         </div>
 
         <details class="wiki-secondary-filters">
@@ -49,8 +55,12 @@
 
         <MudTextField T="string" Value="@_targetsInput" ValueChanged="@((string value) => _targetsInput = value)" Label="Target directories (one per line)" Variant="Variant.Outlined" Lines="3" Margin="Margin.Dense" HelperText="Leave blank to search configured targets." />
         <div style="display:flex; gap:8px; margin-top:8px;">
-            <MudButton Variant="Variant.Text" Color="Color.Primary" StartIcon="@Icons.Material.Filled.RestartAlt" OnClick="ResetTargetsToDefaults" Disabled="@_isBusy">Reset targets</MudButton>
-            <MudButton Variant="Variant.Text" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.ClearAll" OnClick="ClearResults" Disabled="@_isBusy">Clear results</MudButton>
+            <MudTooltip Text="Reset targets to defaults">
+                <MudIconButton Icon="@Icons.Material.Filled.RestartAlt" Color="Color.Primary" Size="Size.Small" Disabled="@_isBusy" OnClick="ResetTargetsToDefaults" aria-label="Reset targets" />
+            </MudTooltip>
+            <MudTooltip Text="Clear results">
+                <MudIconButton Icon="@Icons.Material.Filled.ClearAll" Color="Color.Secondary" Size="Size.Small" Disabled="@_isBusy" OnClick="ClearResults" aria-label="Clear results" />
+            </MudTooltip>
         </div>
 
         @if (_targetOptions.Count > 0)

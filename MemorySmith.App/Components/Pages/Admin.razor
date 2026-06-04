@@ -182,7 +182,9 @@
                 </div>
                 <div class="admin-config-summary-actions">
                     <MudTooltip Text="Reset pending changes in the current filtered settings view.">
-                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.RestartAlt" Disabled="@(_isBusy || FilteredDirtySettingCount == 0)" OnClick="ResetFilteredSettings">Reset visible</MudButton>
+                        <MudTooltip Text="Reset pending changes in current filter">
+                        <MudIconButton Icon="@Icons.Material.Filled.RestartAlt" Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" Disabled="@(_isBusy || FilteredDirtySettingCount == 0)" OnClick="ResetFilteredSettings" aria-label="Reset visible" />
+                    </MudTooltip>
                     </MudTooltip>
                 </div>
             </section>
@@ -218,7 +220,9 @@
             {
                 <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Outlined" Class="mb-2">
                     Training runtime toggles are editable here. Model profiles are managed on the dedicated Models page.
-                    <MudButton Variant="Variant.Text" Size="Size.Small" StartIcon="@Icons.Material.Filled.SmartToy" OnClick="OpenModelsPage">Open Models</MudButton>
+                    <MudTooltip Text="Open dedicated Models page">
+                        <MudIconButton Icon="@Icons.Material.Filled.SmartToy" Size="Size.Small" OnClick="OpenModelsPage" aria-label="Open Models" />
+                    </MudTooltip>
                 </MudAlert>
             }
 
@@ -235,19 +239,19 @@
                 <MudText Typo="Typo.subtitle2">Config Import/Export</MudText>
                 <div class="admin-settings-save-all-row" style="margin-top:8px; justify-content:flex-start;">
                     <MudTooltip Text="Export the settings that match the current filters into the transfer box below.">
-                        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Small" StartIcon="@Icons.Material.Filled.UploadFile" Disabled="@_isBusy" OnClick="ExportVisibleSettingsAsync">Export Visible</MudButton>
+                        <MudIconButton Icon="@Icons.Material.Filled.UploadFile" Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Small" Disabled="@_isBusy" OnClick="ExportVisibleSettingsAsync" aria-label="Export visible" title="Export visible" />
                     </MudTooltip>
                     <MudTooltip Text="Export every editable admin setting into the transfer box below.">
-                        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Inventory2" Disabled="@_isBusy" OnClick="ExportAllSettingsAsync">Export All</MudButton>
+                        <MudIconButton Icon="@Icons.Material.Filled.Inventory2" Variant="Variant.Outlined" Color="Color.Secondary" Size="Size.Small" Disabled="@_isBusy" OnClick="ExportAllSettingsAsync" aria-label="Export all" title="Export all" />
                     </MudTooltip>
                     <MudTooltip Text="Copy the current transfer JSON to the clipboard.">
-                        <MudButton Variant="Variant.Text" Color="Color.Secondary" Size="Size.Small" StartIcon="@Icons.Material.Filled.ContentCopy" Disabled="@(_isBusy || string.IsNullOrWhiteSpace(_settingsTransferPayload))" OnClick="CopySettingsTransferPayloadAsync">Copy JSON</MudButton>
+                        <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Variant="Variant.Text" Color="Color.Secondary" Size="Size.Small" Disabled="@(_isBusy || string.IsNullOrWhiteSpace(_settingsTransferPayload))" OnClick="CopySettingsTransferPayloadAsync" aria-label="Copy JSON" title="Copy JSON" />
                     </MudTooltip>
                     <MudTooltip Text="Apply imported JSON to matching settings in the current filtered view without saving yet.">
-                        <MudButton Variant="Variant.Outlined" Color="Color.Info" Size="Size.Small" StartIcon="@Icons.Material.Filled.Download" Disabled="@(_isBusy || string.IsNullOrWhiteSpace(_settingsTransferPayload))" OnClick="ApplyImportedSettingsToVisibleAsync">Import To Visible</MudButton>
+                        <MudIconButton Icon="@Icons.Material.Filled.Download" Variant="Variant.Outlined" Color="Color.Info" Size="Size.Small" Disabled="@(_isBusy || string.IsNullOrWhiteSpace(_settingsTransferPayload))" OnClick="ApplyImportedSettingsToVisibleAsync" aria-label="Import to visible" title="Import to visible" />
                     </MudTooltip>
                     <MudTooltip Text="Apply imported JSON to every matching editable setting without saving yet.">
-                        <MudButton Variant="Variant.Outlined" Color="Color.Info" Size="Size.Small" StartIcon="@Icons.Material.Filled.DownloadDone" Disabled="@(_isBusy || string.IsNullOrWhiteSpace(_settingsTransferPayload))" OnClick="ApplyImportedSettingsToAllAsync">Import To All</MudButton>
+                        <MudIconButton Icon="@Icons.Material.Filled.DownloadDone" Variant="Variant.Outlined" Color="Color.Info" Size="Size.Small" Disabled="@(_isBusy || string.IsNullOrWhiteSpace(_settingsTransferPayload))" OnClick="ApplyImportedSettingsToAllAsync" aria-label="Import to all" title="Import to all" />
                     </MudTooltip>
                 </div>
                 <MudTextField T="string" Value="@_settingsTransferPayload" ValueChanged="@((string value) => _settingsTransferPayload = value)" Label="Settings transfer JSON" Variant="Variant.Outlined" Margin="Margin.Dense" Lines="6" HelperText="Export writes JSON here. Paste JSON here to import matching editable settings as pending changes, then Save Visible or Save All." />
