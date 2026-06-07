@@ -26,6 +26,7 @@
         </AuthorizeView>
     </MudAppBar>
 
+    <aside aria-label="Navigation">
     <MudDrawer @bind-Open="_drawerOpen"
                Elevation="0"
                Variant="DrawerVariant.Responsive"
@@ -33,10 +34,11 @@
                Width="272px"
                Class="app-drawer">
         <MudDrawerHeader>
-            <MudText Typo="Typo.h6">Navigation</MudText>
+            <h6 class="mud-typography mud-typography-h6 ma-0">Navigation</h6>
         </MudDrawerHeader>
         <NavMenu />
     </MudDrawer>
+    </aside>
 
     <MudMainContent Class="app-main-content">
         <MudContainer MaxWidth="MaxWidth.False" Class="app-content">
