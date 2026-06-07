@@ -51,7 +51,7 @@ public class CodeSearchBenchmarks
             }
         };
 
-        _service = new CodeSearchService(new HashEmbeddingProvider(), Options.Create(options));
+        _service = new CodeSearchService(new HashEmbeddingProvider(), new TreeSitterChunkingService(), Options.Create(options));
         _ = await _service.SearchAsync(new CodeSearchQuery("bootstrap", Limit: 3), CancellationToken.None);
     }
 

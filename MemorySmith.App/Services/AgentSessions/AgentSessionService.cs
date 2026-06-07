@@ -388,18 +388,33 @@ public sealed class AgentSessionService
         using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         timeoutCts.CancelAfter(TimeSpan.FromSeconds(session.TimeoutSeconds));
 
-        MemoryChatResponse response;
-        await using var gpuSlot = await _gpuSlots.AcquireAsync(
-            $"sub-agent:{session.SessionId[..8]}", timeoutCts.Token);
+        // Acquire GPU slot — if the queue wait itself times out, return Timeout cleanly.
+        IAsyncDisposable gpuSlot;
         try
         {
-            response = await agent.SendAsync(chatRequest, timeoutCts.Token);
+            gpuSlot = await _gpuSlots.AcquireAsync(
+                $"sub-agent:{session.SessionId[..8]}", timeoutCts.Token);
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {
-            // Per-turn timeout — session stays alive, no state changed, caller may retry.
+            // Timed out waiting for a free GPU slot — session stays alive, caller may retry.
             await _store.SaveAsync(session, ct);
             return AgentInvokeResult.Timeout(session.SessionId, session.TurnCount);
+        }
+
+        MemoryChatResponse response;
+        await using (gpuSlot)
+        {
+            try
+            {
+                response = await agent.SendAsync(chatRequest, timeoutCts.Token);
+            }
+            catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+            {
+                // Per-turn timeout — session stays alive, no state changed, caller may retry.
+                await _store.SaveAsync(session, ct);
+                return AgentInvokeResult.Timeout(session.SessionId, session.TurnCount);
+            }
         }
 
         // Update history and turn count (still under the session lock).
@@ -412,6 +427,7 @@ public sealed class AgentSessionService
         {
             session.SetStatus(AgentSessionStatus.Closed);
             finishReason = "max_turns";
+            await _store.SaveAsync(session, ct);
             await _store.DeleteAsync(session.SessionId, ct);
         }
         else
@@ -607,9 +623,13 @@ public sealed class AgentSessionService
     /// </summary>
     private static bool IsMcpToolEnabled(ChatToolDescriptor tool, McpOptions options)
     {
-        // DisabledTools always wins
+        // DisabledTools always wins — explicit disable overrides everything including wildcard.
         if (options.DisabledTools.Contains(tool.Name, StringComparer.OrdinalIgnoreCase))
             return false;
+        // Wildcard opt-in: EnabledTools = ["*"] enables all non-explicitly-disabled tools.
+        // Matches McpController.ContainsTool wildcard semantics for parity.
+        if (options.EnabledTools.Contains("*", StringComparer.OrdinalIgnoreCase))
+            return true;
         // EnabledTools is additive opt-in (allows enabling default-off tools explicitly)
         if (options.EnabledTools.Contains(tool.Name, StringComparer.OrdinalIgnoreCase))
             return true;

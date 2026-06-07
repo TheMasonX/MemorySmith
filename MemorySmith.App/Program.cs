@@ -325,7 +325,6 @@ try
     builder.Services.AddScoped<IChatProvider>(sp => sp.GetRequiredService<OllamaChatProvider>());
     builder.Services.AddSingleton<ChatToolCatalog>();
     builder.Services.AddSingleton<ChatIntentInterceptor>();
-    builder.Services.AddScoped<IChatAgent, MemoryChatAgent>();
 
     // ── Agent session services (memorysmith_agent_invoke) ─────────────────────
     builder.Services.AddSingleton<IGpuSlotScheduler, OllamaGpuSlotScheduler>();
@@ -397,6 +396,11 @@ try
         }
 
         var normalizedAssetPath = NormalizePageAssetRequestPath(assetPath);
+        if (normalizedAssetPath is null)
+        {
+            return Results.BadRequest();
+        }
+
         var canView = await CanViewPageAssetAsync(pages, normalizedAssetPath, httpContext.User, options.CurrentValue.Auth, authorization, cancellationToken);
         if (!canView)
         {

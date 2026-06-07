@@ -295,6 +295,13 @@ body {
     flex: 0 0 auto;
 }
 
+.pages-search-strip .pages-search-clear,
+.wiki-search-clear {
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+}
+
 .pages-search-strip .pages-search-submit,
 .wiki-search-submit {
     width: 30px;

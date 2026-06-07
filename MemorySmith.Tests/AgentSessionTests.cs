@@ -48,9 +48,13 @@ public class AgentSessionTests
 
         Assert.Multiple(() =>
         {
-            // AgentTools should be identical to ChatTools (AvailableInChat filter)
-            Assert.That(agentToolNames, Is.EquivalentTo(chatToolNames),
-                "AgentTools should equal ChatTools (AvailableInChat=true filter)");
+            // AgentTools is a superset of ChatTools: all chat tools PLUS agent-only write tools
+            Assert.That(agentToolNames, Is.SupersetOf(chatToolNames),
+                "AgentTools should include all ChatTools (AvailableInChat=true) plus agent-only write tools");
+            // Exactly 7 agent-only write tools (AvailableInAgent=true, AvailableInChat=false)
+            var agentOnlyTools = agentToolNames.Except(chatToolNames).ToList();
+            Assert.That(agentOnlyTools.Count, Is.EqualTo(7),
+                $"Expected 7 agent-only write tools (memory_create, memory_update, task_create, task_update, task_set_status, task_add_comment, task_add_attachment), got {agentOnlyTools.Count}: {string.Join(", ", agentOnlyTools)}");
 
             // MCP-only write tools must NOT be in AgentTools
             Assert.That(agentToolNames, Does.Not.Contain("memorysmith_page_save"),
@@ -286,15 +290,25 @@ public class AgentSessionTests
     [Test]
     public async Task CreateSession_EmptyEffectiveScope_ReturnsFail()
     {
-        // Disable ALL tools via DisabledTools
+        // Disable ALL AvailableInChat tools via DisabledTools (10 tools)
+        // Note: agent-only write tools (AvailableInAgent=true, AvailableInChat=false) are not
+        // listed here because they are never in scope for chat sessions anyway.
         var options = new MemorySmithOptions
         {
             Mcp = new McpOptions
             {
-                DisabledTools = ["memorysmith_search", "memorysmith_semantic_search",
-                    "memorysmith_hybrid_search", "memorysmith_context_pack", "memorysmith_get",
-                    "memorysmith_page_search", "memorysmith_page_get", "memorysmith_unified_search",
-                    "memorysmith_page_save", "memorysmith_page_delete"]
+                DisabledTools = [
+                    "memorysmith_search",
+                    "memorysmith_hybrid_search",
+                    "memorysmith_context_pack",
+                    "memorysmith_get",
+                    "memorysmith_code_search",
+                    "memorysmith_code_search_status",
+                    "memorysmith_page_search",
+                    "memorysmith_page_get",
+                    "memorysmith_task_list",
+                    "memorysmith_task_get"
+                ]
             }
         };
         var service = CreateService(options: options);

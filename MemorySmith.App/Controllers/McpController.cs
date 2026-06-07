@@ -550,22 +550,6 @@ public class McpController : ControllerBase
         return Math.Min(value, max);
     }
 
-    private static bool GetBool(JsonElement element, string name, bool defaultValue)
-    {
-        if (!TryGetProperty(element, name, out var value))
-        {
-            return defaultValue;
-        }
-
-        return value.ValueKind switch
-        {
-            JsonValueKind.True => true,
-            JsonValueKind.False => false,
-            JsonValueKind.String when bool.TryParse(value.GetString(), out var parsed) => parsed,
-            _ => defaultValue
-        };
-    }
-
     private static MemoryStatus? GetStatus(JsonElement element)
     {
         var value = GetString(element, "status");
@@ -587,6 +571,4 @@ public class McpController : ControllerBase
         return value[..(maxLength - 3)].TrimEnd() + "...";
     }
 
-    private static string FormatLinks(IReadOnlyList<string> links) =>
-        links.Count == 0 ? "none" : string.Join(", ", links);
 }
