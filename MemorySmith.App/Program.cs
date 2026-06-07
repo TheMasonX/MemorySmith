@@ -1,5 +1,6 @@
 using MemorySmith.App.Components;
 using MemorySmith.App.Services;
+using MemorySmith.App.Services.AgentSessions;
 using MemorySmith.App.Services.Training;
 using MemorySmith.Core.Indexing;
 using MemorySmith.Core.Models;
@@ -13,6 +14,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.StaticFiles;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting.WindowsServices;
 using Microsoft.Extensions.Options;
 using MudBlazor.Services;
@@ -324,6 +326,18 @@ try
     builder.Services.AddSingleton<ChatToolCatalog>();
     builder.Services.AddSingleton<ChatIntentInterceptor>();
     builder.Services.AddScoped<IChatAgent, MemoryChatAgent>();
+
+    // ── Agent session services (memorysmith_agent_invoke) ─────────────────────
+    builder.Services.AddSingleton<IGpuSlotScheduler, OllamaGpuSlotScheduler>();
+    builder.Services.AddSingleton<IAgentSessionStore, InMemoryAgentSessionStore>();
+    // IChatTranscriptWriter: register ChatTranscriptWriter as the default implementation.
+    // ChatTranscriptWriter.WriteAsync already no-ops when Training:ChatTranscriptEnabled=false,
+    // so this is safe to register unconditionally. TryAddSingleton allows tests to override
+    // with NullChatTranscriptWriter (or any other implementation) by registering before this.
+    builder.Services.TryAddSingleton<IChatTranscriptWriter, ChatTranscriptWriter>();
+    builder.Services.AddSingleton<AgentSessionService>();
+    builder.Services.AddHostedService<AgentSessionCleanupService>();
+    // ─────────────────────────────────────────────────────────────────────────
 
     var maintenanceEnabled = builder.Configuration.GetValue("MemorySmith:Maintenance:Enabled", true);
     if (maintenanceEnabled)

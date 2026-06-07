@@ -1,12 +1,17 @@
 {
-  "id": "TSK-0271",
-  "key": "tsk-0271-search-tool-consolidation",
+  "id": "tsk-0271-search-tool-consolidation",
+  "key": "TSK-0271",
   "title": "Deprecate and remove memorysmith_semantic_search and memorysmith_unified_search",
   "description": "Remove two redundant search tools from the chat tool catalog to reduce surface-area confusion in the trained model. semantic_search is always redundant (hybrid_search fuses lexical+semantic). unified_search overlaps with hybrid_search + page_search. Reduce chat tools from 12 to 10, update prompt routing, regenerate training data, retrain LoRA adapter.",
   "type": "Feature",
   "status": "Backlog",
   "priority": "Medium",
-  "labels": ["tooling", "chat", "training", "prompt"],
+  "labels": [
+    "tooling",
+    "chat",
+    "training",
+    "prompt"
+  ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
@@ -14,6 +19,17 @@
   "assigneeDirectoryId": "agent-smith",
   "reporter": "agent-smith",
   "createdAtUtc": "2026-06-02T22:00:00Z",
+  "updatedAtUtc": "2026-06-02T22:00:00Z",
+  "completedAtUtc": null,
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null,
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
   "steps": [
     {
       "step": 1,
@@ -28,7 +44,7 @@
     {
       "step": 2,
       "title": "Remove tool registrations from ChatToolCatalog.cs",
-      "description": "Delete the yield return blocks for memorysmith_semantic_search (lines ~149-168) and memorysmith_unified_search (lines ~609-711). These are ~100 lines total. No other tool depends on these — each is a standalone yield return.",
+      "description": "Delete the yield return blocks for memorysmith_semantic_search and memorysmith_unified_search. These are ~100 lines total. No other tool depends on these.",
       "files": [
         "MemorySmith.App/Services/ChatToolCatalog.cs"
       ],
@@ -55,7 +71,7 @@
     {
       "step": 5,
       "title": "Update ChatToolCatalogAndInterceptTests.cs",
-      "description": "Remove test expectations that reference memorysmith_semantic_search and memorysmith_unified_search. Key areas: intent interception test cases (lines ~583-586), tool count assertions, tool name lists.",
+      "description": "Remove test expectations that reference memorysmith_semantic_search and memorysmith_unified_search. Key areas: intent interception test cases, tool count assertions, tool name lists.",
       "files": [
         "MemorySmith.Tests/ChatToolCatalogAndInterceptTests.cs"
       ],
@@ -82,7 +98,7 @@
     {
       "step": 8,
       "title": "Regenerate SFT training corpus",
-      "description": "Create new training data exports that exclude semantic_search and unified_search examples. Add new routing examples that teach hybrid_search as the default for general wiki queries. Target: ~100 records covering all 10 remaining tools with clear routing distinctions.",
+      "description": "Create new training data exports that exclude semantic_search and unified_search examples. Add new routing examples that teach hybrid_search as the default for general wiki queries.",
       "files": [
         "Data/Training/exports/*.sft.jsonl"
       ],
@@ -91,7 +107,7 @@
     {
       "step": 9,
       "title": "Update spotcheck eval cases",
-      "description": "Replace the 5 semantic_search and 5 unified_search cases in the spotcheck eval with 5 hybrid_search and 5 search cases. New eval: 5 search, 5 hybrid_search, 5 task_list, 5 page_search, 5 code_search = 25 cases.",
+      "description": "Replace the 5 semantic_search and 5 unified_search cases in the spotcheck eval with 5 hybrid_search and 5 search cases.",
       "files": [
         "Data/Pages/research/training/tool-ab-spotcheck-*.data.json"
       ],
@@ -117,7 +133,7 @@
     {
       "step": 12,
       "title": "Deploy adapter to Ollama and browser-validate /chat",
-      "description": "Create new memorysmith-athena:latest with updated adapter. Test in browser: prompt 'search the wiki for architecture' → should use hybrid_search, prompt 'find memory with exact tag governance' → should use search.",
+      "description": "Create new memorysmith-athena:latest with updated adapter. Test in browser.",
       "files": [
         "artifacts/athena-modelfile/Modelfile"
       ],

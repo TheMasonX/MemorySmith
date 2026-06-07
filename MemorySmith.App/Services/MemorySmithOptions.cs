@@ -42,6 +42,8 @@ public class MemorySmithOptions
     public McpOptions Mcp { get; set; } = new();
     public ChatOptions Chat { get; set; } = new();
     public TrainingOptions Training { get; set; } = new();
+    /// <summary>Configuration for the memorysmith_agent_invoke multi-turn sub-agent session feature.</summary>
+    public AgentSessionOptions AgentSession { get; set; } = new();
     public MaintenanceAgentOptions MaintenanceAgent { get; set; } = new();
     public LoggingOptions Logging { get; set; } = new();
     public TelemetryOptions Telemetry { get; set; } = new();
@@ -326,6 +328,13 @@ public class McpOptions
     public List<string> EnabledTools { get; set; } = [];
     public List<string> DisabledTools { get; set; } = [];
     public int MaxToolResponseCharacters { get; set; } = 12000;
+
+    /// <summary>
+    /// Maximum number of concurrent agent sessions per user principal.
+    /// Defaults vary by SecurityProfile: LocalDev=10, SecureLocal=3, RemoteHardened=1.
+    /// This value overrides the profile default when set explicitly.
+    /// </summary>
+    public int? MaxConcurrentSessionsPerUser { get; set; }
 }
 
 public class ChatOptions
@@ -371,6 +380,13 @@ public class ChatOptions
     public bool AgentWritesEnabled { get; set; }
     public string AgentWriteApprovalMode { get; set; } = AgentWriteApprovalModes.Manual;
     public List<string> AgentWriteRoots { get; set; } = [];
+
+    /// <summary>
+    /// Maximum number of parallel Ollama inference requests.
+    /// Default is 1 (serial) to prevent VRAM exhaustion on single-GPU hosts (e.g. RTX 5060 8 GB).
+    /// Increase to 2 only for multi-GPU setups or when using cloud providers.
+    /// </summary>
+    public int MaxParallelOllamaRequests { get; set; } = 1;
 }
 
 public static class AgentWriteApprovalModes
@@ -408,6 +424,51 @@ public class ChatModelProfileOptions
     public bool Enabled { get; set; } = true;
     public List<string> AllowedRoles { get; set; } = [];
     public string? Description { get; set; }
+}
+
+/// <summary>
+/// Configuration for the memorysmith_agent_invoke multi-turn sub-agent session feature.
+/// Governs session lifecycle, persistence, and security-profile-driven defaults.
+/// </summary>
+public class AgentSessionOptions
+{
+    /// <summary>
+    /// When true, sessions are persisted to SQLite and survive server restarts.
+    /// Default false (in-memory, ephemeral). Phase 2 feature.
+    /// AgentSessionService throws InvalidOperationException at startup if this is true
+    /// and no SqliteAgentSessionStore is registered.
+    /// </summary>
+    public bool PersistSessions { get; set; }
+
+    /// <summary>
+    /// Default idle timeout in minutes before a session is marked Expired.
+    /// SecurityProfile defaults: LocalDev=30, SecureLocal=10, RemoteHardened=5.
+    /// This value overrides the profile default when set explicitly.
+    /// </summary>
+    public int? IdleTimeoutMinutes { get; set; }
+
+    /// <summary>
+    /// Maximum nesting depth for internal agent delegation (Phase 3).
+    /// Always 0 in Phase 1-2 since AvailableInAgent is false.
+    /// TODO (Phase 3): AgentSessionService.CreateSessionAsync enforces this ceiling.
+    /// </summary>
+    public int MaxNestingDepth { get; set; } = 1;
+
+    /// <summary>
+    /// When true, sub-agent sessions may include SensitiveRead tools (e.g. memorysmith_source_bundle)
+    /// in their effective scope if the caller also has CanReadSourceBundle permission.
+    /// Default false — SensitiveRead tools are excluded from all sub-agent scopes regardless of
+    /// caller permission unless this flag is explicitly set. A Warning is logged when tools are
+    /// excluded due to this setting so the behavior is visible in logs.
+    /// </summary>
+    public bool AllowSensitiveRead { get; set; }
+
+    /// <summary>
+    /// Maximum number of conversation turns retained in AgentSession.History.
+    /// Older turns are pruned when the limit is exceeded to prevent unbounded memory growth.
+    /// Default 200 (400 ChatMessage objects). Reduce for memory-constrained deployments.
+    /// </summary>
+    public int MaxHistoryTurns { get; set; } = 200;
 }
 
 public class MaintenanceAgentOptions

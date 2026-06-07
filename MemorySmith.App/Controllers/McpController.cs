@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using MemorySmith.App.Services;
+using MemorySmith.App.Services.AgentSessions;
 using MemorySmith.Core.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -35,6 +36,7 @@ public class McpController : ControllerBase
     private readonly IPageService _pages;
     private readonly ITaskService _tasks;
     private readonly CodeSearchService _codeSearch;
+    private readonly AgentSessionService _agentSessionService;
 
     public McpController(
         MemoryApplicationService memories,
@@ -44,7 +46,8 @@ public class McpController : ControllerBase
         ChatToolCatalog toolCatalog,
         IPageService pages,
         ITaskService tasks,
-        CodeSearchService codeSearch)
+        CodeSearchService codeSearch,
+        AgentSessionService agentSessionService)
     {
         _memories = memories;
         _vars = vars;
@@ -54,6 +57,7 @@ public class McpController : ControllerBase
         _pages = pages;
         _tasks = tasks;
         _codeSearch = codeSearch;
+        _agentSessionService = agentSessionService;
     }
 
     [HttpGet]
@@ -126,6 +130,23 @@ public class McpController : ControllerBase
         TryGetProperty(paramsElement, "arguments", out var argumentsElement);
         var toolName = nameElement.GetString();
 
+        // Agent session tools are governed by the same EnabledTools/DisabledTools rules as
+        // other MCP tools. They have Risk=Write so EnabledByDefaultInMcp=false — they must be
+        // explicitly opted in via MemorySmith:Mcp:EnabledTools: ["memorysmith_agent_invoke"].
+        if (toolName == "memorysmith_agent_invoke")
+        {
+            return IsAgentToolEnabled("memorysmith_agent_invoke")
+                ? await HandleAgentInvokeAsync(argumentsElement, cancellationToken)
+                : ToolText("The memorysmith_agent_invoke tool is disabled. Enable it via MemorySmith:Mcp:EnabledTools.", isError: true);
+        }
+
+        if (toolName == "memorysmith_agent_session_end")
+        {
+            return IsAgentToolEnabled("memorysmith_agent_session_end")
+                ? await HandleAgentSessionEndAsync(argumentsElement, cancellationToken)
+                : ToolText("The memorysmith_agent_session_end tool is disabled. Enable it via MemorySmith:Mcp:EnabledTools.", isError: true);
+        }
+
         return await DelegateToCatalogAsync(toolName ?? string.Empty, argumentsElement, cancellationToken);
     }
 
@@ -193,6 +214,102 @@ public class McpController : ControllerBase
         MemorySmithTelemetry.RecordToolExecution("mcp", toolName, elapsedMs, success);
     }
 
+    // ── Agent session tool handlers ───────────────────────────────────────────
+
+    private async Task<JsonObject> HandleAgentInvokeAsync(JsonElement argumentsElement, CancellationToken cancellationToken)
+    {
+        // Require CanEditMemorySmith — agent sessions have Write-tier side effects.
+        if (!await CanEditMemorySmithAsync())
+            return ToolText("The caller is not authorized to invoke the agent (requires edit permission).", isError: true);
+
+        var message = GetString(argumentsElement, "message");
+        if (string.IsNullOrWhiteSpace(message))
+            return ToolText("The memorysmith_agent_invoke tool requires a 'message' argument.", isError: true);
+
+        var sessionId = GetString(argumentsElement, "session_id");
+        var requestedScope = GetString(argumentsElement, "scope") ?? "standard";
+        var maxTurns = GetInt(argumentsElement, "max_turns", 10);
+        var timeoutSeconds = GetInt(argumentsElement, "timeout_seconds", 120);
+        var modelOverride = GetString(argumentsElement, "model");
+        var providerOverride = GetString(argumentsElement, "provider");
+        var systemPromptAddendum = GetString(argumentsElement, "system_prompt_addendum");
+
+        List<string>? customTools = null;
+        if (TryGetProperty(argumentsElement, "allowed_tools", out var toolsElement) &&
+            toolsElement.ValueKind == JsonValueKind.Array)
+        {
+            customTools = toolsElement.EnumerateArray()
+                .Where(e => e.ValueKind == JsonValueKind.String)
+                .Select(e => e.GetString()!)
+                .ToList();
+        }
+
+        AgentSession session;
+        if (string.IsNullOrWhiteSpace(sessionId))
+        {
+            var createResult = await _agentSessionService.CreateSessionAsync(
+                requestedScope, customTools, modelOverride, providerOverride,
+                maxTurns, timeoutSeconds, User, cancellationToken,
+                systemPromptAddendum: systemPromptAddendum);
+            if (!createResult.Succeeded)
+                return ToolText(createResult.Error!, isError: true);
+            session = createResult.Session!;
+        }
+        else
+        {
+            var resumeResult = await _agentSessionService.ResumeSessionAsync(
+                sessionId, User, cancellationToken);
+            if (!resumeResult.Succeeded)
+                return ToolText(resumeResult.Error!, isError: true);
+            session = resumeResult.Session!;
+        }
+
+        var invokeResult = await _agentSessionService.InvokeAsync(session, message, cancellationToken);
+        return ToolText(AgentSessionService.SerializeResult(invokeResult));
+    }
+
+    private async Task<JsonObject> HandleAgentSessionEndAsync(JsonElement argumentsElement, CancellationToken cancellationToken)
+    {
+        if (!await CanEditMemorySmithAsync())
+            return ToolText("The caller is not authorized to end agent sessions.", isError: true);
+
+        var sessionId = GetString(argumentsElement, "session_id");
+        if (string.IsNullOrWhiteSpace(sessionId))
+            return ToolText("The memorysmith_agent_session_end tool requires a 'session_id' argument.", isError: true);
+
+        var ended = await _agentSessionService.EndSessionAsync(sessionId, User, cancellationToken);
+        // Return isError: true on not-found/already-closed so MCP callers can distinguish
+        // success from failure programmatically (same error-signal convention as HandleAgentInvokeAsync).
+        return ToolText(
+            ended
+                ? $"{{\"closed\":true,\"session_id\":\"{sessionId}\"}}"
+                : "{\"finish_reason\":\"session_expired\",\"message\":\"Session not found or already closed.\"}",
+            isError: !ended);
+    }
+
+    // ── Agent tool governance ─────────────────────────────────────────────────
+
+    /// <summary>
+    /// Checks whether an agent session tool (memorysmith_agent_invoke / memorysmith_agent_session_end)
+    /// is enabled by the server's MCP governance configuration. These tools have Risk=Write and are
+    /// disabled by default; they must be explicitly opted in via MemorySmith:Mcp:EnabledTools.
+    ///
+    /// Semantics (identical to IsMcpToolEnabled in AgentSessionService):
+    /// - DisabledTools always wins.
+    /// - EnabledTools is additive opt-in.
+    /// - Default: disabled (because agent tools are Write-tier).
+    /// </summary>
+    private bool IsAgentToolEnabled(string toolName)
+    {
+        var mcp = _options.CurrentValue.Mcp;
+        if (mcp.DisabledTools.Contains(toolName, StringComparer.OrdinalIgnoreCase))
+            return false;
+        if (mcp.EnabledTools.Contains(toolName, StringComparer.OrdinalIgnoreCase))
+            return true;
+        // Agent tools are Write-tier and default-off (EnabledByDefaultInMcp=false)
+        return false;
+    }
+
     private bool IsMcpToolEnabled(ChatToolDescriptor tool)
     {
         var mcp = _options.CurrentValue.Mcp;
@@ -243,6 +360,23 @@ public class McpController : ControllerBase
             array.Add(BuildTool(tool.Name, tool.Description, clonedSchema));
         }
 
+        // Agent session tools: only listed when enabled via MemorySmith:Mcp:EnabledTools.
+        // These are Write-tier and default-off (EnabledByDefaultInMcp=false).
+        if (IsAgentToolEnabled("memorysmith_agent_invoke"))
+        {
+            array.Add(BuildTool(
+                "memorysmith_agent_invoke",
+                "Invoke the MemorySmith chat agent as a scoped sub-agent with its own managed context window. On the first call (no session_id), a new multi-turn session is created and the session_id is returned. Include that session_id in subsequent calls to continue the conversation.",
+                BuildAgentInvokeSchema()));
+        }
+        if (IsAgentToolEnabled("memorysmith_agent_session_end"))
+        {
+            array.Add(BuildTool(
+                "memorysmith_agent_session_end",
+                "Explicitly close an agent session created by memorysmith_agent_invoke. Frees resources immediately rather than waiting for idle timeout.",
+                BuildAgentSessionEndSchema()));
+        }
+
         return new JsonObject { ["tools"] = array };
     }
 
@@ -251,6 +385,50 @@ public class McpController : ControllerBase
         ["name"] = name,
         ["description"] = description,
         ["inputSchema"] = inputSchema
+    };
+
+    private static JsonObject BuildAgentInvokeSchema() => new()
+    {
+        ["type"] = "object",
+        ["required"] = new JsonArray { "message" },
+        ["properties"] = new JsonObject
+        {
+            ["message"] = new JsonObject { ["type"] = "string", ["description"] = "The task or question for the sub-agent. Be specific — the sub-agent will run tool calls to answer it." },
+            ["session_id"] = new JsonObject { ["type"] = "string", ["description"] = "Session ID returned from a prior call. Omit to start a new session." },
+            ["scope"] = new JsonObject
+            {
+                ["type"] = "string",
+                ["enum"] = new JsonArray { "read_only", "standard", "full", "custom" },
+                ["default"] = "standard",
+                ["description"] = "Tool access scope. read_only/standard: search and fetch tools only (read-only). full: all agent-chat-mode tools the caller has permission to use (note: MCP-only write tools such as page_save are not included, as the sub-agent runs in chat mode). custom: specify exact tool names via allowed_tools."
+            },
+            ["allowed_tools"] = new JsonObject
+            {
+                ["type"] = "array",
+                ["items"] = new JsonObject { ["type"] = "string" },
+                ["description"] = "Required when scope=custom. List of memorysmith_* tool names to enable."
+            },
+            ["max_turns"] = new JsonObject { ["type"] = "integer", ["minimum"] = 1, ["maximum"] = 50, ["default"] = 10 },
+            ["timeout_seconds"] = new JsonObject { ["type"] = "integer", ["minimum"] = 10, ["maximum"] = 600, ["default"] = 120 },
+            ["model"] = new JsonObject { ["type"] = "string", ["description"] = "Optional Ollama model tag override (e.g. 'qwen3.5:4b')." },
+            ["provider"] = new JsonObject { ["type"] = "string", ["description"] = "Optional provider override. Currently only 'Ollama' is supported. Other values are rejected at session creation time — enabling additional providers requires both registering them as IChatProvider in DI and adding them to the server-side provider allowlist (AgentSessionService.KnownProviders)." },
+            ["system_prompt_addendum"] = new JsonObject
+            {
+                ["type"] = "string",
+                ["maxLength"] = 2000,
+                ["description"] = "Optional extra instructions appended to the sub-agent's system context. Requires CanEditMemorySmith role. No-op in remote-hardened mode. Note: stored on session; injection into model prompt is a Phase 3 feature."
+            }
+        }
+    };
+
+    private static JsonObject BuildAgentSessionEndSchema() => new()
+    {
+        ["type"] = "object",
+        ["required"] = new JsonArray { "session_id" },
+        ["properties"] = new JsonObject
+        {
+            ["session_id"] = new JsonObject { ["type"] = "string", ["description"] = "Session ID to close." }
+        }
     };
 
     private static JsonObject ToolText(string text, bool isError = false, int? originalCharacters = null, int? maxCharacters = null)
