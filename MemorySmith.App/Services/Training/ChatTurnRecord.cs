@@ -15,6 +15,13 @@ public sealed record ChatTurnRecord
     public required TurnResponse Response { get; init; }
     public bool RedactedContent { get; init; }
     public string? RedactionRule { get; init; }
+
+    /// <summary>
+    /// Session ID of the parent Athena session that spawned this sub-agent session.
+    /// Null for all standard (non-delegation) turns.
+    /// Set in Phase 3 when internal delegation via memorysmith_agent_invoke is enabled.
+    /// </summary>
+    public string? ParentSessionId { get; init; }
 }
 
 public sealed record TurnUser(string PrincipalId, string DisplayName);

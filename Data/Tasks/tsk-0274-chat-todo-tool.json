@@ -1,6 +1,6 @@
-﻿{
-  "id": "tsk-0267-chat-todo-tool",
-  "key": "TSK-0267",
+{
+  "id": "tsk-0274-chat-todo-tool",
+  "key": "TSK-0274",
   "title": "Chat Todo Tool",
   "description": "Allow the chat agent to create a list of todo tasks to track progress",
   "type": "Task",
@@ -27,5 +27,5 @@
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,
-  "sourceFilePath": null
+  "sourceFilePath": "tsk-0274-chat-todo-tool.json"
 }

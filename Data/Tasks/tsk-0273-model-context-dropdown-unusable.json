@@ -1,8 +1,8 @@
-﻿{
-  "id": "tsk-0271-model-context-dropdown-unusable",
-  "key": "TSK-0271",
+{
+  "id": "tsk-0273-model-context-dropdown-unusable",
+  "key": "TSK-0273",
   "title": "Model Context Dropdown Unusable",
-  "description": "The model\u0027s context dropdown is stuck on Provider Default and won\u0027t let me change it anymore (it used to work).",
+  "description": "The model's context dropdown is stuck on Provider Default and won't let me change it anymore (it used to work).",
   "type": "Task",
   "status": "Backlog",
   "priority": "Medium",
@@ -28,7 +28,7 @@
     {
       "id": "c-9bbdbe1f97ca4e02a462ddfb6e293206",
       "author": "TheMasonX",
-      "body": "Nevermind, now it\u0027s working. it might have been while ollama was down (see TSK-0272)",
+      "body": "Nevermind, now it's working. it might have been while ollama was down (see TSK-0272)",
       "createdAtUtc": "2026-06-03T02:22:37.3559451Z"
     }
   ],
@@ -42,5 +42,5 @@
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,
-  "sourceFilePath": "tsk-0271-model-context-dropdown-unusable.json"
+  "sourceFilePath": "tsk-0273-model-context-dropdown-unusable.json"
 }

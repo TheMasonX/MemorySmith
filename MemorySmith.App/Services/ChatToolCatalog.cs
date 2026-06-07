@@ -42,7 +42,10 @@ public sealed record ChatToolExecutionContext(
     ITaskService? Tasks = null,
     CodeSearchService? CodeSearch = null,
     bool AgentWritesEnabled = false,
-    bool AgentWriteAutoAccept = false)
+    bool AgentWriteAutoAccept = false,
+    int NestingDepth = 0,
+    string? ParentSessionId = null,
+    IAsyncDisposable? InheritedGpuSlot = null)
 {
     public bool CanViewPage(string minimumRole) =>
         CurrentUser is not null
@@ -82,6 +85,16 @@ public sealed class ChatToolCatalog
     public ChatToolCatalog()
     {
         _tools = BuildTools().ToDictionary(tool => tool.Name, StringComparer.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Filtered constructor — builds a catalog from a pre-filtered set of descriptors.
+    /// Used by <c>AgentSessionService</c> to create scoped sub-agent catalogs that only
+    /// expose tools within a session's computed effective scope.
+    /// </summary>
+    public ChatToolCatalog(IEnumerable<ChatToolDescriptor> allowedTools)
+    {
+        _tools = allowedTools.ToDictionary(tool => tool.Name, StringComparer.OrdinalIgnoreCase);
     }
 
     public IReadOnlyList<ChatToolDescriptor> All => _tools.Values.ToList();
