@@ -34,7 +34,7 @@
                               OnKeyUp="OnSearchKeyUp"
                               Class="wiki-search-box" />
                 <MudTooltip Text="Clear search">
-                    <MudIconButton Icon="@Icons.Material.Filled.Clear" Size="Size.Small" Class="pages-search-clear" OnClick="ClearAsync" aria-label="Clear" title="Clear search" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Clear" Size="Size.Small" Class="pages-search-clear" Style="width:30px;min-width:30px;max-width:30px;" OnClick="ClearAsync" aria-label="Clear" title="Clear search" />
                 </MudTooltip>
                 <MudTooltip Text="Search">
                     <MudIconButton Icon="@Icons.Material.Filled.Search"
@@ -1216,3 +1216,4 @@
         string[] CollapsedTocKeys,
         Dictionary<string, string[]>? CollapsedTocKeysBySlug = null);
 }
+
