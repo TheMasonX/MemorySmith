@@ -106,7 +106,7 @@
                     </MudTd>
                     <MudTd DataLabel="Email">
                         <div class="admin-user-secondary">
-                            <SensitiveValue Value="@context.User.Email" Summary="@MaskEmail(context.User.Email)" Label="@($"{context.User.DisplayName} email")" Class="admin-sensitive-value" EmptyText="-" AllowReveal="true" />
+                            <SensitiveValue Value="@context.User.Email" Summary="@MaskEmail(context.User.Email)" Label="@($"{context.User.DisplayName} email")" Class="admin-sensitive-value" EmptyText="-" AllowReveal="false" />
                         </div>
                     </MudTd>
                     <MudTd DataLabel="Status">@(context.User.IsDisabled ? "Disabled" : "Active")</MudTd>

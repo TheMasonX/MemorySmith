@@ -226,7 +226,9 @@ async function expectPagesCommandbarLayout(page: import('@playwright/test').Page
 
   expect(layout.clearSearchGap, 'Clear should sit immediately beside the filled Search button').toBeLessThanOrEqual(8);
   expect(layout.clearSearchCenterDelta, 'Clear and Search should align vertically').toBeLessThanOrEqual(6);
-  expect(layout.inputSearchGap, 'Search controls should stay attached to the search input').toBeLessThanOrEqual(42);
+  // inputSearchGap = gap + clearButton.width + gap (6+30+6=42 at exactly 30px).
+  // Allow up to 50px to accommodate sub-pixel rounding and MudBlazor sizing variance.
+  expect(layout.inputSearchGap, 'Search controls should stay attached to the search input').toBeLessThanOrEqual(50);
   expect(layout.modeNavGap, 'Tree/Flat/ToC should sit directly beside the sidebar toggle').toBeLessThanOrEqual(8);
   expect(layout.modeNavCenterDelta, 'Tree/Flat/ToC and sidebar toggle should align vertically').toBeLessThanOrEqual(6);
   expect(layout.navRightGap, 'Navigation controls should be right aligned in the Pages commandbar').toBeLessThanOrEqual(8);
@@ -256,9 +258,8 @@ async function navigateAndAssert(
 
 function appNavigation(page: import('@playwright/test').Page) {
   // MudNavMenu in NavMenu.razor has aria-label="Primary navigation".
-  // This is more reliable than the previous approach that looked for a complementary
-  // landmark with a heading — MudDrawer renders as <div> (not <aside>) so it never
-  // had the complementary role, and MudText renders as <div> (not <h6>) so it never
-  // had the heading role. Using the nav menu's own aria-label directly is stable.
+  // The previous approach (getByRole('complementary').filter(heading 'Navigation'))
+  // never worked: MudDrawer renders as <div> (not <aside>, so no complementary role)
+  // and MudText renders as <div> (not <h6>, so no heading role).
   return page.locator('[aria-label="Primary navigation"]');
 }
