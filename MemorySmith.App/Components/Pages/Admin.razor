@@ -173,6 +173,59 @@
                 }
             </div>
         </MudTabPanel>
+        <MudTabPanel Text="Models" Icon="@Icons.Material.Filled.SmartToy">
+            <div class="admin-model-profiles" aria-label="Model profiles">
+                <MudTable Items="@_modelProfiles" Dense="true" Hover="true" Class="health-table admin-grid-table" RowsPerPage="25">
+                    <HeaderContent>
+                        <MudTh>Name</MudTh>
+                        <MudTh>Provider</MudTh>
+                        <MudTh DataLabel="Setting">Model</MudTh>
+                        <MudTh>Actions</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Name">@context.Name</MudTd>
+                        <MudTd DataLabel="Provider">@context.ProviderName</MudTd>
+                        <MudTd DataLabel="Setting">@context.ModelName</MudTd>
+                        <MudTd DataLabel="Action">
+                            <div class="admin-row-actions">
+                                <MudTooltip Text="Duplicate this model profile.">
+                                    <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Size="Size.Small" Color="Color.Secondary" Disabled="@_isBusy" OnClick="@(() => DuplicateModelProfileAsync(context))" aria-label="Duplicate profile" title="Duplicate" />
+                                </MudTooltip>
+                                <MudTooltip Text="Edit this model profile.">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" Disabled="@_isBusy" OnClick="@(() => EditModelProfile(context))" aria-label="Edit profile" title="Edit" />
+                                </MudTooltip>
+                                <MudTooltip Text="Delete this model profile.">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" Disabled="@(_isBusy || context.IsDefault)" OnClick="@(() => DeleteModelProfileAsync(context))" aria-label="Delete profile" title="Delete" />
+                                </MudTooltip>
+                            </div>
+                        </MudTd>
+                    </RowTemplate>
+                    <PagerContent><MudTablePager /></PagerContent>
+                </MudTable>
+
+                @if (_modelProfileEditor.IsEditing)
+                {
+                    <div class="admin-model-editor admin-setting-key">
+                        <MudSelect T="string" Value="@_modelProfileEditor.Provider" ValueChanged="OnModelProfileProviderChangedAsync" Label="Provider" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="admin-model-select-field">
+                            @foreach (var provider in ChatProviders)
+                            {
+                                <MudSelectItem T="string" Value="@provider.Name">@provider.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                        <MudSelect T="string" Value="@_modelProfileEditor.Model" ValueChanged="OnModelProfileModelChanged" Label="Model" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="admin-model-select-field" Disabled="@(_isBusy || _modelProfileModelOptions.Count == 0)">
+                            @foreach (var model in _modelProfileModelOptions)
+                            {
+                                <MudSelectItem T="string" Value="@model.Name">@model.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                        <div class="admin-model-editor-actions">
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@_isBusy" OnClick="SaveModelProfileAsync">Save</MudButton>
+                            <MudButton Variant="Variant.Outlined" Disabled="@_isBusy" OnClick="CancelModelProfileEdit">Cancel</MudButton>
+                        </div>
+                    </div>
+                }
+            </div>
+        </MudTabPanel>
         <MudTabPanel Text="Configuration" Icon="@Icons.Material.Filled.Tune">
             <section class="admin-config-summary" aria-label="Configuration workbench status">
                 <div class="admin-config-summary-copy">
