@@ -129,7 +129,9 @@ test.describe('Navigation freeze regression', () => {
     await expect(pageSearch.getByRole('heading', { name: 'Pages', exact: true })).toBeVisible();
 
     await page.getByRole('button', { name: 'Tree' }).click();
-    const treeItems = page.getByRole('button', { name: /^Open / });
+    // Tree items may show "Open [folder]" (collapsed) or "Collapse [folder]"
+    // (auto-expanded on first load with empty localStorage in CI). Match either state.
+    const treeItems = page.getByRole('button', { name: /^(Open|Collapse) / });
     await expect(treeItems.first()).toBeVisible();
     const treeCount = await treeItems.count();
     for (let i = 0; i < Math.min(treeCount, 12); i++) {
