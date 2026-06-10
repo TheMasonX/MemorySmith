@@ -174,7 +174,11 @@ public class SecurityAndSourceLinkTests
         await using var factory = CreateFactory(new Dictionary<string, string?>
         {
             ["MemorySmith:Auth:AnonymousAccess"] = MemorySmithRoles.Viewer,
-            ["MemorySmith:Auth:AuthenticatedDefaultRole"] = MemorySmithRoles.Viewer
+            ["MemorySmith:Auth:AuthenticatedDefaultRole"] = MemorySmithRoles.Viewer,
+            // Enable sensitive-read tools so the auth check actually runs.
+            // Without this, the MCP endpoint returns "disabled by MCP tool configuration"
+            // instead of "not authorized to read source bundles".
+            ["MemorySmith:Mcp:EnabledTools:0"] = "memorysmith_find_by_source"
         });
 
         using var setupClient = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
