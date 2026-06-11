@@ -6,6 +6,7 @@ using MemorySmith.App.Services;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Data.Sqlite;
 
 namespace MemorySmith.Tests;
 
@@ -24,6 +25,7 @@ public class McpAndSemanticSearchTests
     [TearDown]
     public void TearDown()
     {
+        SqliteConnection.ClearAllPools();
         if (Directory.Exists(_tempRoot))
         {
             Directory.Delete(_tempRoot, recursive: true);
@@ -961,7 +963,14 @@ public class McpAndSemanticSearchTests
                     ["MemorySmith:DataPath"] = memoryPath,
                     ["MemorySmith:EventLogPath"] = Path.Combine(_tempRoot, "Events", "audit.log"),
                     ["MemorySmith:Maintenance:Enabled"] = "false",
-                    ["MemorySmith:ApiKey"] = string.Empty
+                    ["MemorySmith:ApiKey"] = string.Empty,
+                    // Isolate the SQLite database per test to prevent lock contention
+                    // when multiple WebApplicationFactory instances share the default
+                    // ../Data/memorysmith.db path. Each test gets its own temp database.
+                    ["MemorySmith:Database:ConnectionString"] = $"Data Source={Path.Combine(_tempRoot, "memorysmith.db")};Pooling=False",
+                    ["MemorySmith:DataProtectionKeysPath"] = Path.Combine(_tempRoot, "Keys"),
+                    ["MemorySmith:Audit:JsonlPath"] = Path.Combine(_tempRoot, "Events", "audit-{yyyy}-W{week}.jsonl"),
+                    ["MemorySmith:History:RootPath"] = Path.Combine(_tempRoot, ".history")
                 };
 
                 if (overrides is not null)
