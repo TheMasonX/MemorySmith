@@ -134,7 +134,10 @@ public class ProjectWikiTestbaseTests
                         // conflicts with the shared default path (../Data/memorysmith.db).
                         ["MemorySmith:Database:ConnectionString"] = $"Data Source={Path.Combine(_tempRoot, "memorysmith.db")};Pooling=False",
                         ["MemorySmith:DataProtectionKeysPath"] = Path.Combine(_tempRoot, "Keys"),
-                        ["MemorySmith:ApiKey"] = string.Empty
+                        ["MemorySmith:ApiKey"] = string.Empty,
+                        // Disable auth so the fresh (unsetup) database doesn't require
+                        // admin bootstrap before API calls can succeed.
+                        ["MemorySmith:Auth:Enabled"] = "false"
                     });
                 });
             });

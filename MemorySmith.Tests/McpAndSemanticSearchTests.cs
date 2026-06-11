@@ -972,7 +972,10 @@ public class McpAndSemanticSearchTests
                     ["MemorySmith:Database:ConnectionString"] = $"Data Source={Path.Combine(_tempRoot, "memorysmith.db")};Pooling=False",
                     ["MemorySmith:DataProtectionKeysPath"] = Path.Combine(_tempRoot, "Keys"),
                     ["MemorySmith:Audit:JsonlPath"] = Path.Combine(_tempRoot, "Events", "audit-{yyyy}-W{week}.jsonl"),
-                    ["MemorySmith:History:RootPath"] = Path.Combine(_tempRoot, ".history")
+                    ["MemorySmith:History:RootPath"] = Path.Combine(_tempRoot, ".history"),
+                    // Disable auth so the fresh (unsetup) database doesn't redirect API
+                    // calls to the admin setup page.
+                    ["MemorySmith:Auth:Enabled"] = "false"
                 };
 
                 if (overrides is not null)
