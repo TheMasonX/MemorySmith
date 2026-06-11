@@ -957,8 +957,9 @@ public class McpAndSemanticSearchTests
         Assert.That(text, Does.Contain("Semantic search"), "The search current-state record should describe semantic search behavior.");
     }
 
-    private WebApplicationFactory<Program> CreateFactory(string memoryPath, IReadOnlyDictionary<string, string?>? overrides = null) =>
-        new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+    private WebApplicationFactory<Program> CreateFactory(string memoryPath, IReadOnlyDictionary<string, string?>? overrides = null)
+    {
+        var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
             builder.ConfigureAppConfiguration((_, config) =>
             {
@@ -968,16 +969,14 @@ public class McpAndSemanticSearchTests
                     ["MemorySmith:EventLogPath"] = Path.Combine(_tempRoot, "Events", "audit.log"),
                     ["MemorySmith:Maintenance:Enabled"] = "false",
                     ["MemorySmith:ApiKey"] = string.Empty,
-                    // Isolate the SQLite database per test to prevent lock contention
-                    // when multiple WebApplicationFactory instances share the default
-                    // ../Data/memorysmith.db path. Each test gets its own temp database.
+                    // Isolate the SQLite database per test to prevent lock contention.
+                    // Each test gets its own temp database so they don't share state.
                     ["MemorySmith:Database:ConnectionString"] = $"Data Source={Path.Combine(_tempRoot, "memorysmith.db")};Pooling=False",
                     ["MemorySmith:DataProtectionKeysPath"] = Path.Combine(_tempRoot, "Keys"),
                     ["MemorySmith:Audit:JsonlPath"] = Path.Combine(_tempRoot, "Events", "audit-{yyyy}-W{week}.jsonl"),
-                    ["MemorySmith:History:RootPath"] = Path.Combine(_tempRoot, ".history"),
-                    // Disable auth so the fresh (unsetup) database doesn't redirect API
-                    // calls to the admin setup page.
-                    ["MemorySmith:Auth:Enabled"] = "false"
+                    ["MemorySmith:History:RootPath"] = Path.Combine(_tempRoot, ".history")
+                    // Auth:Enabled stays true (default) so IAuthorizationService is registered
+                    // (required by AgentSessionService). Admin is bootstrapped below.
                 };
 
                 if (overrides is not null)
@@ -991,6 +990,16 @@ public class McpAndSemanticSearchTests
                 config.AddInMemoryCollection(settings);
             });
         });
+
+        // Bootstrap admin setup so the setup guard allows API/MCP requests on the fresh DB.
+        // Without this, MemorySmithRequestGuardMiddleware redirects all requests to /auth/setup.
+        using var bootstrapClient = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        bootstrapClient.PostAsJsonAsync("/api/admin/setup",
+            new SetupAdminRequest("Test Admin", "admin@memorysmith.test", "T3stAdmin@2026!"),
+            JsonSerializerOptions.Web).GetAwaiter().GetResult();
+
+        return factory;
+    }
 
     private static async Task<string> ExtractFirstToolTextAsync(HttpResponseMessage response)
     {

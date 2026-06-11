@@ -134,13 +134,18 @@ public class ProjectWikiTestbaseTests
                         // conflicts with the shared default path (../Data/memorysmith.db).
                         ["MemorySmith:Database:ConnectionString"] = $"Data Source={Path.Combine(_tempRoot, "memorysmith.db")};Pooling=False",
                         ["MemorySmith:DataProtectionKeysPath"] = Path.Combine(_tempRoot, "Keys"),
-                        ["MemorySmith:ApiKey"] = string.Empty,
-                        // Disable auth so the fresh (unsetup) database doesn't require
-                        // admin bootstrap before API calls can succeed.
-                        ["MemorySmith:Auth:Enabled"] = "false"
+                        ["MemorySmith:ApiKey"] = string.Empty
+                        // Auth:Enabled stays true so IAuthorizationService is registered.
                     });
                 });
             });
+
+        // Bootstrap admin so the setup guard allows API requests on the fresh DB.
+        using var setupBootstrapClient = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        await setupBootstrapClient.PostAsJsonAsync("/api/admin/setup",
+            new SetupAdminRequest("Test Admin", "admin@memorysmith.test", "T3stAdmin@2026!"),
+            JsonSerializerOptions.Web);
+
         using var client = factory.CreateClient();
 
         var page = await client.GetFromJsonAsync<PagedResult<MemoryMetadata>>("/api/memories?tags=project-wiki&pageSize=100");
