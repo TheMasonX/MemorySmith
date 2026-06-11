@@ -43,7 +43,9 @@ public sealed class AgentSessionCleanupService : BackgroundService
         }
     }
 
-    private async Task RunCleanupAsync(CancellationToken ct)
+    // Internal (not private) so AgentSessionTests can drive a cleanup pass directly without
+    // waiting on the 5-minute ExecuteAsync timer. Production callers must use the hosted loop.
+    internal async Task RunCleanupAsync(CancellationToken ct)
     {
         var candidates = await _store.GetActiveAndIdleAsync(ct);
         var expired = 0;

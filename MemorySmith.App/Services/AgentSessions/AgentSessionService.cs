@@ -2,6 +2,7 @@ namespace MemorySmith.App.Services.AgentSessions;
 
 using System.Security.Claims;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -17,12 +18,28 @@ public sealed record AgentInvokeResult(
     IReadOnlyList<string> ContextIds,
     int ToolCallsMade,
     string FinishReason,
-    ChatUsageSummary? Usage)
+    ChatUsageSummary? Usage,
+    // Which phase timed out when FinishReason == "timeout": TimeoutPhaseQueueWait (never got a
+    // GPU slot) or TimeoutPhaseInference (slot acquired, model call exceeded the budget).
+    // Null for all non-timeout results — and omitted from the serialized MCP JSON entirely so
+    // the contract surface is unchanged for successful turns (additive field, council-reviewed).
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    string? TimeoutPhase = null)
 {
-    public static AgentInvokeResult Timeout(string sessionId, int turn) => new(
+    /// <summary>Timed out while queued for a GPU slot — inference never started.</summary>
+    public const string TimeoutPhaseQueueWait = "queue_wait";
+
+    /// <summary>Timed out during model inference, after a GPU slot was acquired.</summary>
+    public const string TimeoutPhaseInference = "inference";
+
+    public static AgentInvokeResult Timeout(string sessionId, int turn, string timeoutPhase) => new(
         sessionId, turn,
-        "The sub-agent inference timed out on this turn. Retry the same message to continue; no state was changed.",
-        [], 0, "timeout", null);
+        string.Equals(timeoutPhase, TimeoutPhaseQueueWait, StringComparison.Ordinal)
+            ? "Timed out waiting for a free GPU slot; inference never started. The backend is busy — " +
+              "retry the same message after a short backoff; no session state was changed."
+            : "The sub-agent inference timed out on this turn. Retry the same message to continue " +
+              "(no session state was changed), raise timeout_seconds, or reduce the request scope.",
+        [], 0, "timeout", null, timeoutPhase);
 }
 
 public sealed class CreateSessionResult
@@ -399,8 +416,8 @@ public sealed class AgentSessionService
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {
             // Timed out waiting for a free GPU slot — session stays alive, caller may retry.
-            await _store.SaveAsync(session, ct);
-            return AgentInvokeResult.Timeout(session.SessionId, session.TurnCount);
+            return AgentInvokeResult.Timeout(
+                session.SessionId, session.TurnCount, AgentInvokeResult.TimeoutPhaseQueueWait);
         }
 
         MemoryChatResponse response;
@@ -412,9 +429,9 @@ public sealed class AgentSessionService
             }
             catch (OperationCanceledException) when (!ct.IsCancellationRequested)
             {
-                // Per-turn timeout — session stays alive, no state changed, caller may retry.
-                await _store.SaveAsync(session, ct);
-                return AgentInvokeResult.Timeout(session.SessionId, session.TurnCount);
+                // Per-turn inference timeout — session stays alive, no state changed, caller may retry.
+                return AgentInvokeResult.Timeout(
+                    session.SessionId, session.TurnCount, AgentInvokeResult.TimeoutPhaseInference);
             }
         }
 

@@ -481,18 +481,213 @@ public class AgentSessionTests
         });
     }
 
+    // ── Scope computation combinations (TSK-0275 acceptance criteria) ─────────
+
+    [Test]
+    public async Task CreateSession_FullScope_MatchesEnabledChatModeMcpTools()
+    {
+        var service = CreateService();
+        var caller = MakePrincipal("alice", canEdit: true);
+
+        var result = await service.CreateSessionAsync(
+            "full", null, null, null, 10, 120, caller, CancellationToken.None);
+
+        Assert.That(result.Succeeded, Is.True, result.Error);
+
+        // With default options (no EnabledTools/DisabledTools, default secure-local profile),
+        // the effective set must be exactly the chat-mode MCP tools that are MCP-enabled by
+        // default. Write tools are default-off in MCP and sensitive-read tools are not
+        // AvailableInChat, so they never appear even for "full".
+        var catalog = new ChatToolCatalog();
+        var expected = catalog.McpTools
+            .Where(t => t.AvailableInChat && t.EnabledByDefaultInMcp)
+            .Select(t => t.Name)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        Assert.That(result.Session!.EffectiveToolNames.ToHashSet(StringComparer.OrdinalIgnoreCase),
+            Is.EquivalentTo(expected));
+    }
+
+    [Test]
+    public async Task CreateSession_CustomScope_IntersectsRequestedToolsCaseInsensitively()
+    {
+        var service = CreateService();
+        var caller = MakePrincipal("alice", canEdit: true);
+
+        var result = await service.CreateSessionAsync(
+            "custom",
+            customTools: ["MEMORYSMITH_SEARCH", "memorysmith_get", "not_a_real_tool"],
+            modelOverride: null,
+            providerOverride: null,
+            maxTurns: 10,
+            timeoutSeconds: 120,
+            caller,
+            CancellationToken.None);
+
+        Assert.That(result.Succeeded, Is.True, result.Error);
+        Assert.That(result.Session!.EffectiveToolNames.ToHashSet(StringComparer.OrdinalIgnoreCase),
+            Is.EquivalentTo(new[] { "memorysmith_search", "memorysmith_get" }),
+            "custom scope must intersect requested names case-insensitively and drop unknown tools");
+    }
+
+    [Test]
+    public async Task CreateSession_RemoteHardenedProfile_LimitsToReadOnlyTools()
+    {
+        var options = new MemorySmithOptions { SecurityProfile = MemorySmithSecurityProfiles.RemoteHardened };
+        var service = CreateService(options: options);
+        var caller = MakePrincipal("alice", canEdit: true);
+
+        var result = await service.CreateSessionAsync(
+            "full", null, null, null, 10, 120, caller, CancellationToken.None);
+
+        Assert.That(result.Succeeded, Is.True, result.Error);
+
+        var catalog = new ChatToolCatalog();
+        Assert.Multiple(() =>
+        {
+            foreach (var name in result.Session!.EffectiveToolNames)
+            {
+                Assert.That(catalog.TryGet(name, out var tool), Is.True);
+                Assert.That(tool.Risk, Is.EqualTo(ChatToolRisk.ReadOnly),
+                    $"remote-hardened ceiling must exclude non-ReadOnly tool '{name}'");
+            }
+        });
+    }
+
+    [Test]
+    public async Task CreateSession_RemoteHardenedProfile_CapsConcurrentSessionsAtOne()
+    {
+        var options = new MemorySmithOptions { SecurityProfile = MemorySmithSecurityProfiles.RemoteHardened };
+        var service = CreateService(options: options);
+        var caller = MakePrincipal("alice", canEdit: true);
+
+        var first = await service.CreateSessionAsync(
+            "read_only", null, null, null, 10, 120, caller, CancellationToken.None);
+        var second = await service.CreateSessionAsync(
+            "read_only", null, null, null, 10, 120, caller, CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(first.Succeeded, Is.True, first.Error);
+            Assert.That(second.Succeeded, Is.False, "remote-hardened caps concurrent sessions at 1");
+            Assert.That(second.Error, Does.Contain("Concurrent session limit (1)"));
+        });
+    }
+
+    // ── Timeout phases (council-approved observability; queue vs inference) ──
+
+    [Test]
+    public async Task Invoke_QueueWaitTimeout_ReturnsQueueWaitPhaseWithoutConsumingTurn()
+    {
+        var service = CreateService(
+            gpuSlots: new BlockedGpuSlotScheduler(),
+            scopeFactory: new SingleProviderScopeFactory(new HangingChatProvider()));
+        // Construct the session directly with a 1-second budget (CreateSessionAsync clamps
+        // timeout_seconds to a 10s minimum, which would make this test needlessly slow).
+        var session = CreateTestSession("alice", timeoutSeconds: 1);
+
+        var result = await service.InvokeAsync(session, "hello", CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.FinishReason, Is.EqualTo("timeout"));
+            Assert.That(result.TimeoutPhase, Is.EqualTo(AgentInvokeResult.TimeoutPhaseQueueWait));
+            Assert.That(result.Turn, Is.EqualTo(0), "queue timeout must not consume a turn");
+            Assert.That(session.History, Is.Empty, "queue timeout must not mutate session history");
+            Assert.That(session.Status, Is.EqualTo(AgentSessionStatus.Active), "session stays alive for retry");
+        });
+    }
+
+    [Test]
+    public async Task Invoke_InferenceTimeout_ReturnsInferencePhaseWithoutConsumingTurn()
+    {
+        var service = CreateService(
+            scopeFactory: new SingleProviderScopeFactory(new HangingChatProvider()));
+        var session = CreateTestSession("alice", timeoutSeconds: 1);
+
+        var result = await service.InvokeAsync(session, "hello", CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.FinishReason, Is.EqualTo("timeout"));
+            Assert.That(result.TimeoutPhase, Is.EqualTo(AgentInvokeResult.TimeoutPhaseInference));
+            Assert.That(result.Turn, Is.EqualTo(0), "inference timeout must not consume a turn");
+            Assert.That(session.History, Is.Empty, "inference timeout must not mutate session history");
+            Assert.That(session.Status, Is.EqualTo(AgentSessionStatus.Active), "session stays alive for retry");
+        });
+    }
+
+    [Test]
+    public void SerializeResult_OmitsTimeoutPhaseForNonTimeoutResults()
+    {
+        var json = AgentSessionService.SerializeResult(
+            new AgentInvokeResult("s1", 1, "ok", [], 0, "stop", null));
+
+        Assert.That(json, Does.Not.Contain("timeoutPhase"),
+            "non-timeout results must not enlarge the MCP contract with a null timeoutPhase key");
+    }
+
+    [Test]
+    public void SerializeResult_IncludesTimeoutPhaseOnTimeout()
+    {
+        var queueJson = AgentSessionService.SerializeResult(
+            AgentInvokeResult.Timeout("s1", 0, AgentInvokeResult.TimeoutPhaseQueueWait));
+        var inferenceJson = AgentSessionService.SerializeResult(
+            AgentInvokeResult.Timeout("s1", 0, AgentInvokeResult.TimeoutPhaseInference));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(queueJson, Does.Contain("\"timeoutPhase\":\"queue_wait\""));
+            Assert.That(queueJson, Does.Contain("\"finishReason\":\"timeout\""));
+            Assert.That(inferenceJson, Does.Contain("\"timeoutPhase\":\"inference\""));
+        });
+    }
+
+    // ── Cleanup service expiry (TSK-0275 acceptance criteria) ────────────────
+
+    [Test]
+    public async Task CleanupService_ExpiresAndDeletesIdleSessions()
+    {
+        var store = new InMemoryAgentSessionStore();
+        var stale = CreateTestSession("alice", idleTimeoutMinutes: 0); // deadline = now
+        var fresh = CreateTestSession("alice", idleTimeoutMinutes: 60);
+        await store.SaveAsync(stale, CancellationToken.None);
+        await store.SaveAsync(fresh, CancellationToken.None);
+        await Task.Delay(50); // ensure stale.LastAccessedAt is strictly in the past
+
+        var cleanup = new AgentSessionCleanupService(
+            store, NullLogger<AgentSessionCleanupService>.Instance);
+        await cleanup.RunCleanupAsync(CancellationToken.None);
+
+        var staleFromStore = await store.GetAsync(stale.SessionId, CancellationToken.None);
+        var freshFromStore = await store.GetAsync(fresh.SessionId, CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(stale.Status, Is.EqualTo(AgentSessionStatus.Expired),
+                "idle session past its per-session deadline must be expired");
+            Assert.That(staleFromStore, Is.Null,
+                "expired session must be hard-deleted from the store");
+            Assert.That(fresh.Status, Is.EqualTo(AgentSessionStatus.Active),
+                "session within its idle window must be untouched");
+            Assert.That(freshFromStore, Is.Not.Null);
+        });
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private AgentSessionService CreateService(
         InMemoryAgentSessionStore? store = null,
-        MemorySmithOptions? options = null)
+        MemorySmithOptions? options = null,
+        IGpuSlotScheduler? gpuSlots = null,
+        IServiceScopeFactory? scopeFactory = null)
     {
         var sessionStore = store ?? new InMemoryAgentSessionStore();
-        var gpuSlots = new NullGpuSlotScheduler();
+        gpuSlots ??= new NullGpuSlotScheduler();
         var catalog = new ChatToolCatalog();
         var opts = Options.Create(options ?? new MemorySmithOptions());
         var auth = new AlwaysAllowAuthorizationService();
-        var scopeFactory = new StubServiceScopeFactory();
+        scopeFactory ??= new StubServiceScopeFactory();
         var dataPath = Path.Combine(_tempDir, "data", "Memories");
         Directory.CreateDirectory(dataPath);
         var memories = TestServiceFactory.CreateMemoryApplicationService(
@@ -509,7 +704,8 @@ public class AgentSessionTests
             memories, pages, interceptor, logger, transcriptWriter);
     }
 
-    private static AgentSession CreateTestSession(string principalId) => new()
+    private static AgentSession CreateTestSession(
+        string principalId, int timeoutSeconds = 120, int idleTimeoutMinutes = 30) => new()
     {
         SessionId = Guid.NewGuid().ToString("N"),
         PrincipalId = principalId,
@@ -517,8 +713,8 @@ public class AgentSessionTests
         EffectiveToolNames = ["memorysmith_search"],
         CreatedAt = DateTimeOffset.UtcNow,
         MaxTurns = 10,
-        TimeoutSeconds = 120,
-        IdleTimeoutMinutes = 30,
+        TimeoutSeconds = timeoutSeconds,
+        IdleTimeoutMinutes = idleTimeoutMinutes,
     };
 
     private static ClaimsPrincipal MakePrincipal(string userId, bool canEdit = false)
@@ -576,6 +772,59 @@ public class AgentSessionTests
                     return Enumerable.Empty<IChatProvider>();
                 return null;
             }
+        }
+    }
+
+    /// <summary>
+    /// Scope factory that resolves exactly one chat provider — required by invoke-path tests,
+    /// since MemoryChatAgent's constructor throws on an empty provider collection.
+    /// </summary>
+    private sealed class SingleProviderScopeFactory(IChatProvider provider) : IServiceScopeFactory
+    {
+        public IServiceScope CreateScope() => new Scope(provider);
+
+        private sealed class Scope(IChatProvider provider) : IServiceScope
+        {
+            public IServiceProvider ServiceProvider { get; } = new Provider(provider);
+            public void Dispose() { }
+        }
+
+        private sealed class Provider(IChatProvider provider) : IServiceProvider
+        {
+            public object? GetService(Type serviceType) =>
+                serviceType == typeof(IEnumerable<IChatProvider>)
+                    ? new[] { provider }
+                    : null;
+        }
+    }
+
+    /// <summary>
+    /// Chat provider whose completion never finishes — used to force the inference phase
+    /// to exceed the per-turn budget. Honors cancellation, like a real provider.
+    /// </summary>
+    private sealed class HangingChatProvider : IChatProvider
+    {
+        public string Name => "Ollama";
+
+        public async Task<ChatProviderResponse> CompleteAsync(ChatProviderRequest request, CancellationToken cancellationToken)
+        {
+            await Task.Delay(System.Threading.Timeout.InfiniteTimeSpan, cancellationToken);
+            throw new InvalidOperationException("unreachable");
+        }
+    }
+
+    /// <summary>
+    /// GPU slot scheduler that never grants a slot — used to force the queue-wait phase
+    /// to exceed the per-turn budget. Honors cancellation, like the real semaphore wait.
+    /// </summary>
+    private sealed class BlockedGpuSlotScheduler : IGpuSlotScheduler
+    {
+        public int WaitingCount => 1;
+
+        public async Task<IAsyncDisposable> AcquireAsync(string reason, CancellationToken ct)
+        {
+            await Task.Delay(System.Threading.Timeout.InfiniteTimeSpan, ct);
+            throw new InvalidOperationException("unreachable");
         }
     }
 }
