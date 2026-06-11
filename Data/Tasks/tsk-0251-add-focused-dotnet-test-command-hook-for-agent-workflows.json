@@ -2,21 +2,7 @@
   "id": "tsk-0251-add-focused-dotnet-test-command-hook-for-agent-workflows",
   "key": "TSK-0251",
   "title": "Add focused dotnet test command hook for agent workflows",
-  "description": "Problem: agents frequently rebuild long dotnet test filter commands by hand, increasing token usage and typo risk during focused validation loops. Existing workflow guidance already encourages script-driven operations where repeated command construction appears.
-
-Desired outcome: provide a stable hook script that produces focused dotnet test command payloads from test names/categories, with machine-readable output for agent reuse.
-
-Scope:
-- In scope: add Scripts/SkillHooks/New-FocusedDotnetTestCommand.ps1.
-- In scope: output a compact JSON contract including command text, computed filter, and warnings.
-- In scope: add focused usage docs in Scripts/SkillHooks/README.md.
-- Out of scope: replacing all test execution scripts or changing test discovery semantics.
-
-Validation:
-- Script smoke tests for one-name, multi-name, and empty input behavior.
-- Verify generated command executes successfully in at least one focused test scenario.
-
-Confidence target: 93%.",
+  "description": "Problem: agents frequently rebuild long dotnet test filter commands by hand, increasing token usage and typo risk during focused validation loops. Existing workflow guidance already encourages script-driven operations where repeated command construction appears.\n\nDesired outcome: provide a stable hook script that produces focused dotnet test command payloads from test names/categories, with machine-readable output for agent reuse.\n\nScope:\n- In scope: add Scripts/SkillHooks/New-FocusedDotnetTestCommand.ps1.\n- In scope: output a compact JSON contract including command text, computed filter, and warnings.\n- In scope: add focused usage docs in Scripts/SkillHooks/README.md.\n- Out of scope: replacing all test execution scripts or changing test discovery semantics.\n\nValidation:\n- Script smoke tests for one-name, multi-name, and empty input behavior.\n- Verify generated command executes successfully in at least one focused test scenario.\n\nConfidence target: 93%.",
   "type": "Task",
   "status": "Backlog",
   "priority": "Medium",

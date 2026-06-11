@@ -1,7 +1,7 @@
 {
   "Id": "project-wiki-mcp-search-tools-current",
   "Title": "MCP Search Tools Current State",
-  "Content": "The MCP endpoint at /mcp exposes 22+ tools via HTTP JSON-RPC. Read tools (Chat+MCP): memorysmith_search (lexical), memorysmith_semantic_search (ONNX or token fallback), memorysmith_hybrid_search (RRF fusion), memorysmith_context_pack (linked reference graph), memorysmith_get (by ID), memorysmith_page_search, memorysmith_page_get, memorysmith_unified_search (memories+pages combined), memorysmith_task_list, memorysmith_task_get, memorysmith_code_search (vector+lexical hybrid with prefilter), memorysmith_code_search_status. Write tools (MCP+Agent, Edit permission): memorysmith_task_create/update/set_status/add_comment/add_attachment, memorysmith_page_save/delete, memorysmith_code_search_merge_shard, memorysmith_memory_create, memorysmith_memory_update (governed via proposal workflow). Source tools (MCP only): memorysmith_source_bundle, memorysmith_find_by_source. Search input is plain text with optional tags/status/limit filters. Structured output via format=json or format=envelope returns retrieval envelopes with provider metadata.",
+  "Content": "The MCP endpoint at /mcp exposes the 22-tool catalog via HTTP JSON-RPC. Read tools (Chat+MCP): memorysmith_search (lexical), memorysmith_hybrid_search (RRF fusion of lexical and semantic signals — the routing default), memorysmith_context_pack (linked reference graph), memorysmith_get (by ID), memorysmith_page_search, memorysmith_page_get, memorysmith_task_list, memorysmith_task_get, memorysmith_code_search (vector+lexical hybrid with prefilter), memorysmith_code_search_status. Write tools (MCP+Agent, Edit permission): memorysmith_task_create/update/set_status/add_comment/add_attachment, memorysmith_page_save/delete, memorysmith_code_search_merge_shard, memorysmith_memory_create, memorysmith_memory_update (governed via proposal workflow). Source tools (MCP only): memorysmith_source_bundle, memorysmith_find_by_source. The former memorysmith_semantic_search and memorysmith_unified_search tools were deliberately removed by TSK-0271 (semantic scoring is fused inside hybrid search; unified search overlapped hybrid + page search) — do not restore them. Multi-turn sub-agent sessions are exposed through the MCP-only, default-off memorysmith_agent_invoke and memorysmith_agent_session_end tools (opt in via MemorySmith:Mcp:EnabledTools; handled by McpAgentToolHandler outside the catalog). Search input is plain text with optional tags/status/limit filters. Structured output via format=json or format=envelope returns retrieval envelopes with provider metadata.",
   "Status": 2,
   "Confidence": 0.9,
   "Tags": [
@@ -38,5 +38,5 @@
     }
   ],
   "UsageCount": 1,
-  "LastUpdated": "2026-06-01T20:25:33Z"
+  "LastUpdated": "2026-06-11T23:23:31Z"
 }

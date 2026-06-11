@@ -1,0 +1,33 @@
+{
+  "id": "tsk-0279-split-chattoolcatalog-buildtools-into-partials",
+  "key": "TSK-0279",
+  "title": "Split ChatToolCatalog.BuildTools (~900 lines) into per-domain partial class files",
+  "description": "ChatToolCatalog.cs is ~1,600 lines and its BuildTools method (~900 lines) defines all 22 tool descriptors inline, making review and merge painful (it was a conflict hotspot in PR #53/#54).\n\n### Approach\n- Make ChatToolCatalog a partial class; keep catalog plumbing (ctor, TryGet, McpTools/ChatTools/AgentTools views, ToolJsonOptions) in ChatToolCatalog.cs\n- Move descriptor construction into per-domain partials, e.g. ChatToolCatalog.SearchTools.cs (search/fetch/context pack), ChatToolCatalog.PageTools.cs, ChatToolCatalog.TaskTools.cs, ChatToolCatalog.MemoryWriteTools.cs, ChatToolCatalog.CodeSearchTools.cs, ChatToolCatalog.SourceTools.cs\n- BuildTools becomes a concatenation of per-domain builder methods; no behavior change\n\n### Acceptance criteria\n- ChatToolCatalogAndInterceptTests pass unchanged (22 tools, same names/risks/availability flags)\n- No file exceeds ~400 lines\n- git blame-friendly: pure moves, no descriptor edits in the same commit",
+  "type": "Refactor",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "AgentSmith",
+  "labels": [
+    "refactor",
+    "chat-tools",
+    "maintainability"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-06-11T23:21:24.0000000Z",
+  "updatedAtUtc": "2026-06-11T23:21:24.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

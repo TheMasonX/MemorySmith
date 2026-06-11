@@ -1,7 +1,7 @@
 {
   "Id": "project-wiki-semantic-search-gap",
   "Title": "Semantic Search Gap",
-  "Content": "The semantic search path has known gaps. When ONNX embeddings are unavailable (model missing, provider init failure, dimension mismatch), the system falls back silently to token-based scoring with alias expansion \u2014 the legacy JSON response shape does not surface provider metadata, so clients may not realize embeddings didn't run. The alias dictionary (SearchAliases in MemoryApplicationService) is hand-curated against the project wiki, meaning the in-repo MRR test (MRR>=0.55) overfits to the fixture corpus. The WordPiece tokenizer hardcodes lowercasing (wrong for cased models), lacks Unicode NFC normalization, and does not split CJK characters. Code search stores embeddings as JSON TEXT (not BLOB), uses a scalar dot product (no SIMD), and performs brute-force scan unless the SQL prefilter engages. TSK-0199 tracks the ANN migration plan; TSK-0200 tracks provider metadata surfacing.",
+  "Content": "The semantic scoring path has known gaps. Since TSK-0271 removed the standalone memorysmith_semantic_search tool, the semantic signal runs only inside hybrid search (RRF fusion) and the code-search ranker — the gaps below apply to that fused path. When ONNX embeddings are unavailable (model missing, provider init failure, dimension mismatch), the system falls back silently to token-based scoring with alias expansion — the legacy JSON response shape does not surface provider metadata, so clients may not realize embeddings didn't run. The alias dictionary (SearchAliases in MemoryApplicationService) is hand-curated against the project wiki, meaning the in-repo MRR test (MRR>=0.55) overfits to the fixture corpus. The WordPiece tokenizer hardcodes lowercasing (wrong for cased models), lacks Unicode NFC normalization, and does not split CJK characters. Code search stores vector embeddings as JSON TEXT (not BLOB), uses a scalar dot product (no SIMD), and performs brute-force scan unless the SQL prefilter engages. TSK-0199 tracks the ANN migration plan; TSK-0200 tracks provider metadata surfacing.",
   "Status": 2,
   "Confidence": 0.85,
   "Tags": [
@@ -21,7 +21,7 @@
   ],
   "Conflicts": [],
   "UsageCount": 2,
-  "LastUpdated": "2026-06-01T20:25:33Z",
+  "LastUpdated": "2026-06-11T23:23:31Z",
   "SourceLinks": [
     {
       "Label": "MemoryApplicationService.cs (SemanticSearchAsync)",

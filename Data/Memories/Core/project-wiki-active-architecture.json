@@ -1,7 +1,7 @@
 {
   "Id": "project-wiki-active-architecture",
   "Title": "Active Architecture Boundary",
-  "Content": "MemorySmith uses MemorySmith.App as the single deployable host. The app hosts the Blazor UI, REST API, file storage registration, background maintenance, and health endpoints in one process. Legacy MemorySmith.Worker and MemorySmith.Dashboard code was removed after migration, and remaining references are historical documentation only.",
+  "Content": "MemorySmith uses MemorySmith.App as the single deployable host. The app hosts the Blazor UI, REST API, file storage registration, background maintenance, and health endpoints in one process. Legacy MemorySmith.Worker and MemorySmith.Dashboard code was removed after migration, and remaining references are historical documentation only. The app pipeline (Program.cs) includes Serilog with a structured file sink and request-logging enrichment (TraceId/CorrelationId), an exception handler emitting application/problem+json with traceId, security-headers middleware (CSP, X-Content-Type-Options, Referrer-Policy, X-Frame-Options, Permissions-Policy, X-Correlation-Id), OpenTelemetry tracing/metrics, and a settings-override file that AdminSettingsService writes and the host reloads.",
   "Status": 2,
   "Confidence": 0.95,
   "Tags": [
@@ -16,9 +16,17 @@
   ],
   "Conflicts": [],
   "SourceLinks": [
-    { "Label": "Program.cs", "Uri": "%MemorySmithRepo%MemorySmith.App/Program.cs", "StartLine": 1, "EndLine": 50 },
-    { "Label": "App project", "Uri": "%MemorySmithRepo%MemorySmith.App/MemorySmith.App.csproj" }
+    {
+      "Label": "Program.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Program.cs",
+      "StartLine": 1,
+      "EndLine": 50
+    },
+    {
+      "Label": "App project",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/MemorySmith.App.csproj"
+    }
   ],
   "UsageCount": 4,
-  "LastUpdated": "2026-05-12T00:00:00Z"
+  "LastUpdated": "2026-06-11T23:23:31Z"
 }

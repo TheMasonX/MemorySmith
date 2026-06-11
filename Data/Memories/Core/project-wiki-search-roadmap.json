@@ -1,7 +1,7 @@
 {
   "Id": "project-wiki-search-roadmap",
   "Title": "Search Tools Current State",
-  "Content": "Search is central to MemorySmith's usefulness and currently has four main memory retrieval modes. Lexical search is the default baseline and uses Lucene.NET StandardAnalyzer tokenization with weighted title/tag/reference/content scoring. Semantic search uses an optional ONNX embedding ranker when model and vocabulary assets are available, otherwise it reports local token-scoring fallback metadata. Hybrid search combines Lucene.NET lexical analysis with the active semantic signal using reciprocal rank fusion. Context packs use hybrid roots plus references, conflicts, and optional backlinks to build bounded agent-ready bundles. Retrieval warning propagation is additive: stale, tag, relationship, and source diagnostics remain visible in search/tool outputs without changing ranking or hiding records.",
+  "Content": "Search is central to MemorySmith's usefulness and currently has three main memory retrieval modes plus a fused semantic signal. Lexical search is the default baseline and uses Lucene.NET StandardAnalyzer tokenization with weighted title/tag/reference/content scoring. Semantic search no longer ships as a standalone tool (removed by TSK-0271): the semantic signal — an optional ONNX embedding ranker when model and vocabulary assets are available, otherwise local token-scoring fallback with metadata — now contributes exclusively inside hybrid search. Hybrid search combines Lucene.NET lexical analysis with the active semantic signal using reciprocal rank fusion and is the recommended default routing for agents and the chat planner. Context packs use hybrid roots plus references, conflicts, and optional backlinks to build bounded agent-ready bundles. Retrieval warning propagation is additive: stale, tag, relationship, and source diagnostics remain visible in search/tool outputs without changing ranking or hiding records.",
   "Status": 2,
   "Confidence": 0.92,
   "Tags": [
@@ -34,5 +34,5 @@
       "Uri": "%MemorySmithRepo%MemorySmith.App/Services/MemoryQueries.cs"
     }
   ],
-  "LastUpdated": "2026-05-22T09:00:00Z"
+  "LastUpdated": "2026-06-11T23:23:31Z"
 }

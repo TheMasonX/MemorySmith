@@ -1,0 +1,33 @@
+{
+  "id": "tsk-0280-shared-testwebapplicationfactory-helper",
+  "key": "TSK-0280",
+  "title": "Extract a shared TestWebApplicationFactory helper for integration tests",
+  "description": "Seven test files each carry a private CreateFactory(...) that duplicates the same WebApplicationFactory<Program> configuration (temp DataPath/EventLogPath, Maintenance:Enabled=false, isolated SQLite connection string, DataProtectionKeysPath, audit/history paths, admin bootstrap via /api/admin/setup, admin login helper). Drift between copies has already caused test-only auth bugs (see the Auth:AnonymousAccess=Editor incident fixed in 8c30efb2).\n\n### Approach\n- Add MemorySmith.Tests/TestHost/MemorySmithTestFactory.cs: static Create(string memoryPath, IReadOnlyDictionary<string,string?>? overrides = null, bool bootstrapAdmin = true)\n- Include CreateAdminClientAsync(factory) (login as the bootstrapped admin; cookie carried automatically)\n- Migrate the seven call sites file-by-file; keep per-file overrides as the overrides dictionary\n\n### Acceptance criteria\n- All existing integration tests pass unchanged\n- A single source of truth for test-host configuration; no per-file CreateFactory copies remain\n- Bootstrapped admin credentials defined exactly once",
+  "type": "Refactor",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "AgentSmith",
+  "labels": [
+    "refactor",
+    "tests",
+    "maintainability"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-06-11T23:21:24.0000000Z",
+  "updatedAtUtc": "2026-06-11T23:21:24.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

@@ -2,22 +2,7 @@
   "id": "tsk-0252-add-skill-contract-lint-script-for-inheritance-and-output-rules",
   "key": "TSK-0252",
   "title": "Add skill contract lint script for inheritance and output rules",
-  "description": "Problem: skill markdown contracts can drift over time, especially inheritance declarations and required output sections. Manual checks are inconsistent and expensive in tokens during review passes.
-
-Desired outcome: add a lightweight verifier that enforces key skill contract rules and can run in local validation.
-
-Scope:
-- In scope: add Scripts/Test-SkillContracts.ps1.
-- In scope: verify implementation-oriented skills include task-core-loop inheritance text.
-- In scope: verify user-invocable skills include an explicit output section.
-- In scope: produce actionable failure messages suitable for CI/local use.
-- Out of scope: semantic NLP linting of all prompt text.
-
-Validation:
-- Positive run against current skills baseline.
-- Negative smoke case proving the script fails when a required section is removed.
-
-Confidence target: 90%.",
+  "description": "Problem: skill markdown contracts can drift over time, especially inheritance declarations and required output sections. Manual checks are inconsistent and expensive in tokens during review passes.\n\nDesired outcome: add a lightweight verifier that enforces key skill contract rules and can run in local validation.\n\nScope:\n- In scope: add Scripts/Test-SkillContracts.ps1.\n- In scope: verify implementation-oriented skills include task-core-loop inheritance text.\n- In scope: verify user-invocable skills include an explicit output section.\n- In scope: produce actionable failure messages suitable for CI/local use.\n- Out of scope: semantic NLP linting of all prompt text.\n\nValidation:\n- Positive run against current skills baseline.\n- Negative smoke case proving the script fails when a required section is removed.\n\nConfidence target: 90%.",
   "type": "Task",
   "status": "Backlog",
   "priority": "Medium",

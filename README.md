@@ -46,7 +46,7 @@ User-created markdown files under `Data/Pages/` are valid project wiki content a
 | `project-wiki-ui-architecture` | Blazor Server pages, MudBlazor 9.4, CSS conventions |
 | `project-wiki-semantic-ui-current` | `/memories` workbench feature set |
 | `project-wiki-mcp-integration` | MCP endpoint setup, VS Code `mcp.json` config |
-| `project-wiki-mcp-search-tools-current` | All seven MCP tool signatures and usage notes |
+| `project-wiki-mcp-search-tools-current` | Chat/MCP tool catalog (22 tools): signatures, governance, and usage notes |
 | `project-wiki-mcp-context-pack` | `memorysmith_context_pack` deep-dive |
 | `project-wiki-onnx-semantic-embeddings` | Optional ONNX Runtime embedding ranker and exact cosine semantic fallback path |
 | `project-wiki-hybrid-search-rrf` | Lucene.NET + semantic RRF fusion |

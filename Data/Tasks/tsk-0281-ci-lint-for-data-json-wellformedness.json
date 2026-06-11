@@ -1,0 +1,33 @@
+{
+  "id": "tsk-0281-ci-lint-for-data-json-wellformedness",
+  "key": "TSK-0281",
+  "title": "Add CI lint for Data/**/*.json well-formedness (strict JSON, no raw control characters)",
+  "description": "Seven task records under Data/Tasks contained raw (unescaped) newlines inside JSON strings, which fail strict JSON parsing. TaskDomainService surfaces them as HasLoadError=true and refuses edits ('malformed JSON and cannot be edited until fixed'), so the records were dead weight in the live wiki until repaired (fixed in this commit: tsk-0218, 0220, 0221, 0222, 0224, 0251, 0252).\n\n### Approach\n- Add a small script (Scripts/validate_data_json.py or a dotnet test) that strict-parses every Data/**/*.json and fails on parse errors, raw control characters in strings, or duplicate task keys\n- Wire it into the build-and-test CI job (fast, no app boot)\n- Optionally extend to Data/Memories records (complements TSK-0003's schema validation)\n\n### Acceptance criteria\n- CI fails when a malformed JSON record is committed\n- Validator runs in under a few seconds and reports the offending file and position",
+  "type": "Feature",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
+  "assigneeCustomText": null,
+  "reporter": "AgentSmith",
+  "labels": [
+    "ci",
+    "data-quality",
+    "tasks"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-06-11T23:21:24.0000000Z",
+  "updatedAtUtc": "2026-06-11T23:21:24.0000000Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

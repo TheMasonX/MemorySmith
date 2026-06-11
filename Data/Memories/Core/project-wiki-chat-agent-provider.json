@@ -1,6 +1,6 @@
 {
   "Id": "project-wiki-chat-agent-provider",
-  "Content": "MemorySmith chat is provider-based with two implementations. OllamaChatProvider uses /api/chat with stream=true for NDJSON streaming, /api/tags for model discovery, and now sends num_ctx for context window governance. It handles malformed NDJSON lines gracefully (try/catch per line). GitHubCopilotChatProvider uses GitHub.Copilot.SDK with token auth resolved from configurable env vars (GH_TOKEN, COPILOT_API_KEY fallback chain). MemoryChatAgent orchestrates: context preloading via ChatContextPlanner, tool call interception via ChatIntentInterceptor, a shared ChatToolCatalog (22+ tools), streaming with render throttle (4-8 Hz StateHasChanged), and an agent-write proposal workflow with approval modes. Provider-native tool calling is available as a capability upgrade path. The chat agent writes transcripts for the training harness when ChatTranscriptEnabled is true. Chat sessions persist to browser localStorage with configurable retention.",
+  "Content": "MemorySmith chat is provider-based with two implementations. OllamaChatProvider uses /api/chat with stream=true for NDJSON streaming, /api/tags for model discovery, and now sends num_ctx for context window governance. It handles malformed NDJSON lines gracefully (try/catch per line). GitHubCopilotChatProvider uses GitHub.Copilot.SDK with token auth resolved from configurable env vars (GH_TOKEN, COPILOT_API_KEY fallback chain). MemoryChatAgent orchestrates: context preloading via ChatContextPlanner, tool call interception via ChatIntentInterceptor, a shared ChatToolCatalog (22+ tools), streaming with render throttle (4-8 Hz StateHasChanged), and an agent-write proposal workflow with approval modes. Provider-native tool calling is available as a capability upgrade path. The chat agent writes transcripts for the training harness when ChatTranscriptEnabled is true. Chat sessions persist to browser localStorage with configurable retention. AgentSessionService adds multi-turn scoped sub-agent sessions behind the MCP-only memorysmith_agent_invoke tool: scope intersection (read_only/standard/full/custom; the remote-hardened security profile forces read-only and caps concurrent sessions at 1), GPU slot scheduling that honors MaxParallelOllamaRequests, per-session idle expiry via AgentSessionCleanupService, and timeout results carrying a TimeoutPhase field (queue_wait when no GPU slot was acquired, inference when the model call exceeded its budget). Sessions are in-memory by default; MemorySmith:AgentSession:PersistSessions=true selects the SQLite-backed SqliteAgentSessionStore (TSK-0278) so sessions survive restarts.",
   "Title": "Chat Agent Provider Architecture",
   "Status": 2,
   "Confidence": 0.88,
@@ -83,5 +83,5 @@
     }
   ],
   "UsageCount": 0,
-  "LastUpdated": "2026-06-01T20:25:33Z"
+  "LastUpdated": "2026-06-11T23:23:31Z"
 }
