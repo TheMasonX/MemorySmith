@@ -433,10 +433,9 @@ public class ChatModelProfileOptions
 public class AgentSessionOptions
 {
     /// <summary>
-    /// When true, sessions are persisted to SQLite and survive server restarts.
-    /// Default false (in-memory, ephemeral). Phase 2 feature.
-    /// AgentSessionService throws InvalidOperationException at startup if this is true
-    /// and no SqliteAgentSessionStore is registered.
+    /// When true, sessions are persisted to SQLite (SqliteAgentSessionStore, TSK-0278) and
+    /// survive server restarts. Default false (InMemoryAgentSessionStore, ephemeral).
+    /// Program.cs selects the store implementation from this flag at resolution time.
     /// </summary>
     public bool PersistSessions { get; set; }
 

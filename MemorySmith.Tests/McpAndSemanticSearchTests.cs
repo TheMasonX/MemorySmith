@@ -6,6 +6,7 @@ using MemorySmith.App.Services;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Data.Sqlite;
 
 namespace MemorySmith.Tests;
@@ -955,6 +956,134 @@ public class McpAndSemanticSearchTests
         var text = await ExtractFirstToolTextAsync(response);
         Assert.That(text, Does.Contain("Search Tools Current State"));
         Assert.That(text, Does.Contain("Semantic search"), "The search current-state record should describe semantic search behavior.");
+    }
+
+    // ── Agent session tools over MCP (McpAgentToolHandler) ───────────────────
+
+    [Test]
+    public async Task McpAgentTools_DisabledByDefault_NotListedAndCallRejected()
+    {
+        var dataPath = ProjectWikiFixture.CopyToTemp(_tempRoot);
+        await using var factory = CreateFactory(dataPath);
+        using var client = await CreateAdminClientAsync(factory);
+
+        var listResponse = await client.PostAsJsonAsync("/mcp", new
+        {
+            JsonRpc = "2.0",
+            Id = 1,
+            Method = "tools/list"
+        }, JsonSerializerOptions.Web);
+        listResponse.EnsureSuccessStatusCode();
+        using var listDocument = await JsonDocument.ParseAsync(await listResponse.Content.ReadAsStreamAsync());
+        var listedNames = listDocument.RootElement
+            .GetProperty("result").GetProperty("tools").EnumerateArray()
+            .Select(tool => tool.GetProperty("name").GetString())
+            .ToList();
+
+        var callResponse = await client.PostAsJsonAsync("/mcp", new
+        {
+            JsonRpc = "2.0",
+            Id = 2,
+            Method = "tools/call",
+            Params = new
+            {
+                Name = "memorysmith_agent_invoke",
+                Arguments = new { Message = "hello" }
+            }
+        }, JsonSerializerOptions.Web);
+        callResponse.EnsureSuccessStatusCode();
+        var callText = await ExtractFirstToolTextAsync(callResponse);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(listedNames, Does.Not.Contain("memorysmith_agent_invoke"),
+                "agent tools are Write-tier and default-off; tools/list must omit them until opted in");
+            Assert.That(listedNames, Does.Not.Contain("memorysmith_agent_session_end"));
+            Assert.That(callText, Does.Contain("disabled"),
+                "calling a default-off agent tool must be rejected with the governance message");
+        });
+    }
+
+    [Test]
+    public async Task McpAgentTools_WhenEnabled_ListedAndSessionEndDispatches()
+    {
+        var dataPath = ProjectWikiFixture.CopyToTemp(_tempRoot);
+        await using var factory = CreateFactory(dataPath, new Dictionary<string, string?>
+        {
+            ["MemorySmith:Mcp:EnabledTools:0"] = "memorysmith_agent_invoke",
+            ["MemorySmith:Mcp:EnabledTools:1"] = "memorysmith_agent_session_end"
+        });
+        using var client = await CreateAdminClientAsync(factory);
+
+        var listResponse = await client.PostAsJsonAsync("/mcp", new
+        {
+            JsonRpc = "2.0",
+            Id = 1,
+            Method = "tools/list"
+        }, JsonSerializerOptions.Web);
+        listResponse.EnsureSuccessStatusCode();
+        using var listDocument = await JsonDocument.ParseAsync(await listResponse.Content.ReadAsStreamAsync());
+        var listedNames = listDocument.RootElement
+            .GetProperty("result").GetProperty("tools").EnumerateArray()
+            .Select(tool => tool.GetProperty("name").GetString())
+            .ToList();
+
+        // session_end on an unknown session exercises the full dispatch + auth path without
+        // needing a live chat provider, and must signal failure programmatically (isError).
+        var endResponse = await client.PostAsJsonAsync("/mcp", new
+        {
+            JsonRpc = "2.0",
+            Id = 2,
+            Method = "tools/call",
+            Params = new
+            {
+                Name = "memorysmith_agent_session_end",
+                Arguments = new { Session_Id = "does-not-exist" }
+            }
+        }, JsonSerializerOptions.Web);
+        endResponse.EnsureSuccessStatusCode();
+        using var endDocument = await JsonDocument.ParseAsync(await endResponse.Content.ReadAsStreamAsync());
+        var endResult = endDocument.RootElement.GetProperty("result");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(listedNames, Does.Contain("memorysmith_agent_invoke"),
+                "opted-in agent tools must appear in tools/list with their schemas");
+            Assert.That(listedNames, Does.Contain("memorysmith_agent_session_end"));
+            Assert.That(endResult.GetProperty("isError").GetBoolean(), Is.True,
+                "ending an unknown session must signal an error result");
+            Assert.That(endResult.GetProperty("content")[0].GetProperty("text").GetString(),
+                Does.Contain("session_expired"));
+        });
+    }
+
+    // ── Agent session store selection (TSK-0278) ─────────────────────────────
+
+    [Test]
+    public async Task AgentSessionStore_DefaultsToInMemory()
+    {
+        var dataPath = ProjectWikiFixture.CopyToTemp(_tempRoot);
+        await using var factory = CreateFactory(dataPath);
+
+        var store = factory.Services.GetRequiredService<MemorySmith.App.Services.AgentSessions.IAgentSessionStore>();
+
+        Assert.That(store, Is.InstanceOf<MemorySmith.App.Services.AgentSessions.InMemoryAgentSessionStore>(),
+            "without MemorySmith:AgentSession:PersistSessions the ephemeral store must remain the default");
+    }
+
+    [Test]
+    public async Task AgentSessionStore_PersistSessionsTrue_SelectsSqliteStore()
+    {
+        var dataPath = ProjectWikiFixture.CopyToTemp(_tempRoot);
+        await using var factory = CreateFactory(dataPath, new Dictionary<string, string?>
+        {
+            ["MemorySmith:AgentSession:PersistSessions"] = "true"
+        });
+
+        var store = factory.Services.GetRequiredService<MemorySmith.App.Services.AgentSessions.IAgentSessionStore>();
+
+        Assert.That(store, Is.InstanceOf<MemorySmith.App.Services.AgentSessions.SqliteAgentSessionStore>(),
+            "PersistSessions=true must select the SQLite-backed store (TSK-0278)");
     }
 
     private WebApplicationFactory<Program> CreateFactory(string memoryPath, IReadOnlyDictionary<string, string?>? overrides = null)

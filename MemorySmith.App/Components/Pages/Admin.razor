@@ -175,17 +175,19 @@
         </MudTabPanel>
         <MudTabPanel Text="Models" Icon="@Icons.Material.Filled.SmartToy">
             <div class="admin-model-profiles" aria-label="Model profiles">
-                <MudTable Items="@_modelProfiles" Dense="true" Hover="true" Class="health-table admin-grid-table" RowsPerPage="25">
+                <MudTable Items="@_modelProfiles" Dense="true" Hover="true" Class="health-table admin-grid-table admin-models-table" RowsPerPage="25">
                     <HeaderContent>
                         <MudTh>Name</MudTh>
                         <MudTh>Provider</MudTh>
                         <MudTh>Model</MudTh>
+                        <MudTh>Assignments</MudTh>
                         <MudTh>Actions</MudTh>
                     </HeaderContent>
                     <RowTemplate>
                         <MudTd DataLabel="Name">@context.Name</MudTd>
                         <MudTd DataLabel="Provider">@context.Provider</MudTd>
                         <MudTd DataLabel="Model">@context.Model</MudTd>
+                        <MudTd DataLabel="Assignments">@FormatProfileAssignments(context)</MudTd>
                         <MudTd DataLabel="Action">
                             <div class="admin-row-actions">
                                 <MudTooltip Text="@DuplicateModelTooltip(context)">
@@ -203,22 +205,53 @@
                     <PagerContent><MudTablePager /></PagerContent>
                 </MudTable>
 
-                <div class="admin-model-editor">
-                    <MudSelect T="string" Value="@_modelProfileEditor.Provider" ValueChanged="OnModelProfileProviderChangedAsync" Label="Provider" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="admin-model-select-field">
-                        @foreach (var provider in ChatProviders)
-                        {
-                            <MudSelectItem T="string" Value="@provider.Name">@provider.Name</MudSelectItem>
-                        }
-                    </MudSelect>
-                    <MudSelect T="string" Value="@_modelProfileEditor.Model" ValueChanged="OnModelProfileModelChanged" Label="Model" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="admin-model-select-field" Disabled="@(_isBusy || _modelProfileModelOptions.Count == 0)">
-                        @foreach (var model in _modelProfileModelOptions)
-                        {
-                            <MudSelectItem T="string" Value="@model.Name">@model.Name</MudSelectItem>
-                        }
-                    </MudSelect>
+                <div class="admin-model-editor" aria-label="Model profile editor">
+                    <div class="admin-model-editor-header">
+                        <strong>@(_modelProfileEditor.IsNew ? "Create model profile" : $"Edit profile: {_modelProfileEditor.Name}")</strong>
+                        <div class="admin-model-select-meta">
+                            <small aria-live="polite">@ModelDiscoveryStatus</small>
+                            <MudTooltip Text="Refresh the provider's model list">
+                                <MudIconButton Icon="@Icons.Material.Filled.Refresh" Size="Size.Small" Disabled="@(_isBusy || _isLoadingModelOptions)" OnClick="RefreshModelOptionsAsync" aria-label="Refresh provider models" title="Refresh models" />
+                            </MudTooltip>
+                        </div>
+                    </div>
+                    <div class="admin-model-editor-grid">
+                        <MudTextField T="string" @bind-Value="_modelProfileEditor.Name" Label="Name" Required="true" RequiredError="Profile name is required." Variant="Variant.Outlined" Margin="Margin.Dense" Class="admin-model-select-field" aria-label="Profile name" />
+                        <MudSelect T="string" Value="@_modelProfileEditor.Provider" ValueChanged="OnModelProfileProviderChangedAsync" Label="Provider" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="admin-model-select-field">
+                            @foreach (var provider in ChatProviders)
+                            {
+                                <MudSelectItem T="string" Value="@provider.Name">@provider.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                        <MudSelect T="string" Value="@_modelProfileEditor.Model" ValueChanged="OnModelProfileModelChanged" Label="Model" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="admin-model-select-field" Disabled="@(_isBusy || _modelProfileModelOptions.Count == 0)">
+                            @foreach (var model in _modelProfileModelOptions)
+                            {
+                                <MudSelectItem T="string" Value="@model.Name">@model.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                        <MudSelect T="string" Value="@SelectedContextPresetValue" ValueChanged="OnContextPresetChangedAsync" Label="Context window" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Class="admin-model-select-field">
+                            @foreach (var preset in ContextWindowPresetOptions)
+                            {
+                                <MudSelectItem T="string" Value="@preset.Key">@preset.Label</MudSelectItem>
+                            }
+                            @if (HasCustomContextWindow)
+                            {
+                                <MudSelectItem T="string" Value="@("custom")" Disabled="true">@($"Custom ({_modelProfileEditor.ContextWindowTokens:N0} tokens)")</MudSelectItem>
+                            }
+                        </MudSelect>
+                        <MudTextField T="string" @bind-Value="_modelProfileEditor.AllowedRolesText" Label="Allowed roles" HelperText="Comma-separated: Viewer, Editor, Admin. Empty allows every role." Variant="Variant.Outlined" Margin="Margin.Dense" Class="admin-model-select-field" aria-label="Allowed roles" />
+                        <MudTextField T="string" @bind-Value="_modelProfileEditor.Description" Label="Description" Variant="Variant.Outlined" Margin="Margin.Dense" Lines="2" Class="admin-model-select-field" aria-label="Profile description" />
+                    </div>
+                    <div class="admin-model-switches">
+                        <MudSwitch T="bool" @bind-Value="_modelProfileEditor.Enabled" Label="Enabled" Color="Color.Primary" />
+                        <MudSwitch T="bool" @bind-Value="_modelProfileEditor.IsDefault" Label="Default chat profile" Color="Color.Primary" />
+                        <MudSwitch T="bool" @bind-Value="_modelProfileEditor.IsMaintenanceRunDefault" Label="Maintenance runs default" Color="Color.Primary" />
+                        <MudSwitch T="bool" @bind-Value="_modelProfileEditor.IsProposalReviewDefault" Label="Proposal reviews default" Color="Color.Primary" />
+                        <MudSwitch T="bool" @bind-Value="_modelProfileEditor.IsAdminMaintenanceChatDefault" Label="Admin maintenance chat default" Color="Color.Primary" />
+                    </div>
                     <div class="admin-model-editor-actions">
                         <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@_isBusy" OnClick="SaveModelProfileAsync">Save</MudButton>
-                        <MudButton Variant="Variant.Outlined" Disabled="@_isBusy" OnClick="@(() => _modelProfileEditor = ModelProfileEditor.New())">Reset</MudButton>
+                        <MudButton Variant="Variant.Outlined" Disabled="@_isBusy" OnClick="StartNewModelProfile">Reset</MudButton>
                     </div>
                 </div>
             </div>
@@ -1133,7 +1166,7 @@
                 _modelProfileEditor.IsProposalReviewDefault,
                 _modelProfileEditor.IsAdminMaintenanceChatDefault,
                 ParseRoleText(_modelProfileEditor.AllowedRolesText),
-                _modelProfileEditor.Description), CancellationToken.None);
+                string.IsNullOrWhiteSpace(_modelProfileEditor.Description) ? null : _modelProfileEditor.Description), CancellationToken.None);
             if (!result.Succeeded)
             {
                 Snackbar.Add(result.Error ?? "Model profile could not be saved.", Severity.Error);
@@ -2260,7 +2293,7 @@
         public bool IsProposalReviewDefault { get; set; }
         public bool IsAdminMaintenanceChatDefault { get; set; }
         public string AllowedRolesText { get; set; } = string.Empty;
-        public string? Description { get; set; }
+        public string Description { get; set; } = string.Empty;
         public bool IsNew => string.IsNullOrWhiteSpace(Id);
 
         public static ModelProfileEditor New() => new();
@@ -2278,7 +2311,7 @@
             IsProposalReviewDefault = profile.IsProposalReviewDefault,
             IsAdminMaintenanceChatDefault = profile.IsAdminMaintenanceChatDefault,
             AllowedRolesText = string.Join(", ", profile.AllowedRoles),
-            Description = profile.Description
+            Description = profile.Description ?? string.Empty
         };
     }
 

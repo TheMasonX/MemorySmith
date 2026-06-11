@@ -123,4 +123,23 @@ public sealed class AgentSession
         Status = status;
         LastAccessedAt = DateTimeOffset.UtcNow;
     }
+
+    /// <summary>
+    /// Restores mutable state captured by a persistent store (<see cref="SqliteAgentSessionStore"/>).
+    /// Called exactly once, immediately after construction and before the instance is published to
+    /// any other thread, so no lock is required. The embedded <see cref="_lock"/> is intentionally
+    /// not persisted — every rehydrated instance gets a fresh one from the field initializer.
+    /// </summary>
+    internal void RestorePersistedState(
+        int turnCount,
+        DateTimeOffset lastAccessedAt,
+        AgentSessionStatus status,
+        IEnumerable<ChatMessage> history)
+    {
+        TurnCount = turnCount;
+        LastAccessedAt = lastAccessedAt;
+        Status = status;
+        _history.Clear();
+        _history.AddRange(history);
+    }
 }

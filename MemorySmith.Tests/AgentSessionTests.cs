@@ -5,6 +5,7 @@ using MemorySmith.App.Services;
 using MemorySmith.App.Services.AgentSessions;
 using MemorySmith.App.Services.Training;
 using MemorySmith.Core.Models;
+using MemorySmith.Storage;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -260,6 +261,199 @@ public class AgentSessionTests
 
         var candidates = await store.GetActiveAndIdleAsync(CancellationToken.None);
         Assert.That(candidates.Count, Is.EqualTo(2), "GetActiveAndIdleAsync should return Active and Idle only");
+    }
+
+    // ── SqliteAgentSessionStore (TSK-0278) ────────────────────────────────────
+
+    [Test]
+    public async Task SqliteStore_SaveAndGet_ReturnsSameInstance()
+    {
+        var store = CreateSqliteStore();
+        var session = CreateTestSession("alice");
+
+        await store.SaveAsync(session, CancellationToken.None);
+        var retrieved = await store.GetAsync(session.SessionId, CancellationToken.None);
+
+        Assert.That(retrieved, Is.SameAs(session),
+            "While the process is alive the store must return the identical instance — " +
+            "AgentSession's embedded lock requires instance identity across concurrent callers");
+    }
+
+    [Test]
+    public async Task SqliteStore_SurvivesRestart_RehydratesAllFields()
+    {
+        var dbPath = Path.Combine(_tempDir, "agent-sessions.db");
+        var store = CreateSqliteStore(dbPath);
+        var session = new AgentSession
+        {
+            SessionId = Guid.NewGuid().ToString("N"),
+            PrincipalId = "alice",
+            RequestedScope = "custom",
+            EffectiveToolNames = ["memorysmith_hybrid_search", "memorysmith_page_search"],
+            ModelOverride = "qwen3:8b",
+            ProviderOverride = "Ollama",
+            CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-5),
+            MaxTurns = 7,
+            TimeoutSeconds = 90,
+            IdleTimeoutMinutes = 15,
+            SystemPromptAddendum = "Prefer terse answers.",
+            ParentSessionId = "parent-123",
+            NestingDepth = 1,
+        };
+        session.AppendMessages("first question", "first answer");
+        session.AppendMessages("second question", "second answer");
+        session.IncrementTurn();
+        session.IncrementTurn();
+        session.SetStatus(AgentSessionStatus.Idle);
+        await store.SaveAsync(session, CancellationToken.None);
+
+        // A brand-new store over the same database file simulates a server restart:
+        // the identity map is empty, so the session must be rehydrated from SQLite.
+        var restarted = CreateSqliteStore(dbPath);
+        var loaded = await restarted.GetAsync(session.SessionId, CancellationToken.None);
+
+        Assert.That(loaded, Is.Not.Null, "session must survive a restart when persisted");
+        Assert.That(loaded, Is.Not.SameAs(session), "restart must produce a rehydrated instance");
+        Assert.Multiple(() =>
+        {
+            Assert.That(loaded!.SessionId, Is.EqualTo(session.SessionId));
+            Assert.That(loaded.PrincipalId, Is.EqualTo("alice"));
+            Assert.That(loaded.RequestedScope, Is.EqualTo("custom"));
+            Assert.That(loaded.EffectiveToolNames,
+                Is.EqualTo(new[] { "memorysmith_hybrid_search", "memorysmith_page_search" }));
+            Assert.That(loaded.ModelOverride, Is.EqualTo("qwen3:8b"));
+            Assert.That(loaded.ProviderOverride, Is.EqualTo("Ollama"));
+            Assert.That(loaded.CreatedAt, Is.EqualTo(session.CreatedAt));
+            Assert.That(loaded.MaxTurns, Is.EqualTo(7));
+            Assert.That(loaded.TimeoutSeconds, Is.EqualTo(90));
+            Assert.That(loaded.IdleTimeoutMinutes, Is.EqualTo(15));
+            Assert.That(loaded.SystemPromptAddendum, Is.EqualTo("Prefer terse answers."));
+            Assert.That(loaded.ParentSessionId, Is.EqualTo("parent-123"));
+            Assert.That(loaded.NestingDepth, Is.EqualTo(1));
+            Assert.That(loaded.TurnCount, Is.EqualTo(2));
+            Assert.That(loaded.LastAccessedAt, Is.EqualTo(session.LastAccessedAt));
+            Assert.That(loaded.Status, Is.EqualTo(AgentSessionStatus.Idle));
+            Assert.That(loaded.History.Select(m => (m.Role, m.Content)), Is.EqualTo(new[]
+            {
+                ("user", "first question"), ("assistant", "first answer"),
+                ("user", "second question"), ("assistant", "second answer"),
+            }));
+        });
+    }
+
+    [Test]
+    public async Task SqliteStore_ConcurrentColdGets_ConvergeOnSingleInstance()
+    {
+        var dbPath = Path.Combine(_tempDir, "agent-sessions.db");
+        var store = CreateSqliteStore(dbPath);
+        var session = CreateTestSession("alice");
+        await store.SaveAsync(session, CancellationToken.None);
+
+        var restarted = CreateSqliteStore(dbPath);
+        var gets = await Task.WhenAll(
+            Task.Run(() => restarted.GetAsync(session.SessionId, CancellationToken.None)),
+            Task.Run(() => restarted.GetAsync(session.SessionId, CancellationToken.None)),
+            Task.Run(() => restarted.GetAsync(session.SessionId, CancellationToken.None)));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(gets[0], Is.Not.Null);
+            Assert.That(gets[1], Is.SameAs(gets[0]),
+                "concurrent cold misses must converge on one instance (embedded-lock identity)");
+            Assert.That(gets[2], Is.SameAs(gets[0]));
+        });
+    }
+
+    [Test]
+    public async Task SqliteStore_Delete_RemovesDurably()
+    {
+        var dbPath = Path.Combine(_tempDir, "agent-sessions.db");
+        var store = CreateSqliteStore(dbPath);
+        var session = CreateTestSession("alice");
+
+        await store.SaveAsync(session, CancellationToken.None);
+        await store.DeleteAsync(session.SessionId, CancellationToken.None);
+
+        var sameStore = await store.GetAsync(session.SessionId, CancellationToken.None);
+        var restarted = await CreateSqliteStore(dbPath).GetAsync(session.SessionId, CancellationToken.None);
+        Assert.Multiple(() =>
+        {
+            Assert.That(sameStore, Is.Null, "deleted session must not be retrievable");
+            Assert.That(restarted, Is.Null, "deletion must be durable across restart");
+        });
+    }
+
+    [Test]
+    public async Task SqliteStore_GetActiveCount_OnlyCountsActiveAndIdle_AcrossRestart()
+    {
+        var dbPath = Path.Combine(_tempDir, "agent-sessions.db");
+        var store = CreateSqliteStore(dbPath);
+        var active = CreateTestSession("alice");
+        var closed = CreateTestSession("alice");
+        closed.SetStatus(AgentSessionStatus.Closed);
+        var otherPrincipal = CreateTestSession("bob");
+        await store.SaveAsync(active, CancellationToken.None);
+        await store.SaveAsync(closed, CancellationToken.None);
+        await store.SaveAsync(otherPrincipal, CancellationToken.None);
+
+        var liveCount = await store.GetActiveCountForPrincipalAsync("alice", CancellationToken.None);
+        var restartedCount = await CreateSqliteStore(dbPath)
+            .GetActiveCountForPrincipalAsync("alice", CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(liveCount, Is.EqualTo(1), "closed sessions and other principals must not count");
+            Assert.That(restartedCount, Is.EqualTo(1), "the cap must survive a restart");
+        });
+    }
+
+    [Test]
+    public async Task SqliteStore_GetActiveAndIdle_PrefersLiveInstanceState()
+    {
+        var store = CreateSqliteStore();
+        var active = CreateTestSession("alice");
+        var idle = CreateTestSession("alice");
+        idle.SetStatus(AgentSessionStatus.Idle);
+        var closingLater = CreateTestSession("alice");
+        await store.SaveAsync(active, CancellationToken.None);
+        await store.SaveAsync(idle, CancellationToken.None);
+        await store.SaveAsync(closingLater, CancellationToken.None);
+
+        // Mutate the live instance WITHOUT saving: the persisted row still says Active, but the
+        // store must trust the fresher in-process instance and exclude it.
+        closingLater.SetStatus(AgentSessionStatus.Closed);
+
+        var candidates = await store.GetActiveAndIdleAsync(CancellationToken.None);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(candidates, Has.Count.EqualTo(2));
+            Assert.That(candidates, Does.Contain(active).And.Contain(idle));
+            Assert.That(candidates, Does.Not.Contain(closingLater),
+                "live instance state must win over a stale persisted row");
+        });
+    }
+
+    [Test]
+    public void PersistSessionsTrue_NoLongerThrowsAtServiceConstruction()
+    {
+        // TSK-0278: the Phase 2 startup guard is gone — PersistSessions=true is now a supported
+        // configuration backed by SqliteAgentSessionStore.
+        var options = new MemorySmithOptions();
+        options.AgentSession.PersistSessions = true;
+
+        Assert.DoesNotThrow(() => CreateService(options: options));
+    }
+
+    private SqliteAgentSessionStore CreateSqliteStore(string? dbPath = null)
+    {
+        var database = new SqliteMemorySmithDatabase(new DatabaseOptions
+        {
+            ConnectionString = $"Data Source={dbPath ?? Path.Combine(_tempDir, "agent-sessions.db")};Pooling=False",
+            ApplyMigrationsOnStartup = true,
+            UseWal = false
+        });
+        return new SqliteAgentSessionStore(database, NullLogger<SqliteAgentSessionStore>.Instance);
     }
 
     // ── AgentSessionService ───────────────────────────────────────────────────

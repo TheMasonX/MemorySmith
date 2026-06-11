@@ -135,14 +135,9 @@ public sealed class AgentSessionService
         _intentInterceptor = intentInterceptor;
         _logger = logger;
         _transcriptWriter = transcriptWriter;
-
-        // Startup guard: PersistSessions=true has no store implementation yet (Phase 2).
-        if (_options.Value.AgentSession.PersistSessions)
-        {
-            throw new InvalidOperationException(
-                "AgentSession:PersistSessions=true requires a SqliteAgentSessionStore which is not yet " +
-                "implemented (Phase 2). Set AgentSession:PersistSessions=false or implement Phase 2 persistence.");
-        }
+        // PersistSessions=true is satisfied by SqliteAgentSessionStore (TSK-0278): Program.cs
+        // registers it as the IAgentSessionStore implementation when the flag is set, so the
+        // former startup guard is gone.
     }
 
     // ── Public API ────────────────────────────────────────────────────────────

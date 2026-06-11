@@ -514,13 +514,22 @@ try
 
     // ── Agent session services (memorysmith_agent_invoke) ─────────────────────
     builder.Services.AddSingleton<IGpuSlotScheduler, OllamaGpuSlotScheduler>();
-    builder.Services.AddSingleton<IAgentSessionStore, InMemoryAgentSessionStore>();
+    // IAgentSessionStore: in-memory by default; SQLite-backed persistence (TSK-0278) is opt-in
+    // via MemorySmith:AgentSession:PersistSessions=true. Explicit factory so the choice is made
+    // from bound options at resolution time and tests can flip it with configuration alone.
+    builder.Services.AddSingleton<IAgentSessionStore>(sp =>
+        sp.GetRequiredService<IOptions<MemorySmithOptions>>().Value.AgentSession.PersistSessions
+            ? new SqliteAgentSessionStore(
+                sp.GetRequiredService<IMemorySmithDatabase>(),
+                sp.GetRequiredService<ILogger<SqliteAgentSessionStore>>())
+            : new InMemoryAgentSessionStore());
     // IChatTranscriptWriter: register ChatTranscriptWriter as the default implementation.
     // ChatTranscriptWriter.WriteAsync already no-ops when Training:ChatTranscriptEnabled=false,
     // so this is safe to register unconditionally. TryAddSingleton allows tests to override
     // with NullChatTranscriptWriter (or any other implementation) by registering before this.
     builder.Services.TryAddSingleton<IChatTranscriptWriter, ChatTranscriptWriter>();
     builder.Services.AddSingleton<AgentSessionService>();
+    builder.Services.AddSingleton<McpAgentToolHandler>();
     builder.Services.AddHostedService<AgentSessionCleanupService>();
     // ─────────────────────────────────────────────────────────────────────────
 

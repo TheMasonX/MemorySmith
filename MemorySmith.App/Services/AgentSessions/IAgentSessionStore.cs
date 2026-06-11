@@ -1,8 +1,10 @@
 namespace MemorySmith.App.Services.AgentSessions;
 
 /// <summary>
-/// Persistence contract for agent sessions. Default implementation is in-memory;
-/// opt in to SQLite-backed persistence via <c>AgentSession:PersistSessions=true</c> (Phase 2).
+/// Persistence contract for agent sessions. Default implementation is
+/// <see cref="InMemoryAgentSessionStore"/>; opt in to SQLite-backed persistence
+/// (<see cref="SqliteAgentSessionStore"/>, TSK-0278) via
+/// <c>MemorySmith:AgentSession:PersistSessions=true</c>.
 /// </summary>
 public interface IAgentSessionStore
 {

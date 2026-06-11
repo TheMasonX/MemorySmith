@@ -4,7 +4,8 @@ using System.Collections.Concurrent;
 
 /// <summary>
 /// Default in-memory session store. Sessions are lost on server restart.
-/// Enable <c>AgentSession:PersistSessions=true</c> in Phase 2 for SQLite-backed persistence.
+/// Set <c>MemorySmith:AgentSession:PersistSessions=true</c> to use the SQLite-backed
+/// <see cref="SqliteAgentSessionStore"/> instead (TSK-0278).
 /// </summary>
 public sealed class InMemoryAgentSessionStore : IAgentSessionStore
 {
