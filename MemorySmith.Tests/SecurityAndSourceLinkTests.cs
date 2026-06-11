@@ -175,6 +175,9 @@ public class SecurityAndSourceLinkTests
         {
             ["MemorySmith:Auth:AnonymousAccess"] = MemorySmithRoles.Viewer,
             ["MemorySmith:Auth:AuthenticatedDefaultRole"] = MemorySmithRoles.Viewer,
+            // Disable OpenLocalEditorCompatibility so anonymous callers don't get
+            // implicit Editor access (which would bypass the ReadSourceBundle check).
+            ["MemorySmith:Auth:OpenLocalEditorCompatibility"] = "false",
             // Enable sensitive-read tools so the auth check actually runs.
             // Without this, the MCP endpoint returns "disabled by MCP tool configuration"
             // instead of "not authorized to read source bundles".
