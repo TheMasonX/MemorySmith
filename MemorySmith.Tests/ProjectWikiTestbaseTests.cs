@@ -129,7 +129,12 @@ public class ProjectWikiTestbaseTests
                     {
                         ["MemorySmith:DataPath"] = dataPath,
                         ["MemorySmith:EventLogPath"] = Path.Combine(_tempRoot, "Events", "audit.log"),
-                        ["MemorySmith:Maintenance:Enabled"] = "false"
+                        ["MemorySmith:Maintenance:Enabled"] = "false",
+                        // Isolate the SQLite database to the temp directory to prevent
+                        // conflicts with the shared default path (../Data/memorysmith.db).
+                        ["MemorySmith:Database:ConnectionString"] = $"Data Source={Path.Combine(_tempRoot, "memorysmith.db")};Pooling=False",
+                        ["MemorySmith:DataProtectionKeysPath"] = Path.Combine(_tempRoot, "Keys"),
+                        ["MemorySmith:ApiKey"] = string.Empty
                     });
                 });
             });
