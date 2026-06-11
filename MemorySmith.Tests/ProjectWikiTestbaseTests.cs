@@ -144,7 +144,7 @@ public class ProjectWikiTestbaseTests
         // Bootstrap admin so the setup guard allows API requests on the fresh DB.
         using var setupBootstrapClient = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
         await setupBootstrapClient.PostAsJsonAsync("/api/admin/setup",
-            new SetupAdminRequest("Test Admin", "admin@memorysmith.test", "T3stAdmin@2026!"),
+            new SetupAdminRequest("Test Admin", "admin@memorysmith.test", "ThisIsAValidPassword123!"),
             JsonSerializerOptions.Web);
 
         using var client = factory.CreateClient();

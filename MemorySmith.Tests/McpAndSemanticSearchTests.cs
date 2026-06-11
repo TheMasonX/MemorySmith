@@ -994,9 +994,9 @@ public class McpAndSemanticSearchTests
         // Bootstrap admin setup so the setup guard allows API/MCP requests on the fresh DB.
         // Without this, MemorySmithRequestGuardMiddleware redirects all requests to /auth/setup.
         using var bootstrapClient = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
-        bootstrapClient.PostAsJsonAsync("/api/admin/setup",
-            new SetupAdminRequest("Test Admin", "admin@memorysmith.test", "T3stAdmin@2026!"),
-            JsonSerializerOptions.Web).GetAwaiter().GetResult();
+        Task.Run(() => bootstrapClient.PostAsJsonAsync("/api/admin/setup",
+            new SetupAdminRequest("Test Admin", "admin@memorysmith.test", "ThisIsAValidPassword123!"),
+            JsonSerializerOptions.Web)).GetAwaiter().GetResult();
 
         return factory;
     }
