@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using System.Security.Claims;
 using System.Text.Json.Nodes;
 using MemorySmith.App.Services;
@@ -811,6 +812,17 @@ public class AgentSessionTests
             await Task.Delay(System.Threading.Timeout.InfiniteTimeSpan, cancellationToken);
             throw new InvalidOperationException("unreachable");
         }
+
+        public async IAsyncEnumerable<ChatProviderChunk> StreamAsync(
+            ChatProviderRequest request,
+            [EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            await Task.Delay(System.Threading.Timeout.InfiniteTimeSpan, cancellationToken);
+            yield break;
+        }
+
+        public Task<IReadOnlyList<ChatModelSummary>> ListModelsAsync(CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyList<ChatModelSummary>>([]);
     }
 
     /// <summary>
