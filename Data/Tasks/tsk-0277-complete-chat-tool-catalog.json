@@ -4,7 +4,7 @@
   "title": "Implement full ChatToolCatalog: source_bundle, task/memory write tools, code search tools",
   "description": "The current ChatToolCatalog only has 10 tools. The existing test suite (ChatToolCatalogAndInterceptTests.cs) expects 20+ tools including source_bundle, find_by_source, task_create/update/set_status/add_comment/add_attachment, memory_create/update, code_search, code_search_status, code_search_merge_shard, task_list, task_get. These tests were written ahead of the catalog implementation and are currently failing.\n\n### Tools to add\n\n**SensitiveRead (EnabledByDefaultInMcp=false):**\n- memorysmith_source_bundle — read source file content for source-linked memories\n- memorysmith_find_by_source — back-map a source path to KB entries that reference it\n\n**ReadOnly (EnabledByDefaultInMcp=true):**\n- memorysmith_code_search — search indexed codebase chunks\n- memorysmith_code_search_status — get current code index build status\n- memorysmith_task_list — list/filter task records\n- memorysmith_task_get — fetch a specific task by ID\n\n**Write (EnabledByDefaultInMcp=false, AvailableInAgent=true — for future AgentTools):**\n- memorysmith_task_create — create a new task\n- memorysmith_task_update — update task fields\n- memorysmith_task_set_status — change task status\n- memorysmith_task_add_comment — add a comment to a task\n- memorysmith_task_add_attachment — add an attachment to a task\n- memorysmith_memory_create — create a new memory record\n- memorysmith_memory_update — update an existing memory record\n\n**Write (EnabledByDefaultInMcp=false, AvailableInAgent=false):**\n- memorysmith_code_search_merge_shard — merge a code search shard into the main index\n\n### Acceptance criteria\n- All tests in ChatToolCatalogAndInterceptTests.cs pass\n- ChatToolCatalog_DefaultsSensitiveAndWriteMcpToolsOff passes\n- ChatToolCatalog_ExposesWriteToolsOnlyToAgentMode passes (AgentTools includes task/memory write tools)\n- McpController tool list and governance match the expanded catalog\n- PR #53's AgentSessionService.AgentTools filter (AvailableInChat) still excludes write tools correctly",
   "type": "Feature",
-  "status": "Backlog",
+  "status": "Done",
   "priority": "High",
   "assigneeMode": "Directory",
   "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
@@ -25,15 +25,21 @@
       "author": "council-review",
       "body": "Pre-existing test failures: ChatToolCatalogAndInterceptTests.ChatToolCatalog_ExposesAllExpectedChatTools, ChatToolCatalog_ExposesWriteToolsOnlyToAgentMode, ChatToolCatalog_DefaultsSensitiveAndWriteMcpToolsOff all fail on master because the catalog only has 10 tools. These failures predate PR #53.",
       "createdAtUtc": "2026-06-03T22:00:00Z"
+    },
+    {
+      "id": "c-02e29097ef2e8ac1a7e2a1a752dbccd3",
+      "author": "hyperagent",
+      "body": "The catalog now contains all 22 tools (search/get/context_pack/source_bundle/find_by_source, page tools, task read+write tools, memory_create/update, code_search family) and ChatToolCatalogAndInterceptTests passes against it. Commit d81abe6f additionally fixed the DI registration so the runtime container actually receives the full catalog (a bare AddSingleton<ChatToolCatalog>() selected the filtered IEnumerable constructor and produced an EMPTY catalog at runtime since the PR #54 merge). Marking done.",
+      "createdAtUtc": "2026-06-11T21:01:54.0000000Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-06-03T22:00:00Z",
-  "updatedAtUtc": "2026-06-03T22:00:00Z",
-  "completedAtUtc": null,
-  "revision": 1,
+  "updatedAtUtc": "2026-06-11T21:01:54.0000000Z",
+  "completedAtUtc": "2026-06-11T21:01:54.0000000Z",
+  "revision": 2,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

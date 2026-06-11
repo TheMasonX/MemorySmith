@@ -248,7 +248,7 @@ public class McpAndSemanticSearchTests
             ["MemorySmith:Chat:AgentWritesEnabled"] = "true",
             ["MemorySmith:Chat:AgentWriteApprovalMode"] = AgentWriteApprovalModes.Manual
         });
-        using var client = factory.CreateClient();
+        using var client = await CreateAdminClientAsync(factory);
 
         var response = await client.PostAsJsonAsync("/mcp", new
         {
@@ -284,7 +284,7 @@ public class McpAndSemanticSearchTests
             ["MemorySmith:Mcp:EnabledTools:3"] = "memorysmith_task_add_comment",
             ["MemorySmith:Mcp:EnabledTools:4"] = "memorysmith_task_add_attachment"
         });
-        using var client = factory.CreateClient();
+        using var client = await CreateAdminClientAsync(factory);
 
         var listToolsResponse = await client.PostAsJsonAsync("/mcp", new
         {
@@ -974,17 +974,9 @@ public class McpAndSemanticSearchTests
                     ["MemorySmith:Database:ConnectionString"] = $"Data Source={Path.Combine(_tempRoot, "memorysmith.db")};Pooling=False",
                     ["MemorySmith:DataProtectionKeysPath"] = Path.Combine(_tempRoot, "Keys"),
                     ["MemorySmith:Audit:JsonlPath"] = Path.Combine(_tempRoot, "Events", "audit-{yyyy}-W{week}.jsonl"),
-                    ["MemorySmith:History:RootPath"] = Path.Combine(_tempRoot, ".history"),
+                    ["MemorySmith:History:RootPath"] = Path.Combine(_tempRoot, ".history")
                     // Auth:Enabled stays true (default) so IAuthorizationService is registered
                     // (required by AgentSessionService). Admin is bootstrapped below.
-                    //
-                    // The test client is an UNAUTHENTICATED loopback caller. Once an admin
-                    // exists (bootstrapped below), anonymous callers fall back to
-                    // Auth:AnonymousAccess, which defaults to Viewer — that would block the
-                    // Write-tier MCP tools these tests exercise (task mutations, memory
-                    // create/update governance). Grant Editor so write-path behavior such as
-                    // agent-write approval governance can be tested without cookie auth.
-                    ["MemorySmith:Auth:AnonymousAccess"] = "Editor"
                 };
 
                 if (overrides is not null)
@@ -1007,6 +999,23 @@ public class McpAndSemanticSearchTests
             JsonSerializerOptions.Web)).GetAwaiter().GetResult();
 
         return factory;
+    }
+
+    /// <summary>
+    /// Returns a client signed in as the admin account bootstrapped in <see cref="CreateFactory"/>.
+    /// The plain unauthenticated test client only carries Auth:AnonymousAccess (Viewer) rights,
+    /// which blocks Write-tier MCP tools — anonymous callers can never be granted Editor
+    /// (AddAnonymousRole only recognizes Viewer). Write-path tests must authenticate; the test
+    /// client handles the auth cookie automatically.
+    /// </summary>
+    private static async Task<HttpClient> CreateAdminClientAsync(WebApplicationFactory<Program> factory)
+    {
+        var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var loginResponse = await client.PostAsJsonAsync(
+            "/api/auth/login",
+            new LoginRequest("admin@memorysmith.test", "ThisIsAValidPassword123!"));
+        loginResponse.EnsureSuccessStatusCode();
+        return client;
     }
 
     private static async Task<string> ExtractFirstToolTextAsync(HttpResponseMessage response)

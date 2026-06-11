@@ -4,7 +4,7 @@
   "title": "Deprecate and remove memorysmith_semantic_search and memorysmith_unified_search",
   "description": "Remove two redundant search tools from the chat tool catalog to reduce surface-area confusion in the trained model. semantic_search is always redundant (hybrid_search fuses lexical+semantic). unified_search overlaps with hybrid_search + page_search. Reduce chat tools from 12 to 10, update prompt routing, regenerate training data, retrain LoRA adapter.",
   "type": "Feature",
-  "status": "Backlog",
+  "status": "InProgress",
   "priority": "Medium",
   "labels": [
     "tooling",
@@ -19,9 +19,9 @@
   "assigneeDirectoryId": "agent-smith",
   "reporter": "agent-smith",
   "createdAtUtc": "2026-06-02T22:00:00Z",
-  "updatedAtUtc": "2026-06-02T22:00:00Z",
+  "updatedAtUtc": "2026-06-11T21:01:54.0000000Z",
   "completedAtUtc": null,
-  "revision": 2,
+  "revision": 3,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,
@@ -29,7 +29,14 @@
   "attachments": [],
   "externalLinks": [],
   "linkedPages": [],
-  "comments": [],
+  "comments": [
+    {
+      "id": "c-e3ff8fb4ab8356f9499969db2f720f7d",
+      "author": "hyperagent",
+      "body": "Progress update (commits d81abe6f, 86abd7b0): Step 2 is effectively complete — memorysmith_semantic_search and memorysmith_unified_search are no longer in ChatToolCatalog (removed during the June 4 Program.cs/catalog restructure; the 22-tool catalog that PR #54 preserved already excludes them). Step 3 verified: McpController has no direct references to the deprecated tool names. Steps 5/6 are satisfied by the current test suite (ChatToolCatalogAndInterceptTests calibrated to the 22-tool catalog; McpAndSemanticSearchTests keeps the fragile per-test ignores). New in 86abd7b0: ChatContextPlanner no longer recommends memorysmith_unified_search (it recommended a nonexistent tool, steering the model to dead calls) — hybrid_search is now the default memory-evidence recommendation per this task's routing rule. Remaining: steps 1 (prompt files), 4 (README), 7 (.continue rules), 8-12 (training corpus regen, spotcheck refresh, LoRA retrain, deploy).",
+      "createdAtUtc": "2026-06-11T21:01:54.0000000Z"
+    }
+  ],
   "steps": [
     {
       "step": 1,

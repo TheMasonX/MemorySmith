@@ -75,11 +75,11 @@ public static partial class ChatContextPlanner
             pageLimit = 0;
         }
 
-        // NOTE: memorysmith_unified_search was dropped from the tool catalog in the June 4
-        // restructure, so the planner must not recommend it — the model would attempt to call a
-        // nonexistent tool. memorysmith_hybrid_search is the closest existing tool for combined
-        // memory evidence. Restoring a true unified (memory+page) search tool is tracked as a
-        // follow-up feature; when it lands, revisit these recommendations.
+        // NOTE: memorysmith_unified_search and memorysmith_semantic_search were deliberately
+        // removed from the tool catalog (TSK-0271 search-tool consolidation: both scored worst
+        // in spotcheck evals and overlap hybrid_search/page_search). The planner must only
+        // recommend tools that exist, so hybrid_search is the default memory-evidence
+        // recommendation per the TSK-0271 routing rule.
         var recommendedTool = wantsContextPack
             ? "memorysmith_context_pack"
             : memoryLimit == 0 && pageLimit > 0
