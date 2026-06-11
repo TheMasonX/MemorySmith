@@ -9,7 +9,7 @@ using Microsoft.Extensions.Configuration;
 
 namespace MemorySmith.Tests;
 
-[TestFixture, Ignore("DIAGNOSTIC: class-level ignore to identify failing test")]
+[TestFixture]
 public class ProjectWikiTestbaseTests
 {
     private string _tempRoot = null!;

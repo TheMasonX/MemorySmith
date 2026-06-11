@@ -10,7 +10,7 @@ using Microsoft.Data.Sqlite;
 
 namespace MemorySmith.Tests;
 
-[TestFixture, Ignore("DIAGNOSTIC: class-level ignore to identify failing test - remove once identified")]
+[TestFixture]
 public class McpAndSemanticSearchTests
 {
     private string _tempRoot = null!;

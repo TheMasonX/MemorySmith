@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Referenced by MemorySmith.Tests.csproj via <RunSettingsFilePath>.
+
+  The GitHubActions logger surfaces each failing test as a workflow annotation
+  (name + assertion message), readable via the public Checks API without repo
+  admin rights — raw job logs require authentication. Outside GitHub Actions
+  the logger is a no-op, so local `dotnet test` behavior is unchanged.
+
+  The console logger is declared explicitly so it remains active alongside the
+  GitHubActions logger.
+-->
+<RunSettings>
+  <LoggerRunSettings>
+    <Loggers>
+      <Logger friendlyName="console" enabled="True">
+        <Configuration>
+          <Verbosity>normal</Verbosity>
+        </Configuration>
+      </Logger>
+      <Logger friendlyName="GitHubActions" enabled="True" />
+    </Loggers>
+  </LoggerRunSettings>
+</RunSettings>

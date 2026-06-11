@@ -18,7 +18,7 @@ using Microsoft.Extensions.Options;
 
 namespace MemorySmith.Tests;
 
-[TestFixture, Ignore("DIAGNOSTIC: class-level ignore to identify failing test")]
+[TestFixture]
 public class SecurityAndSourceLinkTests
 {
     private const string ValidPassword = "ThisIsAValidPassword123!";
