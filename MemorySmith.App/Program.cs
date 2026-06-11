@@ -162,19 +162,32 @@ try
                     var githubDisplayName = root.TryGetProperty("name", out var nameEl) && nameEl.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(nameEl.GetString()) ? nameEl.GetString() : null;
                     if (githubSubject == null) return;
                     var db = ctx.HttpContext.RequestServices.GetRequiredService<IMemorySmithDatabase>();
+                    var externalAuthOutcomes = ctx.HttpContext.RequestServices.GetRequiredService<ExternalAuthOutcomeRecorder>();
                     var msOpts = ctx.HttpContext.RequestServices.GetRequiredService<IOptions<MemorySmithOptions>>().Value;
                     var ct = ctx.HttpContext.RequestAborted;
                     var displayName = githubDisplayName ?? githubLogin ?? githubSubject;
                     var linkUserId = ctx.Properties?.Items.TryGetValue(MemorySmithAuthProperties.LinkUserId, out var requestedUserId) == true
                         ? requestedUserId
                         : null;
+                    var requestedLink = !string.IsNullOrWhiteSpace(linkUserId);
                     var link = await db.ProviderLinks.GetByProviderSubjectAsync(MemorySmithProviders.GitHub, githubSubject, ct);
                     string internalUserId;
                     if (link != null)
                     {
                         if (!string.IsNullOrWhiteSpace(linkUserId) && !string.Equals(link.UserId, linkUserId, StringComparison.Ordinal))
                         {
-                            ctx.Fail("This GitHub account is already linked to another MemorySmith user.");
+                            const string message = "This GitHub account is already linked to another MemorySmith user.";
+                            await externalAuthOutcomes.RecordFailureIfNeededAsync(
+                                ctx.HttpContext,
+                                MemorySmithProviders.GitHub,
+                                githubSubject,
+                                link.UserId,
+                                "link_conflict",
+                                message,
+                                requestedLink: true,
+                                details: new { requestedLinkUserId = linkUserId, existingLinkedUserId = link.UserId },
+                                cancellationToken: ct);
+                            ctx.Fail(message);
                             return;
                         }
 
@@ -185,7 +198,18 @@ try
                         var linkedUser = await db.Users.GetByIdAsync(linkUserId, ct);
                         if (linkedUser is null || linkedUser.IsDisabled)
                         {
-                            ctx.Fail("The MemorySmith account for this link request is not available.");
+                            const string message = "The MemorySmith account for this link request is not available.";
+                            await externalAuthOutcomes.RecordFailureIfNeededAsync(
+                                ctx.HttpContext,
+                                MemorySmithProviders.GitHub,
+                                githubSubject,
+                                linkUserId,
+                                linkedUser is null ? "link_user_missing" : "disabled",
+                                message,
+                                requestedLink: true,
+                                details: new { requestedLinkUserId = linkUserId },
+                                cancellationToken: ct);
+                            ctx.Fail(message);
                             return;
                         }
 
@@ -234,7 +258,17 @@ try
                     var user = await db.Users.GetByIdAsync(internalUserId, ct);
                     if (user is null || user.IsDisabled)
                     {
-                        ctx.Fail("The MemorySmith account is disabled or no longer exists.");
+                        const string message = "The MemorySmith account is disabled or no longer exists.";
+                        await externalAuthOutcomes.RecordFailureIfNeededAsync(
+                            ctx.HttpContext,
+                            MemorySmithProviders.GitHub,
+                            githubSubject,
+                            user?.UserId ?? internalUserId,
+                            user is null ? "user_missing" : "disabled",
+                            message,
+                            requestedLink,
+                            cancellationToken: ct);
+                        ctx.Fail(message);
                         return;
                     }
 
@@ -243,16 +277,10 @@ try
                     resolvedUser.LastLoginAtUtc = loginAtUtc;
                     resolvedUser.UpdatedAtUtc = loginAtUtc;
                     await db.Users.UpdateAsync(resolvedUser, ct);
-                    await db.LoginHistory.RecordAsync(new LoginHistoryEntry
-                    {
-                        LoginId = Guid.NewGuid().ToString("N"),
-                        UserId = resolvedUser.UserId,
-                        ProviderName = MemorySmithProviders.GitHub,
-                        ProviderSubject = githubSubject,
-                        OccurredAtUtc = loginAtUtc,
-                        Succeeded = true,
-                        RequestId = ctx.HttpContext.TraceIdentifier
-                    }, ct);
+                    // RecordSuccessAsync persists durable login-history AND audit evidence
+                    // (auth.login.succeeded) with request metadata — richer than a bare
+                    // LoginHistory.RecordAsync call.
+                    await externalAuthOutcomes.RecordSuccessAsync(ctx.HttpContext, MemorySmithProviders.GitHub, githubSubject, resolvedUser, roles, requestedLink, ct);
                     ctx.Identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, internalUserId, ClaimValueTypes.String, ctx.Options.ClaimsIssuer));
                     ctx.Identity.AddClaim(new Claim(ClaimTypes.Name, resolvedUser.DisplayName, ClaimValueTypes.String, ctx.Options.ClaimsIssuer));
                     if (resolvedUser.Email is not null)
@@ -262,15 +290,28 @@ try
                     foreach (var role in roles)
                         ctx.Identity.AddClaim(new Claim(ClaimTypes.Role, role.Name, ClaimValueTypes.String, ctx.Options.ClaimsIssuer));
                 },
-                OnRemoteFailure = ctx =>
+                OnRemoteFailure = async ctx =>
                 {
+                    var linkUserId = ctx.Properties?.Items.TryGetValue(MemorySmithAuthProperties.LinkUserId, out var requestedUserId) == true
+                        ? requestedUserId
+                        : null;
+                    var externalAuthOutcomes = ctx.HttpContext.RequestServices.GetRequiredService<ExternalAuthOutcomeRecorder>();
+                    await externalAuthOutcomes.RecordFailureIfNeededAsync(
+                        ctx.HttpContext,
+                        MemorySmithProviders.GitHub,
+                        providerSubject: null,
+                        targetUserId: linkUserId,
+                        failureCode: "remote_failure",
+                        message: ctx.Failure?.Message ?? "External sign-in failed.",
+                        requestedLink: !string.IsNullOrWhiteSpace(linkUserId),
+                        details: string.IsNullOrWhiteSpace(linkUserId) ? null : new { requestedLinkUserId = linkUserId },
+                        cancellationToken: ctx.HttpContext.RequestAborted);
                     ctx.HandleResponse();
                     var returnUri = ctx.Properties?.RedirectUri;
                     var target = !string.IsNullOrWhiteSpace(returnUri) && returnUri.StartsWith("/profile", StringComparison.Ordinal)
                         ? $"/profile?error={Uri.EscapeDataString(ctx.Failure?.Message ?? "External sign-in failed.")}"
                         : "/login?error=1";
                     ctx.Response.Redirect(target);
-                    return Task.CompletedTask;
                 }
             };
         });

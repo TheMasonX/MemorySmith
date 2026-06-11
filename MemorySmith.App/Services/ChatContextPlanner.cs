@@ -20,12 +20,12 @@ public static partial class ChatContextPlanner
     {
         if (!options.PreloadContextEnabled)
         {
-            return None("Preloaded context is disabled by configuration.", "memorysmith_unified_search");
+            return None("Preloaded context is disabled by configuration.", "memorysmith_hybrid_search");
         }
 
         if (string.IsNullOrWhiteSpace(request.Message))
         {
-            return None("The user message is empty.", "memorysmith_unified_search");
+            return None("The user message is empty.", "memorysmith_hybrid_search");
         }
 
         var intercepted = intentInterceptor.TryMatch(request.Message);
@@ -37,19 +37,19 @@ public static partial class ChatContextPlanner
         var message = request.Message.Trim();
         if (ExactReplyRegex().IsMatch(message) || SimpleNoContextRegex().IsMatch(message))
         {
-            return None("The prompt is a direct/simple reply that does not need local wiki context.", "memorysmith_unified_search");
+            return None("The prompt is a direct/simple reply that does not need local wiki context.", "memorysmith_hybrid_search");
         }
 
         if (request.Mode == MemoryChatMode.Agent && AgentWriteCommandRegex().IsMatch(message) && !EvidenceSeekingRegex().IsMatch(message))
         {
-            return None("The Agent request appears write-only and does not ask for existing evidence.", "memorysmith_unified_search");
+            return None("The Agent request appears write-only and does not ask for existing evidence.", "memorysmith_hybrid_search");
         }
 
         var localKnowledge = LocalKnowledgeRegex().IsMatch(message);
         var agentEvidence = request.Mode == MemoryChatMode.Agent && AgentContextRegex().IsMatch(message);
         if (!localKnowledge && !agentEvidence)
         {
-            return None("No strong MemorySmith/wiki evidence intent was detected.", "memorysmith_unified_search");
+            return None("No strong MemorySmith/wiki evidence intent was detected.", "memorysmith_hybrid_search");
         }
 
         var memoryBudget = Math.Clamp(Math.Min(options.MaxContextRecords, options.MaxPreloadedContextRecords), 0, 20);
@@ -75,13 +75,16 @@ public static partial class ChatContextPlanner
             pageLimit = 0;
         }
 
+        // NOTE: memorysmith_unified_search was dropped from the tool catalog in the June 4
+        // restructure, so the planner must not recommend it — the model would attempt to call a
+        // nonexistent tool. memorysmith_hybrid_search is the closest existing tool for combined
+        // memory evidence. Restoring a true unified (memory+page) search tool is tracked as a
+        // follow-up feature; when it lands, revisit these recommendations.
         var recommendedTool = wantsContextPack
             ? "memorysmith_context_pack"
             : memoryLimit == 0 && pageLimit > 0
                 ? "memorysmith_page_search"
-                : pageLimit == 0 && memoryLimit > 0
-                    ? "memorysmith_hybrid_search"
-                    : "memorysmith_unified_search";
+                : "memorysmith_hybrid_search";
 
         if (memoryLimit == 0 && pageLimit == 0)
         {

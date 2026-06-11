@@ -974,9 +974,17 @@ public class McpAndSemanticSearchTests
                     ["MemorySmith:Database:ConnectionString"] = $"Data Source={Path.Combine(_tempRoot, "memorysmith.db")};Pooling=False",
                     ["MemorySmith:DataProtectionKeysPath"] = Path.Combine(_tempRoot, "Keys"),
                     ["MemorySmith:Audit:JsonlPath"] = Path.Combine(_tempRoot, "Events", "audit-{yyyy}-W{week}.jsonl"),
-                    ["MemorySmith:History:RootPath"] = Path.Combine(_tempRoot, ".history")
+                    ["MemorySmith:History:RootPath"] = Path.Combine(_tempRoot, ".history"),
                     // Auth:Enabled stays true (default) so IAuthorizationService is registered
                     // (required by AgentSessionService). Admin is bootstrapped below.
+                    //
+                    // The test client is an UNAUTHENTICATED loopback caller. Once an admin
+                    // exists (bootstrapped below), anonymous callers fall back to
+                    // Auth:AnonymousAccess, which defaults to Viewer — that would block the
+                    // Write-tier MCP tools these tests exercise (task mutations, memory
+                    // create/update governance). Grant Editor so write-path behavior such as
+                    // agent-write approval governance can be tested without cookie auth.
+                    ["MemorySmith:Auth:AnonymousAccess"] = "Editor"
                 };
 
                 if (overrides is not null)
