@@ -12,13 +12,23 @@ using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting.WindowsServices;
 using Microsoft.Extensions.Options;
 using MudBlazor.Services;
+using OpenTelemetry.Exporter;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using Serilog;
+using Serilog.Events;
+using Serilog.Formatting.Compact;
+using System.Diagnostics;
+using System.Reflection;
 using System.Threading.RateLimiting;
 using System.Text.Json.Serialization;
 
@@ -44,12 +54,55 @@ try
     var secretsFile = Path.Combine(AppContext.BaseDirectory, "appsettings.Secrets.json");
     if (File.Exists(secretsFile))
         builder.Configuration.AddJsonFile(secretsFile, optional: true, reloadOnChange: false);
-    var configuredSettingsOverridePath = builder.Configuration["MemorySmith:SettingsOverridePath"];
-    var localDevelopmentFile = string.IsNullOrWhiteSpace(configuredSettingsOverridePath)
-        ? Path.Combine(AppContext.BaseDirectory, "appsettings.LocalDevelopment.json")
-        : Path.GetFullPath(configuredSettingsOverridePath);
-    builder.Configuration.AddJsonFile(localDevelopmentFile, optional: true, reloadOnChange: true);
-    builder.Host.UseSerilog();
+    // Runtime settings overrides: AdminSettingsService persists edits to the path resolved by
+    // MemorySmithConfigurationPaths, so the app must load the same file it writes — otherwise
+    // admin settings changes are silently ignored.
+    var settingsOverrideFile = MemorySmithConfigurationPaths.ResolveSettingsOverridePath(builder.Configuration["MemorySmith:SettingsOverridePath"]);
+    builder.Configuration.AddJsonFile(settingsOverrideFile, optional: true, reloadOnChange: true);
+    builder.Host.UseSerilog((context, services, loggerConfiguration) =>
+    {
+        var loggingOptions = context.Configuration.GetSection("MemorySmith:Logging").Get<LoggingOptions>() ?? new LoggingOptions();
+        var minimumLevel = ParseLogLevel(loggingOptions.MinimumLevel, LogEventLevel.Information);
+
+        loggerConfiguration
+            .MinimumLevel.Is(minimumLevel)
+            .ReadFrom.Configuration(context.Configuration)
+            .Enrich.FromLogContext()
+            .Enrich.WithProperty("Application", "MemorySmith.App")
+            .Enrich.WithProperty("Environment", context.HostingEnvironment.EnvironmentName);
+
+        if (loggingOptions.EnableConsole)
+        {
+            loggerConfiguration.WriteTo.Console();
+        }
+
+        if (loggingOptions.EnableStructuredFile)
+        {
+            var structuredFilePath = ResolveLogPath(loggingOptions.StructuredFilePath);
+            var structuredFileDirectory = Path.GetDirectoryName(structuredFilePath);
+            if (string.IsNullOrWhiteSpace(structuredFileDirectory))
+            {
+                structuredFileDirectory = AppContext.BaseDirectory;
+                structuredFilePath = Path.Combine(structuredFileDirectory, Path.GetFileName(structuredFilePath));
+            }
+
+            Directory.CreateDirectory(structuredFileDirectory);
+            loggerConfiguration.WriteTo.File(
+                new CompactJsonFormatter(),
+                structuredFilePath,
+                rollingInterval: RollingInterval.Day,
+                retainedFileCountLimit: Math.Max(1, loggingOptions.StructuredFileRetainedDays),
+                shared: true);
+        }
+
+        if (OperatingSystem.IsWindows() && loggingOptions.WindowsEventLogEnabled)
+        {
+            loggerConfiguration.WriteTo.EventLog(
+                source: string.IsNullOrWhiteSpace(loggingOptions.WindowsEventLogSource) ? "MemorySmith.App" : loggingOptions.WindowsEventLogSource,
+                manageEventSource: false,
+                restrictedToMinimumLevel: LogEventLevel.Warning);
+        }
+    });
     builder.Host.UseWindowsService(options =>
     {
         options.ServiceName = builder.Configuration["MemorySmith:WindowsService:Name"] ?? WindowsServiceCommands.DefaultServiceName;
@@ -62,6 +115,7 @@ try
     builder.Services.AddMudServices();
 
     builder.Services.Configure<MemorySmithOptions>(builder.Configuration.GetSection("MemorySmith"));
+    builder.Services.AddSingleton<IPostConfigureOptions<MemorySmithOptions>, MemorySmithLocalDevelopmentPostConfigure>();
     builder.Services.AddHttpContextAccessor();
     builder.Services.AddCascadingAuthenticationState();
     var authProviders = builder.Configuration.GetSection("MemorySmith:Auth:Providers").Get<AuthProviderOptions>() ?? new AuthProviderOptions();
@@ -235,6 +289,7 @@ try
         AddPermissionPolicy(options, MemorySmithPolicies.CanApproveAgentWrites, MemorySmithPermission.ApproveAgentWrites);
     });
     builder.Services.AddSingleton<IAuthorizationHandler, MemorySmithPermissionHandler>();
+    builder.Services.AddSingleton<ExternalAuthOutcomeRecorder>();
     builder.Services.AddRateLimiter(options =>
     {
         var auth = builder.Configuration.GetSection("MemorySmith:Auth:RateLimits").Get<AuthRateLimitOptions>() ?? new AuthRateLimitOptions();
@@ -312,7 +367,9 @@ try
     builder.Services.AddSingleton<LoggingObservabilityService>();
     builder.Services.AddSingleton<TrainingHarnessRunnerService>();
     builder.Services.AddSingleton<MemoryMaintenanceTasks>();
+    builder.Services.AddSingleton<MeasurementBaselineService>();
     builder.Services.AddSingleton<MaintenanceAgentConfigService>();
+    builder.Services.AddSingleton<MaintenanceActiveRunStore>();
     builder.Services.AddSingleton<MaintenanceResourceProbe>();
     builder.Services.AddSingleton<MaintenanceDiffService>();
     builder.Services.AddSingleton<MaintenanceWritePermissionService>();
@@ -321,9 +378,97 @@ try
     builder.Services.AddSingleton<MaintenanceTopicMapService>();
     builder.Services.AddScoped<MaintenanceAgentService>();
     builder.Services.AddSingleton<OperationalDiagnosticsService>();
-    builder.Services.AddHttpClient<OllamaChatProvider>();
+    builder.Services.AddHostedService<SemanticEmbeddingPrewarmService>();
+
+    var telemetryOptions = builder.Configuration.GetSection("MemorySmith:Telemetry").Get<TelemetryOptions>() ?? new TelemetryOptions();
+    if (telemetryOptions.Enabled)
+    {
+        var serviceVersion = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "1.0.0";
+        var openTelemetry = builder.Services.AddOpenTelemetry().ConfigureResource(resource =>
+        {
+            resource.Clear();
+            resource.AddService(
+                serviceName: string.IsNullOrWhiteSpace(telemetryOptions.ServiceName) ? "MemorySmith.App" : telemetryOptions.ServiceName,
+                serviceVersion: serviceVersion,
+                serviceInstanceId: Environment.MachineName);
+        });
+
+        if (telemetryOptions.TracingEnabled)
+        {
+            openTelemetry.WithTracing(tracing =>
+            {
+                tracing
+                    .AddSource(MemorySmithTelemetry.ActivitySourceName)
+                    .SetSampler(new ParentBasedSampler(new TraceIdRatioBasedSampler(Math.Clamp(telemetryOptions.TraceSamplingPercentage, 0, 100) / 100d)));
+
+                if (telemetryOptions.AspNetCoreInstrumentationEnabled)
+                {
+                    tracing.AddAspNetCoreInstrumentation(options =>
+                    {
+                        options.RecordException = telemetryOptions.RecordExceptions;
+                        options.Filter = context => !IsTelemetryPathExcluded(context.Request.Path, telemetryOptions.ExcludedRequestPathPrefixes);
+                    });
+                }
+
+                if (telemetryOptions.HttpClientInstrumentationEnabled)
+                {
+                    tracing.AddHttpClientInstrumentation(options =>
+                    {
+                        options.RecordException = telemetryOptions.RecordExceptions;
+                    });
+                }
+
+                if (telemetryOptions.ExporterEnabled)
+                {
+                    tracing.AddOtlpExporter(options => ConfigureOtlpExporter(options, telemetryOptions));
+                }
+            });
+        }
+
+        if (telemetryOptions.MetricsEnabled)
+        {
+            openTelemetry.WithMetrics(metrics =>
+            {
+                metrics.AddMeter(MemorySmithTelemetry.MeterName);
+
+                if (telemetryOptions.AspNetCoreInstrumentationEnabled)
+                {
+                    metrics.AddAspNetCoreInstrumentation();
+                }
+
+                if (telemetryOptions.HttpClientInstrumentationEnabled)
+                {
+                    metrics.AddHttpClientInstrumentation();
+                }
+
+                if (telemetryOptions.RuntimeInstrumentationEnabled)
+                {
+                    metrics.AddRuntimeInstrumentation();
+                }
+
+                if (telemetryOptions.ExporterEnabled)
+                {
+                    metrics.AddOtlpExporter(options => ConfigureOtlpExporter(options, telemetryOptions));
+                }
+            });
+        }
+    }
+
+    builder.Services.AddHttpClient<OllamaChatProvider>((sp, client) =>
+    {
+        var options = sp.GetRequiredService<IOptions<MemorySmithOptions>>().Value;
+        var timeoutSeconds = Math.Clamp(options.Chat.RequestTimeoutSeconds, 10, 3600);
+        client.Timeout = TimeSpan.FromSeconds(timeoutSeconds);
+    });
+    builder.Services.AddScoped<GitHubCopilotChatProvider>();
     builder.Services.AddScoped<IChatProvider>(sp => sp.GetRequiredService<OllamaChatProvider>());
-    builder.Services.AddSingleton<ChatToolCatalog>();
+    builder.Services.AddScoped<IChatProvider>(sp => sp.GetRequiredService<GitHubCopilotChatProvider>());
+    // ChatToolCatalog has two constructors: the parameterless one (full BuildTools catalog) and a
+    // filtered one taking IEnumerable<ChatToolDescriptor> (used by AgentSessionService for scoped
+    // sub-agent catalogs). MS.DI prefers the constructor with the most resolvable parameters, and
+    // IEnumerable<T> always resolves (empty when nothing is registered) — so a bare
+    // AddSingleton<ChatToolCatalog>() would construct an EMPTY catalog. Use an explicit factory.
+    builder.Services.AddSingleton<ChatToolCatalog>(_ => new ChatToolCatalog());
     builder.Services.AddSingleton<ChatIntentInterceptor>();
 
     // ── Agent session services (memorysmith_agent_invoke) ─────────────────────
@@ -351,6 +496,7 @@ try
         {
             options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter<MemoryChatMode>());
         });
+    builder.Services.AddProblemDetails();
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen();
 
@@ -366,6 +512,97 @@ try
         app.UseSwaggerUI();
     }
 
+    app.UseExceptionHandler(exceptionApp =>
+    {
+        exceptionApp.Run(async context =>
+        {
+            var exceptionFeature = context.Features.Get<IExceptionHandlerFeature>();
+            var exception = exceptionFeature?.Error;
+            var traceId = Activity.Current?.TraceId.ToString() ?? context.TraceIdentifier;
+
+            Log.Error(exception, "Unhandled request failure {Method} {Path} TraceId={TraceId}", context.Request.Method, context.Request.Path, traceId);
+
+            context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+            context.Response.ContentType = "application/problem+json";
+
+            var details = new ProblemDetails
+            {
+                Status = StatusCodes.Status500InternalServerError,
+                Title = "An unexpected error occurred.",
+                Detail = "Use the traceId when reporting this issue.",
+                Instance = context.Request.Path
+            };
+            details.Extensions["traceId"] = traceId;
+
+            await context.Response.WriteAsJsonAsync(details, options: null, contentType: "application/problem+json");
+        });
+    });
+
+    var loggingSettings = app.Configuration.GetSection("MemorySmith:Logging").Get<LoggingOptions>() ?? new LoggingOptions();
+    if (loggingSettings.RequestLoggingEnabled)
+    {
+        app.UseSerilogRequestLogging(options =>
+        {
+            options.GetLevel = (_, elapsed, ex) =>
+            {
+                if (ex is not null)
+                {
+                    return LogEventLevel.Error;
+                }
+
+                if (elapsed >= loggingSettings.SlowRequestThresholdMs)
+                {
+                    return LogEventLevel.Warning;
+                }
+
+                return LogEventLevel.Information;
+            };
+
+            options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
+            {
+                var correlationId = RequestMetadata.ResolveCorrelationId(httpContext);
+                diagnosticContext.Set("TraceId", correlationId);
+                diagnosticContext.Set("RequestPath", httpContext.Request.Path.ToString());
+                diagnosticContext.Set("RequestHost", httpContext.Request.Host.Value);
+                diagnosticContext.Set("RequestScheme", httpContext.Request.Scheme);
+                diagnosticContext.Set("UserAgent", httpContext.Request.Headers.UserAgent.ToString());
+                diagnosticContext.Set("CorrelationId", correlationId);
+            };
+        });
+    }
+
+    app.Use(async (context, next) =>
+    {
+        var runtimeSettings = context.RequestServices.GetRequiredService<IOptionsMonitor<MemorySmithOptions>>().CurrentValue;
+        if (runtimeSettings.ContentSecurityPolicyEnabled && !string.IsNullOrWhiteSpace(runtimeSettings.ContentSecurityPolicy))
+        {
+            context.Response.Headers["Content-Security-Policy"] = runtimeSettings.ContentSecurityPolicy;
+        }
+
+        if (runtimeSettings.XContentTypeOptionsEnabled && !string.IsNullOrWhiteSpace(runtimeSettings.XContentTypeOptions))
+        {
+            context.Response.Headers["X-Content-Type-Options"] = runtimeSettings.XContentTypeOptions;
+        }
+
+        if (runtimeSettings.ReferrerPolicyEnabled && !string.IsNullOrWhiteSpace(runtimeSettings.ReferrerPolicy))
+        {
+            context.Response.Headers["Referrer-Policy"] = runtimeSettings.ReferrerPolicy;
+        }
+
+        if (runtimeSettings.XFrameOptionsEnabled && !string.IsNullOrWhiteSpace(runtimeSettings.XFrameOptions))
+        {
+            context.Response.Headers["X-Frame-Options"] = runtimeSettings.XFrameOptions;
+        }
+
+        if (runtimeSettings.PermissionsPolicyEnabled && !string.IsNullOrWhiteSpace(runtimeSettings.PermissionsPolicy))
+        {
+            context.Response.Headers["Permissions-Policy"] = runtimeSettings.PermissionsPolicy;
+        }
+
+        context.Response.Headers["X-Correlation-Id"] = RequestMetadata.ResolveCorrelationId(context);
+        await next();
+    });
+
     app.UseHttpsRedirection();
     app.UseRateLimiter();
     app.UseAuthentication();
@@ -376,6 +613,27 @@ try
     var pageAssetsPath = Path.GetFullPath(Path.Combine(pagesPath, "assets"));
     Directory.CreateDirectory(pageAssetsPath);
     var contentTypeProvider = new FileExtensionContentTypeProvider();
+    app.MapGet("/artifacts/task-attachments/{taskId}/{fileName}", (
+        string taskId,
+        string fileName,
+        IOptionsMonitor<MemorySmithOptions> options) =>
+    {
+        var resolvedPath = TaskAttachmentFiles.ResolvePublicPath(options.CurrentValue.TaskAttachments, taskId, fileName);
+        if (resolvedPath is null)
+        {
+            return Results.BadRequest();
+        }
+
+        if (!File.Exists(resolvedPath))
+        {
+            return Results.NotFound();
+        }
+
+        return Results.File(
+            resolvedPath,
+            contentTypeProvider.TryGetContentType(resolvedPath, out var contentType) ? contentType : "application/octet-stream");
+    }).RequireAuthorization(MemorySmithPolicies.CanViewMemorySmith);
+
     app.MapGet("/page-assets/{**assetPath}", async (
         string assetPath,
         FilePageService pages,
@@ -432,6 +690,51 @@ public partial class Program
 {
     private static void AddPermissionPolicy(AuthorizationOptions options, string name, MemorySmithPermission permission) =>
         options.AddPolicy(name, policy => policy.AddRequirements(new MemorySmithPermissionRequirement(permission)));
+
+    private static string ResolveLogPath(string configuredPath)
+    {
+        if (Path.IsPathRooted(configuredPath))
+        {
+            return configuredPath;
+        }
+
+        return Path.Combine(AppContext.BaseDirectory, configuredPath);
+    }
+
+    private static LogEventLevel ParseLogLevel(string? rawLevel, LogEventLevel fallback)
+    {
+        if (Enum.TryParse<LogEventLevel>(rawLevel, ignoreCase: true, out var parsed))
+        {
+            return parsed;
+        }
+
+        return fallback;
+    }
+
+    private static bool IsTelemetryPathExcluded(PathString requestPath, IEnumerable<string> excludedPrefixes)
+    {
+        if (!requestPath.HasValue)
+        {
+            return false;
+        }
+
+        var value = requestPath.Value ?? string.Empty;
+        return excludedPrefixes.Any(prefix =>
+            !string.IsNullOrWhiteSpace(prefix)
+            && value.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static void ConfigureOtlpExporter(OtlpExporterOptions options, TelemetryOptions telemetryOptions)
+    {
+        if (Uri.TryCreate(telemetryOptions.OtlpEndpoint, UriKind.Absolute, out var endpoint))
+        {
+            options.Endpoint = endpoint;
+        }
+
+        options.Protocol = telemetryOptions.OtlpProtocol.Equals("http/protobuf", StringComparison.OrdinalIgnoreCase)
+            ? OtlpExportProtocol.HttpProtobuf
+            : OtlpExportProtocol.Grpc;
+    }
 
     private static string? ResolvePageAssetPath(string pageAssetsPath, string assetPath)
     {

@@ -73,11 +73,12 @@ public sealed class AgentSessionService
         WriteIndented = false
     };
 
-    // Only include providers that are actually registered as IChatProvider in Program.cs.
-    // GitHubCopilotChatProvider is defined in the codebase but is not registered by default;
-    // adding it here would allow the validation to pass but cause a runtime throw when
-    // MemoryChatAgent calls ResolveProvider("GitHubCopilot") and finds no matching registration.
-    // Add "GitHubCopilot" back once its DI registration is confirmed in Program.cs.
+    // Providers a sub-agent session may request via provider override. GitHubCopilotChatProvider
+    // IS registered as IChatProvider in Program.cs (for interactive chat), but is deliberately
+    // excluded here: sub-agent sessions are kept local-only (Ollama) until Phase 2 replaces the
+    // raw model/provider overrides with model_profile_id + AllowedRoles enforcement (see the
+    // F13 spec-deviation note in CreateSessionAsync). Do not add cloud providers to this set
+    // without that governance in place.
     private static readonly HashSet<string> KnownProviders =
         new(StringComparer.OrdinalIgnoreCase) { "Ollama" };
 
