@@ -1818,10 +1818,6 @@ public sealed partial class MemoryChatAgent : IChatAgent
         var provider = ResolveProvider(request.Provider);
         _logger?.LogDebug("Chat StreamAsync started. Mode: {Mode}, Provider: {Provider}, RequestedModel: {Model}", request.Mode, provider.Name, request.Model ?? "(default)");
         var streamStarted = Stopwatch.GetTimestamp();
-        int? firstTokenMs = null;
-        var transcriptToolCalls = new List<TurnToolCall>();
-        var streamIterationsUsed = 0;
-        var maxToolCallsPerTurn = Math.Clamp(_options.Value.Chat.MaxToolCallsPerTurn, 1, 10);
         var contextPlan = BuildContextPlan(request);
         var context = await BuildContextAsync(request, contextPlan, cancellationToken);
         var interceptResults = await RunIntentInterceptAsync(request.Message, request.Mode, cancellationToken);
@@ -1873,299 +1869,60 @@ public sealed partial class MemoryChatAgent : IChatAgent
             Usage: currentUsage,
             TraceEvents: initialTrace.Count == 0 ? null : initialTrace);
 
-        ChatUsageSummary? aggregateUsage = null;
-        var maxToolIterations = MaxToolIterations();
-        for (var iteration = 0; ; iteration++)
+        await foreach (var loopEvent in RunToolLoopAsync(provider, request, messages, context, accessedContext, streaming: true, streamStarted, cancellationToken))
         {
-            var content = new StringBuilder();
-            var thinking = new StringBuilder();
-            ChatProviderChunk? finalChunk = null;
-            var bufferVisibleContent = _options.Value.Chat.ToolCallsEnabled;
-            var approvalRequired = RequiresAgentWriteApproval(request);
-            var providerTools = BuildProviderToolDefinitions(request.Mode, approvalRequired);
-
-            await foreach (var chunk in provider.StreamAsync(new ChatProviderRequest(messages, request.Mode, request.Model, request.Attachments, provider.Name, providerTools), cancellationToken))
+            if (loopEvent.Update is not null)
             {
-                if (!string.IsNullOrEmpty(chunk.ContentDelta))
-                {
-                    content.Append(chunk.ContentDelta);
-                }
-                if (!string.IsNullOrEmpty(chunk.ThinkingDelta))
-                {
-                    thinking.Append(chunk.ThinkingDelta);
-                }
-                if (!firstTokenMs.HasValue && (!string.IsNullOrEmpty(chunk.ContentDelta) || !string.IsNullOrEmpty(chunk.ThinkingDelta)))
-                {
-                    firstTokenMs = ClampMilliseconds(Stopwatch.GetElapsedTime(streamStarted).TotalMilliseconds);
-                }
-                if (chunk.Usage is not null)
-                {
-                    var usageForActiveCall = CompleteUsage(chunk.ProviderName, chunk.Model, messages, content.ToString(), chunk.Usage);
-                    currentUsage = MergeTurnUsage(aggregateUsage, usageForActiveCall);
-                }
-
-                if (chunk.IsFinal)
-                {
-                    finalChunk = chunk;
-                    break;
-                }
-
-                var contentDelta = chunk.ContentDelta;
-                if (!string.IsNullOrEmpty(contentDelta) && bufferVisibleContent)
-                {
-                    if (IsPotentialToolCallPrefix(content.ToString()))
-                    {
-                        contentDelta = string.Empty;
-                    }
-                    else
-                    {
-                        bufferVisibleContent = false;
-                        contentDelta = content.ToString();
-                    }
-                }
-
-                yield return new MemoryChatStreamUpdate(contentDelta, chunk.ThinkingDelta, Status: chunk.Status, Usage: currentUsage);
-            }
-
-            var providerResponse = new ChatProviderResponse(
-                finalChunk?.FinalContent ?? content.ToString(),
-                finalChunk?.ProviderName ?? provider.Name,
-                finalChunk?.Model ?? request.Model ?? DefaultModelForProvider(provider.Name),
-                finalChunk?.FinalThinking ?? (thinking.Length == 0 ? null : thinking.ToString()),
-                finalChunk?.Usage ?? currentUsage);
-            var completedUsage = CompleteUsage(providerResponse.ProviderName, providerResponse.Model, messages, providerResponse.Content, providerResponse.Usage);
-            aggregateUsage = MergeTurnUsage(aggregateUsage, completedUsage);
-            currentUsage = aggregateUsage;
-            providerResponse = providerResponse with { Usage = aggregateUsage };
-
-            var toolCalls = _options.Value.Chat.ToolCallsEnabled ? ReadToolCalls(providerResponse.Content) : [];
-            if (toolCalls.Count > 0)
-            {
-                _logger?.LogInformation(
-                    ChatLogEvents.StreamToolCallsRequested,
-                    "Chat StreamAsync requested tool calls. Iteration: {Iteration}, RequestedTools: {RequestedTools}, ToolCallCount: {ToolCallCount}",
-                    iteration,
-                    string.Join(",", toolCalls.Select(toolCall => toolCall.Name).Distinct(StringComparer.OrdinalIgnoreCase)),
-                    toolCalls.Count);
-                if (iteration >= maxToolIterations)
-                {
-                    providerResponse = providerResponse with
-                    {
-                        Content = "The model requested another MemorySmith wiki tool call after the configured tool-iteration limit. Try narrowing the request or increasing Chat:MaxToolIterations."
-                    };
-                    var limitedContext = MergeContext(context, accessedContext);
-                    var limitedResponse = await BuildResponseAsync(
-                        request,
-                        providerResponse,
-                        limitedContext,
-                        BuildTranscriptMetrics(streamStarted, firstTokenMs, streamIterationsUsed, transcriptToolCalls),
-                        cancellationToken);
-                    yield return new MemoryChatStreamUpdate(IsFinal: true, Response: limitedResponse, Context: limitedContext, Usage: limitedResponse.Usage);
-                    yield break;
-                }
-
-                var requestedToolTrace = toolCalls
-                    .Select(toolCall => new ChatTraceEvent(
-                        ChatTraceKinds.ToolCall,
-                        $"Tool call requested: {toolCall.Name}",
-                        toolCall.Arguments.ToJsonString(ToolJsonOptions),
-                        TimestampUtc: DateTimeOffset.UtcNow,
-                        ToolName: toolCall.Name,
-                        ToolArgumentsJson: toolCall.Arguments.ToJsonString(ToolJsonOptions)))
-                    .ToList();
-                yield return new MemoryChatStreamUpdate(
-                    Status: $"Model requested {toolCalls.Count} MemorySmith wiki tool call(s)",
-                    Context: MergeContext(context, accessedContext),
-                    Usage: currentUsage,
-                    TraceEvents: requestedToolTrace);
-
-                if (request.RunControl?.StopAfterCurrentStepRequested == true)
-                {
-                    providerResponse = providerResponse with
-                    {
-                        Content = "Stopped before running the requested MemorySmith wiki tool call(s)."
-                    };
-                    var stoppedContext = MergeContext(context, accessedContext);
-                    var stoppedResponse = await BuildResponseAsync(
-                        request,
-                        providerResponse,
-                        stoppedContext,
-                        BuildTranscriptMetrics(streamStarted, firstTokenMs, streamIterationsUsed, transcriptToolCalls),
-                        cancellationToken);
-                    yield return new MemoryChatStreamUpdate(
-                        IsFinal: true,
-                        Response: stoppedResponse,
-                        Context: stoppedContext,
-                        Status: "Stopped before tool execution",
-                        Usage: stoppedResponse.Usage,
-                        TraceEvents: [new ChatTraceEvent(ChatTraceKinds.System, "Stop after step", "Stopped before running the requested MemorySmith wiki tool call(s).", TimestampUtc: DateTimeOffset.UtcNow)]);
-                    yield break;
-                }
-
-                var toolResults = await ExecuteToolCallsAsync(toolCalls, request.Mode, RequiresAgentWriteApproval(request), cancellationToken);
-                accessedContext.AddRange(ExtractToolContext(toolResults));
-                streamIterationsUsed++;
-                transcriptToolCalls.AddRange(ProjectTranscriptToolCalls(toolCalls, toolResults, maxToolCallsPerTurn));
-                _logger?.LogInformation(
-                    ChatLogEvents.StreamToolCallsExecuted,
-                    "Chat StreamAsync executed tool calls. Iteration: {Iteration}, RequestedToolCount: {RequestedToolCount}, ExecutedToolCount: {ExecutedToolCount}, ToolErrors: {ToolErrors}",
-                    iteration,
-                    toolCalls.Count,
-                    toolResults.Count,
-                    toolResults.Count(result => result.IsError));
-                messages.Add(new ChatMessage("assistant", providerResponse.Content));
-                messages.Add(new ChatMessage(UntrustedDataRole, FormatToolResults(toolResults)));
-                var toolResultTrace = toolResults
-                    .Select(result => new ChatTraceEvent(
-                        ChatTraceKinds.ToolResult,
-                        $"Tool result: {result.Name}",
-                        result.Content,
-                        result.IsError,
-                        DateTimeOffset.UtcNow,
-                        ToolName: result.Name,
-                        DurationMilliseconds: result.DurationMilliseconds,
-                        EstimatedTokens: EstimateTokens(result.Content)))
-                    .ToList();
-                yield return new MemoryChatStreamUpdate(
-                    Status: $"Ran {toolResults.Count} MemorySmith wiki tool call(s): {string.Join(", ", toolResults.Select(result => result.Name).Distinct(StringComparer.OrdinalIgnoreCase))}",
-                    Context: MergeContext(context, accessedContext),
-                    Usage: currentUsage,
-                    TraceEvents: toolResultTrace);
-
-                if (request.RunControl?.StopAfterCurrentStepRequested == true)
-                {
-                    providerResponse = providerResponse with
-                    {
-                        Content = "Stopped after running MemorySmith wiki tool call(s). The tool results are available in the trace; send a follow-up to continue from them."
-                    };
-                    var stoppedContext = MergeContext(context, accessedContext);
-                    var stoppedResponse = await BuildResponseAsync(
-                        request,
-                        providerResponse,
-                        stoppedContext,
-                        BuildTranscriptMetrics(streamStarted, firstTokenMs, streamIterationsUsed, transcriptToolCalls),
-                        cancellationToken);
-                    yield return new MemoryChatStreamUpdate(
-                        IsFinal: true,
-                        Response: stoppedResponse,
-                        Context: stoppedContext,
-                        Status: "Stopped after current tool step",
-                        Usage: stoppedResponse.Usage,
-                        TraceEvents: [new ChatTraceEvent(ChatTraceKinds.System, "Stop after step", "Stopped after the current tool step completed.", TimestampUtc: DateTimeOffset.UtcNow)]);
-                    yield break;
-                }
-
+                yield return loopEvent.Update;
                 continue;
             }
 
-            var responseContext = MergeContext(context, accessedContext);
-            var response = await BuildResponseAsync(
+            var loop = loopEvent.Result!;
+            var terminalContext = MergeContext(context, accessedContext);
+            var terminalResponse = await BuildResponseAsync(
                 request,
-                providerResponse,
-                responseContext,
-                BuildTranscriptMetrics(streamStarted, firstTokenMs, streamIterationsUsed, transcriptToolCalls),
+                loop.Response,
+                terminalContext,
+                new TranscriptExecutionMetrics(loop.FirstTokenMs, loop.TotalMs, loop.IterationsUsed, loop.ToolCalls),
                 cancellationToken);
-            _logger?.LogInformation(
-                ChatLogEvents.StreamCompleted,
-                "Chat StreamAsync completed. Provider: {Provider}, Model: {Model}, ToolIterationsUsed: {ToolIterationsUsed}, ToolCallCount: {ToolCallCount}, AccessedContextItems: {AccessedContextItems}",
-                response.ProviderName,
-                response.Model,
-                streamIterationsUsed,
-                transcriptToolCalls.Count,
-                responseContext.Count);
-            yield return new MemoryChatStreamUpdate(IsFinal: true, Response: response, Context: responseContext, Usage: response.Usage);
+
+            switch (loopEvent.Termination)
+            {
+                case ToolLoopTermination.StoppedBeforeTools:
+                    yield return new MemoryChatStreamUpdate(
+                        IsFinal: true,
+                        Response: terminalResponse,
+                        Context: terminalContext,
+                        Status: "Stopped before tool execution",
+                        Usage: terminalResponse.Usage,
+                        TraceEvents: [new ChatTraceEvent(ChatTraceKinds.System, "Stop after step", "Stopped before running the requested MemorySmith wiki tool call(s).", TimestampUtc: DateTimeOffset.UtcNow)]);
+                    break;
+                case ToolLoopTermination.StoppedAfterTools:
+                    yield return new MemoryChatStreamUpdate(
+                        IsFinal: true,
+                        Response: terminalResponse,
+                        Context: terminalContext,
+                        Status: "Stopped after current tool step",
+                        Usage: terminalResponse.Usage,
+                        TraceEvents: [new ChatTraceEvent(ChatTraceKinds.System, "Stop after step", "Stopped after the current tool step completed.", TimestampUtc: DateTimeOffset.UtcNow)]);
+                    break;
+                case ToolLoopTermination.IterationLimit:
+                    yield return new MemoryChatStreamUpdate(IsFinal: true, Response: terminalResponse, Context: terminalContext, Usage: terminalResponse.Usage);
+                    break;
+                default:
+                    _logger?.LogInformation(
+                        ChatLogEvents.StreamCompleted,
+                        "Chat StreamAsync completed. Provider: {Provider}, Model: {Model}, ToolIterationsUsed: {ToolIterationsUsed}, ToolCallCount: {ToolCallCount}, AccessedContextItems: {AccessedContextItems}",
+                        terminalResponse.ProviderName,
+                        terminalResponse.Model,
+                        loop.IterationsUsed,
+                        loop.ToolCalls.Count,
+                        terminalContext.Count);
+                    yield return new MemoryChatStreamUpdate(IsFinal: true, Response: terminalResponse, Context: terminalContext, Usage: terminalResponse.Usage);
+                    break;
+            }
+
             yield break;
-        }
-    }
-
-    private async Task<ToolLoopResult> CompleteWithToolCallsAsync(
-        IChatProvider provider,
-        MemoryChatRequest request,
-        IReadOnlyList<ChatMessage> initialMessages,
-        CancellationToken cancellationToken)
-    {
-        var started = Stopwatch.GetTimestamp();
-        int? firstTokenMs = null;
-        var transcriptToolCalls = new List<TurnToolCall>();
-        var iterationsUsed = 0;
-        var messages = initialMessages.ToList();
-        var accessedContext = new List<ChatContextItem>();
-        ChatUsageSummary? aggregateUsage = null;
-        var maxToolIterations = MaxToolIterations();
-        var maxToolCallsPerTurn = Math.Clamp(_options.Value.Chat.MaxToolCallsPerTurn, 1, 10);
-        _logger?.LogDebug(
-            ChatLogEvents.ToolLoopStarted,
-            "Chat tool loop started. Provider: {Provider}, Mode: {Mode}, MaxToolIterations: {MaxToolIterations}, MaxToolCallsPerTurn: {MaxToolCallsPerTurn}",
-            provider.Name,
-            request.Mode,
-            maxToolIterations,
-            maxToolCallsPerTurn);
-        for (var iteration = 0; ; iteration++)
-        {
-            var approvalRequired = RequiresAgentWriteApproval(request);
-            var providerTools = BuildProviderToolDefinitions(request.Mode, approvalRequired);
-            var providerResponse = await provider.CompleteAsync(
-                new ChatProviderRequest(messages, request.Mode, request.Model, request.Attachments, provider.Name, providerTools),
-                cancellationToken);
-            var completedUsage = CompleteUsage(providerResponse.ProviderName, providerResponse.Model, messages, providerResponse.Content, providerResponse.Usage);
-            aggregateUsage = MergeTurnUsage(aggregateUsage, completedUsage);
-            providerResponse = providerResponse with { Usage = aggregateUsage };
-            firstTokenMs ??= ClampMilliseconds(Stopwatch.GetElapsedTime(started).TotalMilliseconds);
-
-            var toolCalls = _options.Value.Chat.ToolCallsEnabled ? ReadToolCalls(providerResponse.Content) : [];
-            if (toolCalls.Count == 0)
-            {
-                _logger?.LogInformation(
-                    ChatLogEvents.ToolLoopCompleted,
-                    "Chat tool loop completed without additional tool calls. Provider: {Provider}, IterationsUsed: {IterationsUsed}, ToolCallCount: {ToolCallCount}",
-                    providerResponse.ProviderName,
-                    iterationsUsed,
-                    transcriptToolCalls.Count);
-                return new ToolLoopResult(
-                    providerResponse,
-                    messages,
-                    accessedContext,
-                    firstTokenMs ?? 0,
-                    ClampMilliseconds(Stopwatch.GetElapsedTime(started).TotalMilliseconds),
-                    iterationsUsed,
-                    transcriptToolCalls);
-            }
-
-            if (iteration >= maxToolIterations)
-            {
-                _logger?.LogWarning(
-                    ChatLogEvents.ToolLoopIterationLimit,
-                    "Chat tool loop hit iteration limit. Provider: {Provider}, Iteration: {Iteration}, MaxToolIterations: {MaxToolIterations}, RequestedToolCount: {RequestedToolCount}",
-                    providerResponse.ProviderName,
-                    iteration,
-                    maxToolIterations,
-                    toolCalls.Count);
-                return new ToolLoopResult(providerResponse with
-                {
-                    Content = "The model requested another MemorySmith wiki tool call after the configured tool-iteration limit. Try narrowing the request or increasing Chat:MaxToolIterations."
-                },
-                messages,
-                accessedContext,
-                firstTokenMs ?? 0,
-                ClampMilliseconds(Stopwatch.GetElapsedTime(started).TotalMilliseconds),
-                iterationsUsed,
-                transcriptToolCalls);
-            }
-
-            var toolResults = await ExecuteToolCallsAsync(toolCalls, request.Mode, approvalRequired, cancellationToken);
-            _logger?.LogInformation(
-                ChatLogEvents.ToolLoopExecuted,
-                "Chat tool loop executed requested tools. Provider: {Provider}, Iteration: {Iteration}, RequestedToolCount: {RequestedToolCount}, ExecutedToolCount: {ExecutedToolCount}, ToolErrors: {ToolErrors}",
-                providerResponse.ProviderName,
-                iteration,
-                toolCalls.Count,
-                toolResults.Count,
-                toolResults.Count(result => result.IsError));
-            accessedContext.AddRange(ExtractToolContext(toolResults));
-            iterationsUsed++;
-            transcriptToolCalls.AddRange(ProjectTranscriptToolCalls(toolCalls, toolResults, maxToolCallsPerTurn));
-            messages.Add(new ChatMessage("assistant", providerResponse.Content));
-            messages.Add(new ChatMessage(UntrustedDataRole, FormatToolResults(toolResults)));
         }
     }
 
@@ -2295,16 +2052,6 @@ public sealed partial class MemoryChatAgent : IChatAgent
         var contextPlan = BuildContextPlan(request);
         var systemPrompt = BuildSystemPrompt(request, provider.Capabilities, contextPlan);
         return ChatTranscriptWriter.Sha256Hex(systemPrompt);
-    }
-
-    private static TranscriptExecutionMetrics BuildTranscriptMetrics(
-        long startedTimestamp,
-        int? firstTokenMs,
-        int iterationsUsed,
-        IReadOnlyList<TurnToolCall> toolCalls)
-    {
-        var totalMs = ClampMilliseconds(Stopwatch.GetElapsedTime(startedTimestamp).TotalMilliseconds);
-        return new TranscriptExecutionMetrics(firstTokenMs ?? totalMs, totalMs, iterationsUsed, toolCalls.ToList());
     }
 
     private static int ClampMilliseconds(double milliseconds)

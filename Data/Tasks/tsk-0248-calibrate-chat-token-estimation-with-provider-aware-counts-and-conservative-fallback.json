@@ -27,15 +27,21 @@
       "author": "AgentSmith",
       "id": "c-create-tsk-0248-20260530",
       "body": "Created during follow-up gap review after chat task tagging and sprint planning pass."
+    },
+    {
+      "id": "c-tsk248-evidence-001",
+      "author": "AgentSmith",
+      "body": "Measured evidence from the TSK-0042 loop-unification parity tests (2026-06-12): on a multi-iteration turn where the provider reports no usage, the STREAMING path constructs each iteration's provider response with `finalChunk?.Usage ?? currentUsage`, feeding the prior aggregate back into CompleteUsage, while SendAsync estimates each iteration from scratch. Identical two-tool-call script produced: stream 17,756 input / 100 output tokens vs send 13,992 / 59. This divergence is PRE-EXISTING (both behaviors faithfully preserved by the unification) and now lives in ONE place: the streaming acquisition arm of MemoryChatAgent.ToolLoop.cs. When calibrating, decide whether to unify on estimate-from-scratch (send semantics) or provider-partial carryover — see the open question in the 2026-06-12 council page. A skipped-by-design note exists in ChatToolLoopParityTests.SendAndStream_ProduceIdenticalReplies_AcrossTwoToolIterations.",
+      "createdAtUtc": "2026-06-12T01:57:57.0000000Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-30T22:41:43.2891965Z",
-  "updatedAtUtc": "2026-05-30T22:41:43.2891965Z",
+  "updatedAtUtc": "2026-06-12T01:57:57.0000000Z",
   "completedAtUtc": null,
-  "revision": 1,
+  "revision": 2,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

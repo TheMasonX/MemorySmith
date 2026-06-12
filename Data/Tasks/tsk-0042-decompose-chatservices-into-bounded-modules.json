@@ -4,7 +4,7 @@
   "title": "Decompose ChatServices into bounded modules",
   "description": "Problem: ChatServices.cs combines contracts, provider implementations, orchestration, tool loops, and write proposal handling in one very large file.\n\nDesired outcome: reduce complexity and review blast radius by splitting chat concerns into clear modules while preserving behavior.\n\nScope:\n- In scope: extract contracts/models, provider adapters, orchestration/tool loop, and write-approval pipeline into focused files/services.\n- Out of scope: net-new chat features or provider capability changes.\n\nDependencies:\n- Characterization tests for chat critical flows.\n- Coordination with TSK-0044 for test fixture decomposition.\n\nAcceptance criteria:\n- ChatServices hotspot is materially reduced in size and concern count.\n- Existing chat API/UI behavior remains unchanged.\n- New structure has clear ownership boundaries and test coverage continuity.\n\nValidation:\n- Run focused chat tests and impacted API contract tests.\n- Verify chat send/stream/tool loop/write proposal paths remain green.\n\nRollback:\n- Revert extraction slices individually if regressions surface.",
   "type": "Task",
-  "status": "Backlog",
+  "status": "InProgress",
   "priority": "High",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -41,14 +41,20 @@
       "author": "AgentSmith",
       "body": "Audit #9 (2026-06-11, audits/hyperagent-audit-9-architecture-deepening-20260611) sharpens this with a specific locality failure to fix FIRST, before or with the file split: the tool loop exists TWICE inside MemoryChatAgent - SendAsync delegates to CompleteWithToolCallsAsync (line 2081) while StreamAsync carries its own inline loop (~1887-2080); model resolution is also duplicated (lines 1838 vs 3273). Every loop bug must be fixed twice. Recommended order: (1) extract ONE tool-call loop module both entry points drive (streaming emits events, non-streaming collects), unit-tested via the existing FakeChatProvider pattern; (2) then split the file along type boundaries (protocol records / OllamaChatProvider / GitHubCopilotChatProvider / MemoryChatAgent). Provider-name special-casing is tracked separately as TSK-0283 - coordinate but don't merge scopes. Graded Strong in the audit.",
       "createdAtUtc": "2026-06-12T00:50:10.0000000Z"
+    },
+    {
+      "id": "c-tsk042-step1-001",
+      "author": "AgentSmith",
+      "body": "Step 1 DONE (council-reviewed: see Data/Pages/council/audit9-implementation-track-council-20260612). The tool loop is unified: MemoryChatAgent.ToolLoop.cs holds RunToolLoopAsync, the single driver; CompleteWithToolCallsAsync is a 12-line drain; StreamAsync maps loop events to stream updates. Behavior byte-preserved on both paths (archivist-verified: prefix buffering, traces with context merge, run-control strings gated streaming-only, iteration-limit message, message-append order, usage aggregation order, log event ids). 5 ChatToolLoopParityTests pin the contract incl. the run-control asymmetry and the prefix-buffer path. STEP 2 REMAINS: split ChatServices.cs along type boundaries (protocol records to ChatProtocol.cs; OllamaChatProvider and GitHubCopilotChatProvider to their own files). COUNCIL GATE for step 2: the split must leave the provider-acquisition arms (provider.StreamAsync accumulation + provider.CompleteAsync branches) inside ToolLoop.cs — if a design would move them, do TSK-0283 first so provider code moves once.",
+      "createdAtUtc": "2026-06-12T01:57:57.0000000Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-23T19:10:00.0000000Z",
-  "updatedAtUtc": "2026-06-12T00:50:10.0000000Z",
+  "updatedAtUtc": "2026-06-12T01:57:57.0000000Z",
   "completedAtUtc": null,
-  "revision": 3,
+  "revision": 4,
   "isArchived": false
 }

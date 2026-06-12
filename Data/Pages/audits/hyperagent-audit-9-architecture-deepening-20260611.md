@@ -52,7 +52,9 @@ Audits #1–8 already filed decomposition tasks. This audit **updates** five of 
 
 **Benefits.** Proposal-state and streaming-state bugs concentrate in the engine; all four text-grep tests become real unit tests; the approve-all batch semantics (TSK-0018 history) finally get direct coverage.
 
-## 3. MemoryChatAgent runs two tool loops — **Strong** → **TSK-0042** (updated)
+## 3. MemoryChatAgent runs two tool loops — **Strong** → **TSK-0042** (step 1 LANDED 2026-06-12)
+
+> **Status:** the loop is now unified in `MemoryChatAgent.ToolLoop.cs` (`RunToolLoopAsync`, single driver; ChatServices.cs is 3,744 lines and StreamAsync is a thin event consumer — the line citations below describe the pre-change state). Council-reviewed: `council/audit9-implementation-track-council-20260612`. Step 2 (file split) remains, gated on the acquisition-arms check recorded in TSK-0042.
 
 **Files:** `MemorySmith.App/Services/ChatServices.cs` (3,996 lines; agent at 1697–3995)
 
