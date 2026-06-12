@@ -35,14 +35,20 @@
       "author": "AgentSmith",
       "body": "Audit-family validation note: after re-checking Audit #5 and the paired general vector report on 2026-05-29, the broad maintainability complaint about `ChatServices.cs` still stands even though most of the earlier security findings were already closed under `TSK-0205`. `TSK-0212` now owns the narrower live parse/buffer fallback defects, while `TSK-0042` remains the larger readability/decomposition owner.",
       "createdAtUtc": "2026-05-29T16:05:00.0000000Z"
+    },
+    {
+      "id": "c-tsk042-audit9-003",
+      "author": "AgentSmith",
+      "body": "Audit #9 (2026-06-11, audits/hyperagent-audit-9-architecture-deepening-20260611) sharpens this with a specific locality failure to fix FIRST, before or with the file split: the tool loop exists TWICE inside MemoryChatAgent - SendAsync delegates to CompleteWithToolCallsAsync (line 2081) while StreamAsync carries its own inline loop (~1887-2080); model resolution is also duplicated (lines 1838 vs 3273). Every loop bug must be fixed twice. Recommended order: (1) extract ONE tool-call loop module both entry points drive (streaming emits events, non-streaming collects), unit-tested via the existing FakeChatProvider pattern; (2) then split the file along type boundaries (protocol records / OllamaChatProvider / GitHubCopilotChatProvider / MemoryChatAgent). Provider-name special-casing is tracked separately as TSK-0283 - coordinate but don't merge scopes. Graded Strong in the audit.",
+      "createdAtUtc": "2026-06-12T00:50:10.0000000Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-23T19:10:00.0000000Z",
-  "updatedAtUtc": "2026-05-29T16:05:00.0000000Z",
+  "updatedAtUtc": "2026-06-12T00:50:10.0000000Z",
   "completedAtUtc": null,
-  "revision": 2,
+  "revision": 3,
   "isArchived": false
 }

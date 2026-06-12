@@ -30,15 +30,21 @@
       "author": "AgentSmith",
       "body": "Created during the 2026-05-26 untracked-gap audit after confirming that the current architecture backlog does not own the monolithic `MemoryApplicationService` even though it now spans retrieval, mutation, diagnostics, and telemetry concerns.",
       "createdAtUtc": "2026-05-26T21:27:00.0000000Z"
+    },
+    {
+      "id": "c-tsk191-audit9-002",
+      "author": "AgentSmith",
+      "body": "Audit #9 (2026-06-11) adds specifics for the retrieval half (file now 1,461 lines): (1) TWO tokenizer pipelines coexist (Lucene AnalyzeLexicalText and hand-rolled TokenizeSearchText) in the same class; (2) the hand-curated SearchAliases dictionary (11 entries, load-bearing for recall) is invisible config inside the service - extract it as a visible, separately testable module; (3) the token-scoring semantic fallback is an inline if/else at ~line 1029, NOT a second adapter on ITextEmbeddingProvider - promote it to a TokenFallback adapter so the swap is polymorphic and the fallback can report its own provider metadata (this hands TSK-0200 its seam for free; see also wiki record project-wiki-semantic-search-gap); (4) GetStatsAsync and GetTelemetryAsync are pure pass-throughs (deletion-test failures) - delete or inline them. GUARDRAIL: internal refactor only; must not reintroduce standalone semantic/unified search tools (TSK-0271, council-reviewed). Graded Worth exploring.",
+      "createdAtUtc": "2026-06-12T00:50:10.0000000Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-26T21:27:00.0000000Z",
-  "updatedAtUtc": "2026-05-26T21:27:00.0000000Z",
+  "updatedAtUtc": "2026-06-12T00:50:10.0000000Z",
   "completedAtUtc": null,
-  "revision": 1,
+  "revision": 2,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

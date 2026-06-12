@@ -29,14 +29,20 @@
       "author": "AgentSmith",
       "body": "Created from F-002 as Sprint 1 committed decomposition work.",
       "createdAtUtc": "2026-05-23T19:12:00.0000000Z"
+    },
+    {
+      "id": "c-tsk043-audit9-002",
+      "author": "AgentSmith",
+      "body": "Audit #9 (2026-06-11) type inventory to guide the split (file now 2,187 lines): MaintenanceActiveRunStore (37-71), MaintenanceAgentConfigService (217-348), MaintenanceResourceProbe (357-408), MaintenanceDiffService (409-467), MaintenanceWritePermissionService (468-533), IMaintenanceProposalStore + FileMaintenanceProposalStore (534-671), MaintenanceProposalWorkflow (672-942), MaintenanceTopicMapService (967-1263), MaintenanceAgentService (1264-2075), MaintenanceAgentSchedulerService (2076-2187). The proposal cluster (store + workflow) is a genuinely DEEP module - status-transition complexity behind a 5-method seam - and should move as ONE unit. The rest is pure file gravity: mechanical moves, no interface changes. SecurityServices.cs counterpart is TSK-0285. Graded Worth exploring.",
+      "createdAtUtc": "2026-06-12T00:50:10.0000000Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-23T19:12:00.0000000Z",
-  "updatedAtUtc": "2026-05-23T19:12:00.0000000Z",
+  "updatedAtUtc": "2026-06-12T00:50:10.0000000Z",
   "completedAtUtc": null,
-  "revision": 1,
+  "revision": 2,
   "isArchived": false
 }

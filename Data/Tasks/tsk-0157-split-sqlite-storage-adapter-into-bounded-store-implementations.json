@@ -28,15 +28,21 @@
       "author": "AgentSmith",
       "body": "Created during 2026-05-25 deepdive audit. Evidence: source-only largest-file scan listed MemorySmith.Storage/SqliteMemorySmithDatabase.cs at 1,269 lines; method/interface scan showed the class exposes store entry points for users, roles, provider links, login history, audit logs, settings, version history, semantic index metadata, and API tokens plus migration/seed/query-helper responsibilities.",
       "createdAtUtc": "2026-05-25T16:02:00.0000000Z"
+    },
+    {
+      "id": "c-tsk157-audit9-002",
+      "author": "AgentSmith",
+      "body": "Audit #9 (2026-06-11) adds the seam-honesty angle (file now 1,404 lines): all nine sub-interfaces have exactly ONE adapter - hypothetical seams - and even SqliteMetadataStoreTests instantiates the concrete class, so the interfaces currently buy zero test isolation. Two honest options: (a) navigability first - split the implementation into partial files per store, keep the interfaces (cheap, zero risk; recommended first move); (b) deeper cut - collapse sub-interfaces nobody substitutes into the IMemorySmithDatabase facade, keeping only those where a second adapter is plausible. The deletion test sides with (b) for most of the nine, but (a) doesn't foreclose it. Note the new AgentSessions table (TSK-0278) lives OUTSIDE this class via its own migration - a precedent for bounded store ownership. Graded Worth exploring.",
+      "createdAtUtc": "2026-06-12T00:50:10.0000000Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-25T16:02:00.0000000Z",
-  "updatedAtUtc": "2026-05-25T16:02:00.0000000Z",
+  "updatedAtUtc": "2026-06-12T00:50:10.0000000Z",
   "completedAtUtc": null,
-  "revision": 1,
+  "revision": 2,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

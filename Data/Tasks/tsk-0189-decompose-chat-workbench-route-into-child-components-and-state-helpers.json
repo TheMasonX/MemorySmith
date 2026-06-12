@@ -30,15 +30,21 @@
       "author": "AgentSmith",
       "body": "Created during the 2026-05-26 untracked-gap audit after confirming the active architecture backlog still does not own the `Chat.razor` route hotspot even though the route remains the largest file in the app.",
       "createdAtUtc": "2026-05-26T21:25:00.0000000Z"
+    },
+    {
+      "id": "c-tsk189-audit9-002",
+      "author": "AgentSmith",
+      "body": "Audit #9 (2026-06-11) reframes this as a deepening, not just a component split: extract a chat turn engine module (the state machine over turns: start turn, consume stream updates, resolve proposal approve/reject/respond outcomes) plus a chat session store seam with two adapters (browser localStorage + in-memory for tests = real seam). The page keeps markup/bindings/JS interop. File is now 3,230 lines (was 2,511 when this task was filed). Evidence of the missing seam: four tests pin behavior by reading Chat.razor as TEXT - ChatRazor_OnDraftInput_DebouncesWithoutImmediateSessionSnapshotSave, ChatRazor_DefinesStreamingRenderThrottleInterval, ChatRazor_RenderTurnContent_UsesBoundedCacheWithStreamingBypass, ChatRazor_PersistDraftAfterDelay_PersistsActiveDraftSnapshotOnly (PagesAndChatTests). Acceptance addition: all four become real unit tests against the engine/store; the proposal approval state machine (9 methods) gets direct coverage. Graded Strong in the audit.",
+      "createdAtUtc": "2026-06-12T00:50:10.0000000Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-26T21:25:00.0000000Z",
-  "updatedAtUtc": "2026-05-26T21:25:00.0000000Z",
+  "updatedAtUtc": "2026-06-12T00:50:10.0000000Z",
   "completedAtUtc": null,
-  "revision": 1,
+  "revision": 2,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,
