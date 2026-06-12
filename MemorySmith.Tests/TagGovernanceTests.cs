@@ -311,16 +311,25 @@ public class TagGovernanceTests
     [Test]
     public void ExternalAuthCallbacks_RecordDurableSuccessAndFailureEvidence()
     {
+        // TSK-0282: the OAuth callback bodies moved from inline Program.cs lambdas to the
+        // unit-testable GitHubOAuthCallbackHandler module. The BEHAVIOR (durable success/failure
+        // evidence, first-admin bootstrap, claims) is now covered by real tests in
+        // GitHubOAuthCallbackHandlerTests against a live database — this test only pins the
+        // wiring: the OAuth events must route to the handler, and the handler must call the
+        // durable recorder.
         var root = FindRepositoryRoot();
-        var program = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "Program.cs"));
+        var securitySetup = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "Hosting", "MemorySmithSecuritySetup.cs"));
+        var callbackHandler = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "Hosting", "GitHubOAuthCallbackHandler.cs"));
         var securitySource = File.ReadAllText(Path.Combine(root, "MemorySmith.App", "Services", "SecurityServices.cs"));
 
         Assert.Multiple(() =>
         {
-            Assert.That(program, Does.Contain("ExternalAuthOutcomeRecorder"));
-            Assert.That(program, Does.Contain("RecordSuccessAsync"));
-            Assert.That(program, Does.Contain("RecordFailureIfNeededAsync"));
-            Assert.That(program, Does.Contain("OnRemoteFailure = async ctx =>"));
+            Assert.That(securitySetup, Does.Contain("GitHubOAuthCallbackHandler"));
+            Assert.That(securitySetup, Does.Contain("OnCreatingTicket"));
+            Assert.That(securitySetup, Does.Contain("OnRemoteFailure"));
+            Assert.That(callbackHandler, Does.Contain("ExternalAuthOutcomeRecorder"));
+            Assert.That(callbackHandler, Does.Contain("RecordSuccessAsync"));
+            Assert.That(callbackHandler, Does.Contain("RecordFailureIfNeededAsync"));
             Assert.That(securitySource, Does.Contain("RecordWithActorAsync"));
             Assert.That(securitySource, Does.Contain("FailurePersistedKey"));
             Assert.That(securitySource, Does.Contain("auth.login.succeeded"));
