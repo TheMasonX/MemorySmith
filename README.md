@@ -14,6 +14,7 @@ Opens on `http://localhost:5089` by default. Pages:
 |---|---|
 | `/memories` | Browse, search, create, edit, delete memory records |
 | `/pages` | Create, search, edit, preview, and render markdown-backed pages from `Data/Pages` |
+| `/tasks` | Task workbench — browse, search, create, edit, and manage task records from `Data/Tasks` with status transitions, assignees, priorities, tags, and comments |
 | `/chat` | Memory-enhanced chat and agent mode with provider/model selection, streaming responses, context usage, attachments, and local chat history |
 | `/login`, `/profile`, `/admin/setup`, `/admin` | Local sign-in/profile management, first-admin bootstrap, and searchable RBAC/audit/history/settings administration |
 | `/health` | Scrollable stat cards, activity charts (queries/day, changes/day), maintenance telemetry |
@@ -21,10 +22,32 @@ Opens on `http://localhost:5089` by default. Pages:
 | `/about` | MemorySmith and third-party license information |
 | `/api/memories` | REST CRUD for automation |
 | `/api/pages`, `/api/search`, `/api/chat` | Page CRUD/search/rendering, combined memory/page search, and chat/agent/config API |
+| `/api/tasks` | Task CRUD with status transitions, assignees, priorities, tags, and comments |
 | `/api/auth/*`, `/api/admin/*` | Current-user, login/logout, setup, user, provider, audit, and history metadata APIs |
 | `/api/stats`, `/api/health/*`, `/api/diagnostics` | Stats, readiness, and redacted operational diagnostics |
 | `/page-assets/*` | Static files from `Data/Pages/assets` for images, video, and audio embedded in pages |
 | `/mcp` | MCP JSON-RPC endpoint for AI agent tool use |
+
+## Knowledge Hub — Documentation Map
+
+Key documentation and planning files referenced by the project:
+
+| Path | Purpose |
+|---|---|
+| `MemorySmith.Core/Docs/Plans/` | Architecture and implementation plans |
+| `MemorySmith.Core/Docs/Prompts/wiki-chat-agent.md` | Canonical chat/agent system prompt (shared with app at build time) |
+| `MemorySmith.Core/Docs/Prompts/wiki-chat-agent.modelfile` | Athena/Ollama prompt package (kept in sync with canonical prompt) |
+| `MemorySmith.Core/Docs/Prompts/maintenance-agent-task.md` | Maintenance agent prompt contract |
+| `MemorySmith.Core/Docs/Prompts/maintenance-proposal-generation.md` | Maintenance proposal generation prompt |
+| `MemorySmith.Core/Docs/Prompts/maintenance-revision-cycle.md` | Maintenance revision cycle prompt |
+| `MemorySmith.Core/Docs/Reviews/` | Review and audit reports (verify against current code; may be stale) |
+| `MemorySmith.Core/Docs/ProgressReports/` | Historical progress snapshots (verify against current code) |
+| `Data/Memories/Core/` | Active structured project wiki records |
+| `Data/Memories/Working/` | In-progress structured memories |
+| `Data/Memories/Unconsolidated/` | Raw memory inbox (not authoritative without verification) |
+| `Data/Pages/` | Markdown-backed project wiki pages and longer-form notes |
+| `Data/Tasks/` | Task workbench JSON record store (~286 tasks) |
+| `Schemas/` | JSON schema and related data contracts |
 
 ## The Project Wiki
 

@@ -24,10 +24,10 @@ param(
     [int]$HttpsPort = 7090,
     [string]$HttpsBindAddress,
     [string]$HttpsCertificatePath,
-    [string]$HttpsCertificatePassword,
+    [SecureString]$HttpsCertificatePassword,
     [string]$HttpsCertificatePasswordFile,
     [bool]$AllowRemoteApi = $true,
-    [switch]$EnsurePrivateFirewallRule = $true,
+    [switch]$EnsurePrivateFirewallRule,
     [int]$ServiceTimeoutSeconds = 60,
     [int]$ReadyTimeoutSeconds = 180,
     [string]$ApiKey,
@@ -278,7 +278,10 @@ function Write-SemanticSettingsOverride {
         [int]$CudaDeviceId,
 
         [AllowEmptyString()]
-        [string]$OpenVinoDeviceId = ''
+        [string]$OpenVinoDeviceId = '',
+
+        [Parameter()]
+        [switch] $AsHashtable
     )
 
     $root = @{}
@@ -322,7 +325,7 @@ function Write-SemanticSettingsOverride {
 
 function Resolve-ReadyCheckApiKey {
     param(
-        [AllowEmptyString()]
+        [Parameter()]
         [string]$ExplicitApiKey,
 
         [Parameter(Mandatory = $true)]
@@ -486,7 +489,7 @@ if ($SemanticExecutionProvider -ne 'Cpu' -and $SemanticExecutionProvider -ne $On
     Write-Warning "Semantic execution provider '$SemanticExecutionProvider' does not match ONNX runtime flavor '$OnnxRuntimeFlavor'. MemorySmith can still fall back to CPU, but the requested hardware provider is unlikely to initialize unless the published runtime flavor also matches."
 }
 
-if (-not [string]::IsNullOrWhiteSpace($HttpsCertificatePassword) -and -not [string]::IsNullOrWhiteSpace($HttpsCertificatePasswordFile)) {
+if ($null -ne $HttpsCertificatePassword -and -not [string]::IsNullOrWhiteSpace($HttpsCertificatePasswordFile)) {
     throw 'Use either -HttpsCertificatePassword or -HttpsCertificatePasswordFile, not both.'
 }
 
@@ -518,10 +521,17 @@ try {
         }
 
         if ([string]::IsNullOrWhiteSpace($resolvedHttpsCertificatePath)) {
-            Write-Warning "No HTTPS certificate found under artifacts/certs. Continuing with HTTP only. Use -HttpOnly to suppress HTTPS auto-discovery."
+            Write-Warning @"
+No HTTPS certificate found under artifacts/certs.
+
+To generate one, run:
+    .\Scripts\New-MemorySmithDevCert.ps1
+
+Continuing with HTTP only. Use -HttpOnly to suppress this warning.
+"@
         }
         else {
-            if ([string]::IsNullOrWhiteSpace($HttpsCertificatePassword) -and [string]::IsNullOrWhiteSpace($HttpsCertificatePasswordFile)) {
+            if ($null -eq $HttpsCertificatePassword -and [string]::IsNullOrWhiteSpace($HttpsCertificatePasswordFile)) {
                 $HttpsCertificatePasswordFile = Resolve-DefaultHttpsPasswordFilePath -CertificatePath $resolvedHttpsCertificatePath
             }
 
@@ -536,10 +546,11 @@ try {
                     throw "HTTPS certificate password file is empty: $resolvedHttpsCertificatePasswordFile"
                 }
             }
-            elseif (-not [string]::IsNullOrWhiteSpace($HttpsCertificatePassword)) {
-                $resolvedHttpsCertificatePassword = $HttpsCertificatePassword.Trim()
+            elseif ($null -ne $HttpsCertificatePassword) {
+                $credential = [PSCredential]::new('unused', $HttpsCertificatePassword)
+                $resolvedHttpsCertificatePassword = $credential.GetNetworkCredential().Password
                 if ([string]::IsNullOrWhiteSpace($resolvedHttpsCertificatePassword)) {
-                    throw 'HTTPS certificate password resolves to empty after trimming.'
+                    throw 'HTTPS certificate password resolves to empty.'
                 }
             }
 
@@ -558,7 +569,13 @@ try {
         }
     }
 
-    $listenUrl = [string]::Join(';', $listenUrls)
+    if ($httpsEnabled) {
+        $listenUrl = [string]::Join(';', $listenUrls)
+    }
+    else {
+        $listenUrl = $listenUrls[0]
+    }
+
     $additionalRuntimeArgs += @('--MemorySmith:SettingsOverridePath', $SettingsOverridePath)
 
     Stop-ServiceIfPresent -Name $ServiceName -TimeoutSeconds $ServiceTimeoutSeconds
@@ -569,8 +586,8 @@ try {
         throw "Publish completed, but the expected executable was not found: $publishExe"
     }
 
-    Write-Host "==> Write semantic settings override '$SettingsOverridePath'"
-    Write-SemanticSettingsOverride -Path $SettingsOverridePath -ExecutionProvider $SemanticExecutionProvider -CpuFallbackEnabled $CpuFallbackEnabled -CudaDeviceId $CudaDeviceId -OpenVinoDeviceId $OpenVinoDeviceId
+        Write-Host "==> Write semantic settings override '$SettingsOverridePath'"
+    Write-SemanticSettingsOverride -Path $SettingsOverridePath -ExecutionProvider $SemanticExecutionProvider -CpuFallbackEnabled $CpuFallbackEnabled -CudaDeviceId $CudaDeviceId -OpenVinoDeviceId $OpenVinoDeviceId -AsHashtable
 
     Register-OrUpdateService -Name $ServiceName -DisplayName $ServiceDisplayName -ExecutablePath $publishExe -DataPath $MemoryDirectory -ListenUrl $listenUrl -RemoteApiEnabled $AllowRemoteApi -AdditionalRuntimeArgs $additionalRuntimeArgs
 
@@ -583,12 +600,16 @@ try {
 
     Start-ServiceAndWait -Name $ServiceName -TimeoutSeconds $ServiceTimeoutSeconds
 
-    if (-not $SkipReadyCheck) {
+        if (-not $SkipReadyCheck) {
         $resolvedReadyApiKey = Resolve-ReadyCheckApiKey -ExplicitApiKey $ApiKey -SettingsPath $SettingsOverridePath
         if (-not [string]::IsNullOrWhiteSpace($resolvedReadyApiKey)) {
-            Write-Host "==> Ready check will include API key header '$ApiKeyHeaderName'"
+            Write-Host "==> Ready check API key resolved (from parameter, env:MEMORYSMITH_API_KEY, or settings override)"
+            Write-Host "   Using header '$ApiKeyHeaderName'"
         }
         else {
+            if (-not [string]::IsNullOrWhiteSpace($env:MEMORYSMITH_API_KEY)) {
+                Write-Warning "env:MEMORYSMITH_API_KEY is set but was not resolved by Resolve-ReadyCheckApiKey. This may indicate a parsing issue."
+            }
             Write-Host "==> Ready check API key header not configured; probing without authentication header"
         }
 
@@ -608,12 +629,15 @@ try {
         Write-Host "OpenVINO device id: $OpenVinoDeviceId"
     }
     Write-Host "Settings override: $SettingsOverridePath"
-    if ($httpsEnabled -and $resolvedHttpsCertificatePath) {
+        if ($httpsEnabled -and $resolvedHttpsCertificatePath) {
         Write-Host "HTTPS certificate: $resolvedHttpsCertificatePath"
+    }
+    if ($httpsEnabled) {
+        Write-Host "HTTPS URL (host name): https://memorysmith.home.arpa:$HttpsPort"
     }
     $lanIp = Get-PrimaryLanIp
     if ($lanIp) {
-        Write-Host "LAN URL: http://${lanIp}:$Port"
+        Write-Host "LAN HTTP URL: http://${lanIp}:$Port"
         if ($httpsEnabled) {
             Write-Host "LAN HTTPS URL: https://${lanIp}:$HttpsPort"
         }

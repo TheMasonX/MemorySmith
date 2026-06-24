@@ -1,5 +1,5 @@
 ﻿{
-  "id": "tsk-0027-new-task",
+  "id": "tsk-0027-govern-system-prompt",
   "key": "TSK-0027",
   "title": "Govern system prompt and model config in managed pages, not loose files",
   "description": "Replace loose-file prompt/config handling with governed, first-class configuration surfaces. Move model configuration into a dedicated managed page and expose it in the app so changes are visible, reviewable, and auditable.",
