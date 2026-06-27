@@ -1,0 +1,40 @@
+{
+  "id": "tsk-0287-add-task-page-link-and-assign-mcp-capabilities",
+  "key": "TSK-0287",
+  "title": "Add task↔page linking, reference management, and assignee-aware filtering to MCP tools",
+  "description": "The MemorySmith MCP tool surface supports task CRUD and page search independently, but has no first-class tool for linking tasks to wiki pages, managing references/backlinks, or filtering tasks by assignee. This gap was identified in a 2026-06-27 SteveBot audit of the MCP tool contracts.\n\n### Problems\n1. **No explicit \"link task to page\" operation** — tasks can store `linkedPages` in their JSON schema, but there's no MCP tool to add/remove linked pages from a task. Agents must manually edit the JSON file.\n2. **No reference/backlink tools** — the wiki memory records have `references` and `conflicts` fields, but `memorysmith_memory_create` and `memorysmith_memory_update` require AgentWritesEnabled+AutoAccept. There's no MCP tool for reading reverse references (\"which tasks/memories reference page X?\").\n3. **No assignee-aware task filtering** — `memorysmith_task_list` has a free-text `assignee` filter but no dedicated `assigneeMode` filter (Directory vs Custom), and no way to list unassigned tasks.\n4. **No bulk-link tools** — linking multiple pages to a task (or vice versa) requires N individual manual operations.\n\n### Proposed Capabilities\n\n#### Tool: Add Linked Page to Task\n- `memorysmith_task_add_linked_page(idOrKey, pageSlug)` — adds a page slug to the task's `linkedPages` array. Validates that the page exists before persisting (soft failure if slug is new).\n\n#### Tool: Remove Linked Page from Task\n- `memorysmith_task_remove_linked_page(idOrKey, pageSlug)` — removes a page slug from `linkedPages`.\n\n#### Tool: List Reverse References\n- `memorysmith_find_references(idOrKey)` — returns all wiki memory records and tasks whose `references` or `linkedPages` fields contain the given id/slug.\n\n#### Enhanced: Task List Filtering\n- `memorysmith_task_list` — add optional `assigneeMode` filter (`Custom`, `Directory`, or `Unassigned`), and optionally expand `assignee` to support an `unassigned` sentinel.\n\n#### Tool: Bulk Link Pages to Task\n- `memorysmith_task_bulk_link_pages(idOrKey, pageSlugs[])` — atomically adds all provided slugs to `linkedPages`, returning success/failure per slug.\n\n### Out of Scope (Future)\n- Creating a programmable relation/edge store between tasks and pages (stays JSON-native for now)\n- Bidirectional sync (page → task linking is symmetric; this card only targets the task→page direction via tools)\n- MCP tool for editing task `references` field (that's a wiki-memory concern, separate from task-tracker concerns)\n\n### Acceptance Criteria\n- Each new tool has a documented input schema and error contract\n- `linkedPages` changes persist correctly and survive task re-read\n- `memorysmith_task_list` with `assigneeMode: \"Unassigned\"` returns tasks where `assignee` is null/empty\n- Reverse-reference search covers both `references` on memory records and `linkedPages` on task records\n- Bulk-link tool validates slugs before persisting and reports per-item outcomes\n- Existing task tools (list, get, create, update, set_status) remain unchanged\n\n### Risk & Rollback\n- Low risk: all changes are additive (new tools, new optional params on existing tools)\n- Rollback: revert the new tools in a single PR; remove new parameters from existing tools\n- No schema migration needed: `linkedPages` already exists on task records",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "SteveBot",
+  "labels": [
+    "mcp",
+    "tasks",
+    "pages",
+    "api",
+    "agent-tools",
+    "linkage"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [
+    {
+      "Id": "c-stevebot-audit-note",
+      "Author": "SteveBot",
+      "Body": "Audit identified 2026-06-27 during MemorySmith.Agent repo maintenance. The MemorySmith MCP tools (memorysmith_task_*, memorysmith_page_*, memorysmith_hybrid_search) can read tasks and pages independently but cannot relate them. This gap blocks agents from building rich task→page dependency tracking. See MemorySmith.Agent session logs for full context.",
+      "CreatedAtUtc": "2026-06-27T18:30:00Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-06-27T18:30:00Z",
+  "updatedAtUtc": "2026-06-27T18:30:00Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false
+}
