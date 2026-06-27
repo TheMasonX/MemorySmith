@@ -8,12 +8,12 @@ using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using System.Threading.Channels;
 using System.Reflection;
-using GitHub.Copilot.SDK;
+using GitHub.Copilot;
 using MemorySmith.App.Services.Training;
 using MemorySmith.Core.Models;
 using Microsoft.Extensions.Options;
-using SdkCopilotClient = GitHub.Copilot.SDK.CopilotClient;
-using SdkCopilotClientOptions = GitHub.Copilot.SDK.CopilotClientOptions;
+using SdkCopilotClient = GitHub.Copilot.CopilotClient;
+using SdkCopilotClientOptions = GitHub.Copilot.CopilotClientOptions;
 
 namespace MemorySmith.App.Services;
 
@@ -1097,7 +1097,7 @@ public sealed class GitHubCopilotChatProvider : IChatProvider
         }, timeout.Token);
 
         using var registration = timeout.Token.Register(() => channel.Writer.TryComplete(new OperationCanceledException(timeout.Token)));
-        using var subscription = session.On(evt =>
+        using var subscription = session.On<SessionEvent>(evt =>
         {
             try
             {
@@ -1250,22 +1250,15 @@ public sealed class GitHubCopilotChatProvider : IChatProvider
 
     private static SdkCopilotClient CreateClient(ChatOptions chatOptions)
     {
-        var sdkOptions = new SdkCopilotClientOptions { LogLevel = "warning" };
+        var sdkOptions = new SdkCopilotClientOptions { LogLevel = CopilotLogLevel.Warning };
         var token = ResolveToken(chatOptions);
         if (!string.IsNullOrWhiteSpace(token))
         {
             sdkOptions.GitHubToken = token;
         }
 
-        if (!string.IsNullOrWhiteSpace(chatOptions.GitHubCliPath))
-        {
-            sdkOptions.CliPath = chatOptions.GitHubCliPath;
-        }
-
-        if (!string.IsNullOrWhiteSpace(chatOptions.GitHubCliUrl))
-        {
-            sdkOptions.CliUrl = chatOptions.GitHubCliUrl;
-        }
+        // CliPath and CliUrl were removed from CopilotClientOptions in SDK v1.0.4.
+        // The SDK discovers the CLI via PATH, the Connection property, or GitHubToken.
 
         return new SdkCopilotClient(sdkOptions);
     }
@@ -1446,14 +1439,14 @@ public sealed class GitHubCopilotChatProvider : IChatProvider
         return new JsonObject { ["input"] = rawArguments.ToString() ?? string.Empty };
     }
 
-    private static List<UserMessageAttachment>? BuildGitHubAttachments(IReadOnlyList<ChatAttachment>? attachments)
+    private static IList<Attachment>? BuildGitHubAttachments(IReadOnlyList<ChatAttachment>? attachments)
     {
         if (attachments is null)
         {
             return null;
         }
 
-        var result = new List<UserMessageAttachment>();
+        var result = new List<Attachment>();
         foreach (var attachment in attachments.Where(attachment => attachment.IsImage))
         {
             var payload = ChatAttachmentFiles.ReadTrustedImageBase64(attachment);
@@ -1462,7 +1455,7 @@ public sealed class GitHubCopilotChatProvider : IChatProvider
                 continue;
             }
 
-            result.Add(new UserMessageAttachmentBlob
+            result.Add(new AttachmentBlob
             {
                 Data = payload,
                 DisplayName = attachment.Name,
