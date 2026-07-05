@@ -1,0 +1,36 @@
+{
+  "id": "tsk-0295-add-task-status-priority-validation-sets",
+  "key": "TSK-0295",
+  "title": "Add TaskStatuses.All and TaskPriorities.All validation sets",
+  "description": "P0: `TaskDomainService.NormalizeOrDefault` only trims/null-checks status/priority/type values — no membership validation against defined constant sets. `TaskStatuses` and `TaskPriorities` have no `All` `HashSet` at all (contrast with `MaintenanceProposalStatuses.All` which exists but is unused). A task created or updated with a typo'd status (e.g. `\"Cancelled\"` instead of `Rejected`, or `\"In Progress\"` with a space) via the REST/MCP API silently vanishes from every Kanban column query, which does an exact `OrdinalIgnoreCase` match.\n\nScope:\n- Add `TaskStatuses.All` and `TaskPriorities.All` `HashSet<string>(StringComparer.OrdinalIgnoreCase)`\n- Validate in `NormalizeOrDefault` call sites for Status/Priority/Type — reject with clear error naming valid options, or fall back with warning\n- Add similar validation to `SetStatusAsync`\n\nEvidence: MemorySmith-Audit-Delta-9-20260702.md §1, council/audit-synthesis-council-20260705.md",
+  "type": "Task",
+  "status": "Ready",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": null,
+  "reporter": "AgentSmith",
+  "labels": [
+    "task-board",
+    "validation",
+    "data-integrity",
+    "audit-synthesis-20260705"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "audits/MemorySmith-Audit-Delta-9-20260702",
+    "council/audit-synthesis-council-20260705"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0295-20260705",
+      "author": "AgentSmith",
+      "body": "Created from 6-seat council audit synthesis. Data Model Architect rated at 88% confidence. Open question: does the Blazor task-board UI query per-column or fetch-all-and-bucket-client-side? Determines invisible vs miscategorized tasks.",
+      "createdAtUtc": "2026-07-05T22:00:00.0000000Z"
+    }
+  ],
+  "createdAtUtc": "2026-07-05T22:00:00.0000000Z",
+  "updatedAtUtc": "2026-07-05T22:00:00.0000000Z",
+  "revision": 1
+}

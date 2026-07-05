@@ -1,0 +1,37 @@
+{
+  "id": "tsk-0299-fix-splitthinking-silent-catch-validation-errors",
+  "key": "TSK-0299",
+  "title": "Fix SplitThinking, silent exception catch, and validation error clobbering",
+  "description": "P1: Three independent small fixes batched together:\n\n1. **SplitThinking only strips first `<think>` block** (80% confidence): `ChatServices.cs:940` uses `Regex.Match` (single match), not `Matches`. Multiple `<think>` segments leak raw tags into visible reply from second occurrence onward. Fix: use `Regex.Matches` to strip and aggregate all occurrences.\n\n2. **Silent exception swallow in `GitHubCopilotChatProvider.ListModelsAsync`** (90% confidence): `ChatServices.cs:1245` — `catch when (chatOptions.GitHubModels.Count > 0)` with zero logging inside catch. Fix: add `_logger.LogWarning` inside the catch block.\n\n3. **Validation errors clobbered under wrong key** (95% confidence): `MemoryApplicationService.ValidateRecord` writes tag-count error to `errors[\"Tags\"]`, then unconditionally overwrites same key with governance-diagnostic errors. Fix: use `errors[\"Governance\"]` for governance errors or merge instead of overwrite.\n\nEvidence: MemorySmith-Audit-Delta-2-20260702.md §3, §4; MemorySmith-Audit-Delta-5-20260702.md §1; council/audit-synthesis-council-20260705.md",
+  "type": "Task",
+  "status": "Ready",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": null,
+  "reporter": "AgentSmith",
+  "labels": [
+    "bug",
+    "chat",
+    "validation",
+    "audit-synthesis-20260705"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "audits/MemorySmith-Audit-Delta-2-20260702",
+    "audits/MemorySmith-Audit-Delta-5-20260702",
+    "council/audit-synthesis-council-20260705"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0299-20260705",
+      "author": "AgentSmith",
+      "body": "Created from 6-seat council audit synthesis. Source-Grounded Archivist confirmed SplitThinking and silent catch at 90-92% confidence. Validation error clobbering not independently verified (70% confidence). Batched as three small independent fixes.",
+      "createdAtUtc": "2026-07-05T22:00:00.0000000Z"
+    }
+  ],
+  "createdAtUtc": "2026-07-05T22:00:00.0000000Z",
+  "updatedAtUtc": "2026-07-05T22:00:00.0000000Z",
+  "revision": 1
+}

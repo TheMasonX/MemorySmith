@@ -5,7 +5,7 @@
 @inject IOptions<MemorySmithOptions> MsOptions
 @using Microsoft.Extensions.Options
 
-<PageTitle>Sign In - MemorySmith</PageTitle>
+<PageTitle>Sign In - @InstanceName</PageTitle>
 
 <div class="wiki-workbench admin-workbench">
     <section class="wiki-commandbar" aria-label="Account access">
@@ -87,6 +87,8 @@
 </div>
 
 @code {
+    private string InstanceName => MsOptions.Value.InstanceName;
+
     [SupplyParameterFromQuery(Name = "returnUrl")] public string? ReturnUrl { get; set; }
     [SupplyParameterFromQuery(Name = "error")] public string? Error { get; set; }
 

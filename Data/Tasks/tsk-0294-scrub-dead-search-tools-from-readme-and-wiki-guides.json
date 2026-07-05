@@ -1,0 +1,39 @@
+{
+  "id": "tsk-0294-scrub-dead-search-tools-from-readme-and-wiki-guides",
+  "key": "TSK-0294",
+  "title": "Scrub dead search tool references from README and wiki guides",
+  "description": "P0: `README.md` line 158 contains a copy-pasteable JSON example calling `memorysmith_unified_search` — a tool removed in TSK-0271. Two wiki guide pages (`Data/Pages/guides/search-and-chat.md`, `Data/Pages/features/api-and-mcp.md`) also document `memorysmith_semantic_search`/`memorysmith_unified_search` as live tools with full format tables and \"when to use\" guidance. These pages are themselves retrievable by `memorysmith_page_search`, so agents asking \"what search tools are available\" through the system's own search can be told to call nonexistent tools.\n\nScope:\n- Update `README.md` worked example + tool table: replace with `memorysmith_hybrid_search`\n- Update `search-and-chat.md` — remove deprecated rows or add explicit \"removed in TSK-0271\" callout\n- Update `api-and-mcp.md` — same treatment\n- Verify: grep for `unified_search` in docs returns zero results outside changelog/removal-notes\n\nEvidence: MemorySmith-Audit-20260702.md §2.1, memorysmith-deep-audit-20260703.md §6/§10, council/audit-synthesis-council-20260705.md",
+  "type": "Task",
+  "status": "Ready",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": null,
+  "reporter": "AgentSmith",
+  "labels": [
+    "documentation",
+    "search",
+    "tsk-0271-followup",
+    "audit-synthesis-20260705"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "audits/MemorySmith-Audit-20260702",
+    "audits/memorysmith-deep-audit-20260703",
+    "council/audit-synthesis-council-20260705",
+    "guides/search-and-chat",
+    "features/api-and-mcp"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0294-20260705",
+      "author": "AgentSmith",
+      "body": "Created from 6-seat council audit synthesis. Retrieval Specialist rated as P0 — every new integrator reads a broken example. Human Learning Advocate rated as 10-minute fix that prevents immediate onboarding trap.",
+      "createdAtUtc": "2026-07-05T22:00:00.0000000Z"
+    }
+  ],
+  "createdAtUtc": "2026-07-05T22:00:00.0000000Z",
+  "updatedAtUtc": "2026-07-05T22:00:00.0000000Z",
+  "revision": 1
+}

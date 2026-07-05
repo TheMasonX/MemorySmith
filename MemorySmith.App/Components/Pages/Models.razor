@@ -4,11 +4,12 @@
 @inject ChatModelProfileService ModelProfiles
 @inject IEnumerable<IChatProvider> ChatProviders
 @inject ISnackbar Snackbar
+@inject Microsoft.Extensions.Options.IOptionsMonitor<MemorySmithOptions> Options
 @using MemorySmith.Core.Models
 @using System.Globalization
 @using System.Text.RegularExpressions
 
-<PageTitle>Models - MemorySmith</PageTitle>
+<PageTitle>Models - @InstanceName</PageTitle>
 
 <div class="health-workbench">
     <div class="health-header">
@@ -115,6 +116,8 @@
 </div>
 
 @code {
+    private string InstanceName => Options.CurrentValue.InstanceName;
+
     private const int RecommendedMidrangeContextTokens = 24576;
     private static readonly IReadOnlyList<ContextWindowPreset> ContextWindowPresetOptions =
     [

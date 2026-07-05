@@ -9,7 +9,7 @@
 @inject IJSRuntime JS
 @inject Microsoft.Extensions.Options.IOptionsMonitor<MemorySmithOptions> Options
 
-<PageTitle>Tasks - MemorySmith</PageTitle>
+<PageTitle>Tasks - @InstanceName</PageTitle>
 
 <div class="wiki-workbench tasks-workbench">
     <section class="wiki-commandbar" aria-label="Tasks workbench">
@@ -597,6 +597,8 @@
 </div>
 
 @code {
+    private string InstanceName => Options.CurrentValue.InstanceName;
+
     private const string ActiveStatusFilter = "Active";
 
     [SupplyParameterFromQuery(Name = "task")]

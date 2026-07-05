@@ -7,7 +7,7 @@
 @inject Microsoft.Extensions.Options.IOptionsMonitor<MemorySmithOptions> Options
 @inject ISnackbar Snackbar
 
-<PageTitle>Proposals - MemorySmith</PageTitle>
+<PageTitle>Proposals - @InstanceName</PageTitle>
 
 <div class="wiki-workbench proposals-workbench">
     <section class="wiki-commandbar proposals-commandbar" aria-label="Maintenance proposals">
@@ -309,6 +309,8 @@
 </div>
 
 @code {
+    private string InstanceName => Options.CurrentValue.InstanceName;
+
     private const string AllFilterValue = "__all__";
     private static readonly IReadOnlyList<string> StatusOptions = [MaintenanceProposalStatuses.Open, MaintenanceProposalStatuses.NeedsRevision, MaintenanceProposalStatuses.Approved, MaintenanceProposalStatuses.Rejected];
     private static readonly IReadOnlyList<string> TaskOptions = ["staleness_scan", "relationship_integrity", "topic_map", "embedding_chunking_maintenance", "spot_checks", "consistency_checks", "synthesis"];

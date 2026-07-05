@@ -5,8 +5,9 @@
 @inject MaintenanceProposalWorkflow ProposalWorkflow
 @inject MaintenanceTopicMapService TopicMapService
 @inject ISnackbar Snackbar
+@inject Microsoft.Extensions.Options.IOptionsMonitor<MemorySmithOptions> Options
 
-<PageTitle>Maintenance - MemorySmith</PageTitle>
+<PageTitle>Maintenance - @InstanceName</PageTitle>
 
 <div class="wiki-workbench maintenance-workbench">
     <section class="wiki-commandbar maintenance-commandbar" aria-label="Maintenance">
@@ -188,6 +189,8 @@
 </div>
 
 @code {
+    private string InstanceName => Options.CurrentValue.InstanceName;
+
     private static readonly IReadOnlyList<string> TaskOptions = ["staleness_scan", "relationship_integrity", "topic_map", "embedding_chunking_maintenance", "spot_checks", "consistency_checks", "synthesis"];
     private IReadOnlyList<MaintenanceRunActivity> _activity = [];
     private IReadOnlyList<MaintenanceWriteProposal> _proposals = [];

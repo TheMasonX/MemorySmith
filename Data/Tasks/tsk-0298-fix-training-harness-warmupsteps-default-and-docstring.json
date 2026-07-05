@@ -1,0 +1,37 @@
+{
+  "id": "tsk-0298-fix-training-harness-warmupsteps-default-and-docstring",
+  "key": "TSK-0298",
+  "title": "Fix training harness warmupSteps default and stale docstring claims",
+  "description": "P1: `MemorySmith.Training/harness.py:resolve_hyperparameters` docstring claims `warmup_steps` default is 10 as a deliberate fix for \"v7 regression\" — but the actual code uses `hp.get(\"warmupSteps\") or 0`, silently falling back to 0. Also the docstring claims `max_train_steps` default is 200, but code uses 75. Two of four \"key changes from upstream\" claims are wrong.\n\nConsequence: every default-configuration training run gets zero warmup (immediate cosine decay from step 0), which is worse for LoRA fine-tuning quality and likely related to whatever v7 regression motivated the rewrite.\n\nScope:\n- Change `hp.get(\"warmupSteps\") or 0` → `hp.get(\"warmupSteps\") if hp.get(\"warmupSteps\") is not None else 10`\n- Fix `max_train_steps` docstring (75, not 200) or vice versa if intended default is different\n- Fix the `or`-based fallback pattern: explicit `0` should not be treated as \"not provided\"\n- Consolidate boolean-coercion helpers (duplicated 3×: `include_starter_examples`, `include_transcript_examples`, `resolve_trust_remote_code`)\n\nEvidence: MemorySmith-Audit-Delta-10-20260702.md §1, §2, council/audit-synthesis-council-20260705.md",
+  "type": "Task",
+  "status": "Ready",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": null,
+  "reporter": "AgentSmith",
+  "labels": [
+    "training",
+    "python",
+    "bug",
+    "harness",
+    "audit-synthesis-20260705"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "audits/MemorySmith-Audit-Delta-10-20260702",
+    "council/audit-synthesis-council-20260705"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0298-20260705",
+      "author": "AgentSmith",
+      "body": "Created from 6-seat council audit synthesis. Source-Grounded Archivist flagged Python findings as unverified (different language). Skeptical Reviewer confirmed 93% confidence on the docstring-vs-code contradiction.",
+      "createdAtUtc": "2026-07-05T22:00:00.0000000Z"
+    }
+  ],
+  "createdAtUtc": "2026-07-05T22:00:00.0000000Z",
+  "updatedAtUtc": "2026-07-05T22:00:00.0000000Z",
+  "revision": 1
+}

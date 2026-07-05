@@ -1,4 +1,5 @@
 @inherits LayoutComponentBase
+@inject Microsoft.Extensions.Options.IOptionsMonitor<MemorySmithOptions> Options
 
 <MudThemeProvider Theme="_theme" IsDarkMode="_isDarkMode" />
 <MudPopoverProvider />
@@ -12,7 +13,7 @@
                        aria-label="Toggle primary navigation"
                        title="Toggle primary navigation" />
 
-        <MudText Typo="Typo.h6" Class="ml-3">MemorySmith</MudText>
+        <MudText Typo="Typo.h6" Class="ml-3">@InstanceName</MudText>
         <MudSpacer />
         <AuthorizeView>
             <Authorized Context="authState">
@@ -46,6 +47,8 @@
 </MudLayout>
 
 @code {
+    private string InstanceName => Options.CurrentValue.InstanceName;
+
     private bool _drawerOpen = true;
     private bool _isDarkMode = true;
 

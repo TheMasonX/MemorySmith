@@ -1,0 +1,37 @@
+{
+  "id": "tsk-0300-add-total-auth-self-lockout-guardrail",
+  "key": "TSK-0300",
+  "title": "Add total auth self-lockout guardrail",
+  "description": "P1: Nothing prevents an Admin from disabling every sign-in method at once. `LocalPasswordEnabled` (JSON config) and each OAuth provider's enabled state (separate SQLite table) are toggled through two completely independent code paths, neither aware of the other, and neither checks whether at least one authentication method would remain active. `TryValidateCrossSettingConstraints` exists and is called on every setting update — but its entire body only validates two code-search weight relationships.\n\nRecovery from the lockout state requires direct server/file access — no UI-reachable fix.\n\nScope:\n- Extend `TryValidateCrossSettingConstraints` to check `Auth:LocalPasswordEnabled` against enabled provider count\n- Add pre-toggle check in `ToggleProviderAsync` — before disabling a provider, verify at least one other method remains\n- Show prominent warning: \"This will disable the last remaining sign-in method for this instance\"\n\nEvidence: MemorySmith-Audit-Delta-7-20260702.md §1, council/audit-synthesis-council-20260705.md",
+  "type": "Task",
+  "status": "Ready",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": null,
+  "reporter": "AgentSmith",
+  "labels": [
+    "security",
+    "auth",
+    "lockout",
+    "guardrail",
+    "audit-synthesis-20260705"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "audits/MemorySmith-Audit-Delta-7-20260702",
+    "council/audit-synthesis-council-20260705"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0300-20260705",
+      "author": "AgentSmith",
+      "body": "Created from 6-seat council audit synthesis. Source-Grounded Archivist partially supported (75% confidence — didn't independently verify all persistence code paths). Human Learning Advocate: \"The ultimate settings-UI trust failure.\"",
+      "createdAtUtc": "2026-07-05T22:00:00.0000000Z"
+    }
+  ],
+  "createdAtUtc": "2026-07-05T22:00:00.0000000Z",
+  "updatedAtUtc": "2026-07-05T22:00:00.0000000Z",
+  "revision": 1
+}

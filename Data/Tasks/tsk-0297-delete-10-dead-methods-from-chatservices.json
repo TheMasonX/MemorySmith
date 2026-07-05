@@ -1,0 +1,37 @@
+{
+  "id": "tsk-0297-delete-10-dead-methods-from-chatservices",
+  "key": "TSK-0297",
+  "title": "Delete 10 dead private methods from ChatServices.cs",
+  "description": "P1: 10 confirmed-dead private methods (~230 lines) in `ChatServices.cs`, each an orphaned pre-decomposition implementation with a live, separately-maintained duplicate now doing the real work in `ChatToolCatalog.cs`/`ChatContextPlanner.cs`. Also 6 private `[GeneratedRegex]` fields (`ExactReplyRegex`, `SimpleNoContextRegex`, `LocalKnowledgeRegex`, `AgentWriteCommandRegex`, `EvidenceSeekingRegex`, `AgentContextRegex`) that are byte-for-byte identical to copies in `ChatContextPlanner.cs`.\n\nDead methods: `ShouldPreloadContext`, `FormatRecordAsync`, `ReadLexicalQuery`, `ReadSemanticQuery`, `ReadHybridQuery`, `ReadContextPackQuery`, `FormatLexicalResults`, `FormatSemanticResults`, `FormatHybridResults`, `FormatContextPack`.\n\nScope:\n- Delete all 10 methods and 6 regex fields from `ChatServices.cs`\n- Verify with `dotnet build` and full test pass\n- This is a Step 1.5 for TSK-0042 — delete superseded members before the full file split\n\nEvidence: MemorySmith-Audit-Delta-2-20260702.md §1, council/audit-synthesis-council-20260705.md",
+  "type": "Task",
+  "status": "Ready",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": null,
+  "reporter": "AgentSmith",
+  "labels": [
+    "refactor",
+    "dead-code",
+    "chatservices",
+    "tsk-0042-followup",
+    "audit-synthesis-20260705"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "audits/MemorySmith-Audit-Delta-2-20260702",
+    "council/audit-synthesis-council-20260705"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0297-20260705",
+      "author": "AgentSmith",
+      "body": "Created from 6-seat council audit synthesis. Source-Grounded Archivist noted the line count claim in original audit was overstated (3,279 lines, not 3,736) but confirmed the dead-method pattern at 97% confidence. Human Learning Advocate: \"This is the code equivalent of leaving outdated highway signs up after rerouting traffic.\"",
+      "createdAtUtc": "2026-07-05T22:00:00.0000000Z"
+    }
+  ],
+  "createdAtUtc": "2026-07-05T22:00:00.0000000Z",
+  "updatedAtUtc": "2026-07-05T22:00:00.0000000Z",
+  "revision": 1
+}

@@ -1,0 +1,38 @@
+{
+  "id": "tsk-0301-delete-memoryindex-dead-code",
+  "key": "TSK-0301",
+  "title": "Delete MemoryIndex (dead code carrying live race risk)",
+  "description": "P2: `MemoryIndex` has a real, unguarded race condition (plain `Dictionary`, `Clear()`-then-refill `Rebuild()`) but **zero production consumers**. The three dictionaries (`ById`, `ByTag`, `ByReference`) are maintained on every Create/Update/Delete but never read by any code path outside tests. All search paths use `_store.LoadAll()`. This is dead weight carrying a latent concurrency bug that escalates to CRITICAL the moment search is wired to consult the index.\n\nScope:\n- Remove `MemoryIndex.cs` class\n- Remove DI registration from `MemorySmithStorageSetup.cs`\n- Remove `_index` field from `MemoryApplicationService.cs`\n- Update any tests that reference `MemoryIndex` directly\n- Verify: full test pass, no regression in search or CRUD operations\n\nEvidence: MemorySmith-Audit-20260702.md §1.4, MemorySmith-Audit-Delta-5-20260702.md §2, council/audit-synthesis-council-20260705.md",
+  "type": "Task",
+  "status": "Ready",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": null,
+  "reporter": "AgentSmith",
+  "labels": [
+    "refactor",
+    "dead-code",
+    "indexing",
+    "concurrency",
+    "audit-synthesis-20260705"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "audits/MemorySmith-Audit-20260702",
+    "audits/MemorySmith-Audit-Delta-5-20260702",
+    "council/audit-synthesis-council-20260705"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0301-20260705",
+      "author": "AgentSmith",
+      "body": "Created from 6-seat council audit synthesis. Retrieval Specialist (\"delete it\"), Data Model Architect (\"dead weight\"), and Skeptical Reviewer (LOW severity) all converge on deletion. No dissent.",
+      "createdAtUtc": "2026-07-05T22:00:00.0000000Z"
+    }
+  ],
+  "createdAtUtc": "2026-07-05T22:00:00.0000000Z",
+  "updatedAtUtc": "2026-07-05T22:00:00.0000000Z",
+  "revision": 1
+}

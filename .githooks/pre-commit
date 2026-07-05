@@ -15,3 +15,15 @@ else
   echo "pre-commit: PowerShell is required to run repository validation scripts" >&2
   exit 1
 fi
+
+# ── Secret pattern check ─────────────────────────────────────────────
+staged_changes=$(git diff --cached --name-only)
+if [ -n "$staged_changes" ]; then
+  secret_patterns='X-Api-Key|ClientSecret|ApiKey["\r\n\t ]*:'
+  matched=$(echo "$staged_changes" | xargs git diff --cached -G "$secret_patterns" --name-only 2>/dev/null || true)
+  if [ -n "$matched" ]; then
+    echo "⚠️  pre-commit: Potential secret patterns detected in staged files:" >&2
+    echo "$matched" | sed 's/^/    /' >&2
+    echo "Please verify these files do not contain actual secrets before committing." >&2
+  fi
+fi

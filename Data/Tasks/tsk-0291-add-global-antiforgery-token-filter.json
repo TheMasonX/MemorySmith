@@ -1,0 +1,37 @@
+{
+  "id": "tsk-0291-add-global-antiforgery-token-filter",
+  "key": "TSK-0291",
+  "title": "Add global antiforgery token filter on MVC controllers",
+  "description": "P0: `UseAntiforgery()` was added to the middleware pipeline but zero `[ValidateAntiForgeryToken]` or `[AutoValidateAntiforgeryToken]` attributes exist on any controller. `AdminController.AssignRole/RemoveRole` and `SourceLinksController.Open` are CSRF-vulnerable. Mitigating factor: `AllowRemoteApi=false` by default limits blast radius to local-origin CSRF.\n\nScope:\n- Add `.AddMvcOptions(o => o.Filters.Add(new AutoValidateAntiforgeryTokenAttribute()))` to `builder.Services.AddControllers()`\n- Add `[IgnoreAntiforgeryToken]` on MCP API endpoints (already have API key auth)\n- Verify: POST to `AdminController.AssignRole` without antiforgery token → 400\n\nEvidence: MemorySmith-Audit-20260702.md §1.3, memorysmith-deep-audit-20260703.md §3",
+  "type": "Task",
+  "status": "Ready",
+  "priority": "Critical",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": null,
+  "reporter": "AgentSmith",
+  "labels": [
+    "security",
+    "csrf",
+    "antiforgery",
+    "audit-synthesis-20260705"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "audits/MemorySmith-Audit-20260702",
+    "audits/memorysmith-deep-audit-20260703",
+    "council/audit-synthesis-council-20260705"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0291-20260705",
+      "author": "AgentSmith",
+      "body": "Created from 6-seat council audit synthesis. Skeptical Reviewer demoted severity from HIGH to MEDIUM due to AllowRemoteApi=false default. All seats agree fix should happen regardless of label.",
+      "createdAtUtc": "2026-07-05T22:00:00.0000000Z"
+    }
+  ],
+  "createdAtUtc": "2026-07-05T22:00:00.0000000Z",
+  "updatedAtUtc": "2026-07-05T22:00:00.0000000Z",
+  "revision": 1
+}

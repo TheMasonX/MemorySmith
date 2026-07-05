@@ -1,3 +1,5 @@
+@inject Microsoft.Extensions.Options.IOptionsMonitor<MemorySmithOptions> Options
+
 <CascadingAuthenticationState>
     <Router AppAssembly="typeof(App).Assembly">
         <Found Context="routeData">
@@ -5,7 +7,7 @@
                 <NotAuthorized>
                     <LayoutView Layout="typeof(MainLayout)">
                         <MudText Typo="Typo.h4">Sign In</MudText>
-                        <MudText>You need a MemorySmith account for this area.</MudText>
+                        <MudText>You need an @InstanceName account for this area.</MudText>
                         <MudButton Href="/login" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Login">Sign in</MudButton>
                     </LayoutView>
                 </NotAuthorized>
@@ -20,3 +22,7 @@
         </NotFound>
     </Router>
 </CascadingAuthenticationState>
+
+@code {
+    private string InstanceName => Options.CurrentValue.InstanceName;
+}

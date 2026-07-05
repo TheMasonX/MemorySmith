@@ -13,6 +13,8 @@ public partial class TagManager
     [Inject]
     private ISnackbar Snackbar { get; set; } = default!;
 
+    private string InstanceName => Options.CurrentValue.InstanceName;
+
     private readonly string[] _policyModes = ["observe", "warn", "block"];
     private readonly string[] _plainTagModes = ["allowWithSuggestions", "observe", "warn", "blockUnknown"];
     private List<TagUsageSummary> _tagUsage = [];

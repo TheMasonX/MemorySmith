@@ -9,7 +9,7 @@
 @inject IDialogService Dialogs
 @inject IOptionsMonitor<MemorySmithOptions> Options
 
-<PageTitle>Memories - MemorySmith</PageTitle>
+<PageTitle>Memories - @InstanceName</PageTitle>
 
 <div class="@MemoryWorkbenchClass">
     <section class="wiki-commandbar" aria-label="Memory search">
@@ -394,6 +394,8 @@
 </div>
 
 @code {
+    private string InstanceName => Options.CurrentValue.InstanceName;
+
     private List<MemoryMetadata> _memories = [];
     private MemoryRecord? _selectedRecord;
     private MemorySearchResult? _selectedSemanticMatch;

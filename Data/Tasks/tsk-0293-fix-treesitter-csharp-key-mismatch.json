@@ -1,0 +1,37 @@
+{
+  "id": "tsk-0293-fix-treesitter-csharp-key-mismatch",
+  "key": "TSK-0293",
+  "title": "Fix TreeSitter C# chunking key mismatch",
+  "description": "P0: `TreeSitterChunkingService.cs` has `ExtensionToLanguage[\".cs\"] = \"CSharp\"` but `ChunkableTypes[\"c_sharp\"]` — `OrdinalIgnoreCase` doesn't bridge the underscore. On any `.cs` file where Roslyn chunking fails, the TreeSitter fallback silently uses generic chunking (no language-specific declaration boundaries) with no diagnostic log distinguishing the two.\n\nScope:\n- Rename `\"c_sharp\"` → `\"CSharp\"` in `ChunkableTypes` dictionary\n- Or remove `.cs`/`\"CSharp\"` from TreeSitter entirely if Roslyn is the only intended path\n- Add a `LogWarning` when Roslyn chunking fails (the missing diagnostic is the real problem)\n\nEvidence: MemorySmith-Audit-Delta-2-20260702.md §2, council/audit-synthesis-council-20260705.md",
+  "type": "Task",
+  "status": "Ready",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": null,
+  "reporter": "AgentSmith",
+  "labels": [
+    "bug",
+    "code-search",
+    "treesitter",
+    "chunking",
+    "audit-synthesis-20260705"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "audits/MemorySmith-Audit-Delta-2-20260702",
+    "council/audit-synthesis-council-20260705"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0293-20260705",
+      "author": "AgentSmith",
+      "body": "Created from 6-seat council audit synthesis. Source-Grounded Archivist rated at 95% confidence. Retrieval Specialist noted real-world impact is low (Roslyn is primary chunker) but missing diagnostic is the real issue.",
+      "createdAtUtc": "2026-07-05T22:00:00.0000000Z"
+    }
+  ],
+  "createdAtUtc": "2026-07-05T22:00:00.0000000Z",
+  "updatedAtUtc": "2026-07-05T22:00:00.0000000Z",
+  "revision": 1
+}

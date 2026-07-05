@@ -1,8 +1,8 @@
 {
   "Id": "memory-system-rfc-council-review-20260520",
-  "Title": "Memory System RFC Council Review",
   "Content": "This record summarizes a historical council review, not an active roadmap. The review established a current governance rule for MemorySmith memory design: use convention-first, validation-backed, evidence-gated changes before promoting new durable schema fields. The related page sources hold the RFC and council workflow details. Existing implemented conventions include tag namespaces, diagnostics, staleness warnings, relationship/source-link checks, chat trace evidence, and warning-first maintenance. Proposed schema fields such as Relations, Constraints, ValidUntil, ReviewAfter, or Priority remain page-level design material until code and retrieval behavior need reliable machine parsing. The LLM council page is a MemorySmith-specific multi-perspective review workflow.",
-  "Status": 1,
+  "Title": "Memory System RFC Council Review",
+  "Status": 2,
   "Confidence": 0.82,
   "Tags": [
     "project-wiki",
@@ -24,15 +24,21 @@
   "SourceLinks": [
     {
       "Label": "Core Memory System Improvements RFC",
-      "Uri": "%MemorySmithRepo%Data/Pages/plans/temp-plan.md"
+      "Uri": "%MemorySmithRepo%Data/Pages/plans/temp-plan.md",
+      "StartLine": null,
+      "EndLine": null
     },
     {
       "Label": "Council Workflow",
-      "Uri": "%MemorySmithRepo%Data/Pages/council/llm-council.md"
+      "Uri": "%MemorySmithRepo%Data/Pages/council/llm-council.md",
+      "StartLine": null,
+      "EndLine": null
     },
     {
       "Label": "Search and Chat",
-      "Uri": "%MemorySmithRepo%Data/Pages/guides/search-and-chat.md"
+      "Uri": "%MemorySmithRepo%Data/Pages/guides/search-and-chat.md",
+      "StartLine": null,
+      "EndLine": null
     }
   ],
   "UsageCount": 0,

@@ -12,7 +12,7 @@
 @inject ICurrentUserContext CurrentUser
 @inject IDialogService Dialogs
 
-<PageTitle>Pages - MemorySmith</PageTitle>
+<PageTitle>Pages - @InstanceName</PageTitle>
 <NavigationLock ConfirmExternalNavigation="@HasUnsavedChanges" OnBeforeInternalNavigation="ConfirmInternalNavigation" />
 
 <div class="@PagesWorkbenchClass">
@@ -390,6 +390,8 @@
 </div>
 
 @code {
+    private string InstanceName => Options.CurrentValue.InstanceName;
+
     private const string TreeMode = "tree";
     private const string FlatMode = "flat";
     private const string TocMode = "toc";

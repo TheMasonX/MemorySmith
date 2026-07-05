@@ -10,7 +10,7 @@
 @using MemorySmith.Core.Models
 @implements IDisposable
 
-<PageTitle>Code Search - MemorySmith</PageTitle>
+<PageTitle>Code Search - @InstanceName</PageTitle>
 
 <div class="health-workbench">
     <div class="health-header">
@@ -216,6 +216,8 @@
 </div>
 
 @code {
+    private string InstanceName => Options.CurrentValue.InstanceName;
+
     private bool _isBusy;
     private string _query = string.Empty;
     private string _targetsInput = string.Empty;

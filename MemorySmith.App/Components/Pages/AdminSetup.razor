@@ -2,8 +2,9 @@
 @rendermode InteractiveServer
 @inject MemorySmithLocalAuthService Auth
 @inject NavigationManager Navigation
+@inject Microsoft.Extensions.Options.IOptionsMonitor<MemorySmithOptions> Options
 
-<PageTitle>Admin Setup - MemorySmith</PageTitle>
+<PageTitle>Admin Setup - @InstanceName</PageTitle>
 
 <div class="wiki-workbench admin-workbench">
     <section class="wiki-commandbar" aria-label="@SetupHeaderLabel">
@@ -50,6 +51,8 @@
 </div>
 
 @code {
+    private string InstanceName => Options.CurrentValue.InstanceName;
+
     [SupplyParameterFromQuery(Name = "returnUrl")] public string? ReturnUrl { get; set; }
     [SupplyParameterFromQuery(Name = "error")] public string? Error { get; set; }
 

@@ -5,9 +5,10 @@
 @inject IMemoryChangePublisher Publisher
 @inject OperationalDiagnosticsService Diagnostics
 @inject LoggingObservabilityService LogObservability
+@inject Microsoft.Extensions.Options.IOptionsMonitor<MemorySmithOptions> Options
 @implements IDisposable
 
-<PageTitle>Health - MemorySmith</PageTitle>
+<PageTitle>Health - @InstanceName</PageTitle>
 
 <div class="health-workbench">
 <div class="health-header">
@@ -238,6 +239,8 @@
 </div>
 
 @code {
+    private string InstanceName => Options.CurrentValue.InstanceName;
+
     private StatsSnapshot? _stats;
     private IReadOnlyList<BackgroundServiceTelemetry> _telemetry = [];
     private IReadOnlyList<ActivityBucket> _activityBuckets = [];

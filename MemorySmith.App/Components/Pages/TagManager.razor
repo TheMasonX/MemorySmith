@@ -1,7 +1,8 @@
 @page "/tags"
 @attribute [Authorize(Policy = MemorySmithPolicies.CanAdminMemorySmith)]
+@inject Microsoft.Extensions.Options.IOptionsMonitor<MemorySmithOptions> Options
 
-<PageTitle>Tags - MemorySmith</PageTitle>
+<PageTitle>Tags - @InstanceName</PageTitle>
 
 <div class="wiki-workbench tag-manager-workbench">
     <section class="wiki-commandbar" aria-label="Tag manager">

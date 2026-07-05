@@ -1,8 +1,8 @@
 {
   "Id": "ai-memory-suite-governance-foundation-20260520",
-  "Title": "AI Memory Suite Governance Foundation",
   "Content": "The AI Memory Suite governance foundation is implemented as warning-first behavior rather than automatic destructive cleanup. MemorySmith:Maintenance:AutomaticDeprecationEnabled defaults false, so low-score records produce DeprecationRecommended events instead of silent Deprecated status moves. A file-backed tag policy lives at Data/Policies/tag-policy.json, and MemoryDiagnosticsService reports tag, source-link, relationship, staleness, and maintenance warnings without changing ranking or the persisted memory schema. Context-pack JSON preserves records/warnings while adding schemaVersion memorysmith.context-pack.v1 and per-record diagnostics. The /memories workbench shows diagnostic chips and a selected-record diagnostics panel. The /tags Tag Manager is the current user-facing policy editor for tag usage, namespaces, allow/block lists, aliases, and suggestions. Roadmap details and unimplemented proposals live in Data/Pages rather than this memory record.",
-  "Status": 1,
+  "Title": "AI Memory Suite Governance Foundation",
+  "Status": 2,
   "Confidence": 0.82,
   "Tags": [
     "project-wiki",
@@ -24,27 +24,39 @@
   "SourceLinks": [
     {
       "Label": "Memory governance guide",
-      "Uri": "%MemorySmithRepo%Data/Pages/guides/memory-governance-guide.md"
+      "Uri": "%MemorySmithRepo%Data/Pages/guides/memory-governance-guide.md",
+      "StartLine": null,
+      "EndLine": null
     },
     {
       "Label": "Tag policy",
-      "Uri": "%MemorySmithRepo%Data/Policies/tag-policy.json"
+      "Uri": "%MemorySmithRepo%Data/Policies/tag-policy.json",
+      "StartLine": null,
+      "EndLine": null
     },
     {
       "Label": "Memory governance services",
-      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/MemoryGovernanceServices.cs"
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/MemoryGovernanceServices.cs",
+      "StartLine": null,
+      "EndLine": null
     },
     {
       "Label": "Maintenance tasks",
-      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/MemoryMaintenanceTasks.cs"
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/MemoryMaintenanceTasks.cs",
+      "StartLine": null,
+      "EndLine": null
     },
     {
       "Label": "Context pack DTOs",
-      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/MemoryQueries.cs"
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/MemoryQueries.cs",
+      "StartLine": null,
+      "EndLine": null
     },
     {
       "Label": "Diagnostics tests",
-      "Uri": "%MemorySmithRepo%MemorySmith.Tests/MemoryDiagnosticsTests.cs"
+      "Uri": "%MemorySmithRepo%MemorySmith.Tests/MemoryDiagnosticsTests.cs",
+      "StartLine": null,
+      "EndLine": null
     }
   ],
   "UsageCount": 0,

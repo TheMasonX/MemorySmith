@@ -23,7 +23,7 @@
 @inject MaintenanceProposalWorkflow ProposalWorkflow
 @inject IChatFeedbackStore FeedbackStore
 
-<PageTitle>Chat - MemorySmith</PageTitle>
+<PageTitle>Chat - @InstanceName</PageTitle>
 <NavigationLock ConfirmExternalNavigation="@HasPendingDraft" OnBeforeInternalNavigation="ConfirmInternalNavigation" />
 
 <div class="@ChatWorkbenchClass">
@@ -464,6 +464,8 @@
 </div>
 
 @code {
+    private string InstanceName => Options.CurrentValue.InstanceName;
+
     private const string ChatStorageKey = "memorysmith.chat.sessions.v1";
     private const string ChatDraftStorageKey = "memorysmith.chat.active-draft.v1";
     private const string ChatPreferencesStorageKey = "memorysmith.chat.preferences.v1";

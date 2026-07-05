@@ -1,7 +1,8 @@
 @page "/variables"
 @rendermode InteractiveServer
+@inject Microsoft.Extensions.Options.IOptionsMonitor<MemorySmithOptions> Options
 
-<PageTitle>Variables - MemorySmith</PageTitle>
+<PageTitle>Variables - @InstanceName</PageTitle>
 
 <section class="wiki-page-shell">
     <div class="wiki-page-header">
@@ -15,3 +16,7 @@
         <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/admin?tab=variables">Open Variables in Admin</MudButton>
     </div>
 </section>
+
+@code {
+    private string InstanceName => Options.CurrentValue.InstanceName;
+}

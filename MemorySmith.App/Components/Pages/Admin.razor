@@ -22,7 +22,7 @@
 @using System.Text.Json
 @using System.Text.Json.Nodes
 
-<PageTitle>Admin - MemorySmith</PageTitle>
+<PageTitle>Admin - @InstanceName</PageTitle>
 
 <div class="wiki-workbench admin-workbench">
     <section class="wiki-commandbar" aria-label="Admin">
@@ -669,6 +669,8 @@
 </div>
 
 @code {
+    private string InstanceName => Options.CurrentValue.InstanceName;
+
     private const string AllFilterValue = "__all__";
     private const string AscendingSortDirection = "Ascending";
     private const string DescendingSortDirection = "Descending";

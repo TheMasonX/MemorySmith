@@ -5,6 +5,10 @@ using MemorySmith.Storage;
 
 public class MemorySmithOptions
 {
+    /// <summary>Display name used in the app bar, browser tab titles, and dashboard headings.
+    /// Set this to distinguish between multiple project instances.</summary>
+    public string InstanceName { get; set; } = "MemorySmith";
+
     public string DataPath { get; set; } = Path.Combine("..", "Data", "Memories");
     public string PagesPath { get; set; } = Path.Combine("..", "Data", "Pages");
     public string EventLogPath { get; set; } = Path.Combine("..", "Data", "Events", "audit.log");

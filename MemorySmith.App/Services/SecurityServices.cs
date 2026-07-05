@@ -455,16 +455,13 @@ public sealed class MemorySmithLocalAuthService
             return new AuthResult(false, "Setup has already been completed.");
         }
 
-        var isLoopback = MemorySmithRequestGuardMiddleware.IsLoopback(_httpContextAccessor.HttpContext?.Connection.RemoteIpAddress);
-        var tokenIsValid = ValidateBootstrapToken(request.BootstrapToken, auth.Setup.BootstrapTokenHash);
-        if (!isLoopback && !tokenIsValid)
+        var (isAuthorized, error) = BootstrapGate.Authorize(
+            _httpContextAccessor.HttpContext,
+            auth.Setup,
+            request.BootstrapToken);
+        if (!isAuthorized)
         {
-            return new AuthResult(false, "Initial setup is only available from localhost or with a valid bootstrap token.");
-        }
-
-        if (isLoopback && !auth.Setup.AllowLoopbackBootstrap && !tokenIsValid)
-        {
-            return new AuthResult(false, "Initial setup requires a valid bootstrap token.");
+            return new AuthResult(false, error ?? "Bootstrap authorization denied.");
         }
 
         var displayName = request.DisplayName.Trim();

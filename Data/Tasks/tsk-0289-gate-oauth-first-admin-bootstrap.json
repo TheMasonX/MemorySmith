@@ -1,0 +1,39 @@
+{
+  "id": "tsk-0289-gate-oauth-first-admin-bootstrap",
+  "key": "TSK-0289",
+  "title": "Gate OAuth first-admin bootstrap",
+  "description": "P0: `GitHubOAuthCallbackHandler.cs:132` grants Admin to whoever completes GitHub OAuth first (`var isFirstAdmin = !await db.Users.HasAnyAdminAsync(ct)`) with no allowlist, bootstrap token, or loopback check. The fix pattern already exists in `SecurityServices.CreateFirstAdminAsync` (loopback + bootstrap token + `FixedTimeEquals`) but was never applied to the OAuth path.\n\nScope:\n- Extract bootstrap-gating check out of `SecurityServices.CreateFirstAdminAsync` into a shared gate\n- Call from both `CreateFirstAdminAsync` and `GitHubOAuthCallbackHandler.OnCreatingTicketAsync`\n- Add test: first OAuth login from non-loopback with no token → `AuthenticatedDefaultRole`, not Admin\n\nEvidence: MemorySmith-Audit-20260702.md §1.2, MemorySmith-Audit-Delta-3-20260702.md §3/§4, memorysmith-deep-audit-20260703.md §1",
+  "type": "Task",
+  "status": "Ready",
+  "priority": "Critical",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": null,
+  "reporter": "AgentSmith",
+  "labels": [
+    "security",
+    "auth",
+    "oauth",
+    "bootstrap",
+    "audit-synthesis-20260705"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "audits/MemorySmith-Audit-20260702",
+    "audits/MemorySmith-Audit-Delta-3-20260702",
+    "audits/memorysmith-deep-audit-20260703",
+    "council/audit-synthesis-council-20260705"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0289-20260705",
+      "author": "AgentSmith",
+      "body": "Created from 6-seat council audit synthesis. The fix pattern already exists in SecurityServices — this is a completeness gap, not a knowledge gap.",
+      "createdAtUtc": "2026-07-05T22:00:00.0000000Z"
+    }
+  ],
+  "createdAtUtc": "2026-07-05T22:00:00.0000000Z",
+  "updatedAtUtc": "2026-07-05T22:00:00.0000000Z",
+  "revision": 1
+}

@@ -16,7 +16,7 @@
 @using MemorySmith.App.Services.Training
 @implements IDisposable
 
-<PageTitle>Training Workbench - MemorySmith</PageTitle>
+<PageTitle>Training Workbench - @InstanceName</PageTitle>
 
 <div class="health-workbench">
     <div class="health-header">
@@ -254,6 +254,8 @@
 </div>
 
 @code {
+    private string InstanceName => Options.CurrentValue.InstanceName;
+
     private const string LastTrainingSettingStorageKey = "memorysmith.training.last-setting";
 
     private bool _isBusy;

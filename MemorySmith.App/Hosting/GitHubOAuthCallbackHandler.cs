@@ -130,6 +130,19 @@ public sealed class GitHubOAuthCallbackHandler
                 LinkedAtUtc = now
             }, ct);
             var isFirstAdmin = !await db.Users.HasAnyAdminAsync(ct);
+            if (isFirstAdmin)
+            {
+                // Apply the same bootstrap gate as CreateFirstAdminAsync — first OAuth
+                // login from non-loopback (or loopback with gate disabled) without a
+                // bootstrap token does NOT get Admin promotion.
+                var (gateAuthorized, _) = BootstrapGate.Authorize(
+                    ctx.HttpContext,
+                    msOpts.Auth.Setup);
+                if (!gateAuthorized)
+                {
+                    isFirstAdmin = false;
+                }
+            }
             var assignedRole = isFirstAdmin ? MemorySmithRoles.Admin : MemorySmithPermissionHandler.NormalizeAuthenticatedDefaultRole(msOpts.Auth.AuthenticatedDefaultRole);
             await db.Roles.AssignRoleAsync(internalUserId, assignedRole, null, ct);
         }

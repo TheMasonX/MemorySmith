@@ -1,16 +1,17 @@
 @page "/about"
 @rendermode InteractiveServer
+@inject Microsoft.Extensions.Options.IOptionsMonitor<MemorySmithOptions> Options
 
-<PageTitle>About - MemorySmith</PageTitle>
+<PageTitle>About - @InstanceName</PageTitle>
 
 <div class="wiki-workbench about-workbench">
     <section class="wiki-commandbar about-commandbar" aria-label="About">
         <div class="wiki-title-block">
-            <MudText Typo="Typo.h4">About MemorySmith</MudText>
+            <MudText Typo="Typo.h4">About @InstanceName</MudText>
             <span class="wiki-count">MIT licensed</span>
         </div>
         <MudText Typo="Typo.body2" Class="about-summary-copy">
-            MemorySmith is a personal knowledge and memory management system.
+            @InstanceName is a personal knowledge and memory management system.
         </MudText>
     </section>
 
@@ -114,6 +115,8 @@
 </div>
 
 @code {
+    private string InstanceName => Options.CurrentValue.InstanceName;
+
     private record LicenseEntry(string Name, string Version, string License, string Url);
 
     private string _licenseSearch = string.Empty;

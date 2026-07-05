@@ -1,0 +1,37 @@
+{
+  "id": "tsk-0290-partition-login-rate-limiter-remove-phantom-lockout",
+  "key": "TSK-0290",
+  "title": "Partition login rate limiter and remove phantom lockout settings",
+  "description": "P0: `AddFixedWindowLimiter(\"login\", ...)` in `MemorySmithSecuritySetup.cs` creates a single unpartitioned global bucket. Default 5 attempts/15 minutes means one person mistyping a password locks out the entire application — every user, including admins. Also a trivial anonymous DoS: 5 POSTs from anywhere exhaust the budget.\n\nAdditionally, `LockoutMinutes`/`MaxProgressiveLockoutMinutes` are exposed in Admin Settings UI with specific descriptions (\"initial lockout duration... progressive lockout extends the delay\") but ZERO code enforces them — phantom feature.\n\nScope:\n- Switch to `AddPolicy(\"login\", httpContext => RateLimitPartition.GetFixedWindowLimiter(partitionKey: httpContext.Connection.RemoteIpAddress, ...))`\n- Remove `LockoutMinutes`/`MaxProgressiveLockoutMinutes` from `MemorySmithOptions.cs` and `AdminSettingsService.cs` (or implement per-account progressive lockout as a follow-up)\n- Verify: 5 rapid attempts from IP A return 429; 5 rapid attempts from IP B succeed concurrently\n\nEvidence: MemorySmith-Audit-Delta-3-20260702.md §1-2, council/audit-synthesis-council-20260705.md",
+  "type": "Task",
+  "status": "Ready",
+  "priority": "Critical",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": null,
+  "reporter": "AgentSmith",
+  "labels": [
+    "security",
+    "auth",
+    "rate-limiting",
+    "phantom-setting",
+    "audit-synthesis-20260705"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
+    "audits/MemorySmith-Audit-Delta-3-20260702",
+    "council/audit-synthesis-council-20260705"
+  ],
+  "comments": [
+    {
+      "id": "c-create-0290-20260705",
+      "author": "AgentSmith",
+      "body": "Created from 6-seat council audit synthesis. Skeptical Reviewer rated this as understated by original audit — raised to 95% confidence. This is the single highest-confidence P0 finding.",
+      "createdAtUtc": "2026-07-05T22:00:00.0000000Z"
+    }
+  ],
+  "createdAtUtc": "2026-07-05T22:00:00.0000000Z",
+  "updatedAtUtc": "2026-07-05T22:00:00.0000000Z",
+  "revision": 1
+}
