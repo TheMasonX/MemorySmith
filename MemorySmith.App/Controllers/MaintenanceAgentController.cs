@@ -7,6 +7,7 @@ namespace MemorySmith.App.Controllers;
 [ApiController]
 [Route("api/maintenance-agent")]
 [Authorize(Policy = MemorySmithPolicies.CanApproveAgentWrites)]
+[IgnoreAntiforgeryToken]
 public sealed class MaintenanceAgentController : ControllerBase
 {
     private readonly MaintenanceAgentService _agent;

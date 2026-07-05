@@ -30,7 +30,12 @@ public sealed class SqliteMemorySmithDatabase :
     ISemanticIndexMetadataStore,
     IApiTokenStore
 {
-    private const string InitialMigrationId = "20260517_auth_rbac_audit_history_v1";
+    private static readonly Lazy<IReadOnlyList<SchemaMigration>> MigrationsLazy = new(
+        () => new List<SchemaMigration>
+        {
+            new("20260517_auth_rbac_audit_history_v1", InitialSchemaSql, SeedSql),
+        },
+        LazyThreadSafetyMode.ExecutionAndPublication);
 
     private readonly string _connectionString;
     private readonly bool _applyMigrationsOnStartup;
@@ -84,7 +89,7 @@ public sealed class SqliteMemorySmithDatabase :
 
             if (_applyMigrationsOnStartup)
             {
-                await ApplyInitialMigrationAsync(connection, cancellationToken);
+                await ApplyPendingMigrationsAsync(connection, cancellationToken);
             }
 
             _initialized = true;
@@ -761,19 +766,57 @@ public sealed class SqliteMemorySmithDatabase :
         return connection;
     }
 
-    private static async Task ApplyInitialMigrationAsync(SqliteConnection connection, CancellationToken cancellationToken)
+    private static async Task ApplyPendingMigrationsAsync(SqliteConnection connection, CancellationToken cancellationToken)
     {
-        await ExecuteNonQueryAsync(connection, InitialSchemaSql, cancellationToken);
-        await ExecuteNonQueryAsync(connection, SeedSql, cancellationToken);
-        await using var command = connection.CreateCommand();
-        command.CommandText = """
-            INSERT OR IGNORE INTO SchemaMigrations (MigrationId, AppliedAtUtc, ProductVersion)
-            VALUES (@migrationId, @appliedAtUtc, @productVersion);
+        // Ensure SchemaMigrations tracking table exists first
+        await using var createMigTable = connection.CreateCommand();
+        createMigTable.CommandText = """
+            CREATE TABLE IF NOT EXISTS SchemaMigrations (
+                MigrationId TEXT PRIMARY KEY,
+                AppliedAtUtc TEXT NOT NULL,
+                ProductVersion TEXT NOT NULL
+            );
             """;
-        Add(command, "@migrationId", InitialMigrationId);
-        Add(command, "@appliedAtUtc", FormatDate(DateTime.UtcNow));
-        Add(command, "@productVersion", typeof(SqliteMemorySmithDatabase).Assembly.GetName().Version?.ToString() ?? "0.0.0");
-        await command.ExecuteNonQueryAsync(cancellationToken);
+        await createMigTable.ExecuteNonQueryAsync(cancellationToken);
+
+        // Load already-applied migration IDs
+        var applied = new HashSet<string>();
+        await using var listCmd = connection.CreateCommand();
+        listCmd.CommandText = "SELECT MigrationId FROM SchemaMigrations;";
+        await using var reader = await listCmd.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            applied.Add(reader.GetString(0));
+        }
+
+        // Apply unapplied migrations in order
+        foreach (var migration in MigrationsLazy.Value)
+        {
+            if (applied.Contains(migration.Id))
+            {
+                continue;
+            }
+
+            // Run the schema DDL
+            await ExecuteNonQueryAsync(connection, migration.SchemaSql, cancellationToken);
+
+            // Run the seed data (if any)
+            if (!string.IsNullOrWhiteSpace(migration.SeedSql))
+            {
+                await ExecuteNonQueryAsync(connection, migration.SeedSql, cancellationToken);
+            }
+
+            // Record the migration
+            await using var recordCmd = connection.CreateCommand();
+            recordCmd.CommandText = """
+                INSERT INTO SchemaMigrations (MigrationId, AppliedAtUtc, ProductVersion)
+                VALUES (@migrationId, @appliedAtUtc, @productVersion);
+                """;
+            Add(recordCmd, "@migrationId", migration.Id);
+            Add(recordCmd, "@appliedAtUtc", FormatDate(DateTime.UtcNow));
+            Add(recordCmd, "@productVersion", typeof(SqliteMemorySmithDatabase).Assembly.GetName().Version?.ToString() ?? "0.0.0");
+            await recordCmd.ExecuteNonQueryAsync(cancellationToken);
+        }
     }
 
     private static async Task ExecuteNonQueryAsync(SqliteConnection connection, string sql, CancellationToken cancellationToken)
@@ -1373,6 +1416,14 @@ public sealed class SqliteMemorySmithDatabase :
             ('System', 'System', 1, 60, '2026-05-17T00:00:00.0000000Z', NULL);
         """;
 }
+
+/// <summary>
+/// Describes a single ordered schema migration that can be auto-applied on startup.
+/// </summary>
+/// <param name="Id">Unique migration identifier (e.g. date-based like "20260517_auth_rbac_audit_history_v1").</param>
+/// <param name="SchemaSql">DDL statements (CREATE TABLE, ALTER TABLE, CREATE INDEX, etc.).</param>
+/// <param name="SeedSql">Optional seed data (INSERT OR IGNORE, etc.). May be null or empty.</param>
+public sealed record SchemaMigration(string Id, string SchemaSql, string? SeedSql);
 
 file static class SqliteReaderExtensions
 {

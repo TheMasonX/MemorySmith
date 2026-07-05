@@ -782,24 +782,6 @@ public sealed class MemorySmithLocalAuthService
     public async Task SignOutAsync() =>
         await (_httpContextAccessor.HttpContext?.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme) ?? Task.CompletedTask);
 
-    private static bool ValidateBootstrapToken(string? token, string? expectedHash)
-    {
-        if (string.IsNullOrWhiteSpace(expectedHash) || string.IsNullOrWhiteSpace(token))
-        {
-            return false;
-        }
-
-        var tokenHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token.Trim())));
-        return FixedTimeEquals(tokenHash, expectedHash.Trim());
-    }
-
-    private static bool FixedTimeEquals(string actual, string expected)
-    {
-        var actualBytes = Encoding.UTF8.GetBytes(actual.ToUpperInvariant());
-        var expectedBytes = Encoding.UTF8.GetBytes(expected.ToUpperInvariant());
-        return actualBytes.Length == expectedBytes.Length && CryptographicOperations.FixedTimeEquals(actualBytes, expectedBytes);
-    }
-
     private async Task EnsureLocalPasswordLinkAsync(UserAccount user, CancellationToken cancellationToken)
     {
         var links = await _database.ProviderLinks.GetLinksForUserAsync(user.UserId, cancellationToken);

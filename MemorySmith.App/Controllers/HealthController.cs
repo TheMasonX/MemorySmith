@@ -7,6 +7,7 @@ namespace MemorySmith.App.Controllers;
 
 [ApiController]
 [Route("api/health")]
+[IgnoreAntiforgeryToken]
 public class HealthController : ControllerBase
 {
     private readonly MemoryApplicationService _memories;

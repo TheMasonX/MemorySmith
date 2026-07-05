@@ -33,8 +33,6 @@ public sealed class MemorySmithLocalDevelopmentPostConfigure : IPostConfigureOpt
         ApplyIfMissing(overrides, "MemorySmith:Auth:OpenLocalEditorCompatibility", () => options.Auth.OpenLocalEditorCompatibility = false);
         ApplyIfMissing(overrides, "MemorySmith:Auth:RateLimits:LoginPermitLimit", () => options.Auth.RateLimits.LoginPermitLimit = 1000);
         ApplyIfMissing(overrides, "MemorySmith:Auth:RateLimits:LoginWindowMinutes", () => options.Auth.RateLimits.LoginWindowMinutes = 1);
-        ApplyIfMissing(overrides, "MemorySmith:Auth:RateLimits:LockoutMinutes", () => options.Auth.RateLimits.LockoutMinutes = 1);
-        ApplyIfMissing(overrides, "MemorySmith:Auth:RateLimits:MaxProgressiveLockoutMinutes", () => options.Auth.RateLimits.MaxProgressiveLockoutMinutes = 1);
         ApplyIfMissing(overrides, "MemorySmith:Pages:AllowRawHtml", () => options.Pages.AllowRawHtml = true);
         ApplyIfMissing(overrides, "MemorySmith:Markdown:MermaidEnabled", () => options.Markdown.MermaidEnabled = true);
         ApplyIfMissing(overrides, "MemorySmith:Markdown:MermaidRestrictionMode", () => options.Markdown.MermaidRestrictionMode = MermaidRestrictionModes.Standard);

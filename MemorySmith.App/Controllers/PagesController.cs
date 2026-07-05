@@ -7,6 +7,7 @@ namespace MemorySmith.App.Controllers;
 
 [ApiController]
 [Route("api/pages")]
+[IgnoreAntiforgeryToken]
 public class PagesController : ControllerBase
 {
     private readonly IPageService _pages;

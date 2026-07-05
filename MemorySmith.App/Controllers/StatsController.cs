@@ -8,6 +8,7 @@ namespace MemorySmith.App.Controllers;
 [ApiController]
 [Route("api/stats")]
 [Authorize(Policy = MemorySmithPolicies.CanViewMemorySmith)]
+[IgnoreAntiforgeryToken]
 public class StatsController : ControllerBase
 {
     private readonly MemoryApplicationService _memories;

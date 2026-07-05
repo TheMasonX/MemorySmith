@@ -7,6 +7,7 @@ namespace MemorySmith.App.Controllers;
 
 [ApiController]
 [Route("")]
+[IgnoreAntiforgeryToken]
 public class OAuthBridgeController : ControllerBase
 {
     private const string GitHubAuthorizeEndpoint = "https://github.com/login/oauth/authorize";

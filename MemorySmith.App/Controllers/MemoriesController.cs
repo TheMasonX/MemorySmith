@@ -8,6 +8,7 @@ namespace MemorySmith.App.Controllers;
 [ApiController]
 [Route("api/memories")]
 [Authorize(Policy = MemorySmithPolicies.CanViewMemorySmith)]
+[IgnoreAntiforgeryToken]
 public class MemoriesController : ControllerBase
 {
     private const string RetrievalModeHeader = "X-MemorySmith-Retrieval-Mode";

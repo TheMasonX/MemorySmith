@@ -9,6 +9,7 @@ namespace MemorySmith.App.Controllers;
 [ApiController]
 [Route("api/search")]
 [Authorize(Policy = MemorySmithPolicies.CanViewMemorySmith)]
+[IgnoreAntiforgeryToken]
 public class SearchController : ControllerBase
 {
     private readonly MemoryApplicationService _memories;

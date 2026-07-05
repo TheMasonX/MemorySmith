@@ -13,6 +13,7 @@ namespace MemorySmith.App.Controllers;
 [ApiController]
 [Route("mcp")]
 [Authorize(Policy = MemorySmithPolicies.CanViewMemorySmith)]
+[IgnoreAntiforgeryToken]
 public class McpController : ControllerBase
 {
     private string[] ToolNames => EnabledMcpTools

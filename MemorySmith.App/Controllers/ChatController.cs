@@ -10,6 +10,7 @@ namespace MemorySmith.App.Controllers;
 [ApiController]
 [Route("api/chat")]
 [Authorize(Policy = MemorySmithPolicies.CanUseChat)]
+[IgnoreAntiforgeryToken]
 public class ChatController : ControllerBase
 {
     private readonly IChatAgent _chat;

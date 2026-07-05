@@ -8,6 +8,7 @@ namespace MemorySmith.App.Controllers;
 [ApiController]
 [Route("api/tasks")]
 [Authorize(Policy = MemorySmithPolicies.CanViewMemorySmith)]
+[IgnoreAntiforgeryToken]
 public sealed class TasksController : ControllerBase
 {
     private readonly ITaskService _tasks;

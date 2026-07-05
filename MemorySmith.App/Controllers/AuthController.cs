@@ -9,6 +9,7 @@ namespace MemorySmith.App.Controllers;
 
 [ApiController]
 [Route("api/auth")]
+[IgnoreAntiforgeryToken]
 public class AuthController : ControllerBase
 {
     private readonly MemorySmithLocalAuthService _auth;

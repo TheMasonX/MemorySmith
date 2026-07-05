@@ -7,6 +7,7 @@ namespace MemorySmith.App.Controllers;
 [ApiController]
 [Route("api/diagnostics")]
 [Authorize(Policy = MemorySmithPolicies.CanAdminMemorySmith)]
+[IgnoreAntiforgeryToken]
 public class DiagnosticsController : ControllerBase
 {
     private readonly OperationalDiagnosticsService _diagnostics;

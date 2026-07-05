@@ -8,6 +8,7 @@ namespace MemorySmith.App.Controllers;
 [ApiController]
 [Route("api/source-links")]
 [Authorize(Policy = MemorySmithPolicies.CanReadSourceBundle)]
+[IgnoreAntiforgeryToken]
 public class SourceLinksController : ControllerBase
 {
     private readonly VarResolver _vars;

@@ -57,6 +57,7 @@ public static class MemorySmithSecuritySetup
             });
         }
         builder.Services.AddSingleton<GitHubOAuthCallbackHandler>();
+        builder.Services.AddAntiforgery();
         builder.Services.AddAuthorization(options =>
         {
             AddPermissionPolicy(options, MemorySmithPolicies.CanViewMemorySmith, MemorySmithPermission.View);
@@ -75,13 +76,16 @@ public static class MemorySmithSecuritySetup
         builder.Services.AddRateLimiter(options =>
         {
             var authLimits = builder.Configuration.GetSection("MemorySmith:Auth:RateLimits").Get<AuthRateLimitOptions>() ?? new AuthRateLimitOptions();
-            options.AddFixedWindowLimiter("login", limiter =>
-            {
-                limiter.PermitLimit = Math.Max(1, authLimits.LoginPermitLimit);
-                limiter.Window = TimeSpan.FromMinutes(Math.Max(1, authLimits.LoginWindowMinutes));
-                limiter.QueueLimit = 0;
-                limiter.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-            });
+            options.AddPolicy("login", httpContext =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                    factory: _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = Math.Max(1, authLimits.LoginPermitLimit),
+                        Window = TimeSpan.FromMinutes(Math.Max(1, authLimits.LoginWindowMinutes)),
+                        QueueLimit = 0,
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst
+                    }));
         });
 
         var dataProtectionKeysPath = builder.Configuration["MemorySmith:DataProtectionKeysPath"] ?? Path.Combine("..", "Data", "Keys");

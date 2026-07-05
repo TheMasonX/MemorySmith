@@ -141,8 +141,6 @@ public class AuthRateLimitOptions
 {
     public int LoginPermitLimit { get; set; } = 5;
     public int LoginWindowMinutes { get; set; } = 15;
-    public int LockoutMinutes { get; set; } = 15;
-    public int MaxProgressiveLockoutMinutes { get; set; } = 60;
 }
 
 public class AuthProviderOptions

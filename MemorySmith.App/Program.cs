@@ -2,6 +2,7 @@ using MemorySmith.App.Components;
 using MemorySmith.App.Hosting;
 using MemorySmith.App.Services;
 using MemorySmith.Storage;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Hosting.WindowsServices;
 using Microsoft.Extensions.Options;
 using MudBlazor.Services;
@@ -52,6 +53,7 @@ try
     builder.AddMemorySmithMaintenance();           // maintenance agent + background services
 
     builder.Services.AddControllers()
+        .AddMvcOptions(o => o.Filters.Add<AutoValidateAntiforgeryTokenFilter>())
         .AddJsonOptions(options =>
         {
             options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter<MemoryChatMode>());
