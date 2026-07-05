@@ -4,7 +4,7 @@
   "title": "Gate OAuth first-admin bootstrap",
   "description": "P0: `GitHubOAuthCallbackHandler.cs:132` grants Admin to whoever completes GitHub OAuth first (`var isFirstAdmin = !await db.Users.HasAnyAdminAsync(ct)`) with no allowlist, bootstrap token, or loopback check. The fix pattern already exists in `SecurityServices.CreateFirstAdminAsync` (loopback + bootstrap token + `FixedTimeEquals`) but was never applied to the OAuth path.\n\nScope:\n- Extract bootstrap-gating check out of `SecurityServices.CreateFirstAdminAsync` into a shared gate\n- Call from both `CreateFirstAdminAsync` and `GitHubOAuthCallbackHandler.OnCreatingTicketAsync`\n- Add test: first OAuth login from non-loopback with no token → `AuthenticatedDefaultRole`, not Admin\n\nEvidence: MemorySmith-Audit-20260702.md §1.2, MemorySmith-Audit-Delta-3-20260702.md §3/§4, memorysmith-deep-audit-20260703.md §1",
   "type": "Task",
-  "status": "Ready",
+  "status": "Done",
   "priority": "Critical",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -31,9 +31,15 @@
       "author": "AgentSmith",
       "body": "Created from 6-seat council audit synthesis. The fix pattern already exists in SecurityServices — this is a completeness gap, not a knowledge gap.",
       "createdAtUtc": "2026-07-05T22:00:00.0000000Z"
+    },
+    {
+      "id": "c-done-0289-20260705",
+      "author": "SteveBot",
+      "body": "Implemented: created shared BootstrapGate.Authorize() static helper encapsulating loopback + token check. Applied to GitHubOAuthCallbackHandler before first-admin promotion. Removed duplicate ValidateBootstrapToken/FixedTimeEquals from SecurityServices. Commit f448503. 517 tests pass.",
+      "createdAtUtc": "2026-07-05T20:30:00.0000000Z"
     }
   ],
   "createdAtUtc": "2026-07-05T22:00:00.0000000Z",
-  "updatedAtUtc": "2026-07-05T22:00:00.0000000Z",
-  "revision": 1
+  "updatedAtUtc": "2026-07-05T20:30:00.0000000Z",
+  "revision": 2
 }

@@ -4,7 +4,7 @@
   "title": "Add schema migration framework to SqliteMemorySmithDatabase",
   "description": "P0 (blocking): `SqliteMemorySmithDatabase.cs` has a single hardcoded migration (`\"20260517_auth_rbac_audit_history_v1\"`). All 13 tables are created via `CREATE TABLE IF NOT EXISTS` inside a single `ApplyInitialMigrationAsync`. There is no `ALTER TABLE` anywhere and no mechanism to register/apply a second migration. TSK-0201 and TSK-0202 need new tables/columns and cannot deploy without this.\n\nScope:\n- Introduce `IReadOnlyList<(string Id, string Sql)>` ordered migration list applied in a loop against `SchemaMigrations` table\n- Replace single `ApplyInitialMigrationAsync` call with migration runner\n- Keep existing `SchemaMigrations` table structure for compatibility\n- Ensure `SqliteAgentSessionStore`'s own migration (which registers separately) still works\n- Add test: new migration added and auto-applied successfully\n\nEvidence: memorysmith-deep-audit-20260703.md §8, MemorySmith-Audit-Delta-5-20260702.md, council/audit-synthesis-council-20260705.md",
   "type": "Task",
-  "status": "Ready",
+  "status": "Done",
   "priority": "Critical",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -30,9 +30,15 @@
       "author": "AgentSmith",
       "body": "Created from 6-seat council audit synthesis. Data Model Architect rated at 92% confidence. Blocks TSK-0201 and TSK-0202 from shipping new tables/columns. Design question: should migration rollback be supported?",
       "createdAtUtc": "2026-07-05T22:00:00.0000000Z"
+    },
+    {
+      "id": "c-done-0292-20260705",
+      "author": "SteveBot",
+      "body": "Implemented: replaced single ApplyInitialMigrationAsync with ordered ApplyPendingMigrationsAsync runner. Uses Lazy<IReadOnlyList<SchemaMigration>> to avoid static init ordering bug. Runner creates SchemaMigrations table, queries applied migrations, applies unapplied migrations in order, records each. Backward compatible. Commit f448503. 517 tests pass. Unblocks TSK-0201/0202.",
+      "createdAtUtc": "2026-07-05T20:30:00.0000000Z"
     }
   ],
   "createdAtUtc": "2026-07-05T22:00:00.0000000Z",
-  "updatedAtUtc": "2026-07-05T22:00:00.0000000Z",
-  "revision": 1
+  "updatedAtUtc": "2026-07-05T20:30:00.0000000Z",
+  "revision": 2
 }
