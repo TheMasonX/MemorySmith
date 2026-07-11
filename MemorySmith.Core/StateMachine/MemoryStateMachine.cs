@@ -26,6 +26,15 @@ public class MemoryStateMachine
         {
             newStatus = MemoryStatus.Core;
         }
+        // Never deprecate Unconsolidated records directly — they must be promoted to Working first.
+        // A fresh Unconsolidated record (UsageCount=0, Confidence=0, References=[], LastUpdated=now)
+        // scores ~0.1, which is below DeprecationThreshold. Without this guard every new memory
+        // would be instantly deprecated on first triage cycle (TSK-0364).
+        if (original == MemoryStatus.Unconsolidated && allowDeprecation && score < DeprecationThreshold)
+        {
+            // Stay Unconsolidated — promotion path handles the Working transition when score improves.
+            newStatus = MemoryStatus.Unconsolidated;
+        }
         // Demotion: Core records that drop below the Core threshold fall back to Working
         else if (original == MemoryStatus.Core && score < CoreThreshold)
         {

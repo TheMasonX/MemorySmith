@@ -124,4 +124,22 @@ public class StateTransitionTests
         Assert.That(status, Is.EqualTo(MemoryStatus.Deprecated));
         Assert.That(evt, Is.Null);
     }
+
+    [Test]
+    public void UnconsolidatedRecord_WithLowScore_DoesNotDeprecate()
+    {
+        // TSK-0364: A fresh Unconsolidated record with default score (~0.1) must
+        // NOT be deprecated on first evaluation. It should stay Unconsolidated
+        // until a promotion cycle raises it to Working.
+        var record = new MemoryRecord
+        {
+            Status = MemoryStatus.Unconsolidated,
+            UsageCount = 0,
+            Confidence = 0,
+            LastUpdated = DateTime.UtcNow
+        };
+        var (status, evt) = _machine.Evaluate(record);
+        Assert.That(status, Is.EqualTo(MemoryStatus.Unconsolidated));
+        Assert.That(evt, Is.Null);
+    }
 }

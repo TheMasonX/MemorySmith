@@ -4,7 +4,7 @@
   "title": "Fix AdminController duplicate POST routes and add rate limiting",
   "description": "P1 findings from 10-agent swarm codebase audit (P1-008, P1-010). AdminController has two [HttpPost(\"setup\")] actions disambiguated by [Consumes] only — POST without Content-Type header triggers 500. Also setup endpoint lacks [EnableRateLimiting] while login has it.\n\nFile: MemorySmith.App/Controllers/AdminController.cs (lines 38-45, 51, 60)\nConfidence: 90%\nSource: codebase-audit-20260710-agent10-swarm-v2.md",
   "type": "Bug",
-  "status": "Ready",
+  "status": "Done",
   "priority": "High",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -18,13 +18,20 @@
   "attachments": [],
   "externalLinks": [],
   "linkedPages": [],
-  "comments": [],
+  "comments": [
+    {
+      "author": "AgentSmith",
+      "body": "Fixed duplicate [HttpPost('setup')] routes by adding catch-all for missing Content-Type. Added [EnableRateLimiting('login')] to all setup endpoints. Verified: 3 admin contract tests pass. Commit 6281037.",
+      "id": "c-done-tsk-0386-20260711",
+      "createdAtUtc": "2026-07-11T03:18:00Z"
+    }
+  ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-07-11T04:23:01.7425276Z",
-  "updatedAtUtc": "2026-07-11T04:23:01.7425276Z",
-  "completedAtUtc": null,
+  "updatedAtUtc": "2026-07-11T08:25:39.2001759Z",
+  "completedAtUtc": "2026-07-11T08:25:39.2001759Z",
   "revision": 1,
   "isArchived": false,
   "hasLoadError": false,

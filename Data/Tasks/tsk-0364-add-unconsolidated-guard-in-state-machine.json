@@ -4,7 +4,7 @@
   "title": "Add Unconsolidated guard to prevent instant deprecation of new records",
   "description": "P0 — MemoryStateMachine.Evaluate immediately deprecates new Unconsolidated records on first triage cycle. A fresh record (UsageCount=0, Confidence=0, References=[], LastUpdated=now) scores 0.1, which is below DeprecationThreshold (0.2). Every new memory created via the API is instantly deprecated and becomes invisible. Fix: add a guard in Evaluate that skips deprecation when original == MemoryStatus.Unconsolidated, or lower DeprecationThreshold below the minimum possible score for valid records. This is related to TSK-0344 (scorer weights fix) but is a separate guard that should be applied regardless of weight normalization. Found in 10-agent codebase audit 2026-07-10 (P0-001).",
   "type": "Task",
-  "status": "Backlog",
+  "status": "InProgress",
   "priority": "Critical",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -18,12 +18,19 @@
   "attachments": [],
   "externalLinks": [],
   "linkedPages": [],
-  "comments": [],
+  "comments": [
+    {
+      "author": "AgentSmith",
+      "body": "Added guard in MemoryStateMachine.Evaluate: when original == MemoryStatus.Unconsolidated and score < DeprecationThreshold, stay Unconsolidated instead of being instantly deprecated. This matches the existing allowDeprecation pattern. Commit pending.",
+      "id": "c-fix-0364-20260711",
+      "createdAtUtc": "2026-07-11T08:25:34.5766010Z"
+    }
+  ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-07-11T03:26:08.6318601Z",
-  "updatedAtUtc": "2026-07-11T03:26:08.6318601Z",
+  "updatedAtUtc": "2026-07-11T08:25:25.9372022Z",
   "completedAtUtc": null,
   "revision": 1,
   "isArchived": false,

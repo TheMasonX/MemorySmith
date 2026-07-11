@@ -1,7 +1,7 @@
 {
   "Id": "project-wiki-memory-status-classification-current",
   "Title": "Memory Status Classification Current State",
-  "Content": "MemoryRecord.Status is the lifecycle classification for actual knowledge, not a planning bucket. Numeric file values map to 0 Unconsolidated, 1 Working, 2 Core, and 3 Deprecated. Unconsolidated is the inbox for raw or newly captured facts. Working is the reviewed-but-not-yet-core tier for useful current knowledge that still needs stronger evidence, relationships, or confidence before becoming canonical. Core is authoritative current project knowledge that agents should prefer when it matches the question. Deprecated remains searchable but marks knowledge that is obsolete, superseded, or unsafe to rely on without newer evidence. Future plans, task lists, roadmaps, and council proposals belong in Data/Pages wiki pages, not as memory records unless the memory only summarizes the current status of an implemented feature or a historical decision source.",
+  "Content": "MemoryRecord.Status is the lifecycle classification for actual knowledge, not a planning bucket. Numeric file values map to 0 Unconsolidated, 1 Working, 2 Core, and 3 Deprecated. Unconsolidated is the inbox for raw or newly captured facts. Working is the reviewed-but-not-yet-core tier for useful current knowledge that still needs stronger evidence, relationships, or confidence before becoming canonical. Core is authoritative current project knowledge that agents should prefer when it matches the question. Deprecated remains searchable but marks knowledge that is obsolete, superseded, or unsafe to rely on without newer evidence. Future plans, task lists, roadmaps, and council proposals belong in Data/Pages wiki pages, not as memory records unless the memory only summarizes the current status of an implemented feature or a historical decision source.\n\nState transitions (MemoryStateMachine.Evaluate):\n- Unconsolidated -> Working: score >= WorkingThreshold (0.81)\n- Working -> Core: score >= CoreThreshold (1.62)\n- Core -> Working (demotion): score < CoreThreshold (1.62)\n- Working -> Deprecated: score < DeprecationThreshold (0.16)\n- Deprecated -> Working (re-promotion): score >= WorkingThreshold (0.81)\n- Unconsolidated never deprecates directly - records must be promoted to Working first (TSK-0364 guard)\n\nState transitions (MemoryStateMachine.Evaluate):\n- Unconsolidated -> Working: score >= WorkingThreshold (0.81)\n- Working -> Core: score >= CoreThreshold (1.62)\n- Core -> Working (demotion): score < CoreThreshold (1.62)\n- Working -> Deprecated: score < DeprecationThreshold (0.16)\n- Deprecated -> Working (re-promotion): score >= WorkingThreshold (0.81)\n- Unconsolidated never deprecates directly - records must be promoted to Working first (TSK-0364 guard)",
   "Status": 2,
   "Confidence": 0.95,
   "Tags": [
@@ -39,5 +39,5 @@
     }
   ],
   "UsageCount": 0,
-  "LastUpdated": "2026-05-22T09:00:00Z"
+  "LastUpdated": "2026-07-11T03:39:23.3964545-05:00"
 }

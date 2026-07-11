@@ -4,7 +4,7 @@
   "title": "Add demotion and re-promotion paths to MemoryStateMachine",
   "description": "P1 finding (recalibrated from P2 by council). MemoryStateMachine has no demotion path (Core records never transition back to Working when score drops) and no re-promotion from Deprecated (records stay Deprecated forever even if score recovers). Add bidirectional state transitions.\n\nFile: MemorySmith.Core/StateMachine/MemoryStateMachine.cs (lines 17-28)\nConfidence: 100%\nCouncil notes: Recalibrated from P2 to P1 because no demotion creates irreversible wiki quality decay.\nSource: codebase-audit-20260710-agent10-swarm-v2.md, council-codebase-audit-20260710.md",
   "type": "Improvement",
-  "status": "Ready",
+  "status": "Done",
   "priority": "High",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -18,13 +18,20 @@
   "attachments": [],
   "externalLinks": [],
   "linkedPages": [],
-  "comments": [],
+  "comments": [
+    {
+      "author": "AgentSmith",
+      "body": "Added demotion (Core→Working when score < CoreThreshold) and re-promotion (Deprecated→Working when score >= WorkingThreshold) paths to MemoryStateMachine. Added 4 new test cases to StateTransitionTests. Verified: all 7 state transition tests pass. Commit 6281037.",
+      "id": "c-done-tsk-0387-20260711",
+      "createdAtUtc": "2026-07-11T03:20:00Z"
+    }
+  ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-07-11T04:23:14.4320964Z",
-  "updatedAtUtc": "2026-07-11T04:23:14.4320964Z",
-  "completedAtUtc": null,
+  "updatedAtUtc": "2026-07-11T08:25:39.2001759Z",
+  "completedAtUtc": "2026-07-11T08:25:39.2001759Z",
   "revision": 1,
   "isArchived": false,
   "hasLoadError": false,

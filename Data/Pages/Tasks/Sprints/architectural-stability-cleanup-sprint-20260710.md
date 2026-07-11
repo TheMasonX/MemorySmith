@@ -24,15 +24,15 @@ The backlog has accumulated 115+ stale items since late May. This sprint focuses
 
 | Task | Priority | Description |
 |------|----------|-------------|
-| TSK-0293 | High | Fix TreeSitter C# chunking key mismatch (silent fallback to generic chunking) |
-| TSK-0294 | High | Scrub dead search tool references from README and wiki guides |
-| TSK-0295 | High | Add `TaskStatuses.All` / `TaskPriorities.All` validation sets |
-| TSK-0296 | Medium | Consolidate `FixedTimeEquals` into shared helper (3 copies → 1) |
-| TSK-0297 | Medium | Delete 10 dead private methods from `ChatServices.cs` |
-| TSK-0298 | Medium | Fix training harness `warmupSteps` default and stale docstring |
-| TSK-0299 | Medium | Fix SplitThinking, silent exception catch, and validation error clobbering |
-| TSK-0300 | High | Add total auth self-lockout guardrail |
-| TSK-0301 | Medium | Delete `MemoryIndex` dead code carrying live race risk |
+| TSK-0293 | ✅ Done | Fix TreeSitter C# chunking key mismatch (silent fallback to generic chunking) |
+| TSK-0294 | Ready | Scrub dead search tool references from README and wiki guides |
+| TSK-0295 | ✅ Done | Add `TaskStatuses.All` / `TaskPriorities.All` validation sets |
+| TSK-0296 | Ready | Consolidate `FixedTimeEquals` into shared helper (3 copies → 1) |
+| TSK-0297 | ✅ Done | Delete 10 dead private methods from `ChatServices.cs` |
+| TSK-0298 | Ready | Fix training harness `warmupSteps` default and stale docstring |
+| TSK-0299 | Ready | Fix SplitThinking, silent exception catch, and validation error clobbering |
+| TSK-0300 | ✅ Done | Add total auth self-lockout guardrail |
+| TSK-0301 | 🗄️ Archived | Superseded by TSK-0380 (keep & fix MemoryIndex, don't delete) |
 
 ### InProgress Resolution
 

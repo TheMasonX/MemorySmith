@@ -1,7 +1,7 @@
 {
   "Id": "project-wiki-admin-auth-hardening",
   "Title": "Admin Auth Hardening Current State",
-  "Content": "Admin, user-management, settings, audit, diagnostics, and restore policies require an authenticated user with an explicit Admin role claim. AnonymousAccess=Admin, AuthenticatedDefaultRole=Admin, AutoEditorForAuthenticatedUsers, X-Api-Key compatibility, Auth:Enabled=false, and OpenLocalEditorCompatibility do not satisfy privileged policies. Anonymous access is clamped to Viewer-only behavior; authenticated default role is clamped to Viewer or Editor. First-admin setup remains anonymous but loopback/token constrained. The /admin Configuration tab exposes allowlisted MemorySmithOptions settings through AdminSettingsService, includes per-setting info-circle help text, handles sensitive values as write-only, persists edits to appsettings.LocalDevelopment.json or MemorySmith:SettingsOverridePath, reloads configuration, and records settings.updated audit entries.",
+  "Content": "Admin, user-management, settings, audit, diagnostics, and restore policies require an authenticated user with an explicit Admin role claim. AnonymousAccess=Admin, AuthenticatedDefaultRole=Admin, AutoEditorForAuthenticatedUsers, X-Api-Key compatibility, Auth:Enabled=false, and OpenLocalEditorCompatibility do not satisfy privileged policies. Anonymous access is clamped to Viewer-only behavior; authenticated default role is clamped to Viewer or Editor. First-admin setup remains anonymous but loopback/token constrained. The /admin Configuration tab exposes allowlisted MemorySmithOptions settings through AdminSettingsService, includes per-setting info-circle help text, handles sensitive values as write-only, persists edits to appsettings.LocalDevelopment.json or MemorySmith:SettingsOverridePath, reloads configuration, and records settings.updated audit entries.\n\nAuth self-lockout guardrail (TSK-0300): AdminSettingsService.TryValidateCrossSettingConstraints now verifies that at least one sign-in method (LocalPasswordEnabled or any external provider) would remain active before allowing a settings save. The AdminController.SetProviderEnabled endpoint also checks that disabling a provider does not leave zero active sign-in methods. Both paths return a clear error message instead of allowing total lockout.\n\nAuth self-lockout guardrail (TSK-0300): AdminSettingsService.TryValidateCrossSettingConstraints now verifies that at least one sign-in method (LocalPasswordEnabled or any external provider) would remain active before allowing a settings save. The AdminController.SetProviderEnabled endpoint also checks that disabling a provider does not leave zero active sign-in methods. Both paths return a clear error message instead of allowing total lockout.",
   "Status": 2,
   "Confidence": 0.9,
   "Tags": [
@@ -51,5 +51,5 @@
     }
   ],
   "UsageCount": 0,
-  "LastUpdated": "2026-05-22T09:00:00Z"
+  "LastUpdated": "2026-07-11T03:39:17.1391824-05:00"
 }

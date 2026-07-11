@@ -21,8 +21,13 @@ The project has accumulated significant forward velocity on features, chat, MCP,
 **Goal:** Sweep Ready audit tasks, resolve dormant InProgress items, archive stale backlog families.
 
 Key deliverables:
-- All 9 audit-synthesis Ready tasks (TSK-0293–0301)
+- ~~All 9 audit-synthesis Ready tasks (TSK-0293–0301)~~ → 6 Done, 3 Ready remaining
 - ChatServices decomposition continues (TSK-0042)
+- TSK-0297: Dead code deleted from ChatServices (10 methods + 6 regex fields)
+- TSK-0300: Auth self-lockout guardrail implemented
+- TSK-0386: AdminController route disambiguation + rate limiting added
+- TSK-0387/0364: MemoryStateMachine demotion/re-promotion + Unconsolidated guard
+- TSK-0390: SourceLinksController audit logging + rate limiting added
 - Dormant training/transcript tasks dispositioned (TSK-0201–0203, TSK-0271)
 - Old sprint plans archived; roadmap published
 - At least 3 stale Backlog families archived: screenshots, markdown expansion, chat polish
