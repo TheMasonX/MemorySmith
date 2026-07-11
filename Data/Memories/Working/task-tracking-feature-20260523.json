@@ -1,8 +1,8 @@
 {
   "Id": "task-tracking-feature-20260523",
+  "Content": "MemorySmith has a file-backed task domain at Data/Tasks with a site-level /tasks workbench and api/tasks endpoints for CRUD, status updates, comments, links, attachments, history, and soft/hard delete. Assignee handling is dictionary-first with Directory mode and optional Custom text mode. Linked page checks are warning-only: missing pages do not block linking and produce page_link_warning activity entries. Runtime hardening now includes malformed-task fallback loading: parse-failing files are represented as HasLoadError records instead of crashing list operations, with LoadError and SourceFilePath metadata. Mutations on malformed fallback records are blocked by EnsureTaskIsEditable, and phase-1 mutation endpoint contracts now map malformed-edit ArgumentException paths to client-safe 4xx responses instead of surfacing 500s on key routes. Task read APIs now enforce CanViewMemorySmith policy, and authorization behavior is test-covered for anonymous-disabled profiles. Task query behavior now supports hybrid lexical\u002Bsemantic ranking with \u0060MemorySmith:TaskSearch:HybridSemanticEnabled\u0060 defaulting to true and exposed in admin settings. Priority triage follows severity-first ordering: active exposure and availability risks before maintainability-only refactors.",
   "Title": "Task Tracking Feature V1 Implementation",
-  "Content": "MemorySmith has a file-backed task domain at Data/Tasks with a site-level /tasks workbench and api/tasks endpoints for CRUD, status updates, comments, links, attachments, history, and soft/hard delete. Assignee handling is dictionary-first with Directory mode and optional Custom text mode. Linked page checks are warning-only: missing pages do not block linking and produce page_link_warning activity entries. Runtime hardening now includes malformed-task fallback loading: parse-failing files are represented as HasLoadError records instead of crashing list operations, with LoadError and SourceFilePath metadata. Mutations on malformed fallback records are blocked by EnsureTaskIsEditable, and phase-1 mutation endpoint contracts now map malformed-edit ArgumentException paths to client-safe 4xx responses instead of surfacing 500s on key routes. Task read APIs now enforce CanViewMemorySmith policy, and authorization behavior is test-covered for anonymous-disabled profiles. Task query behavior now supports hybrid lexical+semantic ranking with `MemorySmith:TaskSearch:HybridSemanticEnabled` defaulting to true and exposed in admin settings. Priority triage follows severity-first ordering: active exposure and availability risks before maintainability-only refactors.",
-  "Status": 2,
+  "Status": 1,
   "Confidence": 0.96,
   "Tags": [
     "api",
@@ -23,29 +23,41 @@
   "SourceLinks": [
     {
       "Label": "Tasks service",
-      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/TaskDomainService.cs"
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/TaskDomainService.cs",
+      "StartLine": null,
+      "EndLine": null
     },
     {
       "Label": "Tasks controller",
-      "Uri": "%MemorySmithRepo%MemorySmith.App/Controllers/TasksController.cs"
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Controllers/TasksController.cs",
+      "StartLine": null,
+      "EndLine": null
     },
     {
       "Label": "Tasks page",
-      "Uri": "%MemorySmithRepo%MemorySmith.App/Components/Pages/Tasks.razor"
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Components/Pages/Tasks.razor",
+      "StartLine": null,
+      "EndLine": null
     },
     {
       "Label": "Task API contract tests",
-      "Uri": "%MemorySmithRepo%MemorySmith.Tests/AppApiContractTests.cs"
+      "Uri": "%MemorySmithRepo%MemorySmith.Tests/AppApiContractTests.cs",
+      "StartLine": null,
+      "EndLine": null
     },
     {
       "Label": "Feature wiki page",
-      "Uri": "%MemorySmithRepo%Data/Pages/features/task-tracking.md"
+      "Uri": "%MemorySmithRepo%Data/Pages/features/task-tracking.md",
+      "StartLine": null,
+      "EndLine": null
     },
     {
       "Label": "Import script",
-      "Uri": "%MemorySmithRepo%Scripts/Import-OpenTasksFromWorkbench.ps1"
+      "Uri": "%MemorySmithRepo%Scripts/Import-OpenTasksFromWorkbench.ps1",
+      "StartLine": null,
+      "EndLine": null
     }
   ],
-  "UsageCount": 1,
+  "UsageCount": 2,
   "LastUpdated": "2026-07-10T00:00:00Z"
 }

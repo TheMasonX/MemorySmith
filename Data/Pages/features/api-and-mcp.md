@@ -53,9 +53,8 @@ MemorySmith search APIs and MCP tools accept plain text plus explicit filters. T
 | --- | --- | --- |
 | `POST /api/memories/search*` | `format=envelope`, `format=json-v2` | Returns `memorysmith.retrieval-results.v1`. Default remains the compatible result array. |
 | `GET /api/pages` | `format=json`, `format=envelope`, `format=json-v2` | Returns `memorysmith.page-results.v1` for list/search responses. |
-| `memorysmith_search`, `memorysmith_semantic_search`, `memorysmith_hybrid_search` | `format=json`, `format=envelope` | Both currently return the same structured retrieval envelope. |
+| `memorysmith_search`, `memorysmith_hybrid_search` | `format=json`, `format=envelope` | Both currently return the same structured retrieval envelope. |
 | `memorysmith_context_pack` | `format=json` | Returns `memorysmith.context-pack.v1`. |
-| `memorysmith_unified_search` | `format=json`, `format=envelope` | Returns `memorysmith.unified-search.v1`. |
 
 Score contract:
 

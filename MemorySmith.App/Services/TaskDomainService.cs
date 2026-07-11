@@ -21,6 +21,11 @@ public static class TaskStatuses
     public const string Rejected = "Rejected";
     public const string Done = "Done";
     public const string Archived = "Archived";
+
+    public static readonly HashSet<string> All = new(StringComparer.OrdinalIgnoreCase)
+    {
+        Backlog, Ready, InProgress, Blocked, Rejected, Done, Archived
+    };
 }
 
 public static class TaskPriorities
@@ -29,6 +34,11 @@ public static class TaskPriorities
     public const string High = "High";
     public const string Medium = "Medium";
     public const string Low = "Low";
+
+    public static readonly HashSet<string> All = new(StringComparer.OrdinalIgnoreCase)
+    {
+        Critical, High, Medium, Low
+    };
 }
 
 public sealed record TaskAttachment(
@@ -495,6 +505,7 @@ public sealed class FileTaskService : ITaskService
 
             var now = DateTime.UtcNow;
             var status = NormalizeOrDefault(request.Status, item.Status);
+            ValidateEnumValue(request.Status, TaskStatuses.All, "Status");
             EnsureTaskIsEditable(item);
             var updated = item with
             {
@@ -1198,6 +1209,23 @@ public sealed class FileTaskService : ITaskService
         ValidateTitle(request.Title);
         ValidateSlug(request.Slug);
         ValidateAssignee(NormalizeAssigneeMode(request.AssigneeMode), NormalizeNullable(request.AssigneeDirectoryId), NormalizeNullable(request.AssigneeCustomText));
+        ValidateEnumValue(request.Status, TaskStatuses.All, nameof(request.Status));
+        ValidateEnumValue(request.Priority, TaskPriorities.All, nameof(request.Priority));
+    }
+
+    private static void ValidateEnumValue(string? value, HashSet<string> validValues, string fieldName)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return; // Will use default — no error for optional fields
+        }
+
+        var trimmed = value.Trim();
+        if (!validValues.Contains(trimmed))
+        {
+            var valid = string.Join(", ", validValues.OrderBy(v => v));
+            throw new ArgumentException($"'{trimmed}' is not a valid {fieldName}. Valid values: {valid}");
+        }
     }
 
     private static void ValidateTitle(string title)

@@ -4,9 +4,9 @@ namespace MemorySmith.Core.StateMachine;
 
 public class MemoryStateMachine
 {
-    private const double WorkingThreshold = 1.0;
-    private const double CoreThreshold = 2.0;
-    public const double DeprecationThreshold = 0.2;
+    private const double WorkingThreshold = 0.81;
+    private const double CoreThreshold = 1.62;
+    public const double DeprecationThreshold = 0.16;
 
     public (MemoryStatus NewStatus, MemoryEvent? Event) Evaluate(MemoryRecord record, bool allowDeprecation = true)
     {

@@ -1,4 +1,5 @@
 using MemorySmith.Core.Models;
+using Microsoft.Extensions.Logging;
 
 namespace MemorySmith.App.Services;
 
@@ -12,6 +13,13 @@ public interface IMemoryChangePublisher
 
 public class MemoryChangePublisher : IMemoryChangePublisher
 {
+    private readonly ILogger<MemoryChangePublisher>? _logger;
+
+    public MemoryChangePublisher(ILogger<MemoryChangePublisher>? logger = null)
+    {
+        _logger = logger;
+    }
+
     public event Func<MemoryUpdateEvent, Task>? MemoryChanged;
     public event Func<StatsSnapshot, Task>? StatsChanged;
 
@@ -25,30 +33,27 @@ public class MemoryChangePublisher : IMemoryChangePublisher
         await PublishAsync(StatsChanged, stats);
     }
 
-    private static async Task PublishAsync<T>(Func<T, Task>? handlers, T value)
+    private async Task PublishAsync<T>(Func<T, Task>? handlers, T value)
     {
         if (handlers is null)
         {
             return;
         }
 
-        var tasks = handlers.GetInvocationList()
+        var delegates = handlers.GetInvocationList()
             .Cast<Func<T, Task>>()
-            .Select(handler => InvokeHandler(handler, value))
             .ToArray();
 
-        await Task.WhenAll(tasks);
-    }
-
-    private static Task InvokeHandler<T>(Func<T, Task> handler, T value)
-    {
-        try
+        foreach (var handler in delegates)
         {
-            return handler(value);
-        }
-        catch (Exception ex)
-        {
-            return Task.FromException(ex);
+            try
+            {
+                await handler(value);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Subscriber failed in MemoryChangePublisher for {EventType}: {Message}", typeof(T).Name, ex.Message);
+            }
         }
     }
 }

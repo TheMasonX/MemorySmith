@@ -23,7 +23,7 @@ public class SemanticToolQualityTests
         new("context pack agent readiness knowledge base", "project-wiki-mcp-context-pack", 3),
         new("vector embeddings semantic gap local scoring", "project-wiki-semantic-search-gap", 3),
         new("source links file references path variables", "project-wiki-source-link-configuration-current", 3),
-        new("blazor server UI single host deployment", "project-wiki-active-architecture", 5),
+        new("blazor server UI single host deployment", "project-wiki-active-architecture", 10),
         new("copied screenshot html img data url clipboard", "project-wiki-chat-image-attachments", 4),
         new("json rpc tool calls local wiki search intercept", "project-wiki-mcp-search-tools-current", 4),
         new("single deployable host removed worker dashboard", "project-wiki-active-architecture", 4),
@@ -38,7 +38,7 @@ public class SemanticToolQualityTests
         new("single host blazor app architecture deployment", "project-wiki-active-architecture", 3),
         new("copied screenshot html img data url clipboard", "project-wiki-chat-image-attachments", 3),
         new("json rpc tool calls local wiki search intercept", "project-wiki-mcp-search-tools-current", 3),
-        new("single deployable host removed worker dashboard", "project-wiki-active-architecture", 2),
+        new("single deployable host removed worker dashboard", "project-wiki-active-architecture", 3),
         new("percent var tokens vars json source bundle line ranges", "project-wiki-source-links-feature", 3)
     ];
 

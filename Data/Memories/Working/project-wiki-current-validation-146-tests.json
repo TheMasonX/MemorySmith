@@ -2,7 +2,7 @@
   "Id": "project-wiki-current-validation-146-tests",
   "Content": "Legacy alias record retained for backward compatibility after earlier count-anchored naming. The active current validation record is `project-wiki-current-validation-baseline`. This older record previously carried a test-count-specific ID and should not be used as the primary retrieval anchor for current validation state. Keep it only so existing references and searches can land on the newer stable record instead of losing context.",
   "Title": "Historical Validation Baseline Alias",
-  "Status": 3,
+  "Status": 1,
   "Confidence": 0.98,
   "Tags": [
     "project-wiki",

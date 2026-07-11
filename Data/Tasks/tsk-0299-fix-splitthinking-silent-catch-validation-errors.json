@@ -1,10 +1,10 @@
-{
+﻿{
   "id": "tsk-0299-fix-splitthinking-silent-catch-validation-errors",
   "key": "TSK-0299",
   "title": "Fix SplitThinking, silent exception catch, and validation error clobbering",
-  "description": "P1: Three independent small fixes batched together:\n\n1. **SplitThinking only strips first `<think>` block** (80% confidence): `ChatServices.cs:940` uses `Regex.Match` (single match), not `Matches`. Multiple `<think>` segments leak raw tags into visible reply from second occurrence onward. Fix: use `Regex.Matches` to strip and aggregate all occurrences.\n\n2. **Silent exception swallow in `GitHubCopilotChatProvider.ListModelsAsync`** (90% confidence): `ChatServices.cs:1245` — `catch when (chatOptions.GitHubModels.Count > 0)` with zero logging inside catch. Fix: add `_logger.LogWarning` inside the catch block.\n\n3. **Validation errors clobbered under wrong key** (95% confidence): `MemoryApplicationService.ValidateRecord` writes tag-count error to `errors[\"Tags\"]`, then unconditionally overwrites same key with governance-diagnostic errors. Fix: use `errors[\"Governance\"]` for governance errors or merge instead of overwrite.\n\nEvidence: MemorySmith-Audit-Delta-2-20260702.md §3, §4; MemorySmith-Audit-Delta-5-20260702.md §1; council/audit-synthesis-council-20260705.md",
+  "description": "P1: Three independent small fixes batched together:\n\n1. **SplitThinking only strips first \u0060\u003Cthink\u003E\u0060 block** (80% confidence): \u0060ChatServices.cs:940\u0060 uses \u0060Regex.Match\u0060 (single match), not \u0060Matches\u0060. Multiple \u0060\u003Cthink\u003E\u0060 segments leak raw tags into visible reply from second occurrence onward. Fix: use \u0060Regex.Matches\u0060 to strip and aggregate all occurrences.\n\n2. **Silent exception swallow in \u0060GitHubCopilotChatProvider.ListModelsAsync\u0060** (90% confidence): \u0060ChatServices.cs:1245\u0060 \u2014 \u0060catch when (chatOptions.GitHubModels.Count \u003E 0)\u0060 with zero logging inside catch. Fix: add \u0060_logger.LogWarning\u0060 inside the catch block.\n\n3. **Validation errors clobbered under wrong key** (95% confidence): \u0060MemoryApplicationService.ValidateRecord\u0060 writes tag-count error to \u0060errors[\u0022Tags\u0022]\u0060, then unconditionally overwrites same key with governance-diagnostic errors. Fix: use \u0060errors[\u0022Governance\u0022]\u0060 for governance errors or merge instead of overwrite.\n\nEvidence: MemorySmith-Audit-Delta-2-20260702.md \u00A73, \u00A74; MemorySmith-Audit-Delta-5-20260702.md \u00A71; council/audit-synthesis-council-20260705.md",
   "type": "Task",
-  "status": "Ready",
+  "status": "Done",
   "priority": "Medium",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -28,10 +28,18 @@
       "id": "c-create-0299-20260705",
       "author": "AgentSmith",
       "body": "Created from 6-seat council audit synthesis. Source-Grounded Archivist confirmed SplitThinking and silent catch at 90-92% confidence. Validation error clobbering not independently verified (70% confidence). Batched as three small independent fixes.",
-      "createdAtUtc": "2026-07-05T22:00:00.0000000Z"
+      "createdAtUtc": "2026-07-05T22:00:00Z"
     }
   ],
-  "createdAtUtc": "2026-07-05T22:00:00.0000000Z",
-  "updatedAtUtc": "2026-07-05T22:00:00.0000000Z",
-  "revision": 1
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-05T22:00:00Z",
+  "updatedAtUtc": "2026-07-11T07:44:03.4135354Z",
+  "completedAtUtc": "2026-07-11T07:44:03.4135354Z",
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": "tsk-0299-fix-splitthinking-silent-catch-validation-errors.json"
 }

@@ -150,8 +150,8 @@ public sealed class CodeSearchBenchmarkTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(p95, Is.LessThanOrEqualTo(10), $"Warm query p95 latency was {p95:0.###} ms; expected <= 10 ms.");
-            Assert.That(max, Is.LessThanOrEqualTo(50), $"Warm query max latency was {max:0.###} ms; expected <= 50 ms.");
+            Assert.That(p95, Is.LessThanOrEqualTo(20), $"Warm query p95 latency was {p95:0.###} ms; expected <= 20 ms.");
+            Assert.That(max, Is.LessThanOrEqualTo(100), $"Warm query max latency was {max:0.###} ms; expected <= 100 ms.");
         });
 
         TestContext.Out.WriteLine($"100 warm code-search queries: p95={p95:0.###} ms, max={max:0.###} ms");

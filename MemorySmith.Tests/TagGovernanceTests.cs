@@ -134,8 +134,8 @@ public class TagGovernanceTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(exception!.Errors.Keys, Does.Contain(nameof(MemoryRecord.Tags)));
-            Assert.That(exception.Errors[nameof(MemoryRecord.Tags)].Single(), Does.Contain("not in the active allowlist"));
+            Assert.That(exception!.Errors.Keys, Does.Contain("Governance"));
+            Assert.That(exception.Errors["Governance"].Single(), Does.Contain("not in the active allowlist"));
             Assert.That(store.LoadAll(), Is.Empty);
             Assert.That(eventStore.Events, Is.Empty);
         });

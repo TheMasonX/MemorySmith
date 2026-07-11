@@ -223,7 +223,18 @@ public sealed class TrainingHarnessRunnerService
             _activeRun = active;
         }
 
-        _ = Task.Run(() => RunHarnessAsync(active, pythonExecutable, harnessScript, requestPath, appOptions.Training.MaxRunMinutes, huggingFaceToken), CancellationToken.None);
+        var harnessTask = Task.Run(() => RunHarnessAsync(active, pythonExecutable, harnessScript, requestPath, appOptions.Training.MaxRunMinutes, huggingFaceToken), cancellationToken);
+        _ = harnessTask.ContinueWith(t =>
+        {
+            if (t.IsFaulted && t.Exception is not null)
+            {
+                _logger.LogError(t.Exception, "Training harness run {RunId} failed with exception", active.RunId);
+            }
+            else if (t.IsCanceled)
+            {
+                _logger.LogWarning("Training harness run {RunId} was cancelled", active.RunId);
+            }
+        }, TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.NotOnRanToCompletion);
         var modeSuffix = dependencyProbe.Ready ? string.Empty : $" {dependencyProbe.Summary}";
         var authSuffix = string.IsNullOrWhiteSpace(huggingFaceToken)
             ? " HF auth: not configured."

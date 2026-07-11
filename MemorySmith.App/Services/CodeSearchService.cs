@@ -898,6 +898,7 @@ public sealed class CodeSearchService : IDisposable
                         return roslynChunks;
                     }
 
+                    _logger.LogWarning("Roslyn chunking failed for {Path}, falling through to next strategy", documentPath);
                     break;
                 case "treesitter":
                     if (TryBuildTreeSitterChunks(documentPath, sourceText, lines, out var treeSitterChunks))

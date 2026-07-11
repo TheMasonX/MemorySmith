@@ -9,6 +9,9 @@ public class MemorySmithOptions
     /// Set this to distinguish between multiple project instances.</summary>
     public string InstanceName { get; set; } = "MemorySmith";
 
+    /// <summary>Branding configuration for deployments that need custom product naming or iconography.</summary>
+    public BrandingOptions Branding { get; set; } = new();
+
     public string DataPath { get; set; } = Path.Combine("..", "Data", "Memories");
     public string PagesPath { get; set; } = Path.Combine("..", "Data", "Pages");
     public string EventLogPath { get; set; } = Path.Combine("..", "Data", "Events", "audit.log");
@@ -87,6 +90,20 @@ public class LoggingOptions
     public int MetricsWindowDays { get; set; } = 30;
     public int MetricsSampleLimit { get; set; } = 5000;
     public int MaxDiagnosticsLogResults { get; set; } = 200;
+}
+
+/// <summary>Configuration-driven branding metadata so deployments can rebrand without source edits.</summary>
+public class BrandingOptions
+{
+    /// <summary>Short label for space-constrained areas (e.g. nav header, mobile). Falls back to
+    /// <see cref="MemorySmithOptions.InstanceName"/> when empty.</summary>
+    public string? ShortLabel { get; set; }
+
+    /// <summary>Optional URL or path to a brand logo image (e.g. "/logo.svg" or an absolute URL).</summary>
+    public string? LogoUrl { get; set; }
+
+    /// <summary>Optional URL or path to a favicon. When empty, the default ASP.NET favicon is used.</summary>
+    public string? FaviconUrl { get; set; }
 }
 
 public class TelemetryOptions

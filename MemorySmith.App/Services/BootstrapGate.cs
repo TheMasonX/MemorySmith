@@ -1,3 +1,5 @@
+using MemorySmith.Core.Security;
+
 namespace MemorySmith.App.Services;
 
 /// <summary>
@@ -50,14 +52,6 @@ public static class BootstrapGate
         var tokenHash = Convert.ToHexString(
             System.Security.Cryptography.SHA256.HashData(
                 System.Text.Encoding.UTF8.GetBytes(token.Trim())));
-        return FixedTimeEquals(tokenHash, expectedHash.Trim());
-    }
-
-    private static bool FixedTimeEquals(string actual, string expected)
-    {
-        var actualBytes = System.Text.Encoding.UTF8.GetBytes(actual.ToUpperInvariant());
-        var expectedBytes = System.Text.Encoding.UTF8.GetBytes(expected.ToUpperInvariant());
-        return actualBytes.Length == expectedBytes.Length
-            && System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(actualBytes, expectedBytes);
+        return SecurityCompare.FixedTimeEqualsOrdinalIgnoreCase(tokenHash, expectedHash.Trim());
     }
 }

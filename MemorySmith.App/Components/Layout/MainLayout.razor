@@ -1,10 +1,20 @@
 @inherits LayoutComponentBase
 @inject Microsoft.Extensions.Options.IOptionsMonitor<MemorySmithOptions> Options
+@using Microsoft.AspNetCore.Components.Web
 
 <MudThemeProvider Theme="_theme" IsDarkMode="_isDarkMode" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
+
+@* Branding metadata *@
+<HeadContent>
+    <meta name="memorysmith-instance" content="@InstanceName" />
+    @if (!string.IsNullOrWhiteSpace(_faviconUrl))
+    {
+        <link rel="icon" href="@_faviconUrl" />
+    }
+</HeadContent>
 
 <MudLayout Class="app-shell">
     <MudAppBar Elevation="0" Color="Color.Default" Class="app-titlebar">
@@ -13,6 +23,10 @@
                        aria-label="Toggle primary navigation"
                        title="Toggle primary navigation" />
 
+        @if (!string.IsNullOrWhiteSpace(_logoUrl))
+        {
+            <img src="@_logoUrl" alt="@InstanceName" class="app-logo" />
+        }
         <MudText Typo="Typo.h6" Class="ml-3">@InstanceName</MudText>
         <MudSpacer />
         <AuthorizeView>
@@ -34,7 +48,7 @@
                Width="272px"
                Class="app-drawer">
         <MudDrawerHeader>
-            <MudText Typo="Typo.h6">Navigation</MudText>
+            <MudText Typo="Typo.h6">@ShortLabel</MudText>
         </MudDrawerHeader>
         <NavMenu />
     </MudDrawer>
@@ -48,6 +62,11 @@
 
 @code {
     private string InstanceName => Options.CurrentValue.InstanceName;
+    private string ShortLabel => !string.IsNullOrWhiteSpace(Options.CurrentValue.Branding.ShortLabel)
+        ? Options.CurrentValue.Branding.ShortLabel
+        : Options.CurrentValue.InstanceName;
+    private string? _logoUrl => Options.CurrentValue.Branding.LogoUrl;
+    private string? _faviconUrl => Options.CurrentValue.Branding.FaviconUrl;
 
     private bool _drawerOpen = true;
     private bool _isDarkMode = true;

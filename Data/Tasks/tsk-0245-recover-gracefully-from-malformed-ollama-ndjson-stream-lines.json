@@ -1,4 +1,4 @@
-{
+﻿{
   "id": "tsk-0245-recover-gracefully-from-malformed-ollama-ndjson-stream-lines",
   "key": "TSK-0245",
   "title": "Recover gracefully from malformed Ollama NDJSON stream lines",
@@ -23,27 +23,27 @@
   ],
   "comments": [
     {
-      "author": "AgentSmith",
       "id": "c-create-tsk-0245-20260530",
-      "createdAtUtc": "2026-05-30T22:21:20.9043446Z",
-      "body": "Created from vetted findings in Data/Pages/move-to-audit.md after direct code checks across Chat.razor, ChatServices.cs, ChatToolCatalog.cs, McpController.cs, and training harness files."
+      "author": "AgentSmith",
+      "body": "Created from vetted findings in Data/Pages/move-to-audit.md after direct code checks across Chat.razor, ChatServices.cs, ChatToolCatalog.cs, McpController.cs, and training harness files.",
+      "createdAtUtc": "2026-05-30T22:21:20.9043446Z"
     },
     {
-      "author": "AgentSmith",
       "id": "c-0245-2-20260531",
-      "createdAtUtc": "2026-05-31T06:10:10.3908463Z",
-      "body": "Completed malformed NDJSON resilience contract for Ollama streaming. Runtime path in `MemorySmith.App/Services/ChatServices.cs` already catches per-line `JsonException`, continues processing, and emits warning diagnostics with malformed-line count. Added focused regression test in `MemorySmith.Tests/PagesAndChatTests.cs`: `OllamaChatProvider_StreamAsync_SkipsMalformedNdjsonLinesAndPreservesOutput` to verify malformed line skipping preserves accumulated chunks/final output and logs warning (`skipped 1 malformed JSON line`). Validation: `dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj -c Release --filter \"Name~OllamaChatProvider_StreamAsync_SkipsMalformedNdjsonLinesAndPreservesOutput|Name~OllamaChatProvider_StreamsLiveChunks|Name~OllamaChatProvider_StreamAsync_ThrowsTimeoutWhenNoChunkArrives\"` (3/3 passed)."
+      "author": "AgentSmith",
+      "body": "Completed malformed NDJSON resilience contract for Ollama streaming. Runtime path in \u0060MemorySmith.App/Services/ChatServices.cs\u0060 already catches per-line \u0060JsonException\u0060, continues processing, and emits warning diagnostics with malformed-line count. Added focused regression test in \u0060MemorySmith.Tests/PagesAndChatTests.cs\u0060: \u0060OllamaChatProvider_StreamAsync_SkipsMalformedNdjsonLinesAndPreservesOutput\u0060 to verify malformed line skipping preserves accumulated chunks/final output and logs warning (\u0060skipped 1 malformed JSON line\u0060). Validation: \u0060dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj -c Release --filter \u0022Name~OllamaChatProvider_StreamAsync_SkipsMalformedNdjsonLinesAndPreservesOutput|Name~OllamaChatProvider_StreamsLiveChunks|Name~OllamaChatProvider_StreamAsync_ThrowsTimeoutWhenNoChunkArrives\u0022\u0060 (3/3 passed).",
+      "createdAtUtc": "2026-05-31T06:10:10.3908463Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-30T22:21:20.9043446Z",
-  "updatedAtUtc": "2026-05-31T06:10:10.3908463Z",
-  "completedAtUtc": "2026-05-31T06:10:10.3908463Z",
-  "revision": 3,
+  "updatedAtUtc": "2026-07-11T06:28:13.8565715Z",
+  "completedAtUtc": "2026-07-11T06:28:13.8565715Z",
+  "revision": 4,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,
-  "sourceFilePath": null
+  "sourceFilePath": "tsk-0245-recover-gracefully-from-malformed-ollama-ndjson-stream-lines.json"
 }

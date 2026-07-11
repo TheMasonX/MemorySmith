@@ -1,10 +1,10 @@
-{
+﻿{
   "id": "tsk-0293-fix-treesitter-csharp-key-mismatch",
   "key": "TSK-0293",
   "title": "Fix TreeSitter C# chunking key mismatch",
-  "description": "P0: `TreeSitterChunkingService.cs` has `ExtensionToLanguage[\".cs\"] = \"CSharp\"` but `ChunkableTypes[\"c_sharp\"]` — `OrdinalIgnoreCase` doesn't bridge the underscore. On any `.cs` file where Roslyn chunking fails, the TreeSitter fallback silently uses generic chunking (no language-specific declaration boundaries) with no diagnostic log distinguishing the two.\n\nScope:\n- Rename `\"c_sharp\"` → `\"CSharp\"` in `ChunkableTypes` dictionary\n- Or remove `.cs`/`\"CSharp\"` from TreeSitter entirely if Roslyn is the only intended path\n- Add a `LogWarning` when Roslyn chunking fails (the missing diagnostic is the real problem)\n\nEvidence: MemorySmith-Audit-Delta-2-20260702.md §2, council/audit-synthesis-council-20260705.md",
+  "description": "P0: \u0060TreeSitterChunkingService.cs\u0060 has \u0060ExtensionToLanguage[\u0022.cs\u0022] = \u0022CSharp\u0022\u0060 but \u0060ChunkableTypes[\u0022c_sharp\u0022]\u0060 \u2014 \u0060OrdinalIgnoreCase\u0060 doesn\u0027t bridge the underscore. On any \u0060.cs\u0060 file where Roslyn chunking fails, the TreeSitter fallback silently uses generic chunking (no language-specific declaration boundaries) with no diagnostic log distinguishing the two.\n\nScope:\n- Rename \u0060\u0022c_sharp\u0022\u0060 \u2192 \u0060\u0022CSharp\u0022\u0060 in \u0060ChunkableTypes\u0060 dictionary\n- Or remove \u0060.cs\u0060/\u0060\u0022CSharp\u0022\u0060 from TreeSitter entirely if Roslyn is the only intended path\n- Add a \u0060LogWarning\u0060 when Roslyn chunking fails (the missing diagnostic is the real problem)\n\nEvidence: MemorySmith-Audit-Delta-2-20260702.md \u00A72, council/audit-synthesis-council-20260705.md",
   "type": "Task",
-  "status": "Ready",
+  "status": "Done",
   "priority": "High",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -28,10 +28,18 @@
       "id": "c-create-0293-20260705",
       "author": "AgentSmith",
       "body": "Created from 6-seat council audit synthesis. Source-Grounded Archivist rated at 95% confidence. Retrieval Specialist noted real-world impact is low (Roslyn is primary chunker) but missing diagnostic is the real issue.",
-      "createdAtUtc": "2026-07-05T22:00:00.0000000Z"
+      "createdAtUtc": "2026-07-05T22:00:00Z"
     }
   ],
-  "createdAtUtc": "2026-07-05T22:00:00.0000000Z",
-  "updatedAtUtc": "2026-07-05T22:00:00.0000000Z",
-  "revision": 1
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-05T22:00:00Z",
+  "updatedAtUtc": "2026-07-11T05:08:39.179323Z",
+  "completedAtUtc": "2026-07-11T05:08:39.179323Z",
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": "tsk-0293-fix-treesitter-csharp-key-mismatch.json"
 }

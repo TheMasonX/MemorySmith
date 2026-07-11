@@ -4,7 +4,7 @@
   "title": "Flexible Branding",
   "description": "Replace hardcoded product branding strings/assets with configuration-driven branding metadata (name, short label, and optional logo/icon references) so deployments can rebrand without source edits.",
   "type": "Task",
-  "status": "Backlog",
+  "status": "Done",
   "priority": "Medium",
   "assigneeMode": "Directory",
   "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
@@ -21,11 +21,11 @@
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-31T19:01:44.1542583Z",
-  "updatedAtUtc": "2026-05-31T19:01:44.1542583Z",
-  "completedAtUtc": null,
-  "revision": 1,
+  "updatedAtUtc": "2026-07-11T05:17:39.9455577Z",
+  "completedAtUtc": "2026-07-11T05:17:39.9455577Z",
+  "revision": 2,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,
-  "sourceFilePath": null
+  "sourceFilePath": "tsk-0257-flexible-branding.json"
 }

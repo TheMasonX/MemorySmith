@@ -1,10 +1,10 @@
-{
+﻿{
   "id": "tsk-0294-scrub-dead-search-tools-from-readme-and-wiki-guides",
   "key": "TSK-0294",
   "title": "Scrub dead search tool references from README and wiki guides",
-  "description": "P0: `README.md` line 158 contains a copy-pasteable JSON example calling `memorysmith_unified_search` — a tool removed in TSK-0271. Two wiki guide pages (`Data/Pages/guides/search-and-chat.md`, `Data/Pages/features/api-and-mcp.md`) also document `memorysmith_semantic_search`/`memorysmith_unified_search` as live tools with full format tables and \"when to use\" guidance. These pages are themselves retrievable by `memorysmith_page_search`, so agents asking \"what search tools are available\" through the system's own search can be told to call nonexistent tools.\n\nScope:\n- Update `README.md` worked example + tool table: replace with `memorysmith_hybrid_search`\n- Update `search-and-chat.md` — remove deprecated rows or add explicit \"removed in TSK-0271\" callout\n- Update `api-and-mcp.md` — same treatment\n- Verify: grep for `unified_search` in docs returns zero results outside changelog/removal-notes\n\nEvidence: MemorySmith-Audit-20260702.md §2.1, memorysmith-deep-audit-20260703.md §6/§10, council/audit-synthesis-council-20260705.md",
+  "description": "P0: \u0060README.md\u0060 line 158 contains a copy-pasteable JSON example calling \u0060memorysmith_unified_search\u0060 \u2014 a tool removed in TSK-0271. Two wiki guide pages (\u0060Data/Pages/guides/search-and-chat.md\u0060, \u0060Data/Pages/features/api-and-mcp.md\u0060) also document \u0060memorysmith_semantic_search\u0060/\u0060memorysmith_unified_search\u0060 as live tools with full format tables and \u0022when to use\u0022 guidance. These pages are themselves retrievable by \u0060memorysmith_page_search\u0060, so agents asking \u0022what search tools are available\u0022 through the system\u0027s own search can be told to call nonexistent tools.\n\nScope:\n- Update \u0060README.md\u0060 worked example \u002B tool table: replace with \u0060memorysmith_hybrid_search\u0060\n- Update \u0060search-and-chat.md\u0060 \u2014 remove deprecated rows or add explicit \u0022removed in TSK-0271\u0022 callout\n- Update \u0060api-and-mcp.md\u0060 \u2014 same treatment\n- Verify: grep for \u0060unified_search\u0060 in docs returns zero results outside changelog/removal-notes\n\nEvidence: MemorySmith-Audit-20260702.md \u00A72.1, memorysmith-deep-audit-20260703.md \u00A76/\u00A710, council/audit-synthesis-council-20260705.md",
   "type": "Task",
-  "status": "Ready",
+  "status": "Done",
   "priority": "High",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -29,11 +29,19 @@
     {
       "id": "c-create-0294-20260705",
       "author": "AgentSmith",
-      "body": "Created from 6-seat council audit synthesis. Retrieval Specialist rated as P0 — every new integrator reads a broken example. Human Learning Advocate rated as 10-minute fix that prevents immediate onboarding trap.",
-      "createdAtUtc": "2026-07-05T22:00:00.0000000Z"
+      "body": "Created from 6-seat council audit synthesis. Retrieval Specialist rated as P0 \u2014 every new integrator reads a broken example. Human Learning Advocate rated as 10-minute fix that prevents immediate onboarding trap.",
+      "createdAtUtc": "2026-07-05T22:00:00Z"
     }
   ],
-  "createdAtUtc": "2026-07-05T22:00:00.0000000Z",
-  "updatedAtUtc": "2026-07-05T22:00:00.0000000Z",
-  "revision": 1
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-05T22:00:00Z",
+  "updatedAtUtc": "2026-07-11T07:44:03.3009067Z",
+  "completedAtUtc": "2026-07-11T07:44:03.3009067Z",
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": "tsk-0294-scrub-dead-search-tools-from-readme-and-wiki-guides.json"
 }

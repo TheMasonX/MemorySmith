@@ -55,9 +55,10 @@ public class ConsolidationTaskRulesTests
             Title = "Stable",
             Content = "Stable content",
             Status = MemoryStatus.Working,
-            LastUpdated = DateTime.UtcNow.AddDays(-31),
-            References = ["ref1", "ref2"],
-            Confidence = 0.8
+            UsageCount = 100,
+            LastUpdated = DateTime.UtcNow.AddDays(-1),
+            References = ["ref1", "ref2", "ref3", "ref4", "ref5"],
+            Confidence = 1.0
         });
 
         await _tasks.RunConsolidationAsync(CancellationToken.None);

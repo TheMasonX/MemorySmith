@@ -74,6 +74,13 @@ body {
     color: var(--vscode-text-muted);
 }
 
+.app-logo {
+    height: 28px;
+    width: auto;
+    margin-right: 8px;
+    vertical-align: middle;
+}
+
 .app-drawer {
     background: var(--vscode-panel) !important;
     border-right: 1px solid var(--vscode-border);

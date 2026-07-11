@@ -71,7 +71,7 @@ public sealed class TreeSitterChunkingService : IDisposable
             "function_definition", "class_definition", "decorated_definition"
         ],
         ["json"] = ["object", "array"],
-        ["c_sharp"] = [
+        ["CSharp"] = [
             "class_declaration", "struct_declaration", "interface_declaration",
             "enum_declaration", "method_declaration", "property_declaration",
             "field_declaration", "record_declaration"

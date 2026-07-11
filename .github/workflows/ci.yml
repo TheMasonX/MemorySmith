@@ -36,6 +36,18 @@ jobs:
         shell: pwsh
         run: ./Scripts/Test-PagePathLiterals.ps1
 
+      - name: Secret scan
+        shell: pwsh
+        run: ./Scripts/Invoke-SecretScan.ps1 -ScanAll -ReportPath artifacts/secret-scan-report.json
+        continue-on-error: true  # TSK-0349: report-only until baseline is clean
+
+      - name: Upload secret scan report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: secret-scan-report
+          path: artifacts/secret-scan-report.json
+
       - name: Build
         run: dotnet build --no-restore --configuration Release
 

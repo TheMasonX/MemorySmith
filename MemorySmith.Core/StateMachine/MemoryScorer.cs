@@ -9,9 +9,9 @@ public static class MemoryScorer
         var daysSince = (DateTime.UtcNow - record.LastUpdated).TotalDays;
         var recencyFactor = 1.0 / (1 + daysSince);
         var usageFactor = Math.Log10(record.UsageCount + 1);
-        return 0.63 * usageFactor
-             + 0.3 * record.Confidence
-             + 0.2 * record.References.Count
-             + 0.1 * recencyFactor;
+        return 0.50 * usageFactor
+             + 0.25 * record.Confidence
+             + 0.15 * record.References.Count
+             + 0.10 * recencyFactor;
     }
 }

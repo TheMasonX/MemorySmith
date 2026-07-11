@@ -1,6 +1,5 @@
 using System.Net;
-using System.Security.Cryptography;
-using System.Text;
+using MemorySmith.Core.Security;
 using Microsoft.Extensions.Options;
 
 namespace MemorySmith.App.Services;
@@ -92,20 +91,6 @@ public class MemorySmithRequestGuardMiddleware
             return false;
         }
 
-        return values.Any(value => FixedTimeEquals(value, expectedApiKey));
-    }
-
-    private static bool FixedTimeEquals(string? actual, string expected)
-    {
-        if (actual is null)
-        {
-            return false;
-        }
-
-        var actualBytes = Encoding.UTF8.GetBytes(actual);
-        var expectedBytes = Encoding.UTF8.GetBytes(expected);
-
-        return actualBytes.Length == expectedBytes.Length &&
-            CryptographicOperations.FixedTimeEquals(actualBytes, expectedBytes);
+        return values.Any(value => SecurityCompare.FixedTimeEquals(value, expectedApiKey));
     }
 }

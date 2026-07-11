@@ -70,9 +70,10 @@ public class MemoryMaintenanceTasksTests
             Title = "Promote",
             Content = "Stable",
             Status = MemoryStatus.Working,
-            References = ["a", "b"],
-            Confidence = 0.8,
-            LastUpdated = DateTime.UtcNow.AddDays(-31)
+            UsageCount = 100,
+            References = ["a", "b", "c", "d", "e"],
+            Confidence = 1.0,
+            LastUpdated = DateTime.UtcNow.AddDays(-1)
         });
         _store.Save(new MemoryRecord
         {
@@ -93,7 +94,7 @@ public class MemoryMaintenanceTasksTests
             Assert.That(_store.Load("dupe-2"), Is.Null);
             Assert.That(_store.Load("promote")!.Status, Is.EqualTo(MemoryStatus.Core));
             Assert.That(_store.Load("deprecate")!.Status, Is.EqualTo(MemoryStatus.Unconsolidated));
-            Assert.That(_events.Events.Single().Action, Is.EqualTo("DeprecationRecommended"));
+            Assert.That(_events.Events.Last().Action, Is.EqualTo("DeprecationRecommended"));
         });
     }
 

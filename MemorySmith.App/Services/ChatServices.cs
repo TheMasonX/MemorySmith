@@ -939,14 +939,23 @@ public sealed partial class OllamaChatProvider : IChatProvider
 
     private static (string Content, string? Thinking) SplitThinking(string content, string? thinking)
     {
-        var match = ThinkingPatternRegex().Match(content);
-        if (!match.Success)
+        var matches = ThinkingPatternRegex().Matches(content);
+        if (matches.Count == 0)
         {
             return (content.Trim(), string.IsNullOrWhiteSpace(thinking) ? null : thinking.Trim());
         }
 
-        var visible = (content[..match.Index] + content[(match.Index + match.Length)..]).Trim();
-        return (visible, string.IsNullOrWhiteSpace(thinking) ? match.Groups[1].Value.Trim() : thinking.Trim());
+        // Strip all <think> blocks and aggregate their content.
+        var visible = content;
+        var aggregatedThinking = string.Empty;
+        for (var i = matches.Count - 1; i >= 0; i--)
+        {
+            var match = matches[i];
+            visible = (visible[..match.Index] + visible[(match.Index + match.Length)..]).Trim();
+            aggregatedThinking = (match.Groups[1].Value.Trim() + "\n" + aggregatedThinking).Trim();
+        }
+
+        return (visible, string.IsNullOrWhiteSpace(thinking) ? aggregatedThinking : thinking.Trim());
     }
 
     private sealed class OllamaMessage
@@ -1244,6 +1253,7 @@ public sealed class GitHubCopilotChatProvider : IChatProvider
         }
         catch when (chatOptions.GitHubModels.Count > 0)
         {
+            _logger?.LogWarning("GitHub model list failed; returning {Count} configured model(s)", chatOptions.GitHubModels.Count);
             return MergeConfiguredModels([], chatOptions.GitHubModels);
         }
     }

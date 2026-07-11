@@ -7,9 +7,18 @@
     const mermaidRestrictionModes = new Set(["standard", "restricted", "strict"]);
     const reconnectRecoveryStorageKey = "memorysmith.reconnect.resumeFailedReloadAt.v1";
     const reconnectRecoveryCooldownMs = 15000;
-    const routeTitleFallbacks = Object.freeze({
-        "/health": "Health - MemorySmith"
-    });
+    let _instanceName = null;
+
+    function getInstanceName() {
+        if (_instanceName) return _instanceName;
+        const meta = document.querySelector('meta[name="memorysmith-instance"]');
+        _instanceName = meta ? meta.getAttribute("content") || "MemorySmith" : "MemorySmith";
+        return _instanceName;
+    }
+
+    function buildRouteTitleFallback(pathname) {
+        return "Health - " + getInstanceName();
+    }
     let mermaidSequence = 0;
     let mermaidTheme = null;
     let mermaidThemeWatcher = null;
@@ -100,7 +109,7 @@
             return "";
         }
 
-        return routeTitleFallbacks[pathname] || "";
+        return buildRouteTitleFallback(pathname);
     }
 
     function ensureRouteTitleFallback() {

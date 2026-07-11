@@ -1,10 +1,10 @@
-{
+﻿{
   "id": "tsk-0295-add-task-status-priority-validation-sets",
   "key": "TSK-0295",
   "title": "Add TaskStatuses.All and TaskPriorities.All validation sets",
-  "description": "P0: `TaskDomainService.NormalizeOrDefault` only trims/null-checks status/priority/type values — no membership validation against defined constant sets. `TaskStatuses` and `TaskPriorities` have no `All` `HashSet` at all (contrast with `MaintenanceProposalStatuses.All` which exists but is unused). A task created or updated with a typo'd status (e.g. `\"Cancelled\"` instead of `Rejected`, or `\"In Progress\"` with a space) via the REST/MCP API silently vanishes from every Kanban column query, which does an exact `OrdinalIgnoreCase` match.\n\nScope:\n- Add `TaskStatuses.All` and `TaskPriorities.All` `HashSet<string>(StringComparer.OrdinalIgnoreCase)`\n- Validate in `NormalizeOrDefault` call sites for Status/Priority/Type — reject with clear error naming valid options, or fall back with warning\n- Add similar validation to `SetStatusAsync`\n\nEvidence: MemorySmith-Audit-Delta-9-20260702.md §1, council/audit-synthesis-council-20260705.md",
+  "description": "P0: \u0060TaskDomainService.NormalizeOrDefault\u0060 only trims/null-checks status/priority/type values \u2014 no membership validation against defined constant sets. \u0060TaskStatuses\u0060 and \u0060TaskPriorities\u0060 have no \u0060All\u0060 \u0060HashSet\u0060 at all (contrast with \u0060MaintenanceProposalStatuses.All\u0060 which exists but is unused). A task created or updated with a typo\u0027d status (e.g. \u0060\u0022Cancelled\u0022\u0060 instead of \u0060Rejected\u0060, or \u0060\u0022In Progress\u0022\u0060 with a space) via the REST/MCP API silently vanishes from every Kanban column query, which does an exact \u0060OrdinalIgnoreCase\u0060 match.\n\nScope:\n- Add \u0060TaskStatuses.All\u0060 and \u0060TaskPriorities.All\u0060 \u0060HashSet\u003Cstring\u003E(StringComparer.OrdinalIgnoreCase)\u0060\n- Validate in \u0060NormalizeOrDefault\u0060 call sites for Status/Priority/Type \u2014 reject with clear error naming valid options, or fall back with warning\n- Add similar validation to \u0060SetStatusAsync\u0060\n\nEvidence: MemorySmith-Audit-Delta-9-20260702.md \u00A71, council/audit-synthesis-council-20260705.md",
   "type": "Task",
-  "status": "Ready",
+  "status": "Done",
   "priority": "High",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -27,10 +27,18 @@
       "id": "c-create-0295-20260705",
       "author": "AgentSmith",
       "body": "Created from 6-seat council audit synthesis. Data Model Architect rated at 88% confidence. Open question: does the Blazor task-board UI query per-column or fetch-all-and-bucket-client-side? Determines invisible vs miscategorized tasks.",
-      "createdAtUtc": "2026-07-05T22:00:00.0000000Z"
+      "createdAtUtc": "2026-07-05T22:00:00Z"
     }
   ],
-  "createdAtUtc": "2026-07-05T22:00:00.0000000Z",
-  "updatedAtUtc": "2026-07-05T22:00:00.0000000Z",
-  "revision": 1
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-05T22:00:00Z",
+  "updatedAtUtc": "2026-07-11T05:10:39.7175604Z",
+  "completedAtUtc": "2026-07-11T05:10:39.7175604Z",
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": "tsk-0295-add-task-status-priority-validation-sets.json"
 }

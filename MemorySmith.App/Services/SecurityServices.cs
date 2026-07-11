@@ -3,6 +3,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using MemorySmith.Core.Security;
 using MemorySmith.Core.Models;
 using MemorySmith.Storage;
 using Microsoft.AspNetCore.Authentication;
@@ -331,21 +332,7 @@ public sealed class MemorySmithPermissionHandler : AuthorizationHandler<MemorySm
         }
 
         return httpContext.Request.Headers.TryGetValue(MemorySmithRequestGuardMiddleware.ApiKeyHeaderName, out var values) &&
-            values.Any(value => FixedTimeEquals(value, apiKey));
-    }
-
-    private static bool FixedTimeEquals(string? actual, string expected)
-    {
-        if (actual is null)
-        {
-            return false;
-        }
-
-        var actualBytes = Encoding.UTF8.GetBytes(actual);
-        var expectedBytes = Encoding.UTF8.GetBytes(expected);
-
-        return actualBytes.Length == expectedBytes.Length &&
-            CryptographicOperations.FixedTimeEquals(actualBytes, expectedBytes);
+            values.Any(value => SecurityCompare.FixedTimeEquals(value, apiKey));
     }
 
     private static void AddAnonymousRole(string anonymousAccess, HashSet<string> roles)

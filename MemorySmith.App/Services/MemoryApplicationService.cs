@@ -89,7 +89,7 @@ public partial class MemoryApplicationService
         var pageSize = Clamp(query.PageSize, 1, _options.Limits.MaxPageSize, 20);
         var tagFilters = NormalizeFilterList(query.Tags);
 
-        var allRecordsById = MemoryRecordLookup.ToRecordMap(_store.LoadAll());
+        var allRecordsById = MemoryRecordLookup.ToRecordMap(LoadAllSynced());
         var allRecords = allRecordsById.Values.ToList();
         var records = ApplyListFilters(allRecords, query.Status, tagFilters)
             .OrderByDescending(r => r.LastUpdated)
@@ -466,7 +466,28 @@ public partial class MemoryApplicationService
     public Task<MemoryRecord?> GetAsync(string id, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromResult(IsValidId(id) ? _store.Load(id) : null);
+        var record = IsValidId(id) ? _store.Load(id) : null;
+        if (record is not null)
+        {
+            SyncRelationships(record);
+        }
+
+        return Task.FromResult(record);
+    }
+
+    /// <summary>
+    /// Returns all records with relationships synced. Used by bulk read paths that materialize
+    /// records for direct consumption (context packing, search, etc.).
+    /// </summary>
+    private IReadOnlyList<MemoryRecord> LoadAllSynced()
+    {
+        var records = _store.LoadAll().ToList();
+        foreach (var record in records)
+        {
+            SyncRelationships(record);
+        }
+
+        return records;
     }
 
     public Task<IReadOnlyList<MemoryDiagnostic>> GetDiagnosticsAsync(string id, CancellationToken cancellationToken)
@@ -478,7 +499,7 @@ public partial class MemoryApplicationService
             return Task.FromResult<IReadOnlyList<MemoryDiagnostic>>([]);
         }
 
-        var recordsById = MemoryRecordLookup.ToRecordMap(_store.LoadAll());
+        var recordsById = MemoryRecordLookup.ToRecordMap(LoadAllSynced());
         return Task.FromResult(GetDiagnostics(record, recordsById));
     }
 
@@ -496,7 +517,7 @@ public partial class MemoryApplicationService
             return Task.FromResult<IReadOnlyList<string>>([]);
         }
 
-        var result = _store.LoadAll()
+        var result = LoadAllSynced()
             .Where(r => !string.Equals(r.Id, id, StringComparison.OrdinalIgnoreCase)
                      && (r.References.Any(rid => string.Equals(rid, id, StringComparison.OrdinalIgnoreCase))
                       || r.Conflicts.Any(cid => string.Equals(cid, id, StringComparison.OrdinalIgnoreCase))))
@@ -518,7 +539,7 @@ public partial class MemoryApplicationService
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var result = _store.LoadAll()
+        var result = LoadAllSynced()
             .Where(r => r.SourceLinks.Any(sl =>
                 sl.Uri.Contains(pattern, StringComparison.OrdinalIgnoreCase) ||
                 (resolveUri != null && resolveUri(sl.Uri).Contains(pattern, StringComparison.OrdinalIgnoreCase))))
@@ -757,8 +778,7 @@ public partial class MemoryApplicationService
         record.Title = record.Title.Trim();
         record.Content = record.Content.Trim();
         record.Tags = NormalizeValues(record.Tags);
-        record.References = NormalizeValues(record.References);
-        record.Conflicts = NormalizeValues(record.Conflicts);
+        SyncRelationships(record);
         record.SourceLinks = record.SourceLinks
             .Where(sl => !string.IsNullOrWhiteSpace(sl.Uri))
             .Select(sl => new SourceLink
@@ -770,6 +790,75 @@ public partial class MemoryApplicationService
             })
             .ToList();
     }
+
+    /// <summary>
+    /// Makes <see cref="MemoryRecord.Relationships"/> the authoritative store and derives
+    /// <see cref="MemoryRecord.References"/> and <see cref="MemoryRecord.Conflicts"/> from it.
+    /// On first encounter of a record with legacy <c>References</c>/<c>Conflicts</c> data but
+    /// empty <c>Relationships</c>, the legacy data is migrated into typed edges.
+    /// After migration, the legacy arrays become derived projections and any direct writes to
+    /// them will be overwritten on the next save.
+    /// </summary>
+    private static void SyncRelationships(MemoryRecord record)
+    {
+        var normalizedReferences = NormalizeRelationshipTargetIds(record.References);
+        var normalizedConflicts = NormalizeRelationshipTargetIds(record.Conflicts);
+
+        // ── One-time migration: legacy References/Conflicts → Relationships ──
+        if (record.Relationships.Count == 0)
+        {
+            foreach (var refId in normalizedReferences)
+            {
+                record.Relationships.Add(MemoryRelationshipEdge.Create(record.Id, refId, RelationType.References));
+            }
+            foreach (var conflictId in normalizedConflicts)
+            {
+                record.Relationships.Add(MemoryRelationshipEdge.Create(record.Id, conflictId, RelationType.ConflictsWith));
+            }
+        }
+
+        var normalizedEdges = new List<MemoryRelationshipEdge>();
+        var seenEdgeKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var edge in record.Relationships)
+        {
+            var sourceId = string.IsNullOrWhiteSpace(edge.SourceId) ? record.Id : edge.SourceId.Trim();
+            var targetId = edge.TargetId?.Trim();
+            if (string.IsNullOrWhiteSpace(targetId))
+            {
+                continue;
+            }
+
+            var edgeKey = $"{edge.RelationType}:{targetId}";
+            if (!seenEdgeKeys.Add(edgeKey))
+            {
+                continue;
+            }
+
+            normalizedEdges.Add(new MemoryRelationshipEdge(sourceId, targetId, edge.RelationType, edge.Origin, edge.CreatedAtUtc));
+        }
+
+        record.Relationships = normalizedEdges;
+
+        // ── Derive legacy arrays from Relationships (Relationships is authoritative) ──
+        record.References = normalizedEdges
+            .Where(r => r.RelationType is RelationType.References)
+            .Select(r => r.TargetId)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        record.Conflicts = normalizedEdges
+            .Where(r => r.RelationType is RelationType.ConflictsWith)
+            .Select(r => r.TargetId)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static List<string> NormalizeRelationshipTargetIds(IEnumerable<string> values) =>
+        values
+            .Select(value => value?.Trim())
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
     private void ValidateRecord(MemoryRecord record)
     {
@@ -816,7 +905,9 @@ public partial class MemoryApplicationService
             .ToArray();
         if (governanceErrors.Length > 0)
         {
-            errors[nameof(MemoryRecord.Tags)] = governanceErrors;
+            // Use "Governance" key so tag-count errors and governance diagnostics
+            // are both visible instead of one overwriting the other.
+            errors["Governance"] = governanceErrors;
         }
 
         if (errors.Count > 0)
@@ -955,7 +1046,7 @@ public partial class MemoryApplicationService
     private MemorySearchSnapshot CreateSearchSnapshot(MemoryStatus? status, string? tags)
     {
         var tagFilters = NormalizeFilterList(tags);
-        var allRecordsById = MemoryRecordLookup.ToRecordMap(_store.LoadAll());
+        var allRecordsById = MemoryRecordLookup.ToRecordMap(LoadAllSynced());
         var allRecords = allRecordsById.Values.ToList();
         var filteredRecords = ApplyListFilters(allRecords, status, tagFilters).ToList();
 

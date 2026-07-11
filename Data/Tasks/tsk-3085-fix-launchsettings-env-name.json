@@ -4,7 +4,7 @@
   "title": "Fix launchSettings environment name mismatch",
   "description": "P1 finding from 10-agent swarm codebase audit (P1-015). launchSettings sets ASPNETCORE_ENVIRONMENT to \u0027LocalDevelopment\u0027 but the only development settings file is named appsettings.Development.json. The Development settings overrides are never loaded during local development.\n\nFile: MemorySmith.App/Properties/launchSettings.json\nConfidence: 100%\nSource: codebase-audit-20260710-agent10-swarm-v2.md",
   "type": "Bug",
-  "status": "Ready",
+  "status": "Done",
   "priority": "High",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -22,11 +22,11 @@
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-07-11T04:23:01.6730906Z",
-  "updatedAtUtc": "2026-07-11T04:23:01.6730906Z",
-  "completedAtUtc": null,
-  "revision": 1,
+  "updatedAtUtc": "2026-07-11T05:04:44.2108729Z",
+  "completedAtUtc": "2026-07-11T05:04:44.2108729Z",
+  "revision": 2,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,
-  "sourceFilePath": null
+  "sourceFilePath": "tsk-3085-fix-launchsettings-env-name.json"
 }

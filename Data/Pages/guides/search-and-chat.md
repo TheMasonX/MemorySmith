@@ -41,10 +41,8 @@ Search format support differs by surface. Use the exact surface contract below i
 | `POST /api/memories/search/hybrid` | compatible array, `format=envelope`, `format=json-v2` | compatible array | Structured responses use `memorysmith.retrieval-results.v1`. |
 | `GET /api/pages` | compatible page list, `format=json`, `format=envelope`, `format=json-v2` | compatible page list | Structured responses use `memorysmith.page-results.v1`. |
 | `memorysmith_search` | `markdown`, `json`, `envelope` | `markdown` | `json` and `envelope` currently return the same retrieval envelope payload. |
-| `memorysmith_semantic_search` | `markdown`, `json`, `envelope` | `markdown` | `json` and `envelope` currently return the same retrieval envelope payload. |
 | `memorysmith_hybrid_search` | `markdown`, `json`, `envelope` | `markdown` | `json` and `envelope` currently return the same retrieval envelope payload. |
 | `memorysmith_context_pack` | `markdown`, `json` | `markdown` | Structured responses use `memorysmith.context-pack.v1`. |
-| `memorysmith_unified_search` | `markdown`, `json`, `envelope` | `markdown` | Structured responses use `memorysmith.unified-search.v1`. |
 | `memorysmith_page_search` | markdown only | markdown | No `format` argument today. |
 | `memorysmith_page_get` | markdown only | markdown | No `format` argument today. |
 | `memorysmith_get` | fixed structured JSON | JSON | No `format` argument today. |
@@ -80,13 +78,11 @@ The MCP endpoint is available at `/mcp` and exposes local tools over the wiki. T
 | Tool | Use it when | Formats/output |
 | --- | --- | --- |
 | `memorysmith_search` | You need direct lexical matches. | `markdown`, `json`, `envelope` |
-| `memorysmith_semantic_search` | You need concept-level recall. | `markdown`, `json`, `envelope` |
 | `memorysmith_hybrid_search` | You need balanced discovery. | `markdown`, `json`, `envelope` |
 | `memorysmith_context_pack` | You want root records plus references, conflicts, and backlinks. | `markdown`, `json` |
 | `memorysmith_get` | You know the exact memory ID. | Fixed structured JSON |
 | `memorysmith_page_search` | You need markdown page hits by query text. | Markdown only |
 | `memorysmith_page_get` | You know the exact page slug and need the page body. | Markdown only |
-| `memorysmith_unified_search` | You want one call that searches memories and pages together. | `markdown`, `json`, `envelope` |
 | `memorysmith_source_bundle` | You need source-linked file slices with the memory records. | `json`, `jsonl` |
 | `memorysmith_find_by_source` | You want records tied to a file path or source-link pattern. | Fixed structured JSON |
 
@@ -191,7 +187,7 @@ For agent workflows:
 
 | Task | Best first tool | Follow-up |
 | --- | --- | --- |
-| Broad project discovery | `memorysmith_unified_search` or hybrid search | Fetch the most relevant page or memory directly. |
+| Broad project discovery | `memorysmith_hybrid_search` | Fetch the most relevant page or memory directly. |
 | Architecture or implementation planning | `memorysmith_context_pack` | Pull `memorysmith_source_bundle` only for records whose source links matter. |
 | Exact fact lookup | Lexical search or `memorysmith_get` | Check references/conflicts before treating the fact as current. |
 | Conceptual recall | Semantic or hybrid search | Confirm with lexical/source evidence before changing docs or code. |

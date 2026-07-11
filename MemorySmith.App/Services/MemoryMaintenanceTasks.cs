@@ -72,6 +72,10 @@ public class MemoryMaintenanceTasks
         {
             RecommendObsoleteRecords(records);
         }
+
+        // Rebuild the index after consolidation so MemoryIndex reflects
+        // all status changes, deduplication, and field merges.
+        _index.Rebuild(_store.LoadAll().ToList());
         return Task.CompletedTask;
     }
 
@@ -105,13 +109,21 @@ public class MemoryMaintenanceTasks
 
     private void PromoteStableRecords(IEnumerable<MemoryRecord> records)
     {
-        var cutoffDate = DateTime.UtcNow.AddDays(-30);
-        foreach (var record in records.Where(r => r.Status == MemoryStatus.Working))
+        var stateMachine = new MemoryStateMachine();
+        foreach (var record in records.Where(r => r.Status is MemoryStatus.Unconsolidated or MemoryStatus.Working))
         {
-            if (record.LastUpdated < cutoffDate && record.References.Count >= 2 && record.Confidence >= 0.7)
+            var (newStatus, evt) = stateMachine.Evaluate(record, allowDeprecation: false);
+            if (newStatus == record.Status)
             {
-                record.Status = MemoryStatus.Core;
-                _store.Save(record);
+                continue;
+            }
+
+            record.Status = newStatus;
+            record.LastUpdated = DateTime.UtcNow;
+            _store.Save(record);
+            if (evt is not null)
+            {
+                _eventStore.AppendEvent(evt);
             }
         }
     }
