@@ -1,0 +1,13 @@
+{
+  "id": "tsk-3001-antiforgery-hotfix",
+  "key": "TSK-3001",
+  "title": "fix: narrow antiforgery exemptions + add regression tests",
+  "status": "Backlog",
+  "type": "Task",
+  "priority": "Critical",
+  "description": "Remove blanket [IgnoreAntiforgeryToken] from controllers except validated API-key/OAuth callback endpoints. Add integration tests that POST to admin/source endpoints without antiforgery token => 400 and a CI invariant asserting the exempt-controller list.",
+  "createdAtUtc": "2026-07-10T00:00:00Z",
+  "updatedAtUtc": "2026-07-10T00:00:00Z",
+  "revision": 1,
+  "labels": ["security","testing","ci"]
+}

@@ -1,0 +1,13 @@
+{
+  "id": "tsk-3014-copilot-backpressure",
+  "key": "TSK-3014",
+  "title": "reliability: implement proper backpressure for GitHub Copilot streaming",
+  "status": "Backlog",
+  "type": "Task",
+  "priority": "High",
+  "description": "Refactor GitHubCopilotChatProvider to avoid synchronous TryWrite on bounded channel: buffer SDK callbacks to a background producer Task that uses WriteAsync, or document intentional fail-fast behavior. Add regression test simulating slow consumer to validate backpressure behavior.",
+  "createdAtUtc": "2026-07-10T00:00:00Z",
+  "updatedAtUtc": "2026-07-10T00:00:00Z",
+  "revision": 1,
+  "labels": ["reliability","streaming","tests"]
+}

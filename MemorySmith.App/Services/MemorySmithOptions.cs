@@ -353,6 +353,7 @@ public class ChatOptions
     public string GitHubTokenEnvironmentVariable { get; set; } = "GITHUB_TOKEN";
     public List<ChatModelOption> GitHubModels { get; set; } =
     [
+        new() { Name = "auto", ChatMultiplier = 0.9, IsPreferred = true, Description = "Automatic model selection (10% discount, varies by model)" },
         new() { Name = "gpt-4.1", ChatMultiplier = 0, IsPreferred = true, Description = "Free/standard Copilot GPT option when available" },
         new() { Name = "gpt-4.1-mini", ChatMultiplier = 0, IsPreferred = true, Description = "Free/low-cost GPT mini option when available" },
         new() { Name = "gpt-4o-mini", ChatMultiplier = 0, IsPreferred = true, Description = "Free/low-cost GPT-4o mini option when available" },
@@ -362,6 +363,31 @@ public class ChatOptions
         new() { Name = "gpt-5", Description = "GPT-5 option when available" },
         new() { Name = "claude-sonnet-4.5", Description = "Claude Sonnet option when available after cheaper candidates" }
     ];
+
+    /// <summary>Base URL for OpenAI-compatible APIs (DeepSeek, OpenAI, OpenRouter, etc.).</summary>
+    public string OpenAIEndpoint { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Environment variable name containing the API key. Defaults to MSA_LLM_API_KEY
+    /// (same env var as MemorySmith.Agent for credential sharing across repos).
+    /// </summary>
+    public string OpenAIApiKeyEnvironmentVariable { get; set; } = "MSA_LLM_API_KEY";
+
+    /// <summary>Default model name for OpenAI-compatible requests (e.g. "deepseek-chat", "gpt-4o").</summary>
+    public string OpenAIModel { get; set; } = "deepseek-chat";
+
+    /// <summary>Configured model preferences for OpenAI-compatible provider model ordering/description.</summary>
+    public List<ChatModelOption> OpenAIModels { get; set; } =
+    [
+        new() { Name = "deepseek-chat", IsPreferred = true, Description = "DeepSeek V4/V3 — default general-purpose chat model" },
+        new() { Name = "deepseek-reasoner", Description = "DeepSeek R1 — reasoning model for complex tasks" }
+    ];
+
+    /// <summary>
+    /// Maximum number of parallel OpenAI-compatible requests.
+    /// Default is 1 (serial) to stay within burst rate limits common on API tiers.
+    /// </summary>
+    public int MaxParallelOpenAIRequests { get; set; } = 1;
     public string SystemPromptPath { get; set; } = Path.Combine("Prompts", "wiki-chat-agent.md");
     public int RequestTimeoutSeconds { get; set; } = 600;
     public int MaxContextRecords { get; set; } = 5;

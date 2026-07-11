@@ -1,0 +1,13 @@
+{
+  "id": "tsk-3013-options-sweep",
+  "key": "TSK-3013",
+  "title": "tech-debt: sweep IOptions usages and fix cached-value anti-patterns",
+  "status": "Backlog",
+  "type": "Task",
+  "priority": "High",
+  "description": "Grep for IOptions<T> injection sites across the codebase, classify each consumer as 'static-only' vs 'dynamic'. Replace dynamic behavior consumers with IOptionsMonitor<T> and eliminate constructor-cached .Value reads; for types that cache values intentionally, document the rationale.",
+  "createdAtUtc": "2026-07-10T00:00:00Z",
+  "updatedAtUtc": "2026-07-10T00:00:00Z",
+  "revision": 1,
+  "labels": ["tech-debt","observability","docs"]
+}

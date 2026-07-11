@@ -44,7 +44,7 @@ public sealed class ChatModelProfileService
 {
     public const string NoDefaultProfileId = "__none__";
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
-    private static readonly IReadOnlyList<string> SupportedProviders = ["Ollama", "GitHub"];
+    private static readonly IReadOnlyList<string> SupportedProviders = ["Ollama", "GitHub", "OpenAI"];
     private static readonly IReadOnlyList<string> SupportedRoles = [MemorySmithRoles.Viewer, MemorySmithRoles.Editor, MemorySmithRoles.Admin];
 
     private readonly IOptionsMonitor<MemorySmithOptions> _options;

@@ -127,15 +127,20 @@ public class ChatController : ControllerBase
     {
         var selected = _providers.FirstOrDefault(candidate =>
             string.Equals(candidate.Name, providerName, StringComparison.OrdinalIgnoreCase) ||
-            (string.Equals(candidate.Name, "GitHub", StringComparison.OrdinalIgnoreCase) && string.Equals(providerName, "Copilot", StringComparison.OrdinalIgnoreCase)));
+            (string.Equals(candidate.Name, "GitHub", StringComparison.OrdinalIgnoreCase) && string.Equals(providerName, "Copilot", StringComparison.OrdinalIgnoreCase)) ||
+            (string.Equals(candidate.Name, "OpenAI", StringComparison.OrdinalIgnoreCase) && (string.Equals(providerName, "DeepSeek", StringComparison.OrdinalIgnoreCase) || string.Equals(providerName, "OpenRouter", StringComparison.OrdinalIgnoreCase))));
         return selected ?? _providers[0];
     }
 
     private static string DefaultModelForProvider(string providerName, ChatOptions options) =>
-        string.Equals(providerName, "GitHub", StringComparison.OrdinalIgnoreCase) ? options.GitHubModel : options.OllamaModel;
+        string.Equals(providerName, "GitHub", StringComparison.OrdinalIgnoreCase) ? options.GitHubModel
+        : string.Equals(providerName, "OpenAI", StringComparison.OrdinalIgnoreCase) ? options.OpenAIModel
+        : options.OllamaModel;
 
     private static string EndpointForProvider(string providerName, ChatOptions options) =>
-        string.Equals(providerName, "GitHub", StringComparison.OrdinalIgnoreCase) ? "GitHub Copilot SDK" : options.OllamaEndpoint;
+        string.Equals(providerName, "GitHub", StringComparison.OrdinalIgnoreCase) ? "GitHub Copilot SDK"
+        : string.Equals(providerName, "OpenAI", StringComparison.OrdinalIgnoreCase) ? (!string.IsNullOrWhiteSpace(options.OpenAIEndpoint) ? options.OpenAIEndpoint : "https://api.deepseek.com")
+        : options.OllamaEndpoint;
 
     private IReadOnlyList<string> CurrentRoles() => HttpContext.User.FindAll(ClaimTypes.Role).Select(claim => claim.Value).ToList();
 }

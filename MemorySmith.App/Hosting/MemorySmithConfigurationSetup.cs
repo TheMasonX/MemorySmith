@@ -10,6 +10,8 @@ using MemorySmith.App.Services;
 /// </summary>
 public static class MemorySmithConfigurationSetup
 {
+    private const string APIKeyEnvVar = "MS_LLM_API_KEY";
+
     public static WebApplicationBuilder AddMemorySmithConfigurationLayers(this WebApplicationBuilder builder)
     {
         if (string.Equals(builder.Environment.EnvironmentName, "LocalDevelopment", StringComparison.OrdinalIgnoreCase))
@@ -20,6 +22,13 @@ public static class MemorySmithConfigurationSetup
         var secretsFile = Path.Combine(AppContext.BaseDirectory, "appsettings.Secrets.json");
         if (File.Exists(secretsFile))
             builder.Configuration.AddJsonFile(secretsFile, optional: true, reloadOnChange: false);
+        // Map MS_LLM_API_KEY env var to MemorySmith:Chat:OpenAIApiKey for OpenAI-compatible providers.
+        var llmApiKey = Environment.GetEnvironmentVariable(APIKeyEnvVar);
+        if (!string.IsNullOrEmpty(llmApiKey))
+        {
+            builder.Configuration["MemorySmith:Secrets:OpenAIApiKey"] = llmApiKey;
+        }
+
         // Runtime settings overrides: AdminSettingsService persists edits to the path resolved by
         // MemorySmithConfigurationPaths, so the app must load the same file it writes — otherwise
         // admin settings changes are silently ignored.

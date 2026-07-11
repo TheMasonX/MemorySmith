@@ -25,8 +25,15 @@ public static class MemorySmithChatSetup
             client.Timeout = TimeSpan.FromSeconds(timeoutSeconds);
         });
         builder.Services.AddScoped<GitHubCopilotChatProvider>();
+        builder.Services.AddHttpClient<OpenAICompatibleChatProvider>((sp, client) =>
+        {
+            var options = sp.GetRequiredService<IOptions<MemorySmithOptions>>().Value;
+            var timeoutSeconds = Math.Clamp(options.Chat.RequestTimeoutSeconds, 10, 3600);
+            client.Timeout = TimeSpan.FromSeconds(timeoutSeconds);
+        });
         builder.Services.AddScoped<IChatProvider>(sp => sp.GetRequiredService<OllamaChatProvider>());
         builder.Services.AddScoped<IChatProvider>(sp => sp.GetRequiredService<GitHubCopilotChatProvider>());
+        builder.Services.AddScoped<IChatProvider>(sp => sp.GetRequiredService<OpenAICompatibleChatProvider>());
         // ChatToolCatalog has two constructors: the parameterless one (full BuildTools catalog) and a
         // filtered one taking IEnumerable<ChatToolDescriptor> (used by AgentSessionService for scoped
         // sub-agent catalogs). MS.DI prefers the constructor with the most resolvable parameters, and
