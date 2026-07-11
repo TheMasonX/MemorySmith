@@ -1,0 +1,17 @@
+{
+  "id": "tsk-0310-task-indexing",
+  "key": "TSK-0310",
+  "title": "performance: introduce incremental task index and query projection",
+  "status": "Backlog",
+  "type": "Task",
+  "priority": "High",
+  "description": "Separate 'load all' from query projection; implement an incremental in-memory index keyed by status/tag with update hooks on mutation; provide benchmarks for query p95 and index-update latency.",
+  "createdAtUtc": "2026-07-10T00:00:00Z",
+  "updatedAtUtc": "2026-07-10T00:00:00Z",
+  "revision": 1,
+  "labels": [
+    "performance",
+    "search",
+    "indexing"
+  ]
+}

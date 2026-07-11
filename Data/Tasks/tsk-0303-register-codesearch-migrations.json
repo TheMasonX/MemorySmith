@@ -1,0 +1,17 @@
+{
+  "id": "tsk-0303-register-codesearch-migrations",
+  "key": "TSK-0303",
+  "title": "register: code-search index migrations & add observability",
+  "status": "Backlog",
+  "type": "Task",
+  "priority": "High",
+  "description": "Modify CodeSearchService to record index migration rows (migration id, checksum, appliedAt) in an index migrations table; expose index version and doc count on /health/retrieval; add CI tests validating migration records and PRAGMA column presence after startup.",
+  "createdAtUtc": "2026-07-10T00:00:00Z",
+  "updatedAtUtc": "2026-07-10T00:00:00Z",
+  "revision": 1,
+  "labels": [
+    "search",
+    "observability",
+    "testing"
+  ]
+}

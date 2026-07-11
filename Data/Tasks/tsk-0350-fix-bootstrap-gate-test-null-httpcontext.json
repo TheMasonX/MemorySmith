@@ -1,0 +1,33 @@
+{
+  "id": "tsk-0350-fix-bootstrap-gate-test-null-httpcontext",
+  "key": "TSK-0350",
+  "title": "Fix BootstrapGate loopback detection bypass when HttpContext is null",
+  "description": "BootstrapGate.Authorize checks HttpContext?.Connection.RemoteIpAddress for loopback detection. When HttpContext is null (test context), the loopback check always returns true, bypassing authorization. Document that null HttpContext means loopback; consider making loopback detection injectable for testability. Source: codebase-audit-20260710-swarm-synthesis P2-025",
+  "type": "Bug",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "anonymous",
+  "labels": [
+    "domain:security",
+    "type:bug",
+    "sprint-backlog"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-11T03:06:12.2326114Z",
+  "updatedAtUtc": "2026-07-11T03:06:12.2326114Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": ""
+}

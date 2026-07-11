@@ -1,0 +1,36 @@
+{
+  "id": "tsk-0370-add-ci-dependency-policy-checks",
+  "key": "TSK-0370",
+  "title": "Add CI dependency & policy checks",
+  "description": "Add CI steps: dotnet list package --vulnerable, CodeQL scan, and run Scripts/Test-TaskRecords.ps1 as a required gate. Fail builds on policy violations.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Agent",
+  "reporter": "anonymous",
+  "labels": [],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [
+    {
+      "id": "c-b3d63f193fb34ffea78c9244862fc68e",
+      "author": "anonymous",
+      "body": "Created from 2026-07-10 council audit; see Data/Pages/audits/codebase-audit-2026-07-10-council-review.md",
+      "createdAtUtc": "2026-07-11T04:10:25.0852025Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-11T04:10:09.7988708Z",
+  "updatedAtUtc": "2026-07-11T04:10:25.0852025Z",
+  "completedAtUtc": null,
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": "tsk-0370-add-ci-dependency-policy-checks.json"
+}

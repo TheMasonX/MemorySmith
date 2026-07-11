@@ -1,0 +1,33 @@
+{
+  "id": "tsk-0378-fix-scorer-weights",
+  "key": "TSK-0378",
+  "title": "Fix MemoryScorer weights to sum to 1.0",
+  "description": "P1 finding from 10-agent swarm codebase audit (P1-003). MemoryScorer weights (0.63+0.3+0.2+0.1) sum to 1.23, not 1.0. Score is an unbounded linear combination, not a weighted average. UsageCount=1000 contributes ~1.89 from usage alone, easily exceeding CoreThreshold=2.0. Normalize weights to sum to 1.0 or document that scores are unbounded and adjust thresholds accordingly.\n\nFile: MemorySmith.Core/StateMachine/MemoryScorer.cs (lines 10-13)\nConfidence: 100%\nSource: codebase-audit-20260710-agent10-swarm-v2.md",
+  "type": "Bug",
+  "status": "Done",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Agent",
+  "reporter": "anonymous",
+  "labels": [
+    "domain:core",
+    "domain:state-machine",
+    "type:bug"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-11T04:22:46.4276797Z",
+  "updatedAtUtc": "2026-07-11T05:05:45.6281941Z",
+  "completedAtUtc": "2026-07-11T05:05:45.6281941Z",
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": "tsk-0378-fix-scorer-weights.json"
+}

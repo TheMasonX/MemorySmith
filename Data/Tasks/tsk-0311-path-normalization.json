@@ -1,0 +1,17 @@
+{
+  "id": "tsk-0311-path-normalization",
+  "key": "TSK-0311",
+  "title": "fix: file path normalization and cross-platform canonicalization",
+  "status": "Backlog",
+  "type": "Task",
+  "priority": "Medium",
+  "description": "Normalize all file-backed entity paths using `Path.GetFullPath` and canonical keying (OrdinalIgnoreCase on Windows, Ordinal on Linux). Provide a canonical ID mapper for task files and add CI tests for cross-platform path behaviour.",
+  "createdAtUtc": "2026-07-10T00:00:00Z",
+  "updatedAtUtc": "2026-07-10T00:00:00Z",
+  "revision": 1,
+  "labels": [
+    "platform",
+    "storage",
+    "tests"
+  ]
+}

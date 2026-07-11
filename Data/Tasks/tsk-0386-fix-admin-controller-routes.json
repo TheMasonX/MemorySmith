@@ -1,0 +1,33 @@
+{
+  "id": "tsk-0386-fix-admin-controller-routes",
+  "key": "TSK-0386",
+  "title": "Fix AdminController duplicate POST routes and add rate limiting",
+  "description": "P1 findings from 10-agent swarm codebase audit (P1-008, P1-010). AdminController has two [HttpPost(\"setup\")] actions disambiguated by [Consumes] only — POST without Content-Type header triggers 500. Also setup endpoint lacks [EnableRateLimiting] while login has it.\n\nFile: MemorySmith.App/Controllers/AdminController.cs (lines 38-45, 51, 60)\nConfidence: 90%\nSource: codebase-audit-20260710-agent10-swarm-v2.md",
+  "type": "Bug",
+  "status": "Ready",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Agent",
+  "reporter": "anonymous",
+  "labels": [
+    "domain:controllers",
+    "type:bug",
+    "security"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-11T04:23:01.7425276Z",
+  "updatedAtUtc": "2026-07-11T04:23:01.7425276Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": ""
+}

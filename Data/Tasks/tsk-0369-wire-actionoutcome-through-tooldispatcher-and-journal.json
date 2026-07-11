@@ -1,0 +1,36 @@
+{
+  "id": "tsk-0369-wire-actionoutcome-through-tooldispatcher-and-journal",
+  "key": "TSK-0369",
+  "title": "Wire ActionOutcome through ToolDispatcher and journal",
+  "description": "Implement ActionOutcome plumbing in ToolDispatcher call sites and ensure outcomes are logged in the agent journal (IAgentJournal). Add unit tests asserting outcome creation.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Agent",
+  "reporter": "anonymous",
+  "labels": [],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [
+    {
+      "id": "c-f6602e3f848c49ccb40da7efad1b3b37",
+      "author": "anonymous",
+      "body": "Created from 2026-07-10 council audit; see Data/Pages/audits/codebase-audit-2026-07-10-council-review.md",
+      "createdAtUtc": "2026-07-11T04:10:21.9967981Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-11T04:10:09.749819Z",
+  "updatedAtUtc": "2026-07-11T04:10:21.9967981Z",
+  "completedAtUtc": null,
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": "tsk-0369-wire-actionoutcome-through-tooldispatcher-and-journal.json"
+}

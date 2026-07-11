@@ -1,0 +1,33 @@
+{
+  "id": "tsk-0362-add-chat-controller-providers-guard",
+  "key": "TSK-0362",
+  "title": "Add ChatController _providers[0] empty guard",
+  "description": "P1 — ChatController.ResolveProvider accesses _providers[0] with no guard. If no IChatProvider implementations are registered (misconfiguration or startup race), this throws ArgumentOutOfRangeException at runtime with no helpful diagnostic. Fix: add _providers.Count > 0 guard before index access; log warning and return 503 Service Unavailable with clear message when no providers are registered. Found in 10-agent codebase audit 2026-07-10 (P1-010).",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "anonymous",
+  "labels": [
+    "type:bug",
+    "domain:chat",
+    "domain:api"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-11T03:26:01.2818027Z",
+  "updatedAtUtc": "2026-07-11T03:26:01.2818027Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": ""
+}

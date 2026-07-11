@@ -1,0 +1,33 @@
+{
+  "id": "tsk-0345-fix-request-guard-local-api-key-block",
+  "key": "TSK-0345",
+  "title": "Fix request guard middleware blocking local requests when API key is configured",
+  "description": "MemorySmithRequestGuardMiddleware skips API key validation for loopback when AllowRemoteApi=false... except it doesn't — the guard logic lets loopback pass the remote check but then runs the API key check which rejects the request when no X-Api-Key header is present. Also, /api/admin/setup/status is not in the ApiKeyExemptUiPaths list despite being [AllowAnonymous]. Fix: skip API key validation for loopback requests when AllowRemoteApi=false; add /api/admin/setup/status prefix to exempt list. Source: codebase-audit-20260710-swarm-synthesis P1-005",
+  "type": "Bug",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "anonymous",
+  "labels": [
+    "domain:security",
+    "type:bug",
+    "sprint-backlog"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-11T03:05:54.2839594Z",
+  "updatedAtUtc": "2026-07-11T03:05:54.2839594Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": ""
+}

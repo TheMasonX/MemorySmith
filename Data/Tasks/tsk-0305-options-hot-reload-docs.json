@@ -1,0 +1,17 @@
+{
+  "id": "tsk-0305-options-hot-reload-docs",
+  "key": "TSK-0305",
+  "title": "docs: IOptions vs IOptionsMonitor guide + CI grep check",
+  "status": "Backlog",
+  "type": "Task",
+  "priority": "Medium",
+  "description": "Create `options-hot-reload.md` describing when to use `IOptions` vs `IOptionsMonitor`, list known frozen usages, and add a CI grep job that surfaces `IOptions<T>` constructor-cached patterns for review.",
+  "createdAtUtc": "2026-07-10T00:00:00Z",
+  "updatedAtUtc": "2026-07-10T00:00:00Z",
+  "revision": 1,
+  "labels": [
+    "docs",
+    "dev-experience",
+    "ci"
+  ]
+}

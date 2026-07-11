@@ -1,0 +1,17 @@
+{
+  "id": "tsk-0309-task-validation-enforcement",
+  "key": "TSK-0309",
+  "title": "fix: enforce task field allowlists and completion semantics",
+  "status": "Backlog",
+  "type": "Task",
+  "priority": "High",
+  "description": "Validate `Status`, `Priority`, and `Type` against allowlists on create/update; clear `CompletedAtUtc` when a task moves out of `Done` unless 'ever-completed' semantics are explicitly chosen. Add unit tests and CI validation.",
+  "createdAtUtc": "2026-07-10T00:00:00Z",
+  "updatedAtUtc": "2026-07-10T00:00:00Z",
+  "revision": 1,
+  "labels": [
+    "data-model",
+    "validation",
+    "tests"
+  ]
+}

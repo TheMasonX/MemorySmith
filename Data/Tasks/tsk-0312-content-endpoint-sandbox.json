@@ -1,0 +1,17 @@
+{
+  "id": "tsk-0312-content-endpoint-sandbox",
+  "key": "TSK-0312",
+  "title": "security: sandbox and allowlist content endpoints to prevent traversal",
+  "status": "Backlog",
+  "type": "Task",
+  "priority": "Critical",
+  "description": "Implement normalized root-based allowlist resolver for content endpoints; reject any normalized path outside the configured content root. Add tests that attempt '../' traversal and assert rejection. Audit file-serving helpers for all endpoints.",
+  "createdAtUtc": "2026-07-10T00:00:00Z",
+  "updatedAtUtc": "2026-07-10T00:00:00Z",
+  "revision": 1,
+  "labels": [
+    "security",
+    "content",
+    "tests"
+  ]
+}

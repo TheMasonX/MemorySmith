@@ -1,0 +1,33 @@
+{
+  "id": "tsk-0358-fix-data-protection-keys-path",
+  "key": "TSK-0358",
+  "title": "Fix data-protection keys path to use AppContext.BaseDirectory",
+  "description": "P1 — Data-protection keys path in MemorySmithSecuritySetup.cs defaults to `Path.Combine(\"..\", \"Data\", \"Keys\")` relative to `Directory.GetCurrentDirectory()` instead of `AppContext.BaseDirectory`. In published/deployed scenarios where CWD differs from the app location, this causes key loss — all users logged out, all encrypted data unreadable. Fix: use `Path.Combine(AppContext.BaseDirectory, \"..\", \"Data\", \"Keys\")` or make the default an absolute path. Found in 10-agent codebase audit 2026-07-10 (P1-001).",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "anonymous",
+  "labels": [
+    "type:bug",
+    "domain:security",
+    "domain:infrastructure"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-11T03:26:01.0811228Z",
+  "updatedAtUtc": "2026-07-11T03:26:01.0811228Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": ""
+}

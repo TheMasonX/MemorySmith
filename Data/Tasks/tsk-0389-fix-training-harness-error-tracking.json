@@ -1,0 +1,32 @@
+{
+  "id": "tsk-0389-fix-training-harness-error-tracking",
+  "key": "TSK-0389",
+  "title": "Fix fire-and-forget training harness error tracking",
+  "description": "P1 finding (P1-019). Training harness is launched via _ = Task.Run(() => RunHarnessAsync(...), CancellationToken.None) — the returned task is discarded. If RunHarnessAsync throws, the exception is completely invisible. Attach a continuation that logs exceptions, and use stoppingToken instead of CancellationToken.None.\n\nFile: MemorySmith.App/Services/Training/ (line ~226)\nConfidence: 95%\nSource: codebase-audit-20260710-agent10-swarm-v2.md",
+  "type": "Bug",
+  "status": "Done",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Agent",
+  "reporter": "anonymous",
+  "labels": [
+    "domain:training",
+    "type:bug"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-11T04:23:14.6215943Z",
+  "updatedAtUtc": "2026-07-11T07:44:03.5492568Z",
+  "completedAtUtc": "2026-07-11T07:44:03.5492568Z",
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": "tsk-0389-fix-training-harness-error-tracking.json"
+}

@@ -1,0 +1,33 @@
+{
+  "id": "tsk-0357-fix-test-doubles-validation-gap",
+  "key": "TSK-0357",
+  "title": "Add validation and status-partitioning to InMemoryMemoryStore test double",
+  "description": "InMemoryMemoryStore.Save() accepts any MemoryRecord without validation, while the real FileMemoryStore enforces validation. Tests using InMemoryMemoryStore may pass with invalid records that would be rejected in production. Also, InMemoryMemoryStore uses a flat Dictionary keyed by ID, while real FileMemoryStore partitions records by MemoryStatus into subdirectories — indexing logic tested against the in-memory store may not surface directory-based partitioning bugs. Add validation mirroring the real store and an optional status-partitioning variant. Source: codebase-audit-20260710-swarm-synthesis P2-047/048",
+  "type": "Bug",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "anonymous",
+  "labels": [
+    "domain:testing",
+    "type:bug",
+    "sprint-backlog"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-11T03:06:12.5624089Z",
+  "updatedAtUtc": "2026-07-11T03:06:12.5624089Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": ""
+}

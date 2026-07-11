@@ -1,0 +1,36 @@
+{
+  "id": "tsk-0372-schedule-retrieval-focused-audit",
+  "key": "TSK-0372",
+  "title": "Schedule retrieval-focused audit",
+  "description": "Run a targeted retrieval audit (memory/retrieval indexing and search) and produce findings; assign to Retrieval Specialist seat. Include expected outputs and tests.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Low",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Agent",
+  "reporter": "anonymous",
+  "labels": [],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [
+    {
+      "id": "c-19e8e79837a64d55bbd7a16a593c0bf9",
+      "author": "anonymous",
+      "body": "Created from 2026-07-10 council audit; see Data/Pages/audits/codebase-audit-2026-07-10-council-review.md",
+      "createdAtUtc": "2026-07-11T04:10:32.3079824Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-11T04:10:09.8897175Z",
+  "updatedAtUtc": "2026-07-11T04:10:32.3079824Z",
+  "completedAtUtc": null,
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": "tsk-0372-schedule-retrieval-focused-audit.json"
+}

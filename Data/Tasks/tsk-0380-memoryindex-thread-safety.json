@@ -1,0 +1,33 @@
+{
+  "id": "tsk-0380-memoryindex-thread-safety",
+  "key": "TSK-0380",
+  "title": "Add thread safety to MemoryIndex",
+  "description": "P1 finding from 10-agent swarm codebase audit (P1-001). MemoryIndex uses plain Dictionary and HashSet with no locking. Concurrent Add/Remove/Rebuild from multiple callers (memory CRUD + maintenance) can corrupt internal state. Replace with ConcurrentDictionary or add ReaderWriterLockSlim.\n\nFile: MemorySmith.Core/Indexing/MemoryIndex.cs (lines 7-9)\nConfidence: 95%\nSource: codebase-audit-20260710-agent10-swarm-v2.md",
+  "type": "Bug",
+  "status": "Done",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Agent",
+  "reporter": "anonymous",
+  "labels": [
+    "domain:core",
+    "type:bug",
+    "concurrency"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-11T04:22:46.5224585Z",
+  "updatedAtUtc": "2026-07-11T05:07:30.6380651Z",
+  "completedAtUtc": "2026-07-11T05:07:30.6380651Z",
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": "tsk-0380-memoryindex-thread-safety.json"
+}

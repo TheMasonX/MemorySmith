@@ -1,0 +1,33 @@
+{
+  "id": "tsk-0352-add-state-machine-demotion-paths",
+  "key": "TSK-0352",
+  "title": "Add demotion and recovery paths to MemoryStateMachine",
+  "description": "MemoryStateMachine only promotes (Unconsolidated -> Working -> Core) or drops to Deprecated. No demotion path exists (Core -> Working or Working -> Unconsolidated). A deprecated memory is unrecoverable through the state machine. Add demotion transitions and a recovery path from Deprecated. Split the monolithic Evaluate method into focused methods: EvaluatePromotion, EvaluateDemotion, ShouldPromoteToCore, ShouldDeprecate. Source: codebase-audit-20260710-swarm-synthesis P2-002",
+  "type": "Feature",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "anonymous",
+  "labels": [
+    "domain:core",
+    "type:feature",
+    "sprint-backlog"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-11T03:06:12.3311488Z",
+  "updatedAtUtc": "2026-07-11T03:06:12.3311488Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": ""
+}

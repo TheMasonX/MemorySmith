@@ -1,0 +1,33 @@
+{
+  "id": "tsk-0384-fix-oauth-bridge-csrf",
+  "key": "TSK-0384",
+  "title": "Add CSRF/state validation to OAuthBridge",
+  "description": "P1 finding from 10-agent swarm codebase audit (P1-013). OAuthBridgeController.ExchangeCode proxies POST body to GitHub with no state validation, no CSRF protection, no content-type restriction. App acts as open OAuth proxy enabling CSRF-based account linking attacks.\n\nFile: MemorySmith.App/Controllers/OAuthBridgeController.cs (lines 39-60)\nConfidence: 85%\nSource: codebase-audit-20260710-agent10-swarm-v2.md",
+  "type": "Bug",
+  "status": "Ready",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Agent",
+  "reporter": "anonymous",
+  "labels": [
+    "domain:controllers",
+    "type:bug",
+    "security"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-11T04:23:01.599517Z",
+  "updatedAtUtc": "2026-07-11T04:23:01.599517Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": ""
+}

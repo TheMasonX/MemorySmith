@@ -1,0 +1,33 @@
+{
+  "id": "tsk-0365-add-tool-names-to-activate-descriptions",
+  "key": "TSK-0365",
+  "title": "Add concrete MCP tool names to each activate_* tool description",
+  "description": "R2 from codebase audit tool-discovery audit. The activate_* tool descriptions describe categories abstractly without listing the concrete tool names that will appear. Append to each: \"Activates: memorysmith_task_create, memorysmith_task_get, memorysmith_task_list, ...\" This lets agents pattern-match instantly instead of guessing what the category contains. This is a VS Code extension / MCP host code change outside this repo.",
+  "type": "Feature",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "anonymous",
+  "labels": [
+    "domain:tooling",
+    "type:feature",
+    "sprint-backlog"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-11T03:30:04.9986026Z",
+  "updatedAtUtc": "2026-07-11T03:30:04.9986026Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": ""
+}
