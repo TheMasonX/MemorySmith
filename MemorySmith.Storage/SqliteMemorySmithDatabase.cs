@@ -228,8 +228,8 @@ public sealed class SqliteMemorySmithDatabase :
             FROM Users
             INNER JOIN UserRoles ON Users.UserId = UserRoles.UserId
             INNER JOIN Roles ON UserRoles.RoleId = Roles.RoleId
-            WHERE Users.IsDisabled = 0 AND Roles.NormalizedName = 'ADMIN';
-            """, null, cancellationToken);
+            WHERE Users.IsDisabled = 0 AND Roles.NormalizedName = @normalizedName;
+            """, cmd => Add(cmd, "@normalizedName", MemorySmithRoles.Admin.ToUpperInvariant()), cancellationToken);
         return count > 0;
     }
 

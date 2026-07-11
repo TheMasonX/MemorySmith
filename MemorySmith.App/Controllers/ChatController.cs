@@ -129,7 +129,11 @@ public class ChatController : ControllerBase
             string.Equals(candidate.Name, providerName, StringComparison.OrdinalIgnoreCase) ||
             (string.Equals(candidate.Name, "GitHub", StringComparison.OrdinalIgnoreCase) && string.Equals(providerName, "Copilot", StringComparison.OrdinalIgnoreCase)) ||
             (string.Equals(candidate.Name, "OpenAI", StringComparison.OrdinalIgnoreCase) && (string.Equals(providerName, "DeepSeek", StringComparison.OrdinalIgnoreCase) || string.Equals(providerName, "OpenRouter", StringComparison.OrdinalIgnoreCase))));
-        return selected ?? _providers[0];
+        if (selected is not null)
+            return selected;
+        if (_providers.Count > 0)
+            return _providers[0];
+        throw new InvalidOperationException("No chat providers are registered. Check IChatProvider DI registrations.");
     }
 
     private static string DefaultModelForProvider(string providerName, ChatOptions options) =>

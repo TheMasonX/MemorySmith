@@ -186,7 +186,7 @@ public partial class FileMemoryStore : IMemoryStore
         return UnsafeIdCharacters().Replace(id, "_");
     }
 
-    [GeneratedRegex(@"[/\\:?*]")]
+    [GeneratedRegex(@"[/\\:?*]|\.\.")]
     private static partial Regex UnsafeIdCharacters();
 
     /// <summary>

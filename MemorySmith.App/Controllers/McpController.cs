@@ -32,6 +32,7 @@ public class McpController : ControllerBase
     private readonly ITaskService _tasks;
     private readonly CodeSearchService _codeSearch;
     private readonly McpAgentToolHandler _agentTools;
+    private readonly ILogger<McpController>? _logger;
 
     public McpController(
         MemoryApplicationService memories,
@@ -42,7 +43,8 @@ public class McpController : ControllerBase
         IPageService pages,
         ITaskService tasks,
         CodeSearchService codeSearch,
-        McpAgentToolHandler agentTools)
+        McpAgentToolHandler agentTools,
+        ILogger<McpController>? logger = null)
     {
         _memories = memories;
         _vars = vars;
@@ -53,6 +55,7 @@ public class McpController : ControllerBase
         _tasks = tasks;
         _codeSearch = codeSearch;
         _agentTools = agentTools;
+        _logger = logger;
     }
 
     [HttpGet]
@@ -185,7 +188,18 @@ public class McpController : ControllerBase
             CodeSearch: _codeSearch,
             AgentWritesEnabled: options.Chat.AgentWritesEnabled,
             AgentWriteAutoAccept: AgentWriteApprovalModes.IsAutoAccept(options.Chat.AgentWriteApprovalMode));
-        var result = await tool.Execute(args, ctx, cancellationToken);
+        ChatToolExecutionResult result;
+        try
+        {
+            result = await tool.Execute(args, ctx, cancellationToken);
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "MCP tool {ToolName} threw unhandled exception: {Message}", toolName, ex.Message);
+            RecordToolExecutionTelemetry(toolName, Stopwatch.GetElapsedTime(started).TotalMilliseconds, success: false);
+            return ToolText($"MCP tool '{toolName}' failed: {ex.Message}", isError: true);
+        }
         RecordToolExecutionTelemetry(toolName, Stopwatch.GetElapsedTime(started).TotalMilliseconds, !result.IsError);
 
         var maxToolResponseCharacters = Clamp(options.Mcp.MaxToolResponseCharacters, 256, 200000, 12000);

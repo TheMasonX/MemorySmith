@@ -43,7 +43,7 @@ public sealed class ChatTranscriptWriter : IChatTranscriptWriter
         var date = record.Timestamp.UtcDateTime.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
         var directory = Path.GetFullPath(training.TranscriptDirectory);
         Directory.CreateDirectory(directory);
-        DeleteExpiredTranscripts(directory, training.TranscriptRetentionDays);
+        DeleteExpiredTranscripts(directory, training.TranscriptRetentionDays, _logger);
 
         var metadataPath = Path.Combine(directory, $"{date}.jsonl");
         var contentPath = Path.Combine(directory, $"{date}.content.jsonl");
@@ -97,7 +97,7 @@ public sealed class ChatTranscriptWriter : IChatTranscriptWriter
         return redacted;
     }
 
-    private static void DeleteExpiredTranscripts(string directory, int retentionDays)
+    private static void DeleteExpiredTranscripts(string directory, int retentionDays, ILogger? logger = null)
     {
         if (retentionDays <= 0 || !Directory.Exists(directory))
         {
@@ -114,9 +114,9 @@ public sealed class ChatTranscriptWriter : IChatTranscriptWriter
                     File.Delete(path);
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // Best-effort cleanup. Never fail chat because retention cleanup failed.
+                logger?.LogWarning(ex, "Failed to delete expired transcript {Path}: {Message}", path, ex.Message);
             }
         }
     }
