@@ -1,0 +1,33 @@
+﻿{
+  "id": "tsk-3055-fix-relative-path-resolution",
+  "key": "TSK-3055",
+  "title": "Fix hardcoded absolute paths and relative path resolution in storage and config",
+  "description": "Data/vars.json has a hardcoded absolute D:\\@Repos\\MemorySmith\\ path that breaks on other machines. SqliteMemorySmithDatabase.EnsureDatabaseDirectory resolves relative paths against the process working directory instead of AppContext.BaseDirectory. MemorySmithStorageSetup path resolution differs between IOptions binding and direct factory resolution. Fix: use relative/repo-root-resolved paths at runtime, resolve storage paths against AppContext.BaseDirectory consistently, and gitignore vars.json with a template. Source: codebase-audit-20260710-swarm-synthesis P2-033",
+  "type": "Bug",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "anonymous",
+  "labels": [
+    "domain:infrastructure",
+    "type:bug",
+    "sprint-backlog"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-11T03:06:12.466799Z",
+  "updatedAtUtc": "2026-07-11T03:06:12.466799Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

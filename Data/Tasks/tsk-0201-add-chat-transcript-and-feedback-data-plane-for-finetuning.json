@@ -4,7 +4,7 @@
   "title": "Add chat transcript and feedback data plane for fine-tuning",
   "description": "Create durable chat transcript + thumbs feedback capture with retention/redaction controls so MemorySmith can produce high-quality supervised and preference datasets from real usage.",
   "type": "Task",
-  "status": "InProgress",
+  "status": "Backlog",
   "priority": "High",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -47,6 +47,12 @@
       "author": "AgentSmith",
       "body": "Wired thumbs-up/thumbs-down controls into chat UI for assistant turns and persisted per-turn rating via `IChatFeedbackStore.UpsertAsync`, including local session state hydration (`ChatTurnState.FeedbackRating`) so selections survive refresh. Remaining scope is exporter/bridge plumbing for dataset generation and lifecycle tooling.",
       "createdAtUtc": "2026-05-28T23:55:00.0000000Z"
+    },
+    {
+      "id": "c-0201-dormant-20260710",
+      "author": "AgentSmith",
+      "body": "2026-07-10 triage: Moved from InProgress to Backlog. Core transcript capture, redaction, retention, and feedback UI are all implemented and tested. Remaining work (exporter/bridge, lifecycle tooling) has been dormant since May 28. Will be revisited when training pipeline integration is actively resourced. See architectural-stability-cleanup-sprint-20260710.md.",
+      "createdAtUtc": "2026-07-10T00:00:00.0000000Z"
     },
     {
       "id": "c-0201-5-20260528",

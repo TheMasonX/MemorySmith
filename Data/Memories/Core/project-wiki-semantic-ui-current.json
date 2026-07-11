@@ -5,16 +5,12 @@
   "Status": 2,
   "Confidence": 0.91,
   "Tags": [
+    "current-state",
+    "hybrid-search",
     "project-wiki",
     "search",
     "semantic-search",
-    "hybrid-search",
-    "ui",
-    "workbench",
-    "dark-mode",
-    "vscode-style",
-    "current-state",
-    "dogfooding"
+    "ui"
   ],
   "References": [
     "project-wiki-mcp-search-tools-current",

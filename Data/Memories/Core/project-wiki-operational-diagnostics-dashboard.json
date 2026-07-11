@@ -5,12 +5,11 @@
   "Status": 2,
   "Confidence": 0.95,
   "Tags": [
-    "project-wiki",
-    "dashboard",
-    "diagnostics",
-    "operations",
     "api",
-    "current-state"
+    "current-state",
+    "diagnostics",
+    "maintenance",
+    "project-wiki"
   ],
   "References": [
     "project-wiki-active-architecture",

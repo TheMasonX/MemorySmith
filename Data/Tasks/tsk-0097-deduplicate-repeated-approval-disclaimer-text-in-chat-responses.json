@@ -1,42 +1,45 @@
-{
-  "Id": "tsk-0097-deduplicate-repeated-approval-disclaimer-text-in-chat-responses",
-  "Key": "TSK-0097",
-  "Title": "Deduplicate repeated approval disclaimer text in chat responses.",
-  "Description": "A repeated approval disclaimer paragraph appears in some multi-source chat responses. The duplication is reproducible across multiple prompts, so it should be deduplicated at the response assembly layer rather than treated as a one-off rendering glitch. Acceptance criteria: the same disclaimer is emitted once even when the agent reiterates the structured-write warning, the final answer stays readable, and the trace still preserves the underlying reason. Validation: rerun the multi-source prompts and confirm the response contains a single disclaimer paragraph.",
-  "Type": "Task",
-  "Status": "Backlog",
-  "Priority": "Medium",
-  "AssigneeMode": "Custom",
-  "AssigneeDirectoryId": null,
-  "AssigneeCustomText": "Copilot",
-  "Reporter": "TheMasonX",
-  "Labels": [
+﻿{
+  "id": "tsk-0097-deduplicate-repeated-approval-disclaimer-text-in-chat-responses",
+  "key": "TSK-0097",
+  "title": "Deduplicate repeated approval disclaimer text in chat responses.",
+  "description": "A repeated approval disclaimer paragraph appears in some multi-source chat responses. The duplication is reproducible across multiple prompts, so it should be deduplicated at the response assembly layer rather than treated as a one-off rendering glitch. Acceptance criteria: the same disclaimer is emitted once even when the agent reiterates the structured-write warning, the final answer stays readable, and the trace still preserves the underlying reason. Validation: rerun the multi-source prompts and confirm the response contains a single disclaimer paragraph.",
+  "type": "Task",
+  "status": "Archived",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "TheMasonX",
+  "labels": [
     "chat",
     "rendering",
     "response",
     "quality",
     "audit-vetted"
   ],
-  "Attachments": [],
-  "ExternalLinks": [],
-  "LinkedPages": [
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
     "research/chat-agent-local-profile-mcp-evaluation-20260524",
     "workbench/tasks"
   ],
-  "Comments": [
+  "comments": [
     {
-      "Id": "c-0097-1",
-      "Author": "AgentSmith",
-      "Body": "Evidence: the 2026-05-24 multi-source fuzz passes reproduced the approval disclaimer twice in the rendered assistant response, even when the answer body updated correctly while the turn was still pending.",
-      "CreatedAtUtc": "2026-05-24T23:20:00.0000000Z"
+      "id": "c-0097-1",
+      "author": "AgentSmith",
+      "body": "Evidence: the 2026-05-24 multi-source fuzz passes reproduced the approval disclaimer twice in the rendered assistant response, even when the answer body updated correctly while the turn was still pending.",
+      "createdAtUtc": "2026-05-24T23:20:00Z"
     }
   ],
-  "EpicId": null,
-  "ParentId": null,
-  "DueDateUtc": null,
-  "CreatedAtUtc": "2026-05-24T23:20:00.0000000Z",
-  "UpdatedAtUtc": "2026-05-24T23:20:00.0000000Z",
-  "CompletedAtUtc": null,
-  "Revision": 1,
-  "IsArchived": false
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-24T23:20:00Z",
+  "updatedAtUtc": "2026-07-11T01:56:58.1409565Z",
+  "completedAtUtc": null,
+  "revision": 2,
+  "isArchived": true,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": "tsk-0097-deduplicate-repeated-approval-disclaimer-text-in-chat-responses.json"
 }

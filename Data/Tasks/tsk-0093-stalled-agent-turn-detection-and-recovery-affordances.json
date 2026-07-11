@@ -1,42 +1,45 @@
-{
-  "Id": "tsk-0093-stalled-agent-turn-detection-and-recovery-affordances",
-  "Key": "TSK-0093",
-  "Title": "Add stalled Agent-turn detection and recovery affordances.",
-  "Description": "When an Agent-mode turn stays in Thinking with no first token, the UI currently only looks pending. Add a visible stalled state and recovery affordance so users can retry, fall back to a simpler search path, or stop the turn without guessing whether the agent is alive. Acceptance criteria: stalled turns are detected after a bounded wait, the UI surfaces a distinct status, and one recovery action is available from the same turn. Validation: reproduce the local-profile search probe and confirm the stalled state appears instead of an endless pending state.",
-  "Type": "Task",
-  "Status": "Backlog",
-  "Priority": "Medium",
-  "AssigneeMode": "Custom",
-  "AssigneeDirectoryId": null,
-  "AssigneeCustomText": "Copilot",
-  "Reporter": "TheMasonX",
-  "Labels": [
+﻿{
+  "id": "tsk-0093-stalled-agent-turn-detection-and-recovery-affordances",
+  "key": "TSK-0093",
+  "title": "Add stalled Agent-turn detection and recovery affordances.",
+  "description": "When an Agent-mode turn stays in Thinking with no first token, the UI currently only looks pending. Add a visible stalled state and recovery affordance so users can retry, fall back to a simpler search path, or stop the turn without guessing whether the agent is alive. Acceptance criteria: stalled turns are detected after a bounded wait, the UI surfaces a distinct status, and one recovery action is available from the same turn. Validation: reproduce the local-profile search probe and confirm the stalled state appears instead of an endless pending state.",
+  "type": "Task",
+  "status": "Archived",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "TheMasonX",
+  "labels": [
     "chat",
     "agent",
     "reliability",
     "ux",
     "audit-vetted"
   ],
-  "Attachments": [],
-  "ExternalLinks": [],
-  "LinkedPages": [
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
     "research/chat-agent-local-profile-mcp-evaluation-20260524",
     "workbench/tasks"
   ],
-  "Comments": [
+  "comments": [
     {
-      "Id": "c-0093-1",
-      "Author": "AgentSmith",
-      "Body": "Evidence: the live local-profile probe kept showing Waiting for first token after the trace had already emitted Context planner and model reasoning events, so the user needs a clearer stalled state and escape hatch.",
-      "CreatedAtUtc": "2026-05-24T22:35:00.0000000Z"
+      "id": "c-0093-1",
+      "author": "AgentSmith",
+      "body": "Evidence: the live local-profile probe kept showing Waiting for first token after the trace had already emitted Context planner and model reasoning events, so the user needs a clearer stalled state and escape hatch.",
+      "createdAtUtc": "2026-05-24T22:35:00Z"
     }
   ],
-  "EpicId": null,
-  "ParentId": null,
-  "DueDateUtc": null,
-  "CreatedAtUtc": "2026-05-24T22:35:00.0000000Z",
-  "UpdatedAtUtc": "2026-05-24T22:35:00.0000000Z",
-  "CompletedAtUtc": null,
-  "Revision": 1,
-  "IsArchived": false
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-24T22:35:00Z",
+  "updatedAtUtc": "2026-07-11T01:56:58.2279254Z",
+  "completedAtUtc": null,
+  "revision": 2,
+  "isArchived": true,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": "tsk-0093-stalled-agent-turn-detection-and-recovery-affordances.json"
 }

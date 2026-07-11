@@ -1,42 +1,45 @@
-{
-  "Id": "tsk-0095-broaden-the-wiki-intent-detector-so-citation-only-prompts-still-preload-the-relevant-memorysmith-context",
-  "Key": "TSK-0095",
-  "Title": "Broaden the wiki-intent detector so citation-only prompts still preload the relevant MemorySmith context.",
-  "Description": "A second live probe showed that the prompt 'Cite the source file for the chat tool catalog using a markdown file link' did not count as strong MemorySmith/wiki evidence intent, so the context planner skipped preload entirely. Broaden the detector so citation-only prompts still get the right memory/page preload before the agent starts thinking. Acceptance criteria: citation-only and source-link requests preload the relevant wiki context, the trace records the preload decision, and the behavior remains read-only. Validation: repeat the citation-only chat probe and confirm the preload is populated.",
-  "Type": "Task",
-  "Status": "Backlog",
-  "Priority": "Medium",
-  "AssigneeMode": "Custom",
-  "AssigneeDirectoryId": null,
-  "AssigneeCustomText": "Copilot",
-  "Reporter": "TheMasonX",
-  "Labels": [
+﻿{
+  "id": "tsk-0095-broaden-the-wiki-intent-detector-so-citation-only-prompts-still-preload-the-relevant-memorysmith-context",
+  "key": "TSK-0095",
+  "title": "Broaden the wiki-intent detector so citation-only prompts still preload the relevant MemorySmith context.",
+  "description": "A second live probe showed that the prompt \u0027Cite the source file for the chat tool catalog using a markdown file link\u0027 did not count as strong MemorySmith/wiki evidence intent, so the context planner skipped preload entirely. Broaden the detector so citation-only prompts still get the right memory/page preload before the agent starts thinking. Acceptance criteria: citation-only and source-link requests preload the relevant wiki context, the trace records the preload decision, and the behavior remains read-only. Validation: repeat the citation-only chat probe and confirm the preload is populated.",
+  "type": "Task",
+  "status": "Archived",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "TheMasonX",
+  "labels": [
     "chat",
     "agent",
     "intent",
     "preload",
     "audit-vetted"
   ],
-  "Attachments": [],
-  "ExternalLinks": [],
-  "LinkedPages": [
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
     "research/chat-agent-local-profile-mcp-evaluation-20260524",
     "workbench/tasks"
   ],
-  "Comments": [
+  "comments": [
     {
-      "Id": "c-0095-1",
-      "Author": "AgentSmith",
-      "Body": "Evidence: the 2026-05-24 citation-only probe produced a trace with 'No strong MemorySmith/wiki evidence intent was detected' and zero preload resources, even though the request was clearly about a MemorySmith source link.",
-      "CreatedAtUtc": "2026-05-24T22:48:00.0000000Z"
+      "id": "c-0095-1",
+      "author": "AgentSmith",
+      "body": "Evidence: the 2026-05-24 citation-only probe produced a trace with \u0027No strong MemorySmith/wiki evidence intent was detected\u0027 and zero preload resources, even though the request was clearly about a MemorySmith source link.",
+      "createdAtUtc": "2026-05-24T22:48:00Z"
     }
   ],
-  "EpicId": null,
-  "ParentId": null,
-  "DueDateUtc": null,
-  "CreatedAtUtc": "2026-05-24T22:48:00.0000000Z",
-  "UpdatedAtUtc": "2026-05-24T22:48:00.0000000Z",
-  "CompletedAtUtc": null,
-  "Revision": 1,
-  "IsArchived": false
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-24T22:48:00Z",
+  "updatedAtUtc": "2026-07-11T01:56:58.2790495Z",
+  "completedAtUtc": null,
+  "revision": 2,
+  "isArchived": true,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": "tsk-0095-broaden-the-wiki-intent-detector-so-citation-only-prompts-still-preload-the-relevant-memorysmith-context.json"
 }

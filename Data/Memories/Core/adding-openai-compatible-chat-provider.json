@@ -1,0 +1,34 @@
+{
+  "Id": "adding-openai-compatible-chat-provider",
+  "Title": "Chat Provider Architecture (Ollama, GitHub Copilot, OpenAI-Compatible)",
+  "Status": 2,
+  "Confidence": 0.93,
+  "Tags": [
+    "architecture",
+    "chat",
+    "configuration",
+    "project-wiki"
+  ],
+  "References": [
+    "project-wiki-chat-agent-provider",
+    "project-wiki-chat-configuration-current"
+  ],
+  "Conflicts": [],
+  "SourceLinks": [
+    {
+      "Label": "OpenAICompatibleChatProvider.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/OpenAICompatibleChatProvider.cs"
+    },
+    {
+      "Label": "ChatServices.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/ChatServices.cs"
+    },
+    {
+      "Label": "MemorySmithChatSetup.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Hosting/MemorySmithChatSetup.cs"
+    }
+  ],
+  "UsageCount": 0,
+  "LastUpdated": "2026-07-10",
+  "Content": "MemorySmith supports three chat providers via IChatProvider: (1) OllamaChatProvider — local REST/NDJSON to /api/chat with Ollama-specific tool envelope formatting, num_ctx governance, thinking content extraction, and streaming; (2) GitHubCopilotChatProvider — SDK-based via GitHub.Copilot.SDK with event-driven streaming via SessionEvent, reflection-based SDK property probing, and dynamic model discovery; (3) OpenAICompatibleChatProvider — generic REST/NDJSON provider at MemorySmith.App/Services/OpenAICompatibleChatProvider.cs supporting OpenAI, DeepSeek, and Anthropic API-compatible endpoints with configurable endpoint, model, and API key. All three are registered in MemorySmithChatSetup.cs via AddHttpClient (Ollama and OpenAI-compatible) or direct singleton (GitHubCopilot). Provider discovery in Chat.razor is dynamic via IEnumerable[IChatProvider]. The AdminSettingsService provider choice list and ChatModelProfileService.SupportedProviders include all three options. ChatOptions holds per-provider fields (OllamaEndpoint, OllamaModel, GitHubModel, OpenAIEndpoint, OpenAIModel, OpenAIApiKey). ChatController.ResolveProvider() matches by provider name string."
+}

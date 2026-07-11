@@ -5,16 +5,12 @@
   "Status": 2,
   "Confidence": 0.88,
   "Tags": [
+    "context-pack",
+    "current-state",
+    "hybrid-search",
     "project-wiki",
     "search",
-    "hybrid-search",
-    "context-pack",
-    "lucene",
-    "rrf",
-    "semantic-search",
-    "vector-search",
-    "current-state",
-    "dogfooding"
+    "semantic-search"
   ],
   "References": [
     "project-wiki-search-roadmap",

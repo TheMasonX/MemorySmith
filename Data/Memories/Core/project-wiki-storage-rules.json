@@ -5,10 +5,9 @@
   "Status": 2,
   "Confidence": 0.93,
   "Tags": [
+    "diagnostics",
     "project-wiki",
-    "storage",
-    "schema",
-    "diagnostics"
+    "storage"
   ],
   "References": [
     "project-wiki-data-folder-policy",

@@ -1,42 +1,45 @@
-{
-  "Id": "tsk-0099-enforce-mcp-chat-parity-for-read-only-retrieval-response-wrappers",
-  "Key": "TSK-0099",
-  "Title": "Enforce MCP/chat parity for read-only retrieval response wrappers.",
-  "Description": "Direct MCP retrieval and chat-agent retrieval currently agree on core source ranking, but chat can still emit duplicated structured-write disclaimer paragraphs on read-only answers. Add parity checks so read-only retrieval responses in chat use deterministic wrapper behavior: one disclaimer at most (or none when not applicable), no duplicate boilerplate, and stable formatting across equivalent MCP and chat flows. Acceptance criteria: equivalent MCP and chat prompts produce matching source selection and non-duplicative wrapper text. Validation: run side-by-side MCP unified search and chat intercept prompts and compare the rendered response output.",
-  "Type": "Task",
-  "Status": "Backlog",
-  "Priority": "Medium",
-  "AssigneeMode": "Custom",
-  "AssigneeDirectoryId": null,
-  "AssigneeCustomText": "Copilot",
-  "Reporter": "TheMasonX",
-  "Labels": [
+﻿{
+  "id": "tsk-0099-enforce-mcp-chat-parity-for-read-only-retrieval-response-wrappers",
+  "key": "TSK-0099",
+  "title": "Enforce MCP/chat parity for read-only retrieval response wrappers.",
+  "description": "Direct MCP retrieval and chat-agent retrieval currently agree on core source ranking, but chat can still emit duplicated structured-write disclaimer paragraphs on read-only answers. Add parity checks so read-only retrieval responses in chat use deterministic wrapper behavior: one disclaimer at most (or none when not applicable), no duplicate boilerplate, and stable formatting across equivalent MCP and chat flows. Acceptance criteria: equivalent MCP and chat prompts produce matching source selection and non-duplicative wrapper text. Validation: run side-by-side MCP unified search and chat intercept prompts and compare the rendered response output.",
+  "type": "Task",
+  "status": "Archived",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "TheMasonX",
+  "labels": [
     "chat",
     "mcp",
     "parity",
     "quality",
     "audit-vetted"
   ],
-  "Attachments": [],
-  "ExternalLinks": [],
-  "LinkedPages": [
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
     "research/chat-agent-local-profile-mcp-evaluation-20260524",
     "workbench/tasks"
   ],
-  "Comments": [
+  "comments": [
     {
-      "Id": "c-0099-1",
-      "Author": "AgentSmith",
-      "Body": "Evidence: the 2026-05-24 side-by-side run showed MCP unified search and chat intercept picked the same top source (`project-wiki-chat-agent-provider`), but chat rendered duplicated structured-write disclaimer text on the read-only answer.",
-      "CreatedAtUtc": "2026-05-24T23:50:00.0000000Z"
+      "id": "c-0099-1",
+      "author": "AgentSmith",
+      "body": "Evidence: the 2026-05-24 side-by-side run showed MCP unified search and chat intercept picked the same top source (\u0060project-wiki-chat-agent-provider\u0060), but chat rendered duplicated structured-write disclaimer text on the read-only answer.",
+      "createdAtUtc": "2026-05-24T23:50:00Z"
     }
   ],
-  "EpicId": null,
-  "ParentId": null,
-  "DueDateUtc": null,
-  "CreatedAtUtc": "2026-05-24T23:50:00.0000000Z",
-  "UpdatedAtUtc": "2026-05-24T23:50:00.0000000Z",
-  "CompletedAtUtc": null,
-  "Revision": 1,
-  "IsArchived": false
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-24T23:50:00Z",
+  "updatedAtUtc": "2026-07-11T01:56:58.3325211Z",
+  "completedAtUtc": null,
+  "revision": 2,
+  "isArchived": true,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": "tsk-0099-enforce-mcp-chat-parity-for-read-only-retrieval-response-wrappers.json"
 }

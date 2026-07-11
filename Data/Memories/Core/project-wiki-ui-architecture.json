@@ -2,12 +2,11 @@
   "Id": "project-wiki-ui-architecture",
   "Title": "UI Architecture Current State",
   "Status": 2,
-  "Confidence": 1.0,
+  "Confidence": 0.97,
   "Tags": [
+    "architecture",
     "project-wiki",
-    "ui",
-    "blazor",
-    "architecture"
+    "ui"
   ],
   "Content": "MemorySmith uses Blazor Server with Interactive Server render mode on all pages. The host is MemorySmith.App with MudBlazor 9.4 for components. Pages: /memories (MemoryViewer.razor) is the main workbench, a VS Code-inspired compact dark editor for browsing and editing MemoryRecords with Markdown-rendered content, inline source link editing, and agent-context copy. /pages (Pages.razor) manages markdown project-wiki pages, rendered previews, and page assets with live Markdig preview plus post-render Mermaid/Prism refresh. /chat (Chat.razor) has a shared right sidebar with History and Trace tabs, a right-edge sidebar toggle beside that sidebar, stable provider/model and composer bars while switching sidebar tabs, compact ellipsis chat titles, provider/model dropdowns, an Auto/Light/Dark Diagram theme selector for Mermaid, Chat/Agent toggle buttons, streamed response status, safe Markdown-rendered message bodies with Mermaid diagrams and Prism-compatible code blocks, visible assistant provider/model metadata, local draft/history persistence, icon Stop and Finish Step controls with tooltips, attachment chips, collapsed per-turn References drawers containing neutral preloaded context chips, blue mid-chat tool resource chips, and green agent write chips for created pages, plus a Trace tab that shows the selected turn's compact execution graph, turn selector, interleaved reasoning, tool calls/results, write approvals, token estimates, tool latency, filters, collapsible trace headers, and editable tool reruns. Markdown-rendered memory content, page content, chat messages, code blocks, tables, and Mermaid/error display boxes use extra inner padding so rendered wiki/chat text is easier to scan; rendered Mermaid diagrams also receive matching light/dark background surfaces so diagram contrast stays readable in the dark app shell. The transcript does not render per-turn Trace buttons, so history and trace are reached from one sidebar surface. Selecting a history chat synchronizes the Trace tab to that chat's most recent inspectable turn. Agent writes proposed by the model require explicit approve/reject actions in the Trace tab before they are applied. /admin (Admin.razor) is protected by signed-in Admin policy and manages users, provider enablement with OAuth developer setup links, searchable category-grouped editable settings, filterable audit entries, and filterable history entries. /profile (Profile.razor) uses responsive admin/workbench styling so account, password, and sign-in method panels stack or grid without overlap at tablet and mobile widths. /health (HealthStats.razor) shows stat cards, two MudChart<double> activity charts, maintenance telemetry, diagnostics, and recent events. /variables (Variables.razor) is a simple CRUD table for vars.json bindings used in source link %VarName% expansion. All pages use MVVM-lite: minimal code-behind, services injected. MudBlazor 9.4 breaking changes: MudChart is now generic (MudChart T='double', ChartSeries<double>), axis labels use ChartLabels not XAxisLabels. CSS is in wwwroot/app.css.",
   "References": [
@@ -19,16 +18,43 @@
   ],
   "Conflicts": [],
   "SourceLinks": [
-    { "Label": "MemoryViewer.razor", "Uri": "%MemorySmithRepo%MemorySmith.App/Components/Pages/MemoryViewer.razor" },
-    { "Label": "Pages.razor", "Uri": "%MemorySmithRepo%MemorySmith.App/Components/Pages/Pages.razor" },
-    { "Label": "Chat.razor", "Uri": "%MemorySmithRepo%MemorySmith.App/Components/Pages/Chat.razor" },
-    { "Label": "HealthStats.razor", "Uri": "%MemorySmithRepo%MemorySmith.App/Components/Pages/HealthStats.razor" },
-    { "Label": "Variables.razor", "Uri": "%MemorySmithRepo%MemorySmith.App/Components/Pages/Variables.razor" },
-    { "Label": "Admin.razor", "Uri": "%MemorySmithRepo%MemorySmith.App/Components/Pages/Admin.razor" },
-    { "Label": "NavMenu.razor", "Uri": "%MemorySmithRepo%MemorySmith.App/Components/Layout/NavMenu.razor" },
-    { "Label": "AdminSettingsService.cs", "Uri": "%MemorySmithRepo%MemorySmith.App/Services/AdminSettingsService.cs" },
-    { "Label": "app.css", "Uri": "%MemorySmithRepo%MemorySmith.App/wwwroot/app.css" }
+    {
+      "Label": "MemoryViewer.razor",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Components/Pages/MemoryViewer.razor"
+    },
+    {
+      "Label": "Pages.razor",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Components/Pages/Pages.razor"
+    },
+    {
+      "Label": "Chat.razor",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Components/Pages/Chat.razor"
+    },
+    {
+      "Label": "HealthStats.razor",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Components/Pages/HealthStats.razor"
+    },
+    {
+      "Label": "Variables.razor",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Components/Pages/Variables.razor"
+    },
+    {
+      "Label": "Admin.razor",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Components/Pages/Admin.razor"
+    },
+    {
+      "Label": "NavMenu.razor",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Components/Layout/NavMenu.razor"
+    },
+    {
+      "Label": "AdminSettingsService.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/AdminSettingsService.cs"
+    },
+    {
+      "Label": "app.css",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/wwwroot/app.css"
+    }
   ],
   "UsageCount": 0,
-  "LastUpdated": "2026-05-19T07:30:00Z"
+  "LastUpdated": "2026-07-10T00:00:00Z"
 }

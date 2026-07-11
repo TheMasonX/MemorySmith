@@ -5,16 +5,15 @@
   "Status": 2,
   "Confidence": 0.86,
   "Tags": [
-    "project-wiki",
-    "memory-system",
-    "implementation-status",
-    "council-review",
-    "agent-memory",
-    "tag-governance",
-    "staleness",
-    "search",
     "chat",
-    "pages"
+    "current-state",
+    "governance",
+    "memory-system",
+    "pages",
+    "project-wiki",
+    "search",
+    "staleness",
+    "tag-governance"
   ],
   "References": [
     "ai-memory-suite-governance-foundation-20260520",

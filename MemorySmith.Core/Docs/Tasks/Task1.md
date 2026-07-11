@@ -1,4 +1,4 @@
-﻿H# **MemorySmith — Initial Task Set (Copilot‑Ready)**  
+﻿# **MemorySmith — Initial Task Set (Copilot‑Ready)**  
 *Phase 1: Core, Storage, Worker, Tests, Docs*
 
 ---

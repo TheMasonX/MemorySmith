@@ -1,10 +1,10 @@
-{
+﻿{
   "id": "tsk-0084-add-high-fidelity-export-for-markdown-to-html-and-pdf-preserving-diagrams-callouts-and-tables",
   "key": "TSK-0084",
   "title": "Add High-Fidelity Markdown Export to HTML/PDF Preserving Diagrams, Callouts, and Tables",
   "description": "Implement export pipeline that preserves rendered markdown semantics (Mermaid, callouts, tables, anchors) for reliable HTML and PDF output.",
   "type": "Task",
-  "status": "Backlog",
+  "status": "Archived",
   "priority": "Medium",
   "assigneeMode": "Directory",
   "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
@@ -24,11 +24,11 @@
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-24T20:52:31.8756952Z",
-  "updatedAtUtc": "2026-05-24T20:52:31.8756952Z",
+  "updatedAtUtc": "2026-07-11T01:56:47.7631968Z",
   "completedAtUtc": null,
-  "revision": 1,
-  "isArchived": false,
+  "revision": 2,
+  "isArchived": true,
   "hasLoadError": false,
   "loadError": null,
-  "sourceFilePath": null
+  "sourceFilePath": "tsk-0084-add-high-fidelity-export-for-markdown-to-html-and-pdf-preserving-diagrams-callouts-and-tables.json"
 }

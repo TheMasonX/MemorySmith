@@ -118,6 +118,15 @@ public sealed class TagGovernanceService
         return _diagnostics.Analyze(record, recordsById);
     }
 
+    public IReadOnlyList<string> GetProhibitedTags()
+    {
+        var policy = NormalizePolicy(_policyService.GetPolicy());
+        return policy.PlainTags.Blocklist
+            .Concat(LowValueTags)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
     internal static bool ShouldBlockInvalidPlainTags(TagPolicy policy) =>
         EffectivePlainTagMode(policy) is "blockUnknown" or "block";
 

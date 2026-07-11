@@ -5,11 +5,10 @@
   "Status": 2,
   "Confidence": 0.88,
   "Tags": [
-    "project-wiki",
-    "code-search",
-    "ui",
     "current-state",
-    "kind:fact"
+    "kind:fact",
+    "project-wiki",
+    "ui"
   ],
   "References": [
     "project-wiki-code-search-relevance-suite",

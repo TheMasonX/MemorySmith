@@ -5,10 +5,8 @@
   "Status": 2,
   "Confidence": 0.95,
   "Tags": [
-    "project-wiki",
     "architecture",
-    "single-host",
-    "memorysmith-app"
+    "project-wiki"
   ],
   "References": [
     "project-wiki-validation-command",

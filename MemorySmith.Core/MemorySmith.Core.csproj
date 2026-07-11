@@ -13,7 +13,7 @@
 
   <ItemGroup>
     <Folder Include="Docs\Memories\" />
-    <Folder Include="Docs\Unconsolidated\" />
+
   </ItemGroup>
 
 </Project>

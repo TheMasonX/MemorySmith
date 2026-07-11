@@ -1,10 +1,10 @@
-{
+﻿{
   "id": "tsk-0079-implement-in-render-link-intelligence-and-health-indicators",
   "key": "TSK-0079",
   "title": "Implement In-Render Link Intelligence and Health Indicators",
   "description": "Add link diagnostics in markdown rendering to mark internal links as valid, missing, or redirected and provide quick navigation for broken-link remediation.",
   "type": "Task",
-  "status": "Backlog",
+  "status": "Archived",
   "priority": "Medium",
   "assigneeMode": "Directory",
   "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
@@ -24,11 +24,11 @@
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-24T20:52:26.8697301Z",
-  "updatedAtUtc": "2026-05-24T20:52:26.8697301Z",
+  "updatedAtUtc": "2026-07-11T01:56:39.7887421Z",
   "completedAtUtc": null,
-  "revision": 1,
-  "isArchived": false,
+  "revision": 2,
+  "isArchived": true,
   "hasLoadError": false,
   "loadError": null,
-  "sourceFilePath": null
+  "sourceFilePath": "tsk-0079-implement-in-render-link-intelligence-and-health-indicators.json"
 }

@@ -35,6 +35,12 @@
       "author": "hyperagent",
       "body": "Progress update (commits d81abe6f, 86abd7b0): Step 2 is effectively complete — memorysmith_semantic_search and memorysmith_unified_search are no longer in ChatToolCatalog (removed during the June 4 Program.cs/catalog restructure; the 22-tool catalog that PR #54 preserved already excludes them). Step 3 verified: McpController has no direct references to the deprecated tool names. Steps 5/6 are satisfied by the current test suite (ChatToolCatalogAndInterceptTests calibrated to the 22-tool catalog; McpAndSemanticSearchTests keeps the fragile per-test ignores). New in 86abd7b0: ChatContextPlanner no longer recommends memorysmith_unified_search (it recommended a nonexistent tool, steering the model to dead calls) — hybrid_search is now the default memory-evidence recommendation per this task's routing rule. Remaining: steps 1 (prompt files), 4 (README), 7 (.continue rules), 8-12 (training corpus regen, spotcheck refresh, LoRA retrain, deploy).",
       "createdAtUtc": "2026-06-11T21:01:54.0000000Z"
+    },
+    {
+      "id": "c-0271-overlap-0294-20260710",
+      "author": "AgentSmith",
+      "body": "2026-07-10 triage: TSK-0294 (scrub dead search tool refs from README and wiki guides) overlaps with Step 4 of this task. Coordinate: TSK-0294 covers README + wiki guide cleanup; this task's Step 4 should then be verified as complete rather than duplicated. Steps 7-12 (training corpus, LoRA) remain deferred. See architectural-stability-cleanup-sprint-20260710.md.",
+      "createdAtUtc": "2026-07-10T00:00:00.0000000Z"
     }
   ],
   "steps": [

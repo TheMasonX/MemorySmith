@@ -1,20 +1,14 @@
 {
   "Id": "external-parity-observations-20260601",
-  "Content": "A peer AI knowledge-base project (LLMWikiServer) conducted a cross-system parity review of TheMasonX/MemorySmith (June 2026). They identified eight MemorySmith patterns they considered adopting; four are highlighted as high-ROI adoption candidates: (A) Weekly Audit JSONL Mirroring \u2014 SQLite audit log mirrored to Data/Events/audit-yyyy-MMM.jsonl called a \u0027Gold Standard\u0027 for repo-backed evidence surviving DB corruption. (B) Human-Readable Task Seed (tasks.md) \u2014 markdown file as human-oriented backlog/history while Tasks system manages stateful JSON, preventing the \u0027invisible task\u0027 problem. (C) Source Bundle Pattern \u2014 memorysmith_source_bundle fetches content for all source links across a set of memory IDs in one MCP call, far more efficient than calling read_file 50 times. (D) Validator-Driven Git Hooks \u2014 .githooks/ running Test-PageLinks.ps1 and Test-MemoryRecords.ps1 before every commit ensures IDs and paths never break. The remaining four validated strengths (Unified Agent Workspace, Context Pack pattern, Tag Governance, Source Link Variables) are confirmed as design patterns they noted but did not specifically prioritize for adoption. The same review identified three gaps they consider high-ROI for MemorySmith to close: (1) /api/diagnostics endpoint reporting effective runtime config rather than just a binary health check (TSK-0267); (2) Reverse Reference Generator for backward navigation (TSK-0268); (3) Assignee-aware filtering on the /tasks board (TSK-0269). These three are tracked as feature backlog tasks. Source: physical printout of LLMWikiServer agent report, photographed 2026-06-01.",
-  "Title": "External Parity Review \u2014 MemorySmith vs LLMWikiServer (June 2026)",
+  "Content": "A peer AI knowledge-base project (LLMWikiServer) conducted a cross-system parity review of TheMasonX/MemorySmith (June 2026). They identified eight MemorySmith patterns they considered adopting; four are highlighted as high-ROI adoption candidates: (A) Weekly Audit JSONL Mirroring — SQLite audit log mirrored to Data/Events/audit-yyyy-MMM.jsonl called a 'Gold Standard' for repo-backed evidence surviving DB corruption. (B) Human-Readable Task Seed (tasks.md) — markdown file as human-oriented backlog/history while Tasks system manages stateful JSON, preventing the 'invisible task' problem. (C) Source Bundle Pattern — memorysmith_source_bundle fetches content for all source links across a set of memory IDs in one MCP call, far more efficient than calling read_file 50 times. (D) Validator-Driven Git Hooks — .githooks/ running Test-PageLinks.ps1 and Test-MemoryRecords.ps1 before every commit ensures IDs and paths never break. The remaining four validated strengths (Unified Agent Workspace, Context Pack pattern, Tag Governance, Source Link Variables) are confirmed as design patterns they noted but did not specifically prioritize for adoption. The same review identified three gaps they consider high-ROI for MemorySmith to close: (1) /api/diagnostics endpoint reporting effective runtime config rather than just a binary health check (TSK-0267); (2) Reverse Reference Generator for backward navigation (TSK-0268); (3) Assignee-aware filtering on the /tasks board (TSK-0269). These three are tracked as feature backlog tasks. Source: physical printout of LLMWikiServer agent report, photographed 2026-06-01.",
+  "Title": "External Parity Review — MemorySmith vs LLMWikiServer (June 2026)",
   "Status": 2,
   "Confidence": 0.88,
   "Tags": [
-    "project-wiki",
-    "parity-review",
-    "external-validation",
-    "feature-requests",
+    "current-state",
     "diagnostics",
-    "reverse-references",
-    "task-board",
-    "audit-log",
-    "source-bundle",
-    "git-hooks"
+    "project-wiki",
+    "tests"
   ],
   "References": [
     "agent-collaboration-principles-20260601",

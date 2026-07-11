@@ -5,15 +5,13 @@
   "Status": 2,
   "Confidence": 0.93,
   "Tags": [
-    "project-wiki",
-    "test-fixture",
     "context-pack",
-    "graph-fixture",
-    "quartzwave",
-    "search",
+    "deterministic-test",
     "mcp",
+    "project-wiki",
+    "search",
     "structured-output",
-    "deterministic-test"
+    "test-fixture"
   ],
   "References": [
     "project-wiki-test-fixture-reference-child"

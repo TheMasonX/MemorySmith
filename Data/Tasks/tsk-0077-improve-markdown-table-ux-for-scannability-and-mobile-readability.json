@@ -1,10 +1,10 @@
-{
+﻿{
   "id": "tsk-0077-improve-markdown-table-ux-for-scannability-and-mobile-readability",
   "key": "TSK-0077",
   "title": "Improve Markdown Table UX for Scannability and Mobile Readability",
   "description": "Enhance table rendering with sticky headers, responsive horizontal scroll, zebra-row styling, and better cell readability for assignment and quick-view sections.",
   "type": "Task",
-  "status": "Backlog",
+  "status": "Archived",
   "priority": "Medium",
   "assigneeMode": "Directory",
   "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
@@ -24,11 +24,11 @@
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-24T20:52:24.8678172Z",
-  "updatedAtUtc": "2026-05-24T20:52:24.8678172Z",
+  "updatedAtUtc": "2026-07-11T01:56:39.5571136Z",
   "completedAtUtc": null,
-  "revision": 1,
-  "isArchived": false,
+  "revision": 2,
+  "isArchived": true,
   "hasLoadError": false,
   "loadError": null,
-  "sourceFilePath": null
+  "sourceFilePath": "tsk-0077-improve-markdown-table-ux-for-scannability-and-mobile-readability.json"
 }

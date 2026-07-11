@@ -5,14 +5,11 @@
   "Status": 2,
   "Confidence": 0.9,
   "Tags": [
+    "current-state",
+    "documentation",
+    "github",
     "project-wiki",
-    "github-actions",
-    "ci",
-    "coverage",
-    "cobertura",
-    "doxygen",
-    "docs",
-    "current-state"
+    "tests"
   ],
   "References": [
     "project-wiki-validation-command",

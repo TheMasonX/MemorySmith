@@ -1,18 +1,13 @@
 {
   "Id": "agent-collaboration-principles-20260601",
-  "Content": "Five operational principles for AI agents and automated tools working in MemorySmith, proposed for review based on observations from a peer knowledge-base system (LLMWikiServer, June 2026). (1) Validator Discipline: the record Id (kebab-case) must exactly match the filename, and Status must match the subfolder (0=Unconsolidated, 1=Working, 2=Core, 3=Deprecated). Drift between Id and file path breaks search indexing and context-pack resolution. (2) Context Packs First: use memorysmith_context_pack before memorysmith_search to trace ripple effects via References and Conflicts keys, 1-2 hops out, before writing code or records. (3) Ground Tasks in Comments: treat the comments array as a terminal log \u2014 paste file paths, test output, and command results immediately. High-quality tasks contain enough evidence for a human to approve a status transition without opening the IDE. (4) Respect Status Tiers: Unconsolidated=raw scraps, Working=default for agent writes, Core=hardened facts (NEVER promote without explicit human review and confidence \u003E= 0.95), Deprecated=read-only history. (5) Use %VarNameX% in SourceLinks: never hardcode absolute paths; always use tokens from Data/vars.json (e.g., %MemorySmithRepo%) to keep records portable across developer machines.",
+  "Content": "Five operational principles for AI agents and automated tools working in MemorySmith, proposed for review based on observations from a peer knowledge-base system (LLMWikiServer, June 2026). (1) Validator Discipline: the record Id (kebab-case) must exactly match the filename, and Status must match the subfolder (0=Unconsolidated, 1=Working, 2=Core, 3=Deprecated). Drift between Id and file path breaks search indexing and context-pack resolution. (2) Context Packs First: use memorysmith_context_pack before memorysmith_search to trace ripple effects via References and Conflicts keys, 1-2 hops out, before writing code or records. (3) Ground Tasks in Comments: treat the comments array as a terminal log — paste file paths, test output, and command results immediately. High-quality tasks contain enough evidence for a human to approve a status transition without opening the IDE. (4) Respect Status Tiers: Unconsolidated=raw scraps, Working=default for agent writes, Core=hardened facts (NEVER promote without explicit human review and confidence >= 0.95), Deprecated=read-only history. (5) Use %VarNameX% in SourceLinks: never hardcode absolute paths; always use tokens from Data/vars.json (e.g., %MemorySmithRepo%) to keep records portable across developer machines.",
   "Title": "Agent Collaboration Principles For MemorySmith",
   "Status": 2,
   "Confidence": 0.93,
   "Tags": [
+    "governance",
     "project-wiki",
-    "agent-workflow",
-    "best-practices",
-    "validator-discipline",
-    "context-packs",
-    "status-tiers",
-    "source-links",
-    "variables"
+    "source-links"
   ],
   "References": [
     "ai-memory-suite-governance-foundation-20260520",

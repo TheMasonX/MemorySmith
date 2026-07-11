@@ -1,42 +1,45 @@
-{
-  "Id": "tsk-0098-scope-approval-disclaimer-duplication-to-specific-prompt-families",
-  "Key": "TSK-0098",
-  "Title": "Scope approval-disclaimer duplication to specific prompt families.",
-  "Description": "The repeated approval disclaimer does not appear on the stricter two-bullet source-link prompt, which indicates the bug is prompt-family-specific rather than universal. Capture the conditions that trigger duplicate structured-write warnings, keep the final answer free of repeated boilerplate, and ensure the response stays concise. Acceptance criteria: the disclaimer appears at most once on the affected prompt families, the unaffected prompt family remains clean, and the trace still preserves the reason for the warning. Validation: rerun the repro prompts and confirm only the known prompt family reproduces the duplication.",
-  "Type": "Task",
-  "Status": "Backlog",
-  "Priority": "Medium",
-  "AssigneeMode": "Custom",
-  "AssigneeDirectoryId": null,
-  "AssigneeCustomText": "Copilot",
-  "Reporter": "TheMasonX",
-  "Labels": [
+﻿{
+  "id": "tsk-0098-scope-approval-disclaimer-duplication-to-specific-prompt-families",
+  "key": "TSK-0098",
+  "title": "Scope approval-disclaimer duplication to specific prompt families.",
+  "description": "The repeated approval disclaimer does not appear on the stricter two-bullet source-link prompt, which indicates the bug is prompt-family-specific rather than universal. Capture the conditions that trigger duplicate structured-write warnings, keep the final answer free of repeated boilerplate, and ensure the response stays concise. Acceptance criteria: the disclaimer appears at most once on the affected prompt families, the unaffected prompt family remains clean, and the trace still preserves the reason for the warning. Validation: rerun the repro prompts and confirm only the known prompt family reproduces the duplication.",
+  "type": "Task",
+  "status": "Archived",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "TheMasonX",
+  "labels": [
     "chat",
     "rendering",
     "quality",
     "prompt-family",
     "audit-vetted"
   ],
-  "Attachments": [],
-  "ExternalLinks": [],
-  "LinkedPages": [
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
     "research/chat-agent-local-profile-mcp-evaluation-20260524",
     "workbench/tasks"
   ],
-  "Comments": [
+  "comments": [
     {
-      "Id": "c-0098-1",
-      "Author": "AgentSmith",
-      "Body": "Evidence: the exact two-bullet source-link prompt finished cleanly without the repeated approval disclaimer, even though related multi-source prompts reproduced the duplication.",
-      "CreatedAtUtc": "2026-05-24T23:35:00.0000000Z"
+      "id": "c-0098-1",
+      "author": "AgentSmith",
+      "body": "Evidence: the exact two-bullet source-link prompt finished cleanly without the repeated approval disclaimer, even though related multi-source prompts reproduced the duplication.",
+      "createdAtUtc": "2026-05-24T23:35:00Z"
     }
   ],
-  "EpicId": null,
-  "ParentId": null,
-  "DueDateUtc": null,
-  "CreatedAtUtc": "2026-05-24T23:35:00.0000000Z",
-  "UpdatedAtUtc": "2026-05-24T23:35:00.0000000Z",
-  "CompletedAtUtc": null,
-  "Revision": 1,
-  "IsArchived": false
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-24T23:35:00Z",
+  "updatedAtUtc": "2026-07-11T01:56:58.5527001Z",
+  "completedAtUtc": null,
+  "revision": 2,
+  "isArchived": true,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": "tsk-0098-scope-approval-disclaimer-duplication-to-specific-prompt-families.json"
 }

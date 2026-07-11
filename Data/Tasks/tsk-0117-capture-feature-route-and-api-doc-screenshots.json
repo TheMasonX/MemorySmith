@@ -1,10 +1,10 @@
-{
+﻿{
   "id": "tsk-0117-capture-feature-route-and-api-doc-screenshots",
   "key": "TSK-0117",
   "title": "Capture feature route and API doc screenshots",
-  "description": "Problem: feature route and API/MCP documentation now include ID-tagged screenshot placeholders but no final images.\n\nDesired outcome: capture and embed the screenshots needed for route-map and API/MCP feature pages so the docs are visually complete.\n\nScope:\n- In scope: placeholders `FEAT-ROUTE-01..03` in `features/route-map` and `FEAT-API-01..04` in `features/api-and-mcp`; image capture, redaction, asset naming, markdown insertion.\n- Out of scope: auth/admin sensitive views (tracked separately).\n\nAcceptance criteria:\n- Every listed placeholder ID has a corresponding image in `Data/Pages/assets`.\n- Markdown pages embed each image near its placeholder location and render correctly in `/pages`.\n- Captures do not expose secrets, tokens, private usernames, or internal host details.\n\nValidation:\n- Open both pages in `/pages` and confirm all images load with no broken links.\n- Confirm image filenames map one-to-one with placeholder IDs.",
+  "description": "Problem: feature route and API/MCP documentation now include ID-tagged screenshot placeholders but no final images.\n\nDesired outcome: capture and embed the screenshots needed for route-map and API/MCP feature pages so the docs are visually complete.\n\nScope:\n- In scope: placeholders \u0060FEAT-ROUTE-01..03\u0060 in \u0060features/route-map\u0060 and \u0060FEAT-API-01..04\u0060 in \u0060features/api-and-mcp\u0060; image capture, redaction, asset naming, markdown insertion.\n- Out of scope: auth/admin sensitive views (tracked separately).\n\nAcceptance criteria:\n- Every listed placeholder ID has a corresponding image in \u0060Data/Pages/assets\u0060.\n- Markdown pages embed each image near its placeholder location and render correctly in \u0060/pages\u0060.\n- Captures do not expose secrets, tokens, private usernames, or internal host details.\n\nValidation:\n- Open both pages in \u0060/pages\u0060 and confirm all images load with no broken links.\n- Confirm image filenames map one-to-one with placeholder IDs.",
   "type": "Task",
-  "status": "Backlog",
+  "status": "Archived",
   "priority": "Medium",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -28,24 +28,24 @@
       "id": "c-create-0060-20260524",
       "author": "AgentSmith",
       "body": "Created to track FEAT-ROUTE and FEAT-API screenshot capture and insertion.",
-      "createdAtUtc": "2026-05-24T00:00:00.0000000Z"
+      "createdAtUtc": "2026-05-24T00:00:00Z"
     },
     {
       "id": "c-renumber-0117-20260524",
       "author": "AgentSmith",
       "body": "Renumbered from TSK-0060 to TSK-0117 to resolve the duplicate task key collision while preserving TSK-0060 for the high-priority source-governance task.",
-      "createdAtUtc": "2026-05-24T20:18:00.0000000Z"
+      "createdAtUtc": "2026-05-24T20:18:00Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
-  "createdAtUtc": "2026-05-24T00:00:00.0000000Z",
-  "updatedAtUtc": "2026-05-24T20:18:00.0000000Z",
+  "createdAtUtc": "2026-05-24T00:00:00Z",
+  "updatedAtUtc": "2026-07-11T01:56:30.570459Z",
   "completedAtUtc": null,
-  "revision": 2,
-  "isArchived": false,
+  "revision": 3,
+  "isArchived": true,
   "hasLoadError": false,
   "loadError": null,
-  "sourceFilePath": null
+  "sourceFilePath": "tsk-0117-capture-feature-route-and-api-doc-screenshots.json"
 }

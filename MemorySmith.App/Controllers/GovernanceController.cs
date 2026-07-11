@@ -6,7 +6,9 @@ using Microsoft.AspNetCore.Mvc;
 namespace MemorySmith.App.Controllers;
 
 [ApiController]
-[Route("api/governance")][IgnoreAntiforgeryToken]public sealed class GovernanceController : ControllerBase
+[Route("api/governance")]
+[IgnoreAntiforgeryToken]
+public sealed class GovernanceController : ControllerBase
 {
     private readonly TagGovernanceService _tagGovernance;
 

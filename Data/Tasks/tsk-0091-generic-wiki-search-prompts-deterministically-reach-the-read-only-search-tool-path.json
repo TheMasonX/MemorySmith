@@ -1,16 +1,16 @@
-{
-  "Id": "tsk-0091-generic-wiki-search-prompts-deterministically-reach-the-read-only-search-tool-path",
-  "Key": "TSK-0091",
-  "Title": "Make generic wiki search prompts deterministically reach the read-only search tool path.",
-  "Description": "The live local Agent-mode probe accepted a generic wiki/tool-search request, the context planner preloaded the right memories and page, and then the turn stalled in Thinking with no tool call or final answer. Add a deterministic fallback for generic wiki/search prompts so the agent reaches memorysmith_unified_search or an equivalent read-only search path even when the model stalls. Acceptance criteria: clearly scoped wiki-search prompts trigger a tool call or explicit fallback within a bounded time, the trace records the chosen path, and no write-capable tools are used. Validation: run the local chat probe and a regression test covering a generic wiki search request.",
-  "Type": "Task",
-  "Status": "Backlog",
-  "Priority": "High",
-  "AssigneeMode": "Custom",
-  "AssigneeDirectoryId": null,
-  "AssigneeCustomText": "Copilot",
-  "Reporter": "TheMasonX",
-  "Labels": [
+﻿{
+  "id": "tsk-0091-generic-wiki-search-prompts-deterministically-reach-the-read-only-search-tool-path",
+  "key": "TSK-0091",
+  "title": "Make generic wiki search prompts deterministically reach the read-only search tool path.",
+  "description": "The live local Agent-mode probe accepted a generic wiki/tool-search request, the context planner preloaded the right memories and page, and then the turn stalled in Thinking with no tool call or final answer. Add a deterministic fallback for generic wiki/search prompts so the agent reaches memorysmith_unified_search or an equivalent read-only search path even when the model stalls. Acceptance criteria: clearly scoped wiki-search prompts trigger a tool call or explicit fallback within a bounded time, the trace records the chosen path, and no write-capable tools are used. Validation: run the local chat probe and a regression test covering a generic wiki search request.",
+  "type": "Task",
+  "status": "Archived",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "TheMasonX",
+  "labels": [
     "chat",
     "agent",
     "mcp",
@@ -18,26 +18,29 @@
     "reliability",
     "audit-vetted"
   ],
-  "Attachments": [],
-  "ExternalLinks": [],
-  "LinkedPages": [
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
     "research/chat-agent-local-profile-mcp-evaluation-20260524",
     "workbench/tasks"
   ],
-  "Comments": [
+  "comments": [
     {
-      "Id": "c-0091-1",
-      "Author": "AgentSmith",
-      "Body": "Evidence: the 2026-05-24 local-profile probe on /chat reached 23.0s elapsed and still showed Waiting for first token even though the trace had already preloaded context and selected a read-only wiki search path.",
-      "CreatedAtUtc": "2026-05-24T22:35:00.0000000Z"
+      "id": "c-0091-1",
+      "author": "AgentSmith",
+      "body": "Evidence: the 2026-05-24 local-profile probe on /chat reached 23.0s elapsed and still showed Waiting for first token even though the trace had already preloaded context and selected a read-only wiki search path.",
+      "createdAtUtc": "2026-05-24T22:35:00Z"
     }
   ],
-  "EpicId": null,
-  "ParentId": null,
-  "DueDateUtc": null,
-  "CreatedAtUtc": "2026-05-24T22:35:00.0000000Z",
-  "UpdatedAtUtc": "2026-05-24T22:35:00.0000000Z",
-  "CompletedAtUtc": null,
-  "Revision": 1,
-  "IsArchived": false
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-24T22:35:00Z",
+  "updatedAtUtc": "2026-07-11T01:56:58.0985124Z",
+  "completedAtUtc": null,
+  "revision": 2,
+  "isArchived": true,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": "tsk-0091-generic-wiki-search-prompts-deterministically-reach-the-read-only-search-tool-path.json"
 }

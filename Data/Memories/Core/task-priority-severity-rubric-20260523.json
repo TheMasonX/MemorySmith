@@ -5,11 +5,9 @@
   "Status": 2,
   "Confidence": 0.92,
   "Tags": [
-    "project-wiki",
-    "tasks",
     "governance",
-    "prioritization",
-    "severity"
+    "project-wiki",
+    "tasks"
   ],
   "References": [
     "task-tracking-feature-20260523",

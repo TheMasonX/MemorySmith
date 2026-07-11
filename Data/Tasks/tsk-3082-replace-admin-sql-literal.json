@@ -1,0 +1,32 @@
+﻿{
+  "id": "tsk-3082-replace-admin-sql-literal",
+  "key": "TSK-3082",
+  "title": "Replace hardcoded ADMIN SQL literal with constant",
+  "description": "P1 finding from 10-agent swarm codebase audit (P1-007). HasAnyAdminAsync hardcodes \u0027ADMIN\u0027 as a SQL string literal instead of using the MemorySmithRoles.Admin constant. If the constant value changes, the SQL silently breaks.\n\nFile: MemorySmith.Storage/SqliteMemorySmithDatabase.cs (lines 433-445)\nConfidence: 100%\nSource: codebase-audit-20260710-agent10-swarm-v2.md",
+  "type": "Bug",
+  "status": "Ready",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Agent",
+  "reporter": "anonymous",
+  "labels": [
+    "domain:storage",
+    "type:bug"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-11T04:23:01.4398272Z",
+  "updatedAtUtc": "2026-07-11T04:23:01.4398272Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

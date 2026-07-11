@@ -1,0 +1,33 @@
+﻿{
+  "id": "tsk-3048-fix-api-key-env-var-mismatch",
+  "key": "TSK-3048",
+  "title": "Fix MS_LLM_API_KEY vs MSA_LLM_API_KEY environment variable mismatch",
+  "description": "MemorySmithConfigurationSetup maps MS_LLM_API_KEY env var to MemorySmith:Secrets:OpenAIApiKey, but OpenAICompatibleChatProvider.ResolveApiKey reads from MSA_LLM_API_KEY (via ChatOptions.OpenAIApiKeyEnvVar default). The key configured via the MS_ prefixed variable is never picked up by the provider. Align to a single consistent env var name (MSA_LLM_API_KEY) and remove the redundant configuration mapping. Source: codebase-audit-20260710-swarm-synthesis P1-001",
+  "type": "Bug",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "anonymous",
+  "labels": [
+    "domain:chat",
+    "type:bug",
+    "sprint-backlog"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-11T03:05:54.5396411Z",
+  "updatedAtUtc": "2026-07-11T03:05:54.5396411Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

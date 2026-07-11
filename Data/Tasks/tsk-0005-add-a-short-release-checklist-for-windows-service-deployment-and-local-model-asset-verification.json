@@ -1,39 +1,42 @@
-{
-  "Id": "tsk-0005-add-a-short-release-checklist-for-windows-service-deployment-and-local-model-asset-verification",
-  "Key": "TSK-0005",
-  "Title": "Add a short release checklist for Windows Service deployment and local model asset verification.",
-  "Description": "Include the screenshots or console output that prove the post-deploy checks succeeded.\r\n\r\nImported from Data/Pages/workbench/tasks.md",
-  "Type": "Task",
-  "Status": "Backlog",
-  "Priority": "Medium",
-  "AssigneeMode": "Custom",
-  "AssigneeDirectoryId": null,
-  "AssigneeCustomText": "Copilot",
-  "Reporter": "tracker-import",
-  "Labels": [
+﻿{
+  "id": "tsk-0005-add-a-short-release-checklist-for-windows-service-deployment-and-local-model-asset-verification",
+  "key": "TSK-0005",
+  "title": "Add a short release checklist for Windows Service deployment and local model asset verification.",
+  "description": "Include the screenshots or console output that prove the post-deploy checks succeeded.\r\n\r\nImported from Data/Pages/workbench/tasks.md",
+  "type": "Task",
+  "status": "Archived",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "tracker-import",
+  "labels": [
     "tracker-import",
     "workbench",
     "future"
   ],
-  "Attachments": [],
-  "ExternalLinks": [],
-  "LinkedPages": [
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
     "workbench/tasks"
   ],
-  "Comments": [
+  "comments": [
     {
-      "Id": "c-e5f5c0f532ff4b6aab6a6b8a67781098",
-      "Author": "tracker-import",
-      "Body": "Include the screenshots or console output that prove the post-deploy checks succeeded.",
-      "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z"
+      "id": "c-e5f5c0f532ff4b6aab6a6b8a67781098",
+      "author": "tracker-import",
+      "body": "Include the screenshots or console output that prove the post-deploy checks succeeded.",
+      "createdAtUtc": "2026-05-23T23:36:10.0439283Z"
     }
   ],
-  "EpicId": null,
-  "ParentId": null,
-  "DueDateUtc": null,
-  "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z",
-  "UpdatedAtUtc": "2026-05-23T23:36:10.0439283Z",
-  "CompletedAtUtc": null,
-  "Revision": 1,
-  "IsArchived": false
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-23T23:36:10.0439283Z",
+  "updatedAtUtc": "2026-07-11T01:56:58.6756426Z",
+  "completedAtUtc": null,
+  "revision": 2,
+  "isArchived": true,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": "tsk-0005-add-a-short-release-checklist-for-windows-service-deployment-and-local-model-asset-verification.json"
 }

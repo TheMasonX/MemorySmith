@@ -212,8 +212,7 @@
                 </div>
 
                 <div class="wiki-editor-grid">
-                    <MudTextField @bind-Value="_editRecord.Id" Label="ID" Disabled="@_editingExisting" Variant="Variant.Outlined" Margin="Margin.Dense" />
-                    <MudTextField @bind-Value="_editRecord.Title" Label="Title" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                    <MudTextField @bind-Value="_editRecord.Title" Label="Title" Variant="Variant.Outlined" Margin="Margin.Dense" Class="wiki-editor-title-full" />
                     <MudSelect T="MemoryStatus" @bind-Value="_editRecord.Status" Label="Status" Variant="Variant.Outlined" Margin="Margin.Dense">
                         @foreach (MemoryStatus status in Enum.GetValues(typeof(MemoryStatus)))
                         {
@@ -221,8 +220,14 @@
                         }
                     </MudSelect>
                     <div class="wiki-confidence-edit">
+                        <label>Confidence</label>
+                        <MudTextField @bind-Value="_editConfidenceText"
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense"
+                                      Dense="true"
+                                      OnKeyUp="OnConfidenceKeyUp"
+                                      Class="wiki-confidence-input" />
                         <MudSlider @bind-Value="_editRecord.Confidence" Min="0" Max="1" Step="0.05" Color="Color.Info" />
-                        <span>@_editRecord.Confidence.ToString("P0")</span>
                     </div>
                     <div class="wiki-tag-editor" aria-label="Memory tags">
                         <label>Tags</label>
@@ -257,13 +262,135 @@
                     </div>
                     <MudTextField @bind-Value="_editReferences" Label="References" Placeholder="id1, id2" Variant="Variant.Outlined" Margin="Margin.Dense" />
                     <MudTextField @bind-Value="_editConflicts" Label="Conflicts" Placeholder="id1, id2" Variant="Variant.Outlined" Margin="Margin.Dense" />
-                    <MudTextField @bind-Value="_editSourceLinks"
-                                  Label="Source Links"
-                                  Placeholder="Label | %MemorySmithRepo%path/to/file | 42-100&#10;Label | https://github.com/owner/repo"
-                                  Lines="3"
-                                  Variant="Variant.Outlined"
-                                  Margin="Margin.Dense"
-                                  HelperText="One per line: Label | URI [| StartLine[-EndLine]]  — %VarName% tokens expand from /variables" />
+                    <div class="wiki-refcard-editor">
+                        <label>References</label>
+                        <div class="wiki-refcard-list">
+                            @foreach (var (refId, refIdx) in _editReferenceList.Select((id, i) => (id, i)))
+                            {
+                                <div class="wiki-refcard-row" key="@refIdx">
+                                    <MudAutocomplete T="string"
+                                                     Value="@refId"
+                                                     ValueChanged="@((string v) => OnReferenceChanged(refIdx, v))"
+                                                     SearchFunc="@SearchMemoryIdsAsync"
+                                                     Label="Memory ID"
+                                                     Variant="Variant.Outlined"
+                                                     Margin="Margin.Dense"
+                                                     Dense="true"
+                                                     Clearable="true"
+                                                     Class="wiki-refcard-id-input" />
+                                    <button type="button" class="wiki-refcard-delete" @onclick="@(() => RemoveReferenceAsync(refIdx))" title="Remove reference">&times;</button>
+                                </div>
+                            }
+                        </div>
+                        <div class="wiki-refcard-add">
+                            <MudAutocomplete T="string"
+                                             Value="@_referenceDraft"
+                                             ValueChanged="@OnReferenceDraftChanged"
+                                             SearchFunc="@SearchMemoryIdsAsync"
+                                             Label="Add reference…"
+                                             Variant="Variant.Outlined"
+                                             Margin="Margin.Dense"
+                                             Dense="true"
+                                             Clearable="true" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" Color="Color.Primary" OnClick="AddReferenceDraftAsync" aria-label="Add reference" title="Add reference" />
+                        </div>
+                    </div>
+                    <div class="wiki-refcard-editor">
+                        <label>Conflicts</label>
+                        <div class="wiki-refcard-list">
+                            @foreach (var (confId, confIdx) in _editConflictList.Select((id, i) => (id, i)))
+                            {
+                                <div class="wiki-refcard-row" key="@confIdx">
+                                    <MudAutocomplete T="string"
+                                                     Value="@confId"
+                                                     ValueChanged="@((string v) => OnConflictChanged(confIdx, v))"
+                                                     SearchFunc="@SearchMemoryIdsAsync"
+                                                     Label="Memory ID"
+                                                     Variant="Variant.Outlined"
+                                                     Margin="Margin.Dense"
+                                                     Dense="true"
+                                                     Clearable="true"
+                                                     Class="wiki-refcard-id-input" />
+                                    <button type="button" class="wiki-refcard-delete" @onclick="@(() => RemoveConflictAsync(confIdx))" title="Remove conflict">&times;</button>
+                                </div>
+                            }
+                        </div>
+                        <div class="wiki-refcard-add">
+                            <MudAutocomplete T="string"
+                                             Value="@_conflictDraft"
+                                             ValueChanged="@OnConflictDraftChanged"
+                                             SearchFunc="@SearchMemoryIdsAsync"
+                                             Label="Add conflict…"
+                                             Variant="Variant.Outlined"
+                                             Margin="Margin.Dense"
+                                             Dense="true"
+                                             Clearable="true" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" Color="Color.Warning" OnClick="AddConflictDraftAsync" aria-label="Add conflict" title="Add conflict" />
+                        </div>
+                    </div>
+                    <div class="wiki-refcard-editor">
+                        <label>Source Links</label>
+                        <div class="wiki-refcard-list">
+                            @foreach (var (src, srcIdx) in _editSourceLinkList.Select((sl, i) => (sl, i)))
+                            {
+                                <div class="wiki-refcard-row" key="@srcIdx">
+                                    <MudSelect T="string"
+                                               Value="@src.Type"
+                                               ValueChanged="@((string v) => OnSourceLinkTypeChanged(srcIdx, v))"
+                                               Label="Type"
+                                               Variant="Variant.Outlined"
+                                               Margin="Margin.Dense"
+                                               Dense="true"
+                                               Class="wiki-refcard-type-select">
+                                        <MudSelectItem Value="@("code")">Code</MudSelectItem>
+                                        <MudSelectItem Value="@("docs")">Docs</MudSelectItem>
+                                        <MudSelectItem Value="@("web")">Web</MudSelectItem>
+                                        <MudSelectItem Value="@("config")">Config</MudSelectItem>
+                                        <MudSelectItem Value="@("test")">Test</MudSelectItem>
+                                        <MudSelectItem Value="@("other")">Other</MudSelectItem>
+                                    </MudSelect>
+                                    <MudTextField @bind-Value="src.Uri"
+                                                  Label="URI"
+                                                  Placeholder="%Var%path/to/file"
+                                                  Variant="Variant.Outlined"
+                                                  Margin="Margin.Dense"
+                                                  Dense="true"
+                                                  OnValueChanged="@((string v) => OnSourceLinkUriChanged(srcIdx, v))" />
+                                    <MudTextField @bind-Value="src.LineRange"
+                                                  Label="Lines"
+                                                  Placeholder="42-100"
+                                                  Variant="Variant.Outlined"
+                                                  Margin="Margin.Dense"
+                                                  Dense="true"
+                                                  Class="wiki-refcard-lines" />
+                                    <button type="button" class="wiki-refcard-delete" @onclick="@(() => RemoveSourceLinkAsync(srcIdx))" title="Remove source link">&times;</button>
+                                </div>
+                            }
+                        </div>
+                        <div class="wiki-refcard-add">
+                            <MudButton Variant="Variant.Outlined" Size="Size.Small" StartIcon="@Icons.Material.Filled.Add" OnClick="AddSourceLinkAsync">Add Source Link</MudButton>
+                        </div>
+                    </div>
+                    @if (_editTagPolicyViolations.Count > 0)
+                    {
+                        <div class="wiki-tag-audit-panel">
+                            <div class="wiki-tag-audit-header">
+                                <label>Tag Policy Violations</label>
+                                <span class="wiki-tag-audit-badge">@_editTagPolicyViolations.Count</span>
+                                <MudSpacer />
+                                <button type="button" class="wiki-tag-audit-remove-all" @onclick="RemoveAllViolatingTagsAsync">Remove all</button>
+                            </div>
+                            <div class="wiki-tag-audit-list">
+                                @foreach (var ttv in _editTagPolicyViolations)
+                                {
+                                    <button type="button" class="wiki-tag-audit-chip" @onclick="@(() => RemoveViolatingTagAsync(ttv))" title="Remove '@ttv'">
+                                        <span>@ttv</span>
+                                        <MudIcon Icon="@Icons.Material.Filled.Close" Size="Size.Small" />
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    }
                 </div>
 
                 @if (_editDiagnostics.Count > 0)
@@ -407,9 +534,18 @@
     private List<string> _editTagList = [];
     private List<string> _tagSuggestions = [];
     private string _tagDraft = string.Empty;
+    private string _editConfidenceText = "50%";
     private string _editReferences = string.Empty;
     private string _editConflicts = string.Empty;
     private string _editSourceLinks = string.Empty;
+    private List<string> _editReferenceList = [];
+    private List<string> _editConflictList = [];
+    private List<EditSourceLinkItem> _editSourceLinkList = [];
+    private string _referenceDraft = string.Empty;
+    private string _conflictDraft = string.Empty;
+    private List<string> _editTagPolicyViolations = [];
+    private List<string> _knownMemoryIds = [];
+    private bool _knownMemoryIdsLoaded;
     private string _searchQuery = string.Empty;
     private string _tagsFilter = string.Empty;
     private SearchMode _searchMode = SearchMode.Lexical;
@@ -757,7 +893,29 @@
                 parts.Add(sl.EndLine.HasValue ? $"{sl.StartLine}-{sl.EndLine}" : $"{sl.StartLine}");
             return string.Join(" | ", parts);
         }));
+        _editReferenceList = record.References.ToList();
+        _editConflictList = record.Conflicts.ToList();
+        _editSourceLinkList = record.SourceLinks.Select(sl => new EditSourceLinkItem
+        {
+            Type = sl.Label switch
+            {
+                string l when l.StartsWith("code:", StringComparison.OrdinalIgnoreCase) => "code",
+                string l when l.StartsWith("docs:", StringComparison.OrdinalIgnoreCase) => "docs",
+                string l when l.StartsWith("web:", StringComparison.OrdinalIgnoreCase) => "web",
+                string l when l.StartsWith("config:", StringComparison.OrdinalIgnoreCase) => "config",
+                string l when l.StartsWith("test:", StringComparison.OrdinalIgnoreCase) => "test",
+                _ => "other"
+            },
+            Label = sl.Label ?? string.Empty,
+            Uri = sl.Uri ?? string.Empty,
+            LineRange = sl.StartLine.HasValue
+                ? (sl.EndLine.HasValue ? $"{sl.StartLine}-{sl.EndLine}" : $"{sl.StartLine}")
+                : string.Empty
+        }).ToList();
+        _editConfidenceText = (record.Confidence * 100).ToString("F0") + "%";
         _editingExisting = editingExisting;
+        RefreshTagPolicyViolations();
+        _ = LoadKnownMemoryIdsAsync();
     }
 
     private async Task OnTagDraftChanged(string value)
@@ -819,6 +977,7 @@
         _editDiagnostics = TagGovernance.AnalyzeDraft(_editRecord)
             .Where(diagnostic => diagnostic.Category is "tag" or "source" or "relationship" or "staleness")
             .ToList();
+        RefreshTagPolicyViolations();
         _checkingDiagnostics = false;
         return Task.CompletedTask;
     }
@@ -830,9 +989,29 @@
             .Select(tag => tag.Trim())
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
-        _editRecord.References = SplitValues(_editReferences);
-        _editRecord.Conflicts = SplitValues(_editConflicts);
-        _editRecord.SourceLinks = ParseSourceLinks(_editSourceLinks);
+        _editRecord.References = _editReferenceList
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        _editRecord.Conflicts = _editConflictList
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        _editRecord.SourceLinks = _editSourceLinkList
+            .Where(sl => !string.IsNullOrWhiteSpace(sl.Uri))
+            .Select(sl =>
+            {
+                var label = string.IsNullOrWhiteSpace(sl.Type) ? sl.Label : $"{sl.Type}:{sl.Label}";
+                int? startLine = null, endLine = null;
+                if (!string.IsNullOrWhiteSpace(sl.LineRange))
+                {
+                    var parts = sl.LineRange.Split('-', 2, StringSplitOptions.TrimEntries);
+                    if (int.TryParse(parts[0], out var s)) startLine = s;
+                    if (parts.Length == 2 && int.TryParse(parts[1], out var e)) endLine = e;
+                }
+                return new SourceLink { Label = label, Uri = sl.Uri, StartLine = startLine, EndLine = endLine };
+            })
+            .ToList();
     }
 
     private RenderFragment RenderSourceLinks(IReadOnlyList<SourceLink> links) => builder =>
@@ -1037,6 +1216,163 @@
                 return display;
             }));
         return $"# {record.Title}\nID: {record.Id}\nStatus: {record.Status}\nConfidence: {record.Confidence:P0}\nTags: {string.Join(", ", record.Tags)}\nReferences: {string.Join(", ", record.References)}\nConflicts: {string.Join(", ", record.Conflicts)}{sourceLinks}\n\n{record.Content}";
+    }
+
+    private async Task LoadKnownMemoryIdsAsync()
+    {
+        if (_knownMemoryIdsLoaded) return;
+        var all = await Memories.GetMemoriesAsync(new MemoryListQuery(1, 5000, null, null), CancellationToken.None);
+        _knownMemoryIds = all.Data.Select(m => m.Id).ToList();
+        _knownMemoryIdsLoaded = true;
+    }
+
+    private Task<IEnumerable<string>> SearchMemoryIdsAsync(string text, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return Task.FromResult(_knownMemoryIds.AsEnumerable());
+
+        var query = text.Trim().ToLowerInvariant();
+        var results = _knownMemoryIds
+            .Where(id => id.Contains(query, StringComparison.OrdinalIgnoreCase))
+            .Take(20);
+        return Task.FromResult(results);
+    }
+
+    private void OnConfidenceKeyUp(KeyboardEventArgs args)
+    {
+        if (args.Key is not ("Enter" or "Tab")) return;
+        if (double.TryParse(_editConfidenceText.TrimEnd('%'), out var pct))
+        {
+            _editRecord.Confidence = Math.Clamp(pct / 100.0, 0, 1);
+        }
+    }
+
+    private void OnReferenceDraftChanged(string value) => _referenceDraft = value ?? string.Empty;
+
+    private async Task AddReferenceDraftAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_referenceDraft)) return;
+        var id = _referenceDraft.Trim();
+        if (!_editReferenceList.Any(r => string.Equals(r, id, StringComparison.OrdinalIgnoreCase)))
+        {
+            _editReferenceList.Add(id);
+            StateHasChanged();
+        }
+        _referenceDraft = string.Empty;
+        await RefreshDraftDiagnosticsAsync();
+    }
+
+    private void OnReferenceChanged(int index, string value)
+    {
+        if (index >= 0 && index < _editReferenceList.Count)
+        {
+            _editReferenceList[index] = value ?? string.Empty;
+        }
+    }
+
+    private async Task RemoveReferenceAsync(int index)
+    {
+        if (index >= 0 && index < _editReferenceList.Count)
+        {
+            _editReferenceList.RemoveAt(index);
+            StateHasChanged();
+            await RefreshDraftDiagnosticsAsync();
+        }
+    }
+
+    private void OnConflictDraftChanged(string value) => _conflictDraft = value ?? string.Empty;
+
+    private async Task AddConflictDraftAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_conflictDraft)) return;
+        var id = _conflictDraft.Trim();
+        if (!_editConflictList.Any(c => string.Equals(c, id, StringComparison.OrdinalIgnoreCase)))
+        {
+            _editConflictList.Add(id);
+            StateHasChanged();
+        }
+        _conflictDraft = string.Empty;
+        await RefreshDraftDiagnosticsAsync();
+    }
+
+    private void OnConflictChanged(int index, string value)
+    {
+        if (index >= 0 && index < _editConflictList.Count)
+        {
+            _editConflictList[index] = value ?? string.Empty;
+        }
+    }
+
+    private async Task RemoveConflictAsync(int index)
+    {
+        if (index >= 0 && index < _editConflictList.Count)
+        {
+            _editConflictList.RemoveAt(index);
+            StateHasChanged();
+            await RefreshDraftDiagnosticsAsync();
+        }
+    }
+
+    private void OnSourceLinkTypeChanged(int index, string value)
+    {
+        if (index >= 0 && index < _editSourceLinkList.Count)
+            _editSourceLinkList[index].Type = value ?? "code";
+    }
+
+    private void OnSourceLinkUriChanged(int index, string value)
+    {
+        if (index >= 0 && index < _editSourceLinkList.Count)
+            _editSourceLinkList[index].Uri = value ?? string.Empty;
+    }
+
+    private async Task AddSourceLinkAsync()
+    {
+        _editSourceLinkList.Add(new EditSourceLinkItem { Type = "code", Uri = string.Empty, LineRange = string.Empty });
+        StateHasChanged();
+        await RefreshDraftDiagnosticsAsync();
+    }
+
+    private async Task RemoveSourceLinkAsync(int index)
+    {
+        if (index >= 0 && index < _editSourceLinkList.Count)
+        {
+            _editSourceLinkList.RemoveAt(index);
+            StateHasChanged();
+            await RefreshDraftDiagnosticsAsync();
+        }
+    }
+
+    private void RefreshTagPolicyViolations()
+    {
+        var prohibited = TagGovernance.GetProhibitedTags();
+        _editTagPolicyViolations = _editTagList
+            .Where(t => prohibited.Any(p => string.Equals(p, t, StringComparison.OrdinalIgnoreCase)))
+            .ToList();
+    }
+
+    private async Task RemoveViolatingTagAsync(string tag)
+    {
+        _editTagList.RemoveAll(t => string.Equals(t, tag, StringComparison.OrdinalIgnoreCase));
+        RefreshTagPolicyViolations();
+        StateHasChanged();
+        await RefreshDraftDiagnosticsAsync();
+    }
+
+    private async Task RemoveAllViolatingTagsAsync()
+    {
+        var prohibited = TagGovernance.GetProhibitedTags();
+        _editTagList.RemoveAll(t => prohibited.Any(p => string.Equals(p, t, StringComparison.OrdinalIgnoreCase)));
+        RefreshTagPolicyViolations();
+        StateHasChanged();
+        await RefreshDraftDiagnosticsAsync();
+    }
+
+    private sealed record EditSourceLinkItem
+    {
+        public string Type { get; set; } = "code";
+        public string Label { get; set; } = string.Empty;
+        public string Uri { get; set; } = string.Empty;
+        public string LineRange { get; set; } = string.Empty;
     }
 
     private enum SearchMode

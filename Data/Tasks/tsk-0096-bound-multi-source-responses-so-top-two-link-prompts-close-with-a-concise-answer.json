@@ -1,42 +1,45 @@
-{
-  "Id": "tsk-0096-bound-multi-source-responses-so-top-two-link-prompts-close-with-a-concise-answer",
-  "Key": "TSK-0096",
-  "Title": "Bound multi-source responses so 'top two link' prompts close with a concise answer.",
-  "Description": "A fuzzed prompt asking for the top two source links stayed in reasoning for 19 seconds and kept expanding its rationale instead of closing quickly. Add a bounded response strategy for multi-source requests so the model returns a concise answer or an explicit limitation instead of prolonged internal reasoning. Acceptance criteria: multi-source requests complete within a predictable window, the response stays concise, and the trace shows a clear stop condition. Validation: rerun the top-two-links prompt and confirm the assistant finishes without extended reasoning drift.",
-  "Type": "Task",
-  "Status": "Backlog",
-  "Priority": "Medium",
-  "AssigneeMode": "Custom",
-  "AssigneeDirectoryId": null,
-  "AssigneeCustomText": "Copilot",
-  "Reporter": "TheMasonX",
-  "Labels": [
+﻿{
+  "id": "tsk-0096-bound-multi-source-responses-so-top-two-link-prompts-close-with-a-concise-answer",
+  "key": "TSK-0096",
+  "title": "Bound multi-source responses so \u0027top two link\u0027 prompts close with a concise answer.",
+  "description": "A fuzzed prompt asking for the top two source links stayed in reasoning for 19 seconds and kept expanding its rationale instead of closing quickly. Add a bounded response strategy for multi-source requests so the model returns a concise answer or an explicit limitation instead of prolonged internal reasoning. Acceptance criteria: multi-source requests complete within a predictable window, the response stays concise, and the trace shows a clear stop condition. Validation: rerun the top-two-links prompt and confirm the assistant finishes without extended reasoning drift.",
+  "type": "Task",
+  "status": "Archived",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "TheMasonX",
+  "labels": [
     "chat",
     "agent",
     "reasoning",
     "bounded-output",
     "audit-vetted"
   ],
-  "Attachments": [],
-  "ExternalLinks": [],
-  "LinkedPages": [
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
     "research/chat-agent-local-profile-mcp-evaluation-20260524",
     "workbench/tasks"
   ],
-  "Comments": [
+  "comments": [
     {
-      "Id": "c-0096-1",
-      "Author": "AgentSmith",
-      "Body": "Evidence: the 2026-05-24 top-two-links probe stayed in reasoning after 19s and was still expanding its response plan, so the issue is not only latency but also finish criteria for multi-source answers.",
-      "CreatedAtUtc": "2026-05-24T23:05:00.0000000Z"
+      "id": "c-0096-1",
+      "author": "AgentSmith",
+      "body": "Evidence: the 2026-05-24 top-two-links probe stayed in reasoning after 19s and was still expanding its response plan, so the issue is not only latency but also finish criteria for multi-source answers.",
+      "createdAtUtc": "2026-05-24T23:05:00Z"
     }
   ],
-  "EpicId": null,
-  "ParentId": null,
-  "DueDateUtc": null,
-  "CreatedAtUtc": "2026-05-24T23:05:00.0000000Z",
-  "UpdatedAtUtc": "2026-05-24T23:05:00.0000000Z",
-  "CompletedAtUtc": null,
-  "Revision": 1,
-  "IsArchived": false
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-24T23:05:00Z",
+  "updatedAtUtc": "2026-07-11T01:56:58.4021853Z",
+  "completedAtUtc": null,
+  "revision": 2,
+  "isArchived": true,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": "tsk-0096-bound-multi-source-responses-so-top-two-link-prompts-close-with-a-concise-answer.json"
 }

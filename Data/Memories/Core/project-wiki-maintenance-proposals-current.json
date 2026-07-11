@@ -5,13 +5,12 @@
   "Status": 2,
   "Confidence": 0.88,
   "Tags": [
-    "project-wiki",
-    "maintenance-agent",
-    "proposals",
-    "agent-review",
-    "current-state",
-    "kind:fact",
     "audience:admin",
+    "current-state",
+    "governance",
+    "kind:fact",
+    "maintenance",
+    "project-wiki",
     "scope:governance"
   ],
   "References": [

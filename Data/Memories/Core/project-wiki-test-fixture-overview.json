@@ -5,14 +5,13 @@
   "Status": 2,
   "Confidence": 0.94,
   "Tags": [
-    "project-wiki",
-    "test-fixture",
-    "fixture-overview",
-    "deterministic-test",
     "context-pack",
-    "search",
+    "deterministic-test",
     "mcp",
-    "structured-output"
+    "project-wiki",
+    "search",
+    "structured-output",
+    "test-fixture"
   ],
   "References": [
     "project-wiki-test-fixture-context-root",

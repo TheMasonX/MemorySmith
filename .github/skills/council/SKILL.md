@@ -83,7 +83,7 @@ Give each seat the same evidence and require:
 - Open questions
 - Confidence percentage
 
-Subagent usage note: only run seats via subagents when explicit user permission is provided. Otherwise run all seats in-process.
+**Subagent usage**: If the user has given explicit permission to use subagents, delegate parallel seat reviews to the [`subagent-swarm`](../subagent-swarm/SKILL.md) skill using a **heterogeneous swarm (Branch B)**: N = number of seats, partitioned by seat perspective, with structured output per seat. Otherwise run all seats in-process.
 
 5. Branch on disagreement.
 If seats materially disagree, do not flatten to consensus.
@@ -184,3 +184,4 @@ Prefer MemorySmith source-linked project wiki evidence over generic advice.
 - Data/Pages/temp-plan.md
 - Data/Pages/search-and-chat.md
 - Data/Memories/Core (relevant records)
+- [`../subagent-swarm/SKILL.md`](../subagent-swarm/SKILL.md) — parallel subagent execution skill for distributed seat reviews (when subagent mode is permitted)

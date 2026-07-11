@@ -1,0 +1,32 @@
+﻿{
+  "id": "tsk-3083-isolate-publisher-failures",
+  "key": "TSK-3083",
+  "title": "Isolate MemoryChangePublisher subscriber failures",
+  "description": "P1 finding from 10-agent swarm codebase audit (P1-018). MemoryChangePublisher.PublishAsync uses Task.WhenAll on subscriber tasks. Any subscriber exception propagates up through AuditAndPublishAsync to CreateAsync/UpdateAsync/DeleteAsync, blocking memory mutations. Wrap subscriber invocations in try/catch that logs and swallows.\n\nFile: MemorySmith.App/Services/MemoryChangePublisher.cs (lines 43-49)\nConfidence: 90%\nSource: codebase-audit-20260710-agent10-swarm-v2.md",
+  "type": "Bug",
+  "status": "Ready",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Agent",
+  "reporter": "anonymous",
+  "labels": [
+    "domain:services",
+    "type:bug"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-11T04:23:01.5130829Z",
+  "updatedAtUtc": "2026-07-11T04:23:01.5130829Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

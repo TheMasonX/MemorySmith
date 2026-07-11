@@ -1,0 +1,33 @@
+﻿{
+  "id": "tsk-3056-fix-file-memory-store-error-handling",
+  "key": "TSK-3056",
+  "title": "Add error handling to FileMemoryStore.Load and FileEventStore.GetEvents",
+  "description": "FileMemoryStore.Load calls File.ReadAllText then JsonSerializer.Deserialize with zero error handling \u2014 a single corrupt record file crashes the caller (LoadAll handles this gracefully but Load does not). FileEventStore.GetEvents has two silent catch blocks: inner skips malformed JSON lines, outer swallows I/O failures returning empty results indistinguishable from no events. Fix: add try/catch in Load matching LoadAll\u0027s diagnostic recording pattern; add logging to both FileEventStore catch blocks. Source: codebase-audit-20260710-swarm-synthesis P2-029/030",
+  "type": "Bug",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "anonymous",
+  "labels": [
+    "domain:storage",
+    "type:bug",
+    "sprint-backlog"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-11T03:06:12.5175666Z",
+  "updatedAtUtc": "2026-07-11T03:06:12.5175666Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

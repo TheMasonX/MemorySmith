@@ -14,6 +14,23 @@
 - Use `Scripts/Validate-Repo.ps1` as the default local validation entrypoint; add `-IncludeCoverage`, `-IncludeE2E`, or `-IncludeDocs` when the change scope warrants it.
 - Consolidate workflow guidance around `.github/agents/smith.agent.md` first, then backfill related docs/instructions so supporting guidance follows the Smith contract.
 
+## Tool Activation (CRITICAL — Read Before Assuming Tools Are Missing)
+
+MCP tool groups are **dormant until activated**. If you cannot find a tool you expect (e.g., `memorysmith_task_create`), do not assume it is unavailable — call the corresponding `activate_*` tool first:
+
+| If you need... | Call this activation tool |
+|----------------|--------------------------|
+| `memorysmith_task_create`, `task_get`, `task_list`, `task_set_status`, `task_update`, `task_add_comment` | `activate_memorysmith_task_management` |
+| `memorysmith_memory_create` | `activate_memorysmith_task_management` (same group) |
+| Wiki page create/update/delete tools | `activate_memorysmith_wiki_management` |
+| Source bundle / back-map tools | `activate_memorysmith_source_management` |
+| MemorySmith search tools (may already be directly available) | `activate_memorysmith_search_tools` |
+| Pylance diagnostics / import analysis / environment tools | `activate_pylance_*` (multiple) |
+| Browser interaction tools | `activate_browser_interaction_tools` |
+| Network request monitoring | `activate_network_request_tools` |
+
+**Rule:** Before concluding any MCP tool is unavailable, scan your available `activate_*` tools. Their descriptions name the category they unlock. Call the matching one — the tools will appear in your next turn.
+
 ## Knowledge Hub - Where to Find Things
 
 The current project map starts at `README.md`, `Data/Memories`, and `MemorySmith.Core/Docs`.
@@ -36,7 +53,7 @@ The current project map starts at `README.md`, `Data/Memories`, and `MemorySmith
 - `README.md` - current product shape, routes, configuration, validation commands.
 - `Data/Memories/Core/` - current structured project knowledge.
 - `MemorySmith.Core/Docs/Plans/MemorySmith_FinalRefactorDesign_20260507.md` - active broad architecture plan.
-- `MemorySmith.Core/Docs/Plans/SemantingSearch.md` - current semantic search/vector update plan when working on semantic retrieval.
+- `MemorySmith.Core/Docs/Plans/SemanticSearch.md` - current semantic search/vector update plan when working on semantic retrieval.
 - `MemorySmith.Core/Docs/Prompts/wiki-chat-agent.md` - canonical chat/agent system prompt used by the app.
 - `MemorySmith.Core/Docs/Prompts/wiki-chat-agent.modelfile` - Athena/Ollama prompt package; keep in sync with the canonical chat prompt.
 - `MemorySmith.Core/Docs/Prompts/maintenance-agent-task.md`, `maintenance-proposal-generation.md`, and `maintenance-revision-cycle.md` - maintenance-agent prompt contracts.

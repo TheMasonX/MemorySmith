@@ -1,10 +1,10 @@
-{
+﻿{
   "id": "tsk-0082-optimize-large-document-rendering-performance-with-incremental-and-virtualized-rendering",
   "key": "TSK-0082",
   "title": "Optimize Large-Document Rendering Performance with Incremental and Virtualized Rendering",
   "description": "Improve markdown rendering performance for large textbook and knowledge files using incremental parsing, section virtualization, and cached structural indexes.",
   "type": "Task",
-  "status": "Backlog",
+  "status": "Archived",
   "priority": "Medium",
   "assigneeMode": "Directory",
   "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
@@ -24,11 +24,11 @@
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-24T20:52:29.8733185Z",
-  "updatedAtUtc": "2026-05-24T20:52:29.8733185Z",
+  "updatedAtUtc": "2026-07-11T01:56:39.6939127Z",
   "completedAtUtc": null,
-  "revision": 1,
-  "isArchived": false,
+  "revision": 2,
+  "isArchived": true,
   "hasLoadError": false,
   "loadError": null,
-  "sourceFilePath": null
+  "sourceFilePath": "tsk-0082-optimize-large-document-rendering-performance-with-incremental-and-virtualized-rendering.json"
 }

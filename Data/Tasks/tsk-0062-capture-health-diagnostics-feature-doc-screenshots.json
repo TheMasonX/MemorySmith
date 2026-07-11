@@ -1,10 +1,10 @@
-{
+﻿{
   "id": "tsk-0062-capture-health-diagnostics-feature-doc-screenshots",
   "key": "TSK-0062",
   "title": "Capture health and diagnostics feature doc screenshots",
-  "description": "Problem: `features/health-and-diagnostics` now includes placeholder IDs but no final screenshots.\n\nDesired outcome: capture and embed images for FEAT-HEALTH placeholders so observability docs are visually actionable.\n\nScope:\n- In scope: FEAT-HEALTH-01..04 capture, redaction, asset storage in `Data/Pages/assets`, markdown image insertion.\n- Out of scope: broader admin/auth screenshots and chat workflows.\n\nAcceptance criteria:\n- All FEAT-HEALTH placeholders are fulfilled with image assets and embeds.\n- Sensitive runtime fields in diagnostics captures are redacted.\n- Page renders correctly in `/pages` with no broken image links.\n\nValidation:\n- Open `features/health-and-diagnostics` in `/pages` and verify all images load and match step intent.",
+  "description": "Problem: \u0060features/health-and-diagnostics\u0060 now includes placeholder IDs but no final screenshots.\n\nDesired outcome: capture and embed images for FEAT-HEALTH placeholders so observability docs are visually actionable.\n\nScope:\n- In scope: FEAT-HEALTH-01..04 capture, redaction, asset storage in \u0060Data/Pages/assets\u0060, markdown image insertion.\n- Out of scope: broader admin/auth screenshots and chat workflows.\n\nAcceptance criteria:\n- All FEAT-HEALTH placeholders are fulfilled with image assets and embeds.\n- Sensitive runtime fields in diagnostics captures are redacted.\n- Page renders correctly in \u0060/pages\u0060 with no broken image links.\n\nValidation:\n- Open \u0060features/health-and-diagnostics\u0060 in \u0060/pages\u0060 and verify all images load and match step intent.",
   "type": "Task",
-  "status": "Backlog",
+  "status": "Archived",
   "priority": "Medium",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -35,8 +35,11 @@
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-24T00:00:00Z",
-  "updatedAtUtc": "2026-05-30T22:40:56.4534429Z",
+  "updatedAtUtc": "2026-07-11T01:56:30.4763948Z",
   "completedAtUtc": null,
-  "revision": 2,
-  "isArchived": false
+  "revision": 3,
+  "isArchived": true,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": "tsk-0062-capture-health-diagnostics-feature-doc-screenshots.json"
 }

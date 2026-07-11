@@ -818,11 +818,185 @@ body {
     padding: 10px 12px 0;
 }
 
+.wiki-editor-title-full {
+    grid-column: 1 / -1;
+}
+
 .wiki-confidence-edit {
+    grid-column: 1 / -1;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 48px;
+    grid-template-columns: auto 80px minmax(0, 1fr);
     align-items: center;
     gap: 8px;
+    padding: 4px 0;
+}
+
+.wiki-confidence-edit label {
+    color: var(--vscode-text-muted);
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.wiki-confidence-edit .mud-input {
+    min-width: 60px;
+}
+
+/* ── Reference/Source card editor ────────────────────── */
+.wiki-refcard-editor {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.wiki-refcard-editor > label {
+    color: var(--vscode-text-muted);
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.wiki-refcard-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.wiki-refcard-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    border: 1px solid var(--vscode-border-soft);
+    border-radius: 6px;
+    background: var(--vscode-panel);
+}
+
+.wiki-refcard-row .mud-select,
+.wiki-refcard-row .mud-autocomplete {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.wiki-refcard-row .wiki-refcard-type-select {
+    flex: 0 0 110px;
+}
+
+.wiki-refcard-row .wiki-refcard-id-input {
+    flex: 1 1 auto;
+}
+
+.wiki-refcard-lines {
+    flex: 0 0 80px;
+}
+
+.wiki-confidence-input {
+    flex: 0 0 80px;
+}
+
+.wiki-refcard-row .wiki-refcard-delete {
+    flex: 0 0 auto;
+    color: var(--vscode-errorForeground, #f14c4c);
+    opacity: 0.7;
+    cursor: pointer;
+    border: none;
+    background: none;
+    padding: 2px;
+    line-height: 1;
+}
+
+.wiki-refcard-row .wiki-refcard-delete:hover {
+    opacity: 1;
+}
+
+.wiki-refcard-add {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    margin-top: 2px;
+}
+
+.wiki-refcard-add .mud-autocomplete {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+/* ── Tag audit panel ─────────────────────────────────── */
+.wiki-tag-audit-panel {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 10px;
+    border: 1px solid var(--vscode-border-soft);
+    border-radius: 8px;
+    background: var(--vscode-panel-soft);
+}
+
+.wiki-tag-audit-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.wiki-tag-audit-header label {
+    color: var(--vscode-text-muted);
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.wiki-tag-audit-badge {
+    font-size: 0.72rem;
+    padding: 1px 7px;
+    border-radius: 10px;
+    background: var(--vscode-errorForeground, #f14c4c);
+    color: #fff;
+    font-weight: 600;
+}
+
+.wiki-tag-audit-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.wiki-tag-audit-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border: 1px solid var(--vscode-errorForeground, #f14c4c);
+    border-radius: 12px;
+    background: rgba(241, 76, 76, 0.10);
+    color: var(--vscode-errorForeground, #f14c4c);
+    font-size: 0.78rem;
+    cursor: pointer;
+}
+
+.wiki-tag-audit-chip:hover {
+    background: rgba(241, 76, 76, 0.20);
+}
+
+.wiki-tag-audit-remove-all {
+    font-size: 0.72rem;
+    cursor: pointer;
+    color: var(--vscode-errorForeground, #f14c4c);
+    border: none;
+    background: none;
+    padding: 2px 6px;
+    text-decoration: underline;
+}
+
+.wiki-tag-audit-clean {
+    font-size: 0.78rem;
+    color: var(--vscose-green, #4ec9b0);
 }
 
 .wiki-tag-editor {
@@ -4518,15 +4692,29 @@ body {
     line-height: 1.55;
 }
 
-.tasks-workbench .proposal-tabs,
-.tasks-workbench .mud-tabs,
-.tasks-workbench .mud-tabs-panels,
-.tasks-workbench .mud-tab-panel {
+.tasks-workbench .proposal-tabs {
     min-height: 0;
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.tasks-workbench .mud-tabs {
+    min-height: 0;
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
 }
 
 .tasks-workbench .mud-tabs-panels {
+    flex: 1 1 auto;
+    min-height: 250px;
     overflow: auto;
+}
+
+.tasks-workbench .mud-tab-panel {
+    min-height: 0;
+    flex: 1 1 auto;
 }
 
 .tasks-workbench .wiki-result-title {

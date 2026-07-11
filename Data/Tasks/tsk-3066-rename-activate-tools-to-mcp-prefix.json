@@ -1,0 +1,33 @@
+﻿{
+  "id": "tsk-3066-rename-activate-tools-to-mcp-prefix",
+  "key": "TSK-3066",
+  "title": "Rename activate_* tools to encode their MCP target in the name",
+  "description": "R1 from codebase audit tool-discovery audit. The current activate_* tool names (e.g., activate_memorysmith_task_management) sound like app feature toggles, not tool-registration gates. Rename to activate_mcp_memorysmith_tasks, activate_mcp_pylance_diagnostics, etc. so the mcp_ prefix immediately signals \u0022this injects MCP tools into the registry.\u0022 This is a VS Code extension / MCP host code change outside this repo.",
+  "type": "Feature",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "anonymous",
+  "labels": [
+    "domain:tooling",
+    "type:feature",
+    "sprint-backlog"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-11T03:30:05.0494158Z",
+  "updatedAtUtc": "2026-07-11T03:30:05.0494158Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

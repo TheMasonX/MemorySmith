@@ -1,0 +1,36 @@
+﻿{
+  "id": "tsk-3074-improve-adapter-error-handling-and-correlation",
+  "key": "TSK-3074",
+  "title": "Improve adapter error handling and correlation",
+  "description": "Replace empty catches, ensure correlationId propagation across MineflayerAdapter and WebSocket bridge, and add host-facing bridge failure events. Add tests.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Critical",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Agent",
+  "reporter": "anonymous",
+  "labels": [],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [
+    {
+      "id": "c-f67f78d2bfe44a9bb6a3417ba9a4842d",
+      "author": "anonymous",
+      "body": "Created from 2026-07-10 council audit; see Data/Pages/audits/codebase-audit-2026-07-10-council-review.md",
+      "createdAtUtc": "2026-07-11T04:10:16.6291841Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-11T04:10:09.9821236Z",
+  "updatedAtUtc": "2026-07-11T04:10:16.6291841Z",
+  "completedAtUtc": null,
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": "tsk-3074-improve-adapter-error-handling-and-correlation.json"
+}

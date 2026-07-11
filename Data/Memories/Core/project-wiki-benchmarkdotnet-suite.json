@@ -5,11 +5,10 @@
   "Status": 2,
   "Confidence": 0.93,
   "Tags": [
-    "project-wiki",
     "benchmarks",
-    "benchmarkdotnet",
-    "validation",
-    "search"
+    "project-wiki",
+    "search",
+    "tests"
   ],
   "References": [
     "project-wiki-test-architecture",

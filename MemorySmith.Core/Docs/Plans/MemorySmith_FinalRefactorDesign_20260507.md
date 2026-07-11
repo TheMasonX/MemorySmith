@@ -7,7 +7,7 @@ Confidence: 0.91 overall
 
 2026-05-12 update: user direction added a small MCP/search tooling slice. The active implementation now includes a local semantic-search baseline and an HTTP JSON-RPC MCP endpoint over the project wiki.
 
-2026-05-17 update: user direction added the focused `SemantingSearch.md` plan. The active implementation now includes an optional local ONNX Runtime embedding ranker with token-scoring fallback. Durable vector indexes, PostgreSQL, queues, OpenTelemetry, Redis, and gRPC remain out of this simplification refactor unless a later plan explicitly accepts that complexity.
+2026-05-17 update: user direction added the focused `SemanticSearch.md` plan. The active implementation now includes an optional local ONNX Runtime embedding ranker with token-scoring fallback. Durable vector indexes, PostgreSQL, queues, OpenTelemetry, Redis, and gRPC remain out of this simplification refactor unless a later plan explicitly accepts that complexity.
 
 ## 1. Purpose
 

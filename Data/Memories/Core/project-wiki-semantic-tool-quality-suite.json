@@ -5,11 +5,10 @@
   "Status": 2,
   "Confidence": 0.92,
   "Tags": [
-    "project-wiki",
-    "tests",
-    "semantic-search",
     "mcp",
-    "quality"
+    "project-wiki",
+    "semantic-search",
+    "tests"
   ],
   "References": [
     "project-wiki-onnx-semantic-embeddings",

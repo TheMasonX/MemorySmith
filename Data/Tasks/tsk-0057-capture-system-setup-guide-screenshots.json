@@ -1,10 +1,10 @@
-{
+﻿{
   "id": "tsk-0057-capture-system-setup-guide-screenshots",
   "key": "TSK-0057",
   "title": "Capture system setup guide screenshots",
-  "description": "Problem: the system setup guide now contains ID-based screenshot placeholders but no captured assets yet.\n\nDesired outcome: collect and attach a complete screenshot set for `guides/system-setup` so onboarding docs are fully illustrated.\n\nScope:\n- In scope: capture, crop/redact as needed, and place images under `Data/Pages/assets` with stable filenames mapped to placeholder IDs `SYS-SETUP-01` through `SYS-SETUP-13`.\n- Out of scope: content rewrites beyond image insertion and minor caption adjustments.\n\nAcceptance criteria:\n- Every `SYS-SETUP-*` placeholder in `Data/Pages/guides/system-setup.md` has a corresponding image file and markdown image reference.\n- Captured images avoid secrets/personal data and match current UI behavior.\n- Guide renders with images in `/pages` without broken links.\n\nValidation:\n- Open `/pages` and verify rendered `guides/system-setup` with all images loading.\n- Confirm markdown links resolve under `/page-assets`.",
+  "description": "Problem: the system setup guide now contains ID-based screenshot placeholders but no captured assets yet.\n\nDesired outcome: collect and attach a complete screenshot set for \u0060guides/system-setup\u0060 so onboarding docs are fully illustrated.\n\nScope:\n- In scope: capture, crop/redact as needed, and place images under \u0060Data/Pages/assets\u0060 with stable filenames mapped to placeholder IDs \u0060SYS-SETUP-01\u0060 through \u0060SYS-SETUP-13\u0060.\n- Out of scope: content rewrites beyond image insertion and minor caption adjustments.\n\nAcceptance criteria:\n- Every \u0060SYS-SETUP-*\u0060 placeholder in \u0060Data/Pages/guides/system-setup.md\u0060 has a corresponding image file and markdown image reference.\n- Captured images avoid secrets/personal data and match current UI behavior.\n- Guide renders with images in \u0060/pages\u0060 without broken links.\n\nValidation:\n- Open \u0060/pages\u0060 and verify rendered \u0060guides/system-setup\u0060 with all images loading.\n- Confirm markdown links resolve under \u0060/page-assets\u0060.",
   "type": "Task",
-  "status": "Backlog",
+  "status": "Archived",
   "priority": "Medium",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -26,15 +26,18 @@
       "id": "c-create-0057-20260523",
       "author": "AgentSmith",
       "body": "Created to track screenshot capture and insertion for all SYS-SETUP placeholders.",
-      "createdAtUtc": "2026-05-23T00:00:00.0000000Z"
+      "createdAtUtc": "2026-05-23T00:00:00Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
-  "createdAtUtc": "2026-05-23T00:00:00.0000000Z",
-  "updatedAtUtc": "2026-05-23T00:00:00.0000000Z",
+  "createdAtUtc": "2026-05-23T00:00:00Z",
+  "updatedAtUtc": "2026-07-11T01:56:30.6138829Z",
   "completedAtUtc": null,
-  "revision": 1,
-  "isArchived": false
+  "revision": 2,
+  "isArchived": true,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": "tsk-0057-capture-system-setup-guide-screenshots.json"
 }

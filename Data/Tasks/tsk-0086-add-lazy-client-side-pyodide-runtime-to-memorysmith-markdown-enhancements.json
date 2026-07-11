@@ -1,10 +1,10 @@
-{
+﻿{
   "id": "tsk-0086-add-lazy-client-side-pyodide-runtime-to-memorysmith-markdown-enhancements",
   "key": "TSK-0086",
   "title": "Add Lazy Client-Side Pyodide Runtime to MemorySmith Markdown Enhancements",
   "description": "Implement browser-side Pyodide execution with one-time lazy loader and per-cell execution wiring inside existing UI scripts. Extend memorySmith.markdown.renderEnhancements and static asset loading in MemorySmith.App (App.razor plus wwwroot scripts) so py-cell elements are hydrated only when present. Wire this behavior to a combined markdown runtime settings model shared with Mermaid. Runtime source should default to CDN with SRI, feature flags must default disabled so admins can set policies before enabling user-visible execution, and Viewer-role users must not be able to execute code blocks.",
   "type": "Task",
-  "status": "Backlog",
+  "status": "Archived",
   "priority": "High",
   "assigneeMode": "Directory",
   "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
@@ -25,31 +25,31 @@
     {
       "id": "cmt-tsk-0086-1",
       "author": "Agent Smith",
-      "message": "Vetting note: there is no MainLayout.razor in active host. Script and style includes currently live in MemorySmith.App/Components/App.razor.",
+      "body": null,
       "createdAtUtc": "2026-05-24T20:55:33.9800632Z"
     },
     {
       "id": "cmt-tsk-0086-2",
       "author": "Agent Smith",
-      "message": "User refinement: default feature state must be disabled, runtime asset defaults should be CDN+SRI, and runtime execution policy should remain browser-sandbox only unless admin explicitly changes settings.",
-      "createdAtUtc": "2026-05-24T21:05:00.0000000Z"
+      "body": null,
+      "createdAtUtc": "2026-05-24T21:05:00Z"
     },
     {
       "id": "cmt-tsk-0086-3",
       "author": "Agent Smith",
-      "message": "User refinement: use combined settings for shared markdown renderer behavior and enforce no codeblock execution for Viewer role.",
-      "createdAtUtc": "2026-05-24T21:15:00.0000000Z"
+      "body": null,
+      "createdAtUtc": "2026-05-24T21:15:00Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-24T20:55:33.9800632Z",
-  "updatedAtUtc": "2026-05-24T21:15:00.0000000Z",
+  "updatedAtUtc": "2026-07-11T01:56:48.204636Z",
   "completedAtUtc": null,
-  "revision": 3,
-  "isArchived": false,
+  "revision": 4,
+  "isArchived": true,
   "hasLoadError": false,
   "loadError": null,
-  "sourceFilePath": null
+  "sourceFilePath": "tsk-0086-add-lazy-client-side-pyodide-runtime-to-memorysmith-markdown-enhancements.json"
 }

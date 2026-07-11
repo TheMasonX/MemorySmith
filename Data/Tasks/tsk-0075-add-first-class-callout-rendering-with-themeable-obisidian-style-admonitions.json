@@ -1,10 +1,10 @@
-{
+﻿{
   "id": "tsk-0075-add-first-class-callout-rendering-with-themeable-obisidian-style-admonitions",
   "key": "TSK-0075",
   "title": "Add First-Class Callout Rendering with Themeable Obsidian-Style Admonitions",
   "description": "Implement robust rendering for callout/admonition blocks (for example abstract, tip, warning, success, rubric, workflow), including icon styles, optional collapsible behavior, and theme-level customization.",
   "type": "Task",
-  "status": "Backlog",
+  "status": "Archived",
   "priority": "Medium",
   "assigneeMode": "Directory",
   "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
@@ -24,11 +24,11 @@
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-24T20:52:22.8631204Z",
-  "updatedAtUtc": "2026-05-24T20:52:22.8631204Z",
+  "updatedAtUtc": "2026-07-11T01:56:39.4675169Z",
   "completedAtUtc": null,
-  "revision": 1,
-  "isArchived": false,
+  "revision": 2,
+  "isArchived": true,
   "hasLoadError": false,
   "loadError": null,
-  "sourceFilePath": null
+  "sourceFilePath": "tsk-0075-add-first-class-callout-rendering-with-themeable-obisidian-style-admonitions.json"
 }

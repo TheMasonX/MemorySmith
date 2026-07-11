@@ -1,0 +1,33 @@
+﻿{
+  "id": "tsk-3051-add-interfaces-to-core-services",
+  "key": "TSK-3051",
+  "title": "Extract interfaces for MemoryIndex, MemoryScorer, and MemoryStateMachine",
+  "description": "MemoryIndex, MemoryScorer (static class), and MemoryStateMachine have no interfaces (IMemoryIndex, IMemoryScorer, IMemoryStateMachine). None can be mocked in tests or DI-substituted. Extract interfaces for all three, convert MemoryScorer from static to instance, register in DI. This enables unit testing of scoring, indexing, and state machine logic without real implementations. Source: codebase-audit-20260710-swarm-synthesis P2-009",
+  "type": "Refactor",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "anonymous",
+  "labels": [
+    "domain:core",
+    "type:refactor",
+    "sprint-backlog"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-11T03:06:12.2854148Z",
+  "updatedAtUtc": "2026-07-11T03:06:12.2854148Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

@@ -1,6 +1,6 @@
 namespace MemorySmith.Storage;
 
-public sealed class DatabaseOptions
+public sealed record DatabaseOptions
 {
     public string Provider { get; set; } = "SQLite";
     public string ConnectionString { get; set; } = "Data Source=../Data/memorysmith.db";

@@ -5,11 +5,10 @@
   "Status": 2,
   "Confidence": 0.96,
   "Tags": [
-    "project-wiki",
+    "api",
+    "current-state",
     "mcp",
-    "tooling",
-    "friction",
-    "integration"
+    "project-wiki"
   ],
   "References": [
     "project-wiki-search-roadmap",

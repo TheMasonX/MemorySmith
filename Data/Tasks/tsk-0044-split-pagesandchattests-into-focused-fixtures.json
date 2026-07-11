@@ -1,10 +1,10 @@
-{
+﻿{
   "id": "tsk-0044-split-pagesandchattests-into-focused-fixtures",
   "key": "TSK-0044",
   "title": "Split PagesAndChatTests into focused fixtures",
   "description": "Problem: PagesAndChatTests.cs is a large mixed-domain test fixture that slows triage and increases change risk.\n\nDesired outcome: improve test maintainability and diagnosis speed by splitting into focused suites with shared builders/utilities.\n\nScope:\n- In scope: move page service tests, chat tests, and controller behavior tests into dedicated fixtures; add shared helpers for setup reuse.\n- Out of scope: changing asserted behavior.\n\nAcceptance criteria:\n- No single replacement fixture becomes a new monolith.\n- Coverage parity is maintained for migrated tests.\n- Test intent and ownership are clearer from fixture names and file layout.\n\nValidation:\n- Run migrated test suites and compare pass/fail parity with previous baseline.",
   "type": "Task",
-  "status": "Backlog",
+  "status": "Archived",
   "priority": "Medium",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -41,8 +41,11 @@
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-23T19:14:00Z",
-  "updatedAtUtc": "2026-05-30T22:40:56.4459934Z",
+  "updatedAtUtc": "2026-07-11T01:57:05.9336692Z",
   "completedAtUtc": null,
-  "revision": 3,
-  "isArchived": false
+  "revision": 4,
+  "isArchived": true,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": "tsk-0044-split-pagesandchattests-into-focused-fixtures.json"
 }

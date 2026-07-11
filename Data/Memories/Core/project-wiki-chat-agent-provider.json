@@ -5,15 +5,13 @@
   "Status": 2,
   "Confidence": 0.88,
   "Tags": [
-    "project-wiki",
-    "chat",
-    "agent",
-    "ollama",
-    "github",
-    "provider",
-    "streaming",
     "architecture",
-    "current-state"
+    "chat",
+    "configuration",
+    "current-state",
+    "github",
+    "ollama",
+    "project-wiki"
   ],
   "References": [
     "project-wiki-markdown-pages",

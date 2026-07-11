@@ -6,9 +6,7 @@
   "Confidence": 0.95,
   "Tags": [
     "project-wiki",
-    "testing",
-    "nunit",
-    "validation"
+    "tests"
   ],
   "References": [
     "project-wiki-active-architecture",

@@ -5,14 +5,11 @@
   "Status": 2,
   "Confidence": 0.94,
   "Tags": [
-    "project-wiki",
     "chat",
-    "attachments",
-    "images",
-    "clipboard",
-    "ollama",
+    "current-state",
     "github",
-    "current-state"
+    "ollama",
+    "project-wiki"
   ],
   "References": [
     "project-wiki-chat-agent-provider",

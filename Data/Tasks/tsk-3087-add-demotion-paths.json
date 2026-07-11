@@ -1,0 +1,33 @@
+﻿{
+  "id": "tsk-3087-add-demotion-paths",
+  "key": "TSK-3087",
+  "title": "Add demotion and re-promotion paths to MemoryStateMachine",
+  "description": "P1 finding (recalibrated from P2 by council). MemoryStateMachine has no demotion path (Core records never transition back to Working when score drops) and no re-promotion from Deprecated (records stay Deprecated forever even if score recovers). Add bidirectional state transitions.\n\nFile: MemorySmith.Core/StateMachine/MemoryStateMachine.cs (lines 17-28)\nConfidence: 100%\nCouncil notes: Recalibrated from P2 to P1 because no demotion creates irreversible wiki quality decay.\nSource: codebase-audit-20260710-agent10-swarm-v2.md, council-codebase-audit-20260710.md",
+  "type": "Improvement",
+  "status": "Ready",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Agent",
+  "reporter": "anonymous",
+  "labels": [
+    "domain:core",
+    "domain:state-machine",
+    "type:improvement"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-11T04:23:14.4320964Z",
+  "updatedAtUtc": "2026-07-11T04:23:14.4320964Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

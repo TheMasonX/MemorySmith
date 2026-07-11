@@ -2,7 +2,7 @@
   "Id": "project-wiki-source-links-feature",
   "Title": "Source Links Feature",
   "Status": 2,
-  "Confidence": 1.0,
+  "Confidence": 0.98,
   "Tags": [
     "project-wiki",
     "source-links",
@@ -24,5 +24,5 @@
     { "Label": "Variables.razor", "Uri": "%MemorySmithRepo%MemorySmith.App/Components/Pages/Variables.razor" }
   ],
   "UsageCount": 0,
-  "LastUpdated": "2026-05-12T00:00:00Z"
+  "LastUpdated": "2026-07-10T00:00:00Z"
 }

@@ -1,39 +1,42 @@
-{
-  "Id": "tsk-0011-decide-whether-mcp-only-source-bridge-tools-memorysmith-source-bundle-memorysmith-find-by-source-should-move-into-the-shared-tool-catalog-with-a-richer-risk-model",
-  "Key": "TSK-0011",
-  "Title": "Decide whether MCP-only source bridge tools (`memorysmith_source_bundle`, `memorysmith_find_by_source`) should move into the shared tool catalog with a richer risk model.",
-  "Description": "This needs a design note before code.\r\n\r\nImported from Data/Pages/workbench/tasks.md",
-  "Type": "Task",
-  "Status": "Backlog",
-  "Priority": "Medium",
-  "AssigneeMode": "Custom",
-  "AssigneeDirectoryId": null,
-  "AssigneeCustomText": "Copilot",
-  "Reporter": "tracker-import",
-  "Labels": [
+﻿{
+  "id": "tsk-0011-decide-whether-mcp-only-source-bridge-tools-memorysmith-source-bundle-memorysmith-find-by-source-should-move-into-the-shared-tool-catalog-with-a-richer-risk-model",
+  "key": "TSK-0011",
+  "title": "Decide whether MCP-only source bridge tools (\u0060memorysmith_source_bundle\u0060, \u0060memorysmith_find_by_source\u0060) should move into the shared tool catalog with a richer risk model.",
+  "description": "This needs a design note before code.\r\n\r\nImported from Data/Pages/workbench/tasks.md",
+  "type": "Task",
+  "status": "Archived",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "tracker-import",
+  "labels": [
     "tracker-import",
     "workbench",
     "future"
   ],
-  "Attachments": [],
-  "ExternalLinks": [],
-  "LinkedPages": [
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
     "workbench/tasks"
   ],
-  "Comments": [
+  "comments": [
     {
-      "Id": "c-8894c766e6064df4bd2f27ca0e566c6b",
-      "Author": "tracker-import",
-      "Body": "This needs a design note before code.",
-      "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z"
+      "id": "c-8894c766e6064df4bd2f27ca0e566c6b",
+      "author": "tracker-import",
+      "body": "This needs a design note before code.",
+      "createdAtUtc": "2026-05-23T23:36:10.0439283Z"
     }
   ],
-  "EpicId": null,
-  "ParentId": null,
-  "DueDateUtc": null,
-  "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z",
-  "UpdatedAtUtc": "2026-05-23T23:36:10.0439283Z",
-  "CompletedAtUtc": null,
-  "Revision": 1,
-  "IsArchived": false
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-23T23:36:10.0439283Z",
+  "updatedAtUtc": "2026-07-11T01:57:05.7859798Z",
+  "completedAtUtc": null,
+  "revision": 2,
+  "isArchived": true,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": "tsk-0011-decide-whether-mcp-only-source-bridge-tools-memorysmith-source-bundle-memorysmith-find-by-source-should-move-into-the-shared-tool-catalog-with-a-richer-risk-model.json"
 }

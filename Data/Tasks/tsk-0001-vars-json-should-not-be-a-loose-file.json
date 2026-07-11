@@ -1,39 +1,42 @@
-{
-  "Id": "tsk-0001-vars-json-should-not-be-a-loose-file",
-  "Key": "TSK-0001",
-  "Title": "Vars.json should not be a loose file",
-  "Description": "Add validation so the variable store behaves like a managed config surface, not an ad hoc file.\r\n\r\nImported from Data/Pages/workbench/tasks.md",
-  "Type": "Task",
-  "Status": "Backlog",
-  "Priority": "Medium",
-  "AssigneeMode": "Custom",
-  "AssigneeDirectoryId": null,
-  "AssigneeCustomText": "Copilot",
-  "Reporter": "tracker-import",
-  "Labels": [
+﻿{
+  "id": "tsk-0001-vars-json-should-not-be-a-loose-file",
+  "key": "TSK-0001",
+  "title": "Vars.json should not be a loose file",
+  "description": "Add validation so the variable store behaves like a managed config surface, not an ad hoc file.\r\n\r\nImported from Data/Pages/workbench/tasks.md",
+  "type": "Task",
+  "status": "Archived",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "tracker-import",
+  "labels": [
     "tracker-import",
     "workbench",
     "future"
   ],
-  "Attachments": [],
-  "ExternalLinks": [],
-  "LinkedPages": [
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
     "workbench/tasks"
   ],
-  "Comments": [
+  "comments": [
     {
-      "Id": "c-b1a320767719480b8fe71ac1eab598ec",
-      "Author": "tracker-import",
-      "Body": "Add validation so the variable store behaves like a managed config surface, not an ad hoc file.",
-      "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z"
+      "id": "c-b1a320767719480b8fe71ac1eab598ec",
+      "author": "tracker-import",
+      "body": "Add validation so the variable store behaves like a managed config surface, not an ad hoc file.",
+      "createdAtUtc": "2026-05-23T23:36:10.0439283Z"
     }
   ],
-  "EpicId": null,
-  "ParentId": null,
-  "DueDateUtc": null,
-  "CreatedAtUtc": "2026-05-23T23:36:10.0439283Z",
-  "UpdatedAtUtc": "2026-05-23T23:36:10.0439283Z",
-  "CompletedAtUtc": null,
-  "Revision": 1,
-  "IsArchived": false
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-23T23:36:10.0439283Z",
+  "updatedAtUtc": "2026-07-11T01:56:58.6118487Z",
+  "completedAtUtc": null,
+  "revision": 2,
+  "isArchived": true,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": "tsk-0001-vars-json-should-not-be-a-loose-file.json"
 }

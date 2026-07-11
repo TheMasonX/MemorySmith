@@ -1,10 +1,10 @@
-{
+﻿{
   "id": "tsk-0058-capture-local-https-setup-guide-screenshots",
   "key": "TSK-0058",
   "title": "Capture local HTTPS setup guide screenshots",
-  "description": "Problem: the local HTTPS setup guide contains placeholder IDs but does not yet include final visual examples.\n\nDesired outcome: capture the complete local HTTPS walkthrough images and embed them in `guides/https-setup`.\n\nScope:\n- In scope: collect screenshots for `HTTPS-SETUP-01` through `HTTPS-SETUP-06`, store under `Data/Pages/assets`, and replace placeholders with markdown image links.\n- Out of scope: production reverse proxy/IIS evidence (covered by a separate task).\n\nAcceptance criteria:\n- Each HTTPS setup placeholder ID has a matching image and in-guide embed.\n- Browser lock/certificate and readiness examples are clearly legible.\n- No private account details or secrets appear in captures.\n\nValidation:\n- Render `guides/https-setup` in `/pages` and verify all images load and sequence matches the steps.",
+  "description": "Problem: the local HTTPS setup guide contains placeholder IDs but does not yet include final visual examples.\n\nDesired outcome: capture the complete local HTTPS walkthrough images and embed them in \u0060guides/https-setup\u0060.\n\nScope:\n- In scope: collect screenshots for \u0060HTTPS-SETUP-01\u0060 through \u0060HTTPS-SETUP-06\u0060, store under \u0060Data/Pages/assets\u0060, and replace placeholders with markdown image links.\n- Out of scope: production reverse proxy/IIS evidence (covered by a separate task).\n\nAcceptance criteria:\n- Each HTTPS setup placeholder ID has a matching image and in-guide embed.\n- Browser lock/certificate and readiness examples are clearly legible.\n- No private account details or secrets appear in captures.\n\nValidation:\n- Render \u0060guides/https-setup\u0060 in \u0060/pages\u0060 and verify all images load and sequence matches the steps.",
   "type": "Task",
-  "status": "Backlog",
+  "status": "Archived",
   "priority": "Medium",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -26,15 +26,18 @@
       "id": "c-create-0058-20260523",
       "author": "AgentSmith",
       "body": "Created to track local HTTPS screenshot capture for HTTPS-SETUP placeholders.",
-      "createdAtUtc": "2026-05-23T00:00:00.0000000Z"
+      "createdAtUtc": "2026-05-23T00:00:00Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
-  "createdAtUtc": "2026-05-23T00:00:00.0000000Z",
-  "updatedAtUtc": "2026-05-23T00:00:00.0000000Z",
+  "createdAtUtc": "2026-05-23T00:00:00Z",
+  "updatedAtUtc": "2026-07-11T01:56:30.6614588Z",
   "completedAtUtc": null,
-  "revision": 1,
-  "isArchived": false
+  "revision": 2,
+  "isArchived": true,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": "tsk-0058-capture-local-https-setup-guide-screenshots.json"
 }

@@ -6,9 +6,8 @@
   "Confidence": 0.92,
   "Tags": [
     "project-wiki",
-    "scope",
-    "storage",
-    "search"
+    "search",
+    "storage"
   ],
   "References": [
     "project-wiki-active-architecture"

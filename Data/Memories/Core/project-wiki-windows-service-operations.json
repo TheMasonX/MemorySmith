@@ -5,12 +5,9 @@
   "Status": 2,
   "Confidence": 0.95,
   "Tags": [
-    "project-wiki",
-    "windows-service",
-    "operations",
-    "deployment",
-    "service-cli",
-    "current-state"
+    "current-state",
+    "maintenance",
+    "project-wiki"
   ],
   "References": [
     "project-wiki-active-architecture",

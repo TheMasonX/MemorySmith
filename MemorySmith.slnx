@@ -2,7 +2,6 @@
   <Project Path="MemorySmith.Bridge/MemorySmith.Bridge.csproj" />
   <Project Path="MemorySmith.Core/MemorySmith.Core.csproj" />
   <Project Path="MemorySmith.Storage/MemorySmith.Storage.csproj" />
-  <Folder Name="/Temp/" />
   <Project Path="MemorySmith.App/MemorySmith.App.csproj" />
   <Project Path="MemorySmith.Tests/MemorySmith.Tests.csproj" />
   <Project Path="MemorySmith.Benchmarks/MemorySmith.Benchmarks.csproj" />

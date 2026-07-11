@@ -1,10 +1,10 @@
-{
+﻿{
   "id": "tsk-0083-improve-accessibility-and-readability-contrast-keyboard-nav-and-typography-scale",
   "key": "TSK-0083",
   "title": "Improve Accessibility and Readability: Contrast, Keyboard Navigation, and Typography Scale",
   "description": "Strengthen accessibility by improving color contrast, keyboard navigation paths, heading hierarchy clarity, and readable typography defaults across markdown views.",
   "type": "Task",
-  "status": "Backlog",
+  "status": "Archived",
   "priority": "Medium",
   "assigneeMode": "Directory",
   "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
@@ -24,11 +24,11 @@
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-24T20:52:30.8744673Z",
-  "updatedAtUtc": "2026-05-24T20:52:30.8744673Z",
+  "updatedAtUtc": "2026-07-11T01:56:48.2960981Z",
   "completedAtUtc": null,
-  "revision": 1,
-  "isArchived": false,
+  "revision": 2,
+  "isArchived": true,
   "hasLoadError": false,
   "loadError": null,
-  "sourceFilePath": null
+  "sourceFilePath": "tsk-0083-improve-accessibility-and-readability-contrast-keyboard-nav-and-typography-scale.json"
 }

@@ -5,12 +5,10 @@
   "Status": 2,
   "Confidence": 0.9,
   "Tags": [
+    "current-state",
     "project-wiki",
-    "semantic-search",
-    "embeddings",
-    "onnx",
     "search",
-    "current-state"
+    "semantic-search"
   ],
   "References": [
     "project-wiki-search-roadmap",

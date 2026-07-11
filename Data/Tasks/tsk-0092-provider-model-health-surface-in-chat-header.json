@@ -1,42 +1,45 @@
-{
-  "Id": "tsk-0092-provider-model-health-surface-in-chat-header",
-  "Key": "TSK-0092",
-  "Title": "Surface provider and model health in the chat header and model picker.",
-  "Description": "The live chat history still shows GitHub provider availability failures and rate limits, while the active page can switch to the local profile. Add a clearer health summary in the chat header and model picker so users can see the active profile, whether it is healthy, and why fallback providers are unavailable before they send a request. Acceptance criteria: the selected provider/model shows a health state and short explanation, unavailable GitHub options are labeled before selection, and the current local profile remains visible and distinct from historical failures. Validation: verify the header and model picker in the live chat page after toggling providers.",
-  "Type": "Task",
-  "Status": "Backlog",
-  "Priority": "Medium",
-  "AssigneeMode": "Custom",
-  "AssigneeDirectoryId": null,
-  "AssigneeCustomText": "Copilot",
-  "Reporter": "TheMasonX",
-  "Labels": [
+﻿{
+  "id": "tsk-0092-provider-model-health-surface-in-chat-header",
+  "key": "TSK-0092",
+  "title": "Surface provider and model health in the chat header and model picker.",
+  "description": "The live chat history still shows GitHub provider availability failures and rate limits, while the active page can switch to the local profile. Add a clearer health summary in the chat header and model picker so users can see the active profile, whether it is healthy, and why fallback providers are unavailable before they send a request. Acceptance criteria: the selected provider/model shows a health state and short explanation, unavailable GitHub options are labeled before selection, and the current local profile remains visible and distinct from historical failures. Validation: verify the header and model picker in the live chat page after toggling providers.",
+  "type": "Task",
+  "status": "Archived",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "TheMasonX",
+  "labels": [
     "chat",
     "provider",
     "diagnostics",
     "ux",
     "audit-vetted"
   ],
-  "Attachments": [],
-  "ExternalLinks": [],
-  "LinkedPages": [
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [
     "research/chat-agent-local-profile-mcp-evaluation-20260524",
     "workbench/tasks"
   ],
-  "Comments": [
+  "comments": [
     {
-      "Id": "c-0092-1",
-      "Author": "AgentSmith",
-      "Body": "Evidence: the same chat session shows earlier GitHub model failures for gpt-4.1-mini, gpt-4o, and gpt-4.1, which makes provider health harder to read than it should be when the local profile is active.",
-      "CreatedAtUtc": "2026-05-24T22:35:00.0000000Z"
+      "id": "c-0092-1",
+      "author": "AgentSmith",
+      "body": "Evidence: the same chat session shows earlier GitHub model failures for gpt-4.1-mini, gpt-4o, and gpt-4.1, which makes provider health harder to read than it should be when the local profile is active.",
+      "createdAtUtc": "2026-05-24T22:35:00Z"
     }
   ],
-  "EpicId": null,
-  "ParentId": null,
-  "DueDateUtc": null,
-  "CreatedAtUtc": "2026-05-24T22:35:00.0000000Z",
-  "UpdatedAtUtc": "2026-05-24T22:35:00.0000000Z",
-  "CompletedAtUtc": null,
-  "Revision": 1,
-  "IsArchived": false
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-05-24T22:35:00Z",
+  "updatedAtUtc": "2026-07-11T01:56:58.1819036Z",
+  "completedAtUtc": null,
+  "revision": 2,
+  "isArchived": true,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": "tsk-0092-provider-model-health-surface-in-chat-header.json"
 }

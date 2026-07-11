@@ -5,11 +5,10 @@
   "Status": 2,
   "Confidence": 0.9,
   "Tags": [
-    "project-wiki",
-    "security",
-    "auth",
     "admin",
-    "configuration"
+    "configuration",
+    "project-wiki",
+    "security"
   ],
   "References": [
     "project-wiki-request-guard-hardening",

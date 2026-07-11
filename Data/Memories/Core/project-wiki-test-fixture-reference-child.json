@@ -5,13 +5,10 @@
   "Status": 2,
   "Confidence": 0.9,
   "Tags": [
-    "project-wiki",
-    "test-fixture",
-    "reference-child",
     "context-pack",
-    "nimbusvector",
-    "graph-fixture",
-    "deterministic-test"
+    "deterministic-test",
+    "project-wiki",
+    "test-fixture"
   ],
   "References": [],
   "Conflicts": [],

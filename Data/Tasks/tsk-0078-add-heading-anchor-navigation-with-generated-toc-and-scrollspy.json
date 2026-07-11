@@ -1,10 +1,10 @@
-{
+﻿{
   "id": "tsk-0078-add-heading-anchor-navigation-with-generated-toc-and-scrollspy",
   "key": "TSK-0078",
   "title": "Add Heading and Anchor Navigation with Generated TOC and Scrollspy",
   "description": "Provide auto-generated table of contents, heading anchor links, and active-section highlighting while scrolling to improve large-page navigation.",
   "type": "Task",
-  "status": "Backlog",
+  "status": "Archived",
   "priority": "Medium",
   "assigneeMode": "Directory",
   "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
@@ -24,11 +24,11 @@
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-24T20:52:25.8686624Z",
-  "updatedAtUtc": "2026-05-24T20:52:25.8686624Z",
+  "updatedAtUtc": "2026-07-11T01:56:39.7473201Z",
   "completedAtUtc": null,
-  "revision": 1,
-  "isArchived": false,
+  "revision": 2,
+  "isArchived": true,
   "hasLoadError": false,
   "loadError": null,
-  "sourceFilePath": null
+  "sourceFilePath": "tsk-0078-add-heading-anchor-navigation-with-generated-toc-and-scrollspy.json"
 }

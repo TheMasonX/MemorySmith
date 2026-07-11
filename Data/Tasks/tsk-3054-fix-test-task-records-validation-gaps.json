@@ -1,0 +1,33 @@
+﻿{
+  "id": "tsk-3054-fix-test-task-records-validation-gaps",
+  "key": "TSK-3054",
+  "title": "Add missing validations to Test-TaskRecords.ps1",
+  "description": "Test-TaskRecords.ps1 validates JSON, id/key format, statuses, and duplicate detection but is missing: priority whitelist check (only Critical/High/Medium/Low allowed), required field presence check (createdAtUtc, updatedAtUtc, revision), camelCase field casing validation, and prohibited label prefix check (no p0/p1/P0 labels). Also add post-import validation to Import-OpenTasksFromWorkbench.ps1. See AGENTS.md for full schema contract requirements. Source: codebase-audit-20260710-swarm-synthesis P2-035",
+  "type": "Bug",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "anonymous",
+  "labels": [
+    "domain:validation",
+    "type:bug",
+    "sprint-backlog"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-11T03:06:12.421175Z",
+  "updatedAtUtc": "2026-07-11T03:06:12.421175Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

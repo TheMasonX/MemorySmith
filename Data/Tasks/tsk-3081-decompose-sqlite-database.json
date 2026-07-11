@@ -1,0 +1,32 @@
+﻿{
+  "id": "tsk-3081-decompose-sqlite-database",
+  "key": "TSK-3081",
+  "title": "Decompose SqliteMemorySmithDatabase god class",
+  "description": "P1 finding from 10-agent swarm codebase audit (P1-006). SqliteMemorySmithDatabase implements 10 interfaces (~1500 lines) covering users, roles, providers, login history, audit, settings, version history, semantic metadata, API tokens, and index builds. Split into one class per store (e.g. SqliteUserStore, SqliteAuditStore) sharing a common DbConnection factory.\n\nFile: MemorySmith.Storage/SqliteMemorySmithDatabase.cs\nConfidence: 100%\nSource: codebase-audit-20260710-agent10-swarm-v2.md",
+  "type": "Refactor",
+  "status": "Ready",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Agent",
+  "reporter": "anonymous",
+  "labels": [
+    "domain:storage",
+    "type:refactor"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-11T04:23:01.3298251Z",
+  "updatedAtUtc": "2026-07-11T04:23:01.3298251Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

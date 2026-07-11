@@ -5,11 +5,10 @@
   "Status": 2,
   "Confidence": 0.92,
   "Tags": [
-    "project-wiki",
     "maintenance",
-    "stats",
-    "ui",
-    "reliability"
+    "project-wiki",
+    "tests",
+    "ui"
   ],
   "References": [
     "project-wiki-event-store",

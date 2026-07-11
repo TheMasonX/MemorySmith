@@ -1,10 +1,10 @@
-{
+﻿{
   "id": "tsk-0090-add-admin-configurable-markdown-runtime-providers-for-pyodide-and-mermaid",
   "key": "TSK-0090",
   "title": "Add Combined Admin Settings for Markdown Runtime Providers (Pyodide and Mermaid)",
   "description": "Introduce one combined admin settings model for the shared markdown renderer used across both markdown surfaces and both runtime providers (Pyodide and Mermaid). Include enable flags defaulting to false, provider source configuration defaulting to CDN with SRI enforcement, and policy controls that keep default execution in browser sandbox only. Ensure admins can configure these settings before enabling runtime behavior, and enforce that Viewer-role users cannot run executable code blocks.",
   "type": "Task",
-  "status": "Backlog",
+  "status": "Archived",
   "priority": "High",
   "assigneeMode": "Directory",
   "assigneeDirectoryId": "f5fb9c978fbd469e9562b0565d0b45a0",
@@ -27,25 +27,25 @@
     {
       "id": "cmt-tsk-0090-1",
       "author": "Agent Smith",
-      "message": "Created from user refinement: both markdown providers must be admin configurable, CDN+SRI should be default source, and default feature state remains disabled with browser sandbox only behavior.",
-      "createdAtUtc": "2026-05-24T21:05:00.0000000Z"
+      "body": null,
+      "createdAtUtc": "2026-05-24T21:05:00Z"
     },
     {
       "id": "cmt-tsk-0090-2",
       "author": "Agent Smith",
-      "message": "User refinement: keep settings combined for now because markdown renderer should stay unified across surfaces; Viewer role must not have codeblock execution capability.",
-      "createdAtUtc": "2026-05-24T21:15:00.0000000Z"
+      "body": null,
+      "createdAtUtc": "2026-05-24T21:15:00Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
-  "createdAtUtc": "2026-05-24T21:05:00.0000000Z",
-  "updatedAtUtc": "2026-05-24T21:15:00.0000000Z",
+  "createdAtUtc": "2026-05-24T21:05:00Z",
+  "updatedAtUtc": "2026-07-11T01:56:48.4399432Z",
   "completedAtUtc": null,
-  "revision": 2,
-  "isArchived": false,
+  "revision": 3,
+  "isArchived": true,
   "hasLoadError": false,
   "loadError": null,
-  "sourceFilePath": null
+  "sourceFilePath": "tsk-0090-add-admin-configurable-markdown-runtime-providers-for-pyodide-and-mermaid.json"
 }

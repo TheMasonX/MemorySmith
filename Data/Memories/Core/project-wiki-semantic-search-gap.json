@@ -5,13 +5,11 @@
   "Status": 2,
   "Confidence": 0.85,
   "Tags": [
-    "project-wiki",
-    "semantic-search",
+    "current-state",
     "hybrid-search",
-    "vector-search",
-    "missing-feature",
-    "generalization",
-    "search"
+    "project-wiki",
+    "search",
+    "semantic-search"
   ],
   "References": [
     "project-wiki-search-roadmap",

@@ -5,14 +5,12 @@
   "Status": 2,
   "Confidence": 0.82,
   "Tags": [
-    "project-wiki",
-    "memory-system",
-    "rfc",
-    "council-review",
-    "agent-memory",
-    "search",
     "chat",
-    "pages"
+    "governance",
+    "memory-system",
+    "pages",
+    "project-wiki",
+    "search"
   ],
   "References": [
     "project-wiki-search-roadmap",

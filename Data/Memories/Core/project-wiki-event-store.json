@@ -2,12 +2,12 @@
   "Id": "project-wiki-event-store",
   "Title": "Event Store and Activity Tracking",
   "Status": 2,
-  "Confidence": 1.0,
+  "Confidence": 0.97,
   "Tags": [
+    "architecture",
+    "diagnostics",
     "project-wiki",
-    "events",
-    "storage",
-    "architecture"
+    "storage"
   ],
   "Content": "MemorySmith uses FileEventStore for append-only JSONL event logging. Each MemoryEvent has Action, Details, MemoryId, and Timestamp. Lifecycle events use actions: Created, Updated, Deleted. Search events use actions in the form Query:{kind} (e.g. Query:lexical, Query:semantic, Query:hybrid, Query:context_pack). All four MemoryApplicationService search entry points call RecordQueryEvent at method entry. Older audit logs may still contain Query:keyword from the pre-Lucene default search path. GetActivityBucketsAsync(int days) reads all events since N days ago and groups by UTC date into ActivityBucket records (Date, Queries, Changes). The HealthStats page charts query this to plot 30-day activity. FileEventStore path is configured via MemorySmith:EventLogPath in appsettings (default: ../Data/Events/audit.log). The parent directory is created automatically on startup. FileEventStore.GetEvents supports optional memoryId and since filters for targeted queries.",
   "References": [
@@ -17,11 +17,25 @@
   ],
   "Conflicts": [],
   "SourceLinks": [
-    { "Label": "FileEventStore.cs", "Uri": "%MemorySmithRepo%MemorySmith.Storage/FileEventStore.cs" },
-    { "Label": "IEventStore.cs", "Uri": "%MemorySmithRepo%MemorySmith.Storage/IEventStore.cs" },
-    { "Label": "MemoryEvent.cs", "Uri": "%MemorySmithRepo%MemorySmith.Core/Models/MemoryEvent.cs" },
-    { "Label": "MemoryApplicationService.cs (GetActivityBucketsAsync)", "Uri": "%MemorySmithRepo%MemorySmith.App/Services/MemoryApplicationService.cs", "StartLine": 464, "EndLine": 510 }
+    {
+      "Label": "FileEventStore.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.Storage/FileEventStore.cs"
+    },
+    {
+      "Label": "IEventStore.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.Storage/IEventStore.cs"
+    },
+    {
+      "Label": "MemoryEvent.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.Core/Models/MemoryEvent.cs"
+    },
+    {
+      "Label": "MemoryApplicationService.cs (GetActivityBucketsAsync)",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Services/MemoryApplicationService.cs",
+      "StartLine": 464,
+      "EndLine": 510
+    }
   ],
   "UsageCount": 0,
-  "LastUpdated": "2026-05-17T12:00:00Z"
+  "LastUpdated": "2026-07-10T00:00:00Z"
 }

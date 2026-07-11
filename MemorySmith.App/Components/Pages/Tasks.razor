@@ -251,38 +251,36 @@
                 </div>
 
                 <section class="tasks-detail-summary" aria-label="Selected task summary">
-                    <div class="tasks-detail-status-panel">
-                        <span class="tasks-detail-section-label">Status</span>
-                        <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
-                            <Authorized>
-                                @if (_selectedTask.HasLoadError)
-                                {
-                                    <MudTextField T="string" Value="@_selectedTask.Status" Label="Status" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
-                                }
-                                else
-                                {
-                                    <MudSelect T="string"
-                                               Value="@_selectedStatus"
-                                               ValueChanged="OnTaskStatusChanged"
-                                               Label="Status"
-                                               Variant="Variant.Outlined"
-                                               Margin="Margin.Dense"
-                                               Dense="true"
-                                               Class="tasks-status-combobox">
-                                        @foreach (var option in TaskStatusOptions)
-                                        {
-                                            <MudSelectItem Value="@option">@option</MudSelectItem>
-                                        }
-                                    </MudSelect>
-                                }
-                            </Authorized>
-                            <NotAuthorized>
-                                <MudTextField T="string" Value="@_selectedTask.Status" Label="Status" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" />
-                            </NotAuthorized>
-                        </AuthorizeView>
-                    </div>
-
                     <div class="tasks-detail-overview">
+                        <div class="tasks-detail-overview-item">
+                            <span class="tasks-detail-overview-label">Status</span>
+                            <AuthorizeView Policy="@MemorySmithPolicies.CanEditMemorySmith">
+                                <Authorized>
+                                    @if (_selectedTask.HasLoadError)
+                                    {
+                                        <MudTextField T="string" Value="@_selectedTask.Status" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" />
+                                    }
+                                    else
+                                    {
+                                        <MudSelect T="string"
+                                                   Value="@_selectedStatus"
+                                                   ValueChanged="OnTaskStatusChanged"
+                                                   Variant="Variant.Outlined"
+                                                   Margin="Margin.Dense"
+                                                   Dense="true"
+                                                   Class="tasks-status-combobox">
+                                            @foreach (var option in TaskStatusOptions)
+                                            {
+                                                <MudSelectItem Value="@option">@option</MudSelectItem>
+                                            }
+                                        </MudSelect>
+                                    }
+                                </Authorized>
+                                <NotAuthorized>
+                                    <strong>@_selectedTask.Status</strong>
+                                </NotAuthorized>
+                            </AuthorizeView>
+                        </div>
                         <div class="tasks-detail-overview-item">
                             <span class="tasks-detail-overview-label">Assignee</span>
                             <strong>@GetAssigneeDisplay(_selectedTask)</strong>

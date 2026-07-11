@@ -5,12 +5,11 @@
   "Status": 2,
   "Confidence": 0.95,
   "Tags": [
-    "project-wiki",
     "chat",
-    "localstorage",
-    "persistence",
-    "ui",
-    "current-state"
+    "current-state",
+    "project-wiki",
+    "storage",
+    "ui"
   ],
   "References": [
     "project-wiki-chat-agent-provider",

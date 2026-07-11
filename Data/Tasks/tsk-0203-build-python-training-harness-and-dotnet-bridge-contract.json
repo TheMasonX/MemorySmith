@@ -4,7 +4,7 @@
   "title": "Build Python training harness and .NET bridge contract",
   "description": "Implement a reproducible local harness for SFT and preference tuning with .NET process orchestration, status contracts, and cancellation semantics.",
   "type": "Task",
-  "status": "InProgress",
+  "status": "Backlog",
   "priority": "Medium",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -57,6 +57,12 @@
       "author": "AgentSmith",
       "body": "Completed remaining UI hardening for the training workbench by adding artifact-level operations in-app (copy status path and open status/events/benchmark files via source-link policy checks). Added markup regression guard (`TagGovernanceTests.CodeSearchAndTrainingWorkbenchMarkup_ExposeActionableCopyAndOpenControls`) and revalidated focused contracts (38/38 passed). Remaining work is non-UI harness execution depth (true LoRA path and cancellation semantics) once pinned environment dependencies are provisioned.",
       "createdAtUtc": "2026-05-29T01:00:00.0000000Z"
+    },
+    {
+      "id": "c-0203-dormant-20260710",
+      "author": "AgentSmith",
+      "body": "2026-07-10 triage: Moved from InProgress to Backlog. Harness bridge, preflight, workbench telemetry, and artifact operations are all implemented. Remaining LoRA execution path and cancellation semantics blocked on pinned environment dependencies. Will revisit when training pipeline integration is actively resourced. See architectural-stability-cleanup-sprint-20260710.md.",
+      "createdAtUtc": "2026-07-10T00:00:00.0000000Z"
     }
   ],
   "epicId": null,

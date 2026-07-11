@@ -1,0 +1,36 @@
+﻿{
+  "id": "tsk-3073-wrap-sqlite-migrations-in-transactions",
+  "key": "TSK-3073",
+  "title": "Wrap SQLite migrations in transactions",
+  "description": "Wrap schema migrations and seed operations in a transaction in MemorySmith.Storage/SqliteMemorySmithDatabase.cs. Add retry/backoff for SQLITE_BUSY and add unit/integration tests.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Critical",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Agent",
+  "reporter": "anonymous",
+  "labels": [],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [
+    {
+      "id": "c-3959ab1a9bc7461aab3152855e93249b",
+      "author": "anonymous",
+      "body": "Created from 2026-07-10 council audit; see Data/Pages/audits/codebase-audit-2026-07-10-council-review.md",
+      "createdAtUtc": "2026-07-11T04:10:13.7052303Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-11T04:10:09.9362249Z",
+  "updatedAtUtc": "2026-07-11T04:10:13.7052303Z",
+  "completedAtUtc": null,
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": "tsk-3073-wrap-sqlite-migrations-in-transactions.json"
+}

@@ -5,13 +5,12 @@
   "Status": 2,
   "Confidence": 0.95,
   "Tags": [
-    "project-wiki",
-    "pages",
-    "markdown",
-    "data-folder",
-    "ui",
     "api",
-    "current-state"
+    "current-state",
+    "pages",
+    "project-wiki",
+    "storage",
+    "ui"
   ],
   "References": [
     "project-wiki-active-architecture",

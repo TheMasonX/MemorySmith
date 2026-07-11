@@ -1,0 +1,33 @@
+﻿{
+  "id": "tsk-3079-consolidate-promotion-paths",
+  "key": "TSK-3079",
+  "title": "Consolidate divergent state promotion paths",
+  "description": "P1 finding from 10-agent swarm codebase audit (P1-004). MemoryStateMachine.Evaluate() uses scoring thresholds for promotion, but PromoteStableRecords in MemoryMaintenanceTasks uses different criteria (30 days \u002B 2 refs \u002B 0.7 confidence). This creates inconsistent promotion decisions. Also includes index not updating during consolidation (P1-005) where DeduplicateRecords, PromoteStableRecords, DeprecateObsoleteRecords modify records and save to store but never update MemoryIndex.\n\nFiles: MemorySmith.Core/StateMachine/MemoryStateMachine.cs, MemorySmith.App/Services/MemoryMaintenanceTasks.cs\nConfidence: 100%\nSource: codebase-audit-20260710-agent10-swarm-v2.md",
+  "type": "Bug",
+  "status": "Ready",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Agent",
+  "reporter": "anonymous",
+  "labels": [
+    "domain:core",
+    "domain:maintenance",
+    "type:bug"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-11T04:22:46.4750462Z",
+  "updatedAtUtc": "2026-07-11T04:22:46.4750462Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

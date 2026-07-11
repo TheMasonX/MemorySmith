@@ -1,16 +1,14 @@
 {
   "Id": "project-wiki-ui-layout-source-link-polish",
-  "Content": "The active Blazor shell uses a narrower 164px navigation drawer with Pages and Chat nav items. Memory, page, and health workbench panes use contained scrolling to avoid hidden detail content inside the fixed app shell. Page detail headers reserve enough vertical padding for status chips, file names, and timestamps. Tag/status/link chips share the same small radius and inline-flex vertical centering. The /chat surface uses a compact transcript, fully collapsible history pane, highlighted Chat/Agent toggle buttons, provider/model controls, explicit X buttons on queued attachment chips, retained drafts/attachments, streamed response feedback with elapsed timers, delete-chat controls, and a tighter composer to maximize output space. Thinking details render above the visible assistant response and animate while new thinking text is streaming. Local file source-link chips copy on click and Ctrl\u002BClick asks VarResolver to open the resolved local file with the OS default app after source-root validation and SourceLinks:AllowOpenWithDefaultApp checks.",
+  "Content": "The active Blazor shell uses a narrower 164px navigation drawer with Pages and Chat nav items. Memory, page, and health workbench panes use contained scrolling to avoid hidden detail content inside the fixed app shell. Page detail headers reserve enough vertical padding for status chips, file names, and timestamps. Tag/status/link chips share the same small radius and inline-flex vertical centering. The /chat surface uses a compact transcript, fully collapsible history pane, highlighted Chat/Agent toggle buttons, provider/model controls, explicit X buttons on queued attachment chips, retained drafts/attachments, streamed response feedback with elapsed timers, delete-chat controls, and a tighter composer to maximize output space. Thinking details render above the visible assistant response and animate while new thinking text is streaming. Local file source-link chips copy on click and Ctrl+Click asks VarResolver to open the resolved local file with the OS default app after source-root validation and SourceLinks:AllowOpenWithDefaultApp checks.",
   "Title": "UI Layout and Source Link Polish",
   "Status": 2,
   "Confidence": 0.9,
   "Tags": [
+    "current-state",
     "project-wiki",
-    "ui",
-    "layout",
     "source-links",
-    "navigation",
-    "current-state"
+    "ui"
   ],
   "References": [
     "project-wiki-ui-architecture",

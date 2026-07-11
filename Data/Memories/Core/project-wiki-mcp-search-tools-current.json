@@ -5,19 +5,14 @@
   "Status": 2,
   "Confidence": 0.9,
   "Tags": [
-    "project-wiki",
+    "context-pack",
+    "current-state",
+    "hybrid-search",
     "mcp",
+    "project-wiki",
     "search",
     "semantic-search",
-    "hybrid-search",
-    "context-pack",
-    "backlinks",
-    "warnings",
-    "bounded-output",
-    "structured-output",
-    "rrf",
-    "current-state",
-    "tooling"
+    "structured-output"
   ],
   "References": [
     "project-wiki-mcp-integration",

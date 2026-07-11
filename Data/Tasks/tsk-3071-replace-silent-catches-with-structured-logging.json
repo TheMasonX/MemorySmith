@@ -1,0 +1,36 @@
+﻿{
+  "id": "tsk-3071-replace-silent-catches-with-structured-logging",
+  "key": "TSK-3071",
+  "title": "Replace silent catches with structured logging",
+  "description": "Find and replace empty catch { } and catch(Exception) { } sites with logger?.LogWarning(exception, \u0022...\u0022) or appropriate logging. Add tests and a scan to detect new silent catches.",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Agent",
+  "reporter": "anonymous",
+  "labels": [],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [
+    {
+      "id": "c-c86dd7b2f65844768f266f8056b94cb3",
+      "author": "anonymous",
+      "body": "Created from 2026-07-10 council audit; see Data/Pages/audits/codebase-audit-2026-07-10-council-review.md",
+      "createdAtUtc": "2026-07-11T04:10:29.3068692Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-11T04:10:09.8443142Z",
+  "updatedAtUtc": "2026-07-11T04:10:29.3068692Z",
+  "completedAtUtc": null,
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": "tsk-3071-replace-silent-catches-with-structured-logging.json"
+}

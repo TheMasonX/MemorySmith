@@ -27,7 +27,7 @@ Project knowledge is split between `README.md`, the structured wiki under `Data/
 - `../README.md` - current product shape, routes, configuration, validation commands.
 - `../Data/Memories/Core/` - current structured project knowledge.
 - `Docs/Plans/MemorySmith_FinalRefactorDesign_20260507.md` - active broad architecture plan.
-- `Docs/Plans/SemantingSearch.md` - current semantic search/vector update plan when working on semantic retrieval.
+- `Docs/Plans/SemanticSearch.md` - current semantic search/vector update plan when working on semantic retrieval.
 
 ### Reviewing Plans and Progress
 When reviewing plans or progress reports, cross-reference with the actual codebase to verify that the documented state matches reality.

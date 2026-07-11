@@ -5,15 +5,14 @@
   "Status": 2,
   "Confidence": 0.92,
   "Tags": [
+    "context-pack",
+    "current-state",
+    "hybrid-search",
+    "mcp",
     "project-wiki",
     "search",
     "semantic-search",
-    "hybrid-search",
-    "context-pack",
-    "bounded-output",
-    "rrf",
-    "current-state",
-    "tooling"
+    "structured-output"
   ],
   "References": [
     "project-wiki-data-folder-policy",

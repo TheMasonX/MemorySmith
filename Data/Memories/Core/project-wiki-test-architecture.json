@@ -4,10 +4,10 @@
   "Status": 2,
   "Confidence": 0.9,
   "Tags": [
-    "project-wiki",
-    "testing",
+    "architecture",
     "benchmarks",
-    "architecture"
+    "project-wiki",
+    "tests"
   ],
   "Content": "MemorySmith.Tests contains approximately 419 NUnit [Test] methods across 36+ test classes. Coverage includes: FileMemoryStore hardening and corrupt-file diagnostics, memory CRUD lifecycle, search benchmarks (lexical/semantic/hybrid with MRR quality probes), MCP tool integration, semantic embedding path resolution and provider fallback, page service and asset authorization, chat agent tool call interception and context planning, task domain service CRUD and attachment validation, tag governance diagnostics and policy enforcement, security and source-link path boundary validation, admin API contract tests (auth/setup/RBAC/settings), code search indexing/reuse/prefilter/relevance scorecards (22 tests), CUDA embedding batch benchmarks, model profile service configuration, chat transcript writer and feedback store, and maintenance agent workflow integration. Tests copy Data/Memories to temp storage; the live wiki is never mutated. A [Category(\"Benchmark\")] suite measures search quality and throughput under NUnit. CI collects Cobertura coverage and publishes HTML reports. Playwright e2e tests cover route-smoke (6 routes) and navigation-freeze (5 scenarios) browser regressions.",
   "References": [

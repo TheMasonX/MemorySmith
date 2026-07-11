@@ -1,0 +1,103 @@
+{
+  "Id": "project-wiki-master-knowledge-base",
+  "Title": "MemorySmith Master Knowledge Base",
+  "Content": "MemorySmith is a single-host ASP.NET Core 10.0 wiki platform at D:\\@Repos\\MemorySmith. The solution (MemorySmith.slnx) contains 7 projects: MemorySmith.Core (domain models, scoring, state machine, project docs — zero external packages), MemorySmith.Storage (file-backed stores for memories/events/vars + SQLite metadata DB via Microsoft.Data.Sqlite 10.0.9 + SQLitePCLRaw), MemorySmith.App (Blazor Server host: 15 REST controllers, 50+ DI-registered services, MudBlazor 9.4 UI, MCP JSON-RPC at /mcp, Serilog, OpenTelemetry opt-in), MemorySmith.Tests (40+ NUnit test files covering storage, API, search quality, security, benchmarks), MemorySmith.Benchmarks (BenchmarkDotNet for search/retrieval profiling), MemorySmith.Bridge (standalone MCP client — no project references to other MemorySmith projects), and MemorySmith.Training (Python fine-tune harness with LoRA/QLoRA). Data/ stores live wiki content: Data/Memories/ (60+ structured JSON memory records across Core/Working/Deprecated/ folders), Data/Pages/ (170+ markdown pages: features, audits, guides, council reviews, plans), Data/Tasks/ (~310 task JSON records with status lifecycle), Data/Events/ (JSONL audit log), Data/Policies/ (tag governance policy), and Schemas/ (memory.schema.json). The DI composition root in Program.cs uses 12 named module setup methods (AddMemorySmithConfigurationLayers, AddMemorySmithSecurity, AddMemorySmithStorage, AddMemorySmithCore, AddMemorySmithTelemetry, AddMemorySmithChat, AddMemorySmithMaintenance, AddMemorySmithPipeline, AddMemorySmithContentEndpoints). Security uses cookie auth + GitHub OAuth with 10 named policies (CanViewMemorySmith, CanEditMemorySmith, CanAdminMemorySmith, CanManageUsers, CanManageSettings, CanViewAudit, CanRestoreHistory, CanReadSourceBundle, CanUseChat, CanApproveAgentWrites) backed by MemorySmithPermission enum. Chat supports 3 IChatProvider implementations: OllamaChatProvider (local REST/NDJSON), GitHubCopilotChatProvider (SDK), OpenAICompatibleChatProvider (generic REST/NDJSON for DeepSeek/OpenAI/Anthropic-compatible endpoints). Search has 3 modes (lexical via Lucene.NET, semantic via ONNX embeddings with fallback, hybrid via RRF fusion). MCP surface exposes 7+ tools: memorysmith_hybrid_search, memorysmith_context_pack, memorysmith_get, memorysmith_source_bundle, memorysmith_find_by_source, memorysmith_code_search, memorysmith_page_search. Storage layer: FileMemoryStore (atomic temp+move writes, 4-folder status directory layout), FileEventStore (append-only JSONL, optional memoryId/since filters), FileVarStore (key-value JSON), SqliteMemorySmithDatabase (12 sub-store interfaces for users, roles, OAuth providers, login history, audit log, settings, version history, semantic index metadata, API tokens, with SchemaMigration framework). UI uses Blazor Server InteractiveServer render mode across 18 page components with MudBlazor 9.4. Key page routes: /memories, /pages, /tasks, /chat, /code-search, /models, /training-workbench, /health, /admin, /variables, /about, /login, /profile. The canonical system prompt for chat/agent is at MemorySmith.Core/Docs/Prompts/wiki-chat-agent.md. Background maintenance handles triage, consolidation, indexing, and telemetry via MemoryMaintenanceService and the maintenance agent proposal workflow. Build: dotnet build MemorySmith.slnx / dotnet test MemorySmith.slnx / Validate-Repo.ps1 (task validation + memory validation + page link validation).",
+  "Status": 2,
+  "Confidence": 0.95,
+  "Tags": [
+    "project-wiki",
+    "architecture",
+    "current-state",
+    "api",
+    "chat",
+    "configuration",
+    "diagnostics",
+    "documentation",
+    "github",
+    "governance",
+    "hybrid-search",
+    "maintenance",
+    "mcp",
+    "memory-system",
+    "pages",
+    "search",
+    "security",
+    "semantic-search",
+    "settings",
+    "source-links",
+    "storage",
+    "structured-output",
+    "tag-governance",
+    "tasks",
+    "tests",
+    "ui",
+    "kind:index",
+    "audience:developer",
+    "audience:agent",
+    "scope:onboarding"
+  ],
+  "References": [
+    "project-wiki-active-architecture",
+    "project-wiki-storage-rules",
+    "project-wiki-event-store",
+    "project-wiki-source-links-feature",
+    "project-wiki-ui-architecture",
+    "project-wiki-semantic-ui-current",
+    "project-wiki-mcp-integration",
+    "project-wiki-mcp-search-tools-current",
+    "project-wiki-mcp-context-pack",
+    "project-wiki-onnx-semantic-embeddings",
+    "project-wiki-hybrid-search-rrf",
+    "project-wiki-semantic-search-gap",
+    "project-wiki-search-roadmap",
+    "project-wiki-validation-command",
+    "project-wiki-test-architecture",
+    "project-wiki-windows-service-operations",
+    "project-wiki-data-folder-policy",
+    "project-wiki-chat-agent-provider",
+    "project-wiki-chat-configuration-current",
+    "project-wiki-chat-image-attachments",
+    "project-wiki-chat-local-storage-persistence",
+    "project-wiki-chat-streaming-thinking",
+    "project-wiki-admin-auth-hardening",
+    "project-wiki-admin-configuration-surface",
+    "project-wiki-configuration-settings-current",
+    "project-wiki-logging-telemetry-current",
+    "project-wiki-operational-diagnostics-dashboard",
+    "project-wiki-maintenance-proposals-current",
+    "project-wiki-maintenance-observability-refinements",
+    "project-wiki-markdown-pages",
+    "project-wiki-tag-governance-current",
+    "project-wiki-memory-status-classification-current",
+    "project-wiki-scope-boundaries",
+    "project-wiki-code-search-relevance-suite",
+    "project-wiki-code-search-ui",
+    "project-wiki-models-page-current",
+    "project-wiki-training-workbench-current"
+  ],
+  "Conflicts": [],
+  "SourceLinks": [
+    {
+      "Label": "Program.cs (composition root)",
+      "Uri": "%MemorySmithRepo%MemorySmith.App/Program.cs"
+    },
+    {
+      "Label": "README.md",
+      "Uri": "%MemorySmithRepo%README.md"
+    },
+    {
+      "Label": "Architecture page",
+      "Uri": "%MemorySmithRepo%Data/Pages/architecture.md"
+    },
+    {
+      "Label": "MemorySmith.slnx",
+      "Uri": "%MemorySmithRepo%MemorySmith.slnx"
+    },
+    {
+      "Label": "MemorySmith.Core/Models/MemoryRecord.cs",
+      "Uri": "%MemorySmithRepo%MemorySmith.Core/Models/MemoryRecord.cs"
+    }
+  ],
+  "UsageCount": 0,
+  "LastUpdated": "2026-07-10T00:00:00Z"
+}

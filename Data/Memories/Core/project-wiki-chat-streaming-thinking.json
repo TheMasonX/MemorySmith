@@ -5,14 +5,12 @@
   "Status": 2,
   "Confidence": 0.94,
   "Tags": [
-    "project-wiki",
     "chat",
-    "streaming",
-    "thinking",
-    "ollama",
+    "current-state",
     "github",
-    "ui",
-    "current-state"
+    "ollama",
+    "project-wiki",
+    "ui"
   ],
   "References": [
     "project-wiki-chat-agent-provider",

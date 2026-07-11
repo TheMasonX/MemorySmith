@@ -5,12 +5,10 @@
   "Status": 2,
   "Confidence": 0.89,
   "Tags": [
-    "project-wiki",
-    "test-fixture",
-    "backlink",
     "context-pack",
-    "graph-fixture",
-    "deterministic-test"
+    "deterministic-test",
+    "project-wiki",
+    "test-fixture"
   ],
   "References": [
     "project-wiki-test-fixture-context-root"

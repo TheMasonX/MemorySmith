@@ -5,14 +5,14 @@
   "Status": 2,
   "Confidence": 0.82,
   "Tags": [
-    "project-wiki",
-    "memory-system",
-    "implementation-status",
-    "tag-governance",
-    "staleness",
-    "maintenance",
     "context-pack",
-    "diagnostics"
+    "current-state",
+    "diagnostics",
+    "maintenance",
+    "memory-system",
+    "project-wiki",
+    "staleness",
+    "tag-governance"
   ],
   "References": [
     "ai-memory-suite-implementation-plan-20260520",

@@ -34,13 +34,15 @@ The MCP endpoint is available at `/mcp` and exposes local tools over the wiki. T
 
 | Tool | Use it when |
 |---|---|
-| `memorysmith_search` | You need direct lexical matches. |
-| `memorysmith_semantic_search` | You need concept-level recall. |
-| `memorysmith_hybrid_search` | You need balanced discovery. |
+| `memorysmith_hybrid_search` | You need balanced lexical+semantic discovery. |
 | `memorysmith_context_pack` | You want root records plus references, conflicts, and backlinks. |
 | `memorysmith_get` | You know the exact memory ID. |
 | `memorysmith_source_bundle` | You need source-linked file slices with the memory records. |
 | `memorysmith_find_by_source` | You want records tied to a file path or source-link pattern. |
+| `memorysmith_code_search` | You need code-level search across the indexed codebase. |
+| `memorysmith_page_search` | You need markdown page content. |
+
+> **Note:** `memorysmith_search` (standalone lexical) and `memorysmith_semantic_search` (standalone semantic) were consolidated into `memorysmith_hybrid_search` (TSK-0271). Use `memorysmith_hybrid_search` for all discovery needs; use `memorysmith_get` when you know the exact ID.
 
 Use `context_pack` before `source_bundle` when researching code changes. The context pack tells you which records matter; the source bundle pulls the concrete source evidence for those records.
 
