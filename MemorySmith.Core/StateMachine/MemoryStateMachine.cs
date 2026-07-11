@@ -26,6 +26,17 @@ public class MemoryStateMachine
         {
             newStatus = MemoryStatus.Core;
         }
+        // Demotion: Core records that drop below the Core threshold fall back to Working
+        else if (original == MemoryStatus.Core && score < CoreThreshold)
+        {
+            newStatus = MemoryStatus.Working;
+        }
+        // Re-promotion: Deprecated records that recover above the Deprecation threshold
+        // return to Working (must be >= WorkingThreshold to avoid churn near the boundary)
+        else if (original == MemoryStatus.Deprecated && score >= WorkingThreshold)
+        {
+            newStatus = MemoryStatus.Working;
+        }
 
         MemoryEvent? evt = null;
         if (newStatus != original)

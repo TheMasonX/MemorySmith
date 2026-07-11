@@ -123,7 +123,53 @@ public sealed class AdminSettingsService
             return false;
         }
 
+        // Auth self-lockout guardrail: verify at least one sign-in method would remain active.
+        var localPasswordEnabled = ResolveAuthBool(root, "LocalPasswordEnabled", _options.CurrentValue.Auth.LocalPasswordEnabled);
+        var gitHubEnabled = ResolveProviderBool(root, "GitHub", _options.CurrentValue.Auth.Providers.GitHub.Enabled);
+        var googleEnabled = ResolveProviderBool(root, "Google", _options.CurrentValue.Auth.Providers.Google.Enabled);
+        var microsoftEnabled = ResolveProviderBool(root, "Microsoft", _options.CurrentValue.Auth.Providers.Microsoft.Enabled);
+
+        if (!localPasswordEnabled && !gitHubEnabled && !googleEnabled && !microsoftEnabled)
+        {
+            error = "At least one sign-in method must remain enabled. You cannot disable LocalPassword and all external providers simultaneously.";
+            return false;
+        }
+
         return true;
+    }
+
+    /// <summary>Resolves a nested bool setting under MemorySmith:Auth:..., returning the current value when the
+    /// setting is absent from the JSON root (meaning the admin did not touch it in this update).</summary>
+    private bool ResolveAuthBool(JsonObject root, string fieldName, bool currentValue)
+    {
+        if (!TryGetJsonValue(root, out var value, "MemorySmith", "Auth", fieldName))
+        {
+            return currentValue;
+        }
+
+        return value switch
+        {
+            JsonValue jsonValue when jsonValue.TryGetValue<bool>(out var boolean) => boolean,
+            JsonValue jsonValue when jsonValue.TryGetValue<string>(out var text) && bool.TryParse(text, out var parsed) => parsed,
+            _ => currentValue
+        };
+    }
+
+    /// <summary>Resolves a nested bool at MemorySmith:Auth:Providers:{providerName}:Enabled from the JSON root,
+    /// returning the current value when the setting is absent (the admin did not touch it).</summary>
+    private bool ResolveProviderBool(JsonObject root, string providerName, bool currentValue)
+    {
+        if (!TryGetJsonValue(root, out var value, "MemorySmith", "Auth", "Providers", providerName, "Enabled"))
+        {
+            return currentValue;
+        }
+
+        return value switch
+        {
+            JsonValue jsonValue when jsonValue.TryGetValue<bool>(out var boolean) => boolean,
+            JsonValue jsonValue when jsonValue.TryGetValue<string>(out var text) && bool.TryParse(text, out var parsed) => parsed,
+            _ => currentValue
+        };
     }
 
     private static double ResolveCodeSearchDouble(JsonObject root, string codeSearchFieldName, double currentValue)

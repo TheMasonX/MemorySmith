@@ -61,18 +61,67 @@ public class StateTransitionTests
     }
 
     [Test]
-    public void NoChange_WhenAlreadyCorrectStatus()
+    public void NoChange_WhenCoreRecordScoreExceedsThreshold()
     {
         var record = new MemoryRecord
         {
             Status = MemoryStatus.Core,
-            UsageCount = 5,
+            UsageCount = 20,
+            Confidence = 0.95,
+            LastUpdated = DateTime.UtcNow
+        };
+        record.References.AddRange(new[] { "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8" });
+        var (status, evt) = _machine.Evaluate(record);
+        Assert.That(status, Is.EqualTo(MemoryStatus.Core));
+        Assert.That(evt, Is.Null);
+    }
+
+    [Test]
+    public void CoreRecord_DemotesToWorking_WhenScoreDropsBelowCoreThreshold()
+    {
+        var record = new MemoryRecord
+        {
+            Status = MemoryStatus.Core,
+            UsageCount = 1,
+            Confidence = 0.3,
+            LastUpdated = DateTime.UtcNow.AddDays(-30)
+        };
+        record.References.Add("r1");
+        var (status, evt) = _machine.Evaluate(record);
+        Assert.That(status, Is.EqualTo(MemoryStatus.Working));
+        Assert.That(evt, Is.Not.Null);
+        Assert.That(evt!.Details, Does.Contain("Core").And.Contain("Working"));
+    }
+
+    [Test]
+    public void DeprecatedRecord_RepromotesToWorking_WhenScoreRecoversAboveWorkingThreshold()
+    {
+        var record = new MemoryRecord
+        {
+            Status = MemoryStatus.Deprecated,
+            UsageCount = 3,
             Confidence = 0.9,
             LastUpdated = DateTime.UtcNow
         };
-        record.References.AddRange(new[] { "r1", "r2", "r3", "r4" });
+        record.References.AddRange(new[] { "r1", "r2", "r3" });
         var (status, evt) = _machine.Evaluate(record);
-        Assert.That(status, Is.EqualTo(MemoryStatus.Core));
+        Assert.That(status, Is.EqualTo(MemoryStatus.Working));
+        Assert.That(evt, Is.Not.Null);
+        Assert.That(evt!.Details, Does.Contain("Deprecated").And.Contain("Working"));
+    }
+
+    [Test]
+    public void DeprecatedRecord_StaysDeprecated_WhenScoreIsBelowWorkingThreshold()
+    {
+        var record = new MemoryRecord
+        {
+            Status = MemoryStatus.Deprecated,
+            UsageCount = 0,
+            Confidence = 0,
+            LastUpdated = DateTime.UtcNow.AddDays(-1000)
+        };
+        var (status, evt) = _machine.Evaluate(record);
+        Assert.That(status, Is.EqualTo(MemoryStatus.Deprecated));
         Assert.That(evt, Is.Null);
     }
 }

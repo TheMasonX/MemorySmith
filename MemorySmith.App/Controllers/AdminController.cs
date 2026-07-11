@@ -1,8 +1,11 @@
+using System.Text.Json;
 using MemorySmith.App.Services;
 using MemorySmith.Core.Models;
 using MemorySmith.Storage;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Options;
 
 namespace MemorySmith.App.Controllers;
 
@@ -16,6 +19,7 @@ public class AdminController : ControllerBase
     private readonly ICurrentUserContext _currentUser;
     private readonly AuditLogService _audit;
     private readonly AdminSettingsService _settings;
+    private readonly IOptionsMonitor<MemorySmithOptions> _options;
 
     // Allowlist of roles that can be assigned or removed via the API.
     // Any roleName not in this set is rejected with 400 to prevent privilege escalation
@@ -32,13 +36,15 @@ public class AdminController : ControllerBase
         MemorySmithLocalAuthService auth,
         ICurrentUserContext currentUser,
         AuditLogService audit,
-        AdminSettingsService settings)
+        AdminSettingsService settings,
+        IOptionsMonitor<MemorySmithOptions> options)
     {
         _database = database;
         _auth = auth;
         _currentUser = currentUser;
         _audit = audit;
         _settings = settings;
+        _options = options;
     }
 
     [HttpGet("setup/status")]
@@ -51,6 +57,7 @@ public class AdminController : ControllerBase
     [HttpPost("setup")]
     [AllowAnonymous]
     [Consumes("application/json")]
+    [EnableRateLimiting("login")]
     public async Task<IActionResult> Setup([FromBody] SetupAdminRequest request, CancellationToken cancellationToken)
     {
         var result = await _auth.CreateFirstAdminAsync(request, cancellationToken);
@@ -60,12 +67,27 @@ public class AdminController : ControllerBase
     [HttpPost("setup")]
     [AllowAnonymous]
     [Consumes("application/x-www-form-urlencoded")]
+    [EnableRateLimiting("login")]
     public async Task<IActionResult> SetupForm([FromForm] SetupAdminFormRequest request, CancellationToken cancellationToken)
     {
         var result = await _auth.CreateFirstAdminAsync(new SetupAdminRequest(request.DisplayName, request.Email, request.Password, request.BootstrapToken, request.ReturnUrl), cancellationToken);
         return result.Succeeded
             ? LocalRedirect(MemorySmithLocalAuthService.SanitizeReturnUrl(request.ReturnUrl))
             : LocalRedirect($"/admin/setup?error=1&returnUrl={Uri.EscapeDataString(MemorySmithLocalAuthService.SanitizeReturnUrl(request.ReturnUrl))}");
+    }
+
+    /// <summary>Catch-all for POST /api/admin/setup without a recognised Content-Type.
+    /// Without this, ASP.NET Core throws AmbiguousMatchException (500) because the two
+    /// [Consumes]-disambiguated actions both reject requests with no Content-Type header.</summary>
+    [HttpPost("setup")]
+    [AllowAnonymous]
+    [EnableRateLimiting("login")]
+    public Task<IActionResult> SetupFallback()
+    {
+        return Task.FromResult<IActionResult>(BadRequest(new
+        {
+            error = "A Content-Type header is required. Use 'application/json' for JSON requests or 'application/x-www-form-urlencoded' for form submissions."
+        }));
     }
 
     [HttpGet("users")]
@@ -128,6 +150,23 @@ public class AdminController : ControllerBase
     [Authorize(Policy = MemorySmithPolicies.CanAdminMemorySmith)]
     public async Task<IActionResult> SetProviderEnabled(string providerName, [FromBody] ProviderEnabledRequest request, CancellationToken cancellationToken)
     {
+        // Auth self-lockout guardrail: prevent disabling the last active sign-in method.
+        if (!request.Enabled)
+        {
+            var auth = _options.CurrentValue.Auth;
+            var providers = await _database.ProviderLinks.ListProvidersAsync(cancellationToken);
+            var otherProviderEnabled = providers.Any(p =>
+                !string.Equals(p.ProviderName, providerName, StringComparison.OrdinalIgnoreCase) && p.IsEnabled);
+
+            if (!auth.LocalPasswordEnabled && !otherProviderEnabled)
+            {
+                return BadRequest(new
+                {
+                    error = "Cannot disable the last remaining sign-in method. Enable another provider or local password first."
+                });
+            }
+        }
+
         await _database.ProviderLinks.SetProviderEnabledAsync(providerName, request.Enabled, _currentUser.UserId, cancellationToken);
         await _audit.RecordAsync("provider.enabled.changed", "Provider", providerName, MemorySmithAuditOutcomes.Success, details: request, cancellationToken: cancellationToken);
         return NoContent();
