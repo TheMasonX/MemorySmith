@@ -4,7 +4,7 @@
   "title": "Fix data-protection keys path to use AppContext.BaseDirectory",
   "description": "P1 \u2014 Data-protection keys path in MemorySmithSecuritySetup.cs defaults to \u0060Path.Combine(\u0022..\u0022, \u0022Data\u0022, \u0022Keys\u0022)\u0060 relative to \u0060Directory.GetCurrentDirectory()\u0060 instead of \u0060AppContext.BaseDirectory\u0060. In published/deployed scenarios where CWD differs from the app location, this causes key loss \u2014 all users logged out, all encrypted data unreadable. Fix: use \u0060Path.Combine(AppContext.BaseDirectory, \u0022..\u0022, \u0022Data\u0022, \u0022Keys\u0022)\u0060 or make the default an absolute path. Found in 10-agent codebase audit 2026-07-10 (P1-001).",
   "type": "Task",
-  "status": "Backlog",
+  "status": "Done",
   "priority": "High",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -25,15 +25,21 @@
       "author": "anonymous",
       "body": "Approved for Wave 1, execution order 02 of 09. Prioritized for deployment safety because unstable data-protection key paths can invalidate authentication and encrypted data across restarts.",
       "createdAtUtc": "2026-07-26T17:00:06.3334487Z"
+    },
+    {
+      "id": "c-09e502209a5d4a9db2a284866e790bc0",
+      "author": "anonymous",
+      "body": "Implemented and validated 2026-07-26. MemorySmithSecuritySetup now resolves relative DataProtectionKeysPath values against AppContext.BaseDirectory and preserves rooted paths. Focused validation including SemanticEmbeddingPathTests and related first-wave suites: 77 passed, 0 failed. Handoff: Data/Pages/Handoffs/2026-07-26-wave-1-antiforgery-paths.md.",
+      "createdAtUtc": "2026-07-26T17:36:07.7685258Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-07-11T03:26:01.0811228Z",
-  "updatedAtUtc": "2026-07-26T17:01:34.6156267Z",
-  "completedAtUtc": null,
-  "revision": 3,
+  "updatedAtUtc": "2026-07-26T17:36:10.9217023Z",
+  "completedAtUtc": "2026-07-26T17:36:10.9217023Z",
+  "revision": 6,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

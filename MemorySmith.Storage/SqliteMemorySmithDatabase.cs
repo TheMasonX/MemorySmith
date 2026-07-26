@@ -46,9 +46,10 @@ public sealed class SqliteMemorySmithDatabase :
 
     public SqliteMemorySmithDatabase(DatabaseOptions options)
     {
-        _connectionString = string.IsNullOrWhiteSpace(options.ConnectionString)
+        var connectionString = string.IsNullOrWhiteSpace(options.ConnectionString)
             ? "Data Source=../Data/memorysmith.db"
             : options.ConnectionString;
+        _connectionString = ResolveConnectionString(connectionString);
         _applyMigrationsOnStartup = options.ApplyMigrationsOnStartup;
         _useWal = options.UseWal;
         _busyTimeoutMilliseconds = Math.Max(0, options.BusyTimeoutSeconds) * 1000;
@@ -1178,6 +1179,19 @@ public sealed class SqliteMemorySmithDatabase :
     {
         var builder = new SqliteConnectionStringBuilder(connectionString);
         return string.Equals(builder.DataSource, ":memory:", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string ResolveConnectionString(string connectionString)
+    {
+        var builder = new SqliteConnectionStringBuilder(connectionString);
+        if (!string.IsNullOrWhiteSpace(builder.DataSource) &&
+            !string.Equals(builder.DataSource, ":memory:", StringComparison.OrdinalIgnoreCase) &&
+            !Path.IsPathRooted(builder.DataSource))
+        {
+            builder.DataSource = Path.GetFullPath(builder.DataSource, AppContext.BaseDirectory);
+        }
+
+        return builder.ToString();
     }
 
     private static void EnsureDatabaseDirectory(string connectionString)

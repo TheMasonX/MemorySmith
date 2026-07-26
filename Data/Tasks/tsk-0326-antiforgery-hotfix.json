@@ -4,7 +4,7 @@
   "title": "fix: narrow antiforgery exemptions \u002B add regression tests",
   "description": "Remove blanket [IgnoreAntiforgeryToken] from controllers except validated API-key/OAuth callback endpoints. Add integration tests that POST to admin/source endpoints without antiforgery token =\u003E 400 and a CI invariant asserting the exempt-controller list.",
   "type": "Task",
-  "status": "Backlog",
+  "status": "Done",
   "priority": "Critical",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -25,15 +25,21 @@
       "author": "anonymous",
       "body": "Approved for Wave 1, execution order 01 of 09. Highest priority because this is the approved antiforgery security hotfix; implement only after the pre-implementation commit.",
       "createdAtUtc": "2026-07-26T17:00:02.6264939Z"
+    },
+    {
+      "id": "c-124488e87fb3444185185f3bdbac81a4",
+      "author": "anonymous",
+      "body": "Implemented and validated 2026-07-26. Removed controller-level IgnoreAntiforgeryToken from MemorySmith.App/Controllers/AdminController.cs and SourceLinksController.cs. Added MemorySmith.Tests/AntiforgeryTestHelpers.cs, converted bootstrap/admin settings callers, and added AdminSetup_RejectsJsonPostWithoutAntiforgeryToken. Focused command covering SecurityAndSourceLinkTests, AppApiContractTests, SqliteMetadataStoreTests, and SemanticEmbeddingPathTests: 77 passed, 0 failed. Residual controller exemptions are documented in Data/Pages/Handoffs/2026-07-26-wave-1-antiforgery-paths.md and require separate endpoint-contract review.",
+      "createdAtUtc": "2026-07-26T17:36:07.7035322Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-07-10T00:00:00Z",
-  "updatedAtUtc": "2026-07-26T17:01:35.1504141Z",
-  "completedAtUtc": null,
-  "revision": 3,
+  "updatedAtUtc": "2026-07-26T17:36:10.857802Z",
+  "completedAtUtc": "2026-07-26T17:36:10.857802Z",
+  "revision": 6,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

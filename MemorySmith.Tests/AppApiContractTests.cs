@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Security.Claims;
 using MemorySmith.App.Controllers;
 using MemorySmith.App.Services;
 using MemorySmith.Core.Models;
@@ -848,7 +849,7 @@ Line two",
         {
             using var setupClient = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
             setupClient.DefaultRequestHeaders.Add(MemorySmithRequestGuardMiddleware.ApiKeyHeaderName, apiKey);
-            var setupResponse = await setupClient.PostAsJsonAsync("/api/admin/setup", new SetupAdminRequest("Admin User", "admin@example.test", "ThisIsAValidPassword123!"));
+            var setupResponse = await setupClient.PostAsJsonWithAntiforgeryAsync(factory.Services, "/api/admin/setup", new SetupAdminRequest("Admin User", "admin@example.test", "ThisIsAValidPassword123!"));
             setupResponse.EnsureSuccessStatusCode();
 
             using var apiClient = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
@@ -887,7 +888,7 @@ Line two",
         try
         {
             using var setupClient = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
-            var setupResponse = await setupClient.PostAsJsonAsync("/api/admin/setup", new SetupAdminRequest("Admin User", "admin@example.test", "ThisIsAValidPassword123!"));
+            var setupResponse = await setupClient.PostAsJsonWithAntiforgeryAsync(factory.Services, "/api/admin/setup", new SetupAdminRequest("Admin User", "admin@example.test", "ThisIsAValidPassword123!"));
             setupResponse.EnsureSuccessStatusCode();
 
             using var anonymousClient = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
@@ -924,7 +925,7 @@ Line two",
         try
         {
             using var setupClient = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
-            var setupResponse = await setupClient.PostAsJsonAsync("/api/admin/setup", new SetupAdminRequest("Admin User", "admin@example.test", "ThisIsAValidPassword123!"));
+            var setupResponse = await setupClient.PostAsJsonWithAntiforgeryAsync(factory.Services, "/api/admin/setup", new SetupAdminRequest("Admin User", "admin@example.test", "ThisIsAValidPassword123!"));
             setupResponse.EnsureSuccessStatusCode();
 
             using var anonymousClient = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
@@ -956,7 +957,7 @@ Line two",
         try
         {
             using var adminClient = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
-            var setupResponse = await adminClient.PostAsJsonAsync("/api/admin/setup", new SetupAdminRequest("Admin User", "admin@example.test", "ThisIsAValidPassword123!"));
+            var setupResponse = await adminClient.PostAsJsonWithAntiforgeryAsync(factory.Services, "/api/admin/setup", new SetupAdminRequest("Admin User", "admin@example.test", "ThisIsAValidPassword123!"));
             setupResponse.EnsureSuccessStatusCode();
 
             var pageResponse = await adminClient.GetAsync("/training-workbench");
@@ -987,7 +988,7 @@ Line two",
         try
         {
             using var adminClient = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
-            var setupResponse = await adminClient.PostAsJsonAsync("/api/admin/setup", new SetupAdminRequest("Admin User", "admin@example.test", "ThisIsAValidPassword123!"));
+            var setupResponse = await adminClient.PostAsJsonWithAntiforgeryAsync(factory.Services, "/api/admin/setup", new SetupAdminRequest("Admin User", "admin@example.test", "ThisIsAValidPassword123!"));
             setupResponse.EnsureSuccessStatusCode();
 
             using var anonymousClient = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
@@ -1022,7 +1023,7 @@ Line two",
         try
         {
             using var setupClient = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
-            var setupResponse = await setupClient.PostAsJsonAsync("/api/admin/setup", new SetupAdminRequest("Admin User", "admin@example.test", "ThisIsAValidPassword123!"));
+            var setupResponse = await setupClient.PostAsJsonWithAntiforgeryAsync(factory.Services, "/api/admin/setup", new SetupAdminRequest("Admin User", "admin@example.test", "ThisIsAValidPassword123!"));
             setupResponse.EnsureSuccessStatusCode();
 
             using var anonymousClient = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
@@ -1079,24 +1080,33 @@ Line two",
             var anonymousResponse = await anonymousClient.PutAsJsonAsync("/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:Chat:MaxToolIterations", "3"));
 
             using var adminClient = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
-            var setupResponse = await adminClient.PostAsJsonAsync("/api/admin/setup", new SetupAdminRequest("Admin User", "admin@example.test", "ThisIsAValidPassword123!"));
+            var setupResponse = await adminClient.PostAsJsonWithAntiforgeryAsync(factory.Services, "/api/admin/setup", new SetupAdminRequest("Admin User", "admin@example.test", "ThisIsAValidPassword123!"));
             setupResponse.EnsureSuccessStatusCode();
+            using var setupDocument = JsonDocument.Parse(await setupResponse.Content.ReadAsStringAsync());
+            var adminUserId = setupDocument.RootElement.GetProperty("userId").GetString()!;
+            var adminPrincipal = new ClaimsPrincipal(new ClaimsIdentity(
+            [
+                new Claim(ClaimTypes.NameIdentifier, adminUserId),
+                new Claim(ClaimTypes.Name, "Admin User"),
+                new Claim(ClaimTypes.Email, "admin@example.test"),
+                new Claim(ClaimTypes.Role, MemorySmithRoles.Admin)
+            ], "Cookies"));
             var settings = await adminClient.GetFromJsonAsync<IReadOnlyList<AdminSettingItem>>("/api/admin/settings") ?? [];
-            var updateResponse = await adminClient.PutAsJsonAsync("/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:Chat:MaxToolIterations", "3"));
-            var defaultVisibilityResponse = await adminClient.PutAsJsonAsync("/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:Pages:DefaultMinimumRole", PageAccessLevels.Authenticated));
-            var sourceRootsResponse = await adminClient.PutAsJsonAsync("/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:SourceLinks:AllowedFileRoots", $"{Path.Combine(tempDir, "allowed-one")}\n{Path.Combine(tempDir, "allowed-two")}"));
-            var nullableContextResponse = await adminClient.PutAsJsonAsync("/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:Chat:OllamaContextWindowTokens", string.Empty));
-            var enableMcpToolResponse = await adminClient.PutAsJsonAsync("/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:Mcp:EnabledTools", "memorysmith_task_create\nmemorysmith_source_bundle"));
-            var disableMcpToolResponse = await adminClient.PutAsJsonAsync("/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:Mcp:DisabledTools", "memorysmith_context_pack"));
-            var configureApiKeyResponse = await adminClient.PutAsJsonAsync("/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:ApiKey", "contract-secret"));
-            var coverageMaxResponse = await adminClient.PutAsJsonAsync("/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:CodeSearch:MaxTokenCoverageWeight", "0.8"));
-            var invalidCoverageMinResponse = await adminClient.PutAsJsonAsync("/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:CodeSearch:MinTokenCoverageWeight", "1.0"));
+            var updateResponse = await adminClient.PutAsJsonWithAntiforgeryAsync(factory.Services, "/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:Chat:MaxToolIterations", "3"), user: adminPrincipal);
+            var defaultVisibilityResponse = await adminClient.PutAsJsonWithAntiforgeryAsync(factory.Services, "/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:Pages:DefaultMinimumRole", PageAccessLevels.Authenticated), user: adminPrincipal);
+            var sourceRootsResponse = await adminClient.PutAsJsonWithAntiforgeryAsync(factory.Services, "/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:SourceLinks:AllowedFileRoots", $"{Path.Combine(tempDir, "allowed-one")}\n{Path.Combine(tempDir, "allowed-two")}"), user: adminPrincipal);
+            var nullableContextResponse = await adminClient.PutAsJsonWithAntiforgeryAsync(factory.Services, "/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:Chat:OllamaContextWindowTokens", string.Empty), user: adminPrincipal);
+            var enableMcpToolResponse = await adminClient.PutAsJsonWithAntiforgeryAsync(factory.Services, "/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:Mcp:EnabledTools", "memorysmith_task_create\nmemorysmith_source_bundle"), user: adminPrincipal);
+            var disableMcpToolResponse = await adminClient.PutAsJsonWithAntiforgeryAsync(factory.Services, "/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:Mcp:DisabledTools", "memorysmith_context_pack"), user: adminPrincipal);
+            var configureApiKeyResponse = await adminClient.PutAsJsonWithAntiforgeryAsync(factory.Services, "/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:ApiKey", "contract-secret"), user: adminPrincipal);
+            var coverageMaxResponse = await adminClient.PutAsJsonWithAntiforgeryAsync(factory.Services, "/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:CodeSearch:MaxTokenCoverageWeight", "0.8"), user: adminPrincipal);
+            var invalidCoverageMinResponse = await adminClient.PutAsJsonWithAntiforgeryAsync(factory.Services, "/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:CodeSearch:MinTokenCoverageWeight", "1.0"), user: adminPrincipal);
             var invalidCoverageMinBody = await invalidCoverageMinResponse.Content.ReadAsStringAsync();
-            var invalidHybridVectorResponse = await adminClient.PutAsJsonAsync("/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:CodeSearch:HybridVectorWeight", "0"));
-            var invalidHybridLexicalResponse = await adminClient.PutAsJsonAsync("/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:CodeSearch:HybridLexicalWeight", "0"));
+            var invalidHybridVectorResponse = await adminClient.PutAsJsonWithAntiforgeryAsync(factory.Services, "/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:CodeSearch:HybridVectorWeight", "0"), user: adminPrincipal);
+            var invalidHybridLexicalResponse = await adminClient.PutAsJsonWithAntiforgeryAsync(factory.Services, "/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:CodeSearch:HybridLexicalWeight", "0"), user: adminPrincipal);
             var invalidHybridLexicalBody = await invalidHybridLexicalResponse.Content.ReadAsStringAsync();
             adminClient.DefaultRequestHeaders.Add(MemorySmithRequestGuardMiddleware.ApiKeyHeaderName, "contract-secret");
-            var clearApiKeyResponse = await adminClient.PutAsJsonAsync("/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:ApiKey", string.Empty));
+            var clearApiKeyResponse = await adminClient.PutAsJsonWithAntiforgeryAsync(factory.Services, "/api/admin/settings", new AdminSettingUpdateRequest("MemorySmith:ApiKey", string.Empty), user: adminPrincipal);
             var apiKeyAudit = await adminClient.GetFromJsonAsync<PagedResult<AuditLogEntry>>("/api/admin/audit?action=settings.updated&targetKind=Setting&targetId=MemorySmith%3AApiKey&pageSize=10");
 
             Assert.Multiple(() =>
@@ -1175,7 +1185,7 @@ Line two",
     [Test]
     public async Task Diagnostics_ReturnsRedactedConfigurationAndPathStatus()
     {
-        var setupResponse = await _client.PostAsJsonAsync("/api/admin/setup", new SetupAdminRequest("Admin User", "admin@example.test", "ThisIsAValidPassword123!"));
+            var setupResponse = await _client.PostAsJsonWithAntiforgeryAsync(_factory.Services, "/api/admin/setup", new SetupAdminRequest("Admin User", "admin@example.test", "ThisIsAValidPassword123!"));
         setupResponse.EnsureSuccessStatusCode();
 
         var response = await _client.GetAsync("/api/diagnostics");
@@ -1202,7 +1212,7 @@ Line two",
     [Test]
     public async Task DiagnosticsMeasurementBaseline_ReturnsSearchGovernanceAndPageMetrics()
     {
-        var setupResponse = await _client.PostAsJsonAsync("/api/admin/setup", new SetupAdminRequest("Admin User", "admin@example.test", "ThisIsAValidPassword123!"));
+        var setupResponse = await _client.PostAsJsonWithAntiforgeryAsync(_factory.Services, "/api/admin/setup", new SetupAdminRequest("Admin User", "admin@example.test", "ThisIsAValidPassword123!"));
         setupResponse.EnsureSuccessStatusCode();
 
         var response = await _client.GetAsync("/api/diagnostics/measurement-baseline");
@@ -1297,7 +1307,7 @@ Line two",
             var adminAssetResponse = await anonymousClient.GetAsync("/page-assets/admin.png");
 
             using var adminClient = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
-            var setupResponse = await adminClient.PostAsJsonAsync("/api/admin/setup", new SetupAdminRequest("Admin User", "admin@example.test", "ThisIsAValidPassword123!"));
+            var setupResponse = await adminClient.PostAsJsonWithAntiforgeryAsync(factory.Services, "/api/admin/setup", new SetupAdminRequest("Admin User", "admin@example.test", "ThisIsAValidPassword123!"));
             setupResponse.EnsureSuccessStatusCode();
             var adminPages = await adminClient.GetFromJsonAsync<PageSummary[]>("/api/pages");
             var adminPageResponse = await adminClient.GetAsync("/api/pages/admin-page");

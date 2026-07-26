@@ -11,7 +11,6 @@ namespace MemorySmith.App.Controllers;
 
 [ApiController]
 [Route("api/admin")]
-[IgnoreAntiforgeryToken]
 public class AdminController : ControllerBase
 {
     private readonly IMemorySmithDatabase _database;

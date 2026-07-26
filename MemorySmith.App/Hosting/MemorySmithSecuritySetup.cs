@@ -88,9 +88,12 @@ public static class MemorySmithSecuritySetup
                     }));
         });
 
-        var dataProtectionKeysPath = builder.Configuration["MemorySmith:DataProtectionKeysPath"] ?? Path.Combine("..", "Data", "Keys");
+        var configuredDataProtectionKeysPath = builder.Configuration["MemorySmith:DataProtectionKeysPath"] ?? Path.Combine("..", "Data", "Keys");
+        var dataProtectionKeysPath = Path.IsPathRooted(configuredDataProtectionKeysPath)
+            ? configuredDataProtectionKeysPath
+            : Path.GetFullPath(configuredDataProtectionKeysPath, AppContext.BaseDirectory);
         builder.Services.AddDataProtection()
-            .PersistKeysToFileSystem(new DirectoryInfo(Path.GetFullPath(dataProtectionKeysPath)));
+            .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeysPath));
 
         return builder;
     }

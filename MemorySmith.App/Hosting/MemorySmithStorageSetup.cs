@@ -30,20 +30,20 @@ public static class MemorySmithStorageSetup
         builder.Services.AddSingleton<IMemoryStore>(sp =>
         {
             var configuration = sp.GetRequiredService<IConfiguration>();
-            var dataPath = configuration["MemorySmith:DataPath"] ?? Path.Combine("..", "Data", "Memories");
+            var dataPath = ResolvePath(configuration["MemorySmith:DataPath"] ?? Path.Combine("..", "Data", "Memories"));
             return new FileMemoryStore(dataPath, sp.GetRequiredService<StorageDiagnostics>());
         });
         builder.Services.AddSingleton<IVarStore>(sp =>
         {
             var configuration = sp.GetRequiredService<IConfiguration>();
-            var varsPath = configuration["MemorySmith:VarsPath"] ?? Path.Combine("..", "Data", "vars.json");
+            var varsPath = ResolvePath(configuration["MemorySmith:VarsPath"] ?? Path.Combine("..", "Data", "vars.json"));
             return new FileVarStore(varsPath, sp.GetRequiredService<StorageDiagnostics>());
         });
         builder.Services.AddSingleton<FilePageService>(sp =>
         {
             var configuration = sp.GetRequiredService<IConfiguration>();
             var options = sp.GetRequiredService<IOptions<MemorySmithOptions>>().Value;
-            var pagesPath = configuration["MemorySmith:PagesPath"] ?? Path.Combine("..", "Data", "Pages");
+            var pagesPath = ResolvePath(configuration["MemorySmith:PagesPath"] ?? Path.Combine("..", "Data", "Pages"));
             return new FilePageService(pagesPath, options.Pages);
         });
         builder.Services.AddSingleton<IPageService>(sp => new AuditedPageService(
@@ -54,10 +54,13 @@ public static class MemorySmithStorageSetup
         builder.Services.AddSingleton<IEventStore>(sp =>
         {
             var configuration = sp.GetRequiredService<IConfiguration>();
-            var eventLogPath = configuration["MemorySmith:EventLogPath"] ?? Path.Combine("..", "Data", "Events", "audit.log");
+            var eventLogPath = ResolvePath(configuration["MemorySmith:EventLogPath"] ?? Path.Combine("..", "Data", "Events", "audit.log"));
             return new FileEventStore(eventLogPath);
         });
         builder.Services.AddSingleton<MemoryIndex>();
         return builder;
     }
+
+    private static string ResolvePath(string path) =>
+        Path.IsPathRooted(path) ? path : Path.GetFullPath(path, AppContext.BaseDirectory);
 }

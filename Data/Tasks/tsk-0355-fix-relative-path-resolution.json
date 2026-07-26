@@ -4,7 +4,7 @@
   "title": "Fix hardcoded absolute paths and relative path resolution in storage and config",
   "description": "Data/vars.json has a hardcoded absolute D:\\@Repos\\MemorySmith\\ path that breaks on other machines. SqliteMemorySmithDatabase.EnsureDatabaseDirectory resolves relative paths against the process working directory instead of AppContext.BaseDirectory. MemorySmithStorageSetup path resolution differs between IOptions binding and direct factory resolution. Fix: use relative/repo-root-resolved paths at runtime, resolve storage paths against AppContext.BaseDirectory consistently, and gitignore vars.json with a template. Source: codebase-audit-20260710-swarm-synthesis P2-033",
   "type": "Bug",
-  "status": "Backlog",
+  "status": "Done",
   "priority": "High",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -25,15 +25,21 @@
       "author": "anonymous",
       "body": "Approved for Wave 1, execution order 03 of 09. Prioritized next because machine-specific and working-directory-dependent paths cause portability and deployment failures.",
       "createdAtUtc": "2026-07-26T17:00:06.7690544Z"
+    },
+    {
+      "id": "c-d800919f42a2496eab7018c0afe097a7",
+      "author": "anonymous",
+      "body": "Implemented and validated 2026-07-26. MemorySmithStorageSetup resolves relative data/vars/pages/event paths against AppContext.BaseDirectory; SqliteMemorySmithDatabase resolves relative Data Source values and preserves :memory:. Focused validation including SqliteMetadataStoreTests and SemanticEmbeddingPathTests: 77 passed, 0 failed. Handoff: Data/Pages/Handoffs/2026-07-26-wave-1-antiforgery-paths.md.",
+      "createdAtUtc": "2026-07-26T17:36:07.8769472Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-07-11T03:06:12.466799Z",
-  "updatedAtUtc": "2026-07-26T17:01:34.4845312Z",
-  "completedAtUtc": null,
-  "revision": 3,
+  "updatedAtUtc": "2026-07-26T17:36:10.9814258Z",
+  "completedAtUtc": "2026-07-26T17:36:10.9814258Z",
+  "revision": 6,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

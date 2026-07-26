@@ -169,6 +169,19 @@ public class SecurityAndSourceLinkTests
     }
 
     [Test]
+    public async Task AdminSetup_RejectsJsonPostWithoutAntiforgeryToken()
+    {
+        await using var factory = CreateFactory();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var response = await client.PostAsJsonAsync(
+            "/api/admin/setup",
+            new SetupAdminRequest("Admin User", "admin@example.test", ValidPassword));
+
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+    }
+
+    [Test]
     public async Task McpSensitiveRead_DeniesAnonymousAndAuthenticatedViewerCallers()
     {
         await using var factory = CreateFactory(new Dictionary<string, string?>
@@ -185,7 +198,7 @@ public class SecurityAndSourceLinkTests
         });
 
         using var setupClient = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
-        var setupResponse = await setupClient.PostAsJsonAsync("/api/admin/setup", new SetupAdminRequest("Admin User", "admin@example.test", ValidPassword));
+        var setupResponse = await setupClient.PostAsJsonWithAntiforgeryAsync(factory.Services, "/api/admin/setup", new SetupAdminRequest("Admin User", "admin@example.test", ValidPassword));
         setupResponse.EnsureSuccessStatusCode();
 
         using var anonymousClient = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
@@ -214,7 +227,7 @@ public class SecurityAndSourceLinkTests
         });
 
         using var adminClient = roleFactory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
-        var setupResponse = await adminClient.PostAsJsonAsync("/api/admin/setup", new SetupAdminRequest("Admin User", "admin@example.test", ValidPassword));
+        var setupResponse = await adminClient.PostAsJsonWithAntiforgeryAsync(roleFactory.Services, "/api/admin/setup", new SetupAdminRequest("Admin User", "admin@example.test", ValidPassword));
         setupResponse.EnsureSuccessStatusCode();
         var adminText = await CallFindBySourceTextAsync(adminClient);
 
@@ -257,7 +270,7 @@ public class SecurityAndSourceLinkTests
         });
         using var client = factory.CreateClient();
 
-        var setupResponse = await client.PostAsJsonAsync("/api/admin/setup", new SetupAdminRequest("Admin User", "admin@example.test", "ThisIsAValidPassword123!"));
+        var setupResponse = await client.PostAsJsonWithAntiforgeryAsync(factory.Services, "/api/admin/setup", new SetupAdminRequest("Admin User", "admin@example.test", "ThisIsAValidPassword123!"));
         setupResponse.EnsureSuccessStatusCode();
 
         var body = await client.GetStringAsync("/api/diagnostics");
