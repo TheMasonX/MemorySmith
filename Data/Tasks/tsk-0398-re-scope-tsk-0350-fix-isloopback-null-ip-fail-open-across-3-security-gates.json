@@ -1,0 +1,41 @@
+﻿{
+  "id": "tsk-0398-re-scope-tsk-0350-fix-isloopback-null-ip-fail-open-across-3-security-gates",
+  "key": "TSK-0398",
+  "title": "Re-scope TSK-0350: Fix IsLoopback null-IP fail-open across 3 security gates",
+  "description": "Re-scope TSK-0350: Fix IsLoopback null-IP fail-open across 3 security gates (Council-refined)\n\nSource: memorysmith-isloopback-audit-26-07-16-20-02-55.md\n\nProblem: \u0060MemorySmithRequestGuardMiddleware.IsLoopback(IPAddress? address)\u0060 returns \u0060true\u0060 when \u0060address is null\u0060. Three independent security gates inherit this default causing fail-open behavior when \u0060RemoteIpAddress\u0060 can be null in production (reverse-proxy misconfigs). Update TSK-0350 scope and raise priority.\n\nAcceptance criteria:\n- Change helper to fail-closed for null IP addresses\n- Add unit tests for middleware, \u0060BootstrapGate\u0060, and \u0060SecurityServices.IsLoopbackRequest\u0060\n- Document forwarded-headers guidance in deployment docs and startup warning\n\nEffort: 2-4h",
+  "type": "Bug",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Agent",
+  "reporter": "anonymous",
+  "labels": [
+    "type:bug",
+    "domain:auth",
+    "domain:security",
+    "priority:high"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [
+    {
+      "id": "c-1bd7730eb36d4224ad1bb8202ad784d2",
+      "author": "anonymous",
+      "body": "Council Note: Rescoping to include null-IPAddress production scenario; raise priority to High. Add unit test asserting null RemoteIpAddress is not treated as loopback for middleware, BootstrapGate, and SecurityServices.IsLoopbackRequest.",
+      "createdAtUtc": "2026-07-26T16:30:40.1624199Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-26T16:23:04.8882773Z",
+  "updatedAtUtc": "2026-07-26T16:30:52.441332Z",
+  "completedAtUtc": null,
+  "revision": 3,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": "tsk-0398-re-scope-tsk-0350-fix-isloopback-null-ip-fail-open-across-3-security-gates.json"
+}

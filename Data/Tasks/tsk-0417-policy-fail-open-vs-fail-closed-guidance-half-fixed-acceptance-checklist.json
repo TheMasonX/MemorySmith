@@ -1,0 +1,33 @@
+﻿{
+  "id": "tsk-0417-policy-fail-open-vs-fail-closed-guidance-half-fixed-acceptance-checklist",
+  "key": "TSK-0417",
+  "title": "Policy: Fail-Open vs Fail-Closed guidance \u002B Half-Fixed acceptance checklist",
+  "description": "Create a policy doc task to codify fail-open vs fail-closed cases and add an acceptance checklist to avoid half-fixed patches.\n\nAcceptance criteria:\n- Draft policy in Data/Pages/policies/fail-open-fail-closed.md\n- Add checklist template to PR template; require \u0022adjacent invariants\u0022 section\n- Add tests/automation hook that verifies presence of adjacent-invariants checklist for security-sensitive PRs\n\nEffort: 3-5h",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Agent",
+  "reporter": "anonymous",
+  "labels": [
+    "policy",
+    "process",
+    "security"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-26T16:31:07.0382646Z",
+  "updatedAtUtc": "2026-07-26T16:31:07.0382646Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

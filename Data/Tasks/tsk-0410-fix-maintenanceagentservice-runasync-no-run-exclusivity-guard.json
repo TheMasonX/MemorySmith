@@ -1,0 +1,33 @@
+﻿{
+  "id": "tsk-0410-fix-maintenanceagentservice-runasync-no-run-exclusivity-guard",
+  "key": "TSK-0410",
+  "title": "Fix MaintenanceAgentService.RunAsync no run-exclusivity guard",
+  "description": "Fix MaintenanceAgentService.RunAsync no run-exclusivity guard (Council-refined)\n\nSource: audits/swarm-audit-synthesis-26-07-26.md\n\nProblem: MaintenanceAgentService may start overlapping runs; add distributed/generic run-exclusivity (mutex) to prevent concurrent runs.\n\nAcceptance criteria:\n- Add mutex by process (e.g., named Mutex) and cooperative lock for multi-process via DB row lock or lease\n- Add tests simulating overlapping starts demonstrating one run wins and others exit gracefully\n\nEffort: 4-8h",
+  "type": "Bug",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Agent",
+  "reporter": "anonymous",
+  "labels": [
+    "type:bug",
+    "domain:maintenance",
+    "priority:high"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-26T16:23:28.4892073Z",
+  "updatedAtUtc": "2026-07-26T16:30:32.4572739Z",
+  "completedAtUtc": null,
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": "tsk-0410-fix-maintenanceagentservice-runasync-no-run-exclusivity-guard.json"
+}

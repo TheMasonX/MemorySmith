@@ -1,0 +1,33 @@
+﻿{
+  "id": "tsk-0414-fix-approveasync-crash-window-file-changed-before-status",
+  "key": "TSK-0414",
+  "title": "Fix ApproveAsync crash window (file-changed-before-status)",
+  "description": "## Source\nAudit swarm finding F-AG1-03 / F54 (memorysmith-approveasync-audit-26-07-19-01-19-01)\n\n## Problem\n\u0060ApproveAsync\u0060 calls \u0060_store.ApplyAsync\u0060 (writes actual file) BEFORE persisting the proposal\u0027s own status change. If the process crashes between the two, the file is changed but the proposal record is stuck at pre-approval status. An idempotency guard in \u0060ApplyAsync\u0060 prevents double-application but produces an opaque \u0060InvalidOperationException\u0060 on retry.\n\n## Severity\nMedium\n\n## Files\n- \u0060MemorySmith.App/Services/MaintenanceAgentServices.cs\u0060 lines 716-725\n- \u0060MemorySmith.App/Services/FileMaintenanceProposalStore.cs\u0060 lines 617-646\n\n## Recommendation\nInvert order (persist status first, roll back on failure) or add intermediate \u0060Applying\u0060 status with deterministic recovery logic.\n\n## Existing Coverage\nNo existing task.",
+  "type": "Bug",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Agent",
+  "reporter": "anonymous",
+  "labels": [
+    "type:bug",
+    "domain:maintenance",
+    "domain:proposals"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-26T16:23:45.081095Z",
+  "updatedAtUtc": "2026-07-26T16:23:45.081095Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

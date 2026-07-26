@@ -1,8 +1,8 @@
-{
+﻿{
   "id": "tsk-0349-add-logging-to-core-services",
   "key": "TSK-0349",
   "title": "Add ILogger instrumentation to MemorySmith.Core services",
-  "description": "MemorySmith.Core has zero logging across all 16 source files. No ILogger<T> usage anywhere. MemoryIndex.Remove silently returns when ID not found. MemoryStateMachine.Evaluate silently falls through when no transition matches. MemoryScorer.Score has no telemetry on scoring outliers. Inject ILogger<T> into MemoryStateMachine, MemoryIndex, and MemoryScorer. Log transitions, removal misses, scoring outliers, and rebuild events at appropriate levels. Source: codebase-audit-20260710-swarm-synthesis P2-003",
+  "description": "MemorySmith.Core has zero logging across all 16 source files. No ILogger\u003CT\u003E usage anywhere. MemoryIndex.Remove silently returns when ID not found. MemoryStateMachine.Evaluate silently falls through when no transition matches. MemoryScorer.Score has no telemetry on scoring outliers. Inject ILogger\u003CT\u003E into MemoryStateMachine, MemoryIndex, and MemoryScorer. Log transitions, removal misses, scoring outliers, and rebuild events at appropriate levels. Source: codebase-audit-20260710-swarm-synthesis P2-003",
   "type": "Feature",
   "status": "Backlog",
   "priority": "High",
@@ -14,21 +14,29 @@
     "domain:core",
     "domain:observability",
     "type:feature",
-    "sprint-backlog"
+    "sprint-backlog",
+    "approved-wave-1-order-08"
   ],
   "attachments": [],
   "externalLinks": [],
   "linkedPages": [],
-  "comments": [],
+  "comments": [
+    {
+      "id": "c-b5168cf3d4a44e9d9ef5e21540a86ab4",
+      "author": "anonymous",
+      "body": "Approved for Wave 1, execution order 08 of 09. Core instrumentation has broad diagnostic value but follows correctness and security fixes.",
+      "createdAtUtc": "2026-07-26T17:00:07.1833707Z"
+    }
+  ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-07-11T03:06:12.0956526Z",
-  "updatedAtUtc": "2026-07-11T03:06:12.0956526Z",
+  "updatedAtUtc": "2026-07-26T17:01:35.0213074Z",
   "completedAtUtc": null,
-  "revision": 1,
+  "revision": 3,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,
-  "sourceFilePath": ""
+  "sourceFilePath": "tsk-0349-add-logging-to-core-services.json"
 }

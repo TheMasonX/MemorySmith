@@ -1,8 +1,8 @@
-{
+﻿{
   "id": "tsk-0385-fix-launchsettings-env-name",
   "key": "TSK-0385",
   "title": "Fix launchSettings environment name mismatch",
-  "description": "P1 finding from 10-agent swarm codebase audit (P1-015). launchSettings sets ASPNETCORE_ENVIRONMENT to 'LocalDevelopment' but the only development settings file is named appsettings.Development.json. The Development settings overrides are never loaded during local development.\n\nFile: MemorySmith.App/Properties/launchSettings.json\nConfidence: 100%\nSource: codebase-audit-20260710-agent10-swarm-v2.md",
+  "description": "P1 finding from 10-agent swarm codebase audit (P1-015). launchSettings sets ASPNETCORE_ENVIRONMENT to \u0027LocalDevelopment\u0027 but the only development settings file is named appsettings.Development.json. The Development settings overrides are never loaded during local development.\n\nFile: MemorySmith.App/Properties/launchSettings.json\nConfidence: 100%\nSource: codebase-audit-20260710-agent10-swarm-v2.md",
   "type": "Bug",
   "status": "Done",
   "priority": "High",
@@ -17,14 +17,21 @@
   "attachments": [],
   "externalLinks": [],
   "linkedPages": [],
-  "comments": [],
+  "comments": [
+    {
+      "id": "c-184f772dbf284d499a274c4e05f24f89",
+      "author": "anonymous",
+      "body": "Approved list reconciliation: already Done before this approval, so it is retained as completed history and excluded from the nine-task implementation wave.",
+      "createdAtUtc": "2026-07-26T17:00:07.429958Z"
+    }
+  ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-07-11T04:23:01.6730906Z",
-  "updatedAtUtc": "2026-07-11T05:04:44.2108729Z",
+  "updatedAtUtc": "2026-07-26T17:00:07.429958Z",
   "completedAtUtc": "2026-07-11T05:04:44.2108729Z",
-  "revision": 2,
+  "revision": 3,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

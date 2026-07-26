@@ -1,0 +1,33 @@
+﻿{
+  "id": "tsk-0415-fix-mcpcontroller-9-dependency-god-class-decomposition",
+  "key": "TSK-0415",
+  "title": "Fix McpController 9-dependency god class decomposition",
+  "description": "## Source\nAudit swarm finding F-AG2-12 (memorysmith-corpus-sweep4-audit-26-07-24-02-08-54)\n\n## Problem\n\u0060McpController.cs\u0060 has 9 unrelated constructor-injected services and 394 lines acting as a dispatch hub. Same god-class pattern as \u0060SqliteMemorySmithDatabase\u0060 (TSK-0157) and \u0060MaintenanceAgentServices.cs\u0060 (TSK-0043).\n\n## Severity\nMedium\n\n## Files\n- \u0060MemorySmith.App/Controllers/McpController.cs\u0060 (394 lines, 9 dependencies)\n\n## Recommendation\nDecompose into facade services per tool category (mirroring existing \u0060McpAgentToolHandler\u0060 pattern).\n\n## Existing Coverage\nNo existing task.",
+  "type": "Refactor",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Agent",
+  "reporter": "anonymous",
+  "labels": [
+    "type:refactor",
+    "domain:api",
+    "domain:maintainability"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-26T16:23:45.1822868Z",
+  "updatedAtUtc": "2026-07-26T16:23:45.1822868Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

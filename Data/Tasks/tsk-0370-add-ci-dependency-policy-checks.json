@@ -1,16 +1,18 @@
-{
+﻿{
   "id": "tsk-0370-add-ci-dependency-policy-checks",
   "key": "TSK-0370",
-  "title": "Add CI dependency & policy checks",
+  "title": "Add CI dependency \u0026 policy checks",
   "description": "Add CI steps: dotnet list package --vulnerable, CodeQL scan, and run Scripts/Test-TaskRecords.ps1 as a required gate. Fail builds on policy violations.",
   "type": "Task",
   "status": "Backlog",
   "priority": "Medium",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
-  "assigneeCustomText": "Agent",
+  "assigneeCustomText": "Copilot",
   "reporter": "anonymous",
-  "labels": [],
+  "labels": [
+    "approved-wave-1-order-09"
+  ],
   "attachments": [],
   "externalLinks": [],
   "linkedPages": [],
@@ -20,15 +22,21 @@
       "author": "anonymous",
       "body": "Created from 2026-07-10 council audit; see Data/Pages/audits/codebase-audit-2026-07-10-council-review.md",
       "createdAtUtc": "2026-07-11T04:10:25.0852025Z"
+    },
+    {
+      "id": "c-30ea82585540442bb1e96ea75e82361f",
+      "author": "anonymous",
+      "body": "Approved for Wave 1, execution order 09 of 09. CI dependency and policy gates are valuable preventative controls, scheduled after the immediate runtime fixes.",
+      "createdAtUtc": "2026-07-26T17:00:07.3273582Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-07-11T04:10:09.7988708Z",
-  "updatedAtUtc": "2026-07-11T04:10:25.0852025Z",
+  "updatedAtUtc": "2026-07-26T17:01:34.9512434Z",
   "completedAtUtc": null,
-  "revision": 2,
+  "revision": 4,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

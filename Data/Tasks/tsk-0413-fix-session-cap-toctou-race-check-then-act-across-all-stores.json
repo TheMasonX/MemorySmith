@@ -1,0 +1,33 @@
+﻿{
+  "id": "tsk-0413-fix-session-cap-toctou-race-check-then-act-across-all-stores",
+  "key": "TSK-0413",
+  "title": "Fix Session cap TOCTOU race (check-then-act across all stores)",
+  "description": "## Source\nAudit swarm finding F-AG1-02 / F48 (memorysmith-agentsession-audit-26-07-18-01-55-45)\n\n## Problem\n\u0060CreateSessionAsync\u0060 checks active count \u2192 ~50 lines of awaited work \u2192 saves. No lock, transaction, or atomic counter spans the gap. Confirmed unguarded in both \u0060InMemoryAgentSessionStore\u0060 and \u0060SqliteAgentSessionStore\u0060. N simultaneous requests near cap can all pass the check and exceed the configured limit.\n\n## Severity\nMedium\n\n## Files\n- \u0060MemorySmith.App/Services/AgentSessions/AgentSessionService.cs\u0060 lines 183-188, 239\n- \u0060MemorySmith.App/Services/AgentSessions/InMemoryAgentSessionStore.cs\u0060 lines 41-46\n- \u0060MemorySmith.Storage/SqliteAgentSessionStore.cs\u0060 lines 203-214\n\n## Recommendation\nMake capacity check atomic at the store level (conditional insert for SQLite, SemaphoreSlim per-principal for in-memory). Add concurrency test.\n\n## Existing Coverage\nNo existing task.",
+  "type": "Bug",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Agent",
+  "reporter": "anonymous",
+  "labels": [
+    "type:bug",
+    "domain:sessions",
+    "domain:concurrency"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-26T16:23:45.0137833Z",
+  "updatedAtUtc": "2026-07-26T16:23:45.0137833Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

@@ -1,17 +1,41 @@
-{
+﻿{
   "id": "tsk-0326-antiforgery-hotfix",
   "key": "TSK-0326",
-  "title": "fix: narrow antiforgery exemptions + add regression tests",
-  "status": "Backlog",
+  "title": "fix: narrow antiforgery exemptions \u002B add regression tests",
+  "description": "Remove blanket [IgnoreAntiforgeryToken] from controllers except validated API-key/OAuth callback endpoints. Add integration tests that POST to admin/source endpoints without antiforgery token =\u003E 400 and a CI invariant asserting the exempt-controller list.",
   "type": "Task",
+  "status": "Backlog",
   "priority": "Critical",
-  "description": "Remove blanket [IgnoreAntiforgeryToken] from controllers except validated API-key/OAuth callback endpoints. Add integration tests that POST to admin/source endpoints without antiforgery token => 400 and a CI invariant asserting the exempt-controller list.",
-  "createdAtUtc": "2026-07-10T00:00:00Z",
-  "updatedAtUtc": "2026-07-10T00:00:00Z",
-  "revision": 1,
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": null,
   "labels": [
     "security",
     "testing",
-    "ci"
-  ]
+    "ci",
+    "approved-wave-1-order-01"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [
+    {
+      "id": "c-2507e5b44b1d4c1c8599acb84b659bc8",
+      "author": "anonymous",
+      "body": "Approved for Wave 1, execution order 01 of 09. Highest priority because this is the approved antiforgery security hotfix; implement only after the pre-implementation commit.",
+      "createdAtUtc": "2026-07-26T17:00:02.6264939Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-10T00:00:00Z",
+  "updatedAtUtc": "2026-07-26T17:01:35.1504141Z",
+  "completedAtUtc": null,
+  "revision": 3,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": "tsk-0326-antiforgery-hotfix.json"
 }

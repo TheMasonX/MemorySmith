@@ -1,4 +1,4 @@
-{
+﻿{
   "id": "tsk-0354-fix-test-task-records-validation-gaps",
   "key": "TSK-0354",
   "title": "Add missing validations to Test-TaskRecords.ps1",
@@ -13,21 +13,29 @@
   "labels": [
     "domain:validation",
     "type:bug",
-    "sprint-backlog"
+    "sprint-backlog",
+    "approved-wave-1-order-06"
   ],
   "attachments": [],
   "externalLinks": [],
   "linkedPages": [],
-  "comments": [],
+  "comments": [
+    {
+      "id": "c-810df1c7462f4febb546f248437e426c",
+      "author": "anonymous",
+      "body": "Approved for Wave 1, execution order 06 of 09. Strengthening task-record validation is low-risk and protects the tracker and automation from malformed metadata.",
+      "createdAtUtc": "2026-07-26T17:00:06.9242259Z"
+    }
+  ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-07-11T03:06:12.421175Z",
-  "updatedAtUtc": "2026-07-11T03:06:12.421175Z",
+  "updatedAtUtc": "2026-07-26T17:01:34.6821755Z",
   "completedAtUtc": null,
-  "revision": 1,
+  "revision": 3,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,
-  "sourceFilePath": ""
+  "sourceFilePath": "tsk-0354-fix-test-task-records-validation-gaps.json"
 }

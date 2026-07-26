@@ -1,0 +1,33 @@
+﻿{
+  "id": "tsk-0412-fix-chattoolcatalog-buildtools-ccn-116-decompose-monolithic-method",
+  "key": "TSK-0412",
+  "title": "Fix ChatToolCatalog.BuildTools CCN 116 - decompose monolithic method",
+  "description": "## Source\nAudit swarm finding F-AG5-09 / F35 (memorysmith-staticanalysis2-audit-26-07-14-23-38-09)\n\n## Problem\n\u0060ChatToolCatalog.BuildTools\u0060 has cyclomatic complexity 116 (841 lines in one method) \u2014 8x lizard\u0027s default threshold. This is the most complex method in the codebase. A single unit of code review / diff conflict / edit surface.\n\n## Severity\nMedium\n\n## Files\n- \u0060MemorySmith.App/Services/ChatToolCatalog.cs\u0060 line 138 (BuildTools method)\n\n## Recommendation\nSplit into category-scoped private methods (search/memory/task/page/code-search) composed via \u0060.Concat()\u0060. Pure structural refactor.\n\n## Existing Coverage\nNo existing task. Related to TSK-0192 (tool-surface modularization, Backlog).",
+  "type": "Refactor",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Agent",
+  "reporter": "anonymous",
+  "labels": [
+    "type:refactor",
+    "domain:tools",
+    "domain:maintainability"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-26T16:23:44.9385141Z",
+  "updatedAtUtc": "2026-07-26T16:23:44.9385141Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

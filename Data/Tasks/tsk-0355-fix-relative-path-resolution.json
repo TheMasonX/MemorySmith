@@ -1,4 +1,4 @@
-{
+﻿{
   "id": "tsk-0355-fix-relative-path-resolution",
   "key": "TSK-0355",
   "title": "Fix hardcoded absolute paths and relative path resolution in storage and config",
@@ -13,21 +13,29 @@
   "labels": [
     "domain:infrastructure",
     "type:bug",
-    "sprint-backlog"
+    "sprint-backlog",
+    "approved-wave-1-order-03"
   ],
   "attachments": [],
   "externalLinks": [],
   "linkedPages": [],
-  "comments": [],
+  "comments": [
+    {
+      "id": "c-b9cc48ad1ea849ad9d5a79afa64c577b",
+      "author": "anonymous",
+      "body": "Approved for Wave 1, execution order 03 of 09. Prioritized next because machine-specific and working-directory-dependent paths cause portability and deployment failures.",
+      "createdAtUtc": "2026-07-26T17:00:06.7690544Z"
+    }
+  ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-07-11T03:06:12.466799Z",
-  "updatedAtUtc": "2026-07-11T03:06:12.466799Z",
+  "updatedAtUtc": "2026-07-26T17:01:34.4845312Z",
   "completedAtUtc": null,
-  "revision": 1,
+  "revision": 3,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,
-  "sourceFilePath": ""
+  "sourceFilePath": "tsk-0355-fix-relative-path-resolution.json"
 }

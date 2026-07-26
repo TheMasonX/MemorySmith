@@ -1,8 +1,8 @@
-{
+﻿{
   "id": "tsk-0356-fix-file-memory-store-error-handling",
   "key": "TSK-0356",
   "title": "Add error handling to FileMemoryStore.Load and FileEventStore.GetEvents",
-  "description": "FileMemoryStore.Load calls File.ReadAllText then JsonSerializer.Deserialize with zero error handling — a single corrupt record file crashes the caller (LoadAll handles this gracefully but Load does not). FileEventStore.GetEvents has two silent catch blocks: inner skips malformed JSON lines, outer swallows I/O failures returning empty results indistinguishable from no events. Fix: add try/catch in Load matching LoadAll's diagnostic recording pattern; add logging to both FileEventStore catch blocks. Source: codebase-audit-20260710-swarm-synthesis P2-029/030",
+  "description": "FileMemoryStore.Load calls File.ReadAllText then JsonSerializer.Deserialize with zero error handling \u2014 a single corrupt record file crashes the caller (LoadAll handles this gracefully but Load does not). FileEventStore.GetEvents has two silent catch blocks: inner skips malformed JSON lines, outer swallows I/O failures returning empty results indistinguishable from no events. Fix: add try/catch in Load matching LoadAll\u0027s diagnostic recording pattern; add logging to both FileEventStore catch blocks. Source: codebase-audit-20260710-swarm-synthesis P2-029/030",
   "type": "Bug",
   "status": "Backlog",
   "priority": "High",
@@ -13,21 +13,29 @@
   "labels": [
     "domain:storage",
     "type:bug",
-    "sprint-backlog"
+    "sprint-backlog",
+    "approved-wave-1-order-05"
   ],
   "attachments": [],
   "externalLinks": [],
   "linkedPages": [],
-  "comments": [],
+  "comments": [
+    {
+      "id": "c-73694455f3ba41e39fd0518bb765ed11",
+      "author": "anonymous",
+      "body": "Approved for Wave 1, execution order 05 of 09. Storage read failures should be diagnosable and bounded rather than appearing as crashes or empty data.",
+      "createdAtUtc": "2026-07-26T17:00:06.5183044Z"
+    }
+  ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-07-11T03:06:12.5175666Z",
-  "updatedAtUtc": "2026-07-11T03:06:12.5175666Z",
+  "updatedAtUtc": "2026-07-26T17:01:34.7736467Z",
   "completedAtUtc": null,
-  "revision": 1,
+  "revision": 3,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,
-  "sourceFilePath": ""
+  "sourceFilePath": "tsk-0356-fix-file-memory-store-error-handling.json"
 }

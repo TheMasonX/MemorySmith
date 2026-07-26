@@ -1,4 +1,4 @@
-{
+﻿{
   "id": "tsk-0388-add-jsonpropertyname-attributes",
   "key": "TSK-0388",
   "title": "Add JsonPropertyName attributes to all model classes",
@@ -8,25 +8,33 @@
   "priority": "High",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
-  "assigneeCustomText": "Agent",
+  "assigneeCustomText": "Copilot",
   "reporter": "anonymous",
   "labels": [
     "domain:core",
-    "type:improvement"
+    "type:improvement",
+    "approved-wave-1-order-04"
   ],
   "attachments": [],
   "externalLinks": [],
   "linkedPages": [],
-  "comments": [],
+  "comments": [
+    {
+      "id": "c-6aa8be2c358748feb77908116948a685",
+      "author": "anonymous",
+      "body": "Approved for Wave 1, execution order 04 of 09. Explicit JSON property names protect the cross-process serialization contract with a contained model-only change.",
+      "createdAtUtc": "2026-07-26T17:00:06.4101043Z"
+    }
+  ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-07-11T04:23:14.5295855Z",
-  "updatedAtUtc": "2026-07-11T04:23:14.5295855Z",
+  "updatedAtUtc": "2026-07-26T17:01:34.8847565Z",
   "completedAtUtc": null,
-  "revision": 1,
+  "revision": 3,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,
-  "sourceFilePath": ""
+  "sourceFilePath": "tsk-0388-add-jsonpropertyname-attributes.json"
 }
