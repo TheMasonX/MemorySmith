@@ -685,20 +685,19 @@ public sealed partial class OpenAICompatibleChatProvider : IChatProvider
             return (string.Empty, accumulatedThinking);
         }
 
-        var match = ThinkingPatternRegex().Match(content);
-        if (!match.Success)
+        var matches = ThinkingPatternRegex().Matches(content);
+        if (matches.Count == 0)
         {
-            return (content, accumulatedThinking);
+            return (content.Trim(), string.IsNullOrWhiteSpace(accumulatedThinking) ? null : accumulatedThinking.Trim());
         }
 
-        var extractedThinking = match.Groups[1].Value;
-        var visibleContent = ThinkingPatternRegex().Replace(content, string.Empty).Trim();
+        var extractedThinking = string.Join(Environment.NewLine,
+            matches.Select(match => match.Groups[1].Value.Trim()).Where(value => value.Length > 0));
+        var thinking = string.Join(Environment.NewLine,
+            new[] { accumulatedThinking, extractedThinking }.Where(value => !string.IsNullOrWhiteSpace(value)));
 
-        var mergedThinking = accumulatedThinking is not null
-            ? (string.IsNullOrWhiteSpace(extractedThinking) ? accumulatedThinking : accumulatedThinking + Environment.NewLine + extractedThinking)
-            : extractedThinking;
-
-        return (visibleContent, string.IsNullOrWhiteSpace(mergedThinking) ? null : mergedThinking);
+        var visible = ThinkingPatternRegex().Replace(content, string.Empty).Trim();
+        return (visible, string.IsNullOrWhiteSpace(thinking) ? null : thinking.Trim());
     }
 
     private static TimeSpan ResolveStreamIdleTimeout(ChatOptions chatOptions)

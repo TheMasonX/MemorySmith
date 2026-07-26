@@ -12,14 +12,16 @@ public class FileEventStore : IEventStore
     private readonly string _logPath;
     private static readonly JsonSerializerOptions JsonOptions = new();
     private readonly object _lock = new();
+    private readonly StorageDiagnostics? _diagnostics;
 
     /// <summary>
     /// Initializes a new instance of FileEventStore with the specified log file path.
     /// </summary>
     /// <param name="logPath">Path to the append-only event log file.</param>
-    public FileEventStore(string logPath)
+    public FileEventStore(string logPath, StorageDiagnostics? diagnostics = null)
     {
         _logPath = logPath;
+        _diagnostics = diagnostics;
         // Ensure parent directory exists
         var dir = Path.GetDirectoryName(logPath);
         if (!string.IsNullOrEmpty(dir))
@@ -79,16 +81,16 @@ public class FileEventStore : IEventStore
 
                         events.Add(@event);
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        // Skip malformed lines
+                        _diagnostics?.RecordCorruptFile(_logPath, ex.Message);
                         continue;
                     }
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // If log file cannot be read, return empty
+                _diagnostics?.RecordCorruptFile(_logPath, ex.Message);
                 return Enumerable.Empty<MemoryEvent>();
             }
 

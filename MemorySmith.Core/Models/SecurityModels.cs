@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace MemorySmith.Core.Models;
 
 public static class MemorySmithRoles
@@ -50,7 +52,10 @@ public sealed class UserAccount
     public DateTime? LastLoginAtUtc { get; set; }
 }
 
-public sealed record UserQuery(string? Search = null, int Page = 1, int PageSize = 50);
+public sealed record UserQuery(
+    [property: JsonPropertyName("search")] string? Search = null,
+    [property: JsonPropertyName("page")] int Page = 1,
+    [property: JsonPropertyName("pageSize")] int PageSize = 50);
 
 public sealed class RoleRecord
 {
@@ -98,7 +103,12 @@ public sealed class LoginHistoryEntry
     public string? RequestId { get; set; }
 }
 
-public sealed record LoginHistoryQuery(string? UserId = null, string? ProviderName = null, DateTime? SinceUtc = null, int Page = 1, int PageSize = 100);
+public sealed record LoginHistoryQuery(
+    [property: JsonPropertyName("userId")] string? UserId = null,
+    [property: JsonPropertyName("providerName")] string? ProviderName = null,
+    [property: JsonPropertyName("sinceUtc")] DateTime? SinceUtc = null,
+    [property: JsonPropertyName("page")] int Page = 1,
+    [property: JsonPropertyName("pageSize")] int PageSize = 100);
 
 public sealed class ApiTokenRecord
 {
@@ -116,7 +126,11 @@ public sealed class ApiTokenRecord
     public DateTime? ExpiresAtUtc { get; set; }
 }
 
-public sealed record ApiTokenQuery(string? OwnerUserId = null, bool IncludeDisabled = false, int Page = 1, int PageSize = 100);
+public sealed record ApiTokenQuery(
+    [property: JsonPropertyName("ownerUserId")] string? OwnerUserId = null,
+    [property: JsonPropertyName("includeDisabled")] bool IncludeDisabled = false,
+    [property: JsonPropertyName("page")] int Page = 1,
+    [property: JsonPropertyName("pageSize")] int PageSize = 100);
 
 public sealed class AuditLogEntry
 {

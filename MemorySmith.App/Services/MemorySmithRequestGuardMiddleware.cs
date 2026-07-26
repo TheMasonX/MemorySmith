@@ -56,7 +56,7 @@ public class MemorySmithRequestGuardMiddleware
     {
         if (address is null)
         {
-            return true;
+            return false;
         }
 
         if (address.IsIPv4MappedToIPv6)

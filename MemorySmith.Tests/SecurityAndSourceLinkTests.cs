@@ -97,7 +97,29 @@ public class SecurityAndSourceLinkTests
         {
             Assert.That(MemorySmithRequestGuardMiddleware.IsLoopback(IPAddress.Loopback), Is.True);
             Assert.That(MemorySmithRequestGuardMiddleware.IsLoopback(IPAddress.IPv6Loopback), Is.True);
+            Assert.That(MemorySmithRequestGuardMiddleware.IsLoopback(IPAddress.Parse("::ffff:127.0.0.1")), Is.True);
             Assert.That(MemorySmithRequestGuardMiddleware.IsLoopback(IPAddress.Parse("192.168.1.10")), Is.False);
+            Assert.That(MemorySmithRequestGuardMiddleware.IsLoopback(null), Is.False);
+        });
+    }
+
+    [Test]
+    public async Task RequestGuard_DeniesNullRemoteAddressWhenRemoteApiIsDisabled()
+    {
+        var context = new DefaultHttpContext();
+        var nextCalls = 0;
+        var middleware = new MemorySmithRequestGuardMiddleware(_ =>
+        {
+            nextCalls++;
+            return Task.CompletedTask;
+        });
+
+        await middleware.InvokeAsync(context, Options.Create(new MemorySmithOptions { AllowRemoteApi = false }));
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(context.Response.StatusCode, Is.EqualTo(StatusCodes.Status403Forbidden));
+            Assert.That(nextCalls, Is.Zero);
         });
     }
 

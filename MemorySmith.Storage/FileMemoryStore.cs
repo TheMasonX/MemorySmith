@@ -58,8 +58,16 @@ public partial class FileMemoryStore : IMemoryStore
             var sanitizedId = SanitizeId(id);
             var path = FindFile(sanitizedId);
             if (path is null) return null;
-            var json = File.ReadAllText(path);
-            return JsonSerializer.Deserialize<MemoryRecord>(json);
+            try
+            {
+                var json = File.ReadAllText(path);
+                return JsonSerializer.Deserialize<MemoryRecord>(json);
+            }
+            catch (Exception ex)
+            {
+                _diagnostics?.RecordCorruptFile(path, ex.Message);
+                return null;
+            }
         }
     }
 

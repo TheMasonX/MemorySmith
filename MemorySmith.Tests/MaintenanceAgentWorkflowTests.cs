@@ -59,6 +59,17 @@ public class MaintenanceAgentWorkflowTests
     }
 
     [Test]
+    public void BuildUnifiedDiff_HandlesLongInputsWithoutRecursiveBacktracking()
+    {
+        var before = string.Join('\n', Enumerable.Range(0, 5000).Select(index => $"line-{index}"));
+        var after = before + "\nadded";
+
+        var diff = _diff.BuildUnifiedDiff("long.txt", before, after);
+
+        Assert.That(diff, Does.Contain("+added"));
+    }
+
+    [Test]
     public void ActiveRunStore_TracksCurrentRunUntilEnded()
     {
         var store = new MaintenanceActiveRunStore();

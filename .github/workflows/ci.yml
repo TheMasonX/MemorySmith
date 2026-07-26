@@ -20,6 +20,9 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore
 
+      - name: Check vulnerable dependencies
+        run: dotnet list MemorySmith.slnx package --vulnerable --include-transitive
+
       - name: Validate task records
         shell: pwsh
         run: ./Scripts/Test-TaskRecords.ps1
@@ -86,6 +89,27 @@ jobs:
           name: coverage-html-report
           path: artifacts/coverage-report
           if-no-files-found: error
+
+  codeql:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: csharp
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build
+        uses: github/codeql-action/autobuild@v3
+      - name: Analyze
+        uses: github/codeql-action/analyze@v3
 
   browser-route-smoke:
     runs-on: ubuntu-latest

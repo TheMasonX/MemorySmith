@@ -1,0 +1,31 @@
+﻿{
+  "id": "tsk-0419-task-type",
+  "key": "TSK-0419",
+  "title": "Task Type Editing",
+  "description": "I cannot edit via the web UI, and it\u0027s not assignable during task creation",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": "f84ef6348fea4a94bc75bb5b66a80af9",
+  "assigneeCustomText": null,
+  "reporter": "TheMasonX",
+  "labels": [
+    "future"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-26T17:03:49.0642793Z",
+  "updatedAtUtc": "2026-07-26T17:04:42.395781Z",
+  "completedAtUtc": null,
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": "tsk-0419-task-type.json"
+}

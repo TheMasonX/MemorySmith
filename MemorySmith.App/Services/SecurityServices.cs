@@ -319,7 +319,7 @@ public sealed class MemorySmithPermissionHandler : AuthorizationHandler<MemorySm
     private bool IsLoopbackRequest()
     {
         var httpContext = _httpContextAccessor.HttpContext;
-        return httpContext is null || MemorySmithRequestGuardMiddleware.IsLoopback(httpContext.Connection.RemoteIpAddress);
+        return httpContext is not null && MemorySmithRequestGuardMiddleware.IsLoopback(httpContext.Connection.RemoteIpAddress);
     }
 
     private bool HasConfiguredApiKeyAccess()

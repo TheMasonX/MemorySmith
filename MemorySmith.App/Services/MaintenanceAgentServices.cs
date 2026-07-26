@@ -447,21 +447,29 @@ public sealed class MaintenanceDiffService
 
     private static void AppendDiff(IReadOnlyList<string> before, IReadOnlyList<string> after, int[,] table, int i, int j, List<string> diff)
     {
-        if (i > 0 && j > 0 && string.Equals(before[i - 1], after[j - 1], StringComparison.Ordinal))
+        var reversed = new List<string>();
+        while (i > 0 || j > 0)
         {
-            AppendDiff(before, after, table, i - 1, j - 1, diff);
-            diff.Add(" " + before[i - 1]);
+            if (i > 0 && j > 0 && string.Equals(before[i - 1], after[j - 1], StringComparison.Ordinal))
+            {
+                reversed.Add(" " + before[i - 1]);
+                i--;
+                j--;
+            }
+            else if (j > 0 && (i == 0 || table[i, j - 1] >= table[i - 1, j]))
+            {
+                reversed.Add("+" + after[j - 1]);
+                j--;
+            }
+            else
+            {
+                reversed.Add("-" + before[i - 1]);
+                i--;
+            }
         }
-        else if (j > 0 && (i == 0 || table[i, j - 1] >= table[i - 1, j]))
-        {
-            AppendDiff(before, after, table, i, j - 1, diff);
-            diff.Add("+" + after[j - 1]);
-        }
-        else if (i > 0)
-        {
-            AppendDiff(before, after, table, i - 1, j, diff);
-            diff.Add("-" + before[i - 1]);
-        }
+
+        reversed.Reverse();
+        diff.AddRange(reversed);
     }
 }
 

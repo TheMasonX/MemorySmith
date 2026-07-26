@@ -4,7 +4,7 @@
   "title": "Verification: Add tests \u0026 smoke checks for IsLoopback change",
   "description": "Add unit and integration tests to validate null-IPAddress behavior and ForwardedHeaders guidance. Include a simple smoke test that simulates reverse-proxy null RemoteIpAddress and confirms middleware denies non-loopback calls.\n\nAcceptance criteria:\n- Unit tests for \u0060IsLoopback\u0060 handling null and mapped IPv6\n- Integration test for middleware path showing 403 when RemoteIpAddress is null and AllowRemoteApi=false\n- Document test results in task comment\n\nEffort: 3-4h",
   "type": "Task",
-  "status": "Backlog",
+  "status": "InProgress",
   "priority": "High",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -23,11 +23,11 @@
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-07-26T16:31:13.7513365Z",
-  "updatedAtUtc": "2026-07-26T16:31:13.7513365Z",
+  "updatedAtUtc": "2026-07-26T22:00:21.6507617Z",
   "completedAtUtc": null,
-  "revision": 1,
+  "revision": 2,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,
-  "sourceFilePath": null
+  "sourceFilePath": "tsk-0418-verification-add-tests-smoke-checks-for-isloopback-change.json"
 }

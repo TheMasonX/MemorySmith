@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace MemorySmith.Core.Models;
 
 /// <summary>
@@ -51,10 +53,15 @@ public enum EdgeOrigin
 /// New code should prefer <see cref="MemoryRelationshipEdge"/> for richer semantics.
 /// </summary>
 public sealed record MemoryRelationshipEdge(
+    [property: JsonPropertyName("sourceId")]
     string SourceId,
+    [property: JsonPropertyName("targetId")]
     string TargetId,
+    [property: JsonPropertyName("relationType")]
     RelationType RelationType,
+    [property: JsonPropertyName("origin")]
     EdgeOrigin Origin = EdgeOrigin.Manual,
+    [property: JsonPropertyName("createdAtUtc")]
     DateTimeOffset CreatedAtUtc = default)
 {
     /// <summary>Convenience: creates a Manual edge with the current timestamp.</summary>

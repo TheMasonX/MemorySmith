@@ -9,6 +9,9 @@ if (-not (Test-Path -LiteralPath $tasksRoot)) {
 
 $allowedStatuses = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::OrdinalIgnoreCase)
 @('Backlog', 'Ready', 'InProgress', 'Blocked', 'Rejected', 'Done', 'Archived') | ForEach-Object { [void]$allowedStatuses.Add($_) }
+$allowedPriorities = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::OrdinalIgnoreCase)
+@('Critical', 'High', 'Medium', 'Low') | ForEach-Object { [void]$allowedPriorities.Add($_) }
+$requiredFields = @('id', 'key', 'title', 'status', 'type', 'priority', 'description', 'createdAtUtc', 'updatedAtUtc', 'revision')
 
 $errors = New-Object 'System.Collections.Generic.List[string]'
 $records = New-Object 'System.Collections.Generic.List[object]'
@@ -64,7 +67,14 @@ Get-ChildItem -LiteralPath $tasksRoot -Filter '*.json' -File | Sort-Object Name 
     $key = [string]$task.key
     $title = [string]$task.title
     $status = [string]$task.status
+    $priority = [string]$task.priority
     $expectedFileName = if ([string]::IsNullOrWhiteSpace($id)) { $null } else { $id + '.json' }
+
+    foreach ($field in $requiredFields) {
+        if ($null -eq $task.PSObject.Properties[$field] -or [string]::IsNullOrWhiteSpace([string]$task.$field)) {
+            [void]$errors.Add("$($_.Name): missing required field '$field'")
+        }
+    }
 
     if ([string]::IsNullOrWhiteSpace($id)) {
         [void]$errors.Add("$($_.Name): missing id")
@@ -89,6 +99,22 @@ Get-ChildItem -LiteralPath $tasksRoot -Filter '*.json' -File | Sort-Object Name 
     }
     elseif (-not $allowedStatuses.Contains($status)) {
         [void]$errors.Add("$($_.Name): status '$status' is not one of $($allowedStatuses -join ', ')")
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($priority) -and -not $allowedPriorities.Contains($priority)) {
+        [void]$errors.Add("$($_.Name): priority '$priority' is not one of $($allowedPriorities -join ', ')")
+    }
+
+    if ($id -notmatch '^tsk-\d{4}-[a-z0-9-]+$') {
+        [void]$errors.Add("$($_.Name): id '$id' does not match tsk-0000-slug format")
+    }
+
+    if ($null -ne $task.labels) {
+        foreach ($label in $task.labels) {
+            if ([string]$label -match '^(?i:p\d+)$') {
+                [void]$errors.Add("$($_.Name): priority label '$label' is prohibited; use priority field")
+            }
+        }
     }
 
     if ($null -ne $task.linkedPages) {

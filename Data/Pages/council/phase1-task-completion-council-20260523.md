@@ -15,7 +15,7 @@ Accept Phase 1 as complete for the highest ROI and critical task set in this rou
 - Data/Tasks/tsk-0054-standardize-task-mutation-error-mapping-for-malformed-record-safety.json
 - Data/Tasks/tsk-0055-enforce-task-read-api-view-authorization-and-safe-remote-defaults.json
 - Data/Tasks/tsk-0056-add-task-hybrid-semantic-search-default-on-and-admin-toggle.json
-- Data/Pages/Tasks/Sprints/security-architecture-convergence-sprint-20260523.md
+ - Data/Pages/Tasks/Sprints/Archived/security-architecture-convergence-sprint-20260523.md
 
 ## Findings
 
