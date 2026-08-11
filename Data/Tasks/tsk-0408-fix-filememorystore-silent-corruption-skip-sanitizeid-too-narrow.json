@@ -19,16 +19,23 @@
   "attachments": [],
   "externalLinks": [],
   "linkedPages": [],
-  "comments": [],
+  "comments": [
+    {
+      "id": "c-ff2188c811464758ad9e143191fe2fae",
+      "author": "anonymous",
+      "body": "Audit synthesis corroboration: the redacted audit set confirms lossy memory-ID normalization can collapse distinct logical IDs and mutate persisted identity. This task remains the primary tracker item for the existing sanitization/corruption slice; no duplicate ID task will be created.",
+      "createdAtUtc": "2026-08-09T00:49:09.2769786Z"
+    }
+  ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-07-26T16:23:28.2902353Z",
-  "updatedAtUtc": "2026-07-26T16:23:28.2902353Z",
+  "updatedAtUtc": "2026-08-09T00:49:09.2769786Z",
   "completedAtUtc": null,
-  "revision": 1,
+  "revision": 2,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,
-  "sourceFilePath": null
+  "sourceFilePath": "tsk-0408-fix-filememorystore-silent-corruption-skip-sanitizeid-too-narrow.json"
 }

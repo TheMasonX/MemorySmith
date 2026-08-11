@@ -1,8 +1,8 @@
-{
+﻿{
   "id": "tsk-0201-add-chat-transcript-and-feedback-data-plane-for-finetuning",
   "key": "TSK-0201",
   "title": "Add chat transcript and feedback data plane for fine-tuning",
-  "description": "Create durable chat transcript + thumbs feedback capture with retention/redaction controls so MemorySmith can produce high-quality supervised and preference datasets from real usage.",
+  "description": "Create durable chat transcript \u002B thumbs feedback capture with retention/redaction controls so MemorySmith can produce high-quality supervised and preference datasets from real usage.",
   "type": "Task",
   "status": "Backlog",
   "priority": "High",
@@ -34,42 +34,48 @@
       "id": "c-0201-2-20260528",
       "author": "AgentSmith",
       "body": "Implemented first data-plane slice: Training options contract, transcript writer service, chat turn/session id propagation, chat feedback SQLite store, and chat feedback API endpoints. Added regression tests for transcript capture and feedback upsert/replace behavior. Remaining scope includes retention/redaction hardening and operator UX for feedback actions.",
-      "createdAtUtc": "2026-05-28T23:28:00.0000000Z"
+      "createdAtUtc": "2026-05-28T23:28:00Z"
     },
     {
       "id": "c-0201-3-20260528",
       "author": "AgentSmith",
-      "body": "Added transcript redaction and retention controls (`TranscriptRedactionEnabled`, `TranscriptRetentionDays`) with default-safe behavior and admin settings coverage. Transcript writer now masks common secret patterns and cleans stale JSONL files best-effort. Remaining work is user-facing feedback UX and exporter integration.",
-      "createdAtUtc": "2026-05-28T23:40:00.0000000Z"
+      "body": "Added transcript redaction and retention controls (\u0060TranscriptRedactionEnabled\u0060, \u0060TranscriptRetentionDays\u0060) with default-safe behavior and admin settings coverage. Transcript writer now masks common secret patterns and cleans stale JSONL files best-effort. Remaining work is user-facing feedback UX and exporter integration.",
+      "createdAtUtc": "2026-05-28T23:40:00Z"
     },
     {
       "id": "c-0201-4-20260528",
       "author": "AgentSmith",
-      "body": "Wired thumbs-up/thumbs-down controls into chat UI for assistant turns and persisted per-turn rating via `IChatFeedbackStore.UpsertAsync`, including local session state hydration (`ChatTurnState.FeedbackRating`) so selections survive refresh. Remaining scope is exporter/bridge plumbing for dataset generation and lifecycle tooling.",
-      "createdAtUtc": "2026-05-28T23:55:00.0000000Z"
+      "body": "Wired thumbs-up/thumbs-down controls into chat UI for assistant turns and persisted per-turn rating via \u0060IChatFeedbackStore.UpsertAsync\u0060, including local session state hydration (\u0060ChatTurnState.FeedbackRating\u0060) so selections survive refresh. Remaining scope is exporter/bridge plumbing for dataset generation and lifecycle tooling.",
+      "createdAtUtc": "2026-05-28T23:55:00Z"
     },
     {
       "id": "c-0201-dormant-20260710",
       "author": "AgentSmith",
       "body": "2026-07-10 triage: Moved from InProgress to Backlog. Core transcript capture, redaction, retention, and feedback UI are all implemented and tested. Remaining work (exporter/bridge, lifecycle tooling) has been dormant since May 28. Will be revisited when training pipeline integration is actively resourced. See architectural-stability-cleanup-sprint-20260710.md.",
-      "createdAtUtc": "2026-07-10T00:00:00.0000000Z"
+      "createdAtUtc": "2026-07-10T00:00:00Z"
     },
     {
       "id": "c-0201-5-20260528",
       "author": "AgentSmith",
-      "body": "Integrated first exporter path through harness bridge execution. Run `sprint3-ft-20260528` produced `Data/Training/exports/sprint3-ft-20260528.sft.jsonl` and benchmark/status artifacts, confirming transcript/feedback foundation can feed training datasets end-to-end.",
-      "createdAtUtc": "2026-05-28T23:15:00.0000000Z"
+      "body": "Integrated first exporter path through harness bridge execution. Run \u0060sprint3-ft-20260528\u0060 produced \u0060Data/Training/exports/sprint3-ft-20260528.sft.jsonl\u0060 and benchmark/status artifacts, confirming transcript/feedback foundation can feed training datasets end-to-end.",
+      "createdAtUtc": "2026-05-28T23:15:00Z"
+    },
+    {
+      "id": "c-98780a0c95944ee4afabfed4d270b56d",
+      "author": "anonymous",
+      "body": "Audit synthesis distinction: transcript retention/redaction and feedback persistence are already represented here, but the redacted audit identifies a separate identity-integrity gap for unauthenticated sessions sharing one principal. A focused session-scoped feedback task is being created.",
+      "createdAtUtc": "2026-08-09T00:49:09.9910724Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-28T21:43:18.8947975Z",
-  "updatedAtUtc": "2026-05-28T23:59:00.0000000Z",
+  "updatedAtUtc": "2026-08-09T00:49:09.9910724Z",
   "completedAtUtc": null,
-  "revision": 5,
+  "revision": 6,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,
-  "sourceFilePath": null
+  "sourceFilePath": "tsk-0201-add-chat-transcript-and-feedback-data-plane-for-finetuning.json"
 }

@@ -1864,24 +1864,64 @@ public sealed class MaintenanceAgentService
     private static string ExtractJsonObjectPayload(string content)
     {
         var trimmed = (content ?? string.Empty).Trim();
-        if (trimmed.StartsWith("```", StringComparison.Ordinal))
+        var fenceStart = trimmed.IndexOf("```", StringComparison.Ordinal);
+        if (fenceStart >= 0)
         {
-            var firstLineEnd = trimmed.IndexOf('\n');
-            if (firstLineEnd >= 0)
+            var firstLineEnd = trimmed.IndexOf('\n', fenceStart);
+            var fenceEnd = firstLineEnd >= 0
+                ? trimmed.IndexOf("```", firstLineEnd + 1, StringComparison.Ordinal)
+                : -1;
+            if (firstLineEnd >= 0 && fenceEnd > firstLineEnd)
             {
-                trimmed = trimmed[(firstLineEnd + 1)..].Trim();
-                if (trimmed.EndsWith("```", StringComparison.Ordinal))
-                {
-                    trimmed = trimmed[..^3].Trim();
-                }
+                trimmed = trimmed[(firstLineEnd + 1)..fenceEnd].Trim();
             }
         }
 
-        var firstObjectBrace = trimmed.IndexOf('{');
-        var lastObjectBrace = trimmed.LastIndexOf('}');
-        return firstObjectBrace >= 0 && lastObjectBrace >= firstObjectBrace
-            ? trimmed[firstObjectBrace..(lastObjectBrace + 1)]
-            : trimmed;
+        var start = trimmed.IndexOf('{');
+        if (start < 0)
+        {
+            return trimmed;
+        }
+
+        var depth = 0;
+        var inString = false;
+        var escaped = false;
+        for (var index = start; index < trimmed.Length; index++)
+        {
+            var character = trimmed[index];
+            if (inString)
+            {
+                if (escaped)
+                {
+                    escaped = false;
+                }
+                else if (character == '\\')
+                {
+                    escaped = true;
+                }
+                else if (character == '"')
+                {
+                    inString = false;
+                }
+
+                continue;
+            }
+
+            if (character == '"')
+            {
+                inString = true;
+            }
+            else if (character == '{')
+            {
+                depth++;
+            }
+            else if (character == '}' && --depth == 0)
+            {
+                return trimmed[start..(index + 1)];
+            }
+        }
+
+        return trimmed;
     }
 
     private static string FormatProposalReviewComment(MaintenanceProposalReviewEnvelope review, ChatProviderResponse response)

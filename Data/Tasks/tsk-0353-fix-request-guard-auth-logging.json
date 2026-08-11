@@ -1,10 +1,10 @@
-{
+﻿{
   "id": "tsk-0353-fix-request-guard-auth-logging",
   "key": "TSK-0353",
   "title": "Add logging to MemorySmithRequestGuardMiddleware rejection paths",
   "description": "MemorySmithRequestGuardMiddleware returns 403/503/401 plain-text responses for all API key rejection paths with zero logging. Failed auth attempts leave no audit trail. Log each rejection at Warning level with IP, path, and reason. Also log at Debug level when security headers are applied or skipped in MemorySmithPipelineSetup. Source: codebase-audit-20260710-swarm-synthesis P2-018",
   "type": "Bug",
-  "status": "Backlog",
+  "status": "Done",
   "priority": "High",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -24,11 +24,11 @@
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-07-11T03:06:12.3783745Z",
-  "updatedAtUtc": "2026-07-11T03:06:12.3783745Z",
-  "completedAtUtc": null,
-  "revision": 1,
+  "updatedAtUtc": "2026-07-27T01:14:51.6918525Z",
+  "completedAtUtc": "2026-07-27T01:14:51.6918525Z",
+  "revision": 2,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,
-  "sourceFilePath": ""
+  "sourceFilePath": "tsk-0353-fix-request-guard-auth-logging.json"
 }

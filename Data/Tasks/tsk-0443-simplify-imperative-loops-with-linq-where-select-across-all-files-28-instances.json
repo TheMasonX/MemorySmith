@@ -1,0 +1,32 @@
+﻿{
+  "id": "tsk-0443-simplify-imperative-loops-with-linq-where-select-across-all-files-28-instances",
+  "key": "TSK-0443",
+  "title": "Simplify imperative loops with LINQ Where/Select across all files (~28 instances)",
+  "description": "## Source\nSonarQube static analysis audit (\u0060Data/Pages/audits/ms-sonar-static-analysis-7-26-26.md\u0060)\n\n## Findings\n~28 instances across all files where imperative foreach loops with manual filtering/transformation should be simplified with LINQ:\n\n**Select simplifications (8 instances in Razor):** \u0060Admin.razor\u0060 (L73, L121, L221, L227, L897), \u0060HealthStats.razor\u0060 (L171), \u0060Models.razor\u0060 (L65), \u0060Chat.razor\u0060 (L1049)\n\n**Where simplifications (9 instances in Razor\u002BControllers):** \u0060Admin.razor\u0060 (L916), \u0060Chat.razor\u0060 (L2455, L2561), \u0060Pages.razor\u0060 (L585, L1033, L1042), \u0060Tasks.razor\u0060 (L970, L1477), \u0060McpController.cs\u0060 (L340)\n\n**Services (11 instances):** \u0060CodeSearchService.cs\u0060 (L2623, L2828, L2978, L2986), \u0060ChatServices.cs\u0060 (L408, L1511, L3262, L3679), \u0060ChatToolCatalog.cs\u0060 (L265, L1419), \u0060MemoryGovernanceServices.cs\u0060 (L285, L303, L384), \u0060SemanticEmbeddingSearchService.cs\u0060 (L445, L467, L856), \u0060SecurityServices.cs\u0060 (L43), \u0060PageService.cs\u0060 (L279), \u0060MemoryChatAgent.ToolLoop.cs\u0060 (L53), \u0060MemorySmithConfigurationPaths.cs\u0060 (L22), \u0060MemorySmithRequestGuardMiddleware.cs\u0060 (L77), \u0060VarResolver.cs\u0060 (L306), \u0060McpAgentToolHandler.cs\u0060 (L220)\n\n## Impact\nImperative loops are more verbose and error-prone than declarative LINQ equivalents. Modernizing to LINQ improves readability and reduces nesting.\n\n## Action Required\nReplace \u0060foreach\u0060\u002B\u0060if\u0060 patterns with \u0060.Where(...)\u0060 and manual list-building with \u0060.Select(...).ToList()\u0060. Preserve existing ordering and semantics.\n\n## Effort\n~2h25min\n\n## Priority\nP2 \u2014 Maintainability",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "anonymous",
+  "labels": [
+    "type:refactor",
+    "sprint-54"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-27T06:50:17.9316567Z",
+  "updatedAtUtc": "2026-07-27T06:50:17.9316567Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

@@ -1,0 +1,33 @@
+﻿{
+  "id": "tsk-0457-remove-residual-antiforgery-exemptions",
+  "key": "TSK-0457",
+  "title": "Remove residual antiforgery exemptions from browser mutation controllers",
+  "description": "Deep-dive audit 2026-08-08 verified that Chat, Governance, MaintenanceAgent, Memories, Pages, and Tasks controllers retain controller-level IgnoreAntiforgeryToken while exposing cookie-authenticated browser mutations. Existing global antiforgery work did not remove these residual exemptions. Evidence: MemorySmith.App/Controllers/*.cs and AutoValidateAntiforgeryTokenFilter.cs. Remove exemptions or isolate only explicit non-browser protocols, then add browser mutation regression coverage.",
+  "type": "Security",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "anonymous",
+  "labels": [
+    "domain:security",
+    "type:csrf",
+    "audit-20260808"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-08-09T02:44:21.7182865Z",
+  "updatedAtUtc": "2026-08-09T02:44:21.7182865Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

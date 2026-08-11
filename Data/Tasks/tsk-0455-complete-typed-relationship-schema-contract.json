@@ -1,0 +1,33 @@
+﻿{
+  "id": "tsk-0455-complete-typed-relationship-schema-contract",
+  "key": "TSK-0455",
+  "title": "Complete typed relationship schema and validation contract",
+  "description": "Deep-dive audit 2026-08-08 verified that runtime MemoryRecord/MemoryRelationshipEdge supports typed Relationships, RelationType, and EdgeOrigin, while Schemas/memory.schema.json documents only legacy References/Conflicts and permits extra properties. Schema-driven clients cannot validate the typed graph contract. Evidence: MemorySmith.Core/Models/MemoryRecord.cs, MemoryRelationshipEdge.cs, Schemas/memory.schema.json. Add typed-edge shapes/enums and executable schema-parity validation.",
+  "type": "Architecture",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "anonymous",
+  "labels": [
+    "domain:core",
+    "type:schema",
+    "audit-20260808"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-08-09T02:44:21.5081072Z",
+  "updatedAtUtc": "2026-08-09T02:44:21.5081072Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

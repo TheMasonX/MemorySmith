@@ -1,8 +1,8 @@
-{
+﻿{
   "id": "tsk-0315-wire-memoryindex-byreference-byconflict-into-live-reverse-reference-lookups",
   "key": "TSK-0315",
   "title": "Wire MemoryIndex.ByReference/ByConflict into live reverse-reference lookups",
-  "description": "## G-1 (from kb-graph-rag-audit)\n\nMemoryIndex.ById, .ByTag, and .ByReference are populated on every Add/Remove/Rebuild call but have zero read call sites. Meanwhile both real reverse-reference features (GetReverseReferencesAsync and the inline context-pack builder) independently call _store.LoadAll() and linearly scan every record. Fix this.\n\n### Detailed Steps\n1. Add `ByConflict` to `MemoryIndex` (currently only `ByReference` exists; Conflicts isn't indexed at all)\n2. Replace `GetReverseReferencesAsync`'s O(n) scan with `_index.ByReference.GetValueOrDefault(id)` (+ `ByConflict`), falling back to scan only if index is stale\n3. Replace the inline `reverseRefMap` construction in context-pack path with a call to the same method\n4. Add a test that edits a record's References, then immediately queries reverse-references, proving index stays live-consistent\n\n### Source\nAudit: `Data/Pages/audits/kb-graph-rag-audit-10-07-26-00-00-00.md` — G-1\n- `MemorySmith.Core/Indexing/MemoryIndex.cs`\n- `MemorySmith.App/Services/MemoryApplicationService.cs:489-500` and `:350-380`\n\n### Sprint Placement: Sprint 1\n### Confidence: 92%",
+  "description": "## G-1 (from kb-graph-rag-audit)\n\nMemoryIndex.ById, .ByTag, and .ByReference are populated on every Add/Remove/Rebuild call but have zero read call sites. Meanwhile both real reverse-reference features (GetReverseReferencesAsync and the inline context-pack builder) independently call _store.LoadAll() and linearly scan every record. Fix this.\n\n### Detailed Steps\n1. Add \u0060ByConflict\u0060 to \u0060MemoryIndex\u0060 (currently only \u0060ByReference\u0060 exists; Conflicts isn\u0027t indexed at all)\n2. Replace \u0060GetReverseReferencesAsync\u0060\u0027s O(n) scan with \u0060_index.ByReference.GetValueOrDefault(id)\u0060 (\u002B \u0060ByConflict\u0060), falling back to scan only if index is stale\n3. Replace the inline \u0060reverseRefMap\u0060 construction in context-pack path with a call to the same method\n4. Add a test that edits a record\u0027s References, then immediately queries reverse-references, proving index stays live-consistent\n\n### Source\nAudit: \u0060Data/Pages/audits/kb-graph-rag-audit-10-07-26-00-00-00.md\u0060 \u2014 G-1\n- \u0060MemorySmith.Core/Indexing/MemoryIndex.cs\u0060\n- \u0060MemorySmith.App/Services/MemoryApplicationService.cs:489-500\u0060 and \u0060:350-380\u0060\n\n### Sprint Placement: Sprint 1\n### Confidence: 92%",
   "type": "Task",
   "status": "Backlog",
   "priority": "High",
@@ -19,16 +19,23 @@
   "attachments": [],
   "externalLinks": [],
   "linkedPages": [],
-  "comments": [],
+  "comments": [
+    {
+      "id": "c-cd247e45878441dcb39264a35e08ea83",
+      "author": "anonymous",
+      "body": "2026-08-08 deep-dive reverified that context-pack and reverse-reference traversal still project only legacy References/Conflicts. Persisted typed edges such as DependsOn, Supersedes, Mentions, LinksTo, and SameAs remain invisible to graph/context traversal.",
+      "createdAtUtc": "2026-08-09T02:44:46.3254053Z"
+    }
+  ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-07-11T02:30:55.3753214Z",
-  "updatedAtUtc": "2026-07-11T02:30:55.3753214Z",
+  "updatedAtUtc": "2026-08-09T02:44:46.3254053Z",
   "completedAtUtc": null,
-  "revision": 1,
+  "revision": 2,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,
-  "sourceFilePath": ""
+  "sourceFilePath": "tsk-0315-wire-memoryindex-byreference-byconflict-into-live-reverse-reference-lookups.json"
 }

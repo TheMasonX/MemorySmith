@@ -1,0 +1,33 @@
+﻿{
+  "id": "tsk-0475-restore-route-focus-accessible-heading",
+  "key": "TSK-0475",
+  "title": "Restore route focus with a guaranteed accessible heading",
+  "description": "Deep-dive audit 2026-08-08 verified that Routes.razor FocusOnNavigate targets h1 while representative routed pages render MudBlazor h4/h5 headings and no h1. Focus restoration therefore silently fails on much of the route surface. Evidence: MemorySmith.App/Components/Routes.razor and Components/Pages/*.razor. Standardize a real h1 or guaranteed route heading selector and add representative keyboard/navigation coverage.",
+  "type": "Accessibility",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "anonymous",
+  "labels": [
+    "domain:ui",
+    "type:accessibility",
+    "audit-20260808"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-08-09T02:44:24.1892568Z",
+  "updatedAtUtc": "2026-08-09T02:44:24.1892568Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

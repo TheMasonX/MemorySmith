@@ -25,15 +25,21 @@
       "author": "anonymous",
       "body": "Approved for Wave 1, execution order 05 of 09. Storage read failures should be diagnosable and bounded rather than appearing as crashes or empty data.",
       "createdAtUtc": "2026-07-26T17:00:06.5183044Z"
+    },
+    {
+      "id": "c-1a48d4aa39864e53b67d690ea99113c5",
+      "author": "anonymous",
+      "body": "Audit synthesis corroboration: the redacted audit confirms file-store reads can conflate absence, corruption, and operational failure, and that event-log read failures need visible classification. This overlaps the current storage error-handling work; the separate status-transition atomicity concern is tracked by the broader file-persistence task.",
+      "createdAtUtc": "2026-08-09T00:49:09.776771Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-07-11T03:06:12.5175666Z",
-  "updatedAtUtc": "2026-07-26T22:00:22.2847456Z",
+  "updatedAtUtc": "2026-08-09T00:49:09.776771Z",
   "completedAtUtc": null,
-  "revision": 4,
+  "revision": 5,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

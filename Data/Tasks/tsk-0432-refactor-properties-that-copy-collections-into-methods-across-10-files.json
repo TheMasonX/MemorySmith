@@ -1,0 +1,32 @@
+﻿{
+  "id": "tsk-0432-refactor-properties-that-copy-collections-into-methods-across-10-files",
+  "key": "TSK-0432",
+  "title": "Refactor properties that copy collections into methods across 10\u002B files",
+  "description": "## Source\nSonarQube static analysis audit (\u0060Data/Pages/audits/ms-sonar-static-analysis-7-26-26.md\u0060)\n\n## Findings\n17 instances across multiple files where properties return defensive copies of collections, violating the rule that properties should not copy collections:\n\n**Razor Pages:**\n- \u0060About.razor\u0060 L124 (FilteredLicenses)\n- \u0060Admin.razor\u0060 L752 (SettingCategories), L759 (FilteredEditableSettingGroups), L766 (FilteredEditableSettings), L782 (FilteredConfigurationItems), L848 (FilteredAudit), L850 (FilteredHistory)\n- \u0060Chat.razor\u0060 L558 (TraceTurns)\n- \u0060Maintenance.razor\u0060 L206 (ProposalActionRows)\n- \u0060ProposalDiffViewer.razor\u0060 L14 (Lines)\n- \u0060Proposals.razor\u0060 L351 (FilteredProposals)\n- \u0060TopicMapVisualization.razor\u0060 L76 (LayoutEdges)\n\n**Controllers \u0026 Services:**\n- \u0060McpController.cs\u0060 L18 (ToolNames), L21 (EnabledMcpTools)\n- \u0060ChatToolCatalog.cs\u0060 L100 (All), L109 (McpTools)\n- \u0060MemoryQueries.cs\u0060 L27 (Diagnostics)\n- \u0060SecurityServices.cs\u0060 L407 (Roles)\n\n## Impact\nProperties that copy collections cause unexpected allocations on every access, violate \u0060{ get; }\u0060 design conventions, and mislead callers about performance characteristics.\n\n## Action Required\nConvert each property to a \u0060GetXxx()\u0060 method returning \u0060IReadOnlyList\u003CT\u003E\u0060 or cache the collection as a \u0060List\u003CT\u003E\u0060 field. Add \u0060[Obsolete]\u0060 on the old property with migration guidance if needed.\n\n## Effort\n~85min\n\n## Priority\nP1 \u2014 Maintainability",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "anonymous",
+  "labels": [
+    "type:refactor",
+    "sprint-54"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-27T06:49:45.925621Z",
+  "updatedAtUtc": "2026-07-27T06:49:45.925621Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

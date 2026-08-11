@@ -47,17 +47,23 @@
       "author": "TheMasonX",
       "body": "\u0022C:\\Users\\norrt\\OneDrive\\Pictures\\Screenshots\\Screenshot 2026-05-25 105542.png\u0022\nNote that it looks like my comments were before, but the timestamps of the agentsmith comment are incorrect, and this commend comes after the other comment:\n\u0060\u0060\u0060\nAgentSmith\n5/25/2026 11:35 AM\nCreated during 2026-05-25 deepdive audit........\n\u0060\u0060\u0060",
       "createdAtUtc": "2026-05-25T15:57:16.7369113Z"
+    },
+    {
+      "id": "c-2fc051e065cd4553839bc464f19d3f56",
+      "author": "anonymous",
+      "body": "2026-08-08 deep-dive independently reverified build_pages_site.py enumerates/renders Markdown pages without checking visibility sidecars, while live pages include Authenticated/Admin metadata. Static publishing can therefore bypass application visibility. Add a build assertion that restricted pages are excluded unless explicitly public-exported.",
+      "createdAtUtc": "2026-08-09T02:44:48.8951776Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-25T16:35:00Z",
-  "updatedAtUtc": "2026-05-25T15:57:16.7369113Z",
+  "updatedAtUtc": "2026-08-09T02:44:48.8951776Z",
   "completedAtUtc": null,
-  "revision": 4,
+  "revision": 5,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,
-  "sourceFilePath": null
+  "sourceFilePath": "tsk-0160-enforce-page-visibility-rules-in-static-docs-publishing.json"
 }

@@ -19,14 +19,21 @@
   "attachments": [],
   "externalLinks": [],
   "linkedPages": [],
-  "comments": [],
+  "comments": [
+    {
+      "id": "c-98d7fbacbe04431682ceb9ff242aee3a",
+      "author": "anonymous",
+      "body": "Audit synthesis corroboration: the redacted delta audit independently confirms the final active administrator invariant is not preserved by role removal. This is an exact overlap with the existing last-admin task; no duplicate task will be created.",
+      "createdAtUtc": "2026-08-09T00:49:10.330107Z"
+    }
+  ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-07-26T16:23:04.9507162Z",
-  "updatedAtUtc": "2026-07-26T22:00:22.3853464Z",
+  "updatedAtUtc": "2026-08-09T00:49:10.330107Z",
   "completedAtUtc": null,
-  "revision": 3,
+  "revision": 4,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

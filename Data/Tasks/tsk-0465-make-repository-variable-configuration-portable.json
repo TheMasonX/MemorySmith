@@ -1,0 +1,33 @@
+﻿{
+  "id": "tsk-0465-make-repository-variable-configuration-portable",
+  "key": "TSK-0465",
+  "title": "Make repository variable configuration portable",
+  "description": "Deep-dive audit 2026-08-08 verified that Data/vars.json commits a developer-specific absolute path used for source-link expansion. Evidence: Data/vars.json and MemorySmith.App/Services/VarResolver.cs. Move machine-local bindings outside the repository, provide a template, validate allowed roots, and surface unresolved variables.",
+  "type": "Reliability",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "anonymous",
+  "labels": [
+    "domain:configuration",
+    "type:portability",
+    "audit-20260808"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-08-09T02:44:22.724096Z",
+  "updatedAtUtc": "2026-08-09T02:44:22.724096Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

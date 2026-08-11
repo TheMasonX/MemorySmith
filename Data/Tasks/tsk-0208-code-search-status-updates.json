@@ -20,19 +20,25 @@
     {
       "id": "c-0208-2-20260529",
       "author": "AgentSmith",
-      "body": "Completed the live-update and results UX pass in `MemorySmith.App/Components/Pages/CodeSearch.razor`. Status polling now refreshes while active search/index work is running, the results surface now uses a sidebar + detail card layout, snippet/file copy actions are explicit, snippet expansion loads wider line context, and the limit control now reflects the real operator cap from `MemorySmith:CodeSearch:MaxResults` instead of silently truncating at the old default of 10.",
-      "createdAtUtc": "2026-05-29T05:35:00.0000000Z"
+      "body": "Completed the live-update and results UX pass in \u0060MemorySmith.App/Components/Pages/CodeSearch.razor\u0060. Status polling now refreshes while active search/index work is running, the results surface now uses a sidebar \u002B detail card layout, snippet/file copy actions are explicit, snippet expansion loads wider line context, and the limit control now reflects the real operator cap from \u0060MemorySmith:CodeSearch:MaxResults\u0060 instead of silently truncating at the old default of 10.",
+      "createdAtUtc": "2026-05-29T05:35:00Z"
+    },
+    {
+      "id": "c-44d4be1ab1e140db972edf8fc350635a",
+      "author": "anonymous",
+      "body": "2026-08-08 deep-dive found CodeSearch.razor launches startup indexing as abandoned fire-and-forget and does not refresh/surface persisted LastError after failure. Backend status exists; UI lifecycle propagation remains incomplete and should be covered by the related observability task.",
+      "createdAtUtc": "2026-08-09T02:44:49.1581631Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-29T00:21:17.0141819Z",
-  "updatedAtUtc": "2026-05-29T05:35:00.0000000Z",
-  "completedAtUtc": "2026-05-29T05:35:00.0000000Z",
-  "revision": 2,
+  "updatedAtUtc": "2026-08-09T02:44:49.1581631Z",
+  "completedAtUtc": "2026-05-29T05:35:00Z",
+  "revision": 3,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,
-  "sourceFilePath": null
+  "sourceFilePath": "tsk-0208-code-search-status-updates.json"
 }

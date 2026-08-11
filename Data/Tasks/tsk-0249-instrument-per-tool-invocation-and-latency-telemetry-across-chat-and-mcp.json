@@ -1,4 +1,4 @@
-{
+﻿{
   "id": "tsk-0249-instrument-per-tool-invocation-and-latency-telemetry-across-chat-and-mcp",
   "key": "TSK-0249",
   "title": "Instrument per-tool invocation and latency telemetry across chat and MCP",
@@ -23,27 +23,33 @@
   ],
   "comments": [
     {
-      "createdAtUtc": "2026-05-30T22:41:43.2891965Z",
-      "author": "AgentSmith",
       "id": "c-create-tsk-0249-20260530",
-      "body": "Created during follow-up gap review after chat task tagging and sprint planning pass."
+      "author": "AgentSmith",
+      "body": "Created during follow-up gap review after chat task tagging and sprint planning pass.",
+      "createdAtUtc": "2026-05-30T22:41:43.2891965Z"
     },
     {
       "id": "c-0249-2-20260530",
       "author": "AgentSmith",
-      "body": "Implemented shared per-tool execution telemetry in `MemorySmith.App/Services/MemorySmithTelemetry.cs` and wired it through both chat tool paths in `MemorySmith.App/Services/ChatServices.cs` (regular model tool calls plus auto-intercepts) and the MCP tool delegate in `MemorySmith.App/Controllers/McpController.cs`. Metrics now emit low-cardinality transport/tool/success-error tags with invocation counters, failure counters, and latency histograms without recording payload content. Added regression coverage in `MemorySmith.Tests/PagesAndChatTests.cs` and `MemorySmith.Tests/McpAndSemanticSearchTests.cs`. Validation: `dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj -c Release --filter \"Name~MemoryChatAgent_EmitsToolExecutionTelemetry_ForSuccessfulAndRejectedChatTools|Name~McpTools_EmitToolExecutionTelemetry|Name~MemoryChatAgent_ExecutesTaskListToolInChatMode|Name~McpContextPackTool_ReturnsHybridResultsWithLinkedContext\"` (4/4 passed).",
-      "createdAtUtc": "2026-05-30T23:35:00.0000000Z"
+      "body": "Implemented shared per-tool execution telemetry in \u0060MemorySmith.App/Services/MemorySmithTelemetry.cs\u0060 and wired it through both chat tool paths in \u0060MemorySmith.App/Services/ChatServices.cs\u0060 (regular model tool calls plus auto-intercepts) and the MCP tool delegate in \u0060MemorySmith.App/Controllers/McpController.cs\u0060. Metrics now emit low-cardinality transport/tool/success-error tags with invocation counters, failure counters, and latency histograms without recording payload content. Added regression coverage in \u0060MemorySmith.Tests/PagesAndChatTests.cs\u0060 and \u0060MemorySmith.Tests/McpAndSemanticSearchTests.cs\u0060. Validation: \u0060dotnet test MemorySmith.Tests/MemorySmith.Tests.csproj -c Release --filter \u0022Name~MemoryChatAgent_EmitsToolExecutionTelemetry_ForSuccessfulAndRejectedChatTools|Name~McpTools_EmitToolExecutionTelemetry|Name~MemoryChatAgent_ExecutesTaskListToolInChatMode|Name~McpContextPackTool_ReturnsHybridResultsWithLinkedContext\u0022\u0060 (4/4 passed).",
+      "createdAtUtc": "2026-05-30T23:35:00Z"
+    },
+    {
+      "id": "c-f810e2e920c143ebbaf2f206c233902f",
+      "author": "anonymous",
+      "body": "Audit synthesis distinction: the existing tool telemetry task avoids payload recording, while the redacted audit calls out raw search text persisted by the search event path. The privacy fix is being tracked separately so event-store retention and query hashing are explicit.",
+      "createdAtUtc": "2026-08-09T00:49:11.4360034Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-30T22:41:43.2891965Z",
-  "updatedAtUtc": "2026-05-30T23:35:00.0000000Z",
-  "completedAtUtc": "2026-05-30T23:35:00.0000000Z",
-  "revision": 2,
+  "updatedAtUtc": "2026-08-09T00:49:11.4360034Z",
+  "completedAtUtc": "2026-05-30T23:35:00Z",
+  "revision": 3,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,
-  "sourceFilePath": null
+  "sourceFilePath": "tsk-0249-instrument-per-tool-invocation-and-latency-telemetry-across-chat-and-mcp.json"
 }

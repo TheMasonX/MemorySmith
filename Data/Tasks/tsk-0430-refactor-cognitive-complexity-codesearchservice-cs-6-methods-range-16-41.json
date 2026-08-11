@@ -1,0 +1,33 @@
+﻿{
+  "id": "tsk-0430-refactor-cognitive-complexity-codesearchservice-cs-6-methods-range-16-41",
+  "key": "TSK-0430",
+  "title": "Refactor cognitive complexity \u2014 CodeSearchService.cs (6 methods, range 16-41)",
+  "description": "## Source\nSonarQube static analysis audit (\u0060Data/Pages/audits/ms-sonar-static-analysis-7-26-26.md\u0060)\n\n## Findings\n6 methods in \u0060MemorySmith.App/Services/CodeSearchService.cs\u0060 exceed the cognitive complexity limit of 15:\n- L1369 (41), L503 (38), L258 (33), L1260 (19), L3068 (17), L1701 (16)\n\n## Impact\nThese methods are difficult to understand, test, and maintain. CodeSearchService.cs has 62 issues total and is one of the two most problematic files.\n\n## Action Required\nDecompose each method: extract query-building, indexing, and search phases into separate methods. Use guard clauses and early returns to reduce nesting.\n\n## Effort\n~36min\n\n## Priority\nP1 \u2014 Maintainability",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "anonymous",
+  "labels": [
+    "type:refactor",
+    "domain:search",
+    "sprint-54"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-27T06:49:31.2240339Z",
+  "updatedAtUtc": "2026-07-27T06:49:31.2240339Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

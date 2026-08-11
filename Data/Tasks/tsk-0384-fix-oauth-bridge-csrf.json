@@ -1,4 +1,4 @@
-{
+﻿{
   "id": "tsk-0384-fix-oauth-bridge-csrf",
   "key": "TSK-0384",
   "title": "Add CSRF/state validation to OAuthBridge",
@@ -18,16 +18,29 @@
   "attachments": [],
   "externalLinks": [],
   "linkedPages": [],
-  "comments": [],
+  "comments": [
+    {
+      "id": "c-85b66e31b50c471dacc2b432cb37bb0c",
+      "author": "anonymous",
+      "body": "Audit synthesis corroboration: the redacted audit identifies the anonymous OAuth bridge as an additional hardening concern around callback state, request validation, and default exposure. The state/CSRF portion overlaps this task; residual feature-flag, content-type, and request-size decisions should be handled within this task rather than duplicated.",
+      "createdAtUtc": "2026-08-09T00:49:10.677434Z"
+    },
+    {
+      "id": "c-3330c9f6258d428090b909daab998571",
+      "author": "anonymous",
+      "body": "2026-08-08 deep-dive reverified OAuthBridgeController as a separate anonymous transparent proxy: it forwards caller-supplied authorization/token fields without state/PKCE binding, strict allowlisting, content-type/body limits, or a feature gate. Normal GitHub callback handling is more controlled, so this bridge needs independent hardening.",
+      "createdAtUtc": "2026-08-09T02:44:46.9920626Z"
+    }
+  ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-07-11T04:23:01.599517Z",
-  "updatedAtUtc": "2026-07-11T04:23:01.599517Z",
+  "updatedAtUtc": "2026-08-09T02:44:46.9920626Z",
   "completedAtUtc": null,
-  "revision": 1,
+  "revision": 3,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,
-  "sourceFilePath": ""
+  "sourceFilePath": "tsk-0384-fix-oauth-bridge-csrf.json"
 }

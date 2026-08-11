@@ -1,4 +1,4 @@
-{
+﻿{
   "id": "tsk-0204-add-finetuning-eval-gates-and-promotion-rollback-workflow",
   "key": "TSK-0204",
   "title": "Add fine-tuning eval gates and promotion rollback workflow",
@@ -27,17 +27,23 @@
       "author": "AgentSmith",
       "body": "Created to ensure model promotion is evidence-gated and reversible instead of trust-based.",
       "createdAtUtc": "2026-05-28T21:43:18.8947975Z"
+    },
+    {
+      "id": "c-d67e2b23398a4c48b067d7617832254a",
+      "author": "anonymous",
+      "body": "2026-08-08 deep-dive reverified training harness false-positive success: real inference/LoRA failures fall back to simulation and final passed status requires only records \u003E= 2. Non-simulated runs must fail closed or be explicitly non-promotable; objective tool-call/schema/behavior gates are required.",
+      "createdAtUtc": "2026-08-09T02:44:48.5433499Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-28T21:43:18.8947975Z",
-  "updatedAtUtc": "2026-05-28T21:43:18.8947975Z",
+  "updatedAtUtc": "2026-08-09T02:44:48.5433499Z",
   "completedAtUtc": null,
-  "revision": 1,
+  "revision": 2,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,
-  "sourceFilePath": null
+  "sourceFilePath": "tsk-0204-add-finetuning-eval-gates-and-promotion-rollback-workflow.json"
 }

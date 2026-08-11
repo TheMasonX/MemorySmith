@@ -1,0 +1,46 @@
+﻿{
+  "id": "tsk-0420-harden-ci-cd-supply-chain-add-ignore-scripts-pin-npx-versions-restrict-workflow-permissions",
+  "key": "TSK-0420",
+  "title": "Harden CI/CD supply chain \u2014 add --ignore-scripts, pin npx versions, restrict workflow permissions",
+  "description": "## Source\nSonarQube static analysis audit (\u0060Data/Pages/audits/ms-sonar-static-analysis-7-26-26.md\u0060)\n\n## Findings\n- **3 instances** missing \u0060--ignore-scripts\u0060 in npm lifecycle scripts (\u0060.github/workflows/ci.yml\u0060 L100, L167; \u0060docs-pages.yml\u0060 L43)\n- **2 instances** of \u0060npx\u0060 without version pinning (\u0060.github/workflows/ci.yml\u0060 L104, L171)\n- **4 instances** of npm dependencies without version locking (\u0060.github/workflows/ci.yml\u0060 L104, L171; \u0060docs-pages.yml\u0060 L43, L46)\n- **3 instances** of workflow-level permissions that should be job-level (\u0060.github/workflows/docs-pages.yml\u0060 L11-L13)\n\n## Impact\nSupply-chain attack vectors \u2014 unverified package installations, unversioned tool execution, and over-broad workflow permissions violate least-privilege security principles.\n\n## Action Required\n1. Add \u0060--ignore-scripts\u0060 to all \u0060npm install\u0060/\u0060npm ci\u0060 invocations in both CI workflow files\n2. Replace bare \u0060npx\u0060 calls with explicitly versioned execution or pre-install tools\n3. Add exact version pins to all npm package references\n4. Move \u0060permissions:\u0060 blocks from workflow root into individual jobs\n\n## Effort\n~8h\n\n## Priority\nP0 \u2014 Security",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Critical",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "anonymous",
+  "labels": [
+    "type:security",
+    "domain:ci-cd",
+    "sprint-54"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [
+    {
+      "id": "c-64e8403935b748d9969260913b094af0",
+      "author": "anonymous",
+      "body": "Created via SonarQube static analysis audit swarm (2026-07-27). See \u0060Data/Pages/audits/ms-sonar-static-analysis-7-26-26.md\u0060 for full audit data. Coverage: \u0060.github/workflows/ci.yml\u0060 and \u0060.github/workflows/docs-pages.yml\u0060 \u2014 3 instances of missing --ignore-scripts, 2 instances of unversioned npx, 4 instances of unversioned npm deps, 3 instances of workflow-level permissions that should be job-level.",
+      "createdAtUtc": "2026-07-27T06:50:52.0006796Z"
+    },
+    {
+      "id": "c-30ad21a8c8d547a09eb069474bc8f205",
+      "author": "anonymous",
+      "body": "2026-08-08 deep-dive confirmed current docs workflow still uses floating Python/Mermaid/markdown dependencies and broad workflow permissions. Keep the supply-chain task scoped to reproducible pins/lockfiles and least-privilege permissions; the separate 2026-08-08 task TSK-0462 covers the non-blocking secret scanner.",
+      "createdAtUtc": "2026-08-09T02:44:48.4447928Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-27T06:49:04.9433894Z",
+  "updatedAtUtc": "2026-08-09T02:44:48.4447928Z",
+  "completedAtUtc": null,
+  "revision": 3,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": "tsk-0420-harden-ci-cd-supply-chain-add-ignore-scripts-pin-npx-versions-restrict-workflow-permissions.json"
+}

@@ -19,14 +19,21 @@
   "attachments": [],
   "externalLinks": [],
   "linkedPages": [],
-  "comments": [],
+  "comments": [
+    {
+      "id": "c-f4c0ad96d21a4f87b5bde2f3cbdf3c92",
+      "author": "anonymous",
+      "body": "Audit synthesis distinction: provider/model mismatch handling is already tracked here. The redacted audit also identifies a separate authorization gap when callers supply model/provider overrides; that capability decision is being tracked independently so configuration correctness and caller authorization remain testable.",
+      "createdAtUtc": "2026-08-09T00:50:15.9112379Z"
+    }
+  ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-07-26T16:23:04.7132235Z",
-  "updatedAtUtc": "2026-07-26T16:30:31.4770813Z",
+  "updatedAtUtc": "2026-08-09T00:50:15.9112379Z",
   "completedAtUtc": null,
-  "revision": 2,
+  "revision": 3,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

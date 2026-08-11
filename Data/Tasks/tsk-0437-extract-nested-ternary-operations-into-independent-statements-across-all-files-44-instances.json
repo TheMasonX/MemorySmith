@@ -1,0 +1,32 @@
+﻿{
+  "id": "tsk-0437-extract-nested-ternary-operations-into-independent-statements-across-all-files-44-instances",
+  "key": "TSK-0437",
+  "title": "Extract nested ternary operations into independent statements across all files (~44 instances)",
+  "description": "## Source\nSonarQube static analysis audit (\u0060Data/Pages/audits/ms-sonar-static-analysis-7-26-26.md\u0060)\n\n## Findings\n~44 instances of nested ternary expressions across all files that should be extracted into independent if/else statements:\n\n**Razor Pages (~24 instances):** \u0060Admin.razor\u0060 (L776\u00D72, L780, L793, L795, L1513, L1876), \u0060Chat.razor\u0060 (L542, L2801, L3011, L3016), \u0060HealthStats.razor\u0060 (L341), \u0060MemoryViewer.razor\u0060 (L853, L1032), \u0060Models.razor\u0060 (L138), \u0060Proposals.razor\u0060 (L344, L720, L766), \u0060TagManager.razor.cs\u0060 (L104, L118, L213, L219), \u0060Tasks.razor\u0060 (L643), \u0060TrainingWorkbench.razor\u0060 (L113, L114, L864), \u0060SensitiveValue.razor\u0060 (L26)\n\n**Services (~20 instances):** \u0060ChatServices.cs\u0060 (L3081, L3083, L3085, L3091, L3107, L3109, L3208, L3210), \u0060PageService.cs\u0060 (L40, L136, L138, L160), \u0060TaskDomainService.cs\u0060 (L452-456), \u0060ChatMarkdownRenderer.cs\u0060 (L328), \u0060AdminSettingsService.cs\u0060 (L468), \u0060ChatContextPlanner.cs\u0060 (L85), \u0060ChatReferenceLinkPolicy.cs\u0060 (L258), \u0060MaintenanceAgentServices.cs\u0060 (L1630), \u0060MemoryContextPackFormatter.cs\u0060 (L115), \u0060VarResolver.cs\u0060 (L91), \u0060TrainingHarnessRunnerService.cs\u0060 (L31, L33, L35)\n\n## Impact\nNested ternaries reduce readability, increase cognitive load, and are hard to debug. Each should be extracted into explanatory intermediate variables or if/else blocks.\n\n## Action Required\nReplace each nested ternary with explanatory intermediate variables or if/else statements. Decompose complex boolean logic into named local variables for clarity.\n\n## Effort\n~2h10min\n\n## Priority\nP1 \u2014 Maintainability",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "anonymous",
+  "labels": [
+    "type:refactor",
+    "sprint-54"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-27T06:50:01.7515911Z",
+  "updatedAtUtc": "2026-07-27T06:50:01.7515911Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

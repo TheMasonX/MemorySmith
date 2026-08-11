@@ -1,0 +1,33 @@
+﻿{
+  "id": "tsk-0461-serialize-audit-hash-chain-predecessor",
+  "key": "TSK-0461",
+  "title": "Serialize audit hash-chain predecessor allocation",
+  "description": "Deep-dive audit 2026-08-08 verified that SecurityServices reads the latest audit entry and later appends the new entry as separate operations. Concurrent writers can use the same PreviousAuditHash and fork the hash chain. Evidence: MemorySmith.App/Services/SecurityServices.cs lines 908-969. Allocate predecessor and append atomically through a transaction or compare-and-swap, with concurrency verification tests.",
+  "type": "Security",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "anonymous",
+  "labels": [
+    "domain:audit",
+    "type:concurrency",
+    "audit-20260808"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-08-09T02:44:22.1848084Z",
+  "updatedAtUtc": "2026-08-09T02:44:22.1848084Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

@@ -1,10 +1,10 @@
-{
+﻿{
   "id": "tsk-0298-fix-training-harness-warmupsteps-default-and-docstring",
   "key": "TSK-0298",
   "title": "Fix training harness warmupSteps default and stale docstring claims",
-  "description": "P1: `MemorySmith.Training/harness.py:resolve_hyperparameters` docstring claims `warmup_steps` default is 10 as a deliberate fix for \"v7 regression\" — but the actual code uses `hp.get(\"warmupSteps\") or 0`, silently falling back to 0. Also the docstring claims `max_train_steps` default is 200, but code uses 75. Two of four \"key changes from upstream\" claims are wrong.\n\nConsequence: every default-configuration training run gets zero warmup (immediate cosine decay from step 0), which is worse for LoRA fine-tuning quality and likely related to whatever v7 regression motivated the rewrite.\n\nScope:\n- Change `hp.get(\"warmupSteps\") or 0` → `hp.get(\"warmupSteps\") if hp.get(\"warmupSteps\") is not None else 10`\n- Fix `max_train_steps` docstring (75, not 200) or vice versa if intended default is different\n- Fix the `or`-based fallback pattern: explicit `0` should not be treated as \"not provided\"\n- Consolidate boolean-coercion helpers (duplicated 3×: `include_starter_examples`, `include_transcript_examples`, `resolve_trust_remote_code`)\n\nEvidence: MemorySmith-Audit-Delta-10-20260702.md §1, §2, council/audit-synthesis-council-20260705.md",
+  "description": "P1: \u0060MemorySmith.Training/harness.py:resolve_hyperparameters\u0060 docstring claims \u0060warmup_steps\u0060 default is 10 as a deliberate fix for \u0022v7 regression\u0022 \u2014 but the actual code uses \u0060hp.get(\u0022warmupSteps\u0022) or 0\u0060, silently falling back to 0. Also the docstring claims \u0060max_train_steps\u0060 default is 200, but code uses 75. Two of four \u0022key changes from upstream\u0022 claims are wrong.\n\nConsequence: every default-configuration training run gets zero warmup (immediate cosine decay from step 0), which is worse for LoRA fine-tuning quality and likely related to whatever v7 regression motivated the rewrite.\n\nScope:\n- Change \u0060hp.get(\u0022warmupSteps\u0022) or 0\u0060 \u2192 \u0060hp.get(\u0022warmupSteps\u0022) if hp.get(\u0022warmupSteps\u0022) is not None else 10\u0060\n- Fix \u0060max_train_steps\u0060 docstring (75, not 200) or vice versa if intended default is different\n- Fix the \u0060or\u0060-based fallback pattern: explicit \u00600\u0060 should not be treated as \u0022not provided\u0022\n- Consolidate boolean-coercion helpers (duplicated 3\u00D7: \u0060include_starter_examples\u0060, \u0060include_transcript_examples\u0060, \u0060resolve_trust_remote_code\u0060)\n\nEvidence: MemorySmith-Audit-Delta-10-20260702.md \u00A71, \u00A72, council/audit-synthesis-council-20260705.md",
   "type": "Task",
-  "status": "Ready",
+  "status": "Done",
   "priority": "Medium",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -28,10 +28,18 @@
       "id": "c-create-0298-20260705",
       "author": "AgentSmith",
       "body": "Created from 6-seat council audit synthesis. Source-Grounded Archivist flagged Python findings as unverified (different language). Skeptical Reviewer confirmed 93% confidence on the docstring-vs-code contradiction.",
-      "createdAtUtc": "2026-07-05T22:00:00.0000000Z"
+      "createdAtUtc": "2026-07-05T22:00:00Z"
     }
   ],
-  "createdAtUtc": "2026-07-05T22:00:00.0000000Z",
-  "updatedAtUtc": "2026-07-05T22:00:00.0000000Z",
-  "revision": 1
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-05T22:00:00Z",
+  "updatedAtUtc": "2026-07-27T01:14:51.4476646Z",
+  "completedAtUtc": "2026-07-27T01:14:51.4476646Z",
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": "tsk-0298-fix-training-harness-warmupsteps-default-and-docstring.json"
 }

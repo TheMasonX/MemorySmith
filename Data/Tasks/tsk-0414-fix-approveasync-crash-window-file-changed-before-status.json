@@ -18,16 +18,29 @@
   "attachments": [],
   "externalLinks": [],
   "linkedPages": [],
-  "comments": [],
+  "comments": [
+    {
+      "id": "c-6cae91e44caa488fb6adf97b8c2369ef",
+      "author": "anonymous",
+      "body": "Audit synthesis corroboration: the redacted delta audit identifies a crash window where a file-backed mutation can remove or replace content before status persistence completes. This is adjacent to the broader atomic-persistence task; retain this record for the approve-specific recovery path.",
+      "createdAtUtc": "2026-08-09T00:50:16.0684891Z"
+    },
+    {
+      "id": "c-305e90413f1c440b8a1de3d57784095b",
+      "author": "anonymous",
+      "body": "2026-08-08 deep-dive reverified proposal approval writes proposed files before marking the proposal approved. Crash/cancellation or partial multi-file application can leave filesystem state ahead of proposal state. Add Applying/Applied recovery evidence or equivalent journaled apply semantics.",
+      "createdAtUtc": "2026-08-09T02:44:47.7430393Z"
+    }
+  ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-07-26T16:23:45.081095Z",
-  "updatedAtUtc": "2026-07-26T16:23:45.081095Z",
+  "updatedAtUtc": "2026-08-09T02:44:47.7430393Z",
   "completedAtUtc": null,
-  "revision": 1,
+  "revision": 3,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,
-  "sourceFilePath": null
+  "sourceFilePath": "tsk-0414-fix-approveasync-crash-window-file-changed-before-status.json"
 }

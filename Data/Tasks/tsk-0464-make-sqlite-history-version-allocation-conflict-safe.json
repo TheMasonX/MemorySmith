@@ -1,0 +1,33 @@
+﻿{
+  "id": "tsk-0464-make-sqlite-history-version-allocation-conflict-safe",
+  "key": "TSK-0464",
+  "title": "Make SQLite history version allocation conflict-safe",
+  "description": "Deep-dive audit 2026-08-08 verified that SqliteMemorySmithDatabase allocates versions using MAX(VersionNumber)\u002B1 without deterministic conflict retry. Concurrent writers can select the same next number and receive SQLITE_BUSY or uniqueness failures. Evidence: MemorySmith.Storage/SqliteMemorySmithDatabase.cs lines 529-532. Serialize allocation or add deterministic retry under an immediate transaction, with concurrent version tests.",
+  "type": "Bug",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "anonymous",
+  "labels": [
+    "domain:storage",
+    "type:concurrency",
+    "audit-20260808"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-08-09T02:44:22.618124Z",
+  "updatedAtUtc": "2026-08-09T02:44:22.618124Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

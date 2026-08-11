@@ -1,0 +1,33 @@
+﻿{
+  "id": "tsk-0472-refresh-page-settings-after-admin-update",
+  "key": "TSK-0472",
+  "title": "Refresh page rendering settings after admin configuration changes",
+  "description": "Deep-dive audit 2026-08-08 verified that FilePageService is singleton-created from IOptions.Value and caches AllowRawHtml and DefaultMinimumRole, while AdminSettingsService reloads the override file. Page rendering and new-page defaults remain stale after a successful admin update. Evidence: MemorySmith.App/Hosting/MemorySmithStorageSetup.cs, Services/PageService.cs, Services/AdminSettingsService.cs. Use monitor-backed options or explicit invalidation and test no-restart updates.",
+  "type": "Bug",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "anonymous",
+  "labels": [
+    "domain:pages",
+    "type:configuration",
+    "audit-20260808"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-08-09T02:44:23.8232656Z",
+  "updatedAtUtc": "2026-08-09T02:44:23.8232656Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

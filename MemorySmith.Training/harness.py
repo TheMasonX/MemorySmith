@@ -44,38 +44,28 @@ class Harness:
         self.phase_started_at = time.perf_counter()
         self.events_written = 0
 
-    def include_starter_examples(self) -> bool:
-        value = self.request.get("includeStarterExamples")
+    @staticmethod
+    def _coerce_bool(value: Any, default: bool = False) -> bool:
         if value is None:
-            return False
+            return default
         if isinstance(value, bool):
             return value
         if isinstance(value, str):
             return value.strip().lower() in {"1", "true", "yes", "on"}
         return bool(value)
 
+    def include_starter_examples(self) -> bool:
+        return self._coerce_bool(self.request.get("includeStarterExamples"))
+
     def include_transcript_examples(self) -> bool:
-        value = self.request.get("includeTranscriptExamples")
-        if value is None:
-            return False
-        if isinstance(value, bool):
-            return value
-        if isinstance(value, str):
-            return value.strip().lower() in {"1", "true", "yes", "on"}
-        return bool(value)
+        return self._coerce_bool(self.request.get("includeTranscriptExamples"))
 
     # ------------------------------------------------------------------ #
     # Config resolution (unchanged from upstream)
     # ------------------------------------------------------------------ #
 
     def resolve_trust_remote_code(self) -> bool:
-        raw = self.request.get("trustRemoteCode", False)
-        if isinstance(raw, bool):
-            return raw
-        if isinstance(raw, str):
-            normalized = raw.strip().lower()
-            return normalized in {"1", "true", "yes", "on"}
-        return bool(raw)
+        return self._coerce_bool(self.request.get("trustRemoteCode"))
 
     def resolve_training_mode(self) -> tuple[str, list[str]]:
         probe = self.request.get("dependencyProbe")
@@ -145,7 +135,7 @@ class Harness:
         """Returns a flat dict of all hyperparameters with safe defaults.
 
         Key changes from upstream:
-        - max_train_steps default is 200 (not None/unlimited)
+        - max_train_steps default is 75 (not None/unlimited)
         - gradient_accumulation_steps default is 4 (not 1)
         - warmup_steps default is 10 (not 0)
         - learning_rate default is 1e-4 (not 2e-4)
@@ -161,7 +151,8 @@ class Harness:
         sequence_length = max(128, min(int(hp.get("sequenceLength") or 512), 1024))
         learning_rate = max(1e-6, min(float(hp.get("learningRate") or 1e-4), 5e-3))
         gradient_accumulation_steps = max(1, min(int(hp.get("gradientAccumulationSteps") or 4), 64))
-        warmup_steps = max(0, min(int(hp.get("warmupSteps") or 0), 100000))
+        warmup_steps_raw = hp.get("warmupSteps")
+        warmup_steps = max(0, min(int(warmup_steps_raw) if warmup_steps_raw is not None else 10, 100000))
         batch_size = max(1, min(int(hp.get("batchSize") or 4), 16))
         lora_rank = max(4, min(int(hp.get("loraRank") or 8), 64))
         lora_alpha = max(1, min(int(hp.get("loraAlpha") or 16), 128))
@@ -172,31 +163,9 @@ class Harness:
         else:
             max_train_steps = 75  # Fixed budget — keeps wall-clock bounded (default set to 75)
 
-        shuffle_raw = hp.get("shuffleEachEpoch")
-        if shuffle_raw is None:
-            shuffle = True
-        elif isinstance(shuffle_raw, bool):
-            shuffle = shuffle_raw
-        elif isinstance(shuffle_raw, str):
-            shuffle = shuffle_raw.strip().lower() in {"1", "true", "yes", "on"}
-        else:
-            shuffle = bool(shuffle_raw)
-
-        load_in_4bit_raw = hp.get("loadIn4Bit")
-        if load_in_4bit_raw is None:
-            load_in_4bit = True  # QLoRA by default — critical for 8 GB cards
-        elif isinstance(load_in_4bit_raw, bool):
-            load_in_4bit = load_in_4bit_raw
-        else:
-            load_in_4bit = str(load_in_4bit_raw).strip().lower() in {"1", "true", "yes", "on"}
-
-        gradient_checkpointing = hp.get("gradientCheckpointing")
-        if gradient_checkpointing is None:
-            gradient_checkpointing = True  # Enables batching at minimal perf cost
-        elif isinstance(gradient_checkpointing, str):
-            gradient_checkpointing = gradient_checkpointing.strip().lower() in {"1", "true", "yes", "on"}
-        else:
-            gradient_checkpointing = bool(gradient_checkpointing)
+        shuffle = self._coerce_bool(hp.get("shuffleEachEpoch"), default=True)
+        load_in_4bit = self._coerce_bool(hp.get("loadIn4Bit"), default=True)
+        gradient_checkpointing = self._coerce_bool(hp.get("gradientCheckpointing"), default=True)
 
         return {
             "epochs": epochs,

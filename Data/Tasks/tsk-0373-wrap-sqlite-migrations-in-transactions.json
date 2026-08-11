@@ -1,4 +1,4 @@
-{
+﻿{
   "id": "tsk-0373-wrap-sqlite-migrations-in-transactions",
   "key": "TSK-0373",
   "title": "Wrap SQLite migrations in transactions",
@@ -20,15 +20,21 @@
       "author": "anonymous",
       "body": "Created from 2026-07-10 council audit; see Data/Pages/audits/codebase-audit-2026-07-10-council-review.md",
       "createdAtUtc": "2026-07-11T04:10:13.7052303Z"
+    },
+    {
+      "id": "c-9852cda1fc2344fab96dcda1e6457eed",
+      "author": "anonymous",
+      "body": "2026-08-08 deep-dive reverified migration DDL, seed writes, and migration-record insertion are not wrapped as one transaction or guarded by an inter-process migration lock. WAL/busy_timeout do not provide migration atomicity. Add crash/parallel-startup evidence.",
+      "createdAtUtc": "2026-08-09T02:44:48.1634399Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-07-11T04:10:09.9362249Z",
-  "updatedAtUtc": "2026-07-11T04:10:13.7052303Z",
+  "updatedAtUtc": "2026-08-09T02:44:48.1634399Z",
   "completedAtUtc": null,
-  "revision": 2,
+  "revision": 3,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

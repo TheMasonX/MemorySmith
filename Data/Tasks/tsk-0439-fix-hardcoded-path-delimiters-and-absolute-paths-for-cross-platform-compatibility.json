@@ -1,0 +1,33 @@
+﻿{
+  "id": "tsk-0439-fix-hardcoded-path-delimiters-and-absolute-paths-for-cross-platform-compatibility",
+  "key": "TSK-0439",
+  "title": "Fix hardcoded path delimiters and absolute paths for cross-platform compatibility",
+  "description": "## Source\nSonarQube static analysis audit (\u0060Data/Pages/audits/ms-sonar-static-analysis-7-26-26.md\u0060)\n\n## Findings\n- 3 instances of hardcoded \u0060\\\u0060 path delimiters in \u0060ChatServices.cs\u0060 (L479, L524, L848)\n- 1 hardcoded absolute path/URI in \u0060MemorySmith.Bridge/Program.cs\u0060 (L16)\n- 2 instances of external commands invoked without absolute paths (\u0060VarResolver.cs\u0060 L181, \u0060WindowsServiceCommands.cs\u0060 L289)\n\n## Impact\nHardcoded Windows path delimiters break cross-platform deployment (Linux containers, Docker). Unqualified external commands allow PATH hijacking.\n\n## Action Required\n1. Replace \u0060\\\u0060 with \u0060Path.DirectorySeparatorChar\u0060 or \u0060Path.Combine()\u0060 in ChatServices.cs\n2. Use \u0060AppContext.BaseDirectory\u0060 or configuration-based path resolution in Bridge/Program.cs\n3. Replace command names with absolute paths from configuration, or validate/resolve at startup\n\n## Effort\n~1h50min\n\n## Priority\nP1 \u2014 Maintainability/Security",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "anonymous",
+  "labels": [
+    "type:refactor",
+    "type:security",
+    "sprint-54"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-27T06:50:02.0949962Z",
+  "updatedAtUtc": "2026-07-27T06:50:02.0949962Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

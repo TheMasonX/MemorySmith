@@ -1,0 +1,33 @@
+﻿{
+  "id": "tsk-0466-wire-semantic-benchmarks-to-embedding-provider",
+  "key": "TSK-0466",
+  "title": "Wire semantic benchmarks to the embedding provider",
+  "description": "Deep-dive audit 2026-08-08 verified that ordinary semantic benchmark tests construct MemoryApplicationService without SemanticEmbeddingSearchService, so they exercise token fallback while being named semantic. Evidence: MemorySmith.Tests/SearchBenchmarkTests.cs lines 88-1116. Inject the real provider for model-backed cases, assert provider metadata, and name fallback tests separately.",
+  "type": "Testing",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "anonymous",
+  "labels": [
+    "domain:search",
+    "type:testing",
+    "audit-20260808"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-08-09T02:44:22.855068Z",
+  "updatedAtUtc": "2026-08-09T02:44:22.855068Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

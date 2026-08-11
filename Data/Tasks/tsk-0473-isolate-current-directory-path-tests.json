@@ -1,0 +1,33 @@
+﻿{
+  "id": "tsk-0473-isolate-current-directory-path-tests",
+  "key": "TSK-0473",
+  "title": "Isolate current-directory mutation in semantic path tests",
+  "description": "Deep-dive audit 2026-08-08 verified that SemanticEmbeddingPathTests changes process-wide Directory.CurrentDirectory and restores it in teardown. Evidence: MemorySmith.Tests/SemanticEmbeddingPathTests.cs lines 23-129. Replace with injected path resolution or process isolation; do not rely only on non-parallelizable fixture scope.",
+  "type": "Testing",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "anonymous",
+  "labels": [
+    "domain:testing",
+    "type:isolation",
+    "audit-20260808"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-08-09T02:44:23.9603828Z",
+  "updatedAtUtc": "2026-08-09T02:44:23.9603828Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

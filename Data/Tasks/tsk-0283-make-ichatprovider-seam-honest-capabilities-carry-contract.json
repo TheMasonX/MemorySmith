@@ -1,8 +1,8 @@
-{
+﻿{
   "id": "tsk-0283-make-ichatprovider-seam-honest-capabilities-carry-contract",
   "key": "TSK-0283",
   "title": "Make the IChatProvider seam honest: capabilities carry default model, usage metadata, and error hints",
-  "description": "Audit #9, candidate 4 - Worth exploring.\n\n### Problem\nThe IChatProvider seam is real (Ollama + GitHub Copilot + test fakes) but dishonest: callers branch on the provider's name string. DefaultModelForProvider (ChatServices.cs ~2523) picks config by name; ResolveUsageMetadata (~2561) special-cases 'GitHub' to consult a separate model-metadata list; ChatErrorMessages.Format (~131) branches on name for error text; the ProviderMatches helper is duplicated (lines 149 and 2526). Adding a third provider requires editing three caller branch sites - the interface does not carry the contract.\n\n### Approach\n- Widen ChatProviderCapabilities (or equivalent) so each adapter declares: default model resolution, usage-metadata lookup, error-message hints\n- Delete the name branches in MemoryChatAgent and ChatErrorMessages; single ProviderMatches helper (or none)\n- Out of scope: the council-governed sub-agent provider allowlist in AgentSessionService (session governance, not seam plumbing)\n\n### Acceptance criteria\n- No provider-name string comparisons remain outside adapters and the session-governance allowlist\n- A hypothetical third adapter requires zero edits in MemoryChatAgent\n- Existing provider behavior (default models, GitHub usage metadata, error text) byte-identical; suite green",
+  "description": "Audit #9, candidate 4 - Worth exploring.\n\n### Problem\nThe IChatProvider seam is real (Ollama \u002B GitHub Copilot \u002B test fakes) but dishonest: callers branch on the provider\u0027s name string. DefaultModelForProvider (ChatServices.cs ~2523) picks config by name; ResolveUsageMetadata (~2561) special-cases \u0027GitHub\u0027 to consult a separate model-metadata list; ChatErrorMessages.Format (~131) branches on name for error text; the ProviderMatches helper is duplicated (lines 149 and 2526). Adding a third provider requires editing three caller branch sites - the interface does not carry the contract.\n\n### Approach\n- Widen ChatProviderCapabilities (or equivalent) so each adapter declares: default model resolution, usage-metadata lookup, error-message hints\n- Delete the name branches in MemoryChatAgent and ChatErrorMessages; single ProviderMatches helper (or none)\n- Out of scope: the council-governed sub-agent provider allowlist in AgentSessionService (session governance, not seam plumbing)\n\n### Acceptance criteria\n- No provider-name string comparisons remain outside adapters and the session-governance allowlist\n- A hypothetical third adapter requires zero edits in MemoryChatAgent\n- Existing provider behavior (default models, GitHub usage metadata, error text) byte-identical; suite green",
   "type": "Refactor",
   "status": "Backlog",
   "priority": "Medium",
@@ -19,16 +19,23 @@
   "attachments": [],
   "externalLinks": [],
   "linkedPages": [],
-  "comments": [],
+  "comments": [
+    {
+      "id": "c-064b713946df4b319b0cd6322f1f2637",
+      "author": "anonymous",
+      "body": "Audit synthesis note: provider capability metadata and default-model contract work is related, but the redacted audit identifies a separate permission decision for caller-selected overrides. No duplicate provider-seam task is being created.",
+      "createdAtUtc": "2026-08-09T00:50:16.2054744Z"
+    }
+  ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
-  "createdAtUtc": "2026-06-12T00:50:10.0000000Z",
-  "updatedAtUtc": "2026-06-12T00:50:10.0000000Z",
+  "createdAtUtc": "2026-06-12T00:50:10Z",
+  "updatedAtUtc": "2026-08-09T00:50:16.2054744Z",
   "completedAtUtc": null,
-  "revision": 1,
+  "revision": 2,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,
-  "sourceFilePath": null
+  "sourceFilePath": "tsk-0283-make-ichatprovider-seam-honest-capabilities-carry-contract.json"
 }

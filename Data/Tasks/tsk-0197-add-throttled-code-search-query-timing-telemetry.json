@@ -1,4 +1,4 @@
-{
+﻿{
   "id": "tsk-0197-add-throttled-code-search-query-timing-telemetry",
   "key": "TSK-0197",
   "title": "Add throttled code-search query timing telemetry",
@@ -27,19 +27,25 @@
     {
       "id": "c-0197-1",
       "author": "AgentSmith",
-      "body": "Completed in `MemorySmith.App/Services/CodeSearchService.cs` and `MemorySmith.App/Services/MemorySmithOptions.cs` with new controls: `QueryTimingTelemetryEnabled`, `QueryTimingLogInterval`, and `QueryTimingSlowThresholdMilliseconds`. Telemetry is disabled by default and only emits sampled debug logs unless a query crosses the configured slow threshold. Settings are surfaced in `MemorySmith.App/appsettings.json` under `MemorySmith:CodeSearch`.",
-      "createdAtUtc": "2026-05-28T06:12:00.0000000Z"
+      "body": "Completed in \u0060MemorySmith.App/Services/CodeSearchService.cs\u0060 and \u0060MemorySmith.App/Services/MemorySmithOptions.cs\u0060 with new controls: \u0060QueryTimingTelemetryEnabled\u0060, \u0060QueryTimingLogInterval\u0060, and \u0060QueryTimingSlowThresholdMilliseconds\u0060. Telemetry is disabled by default and only emits sampled debug logs unless a query crosses the configured slow threshold. Settings are surfaced in \u0060MemorySmith.App/appsettings.json\u0060 under \u0060MemorySmith:CodeSearch\u0060.",
+      "createdAtUtc": "2026-05-28T06:12:00Z"
+    },
+    {
+      "id": "c-22705c7278e34d95809396df79834c85",
+      "author": "anonymous",
+      "body": "Audit synthesis distinction: the redacted audit identifies durable raw query capture as a privacy issue. Existing timing telemetry is sampled and payload-free, but it does not by itself govern query text persisted in the event store; a focused redaction/hash task is being created.",
+      "createdAtUtc": "2026-08-09T00:49:11.0830779Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
-  "createdAtUtc": "2026-05-28T06:08:00.0000000Z",
-  "updatedAtUtc": "2026-05-28T06:12:00.0000000Z",
-  "completedAtUtc": "2026-05-28T06:12:00.0000000Z",
-  "revision": 2,
+  "createdAtUtc": "2026-05-28T06:08:00Z",
+  "updatedAtUtc": "2026-08-09T00:49:11.0830779Z",
+  "completedAtUtc": "2026-05-28T06:12:00Z",
+  "revision": 3,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,
-  "sourceFilePath": null
+  "sourceFilePath": "tsk-0197-add-throttled-code-search-query-timing-telemetry.json"
 }

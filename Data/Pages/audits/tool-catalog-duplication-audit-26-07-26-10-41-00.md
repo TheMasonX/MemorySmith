@@ -59,7 +59,7 @@ Each:
 * extracts identical fields
 * validates identical properties
 * builds nearly identical objects
-
+Continue
 The only meaningful variation is the destination query type.
 
 This is classic semantic duplication (Type 4 clone).

@@ -1,8 +1,8 @@
-{
+﻿{
   "id": "tsk-0067-add-required-pr-playwright-navigation-freeze-gate",
   "key": "TSK-0067",
   "title": "Add required PR Playwright navigation-freeze gate",
-  "description": "Problem: navigation lockups can regress without detection because the PR CI workflow does not execute browser route-hop tests.\n\nDesired outcome: make a deterministic Playwright navigation-freeze regression test a required pull-request quality gate.\n\nScope:\n- In scope: wire Playwright setup and execution into CI for PR/push, enforce failure on regression, and publish diagnostic artifacts for browser failures.\n- Out of scope: broad end-to-end suite expansion beyond deterministic navigation-freeze coverage.\n\nDependencies:\n- e2e Playwright test harness (`e2e/tests/navigation-freeze.spec.ts`).\n- CI workflow updates under `.github/workflows/ci.yml`.\n\nAcceptance criteria:\n- CI runs navigation-freeze Playwright test on PRs and fails when it fails.\n- Browser artifacts (trace/screenshot/video where available) are uploaded for failed runs.\n- Required check naming is stable for branch protection.\n\nValidation:\n- Trigger workflow with known-good baseline and confirm pass.\n- Trigger induced failure and verify artifact upload plus failing status.\n\nRollback:\n- Feature-flag or temporarily mark browser gate non-blocking while retaining artifact output for diagnosis.",
+  "description": "Problem: navigation lockups can regress without detection because the PR CI workflow does not execute browser route-hop tests.\n\nDesired outcome: make a deterministic Playwright navigation-freeze regression test a required pull-request quality gate.\n\nScope:\n- In scope: wire Playwright setup and execution into CI for PR/push, enforce failure on regression, and publish diagnostic artifacts for browser failures.\n- Out of scope: broad end-to-end suite expansion beyond deterministic navigation-freeze coverage.\n\nDependencies:\n- e2e Playwright test harness (\u0060e2e/tests/navigation-freeze.spec.ts\u0060).\n- CI workflow updates under \u0060.github/workflows/ci.yml\u0060.\n\nAcceptance criteria:\n- CI runs navigation-freeze Playwright test on PRs and fails when it fails.\n- Browser artifacts (trace/screenshot/video where available) are uploaded for failed runs.\n- Required check naming is stable for branch protection.\n\nValidation:\n- Trigger workflow with known-good baseline and confirm pass.\n- Trigger induced failure and verify artifact upload plus failing status.\n\nRollback:\n- Feature-flag or temporarily mark browser gate non-blocking while retaining artifact output for diagnosis.",
   "type": "Task",
   "status": "Done",
   "priority": "High",
@@ -29,24 +29,30 @@
       "id": "c-create-0067-20260524",
       "author": "AgentSmith",
       "body": "Created from audit finding F-001/F-002 to close CI gap for browser navigation-freeze regressions.",
-      "createdAtUtc": "2026-05-24T18:20:00.0000000Z"
+      "createdAtUtc": "2026-05-24T18:20:00Z"
     },
     {
       "id": "c-complete-0067-20260524",
       "author": "AgentSmith",
       "body": "Completed by adding the browser-navigation-freeze CI job that installs Playwright Chromium, runs npm run test:nav-freeze, and uploads e2e/playwright-report plus e2e/test-results on failure. The local navigation-freeze suite initially exposed a stale navigation locator; after fixing the helper, npm run test:nav-freeze passed 3/3 tests locally. Remote GitHub Actions execution was not triggered in this local session.",
-      "createdAtUtc": "2026-05-24T20:37:00.0000000Z"
+      "createdAtUtc": "2026-05-24T20:37:00Z"
+    },
+    {
+      "id": "c-cb137b5695594f27813619e2427a7b67",
+      "author": "anonymous",
+      "body": "2026-08-08 deep-dive found the navigation-freeze Playwright describe block is currently skipped while CI still invokes it. Historical completion evidence is contradicted by the live test file; new TSK-0470 tracks re-enablement and a nonzero executed-test assertion.",
+      "createdAtUtc": "2026-08-09T02:44:49.5531756Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
-  "createdAtUtc": "2026-05-24T18:20:00.0000000Z",
-  "updatedAtUtc": "2026-05-24T20:37:00.0000000Z",
-  "completedAtUtc": "2026-05-24T20:37:00.0000000Z",
-  "revision": 2,
+  "createdAtUtc": "2026-05-24T18:20:00Z",
+  "updatedAtUtc": "2026-08-09T02:44:49.5531756Z",
+  "completedAtUtc": "2026-05-24T20:37:00Z",
+  "revision": 3,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,
-  "sourceFilePath": null
+  "sourceFilePath": "tsk-0067-add-required-pr-playwright-navigation-freeze-gate.json"
 }

@@ -1,0 +1,33 @@
+﻿{
+  "id": "tsk-0456-validate-memory-status-usage-invariants",
+  "key": "TSK-0456",
+  "title": "Validate memory status and usage invariants before persistence",
+  "description": "Deep-dive audit 2026-08-08 verified that the memory write path accepts undefined MemoryStatus numeric values and negative UsageCount. An invalid status can be written under an unknown directory and become unreachable because Load searches only known enum folders; negative usage violates scoring assumptions. Evidence: MemorySmith.App/Controllers/MemoriesController.cs, MemoryApplicationService.cs, MemorySmith.Storage/FileMemoryStore.cs. Reject undefined statuses and negative counters before filesystem mutation with focused API tests.",
+  "type": "Bug",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "anonymous",
+  "labels": [
+    "domain:memory",
+    "type:validation",
+    "audit-20260808"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-08-09T02:44:21.6190755Z",
+  "updatedAtUtc": "2026-08-09T02:44:21.6190755Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

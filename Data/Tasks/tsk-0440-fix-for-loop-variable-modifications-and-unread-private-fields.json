@@ -1,0 +1,33 @@
+﻿{
+  "id": "tsk-0440-fix-for-loop-variable-modifications-and-unread-private-fields",
+  "key": "TSK-0440",
+  "title": "Fix for-loop variable modifications and unread private fields",
+  "description": "## Source\nSonarQube static analysis audit (\u0060Data/Pages/audits/ms-sonar-static-analysis-7-26-26.md\u0060)\n\n## Findings\n1. **Loop stop condition variable modifications (3 instances):** Modifying the loop index inside the body \u2014 \u0060MemorySmithContentEndpoints.cs\u0060 (L151), \u0060CodeSearchService.cs\u0060 (L3079, L3101)\n2. **Loop incrementer not tied to stop condition (1 instance):** \u0060MemoryChatAgent.ToolLoop.cs\u0060 (L94)\n3. **Unread private fields (5 instances):** \u0060MemoryViewer.razor\u0060 (L422), \u0060TagManager.razor.cs\u0060 (L18, L19, L22, L28)\n\n## Impact\nModifying loop variables inside the body can cause infinite loops or unexpected termination. Unread fields indicate dead code or incomplete implementation.\n\n## Action Required\n1. Refactor loop variable modifications to \u0060while\u0060 loops with explicit control or separate tracking variables\n2. Ensure loop condition tests the incremented variable\n3. Remove unread fields, or implement the code that uses them\n\n## Effort\n~1h15min\n\n## Priority\nP1 \u2014 Maintainability",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "anonymous",
+  "labels": [
+    "type:bug",
+    "type:refactor",
+    "sprint-54"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-27T06:50:17.7121574Z",
+  "updatedAtUtc": "2026-07-27T06:50:17.7121574Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

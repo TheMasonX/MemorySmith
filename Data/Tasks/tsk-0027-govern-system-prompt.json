@@ -27,15 +27,24 @@
       "id": "c-review-0027-20260524",
       "author": "AgentSmith",
       "body": "Review round: remains Backlog. Compatibility route and admin variable surfaces exist, but full governance migration of prompt/model config from loose files to managed pages is not fully completed.",
-      "createdAtUtc": "2026-05-24T04:46:00.0000000Z"
+      "createdAtUtc": "2026-05-24T04:46:00Z"
+    },
+    {
+      "id": "c-ce0030450bda4a74907011b97f11e448",
+      "author": "anonymous",
+      "body": "Audit synthesis distinction: this broad governance task concerns managed prompt/model configuration. The redacted audit identifies a narrower contract defect where system_prompt_addendum is accepted and stored but not applied to invocation context; a focused correctness task is being created and can later link into this governance work.",
+      "createdAtUtc": "2026-08-09T00:49:10.4262634Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-24T01:56:44.8055541Z",
-  "updatedAtUtc": "2026-05-24T04:46:00.0000000Z",
+  "updatedAtUtc": "2026-08-09T00:49:10.4262634Z",
   "completedAtUtc": null,
-  "revision": 4,
-  "isArchived": false
+  "revision": 5,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": "tsk-0027-govern-system-prompt.json"
 }

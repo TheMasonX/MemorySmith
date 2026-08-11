@@ -1,8 +1,8 @@
-{
+﻿{
   "id": "tsk-0136-improve-health-dashboard-chart-readability-and-section-navigation",
   "key": "TSK-0136",
   "title": "Improve Health dashboard chart readability and section navigation",
-  "description": "Problem: the live `/health` review showed useful metrics and charts, but the dashboard is a long single scroll surface with dense KPI cards and chart date labels that become hard to read at narrow widths. Operators can see that activity changed, but quickly locating specific sections or interpreting crowded axes is harder than it should be.\n\nDesired outcome: Health should remain dense, but make the most important operational signals and chart sections easier to scan, navigate, and interpret.\n\nScope:\n- In scope: chart axis/date label readability, section anchors or compact local navigation, KPI grouping, sticky/compact refresh affordance, and responsive chart sizing.\n- Out of scope: adding new log-derived metrics already tracked by TSK-0107, unless needed for layout placeholders.\n\nAcceptance criteria:\n- Chart labels are legible at narrow and desktop widths.\n- Operators can jump between major Health sections without scrolling through the entire dashboard manually.\n- KPI cards distinguish summary state from detailed chart sections without consuming excessive vertical space.\n- Refresh remains reachable without dominating the header.\n\nValidation:\n- Capture `/health` before/after at narrow and desktop widths.\n- Run route-smoke or focused browser checks for refresh and chart/section visibility.",
+  "description": "Problem: the live \u0060/health\u0060 review showed useful metrics and charts, but the dashboard is a long single scroll surface with dense KPI cards and chart date labels that become hard to read at narrow widths. Operators can see that activity changed, but quickly locating specific sections or interpreting crowded axes is harder than it should be.\n\nDesired outcome: Health should remain dense, but make the most important operational signals and chart sections easier to scan, navigate, and interpret.\n\nScope:\n- In scope: chart axis/date label readability, section anchors or compact local navigation, KPI grouping, sticky/compact refresh affordance, and responsive chart sizing.\n- Out of scope: adding new log-derived metrics already tracked by TSK-0107, unless needed for layout placeholders.\n\nAcceptance criteria:\n- Chart labels are legible at narrow and desktop widths.\n- Operators can jump between major Health sections without scrolling through the entire dashboard manually.\n- KPI cards distinguish summary state from detailed chart sections without consuming excessive vertical space.\n- Refresh remains reachable without dominating the header.\n\nValidation:\n- Capture \u0060/health\u0060 before/after at narrow and desktop widths.\n- Run route-smoke or focused browser checks for refresh and chart/section visibility.",
   "type": "Task",
   "status": "Backlog",
   "priority": "Medium",
@@ -27,18 +27,24 @@
       "id": "c-0136-1",
       "author": "AgentSmith",
       "body": "Created from 2026-05-25 deeper live review: Health charts are useful but dense, with crowded date labels and no section navigation through the long dashboard.",
-      "createdAtUtc": "2026-05-25T00:00:00.0000000Z"
+      "createdAtUtc": "2026-05-25T00:00:00Z"
+    },
+    {
+      "id": "c-8335da2e0dbf44bdb68846092b85c915",
+      "author": "anonymous",
+      "body": "2026-08-08 deep-dive found HealthStats.RefreshAsync collapses health, telemetry, diagnostics, and log-metrics failures into Not ready with no exception identity or stage. Preserve partial-result state and log the failed operation for actionable triage.",
+      "createdAtUtc": "2026-08-09T02:44:48.641803Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
-  "createdAtUtc": "2026-05-25T00:00:00.0000000Z",
-  "updatedAtUtc": "2026-05-25T00:00:00.0000000Z",
+  "createdAtUtc": "2026-05-25T00:00:00Z",
+  "updatedAtUtc": "2026-08-09T02:44:48.641803Z",
   "completedAtUtc": null,
-  "revision": 1,
+  "revision": 2,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,
-  "sourceFilePath": null
+  "sourceFilePath": "tsk-0136-improve-health-dashboard-chart-readability-and-section-navigation.json"
 }

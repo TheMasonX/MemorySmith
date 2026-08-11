@@ -1,0 +1,44 @@
+﻿{
+  "id": "tsk-0452-authorize-caller-selected-model-and-provider-overrides",
+  "key": "TSK-0452",
+  "title": "Authorize caller-selected model and provider overrides",
+  "description": "Problem: request fields can select a model or provider independently of the caller\u0027s configured profile, so a caller may bypass intended model/provider allowlists or route work to a more privileged or higher-cost backend.\n\nDesired outcome: caller-selected overrides are permitted only when the resolved principal and profile explicitly authorize them.\n\nScope:\n- Define the policy for fixed-profile, allowlisted, and administrator override modes.\n- Validate provider/model pairs against the active profile before invocation.\n- Reject unknown, unavailable, disallowed, or cross-profile combinations without contacting the provider.\n- Record the effective provider/model and policy decision without recording secrets or prompt content.\n- Add compatibility behavior for existing clients that omit overrides.\n- Out of scope: provider credential loading and provider adapter normalization.\n\nAcceptance criteria:\n- Default callers use the configured profile and cannot bypass it through request fields.\n- Authorized callers can select only allowlisted provider/model pairs.\n- Disallowed overrides fail with a stable client-safe response and no provider call.\n- Tests cover omitted, valid, invalid, unavailable, and unauthorized overrides across API and agent-session paths.\n- Documentation and request schemas state the override policy.\n\nValidation:\n- Run focused model-selection, agent-session, and authorization tests.\n- Run the application build.\n- Run Test-TaskRecords.ps1 after task metadata changes.",
+  "type": "Bug",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "AgentSmith",
+  "labels": [
+    "chat",
+    "agent-sessions",
+    "authorization",
+    "providers",
+    "models",
+    "security",
+    "type:bug"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [
+    {
+      "id": "c-c2df57a04233492f9b95e088d6642a17",
+      "author": "anonymous",
+      "body": "2026-08-08 deep-dive independently reverified AgentSessionService accepts modelOverride/providerOverride after basic provider-name validation and bypasses ChatModelProfileService AllowedRoles. Enforce profile resolution or explicitly document a compatibility mode before treating this as complete.",
+      "createdAtUtc": "2026-08-09T02:44:47.655413Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-08-09T00:50:21.6606521Z",
+  "updatedAtUtc": "2026-08-09T02:44:47.655413Z",
+  "completedAtUtc": null,
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": "tsk-0452-authorize-caller-selected-model-and-provider-overrides.json"
+}

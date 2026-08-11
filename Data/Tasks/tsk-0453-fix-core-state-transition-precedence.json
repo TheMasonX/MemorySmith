@@ -1,0 +1,33 @@
+﻿{
+  "id": "tsk-0453-fix-core-state-transition-precedence",
+  "key": "TSK-0453",
+  "title": "Fix Core state transition precedence for low-scoring Core records",
+  "description": "Deep-dive audit 2026-08-08 verified that MemoryStateMachine.Evaluate first assigns Core -\u003E Deprecated below DeprecationThreshold, then overwrites it with Core -\u003E Working in a later independent branch. This makes very-low-scoring Core records impossible to deprecate through the state machine. Evidence: MemorySmith.Core/StateMachine/MemoryStateMachine.cs lines 17-45. Make transition precedence mutually exclusive and add boundary tests for Core scores below both thresholds.",
+  "type": "Bug",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "anonymous",
+  "labels": [
+    "domain:core",
+    "type:bug",
+    "audit-20260808"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-08-09T02:44:21.0827166Z",
+  "updatedAtUtc": "2026-08-09T02:44:21.0827166Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

@@ -31,15 +31,27 @@
       "author": "anonymous",
       "body": "Implemented and validated 2026-07-26. Removed controller-level IgnoreAntiforgeryToken from MemorySmith.App/Controllers/AdminController.cs and SourceLinksController.cs. Added MemorySmith.Tests/AntiforgeryTestHelpers.cs, converted bootstrap/admin settings callers, and added AdminSetup_RejectsJsonPostWithoutAntiforgeryToken. Focused command covering SecurityAndSourceLinkTests, AppApiContractTests, SqliteMetadataStoreTests, and SemanticEmbeddingPathTests: 77 passed, 0 failed. Residual controller exemptions are documented in Data/Pages/Handoffs/2026-07-26-wave-1-antiforgery-paths.md and require separate endpoint-contract review.",
       "createdAtUtc": "2026-07-26T17:36:07.7035322Z"
+    },
+    {
+      "id": "c-128bced21f95467ea2809c76d3c20acd",
+      "author": "anonymous",
+      "body": "Audit synthesis corroboration: the redacted external audit independently identifies broad controller-level antiforgery opt-outs as a CSRF risk. This is an exact overlap with this task; no duplicate task will be created.",
+      "createdAtUtc": "2026-08-09T00:49:11.7310414Z"
+    },
+    {
+      "id": "c-8b68d646e5c54f528b05dfbb0757987e",
+      "author": "anonymous",
+      "body": "2026-08-08 deep-dive found residual controller-level IgnoreAntiforgeryToken attributes on browser-facing Chat, Governance, MaintenanceAgent, Memories, Pages, and Tasks mutations. The new focused task TSK-0457 tracks removal; historical global-filter completion must not be treated as coverage for these exemptions.",
+      "createdAtUtc": "2026-08-09T02:44:47.4594796Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-07-10T00:00:00Z",
-  "updatedAtUtc": "2026-07-26T17:36:10.857802Z",
+  "updatedAtUtc": "2026-08-09T02:44:47.4594796Z",
   "completedAtUtc": "2026-07-26T17:36:10.857802Z",
-  "revision": 6,
+  "revision": 8,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

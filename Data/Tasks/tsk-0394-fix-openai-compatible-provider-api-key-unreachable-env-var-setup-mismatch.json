@@ -4,7 +4,7 @@
   "title": "Fix OpenAI-compatible provider API key unreachable (env var \u002B setup mismatch)",
   "description": "Fix OpenAI-compatible provider API key unreachable (Council-refined)\n\nSource: audits/swarm-audit-synthesis-26-07-26.md (F: provider/key normalization)\n\nProblem: Provider normalization and configuration reading path can make the OpenAI-compatible provider\u0027s API key unreachable (env/config mismatch). This task fixes the config load path, adds runtime diagnostics, and ensures provider selection honors runtime-available credentials.\n\nAcceptance criteria:\n- Add runtime diagnostic log lines when provider selected but API key not present\n- Add unit tests for GetConfiguration provider resolution covering env-var, appsettings, and runtime-unavailable provider\n- Add e2e check that startup logs provider\u002Bavailability to \u0060logs/\u0060 when no API key is present\n\nLinked evidence: Data/Pages/audits/swarm-audit-synthesis-26-07-26.md#Top-Critical-Findings\n\nEffort: 4-8h",
   "type": "Bug",
-  "status": "Backlog",
+  "status": "InProgress",
   "priority": "Critical",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -19,14 +19,21 @@
   "attachments": [],
   "externalLinks": [],
   "linkedPages": [],
-  "comments": [],
+  "comments": [
+    {
+      "id": "c-1a2f828628bc45a4853cecda86676f5b",
+      "author": "anonymous",
+      "body": "Audit synthesis note: this task covers provider API-key reachability and setup mismatch. It does not establish who may select a provider/model at request time; that caller-override authorization gap is being tracked separately.",
+      "createdAtUtc": "2026-08-09T00:50:16.0025213Z"
+    }
+  ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-07-26T16:23:04.6087846Z",
-  "updatedAtUtc": "2026-07-26T16:30:31.3795432Z",
+  "updatedAtUtc": "2026-08-09T00:50:16.0025213Z",
   "completedAtUtc": null,
-  "revision": 2,
+  "revision": 4,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

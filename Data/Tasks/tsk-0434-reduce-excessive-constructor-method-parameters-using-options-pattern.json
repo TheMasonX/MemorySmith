@@ -1,0 +1,33 @@
+﻿{
+  "id": "tsk-0434-reduce-excessive-constructor-method-parameters-using-options-pattern",
+  "key": "TSK-0434",
+  "title": "Reduce excessive constructor/method parameters using options pattern",
+  "description": "## Source\nSonarQube static analysis audit (\u0060Data/Pages/audits/ms-sonar-static-analysis-7-26-26.md\u0060)\n\n## Findings\n17 constructors/methods with parameter counts exceeding the recommended limit of 7:\n\n**Worst offenders (10\u002B parameters):**\n- \u0060ChatServices.cs\u0060 L1731 \u2014 12 params\n- \u0060SecurityServices.cs\u0060 L942 \u2014 12 params\n- \u0060CodeSearchService.cs\u0060 L2503 \u2014 11 params\n- \u0060AgentSessionService.cs\u0060 L114 \u2014 11 params\n- \u0060MemoryApplicationService.cs\u0060 L58 \u2014 11 params\n- \u0060SecurityServices.cs\u0060 L909 \u2014 10 params\n\n**Other (8-9 params):**\n- \u0060Admin.razor\u0060 L3161 (8), \u0060McpController.cs\u0060 L35 (9), \u0060AgentSessionService.cs\u0060 L145 (9), \u0060ChatModelProfileService.cs\u0060 L197 (8), \u0060CodeSearchService.cs\u0060 L812 (9), L2494 (8), L2497 (8), L2500 (8), \u0060MaintenanceAgentServices.cs\u0060 L1288 (8), \u0060MemoryChatAgent.ToolLoop.cs\u0060 L66 (8), \u0060SecurityServices.cs\u0060 L133 (9)\n\n## Impact\nHigh parameter counts make constructors hard to use and test, violating the Single Responsibility Principle by implying the class has too many dependencies.\n\n## Action Required\nIntroduce parameter objects or options classes. For constructors, use the options pattern (\u0060IOptions\u003CT\u003E\u0060). Group related parameters into dedicated \u0060sealed record\u0060 types. Consider facade/service decomposition for classes with \u003E10 dependencies.\n\n## Effort\n~5h40min\n\n## Priority\nP1 \u2014 Design/Refactor",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "anonymous",
+  "labels": [
+    "type:refactor",
+    "type:design",
+    "sprint-54"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-27T06:49:46.2166589Z",
+  "updatedAtUtc": "2026-07-27T06:49:46.2166589Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

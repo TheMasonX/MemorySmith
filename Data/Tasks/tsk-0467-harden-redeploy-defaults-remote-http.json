@@ -1,0 +1,33 @@
+﻿{
+  "id": "tsk-0467-harden-redeploy-defaults-remote-http",
+  "key": "TSK-0467",
+  "title": "Harden service redeployment defaults against remote HTTP exposure",
+  "description": "Deep-dive audit 2026-08-08 verified that Scripts/Redeploy-MemorySmithService.ps1 defaults to all-interface binding, enables AllowRemoteApi, and continues with HTTP if no certificate exists, overriding safer appsettings defaults. Evidence: Scripts/Redeploy-MemorySmithService.ps1 lines 21, 29, 503, 525. Fail closed to loopback; require explicit remote exposure plus HTTPS and a valid certificate.",
+  "type": "Security",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "anonymous",
+  "labels": [
+    "domain:deployment",
+    "type:security",
+    "audit-20260808"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-08-09T02:44:23.1323461Z",
+  "updatedAtUtc": "2026-08-09T02:44:23.1323461Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

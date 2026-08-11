@@ -507,13 +507,13 @@ public sealed class MemorySmithLocalAuthService
         var user = await _database.Users.GetByNormalizedEmailAsync(normalized, cancellationToken)
             ?? await _database.Users.GetByNormalizedDisplayNameAsync(normalized, cancellationToken);
         var success = false;
-        var failureCode = "invalid_credentials";
+        var failureCode = user?.IsDisabled == true ? "disabled" : "invalid_credentials";
 
         if (user is not null && !user.IsDisabled && user.LocalPasswordEnabled && !string.IsNullOrWhiteSpace(user.PasswordHash))
         {
             var verification = PasswordHasher.VerifyHashedPassword(user, user.PasswordHash, request.Password);
             success = verification is PasswordVerificationResult.Success or PasswordVerificationResult.SuccessRehashNeeded;
-            failureCode = user.IsDisabled ? "disabled" : "invalid_credentials";
+            failureCode = "invalid_credentials";
             if (success && verification == PasswordVerificationResult.SuccessRehashNeeded)
             {
                 user.PasswordHash = PasswordHasher.HashPassword(user, request.Password);

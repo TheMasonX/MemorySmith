@@ -1,4 +1,4 @@
-{
+﻿{
   "id": "tsk-0221-add-named-mcp-tool-profiles",
   "key": "TSK-0221",
   "title": "Add named MCP tool profiles",
@@ -26,18 +26,24 @@
       "id": "c-create-0221-20260529",
       "author": "AgentSmith",
       "body": "Created from MCP surface review because raw enabled/disabled name lists are workable but lack intent-based profiles such as read-only, proposal-only, or admin-local modes.",
-      "createdAtUtc": "2026-05-29T19:25:00.0000000Z"
+      "createdAtUtc": "2026-05-29T19:25:00Z"
+    },
+    {
+      "id": "c-37e3db4141b5497fa4ca290258146a25",
+      "author": "anonymous",
+      "body": "Audit synthesis distinction: named tool profiles provide a useful policy boundary, but the redacted audit identifies missing enforcement when a caller supplies a model/provider override. A focused authorization task is being created so profiles cannot be bypassed by request fields.",
+      "createdAtUtc": "2026-08-09T00:50:16.2690057Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
-  "createdAtUtc": "2026-05-29T19:25:00.0000000Z",
-  "updatedAtUtc": "2026-05-29T19:25:00.0000000Z",
+  "createdAtUtc": "2026-05-29T19:25:00Z",
+  "updatedAtUtc": "2026-08-09T00:50:16.2690057Z",
   "completedAtUtc": null,
-  "revision": 1,
+  "revision": 2,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,
-  "sourceFilePath": null
+  "sourceFilePath": "tsk-0221-add-named-mcp-tool-profiles.json"
 }

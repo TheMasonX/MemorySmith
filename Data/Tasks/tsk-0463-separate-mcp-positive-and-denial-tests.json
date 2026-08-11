@@ -1,0 +1,33 @@
+﻿{
+  "id": "tsk-0463-separate-mcp-positive-and-denial-tests",
+  "key": "TSK-0463",
+  "title": "Separate MCP positive tool tests from remote-access denial tests",
+  "description": "Deep-dive audit 2026-08-08 verified that positive MCP benchmark tests expect HTTP 200 but their TestServer configuration does not enable MemorySmith:AllowRemoteApi, so requests are rejected with 403 before tool contracts execute. Evidence: MemorySmith.Tests/SearchBenchmarkTests.cs lines 293-403 and request guard configuration. Configure positive tests for the intended allowed mode and retain a separate explicit 403 security test.",
+  "type": "Testing",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "anonymous",
+  "labels": [
+    "domain:mcp",
+    "type:testing",
+    "audit-20260808"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-08-09T02:44:22.4845852Z",
+  "updatedAtUtc": "2026-08-09T02:44:22.4845852Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

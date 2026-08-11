@@ -3,6 +3,7 @@ using MemorySmith.Core.Models;
 using MemorySmith.Storage;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using Microsoft.Data.Sqlite;
 using System.Diagnostics;
@@ -218,6 +219,51 @@ public class SqliteMetadataStoreTests
             Assert.That(auditEntry.CorrelationId, Is.EqualTo(expectedCorrelationId));
             Assert.That(auditEntry.IpHash, Is.EqualTo(login.IpHash));
             Assert.That(auditEntry.UserAgentHash, Is.EqualTo(login.UserAgentHash));
+        });
+    }
+
+    [Test]
+    public async Task SignInAsync_DisabledUserIsAuditedWithDisabledFailureCode()
+    {
+        var options = new MemorySmithOptions
+        {
+            DataProtectionKeysPath = Path.Combine(_tempDir, "Keys"),
+            Audit = new AuditOptions { JsonlEnabled = false },
+            Auth = new AuthOptions { LocalPasswordEnabled = true }
+        };
+        var monitor = new TestOptionsMonitor<MemorySmithOptions>(options);
+        await SeedUserAsync("admin-user", "Admin User", "ADMIN USER");
+        var user = new UserAccount
+        {
+            UserId = "disabled-user",
+            DisplayName = "Disabled User",
+            NormalizedDisplayName = "DISABLED USER",
+            Email = "disabled@example.test",
+            NormalizedEmail = "DISABLED@EXAMPLE.TEST",
+            IsDisabled = true,
+            LocalPasswordEnabled = true,
+            SecurityStamp = Guid.NewGuid().ToString("N"),
+            CreatedAtUtc = DateTime.UtcNow,
+            UpdatedAtUtc = DateTime.UtcNow
+        };
+        user.PasswordHash = new PasswordHasher<UserAccount>().HashPassword(user, "ThisIsAValidPassword123!");
+        await _database.Users.CreateAsync(user, CancellationToken.None);
+
+        var currentUser = new FakeCurrentUserContext();
+        var httpContextAccessor = new HttpContextAccessor { HttpContext = new DefaultHttpContext() };
+        var audit = new AuditLogService(_database, currentUser, httpContextAccessor, monitor);
+        var auth = new MemorySmithLocalAuthService(_database, httpContextAccessor, audit, monitor, new StaticAuthenticationSchemeProvider([MemorySmithProviders.GitHub]));
+
+        var result = await auth.SignInAsync(new LoginRequest("disabled@example.test", "ThisIsAValidPassword123!"), CancellationToken.None);
+        var login = (await _database.LoginHistory.QueryAsync(new LoginHistoryQuery(ProviderName: MemorySmithProviders.LocalPassword), CancellationToken.None)).Data.Single();
+        var auditEntry = (await _database.AuditLogs.QueryAsync(new AuditLogQuery(Action: "auth.login.failed"), CancellationToken.None)).Data.Single();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Succeeded, Is.False);
+            Assert.That(result.Error, Is.EqualTo("Invalid username or password."));
+            Assert.That(login.FailureCode, Is.EqualTo("disabled"));
+            Assert.That(auditEntry.Reason, Is.EqualTo("disabled"));
         });
     }
 

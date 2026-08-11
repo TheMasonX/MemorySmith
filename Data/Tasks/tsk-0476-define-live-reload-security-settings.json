@@ -1,0 +1,33 @@
+﻿{
+  "id": "tsk-0476-define-live-reload-security-settings",
+  "key": "TSK-0476",
+  "title": "Define live-reload semantics for security settings",
+  "description": "Deep-dive audit 2026-08-08 verified that AdminSettingsService reloads security settings, but MemorySmithRequestGuardMiddleware and the login rate limiter capture IOptions/startup values. Runtime changes to AllowRemoteApi, ApiKey, and rate limits remain stale until restart while the UI reports success. Evidence: MemorySmith.App/Services/MemorySmithRequestGuardMiddleware.cs, Hosting/MemorySmithSecuritySetup.cs, AdminSettingsService.cs, MemorySmithConfigurationSetup.cs. Either use monitor-backed policies or clearly mark settings restart-required and test the contract.",
+  "type": "Security",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "anonymous",
+  "labels": [
+    "domain:security",
+    "type:configuration",
+    "audit-20260808"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-08-09T02:44:24.3033512Z",
+  "updatedAtUtc": "2026-08-09T02:44:24.3033512Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

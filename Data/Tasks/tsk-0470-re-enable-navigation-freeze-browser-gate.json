@@ -1,0 +1,33 @@
+﻿{
+  "id": "tsk-0470-re-enable-navigation-freeze-browser-gate",
+  "key": "TSK-0470",
+  "title": "Re-enable the navigation-freeze browser regression gate",
+  "description": "Deep-dive audit 2026-08-08 verified that e2e/tests/navigation-freeze.spec.ts disables its entire describe block while CI still invokes the suite. Required browser validation can therefore pass with zero executed tests. Evidence: e2e/tests/navigation-freeze.spec.ts and .github/workflows/ci.yml. Re-enable or repair the suite, assert a nonzero executed-test count, and update the completion evidence for TSK-0067/0070/0071.",
+  "type": "Testing",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "anonymous",
+  "labels": [
+    "domain:e2e",
+    "type:testing",
+    "audit-20260808"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-08-09T02:44:23.6489026Z",
+  "updatedAtUtc": "2026-08-09T02:44:23.6489026Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

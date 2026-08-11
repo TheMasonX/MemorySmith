@@ -1,8 +1,8 @@
-{
+﻿{
   "id": "tsk-0347-fix-memory-index-synchronization",
   "key": "TSK-0347",
   "title": "Fix MemoryIndex race conditions from unsynchronized dictionaries",
-  "description": "MemoryIndex uses plain Dictionary<> and HashSet<> with zero synchronization. Public dictionaries expose mutable references. Concurrent Add/Remove/Rebuild calls cause ArgumentException or index corruption. Replace with ConcurrentDictionary or add ReaderWriterLockSlim, make dictionaries private, expose query methods (GetByTag, GetByReference, GetById). Also clean up empty HashSet entries left in dictionaries after removal (gradual memory leak). Source: codebase-audit-20260710-swarm-synthesis P0-002",
+  "description": "MemoryIndex uses plain Dictionary\u003C\u003E and HashSet\u003C\u003E with zero synchronization. Public dictionaries expose mutable references. Concurrent Add/Remove/Rebuild calls cause ArgumentException or index corruption. Replace with ConcurrentDictionary or add ReaderWriterLockSlim, make dictionaries private, expose query methods (GetByTag, GetByReference, GetById). Also clean up empty HashSet entries left in dictionaries after removal (gradual memory leak). Source: codebase-audit-20260710-swarm-synthesis P0-002",
   "type": "Bug",
   "status": "Backlog",
   "priority": "Critical",
@@ -18,16 +18,23 @@
   "attachments": [],
   "externalLinks": [],
   "linkedPages": [],
-  "comments": [],
+  "comments": [
+    {
+      "id": "c-e837fc8a833d439aa469a843c587b36d",
+      "author": "anonymous",
+      "body": "2026-08-08 deep-dive reverified replacement drift: MemoryIndex.Add replaces ById[id] without removing old tag/reference memberships, reachable through CreateAsync with an existing ID. RemoveCore also leaves empty memberships. Acceptance should cover upsert/reject semantics and stale membership cleanup.",
+      "createdAtUtc": "2026-08-09T02:44:46.4516631Z"
+    }
+  ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-07-11T03:05:54.473395Z",
-  "updatedAtUtc": "2026-07-11T03:05:54.473395Z",
+  "updatedAtUtc": "2026-08-09T02:44:46.4516631Z",
   "completedAtUtc": null,
-  "revision": 1,
+  "revision": 2,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,
-  "sourceFilePath": ""
+  "sourceFilePath": "tsk-0347-fix-memory-index-synchronization.json"
 }

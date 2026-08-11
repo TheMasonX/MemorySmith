@@ -1,0 +1,33 @@
+﻿{
+  "id": "tsk-0426-add-missing-timeouts-to-async-operations-across-15-files-31-instances",
+  "key": "TSK-0426",
+  "title": "Add missing timeouts to async operations across 15\u002B files (~31 instances)",
+  "description": "## Source\nSonarQube static analysis audit (\u0060Data/Pages/audits/ms-sonar-static-analysis-7-26-26.md\u0060)\n\n## Findings\n~31 instances across 15\u002B files where async operations are invoked without timeouts, risking indefinite hangs and resource exhaustion.\n\nAffected files include:\n- \u0060MemorySmith.App/Components/Pages/Admin.razor\u0060 (L1730)\n- \u0060MemorySmith.App/Components/Pages/Chat.razor\u0060 (L2619)\n- \u0060MemorySmith.App/Components/Pages/Models.razor\u0060 (L420)\n- \u0060MemorySmith.App/Components/Pages/Pages.razor\u0060 (L795)\n- \u0060MemorySmith.App/Components/Pages/Tasks.razor\u0060 (L811)\n- \u0060MemorySmith.App/Services/ChatMarkdownRenderer.cs\u0060 (L413-414)\n- \u0060MemorySmith.App/Services/ChatReferenceLinkPolicy.cs\u0060 (L8-11, L17)\n- \u0060MemorySmith.App/Services/CodeSearchService.cs\u0060 (L134-135)\n- \u0060MemorySmith.App/Services/MaintenanceAgentServices.cs\u0060 (L657, L970-971, L1259, L1266-1267, L1703)\n- \u0060MemorySmith.App/Services/MeasurementBaselineService.cs\u0060 (L121)\n- \u0060MemorySmith.App/Services/PageService.cs\u0060 (L242)\n- \u0060MemorySmith.App/Services/TagGovernanceService.cs\u0060 (L32-33, L272)\n- \u0060MemorySmith.App/Services/TaskDomainService.cs\u0060 (L863, L874, L973, L985, L1082, L1229)\n- \u0060MemorySmith.App/Services/Training/ChatTranscriptWriter.cs\u0060 (L16-17)\n- \u0060MemorySmith.Benchmarks/CodeSearchBenchmarks.cs\u0060 (L191)\n\n## Impact\nAsync operations without timeouts can hang indefinitely, causing resource leaks, thread pool starvation, and degraded service availability.\n\n## Action Required\nAdd \u0060CancellationToken\u0060 with a timeout via \u0060CancellationTokenSource.CreateLinkedTokenSource(timeout)\u0060 to each async call. Use named constants for timeout values (e.g., \u0060DefaultHttpTimeoutSeconds = 30\u0060).\n\n## Effort\n~2h35min\n\n## Priority\nP1 \u2014 Reliability",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "anonymous",
+  "labels": [
+    "type:reliability",
+    "type:security",
+    "sprint-54"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-27T06:49:17.3837977Z",
+  "updatedAtUtc": "2026-07-27T06:49:17.3837977Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

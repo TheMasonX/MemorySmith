@@ -1,17 +1,40 @@
-{
+﻿{
   "id": "tsk-0304-retrieval-validation-suite",
   "key": "TSK-0304",
-  "title": "retrieval: validation suite & CI gates (recall/latency)",
-  "status": "Backlog",
-  "type": "Task",
-  "priority": "High",
+  "title": "retrieval: validation suite \u0026 CI gates (recall/latency)",
   "description": "Create canonical retrieval corpus and query set; implement CI benchmark computing Recall@10, MRR@10, embedding-dim checks, and p95 latency; add gating thresholds and nightly drift detection job. Include integration test for options hot-reload effect on query results.",
-  "createdAtUtc": "2026-07-10T00:00:00Z",
-  "updatedAtUtc": "2026-07-10T00:00:00Z",
-  "revision": 1,
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": null,
+  "reporter": null,
   "labels": [
     "search",
     "testing",
     "ci"
-  ]
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [
+    {
+      "id": "c-90e0e706087c4785a8990a057ac56bf3",
+      "author": "anonymous",
+      "body": "Audit synthesis note: the redacted audits reinforce the need for retrieval validation and authority-aware evidence handling. This task covers retrieval quality/CI gates; no duplicate task is created from the broader recommendation.",
+      "createdAtUtc": "2026-08-09T00:49:11.2847062Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-10T00:00:00Z",
+  "updatedAtUtc": "2026-08-09T00:49:11.2847062Z",
+  "completedAtUtc": null,
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": "tsk-0304-retrieval-validation-suite.json"
 }

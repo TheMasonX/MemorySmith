@@ -1,4 +1,4 @@
-{
+﻿{
   "id": "tsk-0241-harden-training-harness-trust-and-process-invocation-safety-defaults",
   "key": "TSK-0241",
   "title": "Harden training harness trust and process invocation safety defaults",
@@ -24,21 +24,27 @@
   ],
   "comments": [
     {
-      "author": "AgentSmith",
       "id": "c-create-tsk-0241-20260530",
-      "createdAtUtc": "2026-05-30T22:21:20.9043446Z",
-      "body": "Created from vetted findings in Data/Pages/move-to-audit.md after direct code checks across Chat.razor, ChatServices.cs, ChatToolCatalog.cs, McpController.cs, and training harness files."
+      "author": "AgentSmith",
+      "body": "Created from vetted findings in Data/Pages/move-to-audit.md after direct code checks across Chat.razor, ChatServices.cs, ChatToolCatalog.cs, McpController.cs, and training harness files.",
+      "createdAtUtc": "2026-05-30T22:21:20.9043446Z"
+    },
+    {
+      "id": "c-139b774402664b248d5a69080cc2c980",
+      "author": "anonymous",
+      "body": "Audit synthesis corroboration: the redacted audit independently identifies manual command-line quoting in the training harness as a portability risk. This is an exact overlap with the existing ArgumentList hardening scope; no duplicate task will be created.",
+      "createdAtUtc": "2026-08-09T00:49:10.2316926Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-30T22:21:20.9043446Z",
-  "updatedAtUtc": "2026-05-30T22:40:56.5608021Z",
+  "updatedAtUtc": "2026-08-09T00:49:10.2316926Z",
   "completedAtUtc": null,
-  "revision": 2,
+  "revision": 3,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,
-  "sourceFilePath": null
+  "sourceFilePath": "tsk-0241-harden-training-harness-trust-and-process-invocation-safety-defaults.json"
 }

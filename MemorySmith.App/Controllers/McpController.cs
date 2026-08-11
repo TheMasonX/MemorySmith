@@ -106,14 +106,30 @@ public class McpController : ControllerBase
             return null;
         }
 
-        return method switch
+        try
         {
-            "initialize" => Success(idElement, BuildInitializeResult()),
-            "ping" => Success(idElement, new JsonObject()),
-            "tools/list" => Success(idElement, BuildToolsListResult()),
-            "tools/call" => Success(idElement, await HandleToolCallAsync(message, cancellationToken)),
-            _ => Error(message, -32601, $"Method '{method}' is not supported.")
-        };
+            return method switch
+            {
+                "initialize" => Success(idElement, BuildInitializeResult()),
+                "ping" => Success(idElement, new JsonObject()),
+                "tools/list" => Success(idElement, BuildToolsListResult()),
+                "tools/call" => Success(idElement, await HandleToolCallAsync(message, cancellationToken)),
+                _ => Error(message, -32601, $"Method '{method}' is not supported.")
+            };
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            var toolName = TryGetProperty(message, "params", out var paramsElement)
+                && TryGetProperty(paramsElement, "name", out var nameElement)
+                ? nameElement.GetString()
+                : null;
+            _logger?.LogError(ex, "MCP JSON-RPC request failed for method {Method}, tool {ToolName}", method, toolName);
+            return Error(message, -32603, "Internal error.");
+        }
     }
 
     private async Task<JsonObject> HandleToolCallAsync(JsonElement message, CancellationToken cancellationToken)
@@ -194,11 +210,10 @@ public class McpController : ControllerBase
             result = await tool.Execute(args, ctx, cancellationToken);
         }
         catch (OperationCanceledException) { throw; }
-        catch (Exception ex)
+        catch (Exception)
         {
-            _logger?.LogWarning(ex, "MCP tool {ToolName} threw unhandled exception: {Message}", toolName, ex.Message);
             RecordToolExecutionTelemetry(toolName, Stopwatch.GetElapsedTime(started).TotalMilliseconds, success: false);
-            return ToolText($"MCP tool '{toolName}' failed: {ex.Message}", isError: true);
+            throw;
         }
         RecordToolExecutionTelemetry(toolName, Stopwatch.GetElapsedTime(started).TotalMilliseconds, !result.IsError);
 

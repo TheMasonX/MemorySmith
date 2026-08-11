@@ -1,0 +1,42 @@
+﻿{
+  "id": "tsk-0425-fix-namespace-http-content-length-and-bridgeapp-structural-issues",
+  "key": "TSK-0425",
+  "title": "Fix namespace, HTTP content-length, and BridgeApp structural issues",
+  "description": "## Source\nSonarQube static analysis audit (\u0060Data/Pages/audits/ms-sonar-static-analysis-7-26-26.md\u0060)\n\n## Findings\n1. \u0060MemorySmith.Bridge/Program.cs\u0060 (L9) \u2014 \u0060BridgeApp\u0060 class declared without a namespace, causing type conflicts\n2. \u0060MemorySmith.App/Components/Pages/Pages.razor\u0060 (L795) \u2014 HTTP request without content-length limit, risking resource exhaustion\n3. \u0060MemorySmith.App/Services/MemorySmithOptions.cs\u0060 (L452) \u2014 TODO that should be completed or tracked\n\n## Action Required\n1. Wrap \u0060BridgeApp\u0060 in appropriate namespace declaration\n2. Add \u0060MaxResponseContentBufferSize\u0060 or set \u0060WebRequest.ContentLength\u0060 in Pages.razor\n3. Review and resolve the TODO in MemorySmithOptions.cs\n\n## Effort\n~30min\n\n## Priority\nP0 \u2014 Bug/Security",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Critical",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "anonymous",
+  "labels": [
+    "type:bug",
+    "type:security",
+    "domain:bridge",
+    "domain:ui",
+    "sprint-54"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [
+    {
+      "id": "c-72c442fde1e3404e9685b4681bd85aa2",
+      "author": "anonymous",
+      "body": "2026-08-08 deep-dive found BridgeApp still accepts valid non-object JSON as empty arguments and silently falls back to the default endpoint after malformed .vscode/mcp.json. Add explicit validation and source/reason diagnostics rather than treating malformed configuration as success.",
+      "createdAtUtc": "2026-08-09T02:44:49.9629224Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-27T06:49:17.2514971Z",
+  "updatedAtUtc": "2026-08-09T02:44:49.9629224Z",
+  "completedAtUtc": null,
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": "tsk-0425-fix-namespace-http-content-length-and-bridgeapp-structural-issues.json"
+}

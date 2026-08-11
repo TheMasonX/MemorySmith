@@ -1,4 +1,4 @@
-{
+﻿{
   "id": "tsk-0115-add-benchmark-regression-budgets-and-ci-summary-checks",
   "key": "TSK-0115",
   "title": "Add benchmark regression budgets and CI summary checks",
@@ -32,17 +32,23 @@
       "author": "AgentSmith",
       "body": "Created from ultra audit findings F-007 and F-008. Evidence: benchmark commands and search-quality probes exist, but .github/workflows/ci.yml has no benchmark budget comparison lane.",
       "createdAtUtc": "2026-05-24T19:56:00Z"
+    },
+    {
+      "id": "c-eda907e63d39446f8169f487df238d25",
+      "author": "anonymous",
+      "body": "2026-08-08 deep-dive observed hybrid benchmark latency 434 ms against a hard-coded 300 ms budget. Separate correctness from performance, use warm-up/percentile baselines, and avoid making machine variance look like relevance failure.",
+      "createdAtUtc": "2026-08-09T02:44:47.8371448Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-24T19:56:00Z",
-  "updatedAtUtc": "2026-05-30T22:40:56.4738179Z",
+  "updatedAtUtc": "2026-08-09T02:44:47.8371448Z",
   "completedAtUtc": null,
-  "revision": 2,
+  "revision": 3,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,
-  "sourceFilePath": null
+  "sourceFilePath": "tsk-0115-add-benchmark-regression-budgets-and-ci-summary-checks.json"
 }

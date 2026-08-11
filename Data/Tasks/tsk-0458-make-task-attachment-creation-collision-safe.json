@@ -1,0 +1,33 @@
+﻿{
+  "id": "tsk-0458-make-task-attachment-creation-collision-safe",
+  "key": "TSK-0458",
+  "title": "Make task attachment creation collision-safe",
+  "description": "Deep-dive audit 2026-08-08 verified a check-then-create race in TaskDomainService: GetUniqueFileName checks File.Exists, then SaveAsync calls File.Create. Concurrent uploads can select the same candidate and collide or overwrite. Evidence: MemorySmith.App/Services/TaskDomainService.cs lines 74-116. Use exclusive create semantics with retry and add concurrent upload coverage.",
+  "type": "Bug",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "anonymous",
+  "labels": [
+    "domain:tasks",
+    "type:concurrency",
+    "audit-20260808"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-08-09T02:44:21.7968351Z",
+  "updatedAtUtc": "2026-08-09T02:44:21.7968351Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

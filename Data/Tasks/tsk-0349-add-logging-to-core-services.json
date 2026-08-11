@@ -26,15 +26,21 @@
       "author": "anonymous",
       "body": "Approved for Wave 1, execution order 08 of 09. Core instrumentation has broad diagnostic value but follows correctness and security fixes.",
       "createdAtUtc": "2026-07-26T17:00:07.1833707Z"
+    },
+    {
+      "id": "c-d7251bc992a143abb7215705610f0f5f",
+      "author": "anonymous",
+      "body": "2026-08-08 deep-dive confirmed current observability gaps beyond Core logging: FileEventStore and FileVarStore collapse read/parse failures into empty data, and production FileEventStore registration does not inject StorageDiagnostics. Consider a focused storage diagnostic follow-up alongside Core logging.",
+      "createdAtUtc": "2026-08-09T02:44:46.7730792Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-07-11T03:06:12.0956526Z",
-  "updatedAtUtc": "2026-07-26T17:01:35.0213074Z",
+  "updatedAtUtc": "2026-08-09T02:44:46.7730792Z",
   "completedAtUtc": null,
-  "revision": 3,
+  "revision": 4,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

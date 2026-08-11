@@ -1,4 +1,4 @@
-{
+﻿{
   "id": "tsk-0391-harden-file-backed-persistence-and-transcript-session-recovery",
   "key": "TSK-0391",
   "title": "Harden file-backed persistence and transcript/session recovery",
@@ -20,16 +20,29 @@
   "attachments": [],
   "externalLinks": [],
   "linkedPages": [],
-  "comments": [],
+  "comments": [
+    {
+      "id": "c-3ff0bd99df334e7689b6bb203d51a635",
+      "author": "anonymous",
+      "body": "Audit synthesis corroboration: the redacted delta audit confirms status transitions can delete the prior valid record before replacement serialization and commit. This belongs in the existing file-backed persistence recovery scope; validation must prove failed replacement writes preserve the prior record.",
+      "createdAtUtc": "2026-08-09T00:49:09.1973964Z"
+    },
+    {
+      "id": "c-a6c9983860d449919a14111f7f9f507b",
+      "author": "anonymous",
+      "body": "2026-08-08 deep-dive reverified detached transcript persistence via _ = WriteTranscriptAsync(..., CancellationToken.None). Invocation success does not imply durable transcript success. Treat transcript persistence as a tracked outcome, not only an inner log.",
+      "createdAtUtc": "2026-08-09T02:44:48.7767756Z"
+    }
+  ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-07-11T05:49:51.1819203Z",
-  "updatedAtUtc": "2026-07-11T05:49:51.1819203Z",
+  "updatedAtUtc": "2026-08-09T02:44:48.7767756Z",
   "completedAtUtc": null,
-  "revision": 1,
+  "revision": 3,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,
-  "sourceFilePath": ""
+  "sourceFilePath": "tsk-0391-harden-file-backed-persistence-and-transcript-session-recovery.json"
 }

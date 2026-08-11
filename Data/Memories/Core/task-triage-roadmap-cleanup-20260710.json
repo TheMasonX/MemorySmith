@@ -1,8 +1,8 @@
 {
   "Id": "task-triage-roadmap-cleanup-20260710",
-  "Title": "Task Triage And Roadmap Cleanup 2026-07-10",
   "Content": "Completed a comprehensive task triage and roadmap cleanup on 2026-07-10. Key actions: (1) Archived 7 old sprint plans from May 2026 to Tasks/Sprints/Archived/; (2) Created consolidated sprint plan architectural-stability-cleanup-sprint-20260710.md; (3) Created consolidated roadmap architectural-stability-roadmap-20260710.md; (4) Moved 3 dormant InProgress tasks (TSK-0201, 0202, 0203) to Backlog; (5) Archived 43 stale Backlog tasks across 4 families; (6) Cross-referenced TSK-0271 with TSK-0294. After triage: 133 Done (42.6%), 45 Archived (14.4%), ~131 Backlog (~42%), 9 Ready, 2 InProgress.",
-  "Status": 1,
+  "Title": "Task Triage And Roadmap Cleanup 2026-07-10",
+  "Status": 2,
   "Confidence": 0.85,
   "Tags": [
     "project-wiki",
@@ -19,11 +19,15 @@
   "SourceLinks": [
     {
       "Label": "Consolidated sprint plan",
-      "Uri": "%MemorySmithRepo%Data/Pages/Tasks/Sprints/architectural-stability-cleanup-sprint-20260710.md"
+      "Uri": "%MemorySmithRepo%Data/Pages/Tasks/Sprints/architectural-stability-cleanup-sprint-20260710.md",
+      "StartLine": null,
+      "EndLine": null
     },
     {
       "Label": "Roadmap page",
-      "Uri": "%MemorySmithRepo%Data/Pages/plans/architectural-stability-roadmap-20260710.md"
+      "Uri": "%MemorySmithRepo%Data/Pages/plans/architectural-stability-roadmap-20260710.md",
+      "StartLine": null,
+      "EndLine": null
     }
   ],
   "UsageCount": 0,

@@ -1,0 +1,43 @@
+﻿{
+  "id": "tsk-0445-serialize-settings-override-writes-through-one-revision-aware-store",
+  "key": "TSK-0445",
+  "title": "Serialize settings override writes through one revision-aware store",
+  "description": "Problem: independent settings services can load the same override document, mutate stale copies, and overwrite each other using a shared temporary-file pattern. Concurrent updates can lose unrelated changes or collide during replacement.\n\nDesired outcome: all settings override mutations use one process-wide store that serializes read-modify-write operations and detects stale revisions.\n\nScope:\n- Introduce a shared settings override store for all mutation paths.\n- Use an async write lock and unique temporary file names per operation.\n- Add revision or compare-and-swap checks for stale writers.\n- Preserve atomic replacement and clear failure diagnostics.\n- Out of scope: replacing the configuration format.\n\nAcceptance criteria:\n- Concurrent updates to disjoint settings paths preserve both changes.\n- Stale revisions fail or retry according to an explicit policy rather than silently overwriting newer data.\n- Temporary files cannot collide between concurrent writers.\n- Failed writes preserve the last valid document.\n- Focused concurrency and recovery tests cover administrator and model-profile mutations.\n\nValidation:\n- Run focused configuration/settings tests with concurrent writers.\n- Run the application build.\n- Run Test-TaskRecords.ps1 after task metadata changes.",
+  "type": "Bug",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "AgentSmith",
+  "labels": [
+    "configuration",
+    "concurrency",
+    "storage",
+    "reliability",
+    "security",
+    "type:bug"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [
+    {
+      "id": "c-9a94df00583c4568860ef0034d0e0d36",
+      "author": "anonymous",
+      "body": "2026-08-08 deep-dive reverified fixed _settingsPath.tmp writes with no shared lock/revision check. Concurrent admin edits can lose unrelated changes or collide across processes. Include an explicit multi-writer/revision conflict test.",
+      "createdAtUtc": "2026-08-09T02:44:49.4072045Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-08-09T00:49:31.8102705Z",
+  "updatedAtUtc": "2026-08-09T02:44:49.4072045Z",
+  "completedAtUtc": null,
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": "tsk-0445-serialize-settings-override-writes-through-one-revision-aware-store.json"
+}

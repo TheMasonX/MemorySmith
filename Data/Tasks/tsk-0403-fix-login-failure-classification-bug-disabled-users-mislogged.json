@@ -4,7 +4,7 @@
   "title": "Fix login failure classification bug (disabled users mislogged)",
   "description": "## Source\nAudit swarm finding F-AG2-01 / F-001 (memorysmith-codebase-audit-26-07-11-03-39-33)\n\n## Problem\n\u0060SignInAsync\u0060 computes \u0060\u0022disabled\u0022\u0060 failure code in an unreachable branch; disabled users are logged as \u0060\u0022invalid_credentials\u0022\u0060 instead of \u0060\u0022disabled\u0022\u0060. This corrupts audit trail and monitoring dashboards.\n\n## Severity\nHigh\n\n## Files\n- \u0060MemorySmith.App/Services/MemorySmithLocalAuthService.cs\u0060\n\n## Recommendation\nFix branch logic: split flow into explicit states (not_found, disabled, invalid_credentials, success).\n\n## Existing Coverage\nNo existing task.",
   "type": "Bug",
-  "status": "Backlog",
+  "status": "Done",
   "priority": "High",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -24,11 +24,11 @@
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-07-26T16:23:27.8930712Z",
-  "updatedAtUtc": "2026-07-26T16:23:27.8930712Z",
-  "completedAtUtc": null,
-  "revision": 1,
+  "updatedAtUtc": "2026-07-27T01:14:51.545122Z",
+  "completedAtUtc": "2026-07-27T01:14:51.545122Z",
+  "revision": 2,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,
-  "sourceFilePath": null
+  "sourceFilePath": "tsk-0403-fix-login-failure-classification-bug-disabled-users-mislogged.json"
 }

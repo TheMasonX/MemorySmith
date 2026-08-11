@@ -7,8 +7,10 @@ using MemorySmith.App.Services;
 using MemorySmith.Core.Models;
 using MemorySmith.Storage;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Data.Sqlite;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -659,6 +661,11 @@ public class SecurityAndSourceLinkTests
     private WebApplicationFactory<Program> CreateFactory(Dictionary<string, string?>? overrides = null) =>
         new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
+            builder.Configure(app => app.Use(async (HttpContext context, Func<Task> next) =>
+            {
+                context.Connection.RemoteIpAddress ??= IPAddress.Loopback;
+                await next();
+            }));
             builder.ConfigureAppConfiguration((_, config) =>
             {
                 var values = new Dictionary<string, string?>

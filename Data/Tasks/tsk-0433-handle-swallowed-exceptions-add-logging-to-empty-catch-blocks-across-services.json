@@ -1,0 +1,40 @@
+﻿{
+  "id": "tsk-0433-handle-swallowed-exceptions-add-logging-to-empty-catch-blocks-across-services",
+  "key": "TSK-0433",
+  "title": "Handle swallowed exceptions \u2014 add logging to empty catch blocks across services",
+  "description": "## Source\nSonarQube static analysis audit (\u0060Data/Pages/audits/ms-sonar-static-analysis-7-26-26.md\u0060); also violates AGENTS.md Rule E-3\n\n## Findings\n12 instances where exceptions are caught but the catch block is empty or the exception path is not logged:\n\n**C# (9 instances):**\n- \u0060ChatServices.cs\u0060 (L423-424, L811-812, L1419-1420, L1435-1436) \u2014 4 instances\n- \u0060MemoryGovernanceServices.cs\u0060 (L77-78) \u2014 1 instance\n- \u0060MaintenanceAgentServices.cs\u0060 (L1794, L1850) \u2014 2 instances\n- \u0060SemanticEmbeddingPrewarmService.cs\u0060 (L86) \u2014 1 instance\n\n**Python (2 instances):**\n- \u0060harness.py\u0060 (L370, L467)\n\n**PowerShell (1 instance):**\n- \u0060Scripts/Import-OpenTasksFromWorkbench.ps1\u0060 (L47)\n\n## Impact\nEmpty catch blocks silently swallow exceptions, making debugging extremely difficult. This directly violates AGENTS.md Rule E-3 (\u0022Never Swallow Exceptions\u0022).\n\n## Action Required\nAdd \u0060LogWarning\u0060 or \u0060LogError\u0060 logging to all empty catch blocks with context about the operation being attempted. Follow the safe catch pattern: \u0060catch (Exception ex) when (!ct.IsCancellationRequested) { logger?.LogWarning(ex, \u0022Non-fatal error in {Context}: {Message}\u0022, ...); }\u0060\n\n## Effort\n~30min\n\n## Priority\nP1 \u2014 Reliability",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "anonymous",
+  "labels": [
+    "type:bug",
+    "type:reliability",
+    "sprint-54"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [
+    {
+      "id": "c-5cda1232137a4c4b86f841a4776f583b",
+      "author": "anonymous",
+      "body": "2026-08-08 deep-dive confirmed two concrete silent visibility failures for this broad logging task: SecurityServices JSONL mirror catches discard exceptions without health signal, and malformed maintenance proposal JSON is converted to null and omitted. Preserve file identity and exception context in diagnostics.",
+      "createdAtUtc": "2026-08-09T02:44:48.3528241Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-27T06:49:46.1339916Z",
+  "updatedAtUtc": "2026-08-09T02:44:48.3528241Z",
+  "completedAtUtc": null,
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": "tsk-0433-handle-swallowed-exceptions-add-logging-to-empty-catch-blocks-across-services.json"
+}

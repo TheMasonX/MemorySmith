@@ -1,0 +1,33 @@
+﻿{
+  "id": "tsk-0459-make-security-history-version-allocation-atomic",
+  "key": "TSK-0459",
+  "title": "Make security history artifact version allocation atomic",
+  "description": "Deep-dive audit 2026-08-08 verified that SecurityServices derives artifact version numbers from existing.Count \u002B 1 before writing the artifact and metadata. Concurrent requests can select the same version, overwrite a path, fail uniqueness, or leave orphaned files. Evidence: MemorySmith.App/Services/SecurityServices.cs lines 1043-1080. Allocate versions transactionally and reconcile artifact writes on metadata failure.",
+  "type": "Bug",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "anonymous",
+  "labels": [
+    "domain:security",
+    "type:concurrency",
+    "audit-20260808"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-08-09T02:44:21.9072279Z",
+  "updatedAtUtc": "2026-08-09T02:44:21.9072279Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

@@ -1,8 +1,8 @@
-{
+﻿{
   "id": "tsk-0344-fix-memory-scorer-weights",
   "key": "TSK-0344",
   "title": "Fix MemoryScorer weights normalization",
-  "description": "MemoryScorer weights sum to 1.23 (0.63 + 0.3 + 0.2 + 0.1) instead of 1.0. The References.Count term (weight 0.2) is an unnormalized raw count, so a record with 5 references scores +1.0 instantly hitting Working threshold. Normalize weights to sum to 1.0, normalize References.Count (log or cap), and re-calibrate WorkingThreshold/CoreThreshold. Check downstream callers that may have thresholds tuned to the broken formula. Source: codebase-audit-20260710-swarm-synthesis P0-001",
+  "description": "MemoryScorer weights sum to 1.23 (0.63 \u002B 0.3 \u002B 0.2 \u002B 0.1) instead of 1.0. The References.Count term (weight 0.2) is an unnormalized raw count, so a record with 5 references scores \u002B1.0 instantly hitting Working threshold. Normalize weights to sum to 1.0, normalize References.Count (log or cap), and re-calibrate WorkingThreshold/CoreThreshold. Check downstream callers that may have thresholds tuned to the broken formula. Source: codebase-audit-20260710-swarm-synthesis P0-001",
   "type": "Bug",
   "status": "Backlog",
   "priority": "Critical",
@@ -18,16 +18,23 @@
   "attachments": [],
   "externalLinks": [],
   "linkedPages": [],
-  "comments": [],
+  "comments": [
+    {
+      "id": "c-d299c8ec8e8546428e5490f7a3fdb3d6",
+      "author": "anonymous",
+      "body": "2026-08-08 deep-dive reverified the scorer issue: current weight literals sum to 1.00, but References.Count remains an unnormalized raw linear term. A Core record with many references and zero usage/confidence can exceed CoreThreshold. Preserve this as the concrete acceptance case; historical \u0027weights sum to 1.23\u0027 wording is stale.",
+      "createdAtUtc": "2026-08-09T02:44:45.4947249Z"
+    }
+  ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-07-11T03:05:54.1117145Z",
-  "updatedAtUtc": "2026-07-11T03:05:54.1117145Z",
+  "updatedAtUtc": "2026-08-09T02:44:45.4947249Z",
   "completedAtUtc": null,
-  "revision": 1,
+  "revision": 2,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,
-  "sourceFilePath": ""
+  "sourceFilePath": "tsk-0344-fix-memory-scorer-weights.json"
 }

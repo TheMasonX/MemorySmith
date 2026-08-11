@@ -1,8 +1,8 @@
-{
+﻿{
   "id": "tsk-0361-consolidate-scoring-into-state-machine",
   "key": "TSK-0361",
   "title": "Consolidate scoring logic into MemoryStateMachine as single authority",
-  "description": "P2 — MemoryMaintenanceTasks.DeprecateObsoleteRecords duplicates deprecation logic inline instead of calling _stateMachine.Evaluate(). MemoryMaintenanceTasks.PromoteStableRecords uses completely different criteria (30-day age + >=2 references + confidence >= 0.7) to promote Working→Core, bypassing the state machine entirely. Two competing promotion/deprecation pathways will inevitably drift. Fix: refactor maintenance tasks to use MemoryStateMachine.Evaluate as the single authority for all status transitions. Found in 10-agent codebase audit 2026-07-10 (P1-006).",
+  "description": "P2 \u2014 MemoryMaintenanceTasks.DeprecateObsoleteRecords duplicates deprecation logic inline instead of calling _stateMachine.Evaluate(). MemoryMaintenanceTasks.PromoteStableRecords uses completely different criteria (30-day age \u002B \u003E=2 references \u002B confidence \u003E= 0.7) to promote Working\u2192Core, bypassing the state machine entirely. Two competing promotion/deprecation pathways will inevitably drift. Fix: refactor maintenance tasks to use MemoryStateMachine.Evaluate as the single authority for all status transitions. Found in 10-agent codebase audit 2026-07-10 (P1-006).",
   "type": "Task",
   "status": "Backlog",
   "priority": "High",
@@ -18,16 +18,23 @@
   "attachments": [],
   "externalLinks": [],
   "linkedPages": [],
-  "comments": [],
+  "comments": [
+    {
+      "id": "c-feabe662cf4b4ceb94285c2bfe5936f3",
+      "author": "anonymous",
+      "body": "2026-08-08 deep-dive found a separate transition-precedence defect: MemoryStateMachine.Evaluate assigns Core -\u003E Deprecated below DeprecationThreshold, then a later independent Core -\u003E Working branch overwrites it. The new focused task TSK-0453 tracks the boundary fix; this task should ensure lifecycle policy is consolidated into one mutually exclusive authority.",
+      "createdAtUtc": "2026-08-09T02:44:45.8238813Z"
+    }
+  ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-07-11T03:26:01.2302438Z",
-  "updatedAtUtc": "2026-07-11T03:26:01.2302438Z",
+  "updatedAtUtc": "2026-08-09T02:44:45.8238813Z",
   "completedAtUtc": null,
-  "revision": 1,
+  "revision": 2,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,
-  "sourceFilePath": ""
+  "sourceFilePath": "tsk-0361-consolidate-scoring-into-state-machine.json"
 }

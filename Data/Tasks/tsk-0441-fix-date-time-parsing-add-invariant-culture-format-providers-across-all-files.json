@@ -1,0 +1,33 @@
+﻿{
+  "id": "tsk-0441-fix-date-time-parsing-add-invariant-culture-format-providers-across-all-files",
+  "key": "TSK-0441",
+  "title": "Fix date/time parsing \u2014 add invariant culture format providers across all files",
+  "description": "## Source\nSonarQube static analysis audit (\u0060Data/Pages/audits/ms-sonar-static-analysis-7-26-26.md\u0060)\n\n## Findings\n12 instances across multiple files where \u0060DateTime.Parse\u0060/\u0060ToString\u0060 is called without \u0060CultureInfo.InvariantCulture\u0060 or \u0060IFormatProvider\u0060:\n\n- \u0060CodeSearchService.cs\u0060 (L1480, L1695, L1751, L1843, L1850) \u2014 5 instances\n- \u0060ChatServices.cs\u0060 (L901) \u2014 1 instance\n- \u0060Chat.razor\u0060 (L983) \u2014 1 instance\n- \u0060TrainingWorkbench.razor\u0060 (L518, L595) \u2014 2 instances\n- \u0060LoggingObservabilityService.cs\u0060 (L402) \u2014 1 instance\n- \u0060Training/ChatFeedbackStore.cs\u0060 (L225, L226) \u2014 2 instances\n\n## Impact\nDatetime parsing without invariant culture causes failures on machines with non-US locale settings (e.g., dd/MM/yyyy vs MM/dd/yyyy).\n\n## Action Required\nAdd \u0060CultureInfo.InvariantCulture\u0060 to all \u0060DateTime.Parse\u0060/\u0060DateTime.TryParse\u0060/\u0060ToString\u0060 calls. Use \u0060DateTime.ParseExact\u0060 with explicit format strings where applicable.\n\n## Effort\n~2h\n\n## Priority\nP2 \u2014 Reliability",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "anonymous",
+  "labels": [
+    "type:bug",
+    "type:reliability",
+    "sprint-54"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-27T06:50:17.8033428Z",
+  "updatedAtUtc": "2026-07-27T06:50:17.8033428Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

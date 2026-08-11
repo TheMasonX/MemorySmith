@@ -1,0 +1,33 @@
+﻿{
+  "id": "tsk-0442-fix-javascript-deprecated-api-usage-optional-chaining-and-css-accessibility-issues",
+  "key": "TSK-0442",
+  "title": "Fix JavaScript deprecated API usage, optional chaining, and CSS accessibility issues",
+  "description": "## Source\nSonarQube static analysis audit (\u0060Data/Pages/audits/ms-sonar-static-analysis-7-26-26.md\u0060)\n\n## Findings\n**JavaScript (memorysmith.js):**\n- 10 instances of \u0060\u0026\u0026\u0060 guard chains that should use optional chaining (\u0060?.\u0060)\n- 3 deprecated API calls: \u0060MediaQueryList.addListener\u0060 (L478), deprecated signature (L479), \u0060document.execCommand\u0060 (L500)\n- 1 regex with duplicate character class entries (L984)\n- 1 potential object stringification issue (L1070)\n- 1 pair of duplicate switch branches (L587-592)\n\n**CSS (app.css):**\n- 5 instances of text not meeting WCAG minimum contrast ratio (4.5:1)\n- 3 duplicate CSS selectors\n- 1 deprecated \u0060word-break: break-word\u0060 keyword value\n\n## Impact\nDeprecated APIs will break in future browser versions. Poor contrast affects accessibility. Duplicate selectors cause confusing overrides.\n\n## Action Required\n1. Replace \u0060a \u0026\u0026 a.b\u0060 with \u0060a?.b\u0060 for optional chaining\n2. Replace \u0060addListener\u0060 with \u0060addEventListener(\u0027change\u0027, ...)\u0060; replace \u0060document.execCommand(\u0027copy\u0027)\u0060 with \u0060navigator.clipboard.writeText()\u0060\n3. Adjust CSS color values to meet 4.5:1 contrast ratio\n4. Remove duplicate CSS selectors and consolidate rules\n5. Replace \u0060word-break: break-word\u0060 with \u0060overflow-wrap: anywhere\u0060\n\n## Effort\n~2h\n\n## Priority\nP3 \u2014 Maintainability/Accessibility",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "Low",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "anonymous",
+  "labels": [
+    "type:refactor",
+    "domain:ui",
+    "sprint-54"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-27T06:50:17.8671165Z",
+  "updatedAtUtc": "2026-07-27T06:50:17.8671165Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

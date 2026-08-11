@@ -18,16 +18,29 @@
   "attachments": [],
   "externalLinks": [],
   "linkedPages": [],
-  "comments": [],
+  "comments": [
+    {
+      "id": "c-314031cc14d54fb59bf2d0d3b2cc85f3",
+      "author": "anonymous",
+      "body": "Audit synthesis corroboration: the redacted audit confirms the active-session cap is enforced by a non-atomic count-then-save sequence. This is an exact overlap; validation should cover concurrent creation against both in-memory and SQLite stores.",
+      "createdAtUtc": "2026-08-09T00:49:10.5283546Z"
+    },
+    {
+      "id": "c-9f1e5045312147f78607864b0c47633d",
+      "author": "anonymous",
+      "body": "2026-08-08 deep-dive reverified the active-session cap TOCTOU: CreateSessionAsync counts active sessions, awaits, then saves. Concurrent callers can all pass the cap. Acceptance should synchronize at least 2x cap calls and assert exactly cap persisted sessions.",
+      "createdAtUtc": "2026-08-09T02:44:48.259452Z"
+    }
+  ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-07-26T16:23:45.0137833Z",
-  "updatedAtUtc": "2026-07-26T16:23:45.0137833Z",
+  "updatedAtUtc": "2026-08-09T02:44:48.259452Z",
   "completedAtUtc": null,
-  "revision": 1,
+  "revision": 3,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,
-  "sourceFilePath": null
+  "sourceFilePath": "tsk-0413-fix-session-cap-toctou-race-check-then-act-across-all-stores.json"
 }

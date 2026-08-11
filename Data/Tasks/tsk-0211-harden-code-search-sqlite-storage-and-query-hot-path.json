@@ -1,4 +1,4 @@
-{
+﻿{
   "id": "tsk-0211-harden-code-search-sqlite-storage-and-query-hot-path",
   "key": "TSK-0211",
   "title": "Harden code-search SQLite storage and query hot path",
@@ -29,18 +29,24 @@
       "id": "c-create-0211-20260528",
       "author": "AgentSmith",
       "body": "Created after validating Audit #6 against the live repo. Evidence: MemorySmith.App/Services/CodeSearchService.cs still persists vectors as EmbeddingJson TEXT, deserializes them back into float arrays, opens SQLite with Pooling = false, applies no WAL/performance PRAGMAs in EnsureDatabaseAsync/OpenConnectionAsync, and still uses the manual Dot loop in the query scorer.",
-      "createdAtUtc": "2026-05-28T20:46:00.0000000Z"
+      "createdAtUtc": "2026-05-28T20:46:00Z"
+    },
+    {
+      "id": "c-132b2f29ad114fd8853d40f878e23c66",
+      "author": "anonymous",
+      "body": "Audit synthesis distinction: the redacted audit identifies code-search disclosure of snippets and local path metadata. This is separate from the existing storage/query performance scope; a focused sensitivity classification task is being created.",
+      "createdAtUtc": "2026-08-09T00:49:11.5670458Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
-  "createdAtUtc": "2026-05-28T20:46:00.0000000Z",
-  "updatedAtUtc": "2026-05-28T20:46:00.0000000Z",
+  "createdAtUtc": "2026-05-28T20:46:00Z",
+  "updatedAtUtc": "2026-08-09T00:49:11.5670458Z",
   "completedAtUtc": null,
-  "revision": 1,
+  "revision": 2,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,
-  "sourceFilePath": null
+  "sourceFilePath": "tsk-0211-harden-code-search-sqlite-storage-and-query-hot-path.json"
 }

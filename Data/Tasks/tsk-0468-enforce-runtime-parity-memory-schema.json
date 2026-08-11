@@ -1,0 +1,33 @@
+﻿{
+  "id": "tsk-0468-enforce-runtime-parity-memory-schema",
+  "key": "TSK-0468",
+  "title": "Enforce runtime parity with the checked-in memory schema",
+  "description": "Deep-dive audit 2026-08-08 verified that Schemas/memory.schema.json is not consumed by runtime validation; scripts/tests implement separate rules. The schema can drift and provide false assurance to schema-driven clients. Evidence: Schemas/memory.schema.json and Scripts/Test-MemoryRecords.ps1. Make the schema executable or add parity tests that compare schema and runtime validation.",
+  "type": "Architecture",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "anonymous",
+  "labels": [
+    "domain:schema",
+    "type:validation",
+    "audit-20260808"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-08-09T02:44:23.2559837Z",
+  "updatedAtUtc": "2026-08-09T02:44:23.2559837Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

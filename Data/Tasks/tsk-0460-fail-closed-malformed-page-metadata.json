@@ -1,0 +1,33 @@
+﻿{
+  "id": "tsk-0460-fail-closed-malformed-page-metadata",
+  "key": "TSK-0460",
+  "title": "Fail closed when page visibility metadata is malformed",
+  "description": "Deep-dive audit 2026-08-08 verified that PageService falls back to the configured default minimum role when page metadata is missing or malformed; the default is Anonymous. Corrupt metadata for a restricted page can therefore downgrade visibility. Evidence: MemorySmith.App/Services/PageService.cs lines 530-543. Preserve a load error and fail closed to the most restrictive role with regression tests.",
+  "type": "Security",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "anonymous",
+  "labels": [
+    "domain:pages",
+    "type:authorization",
+    "audit-20260808"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-08-09T02:44:22.0648179Z",
+  "updatedAtUtc": "2026-08-09T02:44:22.0648179Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

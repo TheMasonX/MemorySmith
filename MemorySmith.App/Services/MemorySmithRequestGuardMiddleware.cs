@@ -23,13 +23,14 @@ public class MemorySmithRequestGuardMiddleware
         _next = next;
     }
 
-    public async Task InvokeAsync(HttpContext context, IOptions<MemorySmithOptions> options)
+    public async Task InvokeAsync(HttpContext context, IOptions<MemorySmithOptions> options, ILogger<MemorySmithRequestGuardMiddleware>? logger = null)
     {
         var settings = options.Value;
         var isLoopback = IsLoopback(context.Connection.RemoteIpAddress);
 
         if (!settings.AllowRemoteApi && !isLoopback)
         {
+            logger?.LogWarning("Request rejected because remote API access is disabled. Path: {Path}, RemoteIp: {RemoteIp}", context.Request.Path, context.Connection.RemoteIpAddress);
             context.Response.StatusCode = StatusCodes.Status403Forbidden;
             await context.Response.WriteAsync("Remote requests are disabled. Set MemorySmith:AllowRemoteApi=true to allow non-localhost callers.");
             return;
@@ -37,6 +38,7 @@ public class MemorySmithRequestGuardMiddleware
 
         if (settings.AllowRemoteApi && !isLoopback && RequiresApiKey(context.Request.Path) && string.IsNullOrWhiteSpace(settings.ApiKey))
         {
+            logger?.LogWarning("Request rejected because remote API access has no configured API key. Path: {Path}, RemoteIp: {RemoteIp}", context.Request.Path, context.Connection.RemoteIpAddress);
             context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
             await context.Response.WriteAsync("Remote API requests require MemorySmith:ApiKey when MemorySmith:AllowRemoteApi=true. Configure a shared API key before exposing /api or /mcp beyond localhost.");
             return;
@@ -44,6 +46,7 @@ public class MemorySmithRequestGuardMiddleware
 
         if (RequiresApiKey(context.Request.Path) && !string.IsNullOrWhiteSpace(settings.ApiKey) && !HasValidApiKey(context, settings.ApiKey))
         {
+            logger?.LogWarning("Request rejected because the API key is missing or invalid. Path: {Path}, RemoteIp: {RemoteIp}", context.Request.Path, context.Connection.RemoteIpAddress);
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
             await context.Response.WriteAsync($"Missing or invalid {ApiKeyHeaderName} header.");
             return;

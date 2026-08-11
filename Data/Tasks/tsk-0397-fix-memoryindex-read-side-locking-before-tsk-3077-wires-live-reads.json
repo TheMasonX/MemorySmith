@@ -19,14 +19,21 @@
   "attachments": [],
   "externalLinks": [],
   "linkedPages": [],
-  "comments": [],
+  "comments": [
+    {
+      "id": "c-cbe075426c0b48589720b1f1b8d8d258",
+      "author": "anonymous",
+      "body": "2026-08-08 deep-dive reverified that MemoryIndex exposes mutable dictionaries/sets directly while only writers are locked. Read-side enumeration or caller mutation can race with Add/Remove/Rebuild. Keep the read-side locking/snapshot contract explicit before live index reads are wired.",
+      "createdAtUtc": "2026-08-09T02:44:46.6446499Z"
+    }
+  ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-07-26T16:23:04.8322478Z",
-  "updatedAtUtc": "2026-07-26T16:30:31.6316822Z",
+  "updatedAtUtc": "2026-08-09T02:44:46.6446499Z",
   "completedAtUtc": null,
-  "revision": 2,
+  "revision": 3,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,

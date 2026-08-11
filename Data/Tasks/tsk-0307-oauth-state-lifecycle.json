@@ -1,17 +1,40 @@
-{
+﻿{
   "id": "tsk-0307-oauth-state-lifecycle",
   "key": "TSK-0307",
   "title": "security: enforce OAuth callback state lifecycle and replay protection",
-  "status": "Backlog",
+  "description": "Implement one-time-use OAuth state store (memory or DB-backed), strictly bind state at challenge and consume\u002Binvalidate on callback; add tests for replay prevention and expired-state rejection.",
   "type": "Task",
+  "status": "Backlog",
   "priority": "Critical",
-  "description": "Implement one-time-use OAuth state store (memory or DB-backed), strictly bind state at challenge and consume+invalidate on callback; add tests for replay prevention and expired-state rejection.",
-  "createdAtUtc": "2026-07-10T00:00:00Z",
-  "updatedAtUtc": "2026-07-10T00:00:00Z",
-  "revision": 1,
+  "assigneeMode": "Directory",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": null,
+  "reporter": null,
   "labels": [
     "security",
     "auth",
     "tests"
-  ]
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [
+    {
+      "id": "c-074fb686ced34dab8105f0885eb6150e",
+      "author": "anonymous",
+      "body": "Audit synthesis corroboration: the redacted audit confirms OAuth callback state needs one-time binding, expiry, and replay protection. This is the lifecycle portion of the bridge finding and remains covered here.",
+      "createdAtUtc": "2026-08-09T00:49:09.5417479Z"
+    }
+  ],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-10T00:00:00Z",
+  "updatedAtUtc": "2026-08-09T00:49:09.5417479Z",
+  "completedAtUtc": null,
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": "tsk-0307-oauth-state-lifecycle.json"
 }

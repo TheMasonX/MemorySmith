@@ -1,4 +1,4 @@
-{
+﻿{
   "id": "tsk-0040-add-security-regression-matrix-for-remote-profile-proxy-and-auth",
   "key": "TSK-0040",
   "title": "Add security regression matrix for remote profile, proxy, and auth",
@@ -27,15 +27,24 @@
       "id": "c-create-0040-20260523",
       "author": "AgentSmith",
       "body": "Created to close validation gap across findings F-001 through F-004 and enforce confidence gates.",
-      "createdAtUtc": "2026-05-23T18:11:00.0000000Z"
+      "createdAtUtc": "2026-05-23T18:11:00Z"
+    },
+    {
+      "id": "c-6702fdb9ee3242af89d54ff46e3de160",
+      "author": "anonymous",
+      "body": "Audit synthesis corroboration: the redacted external audit confirms that a single configured API key can currently satisfy multiple API/MCP permission classes. The existing matrix task should cover the chosen scoped-key compatibility matrix; a separate implementation task is being created for mapping keys to explicit capabilities rather than treating the key as an implicit superuser.",
+      "createdAtUtc": "2026-08-09T00:49:08.7203163Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
-  "createdAtUtc": "2026-05-23T18:11:00.0000000Z",
-  "updatedAtUtc": "2026-05-23T18:11:00.0000000Z",
+  "createdAtUtc": "2026-05-23T18:11:00Z",
+  "updatedAtUtc": "2026-08-09T00:49:08.7203163Z",
   "completedAtUtc": null,
-  "revision": 1,
-  "isArchived": false
+  "revision": 2,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": "tsk-0040-add-security-regression-matrix-for-remote-profile-proxy-and-auth.json"
 }

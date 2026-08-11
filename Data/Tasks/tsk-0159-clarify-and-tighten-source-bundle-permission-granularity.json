@@ -1,4 +1,4 @@
-{
+﻿{
   "id": "tsk-0159-clarify-and-tighten-source-bundle-permission-granularity",
   "key": "TSK-0159",
   "title": "Clarify and tighten source-bundle permission granularity",
@@ -28,7 +28,7 @@
     {
       "id": "c-create-0159-20260525",
       "author": "AgentSmith",
-      "body": "Created during 2026-05-25 deepdive audit after tracing SensitiveRead MCP source tools through McpController.CanReadSourceBundleAsync and SecurityServices.Allows. This is related to TSK-0151's documentation/test matrix, but specifically tracks whether Viewer/anonymous Viewer should satisfy source-bundle reads.",
+      "body": "Created during 2026-05-25 deepdive audit after tracing SensitiveRead MCP source tools through McpController.CanReadSourceBundleAsync and SecurityServices.Allows. This is related to TSK-0151\u0027s documentation/test matrix, but specifically tracks whether Viewer/anonymous Viewer should satisfy source-bundle reads.",
       "createdAtUtc": "2026-05-25T16:25:00Z"
     },
     {
@@ -36,17 +36,23 @@
       "author": "AgentSmith",
       "body": "Tightened source-bundle authorization so Viewer no longer satisfies ReadSourceBundle. Source-bundle tools now require Editor/Admin, configured API-key access, or auth-disabled local installs; anonymous Viewer and authenticated Viewer callers are denied before SensitiveRead MCP tools execute. Updated README and api-and-mcp docs to make the boundary explicit. Validation: focused MCP SensitiveRead authorization tests passed 2/2.",
       "createdAtUtc": "2026-05-25T20:21:06.7929374Z"
+    },
+    {
+      "id": "c-049915f79f934f22b74670326c915e78",
+      "author": "anonymous",
+      "body": "Audit synthesis corroboration: the redacted audit confirms source-sensitive reads need explicit authorization boundaries. This task covers source-bundle policy; code-search snippets and local path metadata are a separate disclosure surface and will receive a focused task.",
+      "createdAtUtc": "2026-08-09T00:49:09.891267Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-25T16:25:00Z",
-  "updatedAtUtc": "2026-05-30T22:40:56.4958679Z",
+  "updatedAtUtc": "2026-08-09T00:49:09.891267Z",
   "completedAtUtc": "2026-05-25T20:21:06.7929374Z",
-  "revision": 3,
+  "revision": 4,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,
-  "sourceFilePath": null
+  "sourceFilePath": "tsk-0159-clarify-and-tighten-source-bundle-permission-granularity.json"
 }

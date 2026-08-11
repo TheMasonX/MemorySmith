@@ -1,10 +1,10 @@
-{
+﻿{
   "id": "tsk-0363-add-mcp-controller-general-error-handling",
   "key": "TSK-0363",
   "title": "Add general error handling to MCP controller tool dispatch",
-  "description": "P1 — McpController.DelegateToCatalogAsync calls tool.Execute(...) without a catch block. Unhandled exceptions from tool execution (null ref, argument exception, etc.) propagate as raw ASP.NET 500 HTML rather than properly formatted JSON-RPC error responses, breaking the MCP protocol. Fix: wrap tool.Execute in try/catch, log the exception, return a correctly structured JSON-RPC error response with proper error code, message, and data fields. Found in 10-agent codebase audit 2026-07-10 (P1-011).",
+  "description": "P1 \u2014 McpController.DelegateToCatalogAsync calls tool.Execute(...) without a catch block. Unhandled exceptions from tool execution (null ref, argument exception, etc.) propagate as raw ASP.NET 500 HTML rather than properly formatted JSON-RPC error responses, breaking the MCP protocol. Fix: wrap tool.Execute in try/catch, log the exception, return a correctly structured JSON-RPC error response with proper error code, message, and data fields. Found in 10-agent codebase audit 2026-07-10 (P1-011).",
   "type": "Task",
-  "status": "Backlog",
+  "status": "Blocked",
   "priority": "High",
   "assigneeMode": "Custom",
   "assigneeDirectoryId": null,
@@ -23,11 +23,11 @@
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-07-11T03:26:01.3259462Z",
-  "updatedAtUtc": "2026-07-11T03:26:01.3259462Z",
+  "updatedAtUtc": "2026-07-27T01:14:51.496028Z",
   "completedAtUtc": null,
-  "revision": 1,
+  "revision": 2,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,
-  "sourceFilePath": ""
+  "sourceFilePath": "tsk-0363-add-mcp-controller-general-error-handling.json"
 }

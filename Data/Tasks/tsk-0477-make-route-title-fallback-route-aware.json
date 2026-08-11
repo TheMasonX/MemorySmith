@@ -1,0 +1,33 @@
+﻿{
+  "id": "tsk-0477-make-route-title-fallback-route-aware",
+  "key": "TSK-0477",
+  "title": "Make route title fallback preserve actual page titles",
+  "description": "Deep-dive audit 2026-08-08 verified that buildRouteTitleFallback ignores pathname and returns Health - instance; timer/navigation/head-mutation hooks can overwrite valid route PageTitle values. HealthStats also hard-codes the instance name. Evidence: MemorySmith.App/wwwroot/memorysmith.js and Components/Pages/HealthStats.razor. Make fallback conditional and route-aware, then add route title regression coverage.",
+  "type": "Bug",
+  "status": "Backlog",
+  "priority": "Medium",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "anonymous",
+  "labels": [
+    "domain:ui",
+    "type:navigation",
+    "audit-20260808"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-08-09T02:44:24.4340392Z",
+  "updatedAtUtc": "2026-08-09T02:44:24.4340392Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

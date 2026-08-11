@@ -1,0 +1,33 @@
+﻿{
+  "id": "tsk-0471-coordinate-file-backed-stores-across-processes",
+  "key": "TSK-0471",
+  "title": "Coordinate file-backed stores across processes",
+  "description": "Deep-dive audit 2026-08-08 verified that FileMemoryStore and FileEventStore use instance-local locks, while FileVarStore shares a fixed temporary path without a writer lock. Singleton registration only coordinates one process. Concurrent app/service processes can race on memory saves, event appends, and variable updates. Evidence: MemorySmith.Storage/FileMemoryStore.cs, FileEventStore.cs, FileVarStore.cs, MemorySmith.App/Hosting/MemorySmithStorageSetup.cs. Add OS-level coordination or explicitly prevent multi-process use, with two-process tests.",
+  "type": "Reliability",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "Copilot",
+  "reporter": "anonymous",
+  "labels": [
+    "domain:storage",
+    "type:concurrency",
+    "audit-20260808"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-08-09T02:44:23.7368918Z",
+  "updatedAtUtc": "2026-08-09T02:44:23.7368918Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

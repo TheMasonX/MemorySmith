@@ -1,0 +1,32 @@
+﻿{
+  "id": "tsk-0431-refactor-remaining-cognitive-complexity-violations-across-25-methods-in-15-files",
+  "key": "TSK-0431",
+  "title": "Refactor remaining cognitive complexity violations across 25\u002B methods in 15\u002B files",
+  "description": "## Source\nSonarQube static analysis audit (\u0060Data/Pages/audits/ms-sonar-static-analysis-7-26-26.md\u0060)\n\n## Findings\n~25 methods across 15\u002B files with cognitive complexity between 16 and 47 (limit is 15). These include:\n\n**Razor Pages:**\n- \u0060Admin.razor\u0060 (L2076, 24), \u0060Chat.razor\u0060 (L1350, 47), \u0060MemoryViewer.razor\u0060 (L836, 30), \u0060Pages.razor\u0060 (L1001, 18), \u0060TrainingWorkbench.razor\u0060 (L674, 18)\n\n**Hosting:**\n- \u0060GitHubOAuthCallbackHandler.cs\u0060 (L26, 29), \u0060MemorySmithContentEndpoints.cs\u0060 (L17, 16), \u0060MemorySmithPipelineSetup.cs\u0060 (L20, 25), \u0060MemorySmithTelemetrySetup.cs\u0060 (L17, 26)\n\n**Services:**\n- \u0060AdminSettingsService.cs\u0060 (L474, 31), \u0060ChatContextPlanner.cs\u0060 (L19, 23), \u0060ChatMarkdownRenderer.cs\u0060 (L308, 21), \u0060MemoryGovernanceServices.cs\u0060 (L296, 35; L469, 20), \u0060SemanticEmbeddingSearchService.cs\u0060 (L961, 20), \u0060TagGovernanceService.cs\u0060 (L157, 36), \u0060TaskDomainService.cs\u0060 (L439, 21), \u0060TreeSitterChunkingService.cs\u0060 (L115, 19), \u0060VarResolver.cs\u0060 (L60, 17; L226, 17), \u0060WindowsServiceCommands.cs\u0060 (L54, 31)\n\n**Storage, Bridge, Training:**\n- \u0060SqliteMemorySmithDatabase.cs\u0060 (L839, 21), \u0060MemorySmith.Bridge/Program.cs\u0060 (L462, 23)\n- \u0060harness.py\u0060 (L80, L144, L249, L280, L341, L935)\n\n## Impact\nThese methods reduce code maintainability, make testing difficult, and increase the likelihood of bugs during modifications.\n\n## Action Required\nDecompose each method: extract nested logic, reduce nesting depth, split by responsibility. Prioritize by complexity score (47 \u2192 15 first).\n\n## Effort\n~4h\n\n## Priority\nP1 \u2014 Maintainability",
+  "type": "Task",
+  "status": "Backlog",
+  "priority": "High",
+  "assigneeMode": "Custom",
+  "assigneeDirectoryId": null,
+  "assigneeCustomText": "AgentSmith",
+  "reporter": "anonymous",
+  "labels": [
+    "type:refactor",
+    "sprint-54"
+  ],
+  "attachments": [],
+  "externalLinks": [],
+  "linkedPages": [],
+  "comments": [],
+  "epicId": null,
+  "parentId": null,
+  "dueDateUtc": null,
+  "createdAtUtc": "2026-07-27T06:49:31.2905021Z",
+  "updatedAtUtc": "2026-07-27T06:49:31.2905021Z",
+  "completedAtUtc": null,
+  "revision": 1,
+  "isArchived": false,
+  "hasLoadError": false,
+  "loadError": null,
+  "sourceFilePath": null
+}

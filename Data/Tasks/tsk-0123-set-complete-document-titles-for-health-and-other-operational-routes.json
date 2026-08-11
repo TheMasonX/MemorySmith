@@ -1,8 +1,8 @@
-{
+﻿{
   "id": "tsk-0123-set-complete-document-titles-for-health-and-other-operational-routes",
   "key": "TSK-0123",
   "title": "Set complete document titles for Health and other operational routes",
-  "description": "Problem: the live browser audit found `/health` rendered with an empty document title while most other primary routes set a route-specific title such as `Pages`, `Memories`, `Chat`, or `About - MemorySmith`. Empty or inconsistent document titles make tab switching and assistive technology navigation harder.\n\nDesired outcome: every primary route sets a stable, descriptive document title using a consistent format.\n\nScope:\n- In scope: `/health` title fix, a quick audit of other operational/admin routes for missing or inconsistent titles, and a small regression check if practical.\n- Out of scope: changing visible page headings or route paths.\n\nAcceptance criteria:\n- `/health` sets a non-empty title such as `Health - MemorySmith` or the app's current route-title convention.\n- Primary operational routes have consistent document-title formatting.\n- Browser tests or route-smoke assertions catch future missing titles.\n\nValidation:\n- Navigate to `/health`, `/maintenance`, `/admin`, `/tasks`, `/pages`, `/memories`, and `/chat` and confirm `document.title` is non-empty and descriptive.\n- Run route-smoke or the focused title assertion test.",
+  "description": "Problem: the live browser audit found \u0060/health\u0060 rendered with an empty document title while most other primary routes set a route-specific title such as \u0060Pages\u0060, \u0060Memories\u0060, \u0060Chat\u0060, or \u0060About - MemorySmith\u0060. Empty or inconsistent document titles make tab switching and assistive technology navigation harder.\n\nDesired outcome: every primary route sets a stable, descriptive document title using a consistent format.\n\nScope:\n- In scope: \u0060/health\u0060 title fix, a quick audit of other operational/admin routes for missing or inconsistent titles, and a small regression check if practical.\n- Out of scope: changing visible page headings or route paths.\n\nAcceptance criteria:\n- \u0060/health\u0060 sets a non-empty title such as \u0060Health - MemorySmith\u0060 or the app\u0027s current route-title convention.\n- Primary operational routes have consistent document-title formatting.\n- Browser tests or route-smoke assertions catch future missing titles.\n\nValidation:\n- Navigate to \u0060/health\u0060, \u0060/maintenance\u0060, \u0060/admin\u0060, \u0060/tasks\u0060, \u0060/pages\u0060, \u0060/memories\u0060, and \u0060/chat\u0060 and confirm \u0060document.title\u0060 is non-empty and descriptive.\n- Run route-smoke or the focused title assertion test.",
   "type": "Task",
   "status": "Done",
   "priority": "Low",
@@ -27,25 +27,31 @@
     {
       "id": "c-0123-1",
       "author": "AgentSmith",
-      "body": "Created from 2026-05-25 live browser audit: `/health` returned an empty document title while other primary routes had route-specific titles.",
+      "body": "Created from 2026-05-25 live browser audit: \u0060/health\u0060 returned an empty document title while other primary routes had route-specific titles.",
       "createdAtUtc": "2026-05-25T00:00:00Z"
     },
     {
       "id": "c-0123-2",
       "author": "AgentSmith",
-      "body": "Implemented by normalizing primary route PageTitle values to the `Route - MemorySmith` convention and adding route-smoke title assertions for `/memories`, `/pages`, `/chat`, `/tasks`, and `/health`. Validation: `dotnet build .\\MemorySmith.App\\MemorySmith.App.csproj --nologo` succeeded, and `MEMORYSMITH_BASE_URL=http://127.0.0.1:5099 npm run test:route-smoke` passed 5/5 against a Development local server on 2026-05-25.",
+      "body": "Implemented by normalizing primary route PageTitle values to the \u0060Route - MemorySmith\u0060 convention and adding route-smoke title assertions for \u0060/memories\u0060, \u0060/pages\u0060, \u0060/chat\u0060, \u0060/tasks\u0060, and \u0060/health\u0060. Validation: \u0060dotnet build .\\MemorySmith.App\\MemorySmith.App.csproj --nologo\u0060 succeeded, and \u0060MEMORYSMITH_BASE_URL=http://127.0.0.1:5099 npm run test:route-smoke\u0060 passed 5/5 against a Development local server on 2026-05-25.",
       "createdAtUtc": "2026-05-25T06:34:00Z"
+    },
+    {
+      "id": "c-3acf1b3b665f45fba625c7f9a4af6ca3",
+      "author": "anonymous",
+      "body": "2026-08-08 deep-dive found current memorysmith.js buildRouteTitleFallback always returns Health - instance and can overwrite valid route titles; HealthStats also hard-codes the instance name. Historical title-fix completion is contradicted by live code; new TSK-0477 tracks the regression.",
+      "createdAtUtc": "2026-08-09T02:44:49.7114433Z"
     }
   ],
   "epicId": null,
   "parentId": null,
   "dueDateUtc": null,
   "createdAtUtc": "2026-05-25T00:00:00Z",
-  "updatedAtUtc": "2026-05-30T22:40:56.4803153Z",
+  "updatedAtUtc": "2026-08-09T02:44:49.7114433Z",
   "completedAtUtc": "2026-05-25T06:34:00Z",
-  "revision": 3,
+  "revision": 4,
   "isArchived": false,
   "hasLoadError": false,
   "loadError": null,
-  "sourceFilePath": null
+  "sourceFilePath": "tsk-0123-set-complete-document-titles-for-health-and-other-operational-routes.json"
 }
