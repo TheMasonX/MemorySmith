@@ -979,7 +979,8 @@ public class McpAndSemanticSearchTests
         bool bootstrapFactory = true)
     {
         const string bootstrapToken = "mcp-test-bootstrap-token";
-        var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+        const string testApiKey = "mcp-test-api-key";
+        var factory = new McpTestFactory(testApiKey).WithWebHostBuilder(builder =>
         {
             builder.ConfigureAppConfiguration((_, config) =>
             {
@@ -988,7 +989,8 @@ public class McpAndSemanticSearchTests
                     ["MemorySmith:DataPath"] = memoryPath,
                     ["MemorySmith:EventLogPath"] = Path.Combine(_tempRoot, "Events", "audit.log"),
                     ["MemorySmith:Maintenance:Enabled"] = "false",
-                    ["MemorySmith:ApiKey"] = string.Empty,
+                    ["MemorySmith:AllowRemoteApi"] = "true",
+                    ["MemorySmith:ApiKey"] = testApiKey,
                     ["MemorySmith:Auth:LocalPasswordEnabled"] = "true",
                     ["MemorySmith:Auth:Setup:AllowLoopbackBootstrap"] = "true",
                     ["MemorySmith:Auth:Setup:BootstrapTokenHash"] = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(bootstrapToken))),
@@ -1033,6 +1035,15 @@ public class McpAndSemanticSearchTests
         setupResponse.EnsureSuccessStatusCode();
 
         return factory;
+    }
+
+    private sealed class McpTestFactory(string apiKey) : WebApplicationFactory<Program>
+    {
+        protected override void ConfigureClient(HttpClient client)
+        {
+            client.DefaultRequestHeaders.Add(MemorySmithRequestGuardMiddleware.ApiKeyHeaderName, apiKey);
+            base.ConfigureClient(client);
+        }
     }
 
     /// <summary>
